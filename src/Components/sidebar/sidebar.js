@@ -7,7 +7,7 @@ const Sidebar = () => {
 
   return (
     <>
-        <div className="sidebar px-4 py-4 py-md-5 me-0">
+      <div className="sidebar px-4 py-4 py-md-5 me-0">
         <div className="d-flex flex-column h-100">
           <Link to="index" className="mb-0 brand-icon">
             <span className="logo-icon">
@@ -230,7 +230,49 @@ const Sidebar = () => {
                 </li>
               </ul>
             </li>
+
+             <li className="collapsed">
+              <Link
+                className="m-link"
+                data-bs-toggle="collapse"
+                data-bs-target="#menu-Patient"
+                to="#"
+              >
+              <i className="icofont-crown fs-5" /> <span>Master</span>
+                <span className="arrow icofont-rounded-down ms-auto text-end fs-5" />
+              </Link>
+              {/* Menu: Sub menu ul */}
+              <ul className="sub-menu collapse" id="menu-Patient">
+                <li>
+                  <Link className="ms-link" to="Gendermaster">
+                    Gender Master
+                  </Link>
+                </li>
+                <li>
+                  <Link className="ms-link" to="Relationmaster">
+                    Relation Master
+                  </Link>
+                </li>
+                <li>
+                  <Link className="ms-link" to="Bloodmaster">
+                    Blood Group Master
+                  </Link>
+                </li>
+                <li>
+                  <Link className="ms-link" to="patient-invoices">
+                    Title Master
+                  </Link>
+                </li>
+                <li>
+                  <Link className="ms-link" to="patient-invoices">
+                    Marital Status Master
+                  </Link>
+                </li>
+              </ul>
+            </li>
           </ul>
+
+
           {/* Menu: menu collepce btn */}
           <button
             type="button"

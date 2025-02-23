@@ -3,6 +3,9 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle';
 import { MenuProvider } from './context/MenuContext';
+import Gendermaster from './Views/Masters/Gendermaster';
+import Relationmaster from './Views/Masters/Relationmaster';
+import Bloodmaster from './Views/Masters/BloodMaster';
 
 
 const Layout =  React.lazy(() => import('./Views/layout/index'));
@@ -28,6 +31,9 @@ function App() {
             <Route path="/" element={<PrivateRoute element={<Layout />} />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/AddDoctor" element={<AddDoctor />} />
+              <Route path="/Gendermaster" element={<Gendermaster/>}/>
+              <Route path="/Relationmaster" element={<Relationmaster/>} />
+              <Route path="/Bloodmaster" element={<Bloodmaster/>} />
             </Route>
         </Routes>
       </Suspense>
