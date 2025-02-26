@@ -6,6 +6,11 @@ import { MenuProvider } from './context/MenuContext';
 import Gendermaster from './Views/Masters/Gendermaster';
 import Relationmaster from './Views/Masters/Relationmaster';
 import Bloodmaster from './Views/Masters/BloodMaster';
+import Manageuserapplication from './Views/Usermanagement/Manageuserapplicaton';
+import Addformreports from './Views/Usermanagement/AddFormReports';
+import Templatemaster from './Views/Usermanagement/TemplateMaster';
+import Assignapplicaton from './Views/Usermanagement/AssignApplicationToTemplate';
+import Rolesrights from './Views/Usermanagement/RolesRights';
 
 
 const Layout =  React.lazy(() => import('./Views/layout/index'));
@@ -34,6 +39,11 @@ function App() {
               <Route path="/Gendermaster" element={<Gendermaster/>}/>
               <Route path="/Relationmaster" element={<Relationmaster/>} />
               <Route path="/Bloodmaster" element={<Bloodmaster/>} />
+              <Route path="/manageuserapplication" element={<Manageuserapplication/>} />
+              <Route path="/addformreports" element={<Addformreports/>} />
+              <Route path="/templatemaster" element={<Templatemaster/>} />
+              <Route path="/assignapplication" element={<Assignapplicaton/>} />
+              <Route path="/rolesrights" element={<Rolesrights/>} />
             </Route>
         </Routes>
       </Suspense>

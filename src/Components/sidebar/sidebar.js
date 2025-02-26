@@ -231,14 +231,14 @@ const Sidebar = () => {
               </ul>
             </li>
 
-             <li className="collapsed">
+            <li className="collapsed">
               <Link
                 className="m-link"
                 data-bs-toggle="collapse"
                 data-bs-target="#menu-Patient"
                 to="#"
               >
-              <i className="icofont-crown fs-5" /> <span>Master</span>
+                <i className="icofont-crown fs-5" /> <span>Master</span>
                 <span className="arrow icofont-rounded-down ms-auto text-end fs-5" />
               </Link>
               {/* Menu: Sub menu ul */}
@@ -270,6 +270,49 @@ const Sidebar = () => {
                 </li>
               </ul>
             </li>
+
+            <li className="collapsed">
+              <Link
+                className="m-link"
+                data-bs-toggle="collapse"
+                data-bs-target="#menu-UserManagement"
+                to="#"
+              >
+                <i className="icofont-crown fs-5" /> <span>User Management</span>
+                <span className="arrow icofont-rounded-down ms-auto text-end fs-5" />
+              </Link>
+              <ul className="sub-menu collapse" id="menu-UserManagement">
+                <li>
+                  <Link className="ms-link" to="manageuserapplication">
+                    Manage User Application
+                  </Link>
+                </li>
+                <li>
+                  <Link className="ms-link" to="addformreports">
+                    Add Form/Reports
+                  </Link>
+                </li>
+                <li>
+                  <Link className='ms-link' to="/templatemaster">
+                    Manage Template
+                  </Link>
+                </li>
+                <li>
+                  <Link className='ms-link' to="/assignapplication">
+                    Assign Application To Template
+                  </Link>
+                </li>
+                <li>
+                  <Link className='ms-link' to="/rolesrights">
+                    Roles Rights
+                  </Link>
+                </li>
+
+              </ul>
+            </li>
+
+
+
           </ul>
 
 
