@@ -11,6 +11,9 @@ import Addformreports from './Views/Usermanagement/AddFormReports';
 import Templatemaster from './Views/Usermanagement/TemplateMaster';
 import Assignapplicaton from './Views/Usermanagement/AssignApplicationToTemplate';
 import Rolesrights from './Views/Usermanagement/RolesRights';
+import Itemclass from './Views/Stores/ItemClass';
+import Itemcategory from './Views/Stores/ItemCategory';
+import Itemtype from './Views/Stores/ItemType';
 
 
 const Layout =  React.lazy(() => import('./Views/layout/index'));
@@ -44,6 +47,10 @@ function App() {
               <Route path="/templatemaster" element={<Templatemaster/>} />
               <Route path="/assignapplication" element={<Assignapplicaton/>} />
               <Route path="/rolesrights" element={<Rolesrights/>} />
+              <Route path="/itemclass" element={<Itemclass/>} />
+              <Route path="/itemcategory" element={<Itemcategory/>} />
+              <Route path="/itemtype" element={<Itemtype/>} />
+
             </Route>
         </Routes>
       </Suspense>

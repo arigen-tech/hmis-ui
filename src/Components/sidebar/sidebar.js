@@ -278,7 +278,7 @@ const Sidebar = () => {
                 data-bs-target="#menu-UserManagement"
                 to="#"
               >
-                <i className="icofont-crown fs-5" /> <span>User Management</span>
+                <i className="icofont-user fs-5" /> <span>User Management</span>
                 <span className="arrow icofont-rounded-down ms-auto text-end fs-5" />
               </Link>
               <ul className="sub-menu collapse" id="menu-UserManagement">
@@ -307,6 +307,47 @@ const Sidebar = () => {
                     Roles Rights
                   </Link>
                 </li>
+
+              </ul>
+            </li>
+
+            <li className="collapsed">
+              <Link
+                className="m-link"
+                data-bs-toggle="collapse"
+                data-bs-target="#menu-Store"
+                to="#"
+              >
+                <i className="icofont-shopping-cart fs-5" /> <span>Stores</span>
+                <span className="arrow icofont-rounded-down ms-auto text-end fs-5" />
+              </Link>
+              <ul className="sub-menu collapse" id="menu-Store">
+                <li>
+                  <Link className="ms-link" to="itemclass">
+                    Item Class
+                  </Link>
+                </li>
+                <li>
+                  <Link className="ms-link" to="itemcategory">
+                    Item Category
+                  </Link>
+                </li>
+                <li>
+                  <Link className="ms-link" to="itemtype">
+                    Item Type
+                  </Link>
+                </li>
+                <li>
+                  <Link className="ms-link" to="itemunit">
+                    Item Unit
+                  </Link>
+                </li>
+                <li>
+                  <Link className="ms-link" to="drugmaster">
+                    Drug Master
+                  </Link>
+                </li>
+               
 
               </ul>
             </li>
