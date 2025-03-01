@@ -307,6 +307,11 @@ const Sidebar = () => {
                     Roles Rights
                   </Link>
                 </li>
+                <li>
+                  <Link className='ms-link' to="/rolemaster">
+                    Role Master
+                  </Link>
+                </li>
 
               </ul>
             </li>
