@@ -14,6 +14,8 @@ import Rolesrights from './Views/Usermanagement/RolesRights';
 import Itemclass from './Views/Stores/ItemClass';
 import Itemcategory from './Views/Stores/ItemCategory';
 import Itemtype from './Views/Stores/ItemType';
+import Itemunit from './Views/Stores/ItemUnit';
+// import Drugmaster from './Views/Stores/DrugMaster';
 
 
 const Layout =  React.lazy(() => import('./Views/layout/index'));
@@ -50,6 +52,8 @@ function App() {
               <Route path="/itemclass" element={<Itemclass/>} />
               <Route path="/itemcategory" element={<Itemcategory/>} />
               <Route path="/itemtype" element={<Itemtype/>} />
+              <Route path="/Itemunit" element={<Itemunit/>} />
+              {/* <Route path="/Drugmaster" element={<Drugmaster/>} /> */}
 
             </Route>
         </Routes>
