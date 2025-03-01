@@ -22,6 +22,10 @@ const Layout =  React.lazy(() => import('./Views/layout/index'));
 const Dashboard = React.lazy(() => import('./Views/Dashboard/index'));
 const Login = React.lazy(() => import('./Views/Login/index'));
 const AddDoctor = React.lazy(() => import('./Views/Doctors/AddDoctor/index'));
+const ApointmentSetup = React.lazy(() => import('./Views/Admin/Apointment/ApointmentSetup'));
+const DoctorRoaster = React.lazy(() => import('./Views/Admin/Apointment/DoctorRoaster'));
+const PatientRegistration = React.lazy(() => import('./Views/Reception/PatientRegistration'));
+
 
 const isAuthenticated = () => {
   // Replace this with real authentication check logic
@@ -54,6 +58,11 @@ function App() {
               <Route path="/itemtype" element={<Itemtype/>} />
               <Route path="/Itemunit" element={<Itemunit/>} />
               {/* <Route path="/Drugmaster" element={<Drugmaster/>} /> */}
+              <Route path="/ApointmentSetup" element={<ApointmentSetup />} />
+              <Route path="/DoctorRoaster" element={<DoctorRoaster />} />
+              <Route path="/PatientRegistration" element={<PatientRegistration />} />
+
+
 
             </Route>
         </Routes>

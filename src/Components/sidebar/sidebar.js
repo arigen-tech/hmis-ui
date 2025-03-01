@@ -353,6 +353,56 @@ const Sidebar = () => {
             </li>
 
 
+            {/* admin */}
+            <li className="collapsed">
+              <Link
+                className="m-link"
+                data-bs-toggle="collapse"
+                data-bs-target="#menu-Doctor"
+                to="#"
+              >
+                <i className="icofont-doctor-alt fs-5" /> <span>Admin</span>
+                <span className="arrow icofont-rounded-down ms-auto text-end fs-5" />
+              </Link>
+              {/* Menu: Sub menu ul */}
+              <ul className="sub-menu collapse" id="menu-Doctor">
+                <li>
+                  <Link className="ms-link" to="ApointmentSetup">
+                    Apointment Setup
+                  </Link>
+                </li>
+                <li>
+                  <Link className="ms-link" to="DoctorRoaster">
+                    Doctor Roaster
+                  </Link>
+                </li>
+                
+              </ul>
+            </li>
+
+            {/* Patient Registration */}
+            <li className="collapsed">
+              <Link
+                className="m-link"
+                data-bs-toggle="collapse"
+                data-bs-target="#menu-Reception"
+                to="#"
+              >
+                <i className="icofont-doctor-alt fs-5" /> <span>Reception</span>
+                <span className="arrow icofont-rounded-down ms-auto text-end fs-5" />
+              </Link>
+              {/* Menu: Sub menu ul */}
+              <ul className="sub-menu collapse" id="menu-Reception">
+                <li>
+                  <Link className="ms-link" to="PatientRegistration">
+                    Patient Registration
+                  </Link>
+                </li>
+                
+              </ul>
+            </li>
+
+
 
           </ul>
 
