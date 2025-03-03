@@ -235,14 +235,14 @@ const Sidebar = () => {
               <Link
                 className="m-link"
                 data-bs-toggle="collapse"
-                data-bs-target="#menu-Patient"
+                data-bs-target="#menu-master"
                 to="#"
               >
                 <i className="icofont-crown fs-5" /> <span>Master</span>
                 <span className="arrow icofont-rounded-down ms-auto text-end fs-5" />
               </Link>
               {/* Menu: Sub menu ul */}
-              <ul className="sub-menu collapse" id="menu-Patient">
+              <ul className="sub-menu collapse" id="menu-master">
                 <li>
                   <Link className="ms-link" to="Gendermaster">
                     Gender Master
@@ -274,55 +274,10 @@ const Sidebar = () => {
                   </Link>
                 </li> 
                 <li>
-                  <Link className="ms-link" to="patient-invoices">
-                    Marital Status Master
+                  <Link className="ms-link" to="departmentmaster">
+                    Department Master
                   </Link>
                 </li>
-              </ul>
-            </li>
-
-            <li className="collapsed">
-              <Link
-                className="m-link"
-                data-bs-toggle="collapse"
-                data-bs-target="#menu-UserManagement"
-                to="#"
-              >
-                <i className="icofont-user fs-5" /> <span>User Management</span>
-                <span className="arrow icofont-rounded-down ms-auto text-end fs-5" />
-              </Link>
-              <ul className="sub-menu collapse" id="menu-UserManagement">
-                <li>
-                  <Link className="ms-link" to="manageuserapplication">
-                    Manage User Application
-                  </Link>
-                </li>
-                <li>
-                  <Link className="ms-link" to="addformreports">
-                    Add Form/Reports
-                  </Link>
-                </li>
-                <li>
-                  <Link className='ms-link' to="/templatemaster">
-                    Manage Template
-                  </Link>
-                </li>
-                <li>
-                  <Link className='ms-link' to="/assignapplication">
-                    Assign Application To Template
-                  </Link>
-                </li>
-                <li>
-                  <Link className='ms-link' to="/rolesrights">
-                    Roles Rights
-                  </Link>
-                </li>
-                <li>
-                  <Link className='ms-link' to="/rolemaster">
-                    Role Master
-                  </Link>
-                </li>
-
               </ul>
             </li>
 
@@ -373,14 +328,14 @@ const Sidebar = () => {
               <Link
                 className="m-link"
                 data-bs-toggle="collapse"
-                data-bs-target="#menu-Doctor"
+                data-bs-target="#menu-admin"
                 to="#"
               >
-                <i className="icofont-doctor-alt fs-5" /> <span>Admin</span>
+                <i className="icofont-settings-alt fs-5" /> <span>Admin</span>
                 <span className="arrow icofont-rounded-down ms-auto text-end fs-5" />
               </Link>
               {/* Menu: Sub menu ul */}
-              <ul className="sub-menu collapse" id="menu-Doctor">
+              <ul className="sub-menu collapse" id="menu-admin">
                 <li>
                   <Link className="ms-link" to="ApointmentSetup">
                     Apointment Setup
@@ -389,6 +344,36 @@ const Sidebar = () => {
                 <li>
                   <Link className="ms-link" to="DoctorRoaster">
                     Doctor Roaster
+                  </Link>
+                </li>
+                <li>
+                  <Link className="ms-link" to="manageuserapplication">
+                    Manage User Application
+                  </Link>
+                </li>
+                <li>
+                  <Link className="ms-link" to="addformreports">
+                    Add Form/Reports
+                  </Link>
+                </li>
+                <li>
+                  <Link className='ms-link' to="/templatemaster">
+                    Manage Template
+                  </Link>
+                </li>
+                <li>
+                  <Link className='ms-link' to="/assignapplication">
+                    Assign Application To Template
+                  </Link>
+                </li>
+                <li>
+                  <Link className='ms-link' to="/rolesrights">
+                    Roles Rights
+                  </Link>
+                </li>
+                <li>
+                  <Link className='ms-link' to="/rolemaster">
+                    Role Master
                   </Link>
                 </li>
                 
