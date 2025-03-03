@@ -18,6 +18,7 @@ import Itemunit from './Views/Stores/ItemUnit';
 import Rolemaster from './Views/Usermanagement/RoleMaster';
 import Departmenttype from './Views/Masters/DepartmentType';
 import Departmentmaster from './Views/Masters/DepartmentMaster';
+import Maritalstatus from './Views/Masters/MaritalStatusMaster';
 // import Drugmaster from './Views/Stores/DrugMaster';
 
 
@@ -51,6 +52,7 @@ function App() {
               <Route path="/Gendermaster" element={<Gendermaster/>}/>
               <Route path="/Relationmaster" element={<Relationmaster/>} />
               <Route path="/Bloodmaster" element={<Bloodmaster/>} />
+              <Route path="/maritalstatusmaster" element={<Maritalstatus/>} />
               <Route path="/manageuserapplication" element={<Manageuserapplication/>} />
               <Route path="/addformreports" element={<Addformreports/>} />
               <Route path="/templatemaster" element={<Templatemaster/>} />
