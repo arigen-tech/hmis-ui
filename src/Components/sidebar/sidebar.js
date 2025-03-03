@@ -278,6 +278,21 @@ const Sidebar = () => {
                     Department Master
                   </Link>
                 </li>
+                <li>
+                  <Link className="ms-link" to="countrymaster">
+                    Country Master
+                  </Link>
+                </li>
+                <li>
+                  <Link className="ms-link" to="statemaster">
+                    State Master
+                  </Link>
+                </li>
+                <li>
+                  <Link className="ms-link" to="districtmaster">
+                    District Master
+                  </Link>
+                </li>
               </ul>
             </li>
 

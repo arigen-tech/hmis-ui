@@ -19,6 +19,9 @@ import Rolemaster from './Views/Usermanagement/RoleMaster';
 import Departmenttype from './Views/Masters/DepartmentType';
 import Departmentmaster from './Views/Masters/DepartmentMaster';
 import Maritalstatus from './Views/Masters/MaritalStatusMaster';
+import Countrymaster from './Views/Masters/CountryMaster';
+import Statemaster from './Views/Masters/StateMaster';
+import Districtmaster from './Views/Masters/DistrictMaster';
 // import Drugmaster from './Views/Stores/DrugMaster';
 
 
@@ -69,6 +72,9 @@ function App() {
               <Route path="/rolemaster" element={<Rolemaster/>} />
               <Route path="/departmenttype" element={<Departmenttype/>} />
               <Route path="/departmentmaster" element={<Departmentmaster/>} />
+              <Route path="/countrymaster" element={<Countrymaster/>} />
+              <Route path="/statemaster" element={<Statemaster/>} />
+              <Route path="/districtmaster" element={<Districtmaster/>} />
  
 
 
