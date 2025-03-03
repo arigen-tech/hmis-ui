@@ -16,6 +16,7 @@ import Itemcategory from './Views/Stores/ItemCategory';
 import Itemtype from './Views/Stores/ItemType';
 import Itemunit from './Views/Stores/ItemUnit';
 import Rolemaster from './Views/Usermanagement/RoleMaster';
+import Departmenttype from './Views/Masters/DepartmentType';
 // import Drugmaster from './Views/Stores/DrugMaster';
 
 
@@ -63,6 +64,7 @@ function App() {
               <Route path="/DoctorRoaster" element={<DoctorRoaster />} />
               <Route path="/PatientRegistration" element={<PatientRegistration />} />
               <Route path="/rolemaster" element={<Rolemaster/>} />
+              <Route path="/departmenttype" element={<Departmenttype/>} />
 
 
 

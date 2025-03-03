@@ -268,6 +268,16 @@ const Sidebar = () => {
                     Marital Status Master
                   </Link>
                 </li>
+                <li>
+                  <Link className="ms-link" to="departmenttype">
+                    Department Type
+                  </Link>
+                </li> 
+                <li>
+                  <Link className="ms-link" to="patient-invoices">
+                    Marital Status Master
+                  </Link>
+                </li>
               </ul>
             </li>
 
