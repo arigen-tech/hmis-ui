@@ -4,6 +4,5 @@ export const API_HOST = 'http://localhost:8080';
 export const DEPARTMENT ="/department";
 export const DOCTOR ="/doctor";
 export const SESSION = "/session";
-export const APPOINTMENT = "/appointment";
-
+export const APPOINTMENT = "/app/setup";
 
