@@ -1,69 +1,137 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup";
-
+import axios from "axios";
+import { API_HOST } from "../../../config/apiConfig";
 
 const Gendermaster = () => {
-
-  const [genderData, setGenderData] = useState([
-    { id: 1, genderCode: "M", genderName: "MALE", status: "y" },
-    { id: 2, genderCode: "F", genderName: "FEMALE", status: "y" },
-    { id: 3, genderCode: "O", genderName: "TRANSGENDER", status: "y" },
-  ])
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, mealPlanId: null, newStatus: false });
+  const [genderData, setGenderData] = useState([]);
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, genderId: null, newStatus: false });
+  const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
     genderCode: "",
     genderName: "",
   })
   const [searchQuery, setSearchQuery] = useState("");
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value); // Update search query state
+  const [showForm, setShowForm] = useState(false)
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editingGender, setEditingGender] = useState(null);
+  const [popupMessage, setPopupMessage] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filteredTotalPages, setFilteredTotalPages] = useState(1);
+  const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
+  const [itemsPerPage] = useState(10);
+
+  
+
+  // Fetch gender data from API
+  useEffect(() => {
+    fetchGenderData();
+  }, []);
+
+  const fetchGenderData = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_HOST}/gender/all`);
+      
+      if (response.data && response.data.response) {
+        // Transform API response to match our component's data structure
+        const transformedData = response.data.response.map(gender => ({
+          id: gender.id,
+          genderCode: gender.genderCode,
+          genderName: gender.genderName,
+          status: gender.status // The API returns status as "y" or "n"
+        }));
+        
+        setGenderData(transformedData);
+        setTotalFilteredProducts(transformedData.length);
+        setFilteredTotalPages(Math.ceil(transformedData.length / itemsPerPage));
+      }
+    } catch (err) {
+      console.error("Error fetching gender data:", err);
+      showPopup("Failed to load gender data", "error");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1); // Reset to first page when searching
+  };
+
   const filteredGenderData = genderData.filter(gender =>
     gender.genderName.toLowerCase().includes(searchQuery.toLowerCase()) || 
     gender.genderCode.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Get current page items
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredGenderData.slice(indexOfFirstItem, indexOfLastItem);
+
   const handleEdit = (gender) => {
     setEditingGender(gender);
+    setFormData({
+      genderCode: gender.genderCode,
+      genderName: gender.genderName
+    });
+    setIsFormValid(true);
     setShowForm(true);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-  
-    const formElement = e.target;
-    const updatedGenderName = formElement.genderName.value;
-  
-    if (editingGender) {
-      // Editing existing gender
-      setGenderData(genderData.map(gender =>
-        gender.id === editingGender.id 
-          ? { ...gender, genderName: updatedGenderName }
-          : gender
-      ));
-    } else {
-      // Adding new gender
-      const newGender = {
-        id: genderData.length + 1,
-        genderCode: formData.genderCode,
-        genderName: updatedGenderName,
-        status: "y"
-      };
-      setGenderData([...genderData, newGender]);
+    
+    try {
+      setLoading(true);
+      
+      if (editingGender) {
+        // Update existing gender using PUT /gender/update/{id}
+        const response = await axios.put(`${API_HOST}/gender/update/${editingGender.id}`, {
+          id: editingGender.id,
+          genderCode: formData.genderCode,
+          genderName: formData.genderName,
+          code: null,
+          status: editingGender.status
+        });
+        
+        if (response.data && response.data.response) {
+          // Update the local state to reflect changes
+          setGenderData(genderData.map(gender =>
+            gender.id === editingGender.id ? response.data.response : gender
+          ));
+          showPopup("Gender updated successfully!", "success");
+        }
+      } else {
+        // Add new gender using POST /gender/add
+        const response = await axios.post(`${API_HOST}/gender/add`, {
+          genderCode: formData.genderCode,
+          genderName: formData.genderName,
+          code: null,
+          status: "y"
+        });
+        
+        if (response.data && response.data.response) {
+          // Add the new gender to local state
+          setGenderData([...genderData, response.data.response]);
+          showPopup("New gender added successfully!", "success");
+        }
+      }
+      
+      setEditingGender(null);
+      setFormData({ genderCode: "", genderName: "" });
+      setShowForm(false);
+      fetchGenderData(); // Refresh the data from server
+    } catch (err) {
+      console.error("Error saving gender data:", err);
+      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+    } finally {
+      setLoading(false);
     }
-  
-    setEditingGender(null);
-    setShowForm(false);
-    showPopup("Changes saved successfully!", "success");
   };
-  const [showForm, setShowForm] = useState(false)
-  const [isFormValid, setIsFormValid] = useState(false);
-
-  const [showModal, setShowModal] = useState(false);
-  const [editingGender, setEditingGender] = useState(null);
-  const [popupMessage, setPopupMessage] = useState(null);
 
   const showPopup = (message, type = 'info') => {
     setPopupMessage({
@@ -74,42 +142,61 @@ const Gendermaster = () => {
       }
     });
   };
-
-
   
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, genderId: id, newStatus });
+  };
 
-  };
-  const handleConfirm = (confirmed) => {
+  const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.genderId !== null) {
-      setGenderData((prevData) =>
-        prevData.map((gender) =>
-          gender.id === confirmDialog.genderId ? { ...gender, status: confirmDialog.newStatus } : gender
-        )
-      );
+      try {
+        setLoading(true);
+        // Update status using PUT /gender/status/{id}?status=y/n
+        const response = await axios.put(
+          `${API_HOST}/gender/status/${confirmDialog.genderId}?status=${confirmDialog.newStatus}`
+        );
+        
+        if (response.data && response.data.response) {
+          // Update the local state to reflect changes
+          setGenderData((prevData) =>
+            prevData.map((gender) =>
+              gender.id === confirmDialog.genderId ? 
+                { ...gender, status: confirmDialog.newStatus } : 
+                gender
+            )
+          );
+          showPopup(`Gender ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+        }
+      } catch (err) {
+        console.error("Error updating gender status:", err);
+        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+      } finally {
+        setLoading(false);
+      }
     }
-    setConfirmDialog({ isOpen: false, genderId: null, newStatus: null }); // Close dialog
+    setConfirmDialog({ isOpen: false, genderId: null, newStatus: null });
   };
-  const [currentPage, setCurrentPage] = useState(1); // Initialize currentPage
-  const [filteredTotalPages, setFilteredTotalPages] = useState(1); // Initialize filteredTotalPages
-  const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
 
   const handleInputChange = (e) => {
-    const { id, value } = e.target
-    setFormData((prevData) => ({ ...prevData, [id]: value }))
-  }
-
-  const handleCreateFormSubmit = (e) => {
-    e.preventDefault()
-    if (formData.genderCode && formData.genderName) {
-      setGenderData([...genderData, { ...formData, id: Date.now(), status: "y" }])
-      setFormData({ genderCode: "", genderName: "" })
-      setShowForm(false)
-    } else {
-      alert("Please fill out all required fields.")
+    const { id, value } = e.target;
+    setFormData((prevData) => ({ ...prevData, [id]: value }));
+    
+    // Validate the form
+    if (id === "genderName") {
+      setIsFormValid(value.trim() !== "");
+    } else if (id === "genderCode") {
+      // Only needed for new gender entries
+      if (!editingGender) {
+        setIsFormValid(value.trim() !== "" && formData.genderName.trim() !== "");
+      }
     }
-  }
+  };
+
+  const handleRefresh = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+    fetchGenderData();
+  };
 
   return (
     <div className="content-wrapper">
@@ -126,7 +213,7 @@ const Gendermaster = () => {
                       className="form-control"
                       placeholder="Search"
                       aria-label="Search"
-                      value={searchQuery} // Bind search input to state
+                      value={searchQuery}
                       onChange={handleSearchChange}
                     />
                     <span className="input-group-text" id="search-icon">
@@ -138,12 +225,26 @@ const Gendermaster = () => {
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
-                      <button type="button" className="btn btn-success me-2">
-                        <i className="mdi mdi-plus"></i> Show All
+                      <button 
+                        type="button" 
+                        className="btn btn-success me-2"
+                        onClick={() => {
+                          setEditingGender(null);
+                          setFormData({ genderCode: "", genderName: "" });
+                          setIsFormValid(false);
+                          setShowForm(true);
+                        }}
+                      >
+                        <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button type="button" className="btn btn-success me-2" onClick={() => setShowModal(true)}>
-                        <i className="mdi mdi-plus"></i> Reports
+                      <button 
+                        type="button" 
+                        className="btn btn-success me-2"
+                        onClick={handleRefresh}
+                      >
+                        <i className="mdi mdi-refresh"></i> Show All
                       </button>
+                     
                     </>
                   ) : (
                     <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
@@ -154,11 +255,15 @@ const Gendermaster = () => {
               </div>
             </div>
             <div className="card-body">
-              {!showForm ? (
+              {loading ? (
+                <div className="text-center">
+                  <div className="spinner-border" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              ) : !showForm ? (
                 <div className="table-responsive packagelist">
-
                   <table className="table table-bordered table-hover align-middle">
-
                     <thead className="table-light">
                       <tr>
                         <th>Gender Code</th>
@@ -168,112 +273,136 @@ const Gendermaster = () => {
                       </tr>
                     </thead>
                     <tbody>
-                    {filteredGenderData.map((gender) => ( // Use filtered data for rendering
-                        <tr key={gender.id}>
-                          <td>{gender.genderCode}</td>
-                          <td>{gender.genderName}</td>
-                          <td>
-                            <div className="form-check form-switch">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                checked={gender.status === "y"}
-                                onChange={() => handleSwitchChange(gender.id, gender.status === "y" ? "n" : "y")}
-                                id={`switch-${gender.id}`}
-                              />
-                              <label
-                                className="form-check-label px-0"
-                                htmlFor={`switch-${gender.id}`}
-                                onClick={() => handleSwitchChange(gender.id, gender.status === "y" ? "n" : "y")}
+                      {currentItems.length > 0 ? (
+                        currentItems.map((gender) => (
+                          <tr key={gender.id}>
+                            <td>{gender.genderCode}</td>
+                            <td>{gender.genderName}</td>
+                            <td>
+                              <div className="form-check form-switch">
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  checked={gender.status === "y"}
+                                  onChange={() => handleSwitchChange(gender.id, gender.status === "y" ? "n" : "y")}
+                                  id={`switch-${gender.id}`}
+                                />
+                                <label
+                                  className="form-check-label px-0"
+                                  htmlFor={`switch-${gender.id}`}
+                                >
+                                  {gender.status === "y" ? 'Active' : 'Deactivated'}
+                                </label>
+                              </div>
+                            </td>
+                            <td>
+                              <button
+                                className="btn btn-sm btn-success me-2"
+                                onClick={() => handleEdit(gender)}
+                                disabled={gender.status !== "y"}
                               >
-                                {gender.status === "y" ? 'Active' : 'Deactivated'}
-                              </label>
-                            </div>
-                          </td>
-                          <td>
-                            <button
-                              className="btn btn-sm btn-success me-2"
-                              onClick={() => handleEdit(gender)} // Assuming handleEdit function exists
-                              disabled={gender.status !== "y"} // Disable if not active
-                            >
-                              <i className="fa fa-pencil"></i>
-                            </button>
-                          </td>
+                                <i className="fa fa-pencil"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="4" className="text-center">No gender data found</td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
-                  <nav className="d-flex justify-content-between align-items-center mt-3">
-                    <div>
-                      <span>
-                        Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredProducts}
-                      </span>
-                    </div>
-                    <ul className="pagination mb-0">
-                      <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                        <button className="page-link" disabled>
-                          &laquo;
-                        </button>
-                      </li>
-                      {[...Array(filteredTotalPages)].map((_, index) => (
-                        <li
-                          className={`page-item ${currentPage === index + 1 ? "active" : ""}`}
-                          key={index}
-                        >
-                          <button className="page-link" disabled>
-                            {index + 1}
+                  {filteredGenderData.length > 0 && (
+                    <nav className="d-flex justify-content-between align-items-center mt-3">
+                      <div>
+                        <span>
+                          Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredProducts}
+                        </span>
+                      </div>
+                      <ul className="pagination mb-0">
+                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                          <button className="page-link" onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
+                            &laquo;
                           </button>
                         </li>
-                      ))}
-                      <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                        <button className="page-link" disabled>
-                          &raquo;
-                        </button>
-                      </li>
-                    </ul>
-                  </nav>
+                        {[...Array(filteredTotalPages)].map((_, index) => (
+                          <li
+                            className={`page-item ${currentPage === index + 1 ? "active" : ""}`}
+                            key={index}
+                          >
+                            <button className="page-link" onClick={() => setCurrentPage(index + 1)}>
+                              {index + 1}
+                            </button>
+                          </li>
+                        ))}
+                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                          <button className="page-link" onClick={() => setCurrentPage(prev => Math.min(prev + 1, filteredTotalPages))} disabled={currentPage === filteredTotalPages}>
+                            &raquo;
+                          </button>
+                        </li>
+                      </ul>
+                    </nav>
+                  )}
                 </div>
-
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
-                <div className="form-group col-md-6">
-                  <label>Gender Name <span className="text-danger">*</span></label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    id="genderName"
-                    name="genderName"
-                    placeholder="Name"
-                    defaultValue={editingGender ? editingGender.genderName : ""}
-                    onChange={(e) => setIsFormValid(e.target.value.trim() !== "")}
-                    required
-                  />
-                </div>
-                <div className="form-group col-md-12 d-flex justify-content-end">
-                  <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                    Save
-                  </button>
-                  <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
-                    Cancel
-                  </button>
-                </div>
-              </form>
+                  {!editingGender && (
+                    <div className="form-group col-md-6">
+                      <label>Gender Code <span className="text-danger">*</span></label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="genderCode"
+                        name="genderCode"
+                        placeholder="Gender Code"
+                        value={formData.genderCode}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  )}
+                  <div className="form-group col-md-6">
+                    <label>Gender Name <span className="text-danger">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="genderName"
+                      name="genderName"
+                      placeholder="Gender Name"
+                      value={formData.genderName}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="form-group col-md-12 d-flex justify-content-end">
+                    <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
+                      Save
+                    </button>
+                    <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
               )}
               {showModal && (
                 <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
                   <div className="modal-dialog">
                     <div className="modal-content">
                       <div className="modal-header">
-                        <h1 className="modal-title fs-5" id="staticBackdropLabel">Modal title</h1>
+                        <h1 className="modal-title fs-5" id="staticBackdropLabel">Gender Reports</h1>
                         <button type="button" className="btn-close" onClick={() => setShowModal(false)} aria-label="Close"></button>
                       </div>
                       <div className="modal-body">
-                        {/* Your modal content goes here */}
-                        ...
+                        <p>Generate reports for gender data:</p>
+                        <div className="list-group">
+                          <button type="button" className="list-group-item list-group-item-action">Gender Distribution Report</button>
+                          <button type="button" className="list-group-item list-group-item-action">Active/Inactive Gender Status Report</button>
+                        </div>
                       </div>
                       <div className="modal-footer">
                         <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
-                        <button type="button" className="btn btn-primary">Understood</button>
+                        <button type="button" className="btn btn-primary">Generate Report</button>
                       </div>
                     </div>
                   </div>
@@ -318,4 +447,3 @@ const Gendermaster = () => {
 }
 
 export default Gendermaster
-
