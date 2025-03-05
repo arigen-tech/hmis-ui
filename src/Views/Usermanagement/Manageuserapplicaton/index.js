@@ -1,67 +1,58 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup";
-
+import axios from "axios";
+import { API_HOST } from "../../../config/apiConfig";
 
 const Manageuserapplication = () => {
-
-    const [userApplicationData, setUserApplicationData] = useState([
-        { id: 1, MenuName: "Add Form/Reports", url: "/user/addFormsAndReports", status: "y" },
-        { id: 2, MenuName: "Add legacy data", url: "/master/legacyDataMaster", status: "n" },
-        { id: 3, MenuName: "Admin", url: "#", status: "y" },
-        { id: 4, MenuName: "Approving auth- User type mapping", url: "/master/approvingMappingMaster", status: "n" },
-
-    ]);
-    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, applicationId: null, newStatus: false });
-
+    const [userApplicationData, setUserApplicationData] = useState([]);
+    const [confirmDialog, setConfirmDialog] = useState({
+        isOpen: false,
+        applicationId: null,
+        newStatus: false
+    });
     const [formData, setFormData] = useState({
-        MenuName: "",
-        applicationName: "",
-    })
+        menuName: "",
+        url: "",
+    });
     const [searchQuery, setSearchQuery] = useState("");
-    const handleSearchChange = (e) => {
-        setSearchQuery(e.target.value);
-        setCurrentPage(1); // Reset to first page when search changes
-    };
-    const filteredUserApplicationData = userApplicationData.filter(application =>
-        application.MenuName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        application.url.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    const handleEdit = (application) => {
-        setEditingApplication(application);
-        setFormData({ 
-            MenuName: application.MenuName, 
-            applicationName: application.url 
-        });
-        setShowForm(true);
-    };
-    const handleSave = (e) => {
-        e.preventDefault();
-        if (!isFormValid) return;
-
-        const updatedData = {
-            MenuName: formData.MenuName,
-            url: formData.applicationName
-        };
-
-        setUserApplicationData(userApplicationData.map(application =>
-            application.id === editingApplication.id
-                ? { ...application, ...updatedData }
-                : application
-        ));
-
-        setEditingApplication(null);
-        setShowForm(false);
-        showPopup("Changes saved successfully!", "success");
-    };
-    const [showForm, setShowForm] = useState(false)
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [showForm, setShowForm] = useState(false);
     const [isFormValid, setIsFormValid] = useState(false);
-
-    const [showModal, setShowModal] = useState(false);
     const [editingApplication, setEditingApplication] = useState(null);
     const [popupMessage, setPopupMessage] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
     const [pageInput, setPageInput] = useState("");
     const itemsPerPage = 5;
+
+    // Fetch all applications
+    const fetchApplications = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await axios.get(`${API_HOST}/applications/all`);
+            console.log("API Response:", response.data); // Log the full response
+    
+            const applicationList = response.data.response || [];
+            const mappedApplications = applicationList.map(app => ({
+                id: app.id,
+                menuName: app.userAppName || "No Name", // Use userAppName instead of menuName
+                url: app.url || "No URL",
+                status: app.status || "n"
+            }));
+    
+            setUserApplicationData(mappedApplications);
+            setLoading(false);
+        } catch (err) {
+            console.error("Error fetching applications:", err);
+            setError("Failed to fetch applications. Please try again later.");
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchApplications();
+    }, []);
 
     const showPopup = (message, type = 'info') => {
         setPopupMessage({
@@ -73,46 +64,167 @@ const Manageuserapplication = () => {
         });
     };
 
-
-
-    const handleSwitchChange = (id, newStatus) => {
-        setConfirmDialog({ isOpen: true, applicationId: id, newStatus });
-
+    const handleSearchChange = (e) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1);
     };
-    const handleConfirm = (confirmed) => {
-        if (confirmed && confirmDialog.applicationId !== null) {
-            setUserApplicationData((prevData) =>
-                prevData.map((application) =>
-                    application.id === confirmDialog.applicationId ? { ...application, status: confirmDialog.newStatus } : application
-                )
-            );
-        }
-        setConfirmDialog({ isOpen: false, applicationId: null, newStatus: null });
-    };
-    const [currentPage, setCurrentPage] = useState(1);
-    const filteredTotalPages = Math.ceil(filteredUserApplicationData.length / itemsPerPage);
-    const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
+
+    const filteredUserApplicationData = userApplicationData.filter(application =>
+        application.menuName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        application.url.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     const handleInputChange = (e) => {
-        const { id, value } = e.target
-        setFormData((prevData) => ({ ...prevData, [id]: value }))
-    }
+        const { id, value } = e.target;
+        setFormData(prevData => ({ ...prevData, [id]: value }));
 
-    const handleCreateFormSubmit = (e) => {
+        // Form validation
+        setIsFormValid(
+            formData.menuName.trim() !== "" &&
+            formData.url.trim() !== ""
+        );
+    };
+
+    const handleEdit = (application) => {
+        setEditingApplication(application);
+        setFormData({
+            menuName: application.menuName,
+            url: application.url
+        });
+        setShowForm(true);
+        setIsFormValid(true);
+    };
+
+    const handleSave = async (e) => {
         e.preventDefault();
-        if (formData.MenuName && formData.applicationName) {
-            setUserApplicationData([...userApplicationData, {
-                id: Date.now(),
-                MenuName: formData.MenuName,
-                url: formData.applicationName,
-                status: "y"
-            }]);
-            setFormData({ MenuName: "", applicationName: "" });
-        } else {
-            showPopup("Please fill out all required fields.", "warning");
+        if (!isFormValid) return;
+    
+        try {
+            setLoading(true);
+            if (editingApplication) {
+                // Update existing application
+                const response = await axios.put(`${API_HOST}/applications/edit/${editingApplication.id}`, {
+                    menuName: formData.menuName,
+                    url: formData.url
+                });
+    
+                console.log("Update Response:", response.data); // Log the response
+    
+                // Update local state using the response from backend
+                const updatedApplication = response.data.data || {}; // Fallback to empty object if data is missing
+                setUserApplicationData(prevData =>
+                    prevData.map(application =>
+                        application.id === editingApplication.id
+                            ? {
+                                id: updatedApplication.id || editingApplication.id, // Fallback to existing ID
+                                menuName: updatedApplication.menuName || formData.menuName, // Fallback to form data
+                                url: updatedApplication.url || formData.url, // Fallback to form data
+                                status: updatedApplication.status || editingApplication.status // Fallback to existing status
+                            }
+                            : application
+                    )
+                );
+    
+                showPopup("Application updated successfully!", "success");
+            } else {
+                // Create new application
+                const response = await axios.post(`${API_HOST}/applications/create`, {
+                    menuName: formData.menuName,
+                    url: formData.url,
+                    status: "y"
+                });
+    
+                console.log("Create Response:", response.data); // Log the response
+    
+                // Add new entry to local state using the response from backend
+                const newApplication = response.data.data || {}; // Fallback to empty object if data is missing
+                setUserApplicationData(prevData => [
+                    ...prevData,
+                    {
+                        id: newApplication.id || Date.now(), // Fallback to a unique ID
+                        menuName: newApplication.menuName || formData.menuName, // Fallback to form data
+                        url: newApplication.url || formData.url, // Fallback to form data
+                        status: newApplication.status || "y" // Fallback to default status
+                    }
+                ]);
+    
+                showPopup("New application added successfully!", "success");
+            }
+    
+            // Reset form
+            setFormData({ menuName: "", url: "" });
+            setShowForm(false);
+            setEditingApplication(null);
+            setIsFormValid(false);
+        } catch (err) {
+            console.error("Error saving application:", err); // Log the error
+            showPopup(`Failed to save: ${err.response?.data?.message || err.message}`, "error");
+        } finally {
+            setLoading(false);
         }
-    }
+    };
 
+    const handleSwitchChange = (id, currentStatus) => {
+        setConfirmDialog({
+            isOpen: true,
+            applicationId: id,
+            newStatus: currentStatus === "y" ? "n" : "y"
+        });
+    };
+
+    const handleConfirm = async (confirmed) => {
+        if (confirmed && confirmDialog.applicationId !== null) {
+            try {
+                setLoading(true);
+                const response = await axios.put(
+                    `${API_HOST}/applications/status/${confirmDialog.applicationId}`,
+                    null,
+                    {
+                        params: { status: confirmDialog.newStatus }
+                    }
+                );
+    
+                console.log("API Response:", response.data); // Log the full response
+                console.log("Updated Application:", response.data.data); // Log the updated application
+    
+                // Update local state using the response from backend
+                const updatedApplication = response.data.data || { status: confirmDialog.newStatus };
+                if (!updatedApplication.status) {
+                    throw new Error("Invalid response from server");
+                }
+    
+                setUserApplicationData(prevData => {
+                    console.log("Previous Data:", prevData); // Log the previous state
+                    return prevData.map(application => {
+                        if (application.id === confirmDialog.applicationId) {
+                            console.log("Matched Application:", application); // Log the matched application
+                            return {
+                                ...application,
+                                status: updatedApplication.status
+                            };
+                        }
+                        return application;
+                    });
+                });
+    
+                showPopup(
+                    `Application ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
+                    "success"
+                );
+            } catch (err) {
+                console.error("Error updating status:", err);
+                showPopup("Failed to change status", "error");
+            } finally {
+                setLoading(false);
+                setConfirmDialog({ isOpen: false, applicationId: null, newStatus: null });
+            }
+        } else {
+            setConfirmDialog({ isOpen: false, applicationId: null, newStatus: null });
+        }
+    };
+
+    // Pagination calculations
+    const filteredTotalPages = Math.ceil(filteredUserApplicationData.length / itemsPerPage);
     const currentItems = filteredUserApplicationData.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
@@ -129,7 +241,7 @@ const Manageuserapplication = () => {
 
     const renderPagination = () => {
         const pageNumbers = [];
-        const maxVisiblePages = 5; // Maximum number of visible page links
+        const maxVisiblePages = 5;
         let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
         const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
 
@@ -190,14 +302,36 @@ const Manageuserapplication = () => {
 
                                 <div className="d-flex align-items-center">
                                     {!showForm ? (
-
-                                        <button type="button" className="btn btn-success me-2">
-                                            <i className="mdi mdi-plus"></i> Show All
-                                        </button>
-
-
+                                        <>
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2"
+                                                onClick={() => {
+                                                    setShowForm(true);
+                                                    setFormData({ menuName: "", url: "" });
+                                                    setEditingApplication(null);
+                                                    setIsFormValid(false);
+                                                }}
+                                            >
+                                                <i className="mdi mdi-plus"></i> Add
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2"
+                                                onClick={fetchApplications}
+                                            >
+                                                <i className="mdi mdi-refresh"></i> Show All
+                                            </button>
+                                        </>
                                     ) : (
-                                        <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                                        <button
+                                            type="button"
+                                            className="btn btn-secondary"
+                                            onClick={() => {
+                                                setShowForm(false);
+                                                setEditingApplication(null);
+                                            }}
+                                        >
                                             <i className="mdi mdi-arrow-left"></i> Back
                                         </button>
                                     )}
@@ -205,83 +339,114 @@ const Manageuserapplication = () => {
                             </div>
                         </div>
                         <div className="card-body">
-                            {!showForm ? (
-                                <div className="table-responsive packagelist">
-
-                                    <table className="table table-bordered table-hover align-middle">
-
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th>Menu Name</th>
-                                                <th>URL</th>
-                                                <th>Status</th>
-                                                <th>Edit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentItems.map((application) => (
-                                                <tr key={application.id}>
-                                                    <td>{application.MenuName}</td>
-                                                    <td>{application.url}</td>
-                                                    <td>
-                                                        <div className="form-check form-switch">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={application.status === "y"}
-                                                                onChange={() => handleSwitchChange(application.id, application.status === "y" ? "n" : "y")}
-                                                                id={`switch-${application.id}`}
-                                                            />
-                                                            <label
-                                                                className="form-check-label px-0"
-                                                                htmlFor={`switch-${application.id}`}
-                                                                onClick={() => handleSwitchChange(application.id, application.status === "y" ? "n" : "y")}
-                                                            >
-                                                                {application.status === "y" ? 'Active' : 'Deactivated'}
-                                                            </label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-success me-2"
-                                                            onClick={() => handleEdit(application)}
-                                                            disabled={application.status !== "y"}
-                                                        >
-                                                            <i className="fa fa-pencil"></i>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                    <div className="row">
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>Menu Name
-                                                <span className="text-danger">*</span></label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                id="MenuName"
-                                                placeholder="Menu Name"
-                                                onChange={handleInputChange}
-                                                required
-                                            />
-                                        </div>
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>URL <span className="text-danger">*</span></label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                id="applicationName"
-                                                placeholder="URL"
-                                                onChange={handleInputChange}
-                                                required
-                                            />
-                                        </div>
+                            {loading ? (
+                                <div className="text-center">
+                                    <div className="spinner-border" role="status">
+                                        <span className="visually-hidden">Loading...</span>
                                     </div>
-
                                 </div>
+                            ) : !showForm ? (
+                                <div className="table-responsive packagelist">
+                                    {userApplicationData.length === 0 ? (
+                                        <div className="alert alert-info text-center">
+                                            No applications found.
+                                        </div>
+                                    ) : (
+                                        <table className="table table-bordered table-hover align-middle">
+                                            <thead className="table-light">
+                                                <tr>
+                                                    <th>Menu Name</th>
+                                                    <th>URL</th>
+                                                    <th>Status</th>
+                                                    <th>Edit</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {currentItems.map((application) => (
+                                                    <tr key={application.id}>
+                                                        <td>{application.menuName || "No Name"}</td>
+                                                        <td>{application.url || "No URL"}</td>
+                                                        <td>
+                                                            <div className="form-check form-switch">
+                                                                <input
+                                                                    className="form-check-input"
+                                                                    type="checkbox"
+                                                                    checked={application.status === "y"}
+                                                                    onChange={() => handleSwitchChange(application.id, application.status)}
+                                                                    id={`switch-${application.id}`}
+                                                                />
+                                                                <label
+                                                                    className="form-check-label px-0"
+                                                                    htmlFor={`switch-${application.id}`}
+                                                                >
+                                                                    {application.status === "y" ? 'Active' : 'Deactivated'}
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <button
+                                                                className="btn btn-sm btn-success me-2"
+                                                                onClick={() => handleEdit(application)}
+                                                                disabled={application.status !== "y"}
+                                                            >
+                                                                <i className="fa fa-pencil"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
 
+                                    {filteredUserApplicationData.length > 0 && (
+                                        <nav className="d-flex justify-content-between align-items-center mt-3">
+                                            <div>
+                                                <span>
+                                                    Page {currentPage} of {filteredTotalPages} | Total Records: {filteredUserApplicationData.length}
+                                                </span>
+                                            </div>
+                                            <ul className="pagination mb-0">
+                                                <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                                                    <button
+                                                        className="page-link"
+                                                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                                        disabled={currentPage === 1}
+                                                    >
+                                                        &laquo; Previous
+                                                    </button>
+                                                </li>
+                                                {renderPagination()}
+                                                <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                                                    <button
+                                                        className="page-link"
+                                                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, filteredTotalPages))}
+                                                        disabled={currentPage === filteredTotalPages}
+                                                    >
+                                                        Next  &raquo;
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                            <div className="d-flex align-items-center">
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max={filteredTotalPages}
+                                                    value={pageInput}
+                                                    onChange={(e) => setPageInput(e.target.value)}
+                                                    placeholder="Go to page"
+                                                    className="form-control me-2"
+                                                    style={{ width: '100px' }}
+                                                />
+                                                <button
+                                                    className="btn btn-primary"
+                                                    onClick={handlePageNavigation}
+                                                >
+                                                    Go
+                                                </button>
+                                            </div>
+                                        </nav>
+                                    )}
+                                </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
                                     <div className="form-group col-md-6">
@@ -289,63 +454,50 @@ const Manageuserapplication = () => {
                                         <input
                                             type="text"
                                             className="form-control"
-                                            id="MenuName"
-                                            name="MenuName"
+                                            id="menuName"
+                                            name="menuName"
                                             placeholder="Menu Name"
-                                            value={formData.MenuName}
-                                            onChange={(e) => {
-                                                setFormData(prev => ({...prev, MenuName: e.target.value}));
-                                                setIsFormValid(e.target.value.trim() !== "");
-                                            }}
+                                            value={formData.menuName}
+                                            onChange={handleInputChange}
                                             required
                                         />
-                                    </div>
-                                    <div className="form-group col-md-6">
+                                    </div><div className="form-group col-md-6">
                                         <label>URL<span className="text-danger">*</span></label>
                                         <input
                                             type="text"
                                             className="form-control"
-                                            id="applicationName"
-                                            name="applicationName"
+                                            id="url"
+                                            name="url"
                                             placeholder="URL"
-                                            value={formData.applicationName}
-                                            onChange={(e) => {
-                                                setFormData(prev => ({...prev, applicationName: e.target.value}));
-                                                setIsFormValid(e.target.value.trim() !== "");
-                                            }}
+                                            value={formData.url}
+                                            onChange={handleInputChange}
                                             required
                                         />
                                     </div>
                                     <div className="form-group col-md-12 d-flex justify-content-end">
-                                        <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                                            Save
+                                        <button
+                                            type="submit"
+                                            className="btn btn-primary me-2"
+                                            disabled={!isFormValid}
+                                        >
+                                            {editingApplication ? 'Update' : 'Save'}
                                         </button>
-                                        <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
+                                        <button
+                                            type="button"
+                                            className="btn btn-danger"
+                                            onClick={() => {
+                                                setShowForm(false);
+                                                setEditingApplication(null);
+                                                setFormData({ menuName: "", url: "" });
+                                            }}
+                                        >
                                             Cancel
                                         </button>
                                     </div>
                                 </form>
                             )}
-                            {showModal && (
-                                <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
-                                    <div className="modal-dialog">
-                                        <div className="modal-content">
-                                            <div className="modal-header">
-                                                <h1 className="modal-title fs-5" id="staticBackdropLabel">Modal title</h1>
-                                                <button type="button" className="btn-close" onClick={() => setShowModal(false)} aria-label="Close"></button>
-                                            </div>
-                                            <div className="modal-body">
 
-                                                ...
-                                            </div>
-                                            <div className="modal-footer">
-                                                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
-                                                <button type="button" className="btn btn-primary">Understood</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                            {/* Popup Component */}
                             {popupMessage && (
                                 <Popup
                                     message={popupMessage.message}
@@ -353,88 +505,50 @@ const Manageuserapplication = () => {
                                     onClose={popupMessage.onClose}
                                 />
                             )}
+
+                            {/* Confirmation Dialog */}
                             {confirmDialog.isOpen && (
                                 <div className="modal d-block" tabIndex="-1" role="dialog">
                                     <div className="modal-dialog" role="document">
                                         <div className="modal-content">
                                             <div className="modal-header">
                                                 <h5 className="modal-title">Confirm Status Change</h5>
-                                                <button type="button" className="close" onClick={() => handleConfirm(false)}>
+                                                <button
+                                                    type="button"
+                                                    className="close"
+                                                    onClick={() => handleConfirm(false)}
+                                                >
                                                     <span>&times;</span>
                                                 </button>
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{userApplicationData.find(application => application.id === confirmDialog.applicationId)?.applicationName}</strong>?
+                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>
+                                                        {userApplicationData.find(app => app.id === confirmDialog.applicationId)?.menuName}
+                                                    </strong>?
                                                 </p>
                                             </div>
                                             <div className="modal-footer">
-                                                <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                                                <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-secondary"
+                                                    onClick={() => handleConfirm(false)}
+                                                >
+                                                    No
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-primary"
+                                                    onClick={() => handleConfirm(true)}
+                                                >
+                                                    Yes
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             )}
-
-
-                            {!showForm && (
-                                <div className="d-flex justify-content-end mt-4">
-                                    <button type="button" className="btn btn-success me-2" onClick={handleCreateFormSubmit}>
-                                        <i className="mdi mdi-plus"></i> Add
-                                    </button>
-
-                                </div>
-                            )
-
-                            }
-                            <nav className="d-flex justify-content-between align-items-center mt-3">
-                                <div>
-                                    <span>
-                                        Page {currentPage} of {filteredTotalPages} | Total Records: {filteredUserApplicationData.length}
-                                    </span>
-                                </div>
-                                <ul className="pagination mb-0">
-                                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                        <button
-                                            className="page-link"
-                                            onClick={() => setCurrentPage(currentPage - 1)}
-                                            disabled={currentPage === 1}
-                                        >
-                                            &laquo; Previous
-                                        </button>
-                                    </li>
-                                    {renderPagination()}
-                                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                        <button
-                                            className="page-link"
-                                            onClick={() => setCurrentPage(currentPage + 1)}
-                                            disabled={currentPage === filteredTotalPages}
-                                        >
-                                            Next &raquo;
-                                        </button>
-                                    </li>
-                                </ul>
-                                <div className="d-flex align-items-center">
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max={filteredTotalPages}
-                                        value={pageInput}
-                                        onChange={(e) => setPageInput(e.target.value)}
-                                        placeholder="Go to page"
-                                        className="form-control me-2"
-                                    />
-                                    <button
-                                        className="btn btn-primary"
-                                        onClick={handlePageNavigation}
-                                    >
-                                        Go
-                                    </button>
-                                </div>
-                            </nav>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -443,4 +557,3 @@ const Manageuserapplication = () => {
 }
 
 export default Manageuserapplication;
-

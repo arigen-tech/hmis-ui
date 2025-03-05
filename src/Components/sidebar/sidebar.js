@@ -4,6 +4,11 @@ import { Link, useLocation } from 'react-router-dom';
 
 const Sidebar = () => {
 
+  const location = useLocation();
+
+  const isActive = (path) => {
+    return location.pathname === path
+  }
 
   return (
     <>
@@ -272,7 +277,7 @@ const Sidebar = () => {
                   <Link className="ms-link" to="departmenttype">
                     Department Type
                   </Link>
-                </li> 
+                </li>
                 <li>
                   <Link className="ms-link" to="departmentmaster">
                     Department Master
@@ -307,8 +312,8 @@ const Sidebar = () => {
                 <span className="arrow icofont-rounded-down ms-auto text-end fs-5" />
               </Link>
               <ul className="sub-menu collapse" id="menu-Store">
-                <li>
-                  <Link className="ms-link" to="itemclass">
+                <li className={`nav-item ${isActive('/itemclass') ? 'active' : ''}`}>
+                  <Link className={`ms-link ${isActive('/itemclass') ? 'active' : ''}`} to="itemclass">
                     Item Class
                   </Link>
                 </li>
@@ -332,7 +337,7 @@ const Sidebar = () => {
                     Drug Master
                   </Link>
                 </li>
-               
+
 
               </ul>
             </li>
@@ -361,6 +366,16 @@ const Sidebar = () => {
                     Doctor Roaster
                   </Link>
                 </li>
+                <li>
+                  <Link className="ms-link" to="RegisterEmployee">
+                  Register Employee
+                  </Link>
+                </li> 
+                <li>
+                  <Link className="ms-link" to="ViewSearchEmployee">
+                   View and Search Employee
+                  </Link>
+                </li>    
                 <li>
                   <Link className="ms-link" to="manageuserapplication">
                     Manage User Application
@@ -391,7 +406,7 @@ const Sidebar = () => {
                     Role Master
                   </Link>
                 </li>
-                
+
               </ul>
             </li>
 
@@ -413,7 +428,7 @@ const Sidebar = () => {
                     Patient Registration
                   </Link>
                 </li>
-                
+
               </ul>
             </li>
 
