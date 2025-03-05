@@ -6,3 +6,5 @@ export const DOCTOR ="/doctor";
 export const SESSION = "/session";
 export const APPOINTMENT = "/app/setup";
 
+export const LOGIN = "/authController/login";
+
