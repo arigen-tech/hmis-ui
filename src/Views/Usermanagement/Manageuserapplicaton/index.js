@@ -29,9 +29,9 @@ const Manageuserapplication = () => {
 
     const handleEdit = (application) => {
         setEditingApplication(application);
-        setFormData({ 
-            MenuName: application.MenuName, 
-            applicationName: application.url 
+        setFormData({
+            MenuName: application.MenuName,
+            applicationName: application.url
         });
         setShowForm(true);
     };
@@ -107,9 +107,9 @@ const Manageuserapplication = () => {
                 url: formData.applicationName,
                 status: "y"
             }]);
-            setFormData({ MenuName: "", applicationName: "" });
-        } else {
-            showPopup("Please fill out all required fields.", "warning");
+            setFormData({ MenuName: "", applicationName: "" }); // Clear the form data
+            setShowForm(false); // Close the form after submission
+            showPopup("New entry added successfully!", "success"); 
         }
     }
 
@@ -190,10 +190,20 @@ const Manageuserapplication = () => {
 
                                 <div className="d-flex align-items-center">
                                     {!showForm ? (
+                                        <>
 
-                                        <button type="button" className="btn btn-success me-2">
-                                            <i className="mdi mdi-plus"></i> Show All
-                                        </button>
+
+                                            <button type="button" className="btn btn-success me-2" onClick={() => {
+                                                setShowForm(true); // Open the form
+                                                setFormData({ MenuName: "", applicationName: "" }); // Clear the form data
+                                            }}>
+                                                <i className="mdi mdi-plus"></i> Add
+                                            </button>
+                                            <button type="button" className="btn btn-success me-2">
+                                                <i className="mdi mdi-plus"></i> Show All
+                                            </button>
+
+                                        </>
 
 
                                     ) : (
@@ -255,35 +265,13 @@ const Manageuserapplication = () => {
                                         </tbody>
                                     </table>
                                     <div className="row">
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>Menu Name
-                                                <span className="text-danger">*</span></label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                id="MenuName"
-                                                placeholder="Menu Name"
-                                                onChange={handleInputChange}
-                                                required
-                                            />
-                                        </div>
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>URL <span className="text-danger">*</span></label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                id="applicationName"
-                                                placeholder="URL"
-                                                onChange={handleInputChange}
-                                                required
-                                            />
-                                        </div>
+
                                     </div>
 
                                 </div>
 
                             ) : (
-                                <form className="forms row" onSubmit={handleSave}>
+                                <form className="forms row" onSubmit={handleCreateFormSubmit}>
                                     <div className="form-group col-md-6">
                                         <label>Menu Name<span className="text-danger">*</span></label>
                                         <input
@@ -294,7 +282,7 @@ const Manageuserapplication = () => {
                                             placeholder="Menu Name"
                                             value={formData.MenuName}
                                             onChange={(e) => {
-                                                setFormData(prev => ({...prev, MenuName: e.target.value}));
+                                                setFormData(prev => ({ ...prev, MenuName: e.target.value }));
                                                 setIsFormValid(e.target.value.trim() !== "");
                                             }}
                                             required
@@ -310,7 +298,7 @@ const Manageuserapplication = () => {
                                             placeholder="URL"
                                             value={formData.applicationName}
                                             onChange={(e) => {
-                                                setFormData(prev => ({...prev, applicationName: e.target.value}));
+                                                setFormData(prev => ({ ...prev, applicationName: e.target.value }));
                                                 setIsFormValid(e.target.value.trim() !== "");
                                             }}
                                             required
@@ -378,16 +366,7 @@ const Manageuserapplication = () => {
                             )}
 
 
-                            {!showForm && (
-                                <div className="d-flex justify-content-end mt-4">
-                                    <button type="button" className="btn btn-success me-2" onClick={handleCreateFormSubmit}>
-                                        <i className="mdi mdi-plus"></i> Add
-                                    </button>
 
-                                </div>
-                            )
-
-                            }
                             <nav className="d-flex justify-content-between align-items-center mt-3">
                                 <div>
                                     <span>
