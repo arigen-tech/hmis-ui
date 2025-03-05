@@ -5,54 +5,50 @@ import Popup from "../../../Components/popup";
 const Manageuserapplication = () => {
 
     const [userApplicationData, setUserApplicationData] = useState([
-        { id: 1, applicationCode: "Add Form/Reports", applicationName: "/user/addFormsAndReports", status: "y" },
-        { id: 2, applicationCode: "Add legacy data", applicationName: "/master/legacyDataMaster", status: "n" },
-        { id: 3, applicationCode: "Admin", applicationName: "#", status: "y" },
-        { id: 4, applicationCode: "Approving auth- User type mapping", applicationName: "/master/approvingMappingMaster", status: "n" },
-        { id: 5, applicationCode: "Assign Application To Template", applicationName: "/user/assignApplicationToTemplate", status: "n" },
+        { id: 1, MenuName: "Add Form/Reports", url: "/user/addFormsAndReports", status: "y" },
+        { id: 2, MenuName: "Add legacy data", url: "/master/legacyDataMaster", status: "n" },
+        { id: 3, MenuName: "Admin", url: "#", status: "y" },
+        { id: 4, MenuName: "Approving auth- User type mapping", url: "/master/approvingMappingMaster", status: "n" },
+
     ]);
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, applicationId: null, newStatus: false });
 
     const [formData, setFormData] = useState({
-        applicationCode: "",
+        MenuName: "",
         applicationName: "",
     })
     const [searchQuery, setSearchQuery] = useState("");
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
+        setCurrentPage(1); // Reset to first page when search changes
     };
     const filteredUserApplicationData = userApplicationData.filter(application =>
-        application.applicationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        application.applicationCode.toLowerCase().includes(searchQuery.toLowerCase())
+        application.MenuName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        application.url.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const handleEdit = (application) => {
         setEditingApplication(application);
+        setFormData({ 
+            MenuName: application.MenuName, 
+            applicationName: application.url 
+        });
         setShowForm(true);
     };
-
     const handleSave = (e) => {
         e.preventDefault();
         if (!isFormValid) return;
 
-        const formElement = e.target;
-        const updatedApplicationName = formElement.applicationName.value;
+        const updatedData = {
+            MenuName: formData.MenuName,
+            url: formData.applicationName
+        };
 
-        if (editingApplication) {
-            setUserApplicationData(userApplicationData.map(application =>
-                application.id === editingApplication.id
-                    ? { ...application, applicationName: updatedApplicationName }
-                    : application
-            ));
-        } else {
-            const newApplication = {
-                id: userApplicationData.length + 1,
-                applicationCode: formData.applicationCode,
-                applicationName: updatedApplicationName,
-                status: "y"
-            };
-            setUserApplicationData([...userApplicationData, newApplication]);
-        }
+        setUserApplicationData(userApplicationData.map(application =>
+            application.id === editingApplication.id
+                ? { ...application, ...updatedData }
+                : application
+        ));
 
         setEditingApplication(null);
         setShowForm(false);
@@ -64,6 +60,8 @@ const Manageuserapplication = () => {
     const [showModal, setShowModal] = useState(false);
     const [editingApplication, setEditingApplication] = useState(null);
     const [popupMessage, setPopupMessage] = useState(null);
+    const [pageInput, setPageInput] = useState("");
+    const itemsPerPage = 5;
 
     const showPopup = (message, type = 'info') => {
         setPopupMessage({
@@ -92,7 +90,7 @@ const Manageuserapplication = () => {
         setConfirmDialog({ isOpen: false, applicationId: null, newStatus: null });
     };
     const [currentPage, setCurrentPage] = useState(1);
-    const [filteredTotalPages, setFilteredTotalPages] = useState(1);
+    const filteredTotalPages = Math.ceil(filteredUserApplicationData.length / itemsPerPage);
     const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
 
     const handleInputChange = (e) => {
@@ -101,15 +99,70 @@ const Manageuserapplication = () => {
     }
 
     const handleCreateFormSubmit = (e) => {
-        e.preventDefault()
-        if (formData.applicationCode && formData.applicationName) {
-            setUserApplicationData([...userApplicationData, { ...formData, id: Date.now(), status: "y" }])
-            setFormData({ applicationCode: "", applicationName: "" })
-            setShowForm(false)
+        e.preventDefault();
+        if (formData.MenuName && formData.applicationName) {
+            setUserApplicationData([...userApplicationData, {
+                id: Date.now(),
+                MenuName: formData.MenuName,
+                url: formData.applicationName,
+                status: "y"
+            }]);
+            setFormData({ MenuName: "", applicationName: "" });
         } else {
-            alert("Please fill out all required fields.")
+            showPopup("Please fill out all required fields.", "warning");
         }
     }
+
+    const currentItems = filteredUserApplicationData.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+    const handlePageNavigation = () => {
+        const pageNumber = parseInt(pageInput, 10);
+        if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
+            setCurrentPage(pageNumber);
+        } else {
+            showPopup("Please enter a valid page number.", "warning");
+        }
+    };
+
+    const renderPagination = () => {
+        const pageNumbers = [];
+        const maxVisiblePages = 5; // Maximum number of visible page links
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
+
+        if (endPage - startPage < maxVisiblePages - 1) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        if (startPage > 1) {
+            pageNumbers.push(1);
+            if (startPage > 2) pageNumbers.push("...");
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            pageNumbers.push(i);
+        }
+
+        if (endPage < filteredTotalPages) {
+            if (endPage < filteredTotalPages - 1) pageNumbers.push("...");
+            pageNumbers.push(filteredTotalPages);
+        }
+
+        return pageNumbers.map((number, index) => (
+            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
+                {typeof number === "number" ? (
+                    <button className="page-link" onClick={() => setCurrentPage(number)}>
+                        {number}
+                    </button>
+                ) : (
+                    <span className="page-link disabled">{number}</span>
+                )}
+            </li>
+        ));
+    };
 
     return (
         <div className="content-wrapper">
@@ -159,17 +212,17 @@ const Manageuserapplication = () => {
 
                                         <thead className="table-light">
                                             <tr>
-                                                <th>Application Code</th>
-                                                <th>Application Name</th>
+                                                <th>Menu Name</th>
+                                                <th>URL</th>
                                                 <th>Status</th>
                                                 <th>Edit</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {filteredUserApplicationData.map((application) => (
+                                            {currentItems.map((application) => (
                                                 <tr key={application.id}>
-                                                    <td>{application.applicationCode}</td>
-                                                    <td>{application.applicationName}</td>
+                                                    <td>{application.MenuName}</td>
+                                                    <td>{application.url}</td>
                                                     <td>
                                                         <div className="form-check form-switch">
                                                             <input
@@ -201,73 +254,65 @@ const Manageuserapplication = () => {
                                             ))}
                                         </tbody>
                                     </table>
-                                         <div className="row">
-                          <div className="form-group col-md-4 mt-3"> 
-                                <label>Menu Name
-                                    <span className="text-danger">*</span></label>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    id="Menu Name
-"
-                                    placeholder="Menu "
-                                    required
-                                />
-                            </div>
-                            <div className="form-group col-md-4 mt-3">
-                                <label>URL <span className="text-danger">*</span></label>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    id="Url"
-                                    placeholder="/url"
-                                    required
-                                />
-                            </div>
-                          </div>
-                                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                                        <div>
-                                            <span>
-                                                Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredProducts}
-                                            </span>
+                                    <div className="row">
+                                        <div className="form-group col-md-4 mt-3">
+                                            <label>Menu Name
+                                                <span className="text-danger">*</span></label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                id="MenuName"
+                                                placeholder="Menu Name"
+                                                onChange={handleInputChange}
+                                                required
+                                            />
                                         </div>
-                                        <ul className="pagination mb-0">
-                                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                                <button className="page-link" disabled>
-                                                    &laquo;
-                                                </button>
-                                            </li>
-                                            {[...Array(filteredTotalPages)].map((_, index) => (
-                                                <li
-                                                    className={`page-item ${currentPage === index + 1 ? "active" : ""}`}
-                                                    key={index}
-                                                >
-                                                    <button className="page-link" disabled>
-                                                        {index + 1}
-                                                    </button>
-                                                </li>
-                                            ))}
-                                            <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                                <button className="page-link" disabled>
-                                                    &raquo;
-                                                </button>
-                                            </li>
-                                        </ul>
-                                    </nav>
+                                        <div className="form-group col-md-4 mt-3">
+                                            <label>URL <span className="text-danger">*</span></label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                id="applicationName"
+                                                placeholder="URL"
+                                                onChange={handleInputChange}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
                                 </div>
 
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
                                     <div className="form-group col-md-6">
-                                        <label>Application Name <span className="text-danger">*</span></label>
+                                        <label>Menu Name<span className="text-danger">*</span></label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            id="MenuName"
+                                            name="MenuName"
+                                            placeholder="Menu Name"
+                                            value={formData.MenuName}
+                                            onChange={(e) => {
+                                                setFormData(prev => ({...prev, MenuName: e.target.value}));
+                                                setIsFormValid(e.target.value.trim() !== "");
+                                            }}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="form-group col-md-6">
+                                        <label>URL<span className="text-danger">*</span></label>
                                         <input
                                             type="text"
                                             className="form-control"
                                             id="applicationName"
                                             name="applicationName"
-                                            placeholder="Name"
-                                            defaultValue={editingApplication ? editingApplication.applicationName : ""}
-                                            onChange={(e) => setIsFormValid(e.target.value.trim() !== "")}
+                                            placeholder="URL"
+                                            value={formData.applicationName}
+                                            onChange={(e) => {
+                                                setFormData(prev => ({...prev, applicationName: e.target.value}));
+                                                setIsFormValid(e.target.value.trim() !== "");
+                                            }}
                                             required
                                         />
                                     </div>
@@ -332,23 +377,64 @@ const Manageuserapplication = () => {
                                 </div>
                             )}
 
-                     
+
                             {!showForm && (
                                 <div className="d-flex justify-content-end mt-4">
-                                    <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                                    <button type="button" className="btn btn-success me-2" onClick={handleCreateFormSubmit}>
                                         <i className="mdi mdi-plus"></i> Add
                                     </button>
-                                    <button type="button" className="btn btn-warning" onClick={() => {
-                                        setFormData({ applicationCode: "", applicationName: "" });
-                                        setShowForm(false);
-                                    }}>
-                                        <i className="mdi mdi-refresh"></i> Reset
-                                    </button>
+
                                 </div>
                             )
 
                             }
+                            <nav className="d-flex justify-content-between align-items-center mt-3">
+                                <div>
+                                    <span>
+                                        Page {currentPage} of {filteredTotalPages} | Total Records: {filteredUserApplicationData.length}
+                                    </span>
+                                </div>
+                                <ul className="pagination mb-0">
+                                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                                        <button
+                                            className="page-link"
+                                            onClick={() => setCurrentPage(currentPage - 1)}
+                                            disabled={currentPage === 1}
+                                        >
+                                            &laquo; Previous
+                                        </button>
+                                    </li>
+                                    {renderPagination()}
+                                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                                        <button
+                                            className="page-link"
+                                            onClick={() => setCurrentPage(currentPage + 1)}
+                                            disabled={currentPage === filteredTotalPages}
+                                        >
+                                            Next &raquo;
+                                        </button>
+                                    </li>
+                                </ul>
+                                <div className="d-flex align-items-center">
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max={filteredTotalPages}
+                                        value={pageInput}
+                                        onChange={(e) => setPageInput(e.target.value)}
+                                        placeholder="Go to page"
+                                        className="form-control me-2"
+                                    />
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={handlePageNavigation}
+                                    >
+                                        Go
+                                    </button>
+                                </div>
+                            </nav>
                         </div>
+
                     </div>
                 </div>
             </div>
