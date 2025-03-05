@@ -16,13 +16,7 @@ const Rolemaster = () => {
         roleName: "",
     })
     const [searchQuery, setSearchQuery] = useState("");
-    const handleSearchChange = (e) => {
-        setSearchQuery(e.target.value);
-    };
-    const filteredRoleData = roleData.filter(role =>
-        role.roleCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        role.roleName.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+   
 
     const handleRoleEdit = (role) => {
         setEditingRole(role);
@@ -35,17 +29,18 @@ const Rolemaster = () => {
 
         const formElement = e.target;
         const updatedRoleName = formElement.roleName.value;
+        const updatedRoleCode = formElement.roleCode.value;
 
         if (editingRole) {
             setRoleData(roleData.map(role =>
                 role.id === editingRole.id
-                    ? { ...role, roleName: updatedRoleName }
+                    ? { ...role, roleName: updatedRoleName, roleCode: updatedRoleCode }
                     : role
             ));
         } else {
             const newRole = {
                 id: roleData.length + 1,
-                roleCode: formData.roleCode,
+                roleCode: updatedRoleCode,
                 roleName: updatedRoleName,
                 status: "y"
             };
@@ -89,7 +84,6 @@ const Rolemaster = () => {
     };
 
     const [currentPage, setCurrentPage] = useState(1);
-    const [filteredTotalPages, setFilteredTotalPages] = useState(1);
     const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
 
     const handleInputChange = (e) => {
@@ -107,6 +101,73 @@ const Rolemaster = () => {
             alert("Please fill out all required fields.")
         }
     }
+
+    const [pageInput, setPageInput] = useState("");
+    const itemsPerPage = 5; // You can adjust this number as needed
+    // ... existing state declarations ...
+
+    const handleSearchChange = (e) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1); // Reset to first page when search changes
+    };
+
+    const filteredRoleData = roleData.filter(role =>
+        role.roleCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        role.roleName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const filteredTotalPages = Math.ceil(filteredRoleData.length / itemsPerPage);
+
+    const currentItems = filteredRoleData.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+    const handlePageNavigation = () => {
+        const pageNumber = parseInt(pageInput, 10);
+        if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
+            setCurrentPage(pageNumber);
+        } else {
+            alert("Please enter a valid page number.");
+        }
+    };
+
+    const renderPagination = () => {
+        const pageNumbers = [];
+        const maxVisiblePages = 5; // Maximum number of visible page links
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
+
+        if (endPage - startPage < maxVisiblePages - 1) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        if (startPage > 1) {
+            pageNumbers.push(1);
+            if (startPage > 2) pageNumbers.push("..."); // Add ellipsis
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            pageNumbers.push(i);
+        }
+
+        if (endPage < filteredTotalPages) {
+            if (endPage < filteredTotalPages - 1) pageNumbers.push("..."); // Add ellipsis
+            pageNumbers.push(filteredTotalPages);
+        }
+
+        return pageNumbers.map((number, index) => (
+            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
+                {typeof number === "number" ? (
+                    <button className="page-link" onClick={() => setCurrentPage(number)}>
+                        {number}
+                    </button>
+                ) : (
+                    <span className="page-link disabled">{number}</span>
+                )}
+            </li>
+        ));
+    };
 
     return (
         <div className="content-wrapper">
@@ -134,9 +195,15 @@ const Rolemaster = () => {
 
                                 <div className="d-flex align-items-center">
                                     {!showForm ? (
+<>
+<button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+<i className="mdi mdi-plus"></i> Add
+</button>
                                         <button type="button" className="btn btn-success me-2">
                                             <i className="mdi mdi-plus"></i> Show All
                                         </button>
+</>
+
                                     ) : (
                                         <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
                                             <i className="mdi mdi-arrow-left"></i> Back
@@ -158,94 +225,87 @@ const Rolemaster = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {filteredRoleData.map((role) => (
-                                                <tr key={role.id}>
-                                                    <td>{role.roleCode}</td>
-                                                    <td>{role.roleName}</td>
-                                                    <td>
-                                                        <div className="form-check form-switch">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={role.status === "y"}
-                                                                onChange={() => handleSwitchChange(role.id, role.status === "y" ? "n" : "y")}
-                                                                id={`switch-${role.id}`}
-                                                            />
-                                                            <label
-                                                                className="form-check-label px-0"
-                                                                htmlFor={`switch-${role.id}`}
-                                                            >
-                                                                {role.status === "y" ? 'Active' : 'Inactive'}
-                                                            </label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-success me-2"
-                                                            onClick={() => handleRoleEdit(role)}
-                                                            disabled={role.status !== "y"}
-                                                        >
-                                                            <i className="fa fa-pencil"></i>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
+        {currentItems.map((role) => (
+            <tr key={role.id}>
+                <td>{role.roleCode}</td>
+                <td>{role.roleName}</td>
+                <td>
+                    <div className="form-check form-switch">
+                        <input
+                            className="form-check-input"
+                            type="checkbox"
+                            checked={role.status === "y"}
+                            onChange={() => handleSwitchChange(role.id, role.status === "y" ? "n" : "y")}
+                            id={`switch-${role.id}`}
+                        />
+                        <label
+                            className="form-check-label px-0"
+                            htmlFor={`switch-${role.id}`}
+                        >
+                            {role.status === "y" ? 'Active' : 'Inactive'}
+                        </label>
+                    </div>
+                </td>
+                <td>
+                    <button
+                        className="btn btn-sm btn-success me-2"
+                        onClick={() => handleRoleEdit(role)}
+                        disabled={role.status !== "y"}
+                    >
+                        <i className="fa fa-pencil"></i>
+                    </button>
+                </td>
+            </tr>
+        ))}
+    </tbody>
                                         
                                     </table>
-                                    <div className="row">
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label className="flex-shrink-0">Role Code
-
-                                                <span className="text-danger">*</span></label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                id="Role Code"
-                                                placeholder="Role Code"
-                                                required
-                                            />
-                                        </div>
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>Role Name <span className="text-danger">*</span></label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                id="Name"
-                                                placeholder="Role Name"
-                                                required
-                                            />
-                                        </div>
-                                    </div>
+                                   
                                     <nav className="d-flex justify-content-between align-items-center mt-3">
-                                        <div>
-                                            <span>
-                                                Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredProducts}
-                                            </span>
-                                        </div>
-                                        <ul className="pagination mb-0">
-                                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                                <button className="page-link" disabled>
-                                                    &laquo;
-                                                </button>
-                                            </li>
-                                            {[...Array(filteredTotalPages)].map((_, index) => (
-                                                <li
-                                                    className={`page-item ${currentPage === index + 1 ? "active" : ""}`}
-                                                    key={index}
-                                                >
-                                                    <button className="page-link" disabled>
-                                                        {index + 1}
-                                                    </button>
-                                                </li>
-                                            ))}
-                                            <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                                <button className="page-link" disabled>
-                                                    &raquo;
-                                                </button>
-                                            </li>
-                                        </ul>
-                                    </nav>
+        <div>
+            <span>
+                Page {currentPage} of {filteredTotalPages} | Total Records: {filteredRoleData.length}
+            </span>
+        </div>
+        <ul className="pagination mb-0">
+            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                <button 
+                    className="page-link" 
+                    onClick={() => setCurrentPage(currentPage - 1)} 
+                    disabled={currentPage === 1}
+                >
+                    &laquo; Previous
+                </button>
+            </li>
+            {renderPagination()}
+            <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                <button 
+                    className="page-link" 
+                    onClick={() => setCurrentPage(currentPage + 1)} 
+                    disabled={currentPage === filteredTotalPages}
+                >
+                    Next &raquo;
+                </button>
+            </li>
+        </ul>
+        <div className="d-flex align-items-center">
+            <input
+                type="number"
+                min="1"
+                max={filteredTotalPages}
+                value={pageInput}
+                onChange={(e) => setPageInput(e.target.value)}
+                placeholder="Go to page"
+                className="form-control me-2"
+            />
+            <button
+                className="btn btn-primary"
+                onClick={handlePageNavigation}
+            >
+                Go
+            </button>
+        </div>
+    </nav>
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleRoleSave}>
@@ -331,19 +391,6 @@ const Rolemaster = () => {
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
-                                                                        </div>
-                                                                    )}
-                                                                    {!showForm && (
-                                                                        <div className="d-flex justify-content-end mt-4">
-                                                                            <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
-                                                                                <i className="mdi mdi-plus"></i> Add
-                                                                            </button>
-                                                                            <button type="button" className="btn btn-warning" onClick={() => {
-                                                                                setFormData({ roleCode: "", roleName: "" });
-                                                                                setShowForm(false);
-                                                                            }}>
-                                                                                <i className="mdi mdi-refresh"></i> Reset
-                                                                            </button>
                                                                         </div>
                                                                     )}
                                                                 </div>
