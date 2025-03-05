@@ -32,6 +32,9 @@ const AddDoctor = React.lazy(() => import('./Views/Doctors/AddDoctor/index'));
 const ApointmentSetup = React.lazy(() => import('./Views/Admin/Apointment/ApointmentSetup'));
 const DoctorRoaster = React.lazy(() => import('./Views/Admin/Apointment/DoctorRoaster'));
 const PatientRegistration = React.lazy(() => import('./Views/Reception/PatientRegistration'));
+const RegisterEmployee = React.lazy(() => import('./Views/Admin/Employee/EmployeeRegistrartion'));
+const ViewSearchEmployee = React.lazy(() => import('./Views/Admin/Employee/ViewSearchEmployee'));
+
 
 
 const isAuthenticated = () => {
@@ -75,6 +78,8 @@ function App() {
               <Route path="/countrymaster" element={<Countrymaster/>} />
               <Route path="/statemaster" element={<Statemaster/>} />
               <Route path="/districtmaster" element={<Districtmaster/>} />
+              <Route path="/RegisterEmployee" element={<RegisterEmployee />} />
+              <Route path="/ViewSearchEmployee" element={<ViewSearchEmployee />} />
  
 
 
