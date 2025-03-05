@@ -24,29 +24,31 @@ const Login = () => {
 
   const handleLogin = async (event) => {
     event.preventDefault();
-    try {
-      const response = await postRequest(LOGIN, formData);
+    // try {
+    //   const response = await postRequest(LOGIN, formData);
 
-      if (response?.response?.jwtToken) {
-        const { jwtToken, role, username } = response.response;
+    //   if (response?.response?.jwtToken) {
+    //     const { jwtToken, role, username } = response.response;
 
-        if (formData.rememberMe) {
-          localStorage.setItem("token", jwtToken);
-          if (role) localStorage.setItem("role", role);
-          if (username) localStorage.setItem("username", username);
-        } else {
-          sessionStorage.setItem("token", jwtToken);
-          if (role) sessionStorage.setItem("role", role);
-          if (username) sessionStorage.setItem("username", username);
-        }
+    //     if (formData.rememberMe) {
+    //       localStorage.setItem("token", jwtToken);
+    //       if (role) localStorage.setItem("role", role);
+    //       if (username) localStorage.setItem("username", username);
+    //     } else {
+    //       sessionStorage.setItem("token", jwtToken);
+    //       if (role) sessionStorage.setItem("role", role);
+    //       if (username) sessionStorage.setItem("username", username);
+    //     }
 
-        navigate("/dashboard");
-      } else {
-        console.error("Login failed: Missing token in response.");
-      }
-    } catch (error) {
-      console.error("Login request failed:", error);
-    }
+    //     navigate("/dashboard");
+    //   } else {
+    //     console.error("Login failed: Missing token in response.");
+    //   }
+    // } catch (error) {
+    //   console.error("Login request failed:", error);
+    // }
+    navigate("/dashboard");
+
   };
 
   return (
@@ -88,7 +90,7 @@ const Login = () => {
                             placeholder="name@example.com"
                             value={formData.username}
                             onChange={handleInputChange}
-                            required
+                            // required
                           />
                         </div>
                       </div>
@@ -107,7 +109,7 @@ const Login = () => {
                             placeholder="***************"
                             value={formData.password}
                             onChange={handleInputChange}
-                            required
+                            // required
                           />
                         </div>
                       </div>
