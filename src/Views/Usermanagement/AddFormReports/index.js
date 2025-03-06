@@ -76,7 +76,7 @@ const Addformreports = () => {
                                         </div>
                                         </div>
                                     )}
-                                    <div className="form-group col-md-4 mt-3"> {/* Added margin-top to create space above */}
+                                    <div className="form-group col-md-4"> {/* Added margin-top to create space above */}
                                         <label>Menu Id <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
