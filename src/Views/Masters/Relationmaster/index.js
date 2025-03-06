@@ -11,11 +11,11 @@ const Relationmaster = () => {
   const [editingRelation, setEditingRelation] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [relationData, setRelationData] = useState([
-    { id: 1, relationCode: "F", relationName: "Father", status: "y" },
-    { id: 2, relationCode: "M", relationName: "Mother", status: "y" },
-    { id: 3, relationCode: "S", relationName: "Wife", status: "y" },
-    { id: 4, relationCode: "S", relationName: "Husband", status: "y" },
-    { id: 5, relationCode: "S", relationName: "Self", status: "y" },
+    { id: 1, relationName: "F", newRelationName: "Father", status: "y" },
+    { id: 2, relationName: "M", newRelationName: "Mother", status: "y" },
+    { id: 3, relationName: "S", newRelationName: "Wife", status: "y" },
+    { id: 4, relationName: "S", newRelationName: "Husband", status: "y" },
+    { id: 5, relationName: "S", newRelationName: "Self", status: "y" },
   ])
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, relationId: null, newStatus: false });
 
@@ -23,9 +23,13 @@ const Relationmaster = () => {
 
 
   const [formData, setFormData] = useState({
-    relationCode: "",
     relationName: "",
+    newRelationName: "",
   })
+
+  const [pageInput, setPageInput] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5; // You can adjust this number as needed
 
 
   const handleEdit = (relation) => {
@@ -33,12 +37,14 @@ const Relationmaster = () => {
     setShowForm(true);
   };
 
-  const handleSearch = (e) => {
+  const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
+    setCurrentPage(1); // Reset to first page when search changes
   };
 
   const filteredRelations = relationData.filter(relation =>
-    relation.relationName.toLowerCase().includes(searchQuery.toLowerCase())
+    relation.relationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    relation.newRelationName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
 
@@ -48,20 +54,21 @@ const Relationmaster = () => {
 
     const formElement = e.target;
     const updatedRelationName = formElement.relationName.value;
+    const updatedNewRelationName = formElement.newrelationName.value;
 
     if (editingRelation) {
       // Editing existing relation
       setRelationData(relationData.map(relation =>
         relation.id === editingRelation.id
-          ? { ...relation, relationName: updatedRelationName }
+          ? { ...relation, relationName: updatedRelationName, newRelationName :updatedNewRelationName  }
           : relation
       ));
     } else {
       // Adding new relation
       const newRelation = {
         id: relationData.length + 1,
-        relationCode: formData.relationCode,
         relationName: updatedRelationName,
+        newRelationName: updatedNewRelationName,
         status: "y"
       };
       setRelationData([...relationData, newRelation]);
@@ -72,7 +79,7 @@ const Relationmaster = () => {
     showPopup("Changes saved successfully!", "success");
   };
 
- 
+
   const showPopup = (message, type = 'info') => {
     setPopupMessage({
       message,
@@ -84,7 +91,7 @@ const Relationmaster = () => {
   };
 
 
- 
+
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, relationId: id, newStatus });
 
@@ -99,8 +106,6 @@ const Relationmaster = () => {
     }
     setConfirmDialog({ isOpen: false, relationId: null, newStatus: null }); // Close dialog
   };
-  const [currentPage, setCurrentPage] = useState(1); // Initialize currentPage
-  const [filteredTotalPages, setFilteredTotalPages] = useState(1); // Initialize filteredTotalPages
   const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
 
   const handleInputChange = (e) => {
@@ -110,14 +115,76 @@ const Relationmaster = () => {
 
   const handleCreateFormSubmit = (e) => {
     e.preventDefault()
-    if (formData.relationCode && formData.relationName) {
+    if (formData.relationName && formData.newRelationName) {
       setRelationData([...relationData, { ...formData, id: Date.now(), status: "y" }])
-      setFormData({ relationCode: "", relationName: "" })
+      setFormData({ relationName: "", newRelationName: "" })
       setShowForm(false)
     } else {
       alert("Please fill out all required fields.")
     }
   }
+
+  const filteredTotalPages = Math.ceil(filteredRelations.length / itemsPerPage);
+
+  const currentItems = filteredRelations.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handlePageNavigation = () => {
+    const pageNumber = parseInt(pageInput, 10);
+    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
+      setCurrentPage(pageNumber);
+    } else {
+      alert("Please enter a valid page number.");
+    }
+  };
+
+  const handleAdd = () => {
+    setFormData({ relationName: "", newRelationName: "" }); // Reset form data
+    setShowForm(true);
+};
+
+  const renderPagination = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5; // Maximum number of visible page links
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
+
+    // Adjust startPage if there are not enough pages before it
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    // Add first page
+    if (startPage > 1) {
+      pageNumbers.push(1);
+      if (startPage > 2) pageNumbers.push("..."); // Add ellipsis
+    }
+
+    // Add page numbers
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    // Add last page
+    if (endPage < filteredTotalPages) {
+      if (endPage < filteredTotalPages - 1) pageNumbers.push("..."); // Add ellipsis
+      pageNumbers.push(filteredTotalPages);
+    }
+
+    return pageNumbers.map((number, index) => (
+      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
+        {typeof number === "number" ? (
+          <button className="page-link" onClick={() => setCurrentPage(number)}>
+            {number}
+          </button>
+        ) : (
+          <span className="page-link disabled">{number}</span>
+        )}
+      </li>
+    ));
+  };
 
   return (
     <div className="content-wrapper">
@@ -134,7 +201,7 @@ const Relationmaster = () => {
                       className="form-control"
                       placeholder="Search"
                       value={searchQuery}
-                      onChange={handleSearch}
+                      onChange={handleSearchChange}
                     />
                     <span className="input-group-text" id="search-icon">
                       <i className="fa fa-search"></i>
@@ -145,9 +212,9 @@ const Relationmaster = () => {
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
-                      <button type="button" className="btn btn-success me-2">
-                        <i className="mdi mdi-plus"></i> Show All
-                      </button>
+                     <button type="button" className="btn btn-success me-2" onClick={handleAdd}>
+                      <i className="mdi mdi-plus"></i> Add
+                    </button>
                       <button type="button" className="btn btn-success me-2" onClick={() => setShowModal(true)}>
                         <i className="mdi mdi-plus"></i> Reports
                       </button>
@@ -175,10 +242,10 @@ const Relationmaster = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredRelations.map((relation) => (
+                      {currentItems.map((relation) => (
                         <tr key={relation.id}>
                           <td>{relation.relationName}</td>
-                          <td>{relation.relationName}</td>
+                          <td>{relation.newRelationName}</td>
                           <td>
                             <div className="form-check form-switch">
                               <input
@@ -200,8 +267,8 @@ const Relationmaster = () => {
                           <td>
                             <button
                               className="btn btn-sm btn-success me-2"
-                              onClick={() => handleEdit(relation)} // Assuming handleEdit function exists
-                              disabled={relation.status !== "y"} // Disable if not active
+                              onClick={() => handleEdit(relation)}
+                              disabled={relation.status !== "y"}
                             >
                               <i className="fa fa-pencil"></i>
                             </button>
@@ -211,34 +278,50 @@ const Relationmaster = () => {
                     </tbody>
                   </table>
                   <nav className="d-flex justify-content-between align-items-center mt-3">
-                    <div>
-                      <span>
-                        Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredProducts}
-                      </span>
-                    </div>
-                    <ul className="pagination mb-0">
-                      <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                        <button className="page-link" disabled>
-                          &laquo;
-                        </button>
-                      </li>
-                      {[...Array(filteredTotalPages)].map((_, index) => (
-                        <li
-                          className={`page-item ${currentPage === index + 1 ? "active" : ""}`}
-                          key={index}
-                        >
-                          <button className="page-link" disabled>
-                            {index + 1}
-                          </button>
-                        </li>
-                      ))}
-                      <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                        <button className="page-link" disabled>
-                          &raquo;
-                        </button>
-                      </li>
-                    </ul>
-                  </nav>
+  <div>
+    <span>
+      Page {currentPage} of {filteredTotalPages} | Total Records: {filteredRelations.length}
+    </span>
+  </div>
+  <ul className="pagination mb-0">
+    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+      <button 
+        className="page-link" 
+        onClick={() => setCurrentPage(currentPage - 1)} 
+        disabled={currentPage === 1}
+      >
+        &laquo; Previous
+      </button>
+    </li>
+    {renderPagination()}
+    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+      <button 
+        className="page-link" 
+        onClick={() => setCurrentPage(currentPage + 1)} 
+        disabled={currentPage === filteredTotalPages}
+      >
+        Next &raquo;
+      </button>
+    </li>
+  </ul>
+  <div className="d-flex align-items-center">
+    <input
+      type="number"
+      min="1"
+      max={filteredTotalPages}
+      value={pageInput}
+      onChange={(e) => setPageInput(e.target.value)}
+      placeholder="Go to page"
+      className="form-control me-2"
+    />
+    <button
+      className="btn btn-primary"
+      onClick={handlePageNavigation}
+    >
+      Go
+    </button>
+  </div>
+</nav>
                 </div>
 
               ) : (
@@ -250,9 +333,22 @@ const Relationmaster = () => {
                       type="text"
                       className="form-control"
                       id="relationName"
-                      name="relationName" // Ensure this matches
-                      placeholder="Name"
+                      name="relationName" 
+                      placeholder="Enter Name"
                       defaultValue={editingRelation ? editingRelation.relationName : ""}
+                      onChange={() => setIsFormValid(true)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group col-md-6">
+                    <label> New Relation Name <span className="text-danger">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="newrelationName"
+                      name="newrelationName" 
+                      placeholder="Enter New Relation Name"
+                      defaultValue={editingRelation ? editingRelation.newRelationName : ""}
                       onChange={() => setIsFormValid(true)}
                       required
                     />
