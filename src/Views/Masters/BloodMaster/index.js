@@ -11,18 +11,35 @@ const BloodGroupMaster = () => {
   const [editingBloodGroup, setEditingBloodGroup] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [pageInput, setPageInput] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5; // You can adjust this number as needed
 
   const [bloodGroupData, setBloodGroupData] = useState([
     { id: 1, bloodGroupName: "O+", status: "y" },
     { id: 2, bloodGroupName: "B+", status: "y" },
-    { id: 3, bloodGroupName: "A+", status: "y" },
-    { id: 4, bloodGroupName: "AB+", status: "y" },
-    { id: 5, bloodGroupName: "O-", status: "y" },
+    { id: 4, bloodGroupName: "A+", status: "y" },
+    { id: 5, bloodGroupName: "A+", status: "y" },
+    { id: 6, bloodGroupName: "A+", status: "y" },
+    { id: 7, bloodGroupName: "A+", status: "y" },
+    { id: 8, bloodGroupName: "A+", status: "y" },
+    { id: 9, bloodGroupName: "A+", status: "y" },
+    { id: 10, bloodGroupName: "A+", status: "y" },
+    { id: 11, bloodGroupName: "A+", status: "y" },
+    { id: 12, bloodGroupName: "A+", status: "y" },
+    { id: 13, bloodGroupName: "A+", status: "y" },
+    { id: 14, bloodGroupName: "A+", status: "y" },
+    { id: 15, bloodGroupName: "A+", status: "y" },
+    { id: 16, bloodGroupName: "A+", status: "y" },
+    { id: 17, bloodGroupName: "A+", status: "y" },
+    { id: 18, bloodGroupName: "A+", status: "y" },
+    { id: 19, bloodGroupName: "A+", status: "y" },
+    { id: 20, bloodGroupName: "A+", status: "y" },
+    { id: 21, bloodGroupName: "A+", status: "y" },
+    { id: 22, bloodGroupName: "A+", status: "y" },
   ]);
 
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, bloodGroupId: null, newStatus: false });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [filteredTotalPages, setFilteredTotalPages] = useState(1);
   const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
 
   const filteredBloodGroups = bloodGroupData.filter(bloodGroup =>
@@ -31,6 +48,7 @@ const BloodGroupMaster = () => {
 
   const handleSearch = (e) => {
     setSearchQuery(e.target.value);
+    setCurrentPage(1); // Reset to first page when search changes
   };
 
   const handleEdit = (bloodGroup) => { 
@@ -52,7 +70,7 @@ const BloodGroupMaster = () => {
       ));
     } else {
       const newBloodGroup = {
-        id: bloodGroupData.length + 1,
+        id: Date.now(),
         bloodGroupName: updatedBloodName,
         status: "y"
       };
@@ -105,6 +123,59 @@ const BloodGroupMaster = () => {
     setConfirmDialog({ isOpen: false, bloodGroupId: null, newStatus: null }); 
   };
 
+  const filteredTotalPages = Math.ceil(filteredBloodGroups.length / itemsPerPage);
+
+  const currentItems = filteredBloodGroups.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handlePageNavigation = () => {
+    const pageNumber = parseInt(pageInput, 10);
+    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
+      setCurrentPage(pageNumber);
+    } else {
+      alert("Please enter a valid page number.");
+    }
+  };
+
+  const renderPagination = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5; 
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    if (startPage > 1) {
+      pageNumbers.push(1);
+      if (startPage > 2) pageNumbers.push("...");
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    if (endPage < filteredTotalPages) {
+      if (endPage < filteredTotalPages - 1) pageNumbers.push("...");
+      pageNumbers.push(filteredTotalPages);
+    }
+
+    return pageNumbers.map((number, index) => (
+      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
+        {typeof number === "number" ? (
+          <button className="page-link" onClick={() => setCurrentPage(number)}>
+            {number}
+          </button>
+        ) : (
+          <span className="page-link disabled">{number}</span>
+        )}
+      </li>
+    ));
+  };
+
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -122,6 +193,7 @@ const BloodGroupMaster = () => {
                       aria-label="Search"
                       value={searchQuery}
                       onChange={handleSearch}
+
                     />
                     <span className="input-group-text" id="search-icon">
                       <i className="fa fa-search"></i>
@@ -132,6 +204,9 @@ const BloodGroupMaster = () => {
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
+                    <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                        <i className="mdi mdi-plus"></i> Add
+                      </button>
                       <button type="button" className="btn btn-success me-2">
                         <i className="mdi mdi-plus"></i> Show All
                       </button>
@@ -160,7 +235,7 @@ const BloodGroupMaster = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredBloodGroups.map((bloodGroup) => (
+                      {currentItems.map((bloodGroup) => (
                         <tr key={bloodGroup.id}>
                           <td>{bloodGroup.id}</td>
                           <td>{bloodGroup.bloodGroupName}</td>
@@ -197,31 +272,47 @@ const BloodGroupMaster = () => {
                   <nav className="d-flex justify-content-between align-items-center mt-3">
                     <div>
                       <span>
-                        Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredProducts}
+                        Page {currentPage} of {filteredTotalPages} | Total Records: {filteredBloodGroups.length}
                       </span>
                     </div>
                     <ul className="pagination mb-0">
                       <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                        <button className="page-link" disabled>
-                          &laquo;
+                        <button 
+                          className="page-link" 
+                          onClick={() => setCurrentPage(currentPage - 1)} 
+                          disabled={currentPage === 1}
+                        >
+                          &laquo; Previous
                         </button>
                       </li>
-                      {[...Array(filteredTotalPages)].map((_, index) => (
-                        <li
-                          className={`page-item ${currentPage === index + 1 ? "active" : ""}`}
-                          key={index}
-                        >
-                          <button className="page-link" disabled>
-                            {index + 1}
-                          </button>
-                        </li>
-                      ))}
+                      {renderPagination()}
                       <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                        <button className="page-link" disabled>
-                          &raquo;
+                        <button 
+                          className="page-link" 
+                          onClick={() => setCurrentPage(currentPage + 1)} 
+                          disabled={currentPage === filteredTotalPages}
+                        >
+                          Next &raquo;
                         </button>
                       </li>
                     </ul>
+                    <div className="d-flex align-items-center">
+                      <input
+                        type="number"
+                        min="1"
+                        max={filteredTotalPages}
+                        value={pageInput}
+                        onChange={(e) => setPageInput(e.target.value)}
+                        placeholder="Go to page"
+                        className="form-control me-2"
+                      />
+                      <button
+                        className="btn btn-primary"
+                        onClick={handlePageNavigation}
+                      >
+                        Go
+                      </button>
+                    </div>
                   </nav>
                 </div>
               ) : (
@@ -235,9 +326,7 @@ const BloodGroupMaster = () => {
                       name="bloodGroupName"
                       placeholder="e.g., O+"
                       defaultValue={editingBloodGroup ? editingBloodGroup.bloodGroupName : ""}
-  onChange={() => setIsFormValid(true)} 
-
-                      
+                      onChange={() => setIsFormValid(true)}
                       required
                     />
                   </div>
