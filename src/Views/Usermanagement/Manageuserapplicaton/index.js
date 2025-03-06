@@ -104,22 +104,22 @@ const Manageuserapplication = () => {
             if (editingApplication) {
                 // Update existing application
                 const response = await axios.put(`${API_HOST}/applications/edit/${editingApplication.id}`, {
-                    menuName: formData.menuName,
+                    userAppName: formData.menuName, 
                     url: formData.url
                 });
     
-                console.log("Update Response:", response.data); // Log the response
+                console.log("Update Response:", response.data);
     
                 // Update local state using the response from backend
-                const updatedApplication = response.data.data || {}; // Fallback to empty object if data is missing
+                const updatedApplication = response.data.data || {};
                 setUserApplicationData(prevData =>
                     prevData.map(application =>
                         application.id === editingApplication.id
                             ? {
-                                id: updatedApplication.id || editingApplication.id, // Fallback to existing ID
-                                menuName: updatedApplication.menuName || formData.menuName, // Fallback to form data
-                                url: updatedApplication.url || formData.url, // Fallback to form data
-                                status: updatedApplication.status || editingApplication.status // Fallback to existing status
+                                id: updatedApplication.id || editingApplication.id,
+                                menuName: updatedApplication.userAppName || formData.menuName, // Map userAppName to menuName
+                                url: updatedApplication.url || formData.url,
+                                status: updatedApplication.status || editingApplication.status
                             }
                             : application
                     )
@@ -129,22 +129,22 @@ const Manageuserapplication = () => {
             } else {
                 // Create new application
                 const response = await axios.post(`${API_HOST}/applications/create`, {
-                    menuName: formData.menuName,
+                    userAppName: formData.menuName, // Changed from menuName to userAppName
                     url: formData.url,
                     status: "y"
                 });
     
-                console.log("Create Response:", response.data); // Log the response
+                console.log("Create Response:", response.data);
     
                 // Add new entry to local state using the response from backend
-                const newApplication = response.data.data || {}; // Fallback to empty object if data is missing
+                const newApplication = response.data.data || {};
                 setUserApplicationData(prevData => [
                     ...prevData,
                     {
-                        id: newApplication.id || Date.now(), // Fallback to a unique ID
-                        menuName: newApplication.menuName || formData.menuName, // Fallback to form data
-                        url: newApplication.url || formData.url, // Fallback to form data
-                        status: newApplication.status || "y" // Fallback to default status
+                        id: newApplication.id || Date.now(),
+                        menuName: newApplication.userAppName || formData.menuName, // Map userAppName to menuName
+                        url: newApplication.url || formData.url,
+                        status: newApplication.status || "y"
                     }
                 ]);
     
@@ -157,7 +157,7 @@ const Manageuserapplication = () => {
             setEditingApplication(null);
             setIsFormValid(false);
         } catch (err) {
-            console.error("Error saving application:", err); // Log the error
+            console.error("Error saving application:", err);
             showPopup(`Failed to save: ${err.response?.data?.message || err.message}`, "error");
         } finally {
             setLoading(false);
