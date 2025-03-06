@@ -103,22 +103,28 @@ const Templatemaster = () => {
 
                 console.log("Update Response:", response.data);
 
-                // Update local state using the response from backend
-                const updatedTemplate = response.data.data || {};
-                setTemplateData(prevData =>
-                    prevData.map(template =>
-                        template.id === editingTemplate.id
-                            ? {
-                                id: updatedTemplate.id || editingTemplate.id,
-                                templateCode: updatedTemplate.templateCode || formData.templateCode,
-                                templateName: updatedTemplate.templateName || formData.templateName,
-                                status: updatedTemplate.status || editingTemplate.status
-                            }
-                            : template
-                    )
-                );
+                // Ensure the backend returns the updated template in the response
+                if (response.data && response.data.response) {
+                    const updatedTemplate = response.data.response;
 
-                showPopup("Template updated successfully!", "success");
+                    // Update local state using the response from backend
+                    setTemplateData(prevData =>
+                        prevData.map(template =>
+                            template.id === editingTemplate.id
+                                ? {
+                                    id: updatedTemplate.id || editingTemplate.id,
+                                    templateCode: updatedTemplate.templateCode || formData.templateCode,
+                                    templateName: updatedTemplate.templateName || formData.templateName,
+                                    status: updatedTemplate.status || editingTemplate.status
+                                }
+                                : template
+                        )
+                    );
+
+                    showPopup("Template updated successfully!", "success");
+                } else {
+                    throw new Error("Invalid response from server");
+                }
             } else {
                 // Create new template
                 const response = await axios.post(`${API_HOST}/mas-templates/create`, {
@@ -129,19 +135,25 @@ const Templatemaster = () => {
 
                 console.log("Create Response:", response.data);
 
-                // Add new entry to local state using the response from backend
-                const newTemplate = response.data.data || {};
-                setTemplateData(prevData => [
-                    ...prevData,
-                    {
-                        id: newTemplate.id || Date.now(),
-                        templateCode: newTemplate.templateCode || formData.templateCode,
-                        templateName: newTemplate.templateName || formData.templateName,
-                        status: newTemplate.status || "y"
-                    }
-                ]);
+                // Ensure the backend returns the new template in the response
+                if (response.data && response.data.response) {
+                    const newTemplate = response.data.response;
 
-                showPopup("New template added successfully!", "success");
+                    // Add new entry to local state using the response from backend
+                    setTemplateData(prevData => [
+                        ...prevData,
+                        {
+                            id: newTemplate.id || Date.now(),
+                            templateCode: newTemplate.templateCode || formData.templateCode,
+                            templateName: newTemplate.templateName || formData.templateName,
+                            status: newTemplate.status || "y"
+                        }
+                    ]);
+
+                    showPopup("New template added successfully!", "success");
+                } else {
+                    throw new Error("Invalid response from server");
+                }
             }
 
             // Reset form
@@ -178,32 +190,30 @@ const Templatemaster = () => {
                 );
 
                 console.log("API Response:", response.data); // Log the full response
-                console.log("Updated Template:", response.data.data); // Log the updated template
 
-                // Update local state using the response from backend
-                const updatedTemplate = response.data.data || { status: confirmDialog.newStatus };
-                if (!updatedTemplate.status) {
+                // Ensure the backend returns the updated template in the response
+                if (response.data && response.data.response) {
+                    const updatedTemplate = response.data.response;
+
+                    // Update local state using the response from backend
+                    setTemplateData(prevData =>
+                        prevData.map(template =>
+                            template.id === confirmDialog.applicationId
+                                ? {
+                                    ...template,
+                                    status: updatedTemplate.status || confirmDialog.newStatus
+                                }
+                                : template
+                        )
+                    );
+
+                    showPopup(
+                        `Template ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
+                        "success"
+                    );
+                } else {
                     throw new Error("Invalid response from server");
                 }
-
-                setTemplateData(prevData => {
-                    console.log("Previous Data:", prevData); // Log the previous state
-                    return prevData.map(template => {
-                        if (template.id === confirmDialog.applicationId) {
-                            console.log("Matched Template:", template); // Log the matched template
-                            return {
-                                ...template,
-                                status: updatedTemplate.status
-                            };
-                        }
-                        return template;
-                    });
-                });
-
-                showPopup(
-                    `Template ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
-                    "success"
-                );
             } catch (err) {
                 console.error("Error updating status:", err);
                 showPopup("Failed to change status", "error");
@@ -231,6 +241,24 @@ const Templatemaster = () => {
             showPopup("Please enter a valid page number.", "warning");
         }
     };
+
+
+
+    // Pagination calculations
+    // const filteredTotalPages = Math.ceil(filteredTemplateData.length / itemsPerPage);
+    // const currentItems = filteredTemplateData.slice(
+    //     (currentPage - 1) * itemsPerPage,
+    //     currentPage * itemsPerPage
+    // );
+
+    // const handlePageNavigation = () => {
+    //     const pageNumber = parseInt(pageInput, 10);
+    //     if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
+    //         setCurrentPage(pageNumber);
+    //     } else {
+    //         showPopup("Please enter a valid page number.", "warning");
+    //     }
+    // };
 
     const renderPagination = () => {
         const pageNumbers = [];
