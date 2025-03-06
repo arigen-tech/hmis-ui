@@ -22,17 +22,26 @@ const CountryMaster = () => {
     const [editingCountry, setEditingCountry] = useState(null);
     const [popupMessage, setPopupMessage] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const [filteredTotalPages, setFilteredTotalPages] = useState(1);
     const [totalFilteredItems, setTotalFilteredItems] = useState(0);
+    const [pageInput, setPageInput] = useState("");
+    const itemsPerPage = 4;
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
+        setCurrentPage(1); // Reset to first page when search changes
     };
 
     const filteredCountries = countries.filter(country =>
         country.countryName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         country.countryCode.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    const filteredTotalPages = Math.ceil(filteredCountries.length / itemsPerPage);
+    const currentItems = filteredCountries.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
 
     const handleEdit = (country) => {
         setEditingCountry(country);
@@ -45,19 +54,21 @@ const CountryMaster = () => {
 
         const formElement = e.target;
         const updatedCountryName = formElement.countryName.value;
+        const updatedCountryCode = formElement.countryCode.value;
+        const updatedCurrency = formElement.currency.value;
 
         if (editingCountry) {
             setCountries(countries.map(country =>
                 country.id === editingCountry.id
-                    ? { ...country, countryName: updatedCountryName }
+                    ? { ...country, countryName: updatedCountryName, countryCode: updatedCountryCode, currency: updatedCurrency }
                     : country
             ));
         } else {
             const newCountry = {
                 id: countries.length + 1,
-                countryCode: formData.countryCode,
+                countryCode: updatedCountryCode,
                 countryName: updatedCountryName,
-                currency: formData.currency,
+                currency: updatedCurrency,
                 status: "y"
             };
             setCountries([...countries, newCountry]);
@@ -109,6 +120,52 @@ const CountryMaster = () => {
         }
     };
 
+    const handlePageNavigation = () => {
+        const pageNumber = parseInt(pageInput, 10);
+        if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
+            setCurrentPage(pageNumber);
+        } else {
+            alert("Please enter a valid page number.");
+        }
+    };
+
+    const renderPagination = () => {
+        const pageNumbers = [];
+        const maxVisiblePages = 5; // Maximum number of visible page links
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
+
+        if (endPage - startPage < maxVisiblePages - 1) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        if (startPage > 1) {
+            pageNumbers.push(1);
+            if (startPage > 2) pageNumbers.push("..."); // Add ellipsis
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            pageNumbers.push(i);
+        }
+
+        if (endPage < filteredTotalPages) {
+            if (endPage < filteredTotalPages - 1) pageNumbers.push("..."); // Add ellipsis
+            pageNumbers.push(filteredTotalPages);
+        }
+
+        return pageNumbers.map((number, index) => (
+            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
+                {typeof number === "number" ? (
+                    <button className="page-link" onClick={() => setCurrentPage(number)}>
+                        {number}
+                    </button>
+                ) : (
+                    <span className="page-link disabled">{number}</span>
+                )}
+            </li>
+        ));
+    };
+
     return (
         <div className="content-wrapper">
             <div className="row">
@@ -148,9 +205,15 @@ const CountryMaster = () => {
                                         </div>
                                     </form>
                                     {!showForm ? (
-                                        <button type="button" className="btn btn-success me-2">
-                                            <i className="mdi mdi-plus"></i> Generate Report Based On Search
-                                        </button>
+                                        <>
+                                            <button type="button" className="btn btn-success me-2" onClick={() => (setShowForm(true))}>
+                                                <i className="mdi mdi-plus"></i> ADD
+                                            </button>
+                                            <button type="button" className="btn btn-success me-2">
+                                                <i className="mdi mdi-plus"></i> Generate Report Based On Search
+                                            </button>
+                                        </>
+
                                     ) : (
                                         <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
                                             <i className="mdi mdi-arrow-left"></i> Back
@@ -173,7 +236,7 @@ const CountryMaster = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {filteredCountries.map((country) => (
+                                            {currentItems.map((country) => (
                                                 <tr key={country.id}>
                                                     <td>{country.countryCode}</td>
                                                     <td>{country.countryName}</td>
@@ -209,55 +272,52 @@ const CountryMaster = () => {
                                             ))}
                                         </tbody>
                                     </table>
-                                    <div className="row">
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>Country Code <span className="text-danger">*</span></label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                id="countryCode"
-                                                placeholder="Country Code"
-                                                required
-                                            />
-                                        </div>
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>Country Name <span className="text-danger">*</span></label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                id="countryName"
-                                                placeholder="Country Name"
-                                                required
-                                            />
-                                        </div>
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>Currency <span className="text-danger">*</span></label>
-                                            <div className="col-md-4">
-                                                <select
-                                                    className="form-control"
-                                                    id="currency"
-                                                    required
-                                                >
-                                                    <option value="" disabled>Select</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
+
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
-                                    <div className="form-group col-md-6">
+                                    <div className="form-group col-md-4 mt-3">
+                                        <label>Country Code <span className="text-danger">*</span></label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            id="countryCode"
+                                            placeholder="Country Code"
+                                            defaultValue={editingCountry ? editingCountry.countryCode : ""}
+                                            onChange={() => setIsFormValid(true)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="form-group col-md-4 mt-3">
                                         <label>Country Name <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
                                             className="form-control"
                                             id="countryName"
-                                            name="countryName"
-                                            placeholder="Name"
+                                            placeholder="Country Name"
                                             defaultValue={editingCountry ? editingCountry.countryName : ""}
-                                            onChange={(e) => setIsFormValid(e.target.value.trim() !== "")}
+                                            onChange={() => setIsFormValid(true)}
                                             required
                                         />
+                                    </div>
+                                    <div className="form-group col-md-4 mt-3">
+                                        <label>Currency <span className="text-danger">*</span></label>
+                                        <div className="col-md-4">
+                                            <select
+                                                className="form-control"
+                                                id="currency"
+                                                defaultValue={editingCountry ? editingCountry.currency : ""} // Set default value for editing
+                                                required
+                                            >
+                                                <option value="" disabled>Select</option>
+                                                <option value="USD">United States Dollar (USD)</option>
+                                                <option value="CAD">Canadian Dollar (CAD)</option>
+                                                <option value="GBP">British Pound (GBP)</option>
+                                                <option value="AUD">Australian Dollar (AUD)</option>
+                                                <option value="INR">Indian Rupee (INR)</option>
+                                                <option value="EUR">Euro (EUR)</option>
+                                            </select>
+                                        </div>
                                     </div>
                                     <div className="form-group col-md-12 d-flex justify-content-end">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
@@ -299,84 +359,53 @@ const CountryMaster = () => {
                                     </div>
                                 </div>
                             )}
-                            {!showForm && (
-                                <div className="d-flex justify-content-start mb-2 mt-3">
-                                    <button type="button" className="btn btn-warning me-2" onClick={() => setShowForm(true)}>
-                                        <i className="mdi mdi-plus"></i> Add
-                                    </button>
-                                    <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
-                                        <i className="mdi mdi-plus"></i> Update
-                                    </button>
-                                    <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
-                                        <i className="mdi mdi-plus"></i> Activate
-                                    </button>
-                                    <button type="button" className="btn btn-danger" onClick={() => {
-                                        setFormData({ countryCode: "", countryName: "", currency: "" });
-                                        setShowForm(false);
-                                    }}>
-                                        <i className="mdi mdi-refresh"></i> Reset
-                                    </button>
-                                </div>
-                            )}
-                            <div className="row mb-3">
-                                <div className="col-md-4 d-flex align-items-center">
-                                    <label htmlFor="changedBy" className="me-2 flex-shrink-0">Changed By</label>
-                                    <input
-                                        type="text"
-                                        id="changedBy"
-                                        className="form-control"
-                                        placeholder="Enter Changed By"
-                                        defaultValue="54321"
-                                    />
-                                </div>
-                                <div className="col-md-4 d-flex align-items-center">
-                                    <label htmlFor="changedDate" className="me-2 flex-shrink-0">Changed Date</label>
-                                    <input
-                                        type="date"
-                                        id="changedDate"
-                                        className="form-control"
-                                        defaultValue="2025-02-28"
-                                    />
-                                </div>
-                                <div className="col-md-4 d-flex align-items-center">
-                                    <label htmlFor="changedTime" className="me-2 flex-shrink-0">Changed Time</label>
-                                    <input
-                                        type="time"
-                                        id="changedTime"
-                                        className="form-control"
-                                        defaultValue="12:33"
-                                    />
-                                </div>
-                            </div>
-                            <nav className="d-flex justify-content-between align-items-center mt-3">
-                                <div>
-                                    <span>
-                                        Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredItems}
-                                    </span>
-                                </div>
-                                <ul className="pagination mb-0">
-                                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                        <button className="page-link" disabled>
-                                            &laquo;
-                                        </button>
-                                    </li>
-                                    {[...Array(filteredTotalPages)].map((_, index) => (
-                                        <li
-                                            className={`page-item ${currentPage === index + 1 ? "active" : ""}`}
-                                            key={index}
-                                        >
-                                            <button className="page-link" disabled>
-                                                {index + 1}
-                                            </button>
-                                        </li>
-                                    ))}
-                                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                        <button className="page-link" disabled>
-                                            &raquo;
-                                        </button>
-                                    </li>
-                                </ul>
-                            </nav>
+
+
+<nav className="d-flex justify-content-between align-items-center mt-3">
+                <div>
+                    <span>
+                        Page {currentPage} of {filteredTotalPages} | Total Records: {filteredCountries.length}
+                    </span>
+                </div>
+                <ul className="pagination mb-0">
+                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                        <button 
+                            className="page-link" 
+                            onClick={() => setCurrentPage(currentPage - 1)} 
+                            disabled={currentPage === 1}
+                        >
+                            &laquo; Previous
+                        </button>
+                    </li>
+                    {renderPagination()}
+                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                        <button 
+                            className="page-link" 
+                            onClick={() => setCurrentPage(currentPage + 1)} 
+                            disabled={currentPage === filteredTotalPages}
+                        >
+                            Next &raquo;
+                        </button>
+                    </li>
+                </ul>
+                <div className="d-flex align-items-center">
+                    <input
+                        type="number"
+                        min="1"
+                        max={filteredTotalPages}
+                        value={pageInput}
+                        onChange={(e) => setPageInput(e.target.value)}
+                        placeholder="Go to page"
+                        className="form-control me-2"
+                    />
+                    <button
+                        className="btn btn-primary"
+                        onClick={handlePageNavigation}
+                    >
+                        Go
+                    </button>
+                </div>
+            </nav>
                         </div>
                     </div>
                 </div>
