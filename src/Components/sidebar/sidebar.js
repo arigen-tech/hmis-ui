@@ -66,22 +66,22 @@ const Sidebar = () => {
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="/AddDoctor">
+                  <Link className={`ms-link ${isActive('/AddDoctor') ? 'active' : ''}`} to="/AddDoctor">
                     Add Doctor
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="appointment">
+                  <Link className={`ms-link ${isActive('/appointment') ? 'active' : ''}`} to="appointment">
                     Appointment
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="doctor-profile">
+                  <Link className={`ms-link ${isActive('/doctor-profile') ? 'active' : ''}`} to="doctor-profile">
                     Doctors Profile
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="doctor-schedule">
+                  <Link className={`ms-link ${isActive('/doctor-schedule') ? 'active' : ''}`} to="doctor-schedule">
                     Doctor Schedule
                   </Link>
                 </li>
@@ -249,52 +249,52 @@ const Sidebar = () => {
               {/* Menu: Sub menu ul */}
               <ul className="sub-menu collapse" id="menu-master">
                 <li>
-                  <Link className="ms-link" to="Gendermaster">
+                  <Link className={`ms-link ${isActive('/Gendermaster') ? 'active' : ''}`} to="Gendermaster">
                     Gender Master
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="Relationmaster">
+                  <Link  className={`ms-link ${isActive('/Relationmaster') ? 'active' : ''}`} to="Relationmaster">
                     Relation Master
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="Bloodmaster">
+                  <Link className={`ms-link ${isActive('/Bloodmaster') ? 'active' : ''}`} to="Bloodmaster">
                     Blood Group Master
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="titlemaster">
+                  <Link className={`ms-link ${isActive('/titlemaster') ? 'active' : ''}`}to="titlemaster">
                     Title Master
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="maritalstatusmaster">
+                  <Link className={`ms-link ${isActive('/maritalstatusmaster') ? 'active' : ''}`} to="maritalstatusmaster">
                     Marital Status Master
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="departmenttype">
+                  <Link className={`ms-link ${isActive('/departmenttype') ? 'active' : ''}`} to="departmenttype">
                     Department Type
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="departmentmaster">
+                  <Link className={`ms-link ${isActive('/departmentmaster') ? 'active' : ''}`} to="departmentmaster">
                     Department Master
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="countrymaster">
+                  <Link className={`ms-link ${isActive('/countrymaster') ? 'active' : ''}`} to="countrymaster">
                     Country Master
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="statemaster">
+                  <Link className={`ms-link ${isActive('/statemaster') ? 'active' : ''}`} to="statemaster">
                     State Master
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="districtmaster">
+                  <Link className={`ms-link ${isActive('/districtmaster') ? 'active' : ''}`} to="districtmaster">
                     District Master
                   </Link>
                 </li>
@@ -312,28 +312,28 @@ const Sidebar = () => {
                 <span className="arrow icofont-rounded-down ms-auto text-end fs-5" />
               </Link>
               <ul className="sub-menu collapse" id="menu-Store">
-                <li className={`nav-item ${isActive('/itemclass') ? 'active' : ''}`}>
+                <li>
                   <Link className={`ms-link ${isActive('/itemclass') ? 'active' : ''}`} to="itemclass">
                     Item Class
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="itemcategory">
+                  <Link  className={`ms-link ${isActive('/itemcategory') ? 'active' : ''}`} to="itemcategory">
                     Item Category
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="itemtype">
+                  <Link className={`ms-link ${isActive('/itemtype') ? 'active' : ''}`} to="itemtype">
                     Item Type
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="itemunit">
+                  <Link className={`ms-link ${isActive('/itemunit') ? 'active' : ''}`}  to="itemunit">
                     Item Unit
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="drugmaster">
+                  <Link className={`ms-link ${isActive('/drugmaster') ? 'active' : ''}`} to="drugmaster">
                     Drug Master
                   </Link>
                 </li>
@@ -357,52 +357,52 @@ const Sidebar = () => {
               {/* Menu: Sub menu ul */}
               <ul className="sub-menu collapse" id="menu-admin">
                 <li>
-                  <Link className="ms-link" to="ApointmentSetup">
+                  <Link className={`ms-link ${isActive('/ApointmentSetup') ? 'active' : ''}`}  to="ApointmentSetup">
                     Apointment Setup
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="DoctorRoaster">
+                  <Link className={`ms-link ${isActive('/DoctorRoaster') ? 'active' : ''}`} to="DoctorRoaster">
                     Doctor Roaster
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="RegisterEmployee">
+                  <Link className={`ms-link ${isActive('/RegisterEmployee') ? 'active' : ''}`}  to="RegisterEmployee">
                   Register Employee
                   </Link>
                 </li> 
                 <li>
-                  <Link className="ms-link" to="ViewSearchEmployee">
+                  <Link className={`ms-link ${isActive('/ViewSearchEmployee') ? 'active' : ''}`} to="ViewSearchEmployee">
                    View and Search Employee
                   </Link>
                 </li>    
                 <li>
-                  <Link className="ms-link" to="manageuserapplication">
+                  <Link className={`ms-link ${isActive('/manageuserapplication') ? 'active' : ''}`} to="manageuserapplication">
                     Manage User Application
                   </Link>
                 </li>
                 <li>
-                  <Link className="ms-link" to="addformreports">
+                  <Link className={`ms-link ${isActive('/addformreports') ? 'active' : ''}`} to="addformreports">
                     Add Form/Reports
                   </Link>
                 </li>
                 <li>
-                  <Link className='ms-link' to="/templatemaster">
+                  <Link className={`ms-link ${isActive('/templatemaster') ? 'active' : ''}`} to="templatemaster">
                     Manage Template
                   </Link>
                 </li>
                 <li>
-                  <Link className='ms-link' to="/assignapplication">
+                  <Link className={`ms-link ${isActive('/assignapplication') ? 'active' : ''}`} to="/assignapplication">
                     Assign Application To Template
                   </Link>
                 </li>
                 <li>
-                  <Link className='ms-link' to="/rolesrights">
+                  <Link className={`ms-link ${isActive('/rolesrights') ? 'active' : ''}`} to="/rolesrights">
                     Roles Rights
                   </Link>
                 </li>
                 <li>
-                  <Link className='ms-link' to="/rolemaster">
+                  <Link className={`ms-link ${isActive('/rolemaster') ? 'active' : ''}`}  to="/rolemaster">
                     Role Master
                   </Link>
                 </li>
