@@ -10,28 +10,83 @@ const Departmenttype = () => {
         { id: 5, departmentTypeCode: "OT", departmentTypeName: "Operation Theatre", status: "y" },
     ]);
 
+
+    const [searchQuery, setSearchQuery] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageInput, setPageInput] = useState("");
+    const itemsPerPage = 4;
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, categoryId: null, newStatus: false });
+    const [popupMessage, setPopupMessage] = useState(null);
+    const [showForm, setShowForm] = useState(false);
+    const [editingType, setEditingType] = useState(null);
+    const [isFormValid, setIsFormValid] = useState(false);
     const [formData, setFormData] = useState({
         departmentTypeCode: "",
         departmentTypeName: "",
     });
-    const [searchQuery, setSearchQuery] = useState("");
-    const [showForm, setShowForm] = useState(false);
-    const [isFormValid, setIsFormValid] = useState(false);
-    const [editingType, setEditingType] = useState(null);
-    const [popupMessage, setPopupMessage] = useState(null);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [filteredTotalPages, setFilteredTotalPages] = useState(1);
     const [totalFilteredItems, setTotalFilteredItems] = useState(0);
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
+        setCurrentPage(1); 
     };
 
     const filteredDepartmentTypes = departmentTypes.filter(type =>
         type.departmentTypeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         type.departmentTypeCode.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    const currentItems = filteredDepartmentTypes.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+    const filteredTotalPages = Math.ceil(filteredDepartmentTypes.length / itemsPerPage);
+    const handlePageNavigation = () => {
+        const pageNumber = parseInt(pageInput, 10);
+        if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
+            setCurrentPage(pageNumber);
+        } else {
+            alert("Please enter a valid page number.");
+        }
+    };
+
+    const renderPagination = () => {
+        const pageNumbers = [];
+        const maxVisiblePages = 5; 
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
+
+        if (endPage - startPage < maxVisiblePages - 1) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        if (startPage > 1) {
+            pageNumbers.push(1);
+            if (startPage > 2) pageNumbers.push("..."); 
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            pageNumbers.push(i);
+        }
+
+        if (endPage < filteredTotalPages) {
+            if (endPage < filteredTotalPages - 1) pageNumbers.push("..."); 
+            pageNumbers.push(filteredTotalPages);
+        }
+
+        return pageNumbers.map((number, index) => (
+            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
+                {typeof number === "number" ? (
+                    <button className="page-link" onClick={() => setCurrentPage(number)}>
+                        {number}
+                    </button>
+                ) : (
+                    <span className="page-link disabled">{number}</span>
+                )}
+            </li>
+        ));
+    };
+
 
     const handleEdit = (type) => {
         setEditingType(type);
@@ -44,17 +99,18 @@ const Departmenttype = () => {
 
         const formElement = e.target;
         const updatedDepartmentTypeName = formElement.departmentTypeName.value;
+        const updatedDepartmentTypeCode = formElement.departmentTypeCode.value;
 
         if (editingType) {
             setDepartmentTypes(departmentTypes.map(type =>
                 type.id === editingType.id
-                    ? { ...type, departmentTypeName: updatedDepartmentTypeName }
+                    ? { ...type, departmentTypeName: updatedDepartmentTypeName, departmentTypeCode: updatedDepartmentTypeCode }
                     : type
             ));
         } else {
             const newType = {
                 id: departmentTypes.length + 1,
-                departmentTypeCode: formData.departmentTypeCode,
+                departmentTypeCode: updatedDepartmentTypeCode,
                 departmentTypeName: updatedDepartmentTypeName,
                 status: "y"
             };
@@ -146,9 +202,15 @@ const Departmenttype = () => {
                                         </div>
                                     </form>
                                     {!showForm ? (
+                                        <>
+                                        <button type="button" className = "btn btn-success me-1" onClick={()=> setShowForm(true)}>
+                                            <i className="mdi mdi-plus"></i> ADD
+                                        </button>
                                         <button type="button" className="btn btn-success me-2">
                                             <i className="mdi mdi-plus"></i> Generate Report 
                                         </button>
+                                        </>
+
                                     ) : (
                                         <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
                                             <i className="mdi mdi-arrow-left"></i> Back
@@ -170,66 +232,58 @@ const Departmenttype = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {filteredDepartmentTypes.map((type) => (
-                                                <tr key={type.id}>
-                                                    <td>{type.departmentTypeCode}</td>
-                                                    <td>{type.departmentTypeName}</td>
-                                                    <td>
-                                                        <div className="form-check form-switch">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={type.status === "y"}
-                                                                onChange={() => handleSwitchChange(type.id, type.status === "y" ? "n" : "y")}
-                                                                id={`switch-${type.id}`}
-                                                            />
-                                                            <label
-                                                                className="form-check-label px-0"
-                                                                htmlFor={`switch-${type.id}`}
-                                                                onClick={() => handleSwitchChange(type.id, type.status === "y" ? "n" : "y")}
-                                                            >
-                                                                {type.status === "y" ? 'Active' : 'Deactivated'}
-                                                            </label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-success me-2"
-                                                            onClick={() => handleEdit(type)}
-                                                            disabled={type.status !== "y"}
+                                        {currentItems.map((type) => (
+                                            <tr key={type.id}>
+                                                <td>{type.departmentTypeCode}</td>
+                                                <td>{type.departmentTypeName}</td>
+                                                <td>
+                                                    <div className="form-check form-switch">
+                                                        <input
+                                                            className="form-check-input"
+                                                            type="checkbox"
+                                                            checked={type.status === "y"}
+                                                            onChange={() => handleSwitchChange(type.id, type.status === "y" ? "n" : "y")}
+                                                            id={`switch-${type.id}`}
+                                                        />
+                                                        <label
+                                                            className="form-check-label px-0"
+                                                            htmlFor={`switch-${type.id}`}
+                                                            onClick={() => handleSwitchChange(type.id, type.status === "y" ? "n" : "y")}
                                                         >
-                                                            <i className="fa fa-pencil"></i>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
+                                                            {type.status === "y" ? 'Active' : 'Deactivated'}
+                                                        </label>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <button
+                                                        className="btn btn-sm btn-success me-2"
+                                                        onClick={() => handleEdit(type)}
+                                                        disabled={type.status !== "y"}
+                                                    >
+                                                        <i className="fa fa-pencil"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
                                     </table>
-                                    <div className="row">
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>Department Type Code <span className="text-danger">*</span></label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                id="departmentTypeCode"
-                                                placeholder="Department Type Code"
-                                                required
-                                            />
-                                        </div>
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>Department Type Name <span className="text-danger">*</span></label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                id="departmentTypeName"
-                                                placeholder="Department Type Name"
-                                                required
-                                            />
-                                        </div>
-                                    </div>
+                                   
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
+                                    <div className="form-group col-md-6">
+                                        <label>Department Type Code <span className="text-danger">*</span></label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            id="departmentTypeCode"
+                                            name="departmentTypeCode"
+                                            placeholder="Code"
+                                            defaultValue={editingType ? editingType.departmentTypeCode : ""}
+                                            onChange={(e) => setIsFormValid(e.target.value.trim() !== "")}
+                                            required
+                                        />
+                                    </div>
                                     <div className="form-group col-md-6">
                                         <label>Department Type Name <span className="text-danger">*</span></label>
                                         <input
@@ -283,84 +337,52 @@ const Departmenttype = () => {
                                     </div>
                                 </div>
                             )}
-                            {!showForm && (
-                                <div className="d-flex justify-content-start mb-2 mt-3">
-                                    <button type="button" className="btn btn-warning me-2" onClick={() => setShowForm(true)}>
-                                        <i className="mdi mdi-plus"></i> Add
-                                    </button>
-                                    <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
-                                        <i className="mdi mdi-plus"></i> Update
-                                    </button>
-                                    <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
-                                        <i className="mdi mdi-plus"></i> Activate
-                                    </button>
-                                    <button type="button" className="btn btn-danger" onClick={() => {
-                                        setFormData({ departmentTypeCode: "", departmentTypeName: "" });
-                                        setShowForm(false);
-                                    }}>
-                                        <i className="mdi mdi-refresh"></i> Reset
-                                    </button>
-                                </div>
-                            )}
-                            <div className="row mb-3">
-                                <div className="col-md-4 d-flex align-items-center">
-                                    <label htmlFor="changedBy" className="me-2 flex-shrink-0">Changed By</label>
-                                    <input
-                                        type="text"
-                                        id="changedBy"
-                                        className="form-control"
-                                        placeholder="Enter Changed By"
-                                        defaultValue="54321"
-                                    />
-                                </div>
-                                <div className="col-md-4 d-flex align-items-center">
-                                    <label htmlFor="changedDate" className="me-2 flex-shrink-0">Changed Date</label>
-                                    <input
-                                        type="date"
-                                        id="changedDate"
-                                        className="form-control"
-                                        defaultValue="2025-02-28"
-                                    />
-                                </div>
-                                <div className="col-md-4 d-flex align-items-center">
-                                    <label htmlFor="changedTime" className="me-2 flex-shrink-0">Changed Time</label>
-                                    <input
-                                        type="time"
-                                        id="changedTime"
-                                        className="form-control"
-                                        defaultValue="12:33"
-                                    />
-                                </div>
-                            </div>
-                            <nav className="d-flex justify-content-between align-items-center mt-3">
-                                <div>
-                                    <span>
-                                        Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredItems}
-                                    </span>
-                                </div>
-                                <ul className="pagination mb-0">
-                                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                        <button className="page-link" disabled>
-                                            &laquo;
-                                        </button>
-                                    </li>
-                                    {[...Array(filteredTotalPages)].map((_, index) => (
-                                        <li
-                                            className={`page-item ${currentPage === index + 1 ? "active" : ""}`}
-                                            key={index}
-                                        >
-                                            <button className="page-link" disabled>
-                                                {index + 1}
+
+<nav className="d-flex justify-content-between align-items-center mt-3">
+                                    <div>
+                                        <span>
+                                            Page {currentPage} of {filteredTotalPages} | Total Records: {filteredDepartmentTypes.length}
+                                        </span>
+                                    </div>
+                                    <ul className="pagination mb-0">
+                                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                                            <button 
+                                                className="page-link" 
+                                                onClick={() => setCurrentPage(currentPage - 1)} 
+                                                disabled={currentPage === 1}
+                                            >
+                                                &laquo; Previous
                                             </button>
                                         </li>
-                                    ))}
-                                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                        <button className="page-link" disabled>
-                                            &raquo;
+                                        {renderPagination()}
+                                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                                            <button 
+                                                className="page-link" 
+                                                onClick={() => setCurrentPage(currentPage + 1)} 
+                                                disabled={currentPage === filteredTotalPages}
+                                            >
+                                                Next &raquo;
+                                            </button>
+                                        </li>
+                                    </ul>
+                                    <div className="d-flex align-items-center">
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max={filteredTotalPages}
+                                            value={pageInput}
+                                            onChange={(e) => setPageInput(e.target.value)}
+                                            placeholder="Go to page"
+                                            className="form-control me-2"
+                                        />
+                                        <button
+                                            className="btn btn-primary"
+                                            onClick={handlePageNavigation}
+                                        >
+                                            Go
                                         </button>
-                                    </li>
-                                </ul>
-                            </nav>
+                                    </div>
+                                </nav>
                         </div>
                     </div>
                 </div>
