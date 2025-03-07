@@ -218,8 +218,8 @@ const Departmenttype = () => {
                                     <table className="table table-bordered table-hover align-middle">
                                         <thead className="table-light">
                                             <tr>
-                                                <th>Department Type Code</th>
                                                 <th>Department Type Name</th>
+                                                <th>Department Type Code</th>
                                                 <th>Status</th>
                                                 <th>Edit</th>
                                             </tr>
@@ -227,8 +227,8 @@ const Departmenttype = () => {
                                         <tbody>
                                             {currentItems.map((type) => (
                                                 <tr key={type.id}>
-                                                    <td>{type.departmentTypeCode}</td>
                                                     <td>{type.departmentTypeName}</td>
+                                                    <td>{type.departmentTypeCode}</td>
                                                     <td>
                                                         <div className="form-check form-switch">
                                                             <input
