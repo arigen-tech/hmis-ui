@@ -136,7 +136,6 @@ const DepartmentMaster = () => {
     const [pageInput, setPageInput] = useState("")
     const itemsPerPage = 5
 
-    // Get filtered departments based on search criteria
     const getFilteredDepartments = () => {
         if (!searchQuery) return departments
 
@@ -154,7 +153,6 @@ const DepartmentMaster = () => {
     const filteredTotalPages = Math.ceil(filteredDepartments.length / itemsPerPage)
     const totalFilteredItems = filteredDepartments.length
 
-    // Calculate current items based on current page and filtered departments
     const getCurrentItems = () => {
         const startIndex = (currentPage - 1) * itemsPerPage
         const endIndex = startIndex + itemsPerPage
@@ -163,22 +161,20 @@ const DepartmentMaster = () => {
 
     const currentItems = getCurrentItems()
 
-    // Reset to page 1 if current page is out of bounds after filtering
     useEffect(() => {
         if (currentPage > filteredTotalPages && filteredTotalPages > 0) {
             setCurrentPage(1)
         }
     }, [filteredDepartments, currentPage, filteredTotalPages])
 
-    // Handle search and filter changes
     const handleSearchChange = (value) => {
         setSearchQuery(value)
-        setCurrentPage(1) // Reset to first page when search changes
+        setCurrentPage(1) 
     }
 
     const handleSearchTypeChange = (value) => {
         setSearchType(value)
-        setCurrentPage(1) // Reset to first page when search type changes
+        setCurrentPage(1) 
     }
 
     const handlePageNavigation = () => {
@@ -191,25 +187,23 @@ const DepartmentMaster = () => {
     }
 
 
-const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    setFormData((prevData) => ({ ...prevData, [id]: value }));
+    const handleInputChange = (e) => {
+        const { id, value } = e.target;
+        setFormData((prevData) => ({ ...prevData, [id]: value }));
 
-    // Check if all required fields have values
-    const updatedFormData = { ...formData, [id]: value };
-    const isValid =
-        updatedFormData.departmentCode.trim() !== "" &&
-        updatedFormData.department.trim() !== "" &&
-        updatedFormData.departmentType.trim() !== "" &&
-        updatedFormData.departmentNumber.trim() !== "";
+        const updatedFormData = { ...formData, [id]: value };
+        const isValid =
+            updatedFormData.departmentCode.trim() !== "" &&
+            updatedFormData.department.trim() !== "" &&
+            updatedFormData.departmentType.trim() !== "" &&
+            updatedFormData.departmentNumber.trim() !== "";
 
-    setIsFormValid(isValid); // Update the form validity state
-};
+        setIsFormValid(isValid); 
+    };
 
-// In your form rendering
-<button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-    Save
-</button>
+    <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
+        Save
+    </button>
 
     const renderPagination = () => {
         const pageNumbers = []
@@ -373,7 +367,7 @@ const handleInputChange = (e) => {
                                         </button>
                                         <button
                                             type="button"
-                                            className="btn btn-success me-2"
+                                            className="btn btn-success"
                                             onClick={() => {
                                                 setShowForm(true)
                                                 setEditingType(null)
@@ -388,7 +382,7 @@ const handleInputChange = (e) => {
                                         >
                                             <i className="mdi mdi-plus"></i> Add
                                         </button>
-                                        <div className="ms-3">
+                                        <div className="ms-1">
                                             {!showForm ? (
                                                 <button type="button" className="btn btn-success me-2">
                                                     <i className="mdi mdi-file-export"></i> Generate Report
@@ -460,15 +454,16 @@ const handleInputChange = (e) => {
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
-                                <div className="d-flex justify-content-end">
-                                    <button
-                                        type="button"
-                                        className="btn btn-secondary" // Use btn-sm for a smaller button and float-end to align it to the right
-                                        onClick={() => setShowForm(false)} // Set showForm to false to close the form
-                                    >
-                                        <i className="mdi mdi-arrow-left"></i> Back
-                                    </button>
-                                </div>
+
+                                    <div className="d-flex justify-content-end">
+                                        <button
+                                            type="button"
+                                            className="btn btn-secondary" // Use btn-sm for a smaller button and float-end to align it to the right
+                                            onClick={() => setShowForm(false)} // Set showForm to false to close the form
+                                        >
+                                            <i className="mdi mdi-arrow-left"></i> Back
+                                        </button>
+                                    </div>
 
                                     <div className="form-group col-md-6 ">
                                         <label>
@@ -504,16 +499,21 @@ const handleInputChange = (e) => {
                                         <label>
                                             Department Type <span className="text-danger">*</span>
                                         </label>
-                                        <input
-                                            type="text"
+                                        <select
                                             className="form-control"
                                             id="departmentType"
                                             name="departmentType"
-                                            placeholder="Department Type"
                                             value={formData.departmentType}
                                             onChange={handleInputChange}
                                             required
-                                        />
+                                        >
+                                            <option value="">Select Department Type</option>
+                                            <option value="Clinic">Clinic</option>
+                                            <option value="Diagnostics">Diagnostics</option>
+                                            <option value="Dispensary">Dispensary</option>
+                                            <option value="Stores">Stores</option>
+                                            <option value="Ward">Ward</option>
+                                        </select>
                                     </div>
                                     <div className="form-group col-md-6 mt-2">
                                         <label>
@@ -530,9 +530,9 @@ const handleInputChange = (e) => {
                                             required
                                         />
                                     </div>
-                                   
 
-                                    <div className="form-group col-md-12 d-flex justify-content-end">
+
+                                    <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                                             Save
                                         </button>
