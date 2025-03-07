@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { DEPARTMENT, DOCTOR, SESSION, APPOINTMENT } from "../../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../../service/apiService";
+import Popup from "../../../../Components/popup";
 
 const AppointmentSetup = () => {
+  const [popup, setPopup] = useState("");
+  const [popupMessage, setPopupMessage] = useState("");
   const [department, setDepartment] = useState("");
   const [doctor, setDoctor] = useState("");
   const [session, setSession] = useState("");
@@ -15,15 +18,26 @@ const AppointmentSetup = () => {
   const [loading, setLoading] = useState(false);
   const [appointmentData, setAppointmentData] = useState(null);
 
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+
+      },
+    });
+  };
+
   const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const initialDaysState = daysOfWeek.reduce((acc, day) => {
     acc[day] = {
-      tokenStartNo: "",
-      tokenInterval: "",
+      startToken: "",
+      totalInterval: "",
       totalToken: "",
       totalOnlineToken: "",
-      maxDays: "",
-      minDays: ""
+      maxNoOfDays: "",
+      minNoOfDays: ""
     };
     return acc;
   }, {});
@@ -33,9 +47,14 @@ const AppointmentSetup = () => {
 
   useEffect(() => {
     fetchDepartmentData();
-    fetchDoctorData();
     fetchSessionData();
   }, []);
+
+  useEffect(() => {
+    if (department) {
+      fetchDoctorData();
+    }
+  }, [department]);
 
   const fetchDepartmentData = async () => {
     setLoading(true);
@@ -57,9 +76,8 @@ const AppointmentSetup = () => {
 
   const fetchDoctorData = async () => {
     setLoading(true);
-
     try {
-      const data = await getRequest(DOCTOR);
+      const data = await getRequest(`${DEPARTMENT}/userDepartments/${department}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setDoctorData(data.response);
       } else {
@@ -77,7 +95,7 @@ const AppointmentSetup = () => {
     setLoading(true);
 
     try {
-      const data = await getRequest(SESSION);
+      const data = await getRequest(`${SESSION}/all`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setSessionData(data.response);
       } else {
@@ -91,39 +109,48 @@ const AppointmentSetup = () => {
     }
   };
 
+  console.log(doctorData);
+
   useEffect(() => {
     if (department && doctor && session) {
       handleFetchAppointment();
     }
   }, [department, doctor, session]);
 
+  const handleDepartmentChange = (event) => {
+    setDepartment(event.target.value);
+  };
+
   const handleFetchAppointment = async () => {
     try {
       setLoading(true);
-      const data = await postRequest(APPOINTMENT, {
-        department,
-        doctor,
-        session,
-      });
 
-      if (data.status === 200 && data.response) {
+      const url = `${APPOINTMENT}/find?deptId=${department}&doctorId=${doctor}&sessionId=${session}`;
+
+      const data = await getRequest(url);
+
+      if (data?.status === 200 && data?.response) {
+        const { startTime, endTime, timeTaken, days } = data.response;
+
         setAppointmentData(data.response);
-        setStartTime(data.response.startTime);
-        setEndTime(data.response.endTime);
-        setTimeTaken(data.response.timeTaken);
+        setStartTime(startTime);
+        setEndTime(endTime);
+        setTimeTaken(timeTaken);
 
-        if (data.response.days && Array.isArray(data.response.days)) {
+        if (Array.isArray(days)) {
           const updatedDaysConfig = { ...initialDaysState };
 
-          data.response.days.forEach(dayConfig => {
-            if (dayConfig.day && updatedDaysConfig[dayConfig.day]) {
-              updatedDaysConfig[dayConfig.day] = {
-                tokenStartNo: dayConfig.tokenStartNo || "",
-                tokenInterval: dayConfig.tokenInterval || "",
+          days.forEach((dayConfig) => {
+            const dayName = dayConfig.days || dayConfig.day;
+
+            if (dayName && updatedDaysConfig[dayName]) {
+              updatedDaysConfig[dayName] = {
+                startToken: dayConfig.startToken || "",
+                totalInterval: dayConfig.totalInterval || "",
                 totalToken: dayConfig.totalToken || "",
                 totalOnlineToken: dayConfig.totalOnlineToken || "",
-                maxDays: dayConfig.maxNoOfDay || "",
-                minDays: dayConfig.minNoOfday || ""
+                maxNoOfDays: dayConfig.maxNoOfDays || "",
+                minNoOfDays: dayConfig.minNoOfDays || ""
               };
             }
           });
@@ -135,11 +162,12 @@ const AppointmentSetup = () => {
         setDaysConfig(initialDaysState);
       }
     } catch (error) {
-      console.error("Error fetching Appointment data:", error);
+      console.error("Error fetching appointment data:", error);
     } finally {
       setLoading(false);
     }
   };
+
 
 
   const handleDayConfigChange = (day, field, value) => {
@@ -156,50 +184,53 @@ const AppointmentSetup = () => {
     e.preventDefault();
 
     const requestData = {
+      id: appointmentData ? appointmentData.id : null,
       departmentId: department,
       doctorId: doctor,
       sessionId: session,
       startTime,
       endTime,
       timeTaken,
-      days: daysOfWeek.map(day => ({
-        day,
-        tokenStartNo: daysConfig[day].tokenStartNo,
-        tokenInterval: daysConfig[day].tokenInterval,
-        totalToken: daysConfig[day].totalToken,
-        totalOnlineToken: daysConfig[day].totalOnlineToken,
-        maxNoOfDay: daysConfig[day].maxDays,
-        minNoOfday: daysConfig[day].minDays
-      }))
-    };
+      days: daysOfWeek.map(day => {
+        const existingDay = appointmentData?.days?.find(d => (d.days || d.day) === day);
 
+        return {
+          id: appointmentData ? (existingDay?.id || null) : null,
+          day: day,
+          tokenStartNo: daysConfig[day].startToken,
+          tokenInterval: daysConfig[day].totalInterval,
+          totalToken: daysConfig[day].totalToken,
+          totalOnlineToken: daysConfig[day].totalOnlineToken,
+          maxNoOfDay: daysConfig[day].maxNoOfDays,
+          minNoOfday: daysConfig[day].minNoOfDays
+        };
+      })
+    };
 
     console.log(requestData);
 
     try {
       setLoading(true);
-      if (appointmentData) {
-        const response = await putRequest(`${APPOINTMENT}/${appointmentData.id}`, requestData);
-        if (response.status === 200) {
-          alert("Appointment updated successfully!");
-        } else {
-          alert("Failed to update appointment.");
-        }
+      const response = appointmentData
+        ? await postRequest(`${APPOINTMENT}/setup`, requestData)
+        : await postRequest(`${APPOINTMENT}/setup`, requestData);
+
+      if ((appointmentData && response.status === 200) || (!appointmentData && response.status === 201)) {
+        showPopup(response.message || `Appointment ${appointmentData ? "updated" : "created"} successfully!`, "success");
+        handleReset();
       } else {
-        const response = await postRequest(APPOINTMENT, requestData);
-        if (response.status === 201) {
-          alert("Appointment created successfully!");
-        } else {
-          alert("Failed to create appointment.");
-        }
+        showPopup(`Failed to ${appointmentData ? "update" : "create"} Appointment. Please try again.`, "error");
       }
     } catch (error) {
-      console.error("Error submitting appointment:", error);
-      alert("An error occurred: " + (error.message || "Unknown error"));
+      showPopup(
+        "An error occurred: " + (error.message || "Unknown error"),
+        "error"
+      );
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleReset = () => {
     setDepartment("");
@@ -216,6 +247,13 @@ const AppointmentSetup = () => {
     <>
       <div className="body d-flex py-3">
         <div className="container-xxl">
+          {popupMessage && (
+            <Popup
+              message={popupMessage.message}
+              type={popupMessage.type}
+              onClose={popupMessage.onClose}
+            />
+          )}
           <div className="row align-items-center">
             <div className="border-0 mb-4">
               <div className="card-header py-3 bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
@@ -240,7 +278,7 @@ const AppointmentSetup = () => {
                           <option value="" disabled>Select</option>
                           {departmentData.map((dept) => (
                             <option key={dept.id} value={dept.id}>
-                              {dept.name}
+                              {dept.departmentName}
                             </option>
                           ))}
                         </select>
@@ -256,14 +294,16 @@ const AppointmentSetup = () => {
                           disabled={!department}
                         >
                           <option value="">Select Doctor</option>
-                          {department &&
-                            doctorData[department]?.map((doc) => (
-                              <option key={doc.id} value={doc.id}>
-                                {doc.name}
+                          {doctorData
+                            .filter((doc) => doc.departmentId === parseInt(department))
+                            .map((doc) => (
+                              <option key={doc.userId} value={doc.userId}>
+                                {doc.userName}
                               </option>
                             ))}
                         </select>
                       </div>
+
 
                       <div className="col-md-4">
                         <label className="form-label">Session *</label>
@@ -276,7 +316,7 @@ const AppointmentSetup = () => {
                           <option value="" disabled>Select</option>
                           {sessionData.map((sess) => (
                             <option key={sess.id} value={sess.id}>
-                              {sess.name}
+                              {sess.sessionName}
                             </option>
                           ))}
                         </select>
@@ -337,16 +377,16 @@ const AppointmentSetup = () => {
                                   <input
                                     type="text"
                                     className="form-control"
-                                    value={daysConfig[day].tokenStartNo}
-                                    onChange={(e) => handleDayConfigChange(day, "tokenStartNo", parseInt(e.target.value) || 0)}
+                                    value={daysConfig[day].startToken}
+                                    onChange={(e) => handleDayConfigChange(day, "startToken", parseInt(e.target.value) || 0)}
                                   />
                                 </td>
                                 <td>
                                   <input
                                     type="text"
                                     className="form-control"
-                                    value={daysConfig[day].tokenInterval}
-                                    onChange={(e) => handleDayConfigChange(day, "tokenInterval", parseInt(e.target.value) || 0)}
+                                    value={daysConfig[day].totalInterval}
+                                    onChange={(e) => handleDayConfigChange(day, "totalInterval", parseInt(e.target.value) || 0)}
                                   />
                                 </td>
                                 <td>
@@ -372,16 +412,16 @@ const AppointmentSetup = () => {
                                   <input
                                     type="text"
                                     className="form-control"
-                                    value={daysConfig[day].maxDays}
-                                    onChange={(e) => handleDayConfigChange(day, "maxDays", parseInt(e.target.value) || 0)}
+                                    value={daysConfig[day].maxNoOfDays}
+                                    onChange={(e) => handleDayConfigChange(day, "maxNoOfDays", parseInt(e.target.value) || 0)}
                                   />
                                 </td>
                                 <td>
                                   <input
                                     type="text"
                                     className="form-control"
-                                    value={daysConfig[day].minDays}
-                                    onChange={(e) => handleDayConfigChange(day, "minDays", parseInt(e.target.value) || 0)}
+                                    value={daysConfig[day].minNoOfDays}
+                                    onChange={(e) => handleDayConfigChange(day, "minNoOfDays", parseInt(e.target.value) || 0)}
                                   />
                                 </td>
                               </tr>
@@ -391,9 +431,10 @@ const AppointmentSetup = () => {
                       </div>
                     </div>
                     <div className="mt-4">
-                      <button type="submit" className="btn btn-primary me-2">
-                        {appointmentData ? "Update Appointment" : "Create Appointment"}
+                      <button type="submit" className="btn btn-primary me-2" disabled={loading}>
+                        {loading ? "Processing..." : appointmentData ? "Update Appointment" : "Create Appointment"}
                       </button>
+
                       <button type="button" className="btn btn-secondary" onClick={handleReset}>Reset</button>
                     </div>
                   </form>
