@@ -13,30 +13,30 @@ const BloodGroupMaster = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [pageInput, setPageInput] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5; // You can adjust this number as needed
+  const itemsPerPage = 5;
 
   const [bloodGroupData, setBloodGroupData] = useState([
-    { id: 1, bloodGroupName: "O+", status: "y" },
-    { id: 2, bloodGroupName: "B+", status: "y" },
-    { id: 4, bloodGroupName: "A+", status: "y" },
-    { id: 5, bloodGroupName: "A+", status: "y" },
-    { id: 6, bloodGroupName: "A+", status: "y" },
-    { id: 7, bloodGroupName: "A+", status: "y" },
-    { id: 8, bloodGroupName: "A+", status: "y" },
-    { id: 9, bloodGroupName: "A+", status: "y" },
-    { id: 10, bloodGroupName: "A+", status: "y" },
-    { id: 11, bloodGroupName: "A+", status: "y" },
-    { id: 12, bloodGroupName: "A+", status: "y" },
-    { id: 13, bloodGroupName: "A+", status: "y" },
-    { id: 14, bloodGroupName: "A+", status: "y" },
-    { id: 15, bloodGroupName: "A+", status: "y" },
-    { id: 16, bloodGroupName: "A+", status: "y" },
-    { id: 17, bloodGroupName: "A+", status: "y" },
-    { id: 18, bloodGroupName: "A+", status: "y" },
-    { id: 19, bloodGroupName: "A+", status: "y" },
-    { id: 20, bloodGroupName: "A+", status: "y" },
-    { id: 21, bloodGroupName: "A+", status: "y" },
-    { id: 22, bloodGroupName: "A+", status: "y" },
+    { id: 1, bloodGroupName: "O+", bloodGroupCode: "BG001", status: "y" },
+    { id: 2, bloodGroupName: "B+", bloodGroupCode: "BG002", status: "y" },
+    { id: 4, bloodGroupName: "A+", bloodGroupCode: "BG003", status: "y" },
+    { id: 5, bloodGroupName: "A+", bloodGroupCode: "BG004", status: "y" },
+    { id: 6, bloodGroupName: "A+", bloodGroupCode: "BG005", status: "y" },
+    { id: 7, bloodGroupName: "A+", bloodGroupCode: "BG006", status: "y" },
+    { id: 8, bloodGroupName: "A+", bloodGroupCode: "BG007", status: "y" },
+    { id: 9, bloodGroupName: "A+", bloodGroupCode: "BG008", status: "y" },
+    { id: 10, bloodGroupName: "A+", bloodGroupCode: "BG009", status: "y" },
+    { id: 11, bloodGroupName: "A+", bloodGroupCode: "BG010", status: "y" },
+    { id: 12, bloodGroupName: "A+", bloodGroupCode: "BG011", status: "y" },
+    { id: 13, bloodGroupName: "A+", bloodGroupCode: "BG012", status: "y" },
+    { id: 14, bloodGroupName: "A+", bloodGroupCode: "BG013", status: "y" },
+    { id: 15, bloodGroupName: "A+", bloodGroupCode: "BG014", status: "y" },
+    { id: 16, bloodGroupName: "A+", bloodGroupCode: "BG015", status: "y" },
+    { id: 17, bloodGroupName: "A+", bloodGroupCode: "BG016", status: "y" },
+    { id: 18, bloodGroupName: "A+", bloodGroupCode: "BG017", status: "y" },
+    { id: 19, bloodGroupName: "A+", bloodGroupCode: "BG018", status: "y" },
+    { id: 20, bloodGroupName: "A+", bloodGroupCode: "BG019", status: "y" },
+    { id: 21, bloodGroupName: "A+", bloodGroupCode: "BG020", status: "y" },
+    { id: 22, bloodGroupName: "A+", bloodGroupCode: "BG021", status: "y" },
   ]);
 
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, bloodGroupId: null, newStatus: false });
@@ -51,7 +51,7 @@ const BloodGroupMaster = () => {
     setCurrentPage(1); // Reset to first page when search changes
   };
 
-  const handleEdit = (bloodGroup) => { 
+  const handleEdit = (bloodGroup) => {
     setEditingBloodGroup(bloodGroup);
     setShowForm(true);
   };
@@ -59,24 +59,28 @@ const BloodGroupMaster = () => {
   const handleSave = (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-  
-    const updatedBloodName = e.target.bloodGroupName.value;
-  
+
+    // Get form data directly from the form elements
+    const formData = e.target.elements;
+    const updatedBloodName = formData.bloodGroupName.value;
+    const updatedBloodCode = formData.bloodGroupCode.value;
+
     if (editingBloodGroup) {
       setBloodGroupData(bloodGroupData.map(bloodGroup =>
-        bloodGroup.id === editingBloodGroup.id 
-          ? { ...bloodGroup, bloodGroupName: updatedBloodName } 
+        bloodGroup.id === editingBloodGroup.id
+          ? { ...bloodGroup, bloodGroupName: updatedBloodName, bloodGroupCode: updatedBloodCode }
           : bloodGroup
       ));
     } else {
       const newBloodGroup = {
-        id: Date.now(),
+        id: bloodGroupData.length + 1,
         bloodGroupName: updatedBloodName,
+        bloodGroupCode: updatedBloodCode,
         status: "y"
       };
       setBloodGroupData([...bloodGroupData, newBloodGroup]);
     }
-  
+
     setEditingBloodGroup(null);
     setShowForm(false);
     showPopup("Changes saved successfully!", "success");
@@ -120,7 +124,7 @@ const BloodGroupMaster = () => {
         )
       );
     }
-    setConfirmDialog({ isOpen: false, bloodGroupId: null, newStatus: null }); 
+    setConfirmDialog({ isOpen: false, bloodGroupId: null, newStatus: null });
   };
 
   const filteredTotalPages = Math.ceil(filteredBloodGroups.length / itemsPerPage);
@@ -141,7 +145,7 @@ const BloodGroupMaster = () => {
 
   const renderPagination = () => {
     const pageNumbers = [];
-    const maxVisiblePages = 5; 
+    const maxVisiblePages = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
     const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
 
@@ -184,27 +188,33 @@ const BloodGroupMaster = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Blood Group Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search Blood Groups"
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearch}
 
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Blood Groups"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearch}
+
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
+
 
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
-                    <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                      <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                         <i className="mdi mdi-plus"></i> Add
                       </button>
                       <button type="button" className="btn btn-success me-2">
@@ -228,8 +238,8 @@ const BloodGroupMaster = () => {
                   <table className="table table-bordered table-hover align-middle">
                     <thead className="table-light">
                       <tr>
-                        <th>S.No</th>
-                        <th>Blood Group</th>
+                        <th>Blood Code</th>
+                        <th>Blood Name</th>
                         <th>Status</th>
                         <th>Edit</th>
                       </tr>
@@ -237,7 +247,7 @@ const BloodGroupMaster = () => {
                     <tbody>
                       {currentItems.map((bloodGroup) => (
                         <tr key={bloodGroup.id}>
-                          <td>{bloodGroup.id}</td>
+                          <td>{bloodGroup.bloodGroupCode}</td>
                           <td>{bloodGroup.bloodGroupName}</td>
                           <td>
                             <div className="form-check form-switch">
@@ -277,9 +287,9 @@ const BloodGroupMaster = () => {
                     </div>
                     <ul className="pagination mb-0">
                       <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                        <button 
-                          className="page-link" 
-                          onClick={() => setCurrentPage(currentPage - 1)} 
+                        <button
+                          className="page-link"
+                          onClick={() => setCurrentPage(currentPage - 1)}
                           disabled={currentPage === 1}
                         >
                           &laquo; Previous
@@ -287,9 +297,9 @@ const BloodGroupMaster = () => {
                       </li>
                       {renderPagination()}
                       <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                        <button 
-                          className="page-link" 
-                          onClick={() => setCurrentPage(currentPage + 1)} 
+                        <button
+                          className="page-link"
+                          onClick={() => setCurrentPage(currentPage + 1)}
                           disabled={currentPage === filteredTotalPages}
                         >
                           Next &raquo;
@@ -318,13 +328,25 @@ const BloodGroupMaster = () => {
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="form-group col-md-6">
+                    <label>Blood Group Code <span className="text-danger">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="bloodGroupCode"
+                      name="bloodGroupCode"
+                      placeholder="e.g., O+"
+                      defaultValue={editingBloodGroup ? editingBloodGroup.bloodGroupCode : ""}
+                      onChange={() => setIsFormValid(true)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group col-md-4">
                     <label>Blood Group Name <span className="text-danger">*</span></label>
                     <input
                       type="text"
                       className="form-control"
                       id="bloodGroupName"
-                      name="bloodGroupName"
-                      placeholder="e.g., O+"
+                      placeholder="Blood Group Name"
                       defaultValue={editingBloodGroup ? editingBloodGroup.bloodGroupName : ""}
                       onChange={() => setIsFormValid(true)}
                       required
