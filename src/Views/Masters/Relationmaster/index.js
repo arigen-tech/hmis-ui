@@ -1,189 +1,208 @@
-import { useState } from "react"
+import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
-
+import axios from "axios";
+import { API_HOST } from "../../../config/apiConfig";
 
 const Relationmaster = () => {
-
-  const [showForm, setShowForm] = useState(false)
-  const [isFormValid, setIsFormValid] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [editingRelation, setEditingRelation] = useState(null);
-  const [popupMessage, setPopupMessage] = useState(null);
-  const [relationData, setRelationData] = useState([
-    { id: 1, relationName: "F", newRelationName: "Father", status: "y" },
-    { id: 2, relationName: "M", newRelationName: "Mother", status: "y" },
-    { id: 3, relationName: "S", newRelationName: "Wife", status: "y" },
-    { id: 4, relationName: "S", newRelationName: "Husband", status: "y" },
-    { id: 5, relationName: "S", newRelationName: "Self", status: "y" },
-  ])
+  const [relationData, setRelationData] = useState([]);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, relationId: null, newStatus: false });
-
-
-
+  const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
     relationName: "",
-    newRelationName: "",
-  })
+    code: "",
+  });
 
-  const [pageInput, setPageInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editingRelation, setEditingRelation] = useState(null);
+  const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5; // You can adjust this number as needed
+  const [filteredTotalPages, setFilteredTotalPages] = useState(1);
+  const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
+  const [itemsPerPage] = useState(10);
 
+  // Fetch relation data from API
+  useEffect(() => {
+    fetchRelationData();
+  }, []);
 
-  const handleEdit = (relation) => {
-    setEditingRelation(relation);
-    setShowForm(true);
+  const fetchRelationData = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_HOST}/relation/all`);
+
+      if (response.data && response.data.response) {
+        // Transform API response to match our component's data structure
+        const transformedData = response.data.response.map((relation) => ({
+          id: relation.id,
+          relationName: relation.relationName,
+          code: relation.code,
+          status: relation.status, // The API returns status as "y" or "n"
+        }));
+
+        setRelationData(transformedData);
+        setTotalFilteredProducts(transformedData.length);
+        setFilteredTotalPages(Math.ceil(transformedData.length / itemsPerPage));
+      }
+    } catch (err) {
+      console.error("Error fetching relation data:", err);
+      showPopup("Failed to load relation data", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
-    setCurrentPage(1); // Reset to first page when search changes
+    setCurrentPage(1); // Reset to first page when searching
   };
 
-  const filteredRelations = relationData.filter(relation =>
-    relation.relationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    relation.newRelationName.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredRelationData = relationData.filter(
+    (relation) =>
+      relation.relationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      relation.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Get current page items
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredRelationData.slice(indexOfFirstItem, indexOfLastItem);
 
-  const handleSave = (e) => {
+  const handleEdit = (relation) => {
+    setEditingRelation(relation);
+    setFormData({
+      relationName: relation.relationName,
+      code: relation.code,
+    });
+    setIsFormValid(true);
+    setShowForm(true);
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
 
-    const formElement = e.target;
-    const updatedRelationName = formElement.relationName.value;
-    const updatedNewRelationName = formElement.newrelationName.value;
+    try {
+      setLoading(true);
 
-    if (editingRelation) {
-      // Editing existing relation
-      setRelationData(relationData.map(relation =>
-        relation.id === editingRelation.id
-          ? { ...relation, relationName: updatedRelationName, newRelationName :updatedNewRelationName  }
-          : relation
-      ));
-    } else {
-      // Adding new relation
-      const newRelation = {
-        id: relationData.length + 1,
-        relationName: updatedRelationName,
-        newRelationName: updatedNewRelationName,
-        status: "y"
-      };
-      setRelationData([...relationData, newRelation]);
+      if (editingRelation) {
+        // Update existing relation using PUT /relation/update/{id}
+        const response = await axios.put(`${API_HOST}/relation/update/${editingRelation.id}`, {
+          id: editingRelation.id,
+          relationName: formData.relationName,
+          code: formData.code,
+          status: editingRelation.status,
+        });
+
+        if (response.data && response.data.response) {
+          // Update the local state to reflect changes
+          setRelationData((prevData) =>
+            prevData.map((relation) =>
+              relation.id === editingRelation.id ? response.data.response : relation
+            )
+          );
+          showPopup("Relation updated successfully!", "success");
+        }
+      } else {
+        // Add new relation using POST /relation/add
+        const response = await axios.post(`${API_HOST}/relation/add`, {
+          relationName: formData.relationName,
+          code: formData.code,
+          status: "y",
+        });
+
+        if (response.data && response.data.response) {
+          // Add the new relation to local state
+          setRelationData([...relationData, response.data.response]);
+          showPopup("New relation added successfully!", "success");
+        }
+      }
+
+      setEditingRelation(null);
+      setFormData({ relationName: "", code: "" });
+      setShowForm(false);
+      fetchRelationData(); // Refresh the data from server
+    } catch (err) {
+      console.error("Error saving relation data:", err);
+      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+    } finally {
+      setLoading(false);
     }
-
-    setEditingRelation(null);
-    setShowForm(false);
-    showPopup("Changes saved successfully!", "success");
   };
 
-
-  const showPopup = (message, type = 'info') => {
+  const showPopup = (message, type = "info") => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
         setPopupMessage(null);
-      }
+      },
     });
   };
 
-
-
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, relationId: id, newStatus });
+  };
 
-  };
-  const handleConfirm = (confirmed) => {
+  const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.relationId !== null) {
-      setRelationData((prevData) =>
-        prevData.map((relation) =>
-          relation.id === confirmDialog.relationId ? { ...relation, status: confirmDialog.newStatus } : relation
-        )
-      );
+      try {
+        setLoading(true);
+        // Update status using PUT /relation/status/{id}?status=y/n
+        const response = await axios.put(
+          `${API_HOST}/relation/status/${confirmDialog.relationId}?status=${confirmDialog.newStatus}`
+        );
+
+        if (response.data && response.data.response) {
+          // Update the local state to reflect changes
+          setRelationData((prevData) =>
+            prevData.map((relation) =>
+              relation.id === confirmDialog.relationId
+                ? { ...relation, status: confirmDialog.newStatus }
+                : relation
+            )
+          );
+          showPopup(
+            `Relation ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            "success"
+          );
+        }
+      } catch (err) {
+        console.error("Error updating relation status:", err);
+        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+      } finally {
+        setLoading(false);
+      }
     }
-    setConfirmDialog({ isOpen: false, relationId: null, newStatus: null }); // Close dialog
+    setConfirmDialog({ isOpen: false, relationId: null, newStatus: null });
   };
-  const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
 
   const handleInputChange = (e) => {
-    const { id, value } = e.target
-    setFormData((prevData) => ({ ...prevData, [id]: value }))
-  }
+    const { id, value } = e.target;
+    
+    setFormData((prevData) => {
+        const updatedData = { ...prevData, [id]: value };
 
-  const handleCreateFormSubmit = (e) => {
-    e.preventDefault()
-    if (formData.relationName && formData.newRelationName) {
-      setRelationData([...relationData, { ...formData, id: Date.now(), status: "y" }])
-      setFormData({ relationName: "", newRelationName: "" })
-      setShowForm(false)
-    } else {
-      alert("Please fill out all required fields.")
-    }
-  }
+        // Validate the form
+        if (id === "relationName" || id === "code") {
+            setIsFormValid(
+                (updatedData.relationName?.trim() || "") !== "" &&
+                (updatedData.code?.trim() || "") !== ""
+            );
+        }
 
-  const filteredTotalPages = Math.ceil(filteredRelations.length / itemsPerPage);
-
-  const currentItems = filteredRelations.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const handlePageNavigation = () => {
-    const pageNumber = parseInt(pageInput, 10);
-    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-      setCurrentPage(pageNumber);
-    } else {
-      alert("Please enter a valid page number.");
-    }
-  };
-
-  const handleAdd = () => {
-    setFormData({ relationName: "", newRelationName: "" }); // Reset form data
-    setShowForm(true);
+        return updatedData;
+    });
 };
 
-  const renderPagination = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5; // Maximum number of visible page links
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
 
-    // Adjust startPage if there are not enough pages before it
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-
-    // Add first page
-    if (startPage > 1) {
-      pageNumbers.push(1);
-      if (startPage > 2) pageNumbers.push("..."); // Add ellipsis
-    }
-
-    // Add page numbers
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i);
-    }
-
-    // Add last page
-    if (endPage < filteredTotalPages) {
-      if (endPage < filteredTotalPages - 1) pageNumbers.push("..."); // Add ellipsis
-      pageNumbers.push(filteredTotalPages);
-    }
-
-    return pageNumbers.map((number, index) => (
-      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-        {typeof number === "number" ? (
-          <button className="page-link" onClick={() => setCurrentPage(number)}>
-            {number}
-          </button>
-        ) : (
-          <span className="page-link disabled">{number}</span>
-        )}
-      </li>
-    ));
+  const handleRefresh = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+    fetchRelationData();
   };
 
   return (
@@ -200,6 +219,7 @@ const Relationmaster = () => {
                       type="search"
                       className="form-control"
                       placeholder="Search"
+                      aria-label="Search"
                       value={searchQuery}
                       onChange={handleSearchChange}
                     />
@@ -212,11 +232,24 @@ const Relationmaster = () => {
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
-                     <button type="button" className="btn btn-success me-2" onClick={handleAdd}>
-                      <i className="mdi mdi-plus"></i> Add
-                    </button>
-                      <button type="button" className="btn btn-success me-2" onClick={() => setShowModal(true)}>
-                        <i className="mdi mdi-plus"></i> Reports
+                      <button
+                        type="button"
+                        className="btn btn-success me-2"
+                        onClick={() => {
+                          setEditingRelation(null);
+                          setFormData({ relationName: "", code: "" });
+                          setIsFormValid(false);
+                          setShowForm(true);
+                        }}
+                      >
+                        <i className="mdi mdi-plus"></i> Add
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-success me-2"
+                        onClick={handleRefresh}
+                      >
+                        <i className="mdi mdi-refresh"></i> Show All
                       </button>
                     </>
                   ) : (
@@ -228,128 +261,122 @@ const Relationmaster = () => {
               </div>
             </div>
             <div className="card-body">
-              {!showForm ? (
+              {loading ? (
+                <div className="text-center">
+                  <div className="spinner-border" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              ) : !showForm ? (
                 <div className="table-responsive packagelist">
-
                   <table className="table table-bordered table-hover align-middle">
-
                     <thead className="table-light">
                       <tr>
+                        
+                        <th> Relation Code</th>
                         <th>Relation Name</th>
-                        <th>New Relation Name</th>
                         <th>Status</th>
                         <th>Edit</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {currentItems.map((relation) => (
-                        <tr key={relation.id}>
-                          <td>{relation.relationName}</td>
-                          <td>{relation.newRelationName}</td>
-                          <td>
-                            <div className="form-check form-switch">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                checked={relation.status === "y"}
-                                onChange={() => handleSwitchChange(relation.id, relation.status === "y" ? "n" : "y")}
-                                id={`switch-${relation.id}`}
-                              />
-                              <label
-                                className="form-check-label px-0"
-                                htmlFor={`switch-${relation.id}`}
-                                onClick={() => handleSwitchChange(relation.id, relation.status === "y" ? "n" : "y")}
+                      {currentItems.length > 0 ? (
+                        currentItems.map((relation) => (
+                          <tr key={relation.id}>
+                            <td>{relation.relationName}</td>
+                            <td>{relation.code}</td>
+                            <td>
+                              <div className="form-check form-switch">
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  checked={relation.status === "y"}
+                                  onChange={() => handleSwitchChange(relation.id, relation.status === "y" ? "n" : "y")}
+                                  id={`switch-${relation.id}`}
+                                />
+                                <label
+                                  className="form-check-label px-0"
+                                  htmlFor={`switch-${relation.id}`}
+                                >
+                                  {relation.status === "y" ? "Active" : "Deactivated"}
+                                </label>
+                              </div>
+                            </td>
+                            <td>
+                              <button
+                                className="btn btn-sm btn-success me-2"
+                                onClick={() => handleEdit(relation)}
+                                disabled={relation.status !== "y"}
                               >
-                                {relation.status === "y" ? 'Active' : 'Deactivated'}
-                              </label>
-                            </div>
-                          </td>
-                          <td>
-                            <button
-                              className="btn btn-sm btn-success me-2"
-                              onClick={() => handleEdit(relation)}
-                              disabled={relation.status !== "y"}
-                            >
-                              <i className="fa fa-pencil"></i>
-                            </button>
-                          </td>
+                                <i className="fa fa-pencil"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="4" className="text-center">No relation data found</td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
-                  <nav className="d-flex justify-content-between align-items-center mt-3">
-  <div>
-    <span>
-      Page {currentPage} of {filteredTotalPages} | Total Records: {filteredRelations.length}
-    </span>
-  </div>
-  <ul className="pagination mb-0">
-    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-      <button 
-        className="page-link" 
-        onClick={() => setCurrentPage(currentPage - 1)} 
-        disabled={currentPage === 1}
-      >
-        &laquo; Previous
-      </button>
-    </li>
-    {renderPagination()}
-    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-      <button 
-        className="page-link" 
-        onClick={() => setCurrentPage(currentPage + 1)} 
-        disabled={currentPage === filteredTotalPages}
-      >
-        Next &raquo;
-      </button>
-    </li>
-  </ul>
-  <div className="d-flex align-items-center">
-    <input
-      type="number"
-      min="1"
-      max={filteredTotalPages}
-      value={pageInput}
-      onChange={(e) => setPageInput(e.target.value)}
-      placeholder="Go to page"
-      className="form-control me-2"
-    />
-    <button
-      className="btn btn-primary"
-      onClick={handlePageNavigation}
-    >
-      Go
-    </button>
-  </div>
-</nav>
+                  {filteredRelationData.length > 0 && (
+                    <nav className="d-flex justify-content-between align-items-center mt-3">
+                      <div>
+                        <span>
+                          Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredProducts}
+                        </span>
+                      </div>
+                      <ul className="pagination mb-0">
+                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                          <button className="page-link" onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
+                            &laquo;
+                          </button>
+                        </li>
+                        {[...Array(filteredTotalPages)].map((_, index) => (
+                          <li
+                            className={`page-item ${currentPage === index + 1 ? "active" : ""}`}
+                            key={index}
+                          >
+                            <button className="page-link" onClick={() => setCurrentPage(index + 1)}>
+                              {index + 1}
+                            </button>
+                          </li>
+                        ))}
+                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                          <button className="page-link" onClick={() => setCurrentPage((prev) => Math.min(prev + 1, filteredTotalPages))} disabled={currentPage === filteredTotalPages}>
+                            &raquo;
+                          </button>
+                        </li>
+                      </ul>
+                    </nav>
+                  )}
                 </div>
-
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
-
                   <div className="form-group col-md-6">
                     <label>Relation Name <span className="text-danger">*</span></label>
                     <input
                       type="text"
                       className="form-control"
                       id="relationName"
-                      name="relationName" 
-                      placeholder="Enter Name"
-                      defaultValue={editingRelation ? editingRelation.relationName : ""}
-                      onChange={() => setIsFormValid(true)}
+                      name="relationName"
+                      placeholder="Relation Name"
+                      value={formData.relationName}
+                      onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="form-group col-md-6">
-                    <label> New Relation Name <span className="text-danger">*</span></label>
+                    <label> Relation Code <span className="text-danger">*</span></label>
                     <input
                       type="text"
                       className="form-control"
-                      id="newrelationName"
-                      name="newrelationName" 
-                      placeholder="Enter New Relation Name"
-                      defaultValue={editingRelation ? editingRelation.newRelationName : ""}
-                      onChange={() => setIsFormValid(true)}
+                      id="code"
+                      name="code"
+                      placeholder=" Relation code"
+                      value={formData.code}
+                      onChange={handleInputChange}
                       required
                     />
                   </div>
@@ -364,20 +391,23 @@ const Relationmaster = () => {
                 </form>
               )}
               {showModal && (
-                <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+                <div className="modal fade show" style={{ display: "block" }} tabIndex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
                   <div className="modal-dialog">
                     <div className="modal-content">
                       <div className="modal-header">
-                        <h1 className="modal-title fs-5" id="staticBackdropLabel">Modal title</h1>
+                        <h1 className="modal-title fs-5" id="staticBackdropLabel">Relation Reports</h1>
                         <button type="button" className="btn-close" onClick={() => setShowModal(false)} aria-label="Close"></button>
                       </div>
                       <div className="modal-body">
-                        {/* Your modal content goes here */}
-                        ...
+                        <p>Generate reports for relation data:</p>
+                        <div className="list-group">
+                          <button type="button" className="list-group-item list-group-item-action">Relation Distribution Report</button>
+                          <button type="button" className="list-group-item list-group-item-action">Active/Inactive Relation Status Report</button>
+                        </div>
                       </div>
                       <div className="modal-footer">
                         <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
-                        <button type="button" className="btn btn-primary">Understood</button>
+                        <button type="button" className="btn btn-primary">Generate Report</button>
                       </div>
                     </div>
                   </div>
@@ -402,7 +432,8 @@ const Relationmaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{relationData.find(relation => relation.id === confirmDialog.relationId)?.relationName}</strong>?
+                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          <strong>{relationData.find((relation) => relation.id === confirmDialog.relationId)?.relationName}</strong>?
                         </p>
                       </div>
                       <div className="modal-footer">
@@ -418,8 +449,7 @@ const Relationmaster = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
 export default Relationmaster;
-
