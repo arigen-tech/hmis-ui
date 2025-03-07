@@ -1,6 +1,6 @@
+"use client"
 
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 
 const DepartmentMaster = () => {
@@ -11,7 +11,6 @@ const DepartmentMaster = () => {
             department: "Outpatient Department",
             departmentType: "Clinic",
             departmentNumber: "0601",
-            division: "Medical",
             status: "y",
         },
         {
@@ -20,7 +19,6 @@ const DepartmentMaster = () => {
             department: "Radiology",
             departmentType: "Diagnostics",
             departmentNumber: "0602",
-            division: "Medical",
             status: "y",
         },
         {
@@ -29,7 +27,6 @@ const DepartmentMaster = () => {
             department: "Pharmacy",
             departmentType: "Dispensary",
             departmentNumber: "0603",
-            division: "Medical",
             status: "y",
         },
         {
@@ -38,7 +35,6 @@ const DepartmentMaster = () => {
             department: "Central Store",
             departmentType: "Stores",
             departmentNumber: "0604",
-            division: "Administration",
             status: "y",
         },
         {
@@ -47,7 +43,6 @@ const DepartmentMaster = () => {
             department: "Children Ward",
             departmentType: "Ward",
             departmentNumber: "0605",
-            division: "Medical",
             status: "y",
         },
         {
@@ -56,7 +51,6 @@ const DepartmentMaster = () => {
             department: "Children Ward 2",
             departmentType: "Ward",
             departmentNumber: "0606",
-            division: "Medical",
             status: "y",
         },
         {
@@ -65,7 +59,6 @@ const DepartmentMaster = () => {
             department: "Children Ward 3",
             departmentType: "Ward",
             departmentNumber: "0607",
-            division: "Medical",
             status: "y",
         },
         {
@@ -74,7 +67,6 @@ const DepartmentMaster = () => {
             department: "Children Ward 4",
             departmentType: "Ward",
             departmentNumber: "0608",
-            division: "Medical",
             status: "y",
         },
         {
@@ -83,7 +75,6 @@ const DepartmentMaster = () => {
             department: "Children Ward 5",
             departmentType: "Ward",
             departmentNumber: "0609",
-            division: "Medical",
             status: "y",
         },
         {
@@ -92,7 +83,6 @@ const DepartmentMaster = () => {
             department: "Children Ward 6",
             departmentType: "Ward",
             departmentNumber: "0610",
-            division: "Medical",
             status: "y",
         },
         {
@@ -101,7 +91,6 @@ const DepartmentMaster = () => {
             department: "Children Ward 7",
             departmentType: "Ward",
             departmentNumber: "0611",
-            division: "Medical",
             status: "y",
         },
         {
@@ -110,7 +99,6 @@ const DepartmentMaster = () => {
             department: "Children Ward 8",
             departmentType: "Ward",
             departmentNumber: "0612",
-            division: "Medical",
             status: "y",
         },
         {
@@ -119,7 +107,6 @@ const DepartmentMaster = () => {
             department: "Children Ward 9",
             departmentType: "Ward",
             departmentNumber: "0613",
-            division: "Medical",
             status: "y",
         },
         {
@@ -128,7 +115,6 @@ const DepartmentMaster = () => {
             department: "Children Ward 10",
             departmentType: "Ward",
             departmentNumber: "0614",
-            division: "Medical",
             status: "y",
         },
     ])
@@ -139,7 +125,6 @@ const DepartmentMaster = () => {
         department: "",
         departmentType: "",
         departmentNumber: "",
-        division: "",
     })
     const [searchQuery, setSearchQuery] = useState("")
     const [showForm, setShowForm] = useState(false)
@@ -148,18 +133,20 @@ const DepartmentMaster = () => {
     const [popupMessage, setPopupMessage] = useState(null)
     const [currentPage, setCurrentPage] = useState(1)
     const [searchType, setSearchType] = useState("code")
-    const [selectedDivision, setSelectedDivision] = useState("")
     const [pageInput, setPageInput] = useState("")
     const itemsPerPage = 5
 
-    // Calculate filtered departments directly in the render function instead of using useEffect
+    // Get filtered departments based on search criteria
     const getFilteredDepartments = () => {
+        if (!searchQuery) return departments
+
         return departments.filter((dept) => {
-            const matchesSearchQuery = (searchType === "code" ? dept.departmentCode : dept.department)
-                .toLowerCase()
-                .includes(searchQuery.toLowerCase())
-            const matchesDivision = selectedDivision ? dept.division === selectedDivision : true
-            return matchesSearchQuery && matchesDivision
+            if (searchType === "code") {
+                return dept.departmentCode.toLowerCase().includes(searchQuery.toLowerCase())
+            } else if (searchType === "description") {
+                return dept.department.toLowerCase().includes(searchQuery.toLowerCase())
+            }
+            return true
         })
     }
 
@@ -176,15 +163,17 @@ const DepartmentMaster = () => {
 
     const currentItems = getCurrentItems()
 
+    // Reset to page 1 if current page is out of bounds after filtering
+    useEffect(() => {
+        if (currentPage > filteredTotalPages && filteredTotalPages > 0) {
+            setCurrentPage(1)
+        }
+    }, [filteredDepartments, currentPage, filteredTotalPages])
+
     // Handle search and filter changes
     const handleSearchChange = (value) => {
         setSearchQuery(value)
         setCurrentPage(1) // Reset to first page when search changes
-    }
-
-    const handleDivisionChange = (value) => {
-        setSelectedDivision(value)
-        setCurrentPage(1) // Reset to first page when division filter changes
     }
 
     const handleSearchTypeChange = (value) => {
@@ -200,6 +189,27 @@ const DepartmentMaster = () => {
             alert("Please enter a valid page number.")
         }
     }
+
+
+const handleInputChange = (e) => {
+    const { id, value } = e.target;
+    setFormData((prevData) => ({ ...prevData, [id]: value }));
+
+    // Check if all required fields have values
+    const updatedFormData = { ...formData, [id]: value };
+    const isValid =
+        updatedFormData.departmentCode.trim() !== "" &&
+        updatedFormData.department.trim() !== "" &&
+        updatedFormData.departmentType.trim() !== "" &&
+        updatedFormData.departmentNumber.trim() !== "";
+
+    setIsFormValid(isValid); // Update the form validity state
+};
+
+// In your form rendering
+<button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
+    Save
+</button>
 
     const renderPagination = () => {
         const pageNumbers = []
@@ -240,6 +250,13 @@ const DepartmentMaster = () => {
 
     const handleEdit = (dept) => {
         setEditingType(dept)
+        setFormData({
+            departmentCode: dept.departmentCode,
+            department: dept.department,
+            departmentType: dept.departmentType,
+            departmentNumber: dept.departmentNumber,
+        })
+        setIsFormValid(true)
         setShowForm(true)
     }
 
@@ -253,7 +270,6 @@ const DepartmentMaster = () => {
             department: formElement.department.value,
             departmentType: formElement.departmentType.value,
             departmentNumber: formElement.departmentNumber.value,
-            division: formElement.division.value,
         }
 
         if (editingType) {
@@ -261,7 +277,6 @@ const DepartmentMaster = () => {
         } else {
             const newDept = {
                 id: departments.length + 1,
-                departmentCode: formData.departmentCode,
                 ...updatedDepartment,
                 status: "y",
             }
@@ -298,30 +313,8 @@ const DepartmentMaster = () => {
         setConfirmDialog({ isOpen: false, categoryId: null, newStatus: null })
     }
 
-    const handleInputChange = (e) => {
-        const { id, value } = e.target
-        setFormData((prevData) => ({ ...prevData, [id]: value }))
-    }
 
-    const handleCreateFormSubmit = (e) => {
-        e.preventDefault()
-        if (
-            formData.departmentCode &&
-            formData.department &&
-            formData.departmentType &&
-            formData.departmentNumber &&
-            formData.division
-        ) {
-            setDepartments([...departments, { ...formData, id: Date.now(), status: "y" }])
-            setFormData({ departmentCode: "", department: "", departmentType: "", departmentNumber: "", division: "" })
-            setShowForm(false)
-        } else {
-            alert("Please fill out all required fields.")
-        }
-    }
 
-    // Get unique divisions for the dropdown
-    const uniqueDivisions = [...new Set(departments.map((dept) => dept.division))]
 
     return (
         <div className="content-wrapper">
@@ -331,76 +324,81 @@ const DepartmentMaster = () => {
                         <div className="card-header">
                             <h4 className="card-title p-2">Department Master</h4>
                             <div className="d-flex justify-content-between align-items-spacearound mt-3">
-                                <div className="d-flex align-items-center">
-                                    <div className="me-3">
-                                        <label>
+                                {!showForm && (
+                                    <div className="d-flex align-items-center">
+                                        <div className="me-3">
+                                            <label>
+                                                <input
+                                                    type="radio"
+                                                    name="searchType"
+                                                    value="code"
+                                                    checked={searchType === "code"}
+                                                    onChange={() => handleSearchTypeChange("code")}
+                                                />
+                                                <span style={{ marginLeft: "5px" }}>Department Code</span>
+                                            </label>
+                                        </div>
+                                        <div className="me-3">
+                                            <label>
+                                                <input
+                                                    type="radio"
+                                                    name="searchType"
+                                                    value="description"
+                                                    checked={searchType === "description"}
+                                                    onChange={() => handleSearchTypeChange("description")}
+                                                />
+                                                <span style={{ marginLeft: "5px" }}>Department Name</span>
+                                            </label>
+                                        </div>
+
+                                        <div className="d-flex align-items-center me-3">
                                             <input
-                                                type="radio"
-                                                name="searchType"
-                                                value="code"
-                                                checked={searchType === "code"}
-                                                onChange={() => handleSearchTypeChange("code")}
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="Search..."
+                                                value={searchQuery}
+                                                onChange={(e) => handleSearchChange(e.target.value)}
                                             />
-                                            <span style={{ marginLeft: "5px" }}>Department Code</span>
-                                        </label>
+                                        </div>
                                     </div>
-                                    <div className="me-3">
-                                        <label>
-                                            <input
-                                                type="radio"
-                                                name="searchType"
-                                                value="description"
-                                                checked={searchType === "description"}
-                                                onChange={() => handleSearchTypeChange("description")}
-                                            />
-                                            <span style={{ marginLeft: "5px" }}>Department Name</span>
-                                        </label>
-                                    </div>
-                                    <div className="d-flex align-items-center me-3">
-                                        <label className="me-2">Division </label>
-                                        <select
-                                            className="form-control"
-                                            id="divisionFilter"
-                                            value={selectedDivision}
-                                            onChange={(e) => handleDivisionChange(e.target.value)}
+                                )}
+                                {!showForm && (
+                                    <div className="d-flex align-items-center">
+                                        <button
+                                            type="button"
+                                            className="btn btn-success me-2"
+                                            onClick={() => handleSearchChange(searchQuery)}
                                         >
-                                            <option value="">All Divisions</option>
-                                            {uniqueDivisions.map((division, index) => (
-                                                <option key={index} value={division}>
-                                                    {division}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            <i className="mdi mdi-magnify"></i> Search
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-success me-2"
+                                            onClick={() => {
+                                                setShowForm(true)
+                                                setEditingType(null)
+                                                setFormData({
+                                                    departmentCode: "",
+                                                    department: "",
+                                                    departmentType: "",
+                                                    departmentNumber: "",
+                                                })
+                                                setIsFormValid(false)
+                                            }}
+                                        >
+                                            <i className="mdi mdi-plus"></i> Add
+                                        </button>
+                                        <div className="ms-3">
+                                            {!showForm ? (
+                                                <button type="button" className="btn btn-success me-2">
+                                                    <i className="mdi mdi-file-export"></i> Generate Report
+                                                </button>
+                                            ) : (
+                                                <></>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="d-flex align-items-center me-3">
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            placeholder="Search..."
-                                            value={searchQuery}
-                                            onChange={(e) => handleSearchChange(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="d-flex align-items-center">
-                                    <button type="button" className="btn btn-success me-2" onClick={() => { }}>
-                                        <i className="mdi mdi-plus"></i> Search
-                                    </button>
-                                    <button type="button" className="btn btn-success me-2" onClick={() => { setShowForm(true) }}>
-                                        <i className="mdi mdi-plus"></i> Add
-                                    </button>
-                                    <div className="ms-3">
-                                        {!showForm ? (
-                                            <button type="button" className="btn btn-success me-2">
-                                                <i className="mdi mdi-plus"></i> Generate Report
-                                            </button>
-                                        ) : (
-                                            <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
-                                                <i className="mdi mdi-arrow-left"></i> Back
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
+                                )}
                             </div>
                         </div>
                         <div className="card-body">
@@ -413,55 +411,66 @@ const DepartmentMaster = () => {
                                                 <th>Department</th>
                                                 <th>Department Type</th>
                                                 <th>Department Number</th>
-                                                <th>Division</th>
                                                 <th>Status</th>
                                                 <th>Edit</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {currentItems.map((dept) => (
-                                                <tr key={dept.id}>
-                                                    <td>{dept.departmentCode}</td>
-                                                    <td>{dept.department}</td>
-                                                    <td>{dept.departmentType}</td>
-                                                    <td>{dept.departmentNumber}</td>
-                                                    <td>{dept.division}</td>
-                                                    <td>
-                                                        <div className="form-check form-switch">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={dept.status === "y"}
-                                                                onChange={() => handleSwitchChange(dept.id, dept.status === "y" ? "n" : "y")}
-                                                                id={`switch-${dept.id}`}
-                                                            />
-                                                            <label
-                                                                className="form-check-label px-0"
-                                                                htmlFor={`switch-${dept.id}`}
-                                                                onClick={() => handleSwitchChange(dept.id, dept.status === "y" ? "n" : "y")}
+                                            {currentItems.length > 0 ? (
+                                                currentItems.map((dept) => (
+                                                    <tr key={dept.id}>
+                                                        <td>{dept.departmentCode}</td>
+                                                        <td>{dept.department}</td>
+                                                        <td>{dept.departmentType}</td>
+                                                        <td>{dept.departmentNumber}</td>
+                                                        <td>
+                                                            <div className="form-check form-switch">
+                                                                <input
+                                                                    className="form-check-input"
+                                                                    type="checkbox"
+                                                                    checked={dept.status === "y"}
+                                                                    onChange={() => handleSwitchChange(dept.id, dept.status === "y" ? "n" : "y")}
+                                                                    id={`switch-${dept.id}`}
+                                                                />
+                                                                <label className="form-check-label px-0" htmlFor={`switch-${dept.id}`}>
+                                                                    {dept.status === "y" ? "Active" : "Deactivated"}
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <button
+                                                                className="btn btn-sm btn-success me-2"
+                                                                onClick={() => handleEdit(dept)}
+                                                                disabled={dept.status !== "y"}
                                                             >
-                                                                {dept.status === "y" ? "Active" : "Deactivated"}
-                                                            </label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-success me-2"
-                                                            onClick={() => handleEdit(dept)}
-                                                            disabled={dept.status !== "y"}
-                                                        >
-                                                            <i className="fa fa-pencil"></i>
-                                                        </button>
+                                                                <i className="fa fa-pencil"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={7} className="text-center">
+                                                        No departments found
                                                     </td>
                                                 </tr>
-                                            ))}
+                                            )}
                                         </tbody>
                                     </table>
-                                   
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
-                                     <div className="form-group col-md-6">
+                                <div className="d-flex justify-content-end">
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary" // Use btn-sm for a smaller button and float-end to align it to the right
+                                        onClick={() => setShowForm(false)} // Set showForm to false to close the form
+                                    >
+                                        <i className="mdi mdi-arrow-left"></i> Back
+                                    </button>
+                                </div>
+
+                                    <div className="form-group col-md-6 ">
                                         <label>
                                             Department Code <span className="text-danger">*</span>
                                         </label>
@@ -469,9 +478,10 @@ const DepartmentMaster = () => {
                                             type="text"
                                             className="form-control"
                                             id="departmentCode"
-                                            name="Department Code"
+                                            name="departmentCode"
                                             placeholder="Department Code"
-                                            defaultValue={editingType ? editingType.departmentNumber : ""}
+                                            value={formData.departmentCode}
+                                            onChange={handleInputChange}
                                             required
                                         />
                                     </div>
@@ -485,12 +495,12 @@ const DepartmentMaster = () => {
                                             id="department"
                                             name="department"
                                             placeholder="Department Name"
-                                            defaultValue={editingType ? editingType.department : ""}
-                                            onChange={(e) => setIsFormValid(e.target.value.trim() !== "")}
+                                            value={formData.department}
+                                            onChange={handleInputChange}
                                             required
                                         />
                                     </div>
-                                    <div className="form-group col-md-6">
+                                    <div className="form-group col-md-6 mt-2">
                                         <label>
                                             Department Type <span className="text-danger">*</span>
                                         </label>
@@ -500,11 +510,12 @@ const DepartmentMaster = () => {
                                             id="departmentType"
                                             name="departmentType"
                                             placeholder="Department Type"
-                                            defaultValue={editingType ? editingType.departmentType : ""}
+                                            value={formData.departmentType}
+                                            onChange={handleInputChange}
                                             required
                                         />
                                     </div>
-                                    <div className="form-group col-md-6">
+                                    <div className="form-group col-md-6 mt-2">
                                         <label>
                                             Department Number <span className="text-danger">*</span>
                                         </label>
@@ -514,31 +525,13 @@ const DepartmentMaster = () => {
                                             id="departmentNumber"
                                             name="departmentNumber"
                                             placeholder="Department Number"
-                                            defaultValue={editingType ? editingType.departmentNumber : ""}
+                                            value={formData.departmentNumber}
+                                            onChange={handleInputChange}
                                             required
                                         />
                                     </div>
-                                    <div className="form-group col-md-6">
-                                    <label>
-                                                Division <span className="text-danger">*</span>
-                                            </label>
-                                            <div className="col-md-12">
-                                                <select
-                                                    className="form-control"
-                                                    id="division"
-                                                    value={formData.division}
-                                                    onChange={handleInputChange}
-                                                    required
-                                                >
-                                                    <option value="" disabled>
-                                                        Select
-                                                    </option>
-                                                    <option value="Medical">Medical</option>
-                                                    <option value="Administration">Administration</option>
-                                                    <option value="Support">Support</option>
-                                                </select>
-                                            </div>
-                                    </div>
+                                   
+
                                     <div className="form-group col-md-12 d-flex justify-content-end">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                                             Save
@@ -584,48 +577,50 @@ const DepartmentMaster = () => {
                                 </div>
                             )}
 
-                            <nav className="d-flex justify-content-between align-items-center mt-3">
-                                <div>
-                                    <span>
-                                        Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredItems}
-                                    </span>
-                                </div>
-                                <ul className="pagination mb-0">
-                                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                        <button
-                                            className="page-link"
-                                            onClick={() => setCurrentPage(currentPage - 1)}
-                                            disabled={currentPage === 1}
-                                        >
-                                            &laquo; Previous
+                            {!showForm && filteredDepartments.length > 0 && (
+                                <nav className="d-flex justify-content-between align-items-center mt-3">
+                                    <div>
+                                        <span>
+                                            Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredItems}
+                                        </span>
+                                    </div>
+                                    <ul className="pagination mb-0">
+                                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                                            <button
+                                                className="page-link"
+                                                onClick={() => setCurrentPage(currentPage - 1)}
+                                                disabled={currentPage === 1}
+                                            >
+                                                &laquo; Previous
+                                            </button>
+                                        </li>
+                                        {renderPagination()}
+                                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                                            <button
+                                                className="page-link"
+                                                onClick={() => setCurrentPage(currentPage + 1)}
+                                                disabled={currentPage === filteredTotalPages}
+                                            >
+                                                Next &raquo;
+                                            </button>
+                                        </li>
+                                    </ul>
+                                    <div className="d-flex align-items-center">
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max={filteredTotalPages}
+                                            value={pageInput}
+                                            onChange={(e) => setPageInput(e.target.value)}
+                                            placeholder="Go to page"
+                                            className="form-control me-2"
+                                        />
+                                        <button className="btn btn-primary" onClick={handlePageNavigation}>
+                                            Go
                                         </button>
-                                    </li>
-                                    {renderPagination()}
-                                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                        <button
-                                            className="page-link"
-                                            onClick={() => setCurrentPage(currentPage + 1)}
-                                            disabled={currentPage === filteredTotalPages}
-                                        >
-                                            Next &raquo;
-                                        </button>
-                                    </li>
-                                </ul>
-                                <div className="d-flex align-items-center">
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max={filteredTotalPages}
-                                        value={pageInput}
-                                        onChange={(e) => setPageInput(e.target.value)}
-                                        placeholder="Go to page"
-                                        className="form-control me-2"
-                                    />
-                                    <button className="btn btn-primary" onClick={handlePageNavigation}>
-                                        Go
-                                    </button>
-                                </div>
-                            </nav>
+                                    </div>
+                                </nav>
+                            )}
                         </div>
                     </div>
                 </div>
