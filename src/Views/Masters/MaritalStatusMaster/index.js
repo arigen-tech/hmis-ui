@@ -355,7 +355,7 @@ const MaritalStatusMaster = () => {
                                         />
                                     </div>
                                   
-                                    <div className="form-group col-md-12 d-flex justify-content-end">
+                                    <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                                             Save
                                         </button>
