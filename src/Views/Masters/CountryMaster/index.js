@@ -173,22 +173,26 @@ const CountryMaster = () => {
                     <div className="card form-card">
                         <div className="card-header">
                             <h4 className="card-title p-2">Country Master</h4>
-                            <div className="d-flex justify-content-between align-items-spacearound mt-3">
-                                <div className="d-flex align-items-center">
-                                    <div className="me-3">
-                                        <label>
-                                            <input type="radio" name="searchType" value="code" />
-                                            <span style={{ marginLeft: '5px' }}>Country Code</span>
-                                        </label>
+                            <div className="d-flex justify-content-between align-items-center mt-3">
+
+
+                                {!showForm && (
+                                    <div className="d-flex align-items-center">
+                                        <div className="me-3">
+                                            <label>
+                                                <input type="radio" name="searchType" value="code" />
+                                                <span style={{ marginLeft: '5px' }}>Country Code</span>
+                                            </label>
+                                        </div>
+                                        <div className="me-3">
+                                            <label>
+                                                <input type="radio" name="searchType" value="description" />
+                                                <span style={{ marginLeft: '5px' }}>Country Name</span>
+                                            </label>
+                                        </div>
                                     </div>
-                                    <div className="me-3">
-                                        <label>
-                                            <input type="radio" name="searchType" value="description" />
-                                            <span style={{ marginLeft: '5px' }}>Country Name</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div className="d-flex align-items-center">
+                                )}
+                                {!showForm && (
                                     <form className="d-inline-block searchform me-4" role="search">
                                         <div className="input-group searchinput">
                                             <input
@@ -204,20 +208,24 @@ const CountryMaster = () => {
                                             </span>
                                         </div>
                                     </form>
+                                )}
+                                <div className="d-flex align-items-center ms-auto">
                                     {!showForm ? (
                                         <>
                                             <button type="button" className="btn btn-success me-2" onClick={() => (setShowForm(true))}>
                                                 <i className="mdi mdi-plus"></i> ADD
                                             </button>
                                             <button type="button" className="btn btn-success me-2">
-                                                <i className="mdi mdi-plus"></i> Generate Report Based On Search
+                                                <i className="mdi mdi-plus"></i> Generate Report 
                                             </button>
                                         </>
 
                                     ) : (
-                                        <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
-                                            <i className="mdi mdi-arrow-left"></i> Back
-                                        </button>
+                                        <div className="ms-auto"> {/* Added this div to push the button to the right */}
+                                            <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                                                <i className="mdi mdi-arrow-left"></i> Back
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -319,7 +327,7 @@ const CountryMaster = () => {
                                             </select>
                                         </div>
                                     </div>
-                                    <div className="form-group col-md-12 d-flex justify-content-end">
+                                    <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                                             Save
                                         </button>
@@ -361,51 +369,51 @@ const CountryMaster = () => {
                             )}
 
 
-<nav className="d-flex justify-content-between align-items-center mt-3">
-                <div>
-                    <span>
-                        Page {currentPage} of {filteredTotalPages} | Total Records: {filteredCountries.length}
-                    </span>
-                </div>
-                <ul className="pagination mb-0">
-                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                        <button 
-                            className="page-link" 
-                            onClick={() => setCurrentPage(currentPage - 1)} 
-                            disabled={currentPage === 1}
-                        >
-                            &laquo; Previous
-                        </button>
-                    </li>
-                    {renderPagination()}
-                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                        <button 
-                            className="page-link" 
-                            onClick={() => setCurrentPage(currentPage + 1)} 
-                            disabled={currentPage === filteredTotalPages}
-                        >
-                            Next &raquo;
-                        </button>
-                    </li>
-                </ul>
-                <div className="d-flex align-items-center">
-                    <input
-                        type="number"
-                        min="1"
-                        max={filteredTotalPages}
-                        value={pageInput}
-                        onChange={(e) => setPageInput(e.target.value)}
-                        placeholder="Go to page"
-                        className="form-control me-2"
-                    />
-                    <button
-                        className="btn btn-primary"
-                        onClick={handlePageNavigation}
-                    >
-                        Go
-                    </button>
-                </div>
-            </nav>
+                            <nav className="d-flex justify-content-between align-items-center mt-3">
+                                <div>
+                                    <span>
+                                        Page {currentPage} of {filteredTotalPages} | Total Records: {filteredCountries.length}
+                                    </span>
+                                </div>
+                                <ul className="pagination mb-0">
+                                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                                        <button
+                                            className="page-link"
+                                            onClick={() => setCurrentPage(currentPage - 1)}
+                                            disabled={currentPage === 1}
+                                        >
+                                            &laquo; Previous
+                                        </button>
+                                    </li>
+                                    {renderPagination()}
+                                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                                        <button
+                                            className="page-link"
+                                            onClick={() => setCurrentPage(currentPage + 1)}
+                                            disabled={currentPage === filteredTotalPages}
+                                        >
+                                            Next &raquo;
+                                        </button>
+                                    </li>
+                                </ul>
+                                <div className="d-flex align-items-center">
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max={filteredTotalPages}
+                                        value={pageInput}
+                                        onChange={(e) => setPageInput(e.target.value)}
+                                        placeholder="Go to page"
+                                        className="form-control me-2"
+                                    />
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={handlePageNavigation}
+                                    >
+                                        Go
+                                    </button>
+                                </div>
+                            </nav>
                         </div>
                     </div>
                 </div>

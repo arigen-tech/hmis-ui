@@ -186,10 +186,10 @@ const BloodGroupMaster = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title">Blood Group Master</h4>
-              <div className="d-flex justify-content-between align-items-center">
+              <h4 className="card-title p-2">Blood Group Master</h4>
+              <div className="d-flex justify-content-between align-items-center mt-2">
 
-                {!showForm ? (
+                {!showForm && (
                   <form className="d-inline-block searchform me-4" role="search">
                     <div className="input-group searchinput">
                       <input
@@ -206,8 +206,6 @@ const BloodGroupMaster = () => {
                       </span>
                     </div>
                   </form>
-                ) : (
-                  <></>
                 )}
 
 

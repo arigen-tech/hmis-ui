@@ -26,6 +26,7 @@ const Statemaster = () => {
     const [popupMessage, setPopupMessage] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalFilteredItems, setTotalFilteredItems] = useState(0);
+    const STATE_NAME_MAX_LENGTH = 5;
 
 
     const handleSearchChange = (e) => {
@@ -163,51 +164,52 @@ const Statemaster = () => {
             <div className="row">
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
-                        <div className="card-header">
+                    <div className="card-header">
                             <h4 className="card-title p-2">State Master</h4>
                             <div className="d-flex justify-content-between align-items-spacearound mt-3">
-                                <div className="d-flex align-items-center">
-                                    <div className="me-3">
-                                        <label>
-                                            <input type="radio" name="searchType" value="code" />
-                                            <span style={{ marginLeft: '5px' }}>State Code</span>
-                                        </label>
-                                    </div>
-                                    <div className="me-3">
-                                        <label>
-                                            <input type="radio" name="searchType" value="description" />
-                                            <span style={{ marginLeft: '5px' }}>State Description</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div className="d-flex align-items-center">
-                                    <form className="d-inline-block searchform me-4" role="search">
-                                        <div className="input-group searchinput">
-                                            <input
-                                                type="search"
-                                                className="form-control"
-                                                placeholder="Search"
-                                                aria-label="Search"
-                                                value={searchQuery}
-                                                onChange={handleSearchChange}
-                                            />
-                                            <span className="input-group-text" id="search-icon">
-                                                <i className="fa fa-search"></i>
-                                            </span>
+                                {!showForm && (
+                                    <div className="d-flex align-items-center">
+                                        <div className="me-3">
+                                            <label>
+                                                <input type="radio" name="searchType" value="code" />
+                                                <span style={{ marginLeft: '5px' }}>State Code</span>
+                                            </label>
                                         </div>
-                                    </form>
-                                    {!showForm ? (
+                                        <div className="me-3">
+                                            <label>
+                                                <input type="radio" name="searchType" value="description" />
+                                                <span style={{ marginLeft: '5px' }}>State Description</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="d-flex align-items-center ms-auto">
+                                    {!showForm && (
                                         <>
+                                            <form className="d-inline-block searchform me-4" role="search">
+                                                <div className="input-group searchinput">
+                                                    <input
+                                                        type="search"
+                                                        className="form-control"
+                                                        placeholder="Search"
+                                                        aria-label="Search"
+                                                        value={searchQuery}
+                                                        onChange={handleSearchChange}
+                                                    />
+                                                    <span className="input-group-text" id="search-icon">
+                                                        <i className="fa fa-search"></i>
+                                                    </span>
+                                                </div>
+                                            </form>
                                             <button type="button" className="btn btn-success me-2" onClick={() => (setShowForm(true))}>
                                                 <i className="mdi mdi-plus"></i> ADD
                                             </button>
                                             <button type="button" className="btn btn-success me-2">
-                                                <i className="mdi mdi-plus"></i> Generate Report Based On Search
+                                                <i className="mdi mdi-plus"></i> Generate Report 
                                             </button>
                                         </>
-
-
-                                    ) : (
+                                    )}
+                                    {showForm && (
                                         <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
                                             <i className="mdi mdi-arrow-left"></i> Back
                                         </button>
@@ -289,6 +291,7 @@ const Statemaster = () => {
                                                 className="form-control"
                                                 id="stateName"
                                                 placeholder="State Name"
+                                                maxLength={STATE_NAME_MAX_LENGTH}
                                                 required
                                                 defaultValue={editingState ? editingState.stateName : ""}
                                                 onChange={() => setIsFormValid(true)}
