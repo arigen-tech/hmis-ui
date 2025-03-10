@@ -1,16 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
+import axios from "axios";
+import { API_HOST } from "../../../config/apiConfig";
 
 const Departmenttype = () => {
-    const [departmentTypes, setDepartmentTypes] = useState([
-        { id: 1, departmentTypeCode: "CHR", departmentTypeName: "Cashier", status: "y" },
-        { id: 2, departmentTypeCode: "CSTR", departmentTypeName: "Central Store", status: "y" },
-        { id: 3, departmentTypeCode: "DIAG", departmentTypeName: "Diagnostics", status: "y" },
-        { id: 4, departmentTypeCode: "MNT", departmentTypeName: "Maintenance", status: "y" },
-        { id: 5, departmentTypeCode: "OT", departmentTypeName: "Operation Theatre", status: "y" },
-    ]);
-
-
+    const [departmentTypes, setDepartmentTypes] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageInput, setPageInput] = useState("");
@@ -24,23 +18,58 @@ const Departmenttype = () => {
         departmentTypeCode: "",
         departmentTypeName: "",
     });
-    const [totalFilteredItems, setTotalFilteredItems] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [searchType, setSearchType] = useState("code");
+
+    const DepartmentType__NAME_MAX_LENGTH = 30;
+    const DepartmentType_CODE_MAX_LENGTH = 8;
+
+    // Fetch department types from API
+    useEffect(() => {
+        fetchDepartmentTypes();
+    }, []);
+
+    const fetchDepartmentTypes = async () => {
+        try {
+            setLoading(true);
+            const response = await axios.get(`${API_HOST}/department-type/all`);
+            if (response.data && response.data.response) {
+                setDepartmentTypes(response.data.response);
+            }
+        } catch (err) {
+            console.error("Error fetching department types:", err);
+            showPopup("Failed to load department types", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
         setCurrentPage(1);
     };
 
-    const filteredDepartmentTypes = departmentTypes.filter(type =>
-        type.departmentTypeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        type.departmentTypeCode.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // Add a new function to handle radio button changes
+    const handleSearchTypeChange = (e) => {
+        setSearchType(e.target.value);
+        setCurrentPage(1);
+    };
+
+    const filteredDepartmentTypes = departmentTypes.filter((type) => {
+        if (searchType === "code") {
+            return type.departmentTypeCode.toLowerCase().includes(searchQuery.toLowerCase());
+        } else {
+            return type.departmentTypeName.toLowerCase().includes(searchQuery.toLowerCase());
+        }
+    });
 
     const currentItems = filteredDepartmentTypes.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
+
     const filteredTotalPages = Math.ceil(filteredDepartmentTypes.length / itemsPerPage);
+
     const handlePageNavigation = () => {
         const pageNumber = parseInt(pageInput, 10);
         if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
@@ -50,85 +79,87 @@ const Departmenttype = () => {
         }
     };
 
-    const renderPagination = () => {
-        const pageNumbers = [];
-        const maxVisiblePages = 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-        const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
-
-        if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
-        }
-
-        if (startPage > 1) {
-            pageNumbers.push(1);
-            if (startPage > 2) pageNumbers.push("...");
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            pageNumbers.push(i);
-        }
-
-        if (endPage < filteredTotalPages) {
-            if (endPage < filteredTotalPages - 1) pageNumbers.push("...");
-            pageNumbers.push(filteredTotalPages);
-        }
-
-        return pageNumbers.map((number, index) => (
-            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-                {typeof number === "number" ? (
-                    <button className="page-link" onClick={() => setCurrentPage(number)}>
-                        {number}
-                    </button>
-                ) : (
-                    <span className="page-link disabled">{number}</span>
-                )}
-            </li>
-        ));
-    };
-
-
     const handleEdit = (type) => {
         setEditingType(type);
+        setFormData({
+            departmentTypeCode: type.departmentTypeCode,
+            departmentTypeName: type.departmentTypeName,
+        });
+        setIsFormValid(true);
         setShowForm(true);
     };
 
-    const handleSave = (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
         if (!isFormValid) return;
 
-        const formElement = e.target;
-        const updatedDepartmentTypeName = formElement.departmentTypeName.value;
-        const updatedDepartmentTypeCode = formElement.departmentTypeCode.value;
+        try {
+            setLoading(true);
 
-        if (editingType) {
-            setDepartmentTypes(departmentTypes.map(type =>
-                type.id === editingType.id
-                    ? { ...type, departmentTypeName: updatedDepartmentTypeName, departmentTypeCode: updatedDepartmentTypeCode }
-                    : type
-            ));
-        } else {
-            const newType = {
-                id: departmentTypes.length + 1,
-                departmentTypeCode: updatedDepartmentTypeCode,
-                departmentTypeName: updatedDepartmentTypeName,
-                status: "y"
-            };
-            setDepartmentTypes([...departmentTypes, newType]);
+            // Check for duplicate department type before saving
+            const isDuplicate = departmentTypes.some(
+                (type) =>
+                    type.departmentTypeCode.toLowerCase() === formData.departmentTypeCode.toLowerCase() ||
+                    type.departmentTypeName.toLowerCase() === formData.departmentTypeName.toLowerCase()
+            );
+
+            if (isDuplicate) {
+                showPopup("Department type with the same code or name already exists!", "error");
+                setLoading(false);
+                return;
+            }
+
+            if (editingType) {
+                // Update existing department type
+                const response = await axios.put(`${API_HOST}/department-type/edit/${editingType.id}`, {
+                    departmentTypeCode: formData.departmentTypeCode,
+                    departmentTypeName: formData.departmentTypeName,
+                    status: editingType.status,
+                });
+
+                if (response.data && response.data.response) {
+                    setDepartmentTypes((prevData) =>
+                        prevData.map((type) =>
+                            type.id === editingType.id ? response.data.response : type
+                        )
+                    );
+                    showPopup("Department type updated successfully!", "success");
+                }
+            } else {
+                // Add new department type
+                const response = await axios.post(`${API_HOST}/department-type/create`, {
+                    departmentTypeCode: formData.departmentTypeCode,
+                    departmentTypeName: formData.departmentTypeName,
+                    status: "y",
+                });
+
+                if (response.data && response.data.response) {
+                    setDepartmentTypes([...departmentTypes, response.data.response]);
+                    showPopup("New department type added successfully!", "success");
+                }
+            }
+
+            // Reset form and refresh data
+            setEditingType(null);
+            setFormData({ departmentTypeCode: "", departmentTypeName: "" });
+            setShowForm(false);
+            fetchDepartmentTypes(); // Refresh data from backend
+        } catch (err) {
+            console.error("Error saving department type:", err);
+            showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+        } finally {
+            setLoading(false);
         }
-
-        setEditingType(null);
-        setShowForm(false);
-        showPopup("Changes saved successfully!", "success");
     };
 
-    const showPopup = (message, type = 'info') => {
+
+    const showPopup = (message, type = "info") => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
                 setPopupMessage(null);
-            }
+            },
         });
     };
 
@@ -136,13 +167,32 @@ const Departmenttype = () => {
         setConfirmDialog({ isOpen: true, categoryId: id, newStatus });
     };
 
-    const handleConfirm = (confirmed) => {
+    const handleConfirm = async (confirmed) => {
         if (confirmed && confirmDialog.categoryId !== null) {
-            setDepartmentTypes((prevData) =>
-                prevData.map((type) =>
-                    type.id === confirmDialog.categoryId ? { ...type, status: confirmDialog.newStatus } : type
-                )
-            );
+            try {
+                setLoading(true);
+                const response = await axios.put(
+                    `${API_HOST}/department-type/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
+                );
+                if (response.data && response.data.response) {
+                    setDepartmentTypes((prevData) =>
+                        prevData.map((type) =>
+                            type.id === confirmDialog.categoryId
+                                ? { ...type, status: confirmDialog.newStatus }
+                                : type
+                        )
+                    );
+                    showPopup(
+                        `Department type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                        "success"
+                    );
+                }
+            } catch (err) {
+                console.error("Error updating department type status:", err);
+                showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+            } finally {
+                setLoading(false);
+            }
         }
         setConfirmDialog({ isOpen: false, categoryId: null, newStatus: null });
     };
@@ -150,17 +200,13 @@ const Departmenttype = () => {
     const handleInputChange = (e) => {
         const { id, value } = e.target;
         setFormData((prevData) => ({ ...prevData, [id]: value }));
+        setIsFormValid(formData.departmentTypeCode.trim() !== "" && formData.departmentTypeName.trim() !== "");
     };
 
-    const handleCreateFormSubmit = (e) => {
-        e.preventDefault();
-        if (formData.departmentTypeCode && formData.departmentTypeName) {
-            setDepartmentTypes([...departmentTypes, { ...formData, id: Date.now(), status: "y" }]);
-            setFormData({ departmentTypeCode: "", departmentTypeName: "" });
-            setShowForm(false);
-        } else {
-            alert("Please fill out all required fields.");
-        }
+    const handleRefresh = () => {
+        setSearchQuery("");
+        setCurrentPage(1);
+        fetchDepartmentTypes();
     };
 
     return (
@@ -175,13 +221,25 @@ const Departmenttype = () => {
                                     <div className="d-flex align-items-center">
                                         <div className="me-3">
                                             <label>
-                                                <input type="radio" name="searchType" value="code" />
+                                                <input
+                                                    type="radio"
+                                                    name="searchType"
+                                                    value="code"
+                                                    checked={searchType === "code"}
+                                                    onChange={handleSearchTypeChange}
+                                                />
                                                 <span style={{ marginLeft: '5px' }}>Department Type Code</span>
                                             </label>
                                         </div>
                                         <div className="me-3">
                                             <label>
-                                                <input type="radio" name="searchType" value="description" />
+                                                <input
+                                                    type="radio"
+                                                    name="searchType"
+                                                    value="description"
+                                                    checked={searchType === "description"}
+                                                    onChange={handleSearchTypeChange}
+                                                />
                                                 <span style={{ marginLeft: '5px' }}>Department Type Name</span>
                                             </label>
                                         </div>
@@ -213,7 +271,13 @@ const Departmenttype = () => {
                             )}
                         </div>
                         <div className="card-body">
-                            {!showForm ? (
+                            {loading ? (
+                                <div className="text-center">
+                                    <div className="spinner-border" role="status">
+                                        <span className="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            ) : !showForm ? (
                                 <div className="table-responsive packagelist">
                                     <table className="table table-bordered table-hover align-middle">
                                         <thead className="table-light">
@@ -241,9 +305,8 @@ const Departmenttype = () => {
                                                             <label
                                                                 className="form-check-label px-0"
                                                                 htmlFor={`switch-${type.id}`}
-                                                                onClick={() => handleSwitchChange(type.id, type.status === "y" ? "n" : "y")}
                                                             >
-                                                                {type.status === "y" ? 'Active' : 'Deactivated'}
+                                                                {type.status === "y" ? "Active" : "Deactivated"}
                                                             </label>
                                                         </div>
                                                     </td>
@@ -260,19 +323,18 @@ const Departmenttype = () => {
                                             ))}
                                         </tbody>
                                     </table>
-
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
-                                     <div className="d-flex justify-content-end">
-                                    <button
-                                        type="button"
-                                        className="btn btn-secondary" // Use btn-sm for a smaller button and float-end to align it to the right
-                                        onClick={() => setShowForm(false)} // Set showForm to false to close the form
-                                    >
-                                        <i className="mdi mdi-arrow-left"></i> Back
-                                    </button>
-                                </div>
+                                    <div className="d-flex justify-content-end">
+                                        <button
+                                            type="button"
+                                            className="btn btn-secondary"
+                                            onClick={() => setShowForm(false)}
+                                        >
+                                            <i className="mdi mdi-arrow-left"></i> Back
+                                        </button>
+                                    </div>
                                     <div className="form-group col-md-6">
                                         <label>Department Type Code <span className="text-danger">*</span></label>
                                         <input
@@ -281,8 +343,9 @@ const Departmenttype = () => {
                                             id="departmentTypeCode"
                                             name="departmentTypeCode"
                                             placeholder="Code"
-                                            defaultValue={editingType ? editingType.departmentTypeCode : ""}
-                                            onChange={(e) => setIsFormValid(e.target.value.trim() !== "")}
+                                            value={formData.departmentTypeCode}
+                                             maxLength = {DepartmentType_CODE_MAX_LENGTH}
+                                            onChange={handleInputChange}
                                             required
                                         />
                                     </div>
@@ -294,8 +357,9 @@ const Departmenttype = () => {
                                             id="departmentTypeName"
                                             name="departmentTypeName"
                                             placeholder="Name"
-                                            defaultValue={editingType ? editingType.departmentTypeName : ""}
-                                            onChange={(e) => setIsFormValid(e.target.value.trim() !== "")}
+                                            value={formData.departmentTypeName}
+                                            onChange={handleInputChange}
+                                            maxLength = {DepartmentType__NAME_MAX_LENGTH}
                                             required
                                         />
                                     </div>
@@ -328,7 +392,8 @@ const Departmenttype = () => {
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{departmentTypes.find(type => type.id === confirmDialog.categoryId)?.departmentTypeName}</strong>?
+                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                    <strong>{departmentTypes.find((type) => type.id === confirmDialog.categoryId)?.departmentTypeName}</strong>?
                                                 </p>
                                             </div>
                                             <div className="modal-footer">
@@ -339,7 +404,6 @@ const Departmenttype = () => {
                                     </div>
                                 </div>
                             )}
-
                             <nav className="d-flex justify-content-between align-items-center mt-3">
                                 <div>
                                     <span>
@@ -356,7 +420,16 @@ const Departmenttype = () => {
                                             &laquo; Previous
                                         </button>
                                     </li>
-                                    {renderPagination()}
+                                    {[...Array(filteredTotalPages)].map((_, index) => (
+                                        <li
+                                            className={`page-item ${currentPage === index + 1 ? "active" : ""}`}
+                                            key={index}
+                                        >
+                                            <button className="page-link" onClick={() => setCurrentPage(index + 1)}>
+                                                {index + 1}
+                                            </button>
+                                        </li>
+                                    ))}
                                     <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
                                         <button
                                             className="page-link"
