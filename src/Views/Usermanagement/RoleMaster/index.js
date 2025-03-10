@@ -92,18 +92,29 @@ const Rolemaster = () => {
         try {
             setLoading(true);
     
+            // Check for duplicate role before saving
+            const isDuplicate = roleData.some(
+                (role) =>
+                    role.roleCode.toLowerCase() === formData.roleCode.toLowerCase() ||
+                    role.roleDesc.toLowerCase() === formData.roleDesc.toLowerCase()
+            );
+    
+            if (isDuplicate) {
+                showPopup("Role with the same code or description already exists!", "error");
+                setLoading(false);
+                return;
+            }
+    
             if (editingRole) {
                 // Update existing role
                 const response = await axios.put(`${API_HOST}/roles/update/${editingRole.id}`, {
                     roleCode: formData.roleCode,
                     roleDesc: formData.roleDesc,
-                    // Ensure the backend does not modify isActive
-                    isActive: editingRole.isActive, // Pass the current isActive status
+                    isActive: editingRole.isActive, // Preserve the existing isActive status
                 });
     
                 console.log("Update Response:", response.data);
     
-                // Ensure the backend returns the updated role in the response
                 if (response.data && response.data.response) {
                     const updatedRole = response.data.response;
     
@@ -135,7 +146,6 @@ const Rolemaster = () => {
     
                 console.log("Create Response:", response.data);
     
-                // Ensure the backend returns the new role in the response
                 if (response.data && response.data.response) {
                     const newRole = response.data.response;
     
@@ -168,6 +178,7 @@ const Rolemaster = () => {
             setLoading(false);
         }
     };
+    
 
     const handleSwitchChange = (id, currentStatus) => {
         setConfirmDialog({
