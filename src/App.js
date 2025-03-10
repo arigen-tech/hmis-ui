@@ -9,7 +9,7 @@ import Bloodmaster from './Views/Masters/BloodMaster';
 import Manageuserapplication from './Views/Usermanagement/Manageuserapplicaton';
 import Addformreports from './Views/Usermanagement/AddFormReports';
 import Templatemaster from './Views/Usermanagement/TemplateMaster';
-import Assignapplicaton from './Views/Usermanagement/AssignApplicationToTemplate';
+import Assignapplication from './Views/Usermanagement/AssignApplicationToTemplate';
 import Rolesrights from './Views/Usermanagement/RolesRights';
 import Itemclass from './Views/Stores/ItemClass';
 import Itemcategory from './Views/Stores/ItemCategory';
@@ -63,7 +63,7 @@ function App() {
               <Route path="/manageuserapplication" element={<Manageuserapplication/>} />
               <Route path="/addformreports" element={<Addformreports/>} />
               <Route path="/templatemaster" element={<Templatemaster/>} />
-              <Route path="/assignapplication" element={<Assignapplicaton/>} />
+              <Route path="/assignapplication" element={<Assignapplication/>} />
               <Route path="/rolesrights" element={<Rolesrights/>} />
               <Route path="/itemclass" element={<Itemclass/>} />
               <Route path="/itemcategory" element={<Itemcategory/>} />
