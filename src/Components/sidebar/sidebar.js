@@ -269,6 +269,11 @@ const Sidebar = () => {
                   </Link>
                 </li>
                 <li>
+                  <Link className={`ms-link ${isActive('/religionmaster') ? 'active' : ''}`}to="religionmaster">
+                    Religion Master
+                  </Link>
+                </li>
+                <li>
                   <Link className={`ms-link ${isActive('/maritalstatusmaster') ? 'active' : ''}`} to="maritalstatusmaster">
                     Marital Status Master
                   </Link>
