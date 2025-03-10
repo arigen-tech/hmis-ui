@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/hmis-ui/static/css/main.b146cb8f.css",
-    "main.js": "/hmis-ui/static/js/main.0bc42419.js",
+    "main.js": "/hmis-ui/static/js/main.5357b010.js",
     "static/css/920.22f09731.chunk.css": "/hmis-ui/static/css/920.22f09731.chunk.css",
     "static/js/920.1fcc1e95.chunk.js": "/hmis-ui/static/js/920.1fcc1e95.chunk.js",
     "static/css/793.31d6cfe0.chunk.css": "/hmis-ui/static/css/793.31d6cfe0.chunk.css",
@@ -9,10 +9,10 @@
     "static/css/116.6d9b6a01.chunk.css": "/hmis-ui/static/css/116.6d9b6a01.chunk.css",
     "static/js/116.900097ec.chunk.js": "/hmis-ui/static/js/116.900097ec.chunk.js",
     "static/js/769.348a51f8.chunk.js": "/hmis-ui/static/js/769.348a51f8.chunk.js",
-    "static/js/501.de49aebe.chunk.js": "/hmis-ui/static/js/501.de49aebe.chunk.js",
+    "static/js/322.758402ce.chunk.js": "/hmis-ui/static/js/322.758402ce.chunk.js",
     "static/js/709.926345c8.chunk.js": "/hmis-ui/static/js/709.926345c8.chunk.js",
-    "static/js/236.728df3e3.chunk.js": "/hmis-ui/static/js/236.728df3e3.chunk.js",
-    "static/js/840.35af20a2.chunk.js": "/hmis-ui/static/js/840.35af20a2.chunk.js",
+    "static/js/236.6c9d60f3.chunk.js": "/hmis-ui/static/js/236.6c9d60f3.chunk.js",
+    "static/js/840.da5064e1.chunk.js": "/hmis-ui/static/js/840.da5064e1.chunk.js",
     "static/js/194.23bce20f.chunk.js": "/hmis-ui/static/js/194.23bce20f.chunk.js",
     "static/js/488.cd8d8221.chunk.js": "/hmis-ui/static/js/488.cd8d8221.chunk.js",
     "static/media/icofont.woff": "/hmis-ui/static/media/icofont.dad3accba068281878f1.woff",
@@ -20,22 +20,22 @@
     "static/media/login-img.svg": "/hmis-ui/static/media/login-img.05b38127828f48c4f6f78f90409e219e.svg",
     "index.html": "/hmis-ui/index.html",
     "main.b146cb8f.css.map": "/hmis-ui/static/css/main.b146cb8f.css.map",
-    "main.0bc42419.js.map": "/hmis-ui/static/js/main.0bc42419.js.map",
+    "main.5357b010.js.map": "/hmis-ui/static/js/main.5357b010.js.map",
     "920.22f09731.chunk.css.map": "/hmis-ui/static/css/920.22f09731.chunk.css.map",
     "920.1fcc1e95.chunk.js.map": "/hmis-ui/static/js/920.1fcc1e95.chunk.js.map",
     "793.335a6621.chunk.js.map": "/hmis-ui/static/js/793.335a6621.chunk.js.map",
     "116.6d9b6a01.chunk.css.map": "/hmis-ui/static/css/116.6d9b6a01.chunk.css.map",
     "116.900097ec.chunk.js.map": "/hmis-ui/static/js/116.900097ec.chunk.js.map",
     "769.348a51f8.chunk.js.map": "/hmis-ui/static/js/769.348a51f8.chunk.js.map",
-    "501.de49aebe.chunk.js.map": "/hmis-ui/static/js/501.de49aebe.chunk.js.map",
+    "322.758402ce.chunk.js.map": "/hmis-ui/static/js/322.758402ce.chunk.js.map",
     "709.926345c8.chunk.js.map": "/hmis-ui/static/js/709.926345c8.chunk.js.map",
-    "236.728df3e3.chunk.js.map": "/hmis-ui/static/js/236.728df3e3.chunk.js.map",
-    "840.35af20a2.chunk.js.map": "/hmis-ui/static/js/840.35af20a2.chunk.js.map",
+    "236.6c9d60f3.chunk.js.map": "/hmis-ui/static/js/236.6c9d60f3.chunk.js.map",
+    "840.da5064e1.chunk.js.map": "/hmis-ui/static/js/840.da5064e1.chunk.js.map",
     "194.23bce20f.chunk.js.map": "/hmis-ui/static/js/194.23bce20f.chunk.js.map",
     "488.cd8d8221.chunk.js.map": "/hmis-ui/static/js/488.cd8d8221.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.b146cb8f.css",
-    "static/js/main.0bc42419.js"
+    "static/js/main.5357b010.js"
   ]
 }
