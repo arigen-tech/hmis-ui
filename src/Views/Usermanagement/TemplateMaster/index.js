@@ -91,22 +91,35 @@ const Templatemaster = () => {
     const handleTemplateSave = async (e) => {
         e.preventDefault();
         if (!isFormValid) return;
-
+    
         try {
             setLoading(true);
+    
+            // Check for duplicate template before saving
+            const isDuplicate = templateData.some(
+                (template) =>
+                    template.templateCode.toLowerCase() === formData.templateCode.toLowerCase() ||
+                    template.templateName.toLowerCase() === formData.templateName.toLowerCase()
+            );
+    
+            if (isDuplicate) {
+                showPopup("Template with the same code or name already exists!", "error");
+                setLoading(false);
+                return;
+            }
+    
             if (editingTemplate) {
                 // Update existing template
                 const response = await axios.put(`${API_HOST}/mas-templates/edit/${editingTemplate.id}`, {
                     templateCode: formData.templateCode,
                     templateName: formData.templateName
                 });
-
+    
                 console.log("Update Response:", response.data);
-
-                // Ensure the backend returns the updated template in the response
+    
                 if (response.data && response.data.response) {
                     const updatedTemplate = response.data.response;
-
+    
                     // Update local state using the response from backend
                     setTemplateData(prevData =>
                         prevData.map(template =>
@@ -120,7 +133,7 @@ const Templatemaster = () => {
                                 : template
                         )
                     );
-
+    
                     showPopup("Template updated successfully!", "success");
                 } else {
                     throw new Error("Invalid response from server");
@@ -132,13 +145,12 @@ const Templatemaster = () => {
                     templateName: formData.templateName,
                     status: "y"
                 });
-
+    
                 console.log("Create Response:", response.data);
-
-                // Ensure the backend returns the new template in the response
+    
                 if (response.data && response.data.response) {
                     const newTemplate = response.data.response;
-
+    
                     // Add new entry to local state using the response from backend
                     setTemplateData(prevData => [
                         ...prevData,
@@ -149,13 +161,13 @@ const Templatemaster = () => {
                             status: newTemplate.status || "y"
                         }
                     ]);
-
+    
                     showPopup("New template added successfully!", "success");
                 } else {
                     throw new Error("Invalid response from server");
                 }
             }
-
+    
             // Reset form
             setFormData({ templateCode: "", templateName: "" });
             setShowForm(false);
@@ -168,6 +180,7 @@ const Templatemaster = () => {
             setLoading(false);
         }
     };
+    
 
     const handleSwitchChange = (id, currentStatus) => {
         setConfirmDialog({

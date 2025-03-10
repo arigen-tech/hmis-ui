@@ -101,10 +101,24 @@ const Manageuserapplication = () => {
     
         try {
             setLoading(true);
+    
+            // Check for duplicate application
+            const isDuplicate = userApplicationData.some(
+                (app) =>
+                    app.menuName.toLowerCase() === formData.menuName.toLowerCase() ||
+                    app.url.toLowerCase() === formData.url.toLowerCase()
+            );
+    
+            if (isDuplicate) {
+                showPopup("Application already exists!", "error");
+                setLoading(false);
+                return;
+            }
+    
             if (editingApplication) {
                 // Update existing application
                 const response = await axios.put(`${API_HOST}/applications/edit/${editingApplication.id}`, {
-                    userAppName: formData.menuName, 
+                    userAppName: formData.menuName,
                     url: formData.url
                 });
     
@@ -117,7 +131,7 @@ const Manageuserapplication = () => {
                         application.id === editingApplication.id
                             ? {
                                 id: updatedApplication.id || editingApplication.id,
-                                menuName: updatedApplication.userAppName || formData.menuName, // Map userAppName to menuName
+                                menuName: updatedApplication.userAppName || formData.menuName,
                                 url: updatedApplication.url || formData.url,
                                 status: updatedApplication.status || editingApplication.status
                             }
@@ -129,7 +143,7 @@ const Manageuserapplication = () => {
             } else {
                 // Create new application
                 const response = await axios.post(`${API_HOST}/applications/create`, {
-                    userAppName: formData.menuName, // Changed from menuName to userAppName
+                    userAppName: formData.menuName,
                     url: formData.url,
                     status: "y"
                 });
@@ -142,7 +156,7 @@ const Manageuserapplication = () => {
                     ...prevData,
                     {
                         id: newApplication.id || Date.now(),
-                        menuName: newApplication.userAppName || formData.menuName, // Map userAppName to menuName
+                        menuName: newApplication.userAppName || formData.menuName,
                         url: newApplication.url || formData.url,
                         status: newApplication.status || "y"
                     }
@@ -163,6 +177,7 @@ const Manageuserapplication = () => {
             setLoading(false);
         }
     };
+    
 
     const handleSwitchChange = (id, currentStatus) => {
         setConfirmDialog({

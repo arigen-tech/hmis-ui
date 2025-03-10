@@ -113,6 +113,18 @@ const Gendermaster = () => {
           code: null,
           status: "y"
         });
+
+        const isDuplicate = genderData.some(
+          (gender) =>
+            gender.genderCode.toLowerCase() === formData.genderCode.toLowerCase() ||
+            gender.genderName.toLowerCase() === formData.genderName.toLowerCase()
+        );
+    
+        if (isDuplicate) {
+          showPopup("Gender already exists!", "error");
+          setLoading(false);
+          return;
+        }
         
         if (response.data && response.data.response) {
           // Add the new gender to local state

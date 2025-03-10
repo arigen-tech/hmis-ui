@@ -84,10 +84,23 @@ const Relationmaster = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-
+  
     try {
       setLoading(true);
-
+  
+      // Check for duplicate relation before making API request
+      const isDuplicate = relationData.some(
+        (relation) =>
+          relation.relationName.toLowerCase() === formData.relationName.toLowerCase() ||
+          relation.code.toLowerCase() === formData.code.toLowerCase()
+      );
+  
+      if (isDuplicate) {
+        showPopup("Relation already exists!", "error");
+        setLoading(false);
+        return;
+      }
+  
       if (editingRelation) {
         // Update existing relation using PUT /relation/update/{id}
         const response = await axios.put(`${API_HOST}/relation/update/${editingRelation.id}`, {
@@ -96,7 +109,7 @@ const Relationmaster = () => {
           code: formData.code,
           status: editingRelation.status,
         });
-
+  
         if (response.data && response.data.response) {
           // Update the local state to reflect changes
           setRelationData((prevData) =>
@@ -113,25 +126,29 @@ const Relationmaster = () => {
           code: formData.code,
           status: "y",
         });
-
+  
         if (response.data && response.data.response) {
           // Add the new relation to local state
           setRelationData([...relationData, response.data.response]);
           showPopup("New relation added successfully!", "success");
         }
       }
-
+  
       setEditingRelation(null);
       setFormData({ relationName: "", code: "" });
       setShowForm(false);
       fetchRelationData(); // Refresh the data from server
     } catch (err) {
       console.error("Error saving relation data:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(
+        `Failed to save changes: ${err.response?.data?.message || err.message}`,
+        "error"
+      );
     } finally {
       setLoading(false);
     }
   };
+  
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
