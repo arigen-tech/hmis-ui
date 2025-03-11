@@ -23,6 +23,7 @@ import Countrymaster from './Views/Masters/CountryMaster';
 import Statemaster from './Views/Masters/StateMaster';
 import Districtmaster from './Views/Masters/DistrictMaster';
 import Religionmaster from './Views/Masters/ReligionMaster';
+import Hospitalmaster from './Views/Masters/HospitalMaster';
 // import Drugmaster from './Views/Stores/DrugMaster';
 
 
@@ -82,6 +83,7 @@ function App() {
               <Route path="/RegisterEmployee" element={<RegisterEmployee />} />
               <Route path="/ViewSearchEmployee" element={<ViewSearchEmployee />} />
               <Route path="/religionmaster" element={<Religionmaster/>} />
+              <Route path="/hospitalmaster" element={<Hospitalmaster/>} />
  
 
 
