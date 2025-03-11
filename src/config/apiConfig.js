@@ -12,6 +12,7 @@ export const APPOINTMENT = "/app";
 export const LOGIN = "/authController/login";
 
 export const ALL_GENDER="/gender/all";
+export const PATIENT_IMAGE_UPLOAD="/patient/image";
 export const ALL_RELATION="/relation/all";
 export const DISTRICT_BY_STATE="/district/state/";
 export const ALL_COUNTRY="/country/all";

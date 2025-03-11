@@ -1,14 +1,16 @@
 import React, {useState, useRef, useEffect} from "react";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import {getRequest} from "../../../service/apiService";
+import Swal from "sweetalert2";
 import {
+  API_HOST,
   ALL_COUNTRY, ALL_DEPARTMENT,
   ALL_GENDER,
   ALL_RELATION,
-  DEPARTMENT,
-  DISTRICT_BY_STATE, DOCTOR_BY_SPECIALITY,
+  DISTRICT_BY_STATE, DOCTOR_BY_SPECIALITY, PATIENT_IMAGE_UPLOAD,
   STATE_BY_COUNTRY
 } from "../../../config/apiConfig";
+import {DEPARTMENT_CODE_OPD} from "../../../config/constants";
 const PatientRegistration = () => {
   useEffect(() => {
     // Fetching gender data (simulated API response)
@@ -19,6 +21,7 @@ const PatientRegistration = () => {
   }, []);
   const [loading, setLoading] = useState(false);
   const [genderData,setGenderData]=useState([]);
+  const [imageURL,setImageURL]=useState("");
   const [relationData,setRelationData]=useState([]);
   const [countryData,setCountryData]=useState([]);
   const [stateData,setStateData]=useState([]);
@@ -28,7 +31,8 @@ const PatientRegistration = () => {
   const [departmentData,setDepartmentData]=useState([]);
   const [doctorData,setDoctorData]=useState([]);
   const [formData, setFormData] = useState({
-      firstName: "",
+    imageurl:"",
+    firstName: "",
       middleName: "",
       lastName: "",
       mobileNo: "",
@@ -104,10 +108,14 @@ const PatientRegistration = () => {
       canvas.height = video.videoHeight;
   
       const context = canvas.getContext("2d");
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      context.drawImage(video, 0, 0, canvas.width, canvas.height)
+      const imageData = canvas.toDataURL("image/png");
   
-      setImage(canvas.toDataURL("image/png"));
+      setImage(imageData);
       stopCamera();
+      debugger;
+      confirmUpload(imageData);
+
     }
   };
   
@@ -116,6 +124,57 @@ const PatientRegistration = () => {
     if (videoRef.current && videoRef.current.srcObject) {
       videoRef.current.srcObject.getTracks().forEach(track => track.stop());
       setIsCameraOn(false);
+    }
+
+  };
+  const confirmUpload = (imageData) => {
+    Swal.fire({
+      title: "Confirm Upload",
+      text: "Do you want to upload this photo?",
+      imageUrl: imageData,
+      imageWidth: 200,
+      imageHeight: 150,
+      showCancelButton: true,
+      confirmButtonText: "Yes, Upload",
+      cancelButtonText: "Cancel",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        uploadImage(imageData);
+      }
+    });
+  };
+  const uploadImage = async (base64Image) => {
+    try {
+      // Convert base64 to Blob
+      const blob = await fetch(base64Image).then((res) => res.blob());
+      const formData1 = new FormData();
+      formData1.append("file", blob, "photo.png");
+
+      // Send the formData to the server
+      const response = await fetch(`${API_HOST}${PATIENT_IMAGE_UPLOAD}`, {
+        method: "POST",
+        body: formData1,
+      });
+
+      // Parse JSON response
+      const data = await response.json();
+
+      if (response.status === 200 && data.response) {
+        // Extracting the image path
+        const extractedPath = data.response;
+
+        // Updating state with the extracted image path
+        setImageURL(extractedPath);
+        console.log("Uploaded Image URL:", extractedPath);
+
+        // Show success alert
+        Swal.fire("Success!", "Image uploaded successfully!", "success");
+      } else {
+        Swal.fire("Error!", "Failed to upload image!", "error");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      Swal.fire("Error!", "Something went wrong!", "error");
     }
   };
 
@@ -252,7 +311,7 @@ async function fetchDepartment() {
       const data = await getRequest(`${ALL_DEPARTMENT}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         const filteredDepartments = data.response.filter(
-            (dept) => dept.departmentCode === "OPD"
+            (dept) => dept.departmentCode === DEPARTMENT_CODE_OPD
         );
         setDepartmentData(filteredDepartments);
       } else {
