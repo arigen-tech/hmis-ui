@@ -19,3 +19,9 @@ export const STATE_BY_COUNTRY="/state/country/";
 export const DOCTOR_BY_SPECIALITY="/users/doctorBySpeciality/";
 
 
+export const COUNTRYAPI = "/country";
+export const STATEAPI = "/state";
+export const DISTRICTAPI = "/district";
+export const GENDERAPI = "/gender";
+
+export const EMPLOYEE = "/employees";
