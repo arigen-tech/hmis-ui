@@ -1,136 +1,72 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
+import axios from "axios";
+import { API_HOST } from "../../../config/apiConfig";
 
 const Religionmaster = () => {
+    const [religionData, setReligionData] = useState([]);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageInput, setPageInput] = useState("");
+    const itemsPerPage = 5;
+    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, religionId: null, newStatus: false });
+    const [popupMessage, setPopupMessage] = useState(null);
+    const [showForm, setShowForm] = useState(false);
+    const [editingReligion, setEditingReligion] = useState(null);
+    const [isFormValid, setIsFormValid] = useState(false);
+    const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({
         religionName: "",
     });
-    const [showForm, setShowForm] = useState(false);
-    const [isFormValid, setIsFormValid] = useState(false);
-    const [showModal, setShowModal] = useState(false);
-    const [editingReligion, setEditingReligion] = useState(null);
-    const [popupMessage, setPopupMessage] = useState(null);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [pageInput, setPageInput] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
+    const [loading, setLoading] = useState(true);
 
-    const [religionData, setReligionData] = useState([
-        { id: 1, religionName: "Hindu", status: "y" },
-        { id: 2, religionName: "Muslim", status: "y" },
-        { id: 4, religionName: "Christian", status: "y" },
-        { id: 5, religionName: "Sikh", status: "y" },
-        { id: 6, religionName: "Buddhist", status: "y" },
-        { id: 7, religionName: "Jain", status: "y" },
-        { id: 8, religionName: "Judaism", status: "y" },
-        { id: 9, religionName: "Zoroastrian", status: "y" },
-        { id: 10, religionName: "Bahai", status: "y" },
-        { id: 11, religionName: "Shinto", status: "y" },
-        { id: 12, religionName: "Taoism", status: "y" },
-        { id: 13, religionName: "Confucianism", status: "y" },
-        { id: 14, religionName: "Atheism", status: "y" },
-        { id: 15, religionName: "Agnosticism", status: "y" },
-        { id: 16, religionName: "Humanism", status: "y" },
-        { id: 17, religionName: "Paganism", status: "y" },
-        { id: 18, religionName: "Wicca", status: "y" },
-        { id: 19, religionName: "Druidism", status: "y" },
-        { id: 20, religionName: "Scientology", status: "y" },
-        { id: 21, religionName: "Rastafari", status: "y" },
-        { id: 22, religionName: "Other", status: "y" },
-    ]);
+    const Religion_NAME_MAX_LENGTH = 30;
 
-    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, religionId: null, newStatus: false });
-    const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
+    // Fetch religion data from API
+    useEffect(() => {
+        fetchReligionData();
+    }, []);
 
-    const filteredReligions = religionData.filter(religion =>
-        religion.religionName.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    const handleSearch = (e) => {
-        setSearchQuery(e.target.value);
-        setCurrentPage(1); // Reset to first page when search changes
-    };
-
-    const handleEdit = (religion) => {
-        setEditingReligion(religion);
-        setShowForm(true);
-    };
-
-    const handleSave = (e) => {
-        e.preventDefault();
-        if (!isFormValid) return;
-
-        // Get form data directly from the form elements
-        const formData = e.target.elements;
-        const updatedReligionName = formData.religionName.value;
-
-        if (editingReligion) {
-            setReligionData(religionData.map(religion =>
-                religion.id === editingReligion.id
-                    ? { ...religion, religionName: updatedReligionName, }
-                    : religion
-            ));
-        } else {
-            const newReligion = {
-                id: religionData.length + 1,
-                religionName: updatedReligionName,
-                status: "y"
-            };
-            setReligionData([...religionData, newReligion]);
-        }
-
-        setEditingReligion(null);
-        setShowForm(false);
-        showPopup("Changes saved successfully!", "success");
-    };
-
-    const showPopup = (message, type = 'info') => {
-        setPopupMessage({
-            message,
-            type,
-            onClose: () => {
-                setPopupMessage(null);
+    const fetchReligionData = async () => {
+        try {
+            setLoading(true);
+            const response = await axios.get(`${API_HOST}/religion/all`);
+            if (response.data && response.data.response) {
+                // Map the API response to match your expected structure
+                const mappedData = response.data.response.map(item => ({
+                    id: item.id,
+                    religionName: item.name, // Map 'name' to 'religionName'
+                    status: item.status,
+                    lastChgBy: item.lastChgBy,
+                    lastChgDate: item.lastChgDate
+                }));
+                setReligionData(mappedData);
             }
-        });
-    };
-
-    const handleInputChange = (e) => {
-        const { id, value } = e.target
-        setFormData((prevData) => ({ ...prevData, [id]: value }))
-    }
-
-    const handleCreateFormSubmit = (e) => {
-        e.preventDefault()
-        if (formData.religionName) {
-            setReligionData([...religionData, { ...formData, id: Date.now(), status: "y" }])
-            setFormData({ religionName: "" })
-            setShowForm(false)
-        } else {
-            alert("Please fill out all required fields.")
+        } catch (err) {
+            console.error("Error fetching religion data:", err);
+            showPopup("Failed to load religion data", "error");
+        } finally {
+            setLoading(false);
         }
-    }
-
-    const handleSwitchChange = (id, newStatus) => {
-        setConfirmDialog({ isOpen: true, religionId: id, newStatus });
     };
 
-    const handleConfirm = (confirmed) => {
-        if (confirmed && confirmDialog.religionId !== null) {
-            setReligionData((prevData) =>
-                prevData.map((religion) =>
-                    religion.id === confirmDialog.religionId ? { ...religion, status: confirmDialog.newStatus } : religion
-                )
-            );
-        }
-        setConfirmDialog({ isOpen: false, religionId: null, newStatus: null });
+    const handleSearchChange = (e) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1);
     };
 
-    const filteredTotalPages = Math.ceil(filteredReligions.length / itemsPerPage);
+    const filteredReligions = (religionData || []).filter(
+        (religion) =>
+            religion?.religionName?.toLowerCase().includes(searchQuery?.toLowerCase() || "")
+    );
+    
 
     const currentItems = filteredReligions.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
+
+    const filteredTotalPages = Math.ceil(filteredReligions.length / itemsPerPage);
 
     const handlePageNavigation = () => {
         const pageNumber = parseInt(pageInput, 10);
@@ -141,41 +77,126 @@ const Religionmaster = () => {
         }
     };
 
-    const renderPagination = () => {
-        const pageNumbers = [];
-        const maxVisiblePages = 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-        const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
+    const handleEdit = (religion) => {
+        setEditingReligion(religion);
+        setFormData({
+            religionName: religion.religionName,
+        });
+        setIsFormValid(true);
+        setShowForm(true);
+    };
 
-        if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    const handleSave = async (e) => {
+        e.preventDefault();
+        if (!isFormValid) return;
+    
+        try {
+            setLoading(true);
+    
+            // Check for duplicate religion before saving
+            const isDuplicate = religionData.some(
+                (religion) =>
+                    religion.religionName.toLowerCase() === formData.religionName.toLowerCase()
+            );
+    
+            if (isDuplicate && !editingReligion) {
+                showPopup("Religion with the same name already exists!", "error");
+                setLoading(false);
+                return;
+            }
+    
+            if (editingReligion) {
+                // Update existing religion
+                const response = await axios.put(`${API_HOST}/religion/update/${editingReligion.id}`, {
+                    name: formData.religionName,
+                    status: editingReligion.status, 
+                });
+    
+                if (response.data && response.data.status === 200) {
+                    // Refresh data from backend instead of partial update
+                    fetchReligionData();
+                    showPopup("Religion updated successfully!", "success");
+                }
+            } else {
+                // Add new religion
+                const response = await axios.post(`${API_HOST}/religion/add`, {
+                    name: formData.religionName,
+                    status: "y", 
+                });
+    
+                if (response.data && response.data.status === 200) {
+                    // Refresh data from backend instead of partial update
+                    fetchReligionData();
+                    showPopup("New religion added successfully!", "success");
+                }
+            }
+    
+            // Reset form
+            setEditingReligion(null);
+            setFormData({ religionName: "" });
+            setShowForm(false);
+        } catch (err) {
+            console.error("Error saving religion:", err);
+            showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+        } finally {
+            setLoading(false);
         }
+    };
 
-        if (startPage > 1) {
-            pageNumbers.push(1);
-            if (startPage > 2) pageNumbers.push("...");
+    const showPopup = (message, type = "info") => {
+        setPopupMessage({
+            message,
+            type,
+            onClose: () => {
+                setPopupMessage(null);
+            },
+        });
+    };
+
+    const handleSwitchChange = (id, newStatus) => {
+        setConfirmDialog({ isOpen: true, religionId: id, newStatus });
+    };
+
+    const handleConfirm = async (confirmed) => {
+        if (confirmed && confirmDialog.religionId !== null) {
+            try {
+                setLoading(true);
+                const response = await axios.put(
+                    `${API_HOST}/religion/status/${confirmDialog.religionId}?status=${confirmDialog.newStatus}`
+                );
+                if (response.data && response.data.response) {
+                    setReligionData((prevData) =>
+                        prevData.map((religion) =>
+                            religion.id === confirmDialog.religionId
+                                ? { ...religion, status: confirmDialog.newStatus }
+                                : religion
+                        )
+                    );
+                    showPopup(
+                        `Religion ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                        "success"
+                    );
+                }
+            } catch (err) {
+                console.error("Error updating religion status:", err);
+                showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+            } finally {
+                setLoading(false);
+            }
         }
+        setConfirmDialog({ isOpen: false, religionId: null, newStatus: null });
+    };
 
-        for (let i = startPage; i <= endPage; i++) {
-            pageNumbers.push(i);
-        }
+    const handleInputChange = (e) => {
+        const { id, value } = e.target;
+        setFormData((prevData) => ({ ...prevData, [id]: value }));
+        setIsFormValid(formData.religionName.trim() !== "");
+    };
 
-        if (endPage < filteredTotalPages) {
-            if (endPage < filteredTotalPages - 1) pageNumbers.push("...");
-            pageNumbers.push(filteredTotalPages);
-        }
-
-        return pageNumbers.map((number, index) => (
-            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-                {typeof number === "number" ? (
-                    <button className="page-link" onClick={() => setCurrentPage(number)}>
-                        {number}
-                    </button>
-                ) : (
-                    <span className="page-link disabled">{number}</span>
-                )}
-            </li>
-        ));
+    const handleRefresh = () => {
+        setSearchQuery("");
+        setCurrentPage(1);
+        fetchReligionData();
     };
 
     return (
@@ -186,7 +207,6 @@ const Religionmaster = () => {
                         <div className="card-header d-flex justify-content-between align-items-center">
                             <h4 className="card-title">Religion Master</h4>
                             <div className="d-flex justify-content-between align-items-center">
-
                                 {!showForm ? (
                                     <form className="d-inline-block searchform me-4" role="search">
                                         <div className="input-group searchinput">
@@ -196,8 +216,7 @@ const Religionmaster = () => {
                                                 placeholder="Search Religions"
                                                 aria-label="Search"
                                                 value={searchQuery}
-                                                onChange={handleSearch}
-
+                                                onChange={handleSearchChange}
                                             />
                                             <span className="input-group-text" id="search-icon">
                                                 <i className="fa fa-search"></i>
@@ -208,15 +227,14 @@ const Religionmaster = () => {
                                     <></>
                                 )}
 
-
                                 <div className="d-flex align-items-center">
                                     {!showForm ? (
                                         <>
                                             <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                                                 <i className="mdi mdi-plus"></i> Add
                                             </button>
-                                            <button type="button" className="btn btn-success me-2">
-                                                <i className="mdi mdi-plus"></i> Show All
+                                            <button type="button" className="btn btn-success me-2" onClick={handleRefresh}>
+                                                <i className="mdi mdi-refresh"></i> Show All
                                             </button>
                                             <button type="button" className="btn btn-success me-2" onClick={() => setShowModal(true)}>
                                                 <i className="mdi mdi-plus"></i> Reports
@@ -231,7 +249,13 @@ const Religionmaster = () => {
                             </div>
                         </div>
                         <div className="card-body">
-                            {!showForm ? (
+                            {loading ? (
+                                <div className="text-center">
+                                    <div className="spinner-border" role="status">
+                                        <span className="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            ) : !showForm ? (
                                 <div className="table-responsive packagelist">
                                     <table className="table table-bordered table-hover align-middle">
                                         <thead className="table-light">
@@ -258,7 +282,7 @@ const Religionmaster = () => {
                                                                 className="form-check-label px-0"
                                                                 htmlFor={`switch-${religion.id}`}
                                                             >
-                                                                {religion.status === "y" ? 'Active' : 'Deactive'}
+                                                                {religion.status === "y" ? "Active" : "Deactivated"}
                                                             </label>
                                                         </div>
                                                     </td>
@@ -291,7 +315,16 @@ const Religionmaster = () => {
                                                     &laquo; Previous
                                                 </button>
                                             </li>
-                                            {renderPagination()}
+                                            {[...Array(filteredTotalPages)].map((_, index) => (
+                                                <li
+                                                    className={`page-item ${currentPage === index + 1 ? "active" : ""}`}
+                                                    key={index}
+                                                >
+                                                    <button className="page-link" onClick={() => setCurrentPage(index + 1)}>
+                                                        {index + 1}
+                                                    </button>
+                                                </li>
+                                            ))}
                                             <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
                                                 <button
                                                     className="page-link"
@@ -330,8 +363,9 @@ const Religionmaster = () => {
                                             className="form-control"
                                             id="religionName"
                                             placeholder="Religion Name"
-                                            defaultValue={editingReligion ? editingReligion.religionName : ""}
-                                            onChange={() => setIsFormValid(true)}
+                                            value={formData.religionName}
+                                            onChange={handleInputChange}
+                                            maxLength={Religion_NAME_MAX_LENGTH}
                                             required
                                         />
                                     </div>
@@ -384,7 +418,8 @@ const Religionmaster = () => {
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{religionData.find(religion => religion.id === confirmDialog.religionId)?.religionName}</strong>?
+                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                    <strong>{religionData.find((religion) => religion.id === confirmDialog.religionId)?.religionName}</strong>?
                                                 </p>
                                             </div>
                                             <div className="modal-footer">
@@ -400,7 +435,7 @@ const Religionmaster = () => {
                 </div>
             </div>
         </div>
-    )
-}
+    );
+};
 
 export default Religionmaster;
