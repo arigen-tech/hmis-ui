@@ -27,12 +27,12 @@ const MaritalStatusMaster = () => {
   // Fetch marital status data from API
   useEffect(() => {
     fetchMaritalStatusData();
-  }, []);
+  }, [0]);
 
-  const fetchMaritalStatusData = async () => {
+  const fetchMaritalStatusData = async (flag = 0) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_HOST}/marital-status/all`);
+      const response = await axios.get(`${API_HOST}/marital-status/getAllMaritalStatuses/${flag}`);
 
       if (response.data && response.data.response) {
         const transformedData = response.data.response.map((status) => ({

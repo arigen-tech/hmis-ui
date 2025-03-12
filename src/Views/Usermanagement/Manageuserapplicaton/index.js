@@ -26,12 +26,15 @@ const Manageuserapplication = () => {
     const [pageInput, setPageInput] = useState("");
     const itemsPerPage = 5;
 
+    const MENU_NAME_MAX_LENGTH = 250;
+    const URL_MAX_LENGTH=250;
+
     // Fetch all applications
-    const fetchApplications = async () => {
+    const fetchApplications = async (flag = 0) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await axios.get(`${API_HOST}/applications/all`);
+            const response = await axios.get(`${API_HOST}/applications/getAllUserApplications/${flag}`);
             console.log("API Response:", response.data); // Log the full response
     
             const applicationList = response.data.response || [];
@@ -52,7 +55,7 @@ const Manageuserapplication = () => {
     };
 
     useEffect(() => {
-        fetchApplications();
+        fetchApplications(0);
     }, []);
 
     const showPopup = (message, type = 'info') => {
@@ -471,6 +474,7 @@ const Manageuserapplication = () => {
                                             placeholder="Menu Name"
                                             value={formData.menuName}
                                             onChange={handleInputChange}
+                                            maxLength={MENU_NAME_MAX_LENGTH}
                                             required
                                         />
                                     </div><div className="form-group col-md-4">
@@ -483,6 +487,7 @@ const Manageuserapplication = () => {
                                             placeholder="URL"
                                             value={formData.url}
                                             onChange={handleInputChange}
+                                            maxLength={URL_MAX_LENGTH}
                                             required
                                         />
                                     </div>

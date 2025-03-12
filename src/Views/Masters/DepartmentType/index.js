@@ -27,13 +27,13 @@ const Departmenttype = () => {
 
     // Fetch department types from API
     useEffect(() => {
-        fetchDepartmentTypes();
+        fetchDepartmentTypes(0);
     }, []);
 
-    const fetchDepartmentTypes = async () => {
+    const fetchDepartmentTypes = async (flag = 0) => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_HOST}/department-type/all`);
+            const response = await axios.get(`${API_HOST}/department-type/getAllDepartmentTypes/${flag}`);
             if (response.data && response.data.response) {
                 setDepartmentTypes(response.data.response);
             }

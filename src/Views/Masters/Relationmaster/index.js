@@ -30,13 +30,13 @@ const Relationmaster = () => {
 
   // Fetch relation data from API
   useEffect(() => {
-    fetchRelationData();
+    fetchRelationData(0);
   }, []);
 
-  const fetchRelationData = async () => {
+  const fetchRelationData = async (flag = 0) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_HOST}/relation/all`);
+      const response = await axios.get(`${API_HOST}/relation/getAllRelations/${flag}`);
 
       if (response.data && response.data.response) {
         // Transform API response to match our component's data structure

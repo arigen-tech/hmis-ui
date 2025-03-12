@@ -33,14 +33,14 @@ const DepartmentMaster = () => {
 
     // Fetch departments from API
     useEffect(() => {
-        fetchDepartments();
-        fetchDepartmentTypes();
+        fetchDepartments(0);
+        fetchDepartmentTypes(1);
     }, []);
 
-    const fetchDepartments = async () => {
+    const fetchDepartments = async (flag = 0) => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_HOST}/department/all`);
+            const response = await axios.get(`${API_HOST}/department/getAllDepartments/${flag}`);
             if (response.data && response.data.response) {
                 setDepartments(response.data.response);
             }
@@ -52,9 +52,9 @@ const DepartmentMaster = () => {
         }
     };
 
-    const fetchDepartmentTypes = async () => {
+    const fetchDepartmentTypes = async (flag = 1) => {
         try {
-            const response = await axios.get(`${API_HOST}/department-type/all`);
+            const response = await axios.get(`${API_HOST}/department-type/getAllDepartmentTypes/${flag}`);
             if (response.data && response.data.response) {
                 setDepartmentTypes(response.data.response);
             }

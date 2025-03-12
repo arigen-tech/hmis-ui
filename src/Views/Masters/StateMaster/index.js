@@ -29,14 +29,14 @@ const StateMaster = () => {
 
     // Fetch states and countries from the backend
     useEffect(() => {
-        fetchStates();
-        fetchCountries();
+        fetchStates(0);
+        fetchCountries(1);
     }, []);
 
-    const fetchStates = async () => {
+    const fetchStates = async (flag = 0) => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_HOST}/state/all`);
+            const response = await axios.get(`${API_HOST}/state/getAllStates/${flag}`);
             if (response.data && response.data.response) {
                 setStates(response.data.response);
             }
@@ -48,9 +48,9 @@ const StateMaster = () => {
         }
     };
 
-    const fetchCountries = async () => {
+    const fetchCountries = async (flag = 1) => {
         try {
-            const response = await axios.get(`${API_HOST}/country/all`);
+            const response = await axios.get(`${API_HOST}/country/getAllCountries/${flag}`);
             if (response.data && response.data.response) {
                 setCountries(response.data.response);
             }
@@ -132,7 +132,7 @@ const StateMaster = () => {
                     stateCode: formData.stateCode,
                     stateName: formData.stateName,
                     countryId: formData.countryId, // Send the ID to the backend
-                    status: "y",
+                    status: "n",
                 });
 
                 if (response.data && response.data.status === 200) {

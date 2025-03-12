@@ -1,90 +1,174 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
+import axios from "axios";
+import { API_HOST } from "../../../config/apiConfig";
+import LoadingScreen from "../../../Components/Loading";
 
 const DistrictMaster = () => {
-    const [districts, setDistricts] = useState([
-        { id: 1, districtCode: "D001", districtName: "Central Delhi", state: "Delhi", status: "y" },
-        { id: 2, districtCode: "D002", districtName: "North Delhi", state: "Delhi", status: "y" },
-        { id: 3, districtCode: "D003", districtName: "South Delhi", state: "Delhi", status: "y" },
-        { id: 4, districtCode: "D004", districtName: "East Delhi", state: "Delhi", status: "y" },
-        { id: 5, districtCode: "D005", districtName: "West Delhi", state: "Delhi", status: "y" },
-        { id: 6, districtCode: "D006", districtName: "New Delhi", state: "Delhi", status: "y" },
-    ]);
-
-    const [pageInput, setPageInput] = useState("");
-    const itemsPerPage = 4;
-
+    const [districts, setDistricts] = useState([]);
+    const [states, setStates] = useState([]);
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, districtId: null, newStatus: false });
-    const [formData, setFormData] = useState({ districtCode: "", districtName: "", state: "" });
+    const [formData, setFormData] = useState({
+        districtName: "",
+        state: "", // For display purposes
+        stateId: "", // For storing the ID
+    });
     const [searchQuery, setSearchQuery] = useState("");
     const [showForm, setShowForm] = useState(false);
     const [isFormValid, setIsFormValid] = useState(false);
     const [editingDistrict, setEditingDistrict] = useState(null);
     const [popupMessage, setPopupMessage] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const [totalFilteredItems, setTotalFilteredItems] = useState(0);
+    const [pageInput, setPageInput] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [searchType, setSearchType] = useState("all");
+    const itemsPerPage = 4;
+
     const DISTRICT_NAME_MAX_LENGTH = 50;
+
+    // Fetch districts and states from the backend
+    useEffect(() => {
+        fetchDistricts(0);
+        fetchStates(1);
+    }, []);
+
+    const fetchDistricts = async (flag = 0) => {
+        try {
+            setLoading(true);
+            const response = await axios.get(`${API_HOST}/district/getAllDistricts/${flag}`);
+            if (response.data && response.data.response) {
+                setDistricts(response.data.response);
+            }
+        } catch (err) {
+            console.error("Error fetching districts:", err);
+            showPopup("Failed to load districts", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchStates = async (flag = 1) => {
+        try {
+            const response = await axios.get(`${API_HOST}/state/getAllStates/${flag}`);
+            if (response.data && response.data.response) {
+                setStates(response.data.response);
+            }
+        } catch (err) {
+            console.error("Error fetching states:", err);
+            showPopup("Failed to load states", "error");
+        }
+    };
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
+        setCurrentPage(1); // Reset to first page when search changes
+    };
+
+    const handleSearchTypeChange = (e) => {
+        setSearchType(e.target.value);
         setCurrentPage(1);
     };
 
-    const filteredDistricts = districts.filter(district =>
-        district.districtName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        district.districtCode.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredDistricts = districts.filter((district) => {
+        if (searchQuery === "") return true;
+        
+        const query = searchQuery.toLowerCase();
+        
+        if (searchType === "name") {
+            return district.districtName.toLowerCase().includes(query);
+        } else {
+            // Default: search in all fields (now just name)
+            return district.districtName.toLowerCase().includes(query);
+        }
+    });
 
     const filteredTotalPages = Math.ceil(filteredDistricts.length / itemsPerPage);
-
-    const handleEdit = (district) => {
-        setEditingDistrict(district);
-        setShowForm(true);
-    };
-
     const currentItems = filteredDistricts.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
 
-    const handleSave = (e) => {
+    const handleEdit = (district) => {
+        // Find the state name based on the state ID
+        const stateObj = states.find(s => s.id === district.stateId);
+        const stateName = stateObj ? stateObj.stateName : "";
+
+        setEditingDistrict(district);
+        setFormData({
+            districtName: district.districtName,
+            state: stateName,
+            stateId: district.stateId,
+        });
+        setIsFormValid(true);
+        setShowForm(true);
+    };
+
+    const handleSave = async (e) => {
         e.preventDefault();
         if (!isFormValid) return;
 
-        const formElement = e.target;
-        const updatedDistrictName = formElement.districtName.value;
-        const updatedDistrictCode = formElement.districtCode.value;
-        const updatedState = formElement.state.value;
+        try {
+            setLoading(true);
+            // Check for duplicate district before saving
+            const isDuplicate = districts.some(
+                (district) =>
+                    district.id !== (editingDistrict ? editingDistrict.id : null) &&
+                    district.districtName.toLowerCase() === formData.districtName.toLowerCase()
+            );
 
-        if (editingDistrict) {
-            setDistricts(districts.map(district =>
-                district.id === editingDistrict.id
-                    ? { ...district, districtName: updatedDistrictName, districtCode: updatedDistrictCode, state: updatedState }
-                    : district
-            ));
-        } else {
-            const newDistrict = {
-                id: districts.length + 1,
-                districtCode: updatedDistrictCode,
-                districtName: updatedDistrictName,
-                state: updatedState,
-                status: "y"
-            };
-            setDistricts([...districts, newDistrict]);
+            if (isDuplicate) {
+                showPopup("District with the same name already exists!", "error");
+                setLoading(false);
+                return;
+            }
+
+            if (editingDistrict) {
+                // Update existing district
+                const response = await axios.put(`${API_HOST}/district/edit/${editingDistrict.id}`, {
+                    districtCode: editingDistrict.districtCode, // Keep the existing code
+                    districtName: formData.districtName,
+                    stateId: formData.stateId, // Send the ID to the backend
+                    status: editingDistrict.status,
+                });
+
+                if (response.data && response.data.status === 200) {
+                    fetchDistricts(); // Refresh data from backend
+                    showPopup("District updated successfully!", "success");
+                }
+            } else {
+                // Add new district
+                const response = await axios.post(`${API_HOST}/district/create`, {
+                    districtCode: Date.now().toString().slice(-8), // Generate a unique code
+                    districtName: formData.districtName,
+                    stateId: formData.stateId, // Send the ID to the backend
+                    status: "n",
+                });
+
+                if (response.data && response.data.status === 200) {
+                    fetchDistricts(); // Refresh data from backend
+                    showPopup("New district added successfully!", "success");
+                }
+            }
+
+            // Reset form
+            setEditingDistrict(null);
+            setFormData({ districtName: "", state: "", stateId: "" });
+            setShowForm(false);
+        } catch (err) {
+            console.error("Error saving district:", err);
+            showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+        } finally {
+            setLoading(false);
         }
-
-        setEditingDistrict(null);
-        setShowForm(false);
-        showPopup("Changes saved successfully!", "success");
     };
 
-    const showPopup = (message, type = 'info') => {
+    const showPopup = (message, type = "info") => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
                 setPopupMessage(null);
-            }
+            },
         });
     };
 
@@ -92,20 +176,52 @@ const DistrictMaster = () => {
         setConfirmDialog({ isOpen: true, districtId: id, newStatus });
     };
 
-    const handleConfirm = (confirmed) => {
+    const handleConfirm = async (confirmed) => {
         if (confirmed && confirmDialog.districtId !== null) {
-            setDistricts((prevData) =>
-                prevData.map((district) =>
-                    district.id === confirmDialog.districtId ? { ...district, status: confirmDialog.newStatus } : district
-                )
-            );
+            try {
+                setLoading(true);
+                const response = await axios.put(
+                    `${API_HOST}/district/status/${confirmDialog.districtId}?status=${confirmDialog.newStatus}`
+                );
+                if (response.data && response.data.status === 200) {
+                    fetchDistricts(); // Refresh data from backend
+                    showPopup(
+                        `District ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                        "success"
+                    );
+                }
+            } catch (err) {
+                console.error("Error updating district status:", err);
+                showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+            } finally {
+                setLoading(false);
+            }
         }
         setConfirmDialog({ isOpen: false, districtId: null, newStatus: null });
     };
 
     const handleInputChange = (e) => {
         const { id, value } = e.target;
-        setFormData((prevData) => ({ ...prevData, [id]: value }));
+        setFormData((prevData) => {
+            const updatedData = { ...prevData, [id]: value };
+            
+            // Handle state selection separately
+            if (id === "state") {
+                // Find the selected state object
+                const selectedIndex = e.target.selectedIndex;
+                const selectedOption = e.target.options[selectedIndex];
+                const stateId = parseInt(selectedOption.getAttribute('data-id'), 10);
+                
+                updatedData.stateId = isNaN(stateId) ? null : stateId;
+            }
+            
+            setIsFormValid(
+                updatedData.districtName.trim() !== "" &&
+                updatedData.stateId // Check stateId instead of state
+            );
+            
+            return updatedData;
+        });
     };
 
     const handlePageNavigation = () => {
@@ -161,25 +277,25 @@ const DistrictMaster = () => {
                     <div className="card form-card">
                         <div className="card-header">
                             <h4 className="card-title p-2">District Master</h4>
-                            <div className="d-flex justify-content-between align-items-spacearound mt-3">
+                            <div className="d-flex justify-content-between align-items-center mt-3">
                                 {!showForm && (
                                     <div className="d-flex align-items-center">
                                         <div className="me-3">
                                             <label>
-                                                <input type="radio" name="searchType" value="code" />
-                                                <span style={{ marginLeft: '5px' }}>District Code</span>
+                                                <input type="radio" name="searchType" value="name" onChange={handleSearchTypeChange} checked={searchType === 'name'} />
+                                                <span style={{ marginLeft: '5px' }}>District Name</span>
                                             </label>
                                         </div>
                                         <div className="me-3">
                                             <label>
-                                                <input type="radio" name="searchType" value="description" />
-                                                <span style={{ marginLeft: '5px' }}>District Name</span>
+                                                <input type="radio" name="searchType" value="all" onChange={handleSearchTypeChange} checked={searchType === 'all'} />
+                                                <span style={{ marginLeft: '5px' }}>All</span>
                                             </label>
                                         </div>
                                     </div>
                                 )}
                                 <div className="d-flex align-items-center ms-auto">
-                                    {!showForm && (
+                                    {!showForm ? (
                                         <>
                                             <form className="d-inline-block searchform me-4" role="search">
                                                 <div className="input-group searchinput">
@@ -196,15 +312,23 @@ const DistrictMaster = () => {
                                                     </span>
                                                 </div>
                                             </form>
-                                            <button type="button" className="btn btn-success me-2" onClick={() => (setShowForm(true))}>
+                                            <button type="button" className="btn btn-success me-2" onClick={() => {
+                                                setShowForm(true);
+                                                setEditingDistrict(null);
+                                                setFormData({
+                                                    districtName: "",
+                                                    state: "",
+                                                    stateId: ""
+                                                });
+                                                setIsFormValid(false);
+                                            }}>
                                                 <i className="mdi mdi-plus"></i> ADD
                                             </button>
                                             <button type="button" className="btn btn-success me-2">
-                                                <i className="mdi mdi-plus"></i> Generate Report 
+                                                <i className="mdi mdi-file-export"></i> Generate Report
                                             </button>
                                         </>
-                                    )}
-                                    {showForm && (
+                                    ) : (
                                         <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
                                             <i className="mdi mdi-arrow-left"></i> Back
                                         </button>
@@ -213,12 +337,13 @@ const DistrictMaster = () => {
                             </div>
                         </div>
                         <div className="card-body">
-                            {!showForm ? (
+                            {loading ? (
+                                <LoadingScreen />
+                            ) : !showForm ? (
                                 <div className="table-responsive packagelist">
                                     <table className="table table-bordered table-hover align-middle">
                                         <thead className="table-light">
                                             <tr>
-                                                <th>District Code</th>
                                                 <th>District Name</th>
                                                 <th>State</th>
                                                 <th>Status</th>
@@ -226,91 +351,140 @@ const DistrictMaster = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {currentItems.map((district) => (
-                                                <tr key={district.id}>
-                                                    <td>{district.districtCode}</td>
-                                                    <td>{district.districtName}</td>
-                                                    <td>{district.state}</td>
-                                                    <td>
-                                                        <div className="form-check form-switch">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={district.status === "y"}
-                                                                onChange={() => handleSwitchChange(district.id, district.status === "y" ? "n" : "y")}
-                                                                id={`switch-${district.id}`}
-                                                            />
-                                                            <label
-                                                                className="form-check-label px-0"
-                                                                htmlFor={`switch-${district.id}`}
-                                                                onClick={() => handleSwitchChange(district.id, district.status === "y" ? "n" : "y")}
-                                                            >
-                                                                {district.status === "y" ? 'Active' : 'Deactivated'}
-                                                            </label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-success me-2"
-                                                            onClick={() => handleEdit(district)}
-                                                            disabled={district.status !== "y"}
-                                                        >
-                                                            <i className="fa fa-pencil"></i>
-                                                        </button>
+                                            {currentItems.length > 0 ? (
+                                                currentItems.map((district) => {
+                                                    // Find the matching state for this district
+                                                    const state = states.find(s => s.id === district.stateId);
+                                                    const stateName = state ? state.stateName : "N/A";
+                                                    
+                                                    return (
+                                                        <tr key={district.id}>
+                                                            <td>{district.districtName}</td>
+                                                            <td>{stateName}</td>
+                                                            <td>
+                                                                <div className="form-check form-switch">
+                                                                    <input
+                                                                        className="form-check-input"
+                                                                        type="checkbox"
+                                                                        checked={district.status === "y"}
+                                                                        onChange={() => handleSwitchChange(district.id, district.status === "y" ? "n" : "y")}
+                                                                        id={`switch-${district.id}`}
+                                                                    />
+                                                                    <label
+                                                                        className="form-check-label px-0"
+                                                                        htmlFor={`switch-${district.id}`}
+                                                                    >
+                                                                        {district.status === "y" ? "Active" : "Deactivated"}
+                                                                    </label>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <button
+                                                                    className="btn btn-sm btn-success me-2"
+                                                                    onClick={() => handleEdit(district)}
+                                                                    disabled={district.status !== "y"}
+                                                                >
+                                                                    <i className="fa fa-pencil"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={4} className="text-center">
+                                                        No districts found
                                                     </td>
                                                 </tr>
-                                            ))}
+                                            )}
                                         </tbody>
                                     </table>
+                                    
+                                    {filteredDistricts.length > 0 && (
+                                        <nav className="d-flex justify-content-between align-items-center mt-3">
+                                            <div>
+                                                <span>
+                                                    Page {currentPage} of {filteredTotalPages} | Total Records: {filteredDistricts.length}
+                                                </span>
+                                            </div>
+                                            <ul className="pagination mb-0">
+                                                <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                                                    <button
+                                                        className="page-link"
+                                                        onClick={() => setCurrentPage(currentPage - 1)}
+                                                        disabled={currentPage === 1}
+                                                    >
+                                                        &laquo; Previous
+                                                    </button>
+                                                </li>
+                                                {renderPagination()}
+                                                <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                                                    <button
+                                                        className="page-link"
+                                                        onClick={() => setCurrentPage(currentPage + 1)}
+                                                        disabled={currentPage === filteredTotalPages}
+                                                    >
+                                                        Next &raquo;
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                            <div className="d-flex align-items-center">
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max={filteredTotalPages}
+                                                    value={pageInput}
+                                                    onChange={(e) => setPageInput(e.target.value)}
+                                                    placeholder="Go to page"
+                                                    className="form-control me-2"
+                                                />
+                                                <button
+                                                    className="btn btn-primary"
+                                                    onClick={handlePageNavigation}
+                                                >
+                                                    Go
+                                                </button>
+                                            </div>
+                                        </nav>
+                                    )}
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
-                                    <div className="row">
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>District Code <span className="text-danger">*</span></label>
-                                            <input
-                                                type="text"
-                                                className="form-control  mt-1"
-                                                id="districtCode"
-                                                placeholder="District Code"
-                                                required
-                                                defaultValue={editingDistrict ? editingDistrict.districtCode : ""}
-                                                onChange={() => setIsFormValid(true)}
-                                            />
-                                        </div>
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>District Name <span className="text-danger">*</span></label>
-                                            <input
-                                                type="text"
-                                                className="form-control  mt-1"
-                                                id="districtName"
-                                                placeholder="District Name"
-                                                maxLength={DISTRICT_NAME_MAX_LENGTH}
-                                                required
-                                                defaultValue={editingDistrict ? editingDistrict.districtName : ""}
-                                                onChange={() => setIsFormValid(true)}
-                                            />
-                                        </div>
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>State <span className="text-danger">*</span></label>
-                                            <div className="col-md-4  mt-1">
-                                                <select
-                                                    className="form-control"
-                                                    id="state"
-                                                    required
-                                                    value={formData.state}
-                                                    onChange={handleInputChange}
-                                                >
-                                                    <option value="" disabled>Select</option>
-                                                    <option value="Delhi">Delhi</option>
-                                                    <option value="Maharashtra">Maharashtra</option>
-                                                    <option value="Karnataka">Karnataka</option>
-                                                    <option value="Tamil Nadu">Tamil Nadu</option>
-                                                </select>
-                                            </div>
-                                        </div>
+                                    <div className="form-group col-md-6 mt-3">
+                                        <label>District Name <span className="text-danger">*</span></label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            id="districtName"
+                                            placeholder="District Name"
+                                            value={formData.districtName}
+                                            onChange={handleInputChange}
+                                            maxLength={DISTRICT_NAME_MAX_LENGTH}
+                                            required
+                                        />
                                     </div>
-                                    <div className="form-group col-md-12 d-flex justify-content-end">
+                                    <div className="form-group col-md-6 mt-3">
+                                        <label>State <span className="text-danger">*</span></label>
+                                        <select
+                                            className="form-control"
+                                            id="state"
+                                            value={formData.state}
+                                            onChange={handleInputChange}
+                                            required
+                                        >
+                                            <option value="" disabled>Select State</option>
+                                            {states && states.length > 0 ? (
+                                                states.map(state => (
+                                                    <option key={state.id} value={state.stateName} data-id={state.id}>
+                                                        {state.stateName}
+                                                    </option>
+                                                ))
+                                            ) : (
+                                                <option value="" disabled>No states available</option>
+                                            )}
+                                        </select>
+                                    </div>
+                                    <div className="form-group col-md-12 d-flex justify-content-end mt-4">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                                             Save
                                         </button>
@@ -339,7 +513,8 @@ const DistrictMaster = () => {
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{districts.find(district => district.id === confirmDialog.districtId)?.districtName}</strong>?
+                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                    <strong>{districts.find((district) => district.id === confirmDialog.districtId)?.districtName}</strong>?
                                                 </p>
                                             </div>
                                             <div className="modal-footer">
@@ -350,51 +525,6 @@ const DistrictMaster = () => {
                                     </div>
                                 </div>
                             )}
-                            <nav className="d-flex justify-content-between align-items-center mt-3">
-                                <div>
-                                    <span>
-                                        Page {currentPage} of {filteredTotalPages} | Total Records: {filteredDistricts.length}
-                                    </span>
-                                </div>
-                                <ul className="pagination mb-0">
-                                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                        <button 
-                                            className="page-link" 
-                                            onClick={() => setCurrentPage(currentPage - 1)} 
-                                            disabled={currentPage === 1}
-                                        >
-                                            &laquo; Previous
-                                        </button>
-                                    </li>
-                                    {renderPagination()}
-                                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                        <button 
-                                            className="page-link" 
-                                            onClick={() => setCurrentPage(currentPage + 1)} 
-                                            disabled={currentPage === filteredTotalPages}
-                                        >
-                                            Next &raquo;
-                                        </button>
-                                    </li>
-                                </ul>
-                                <div className="d-flex align-items-center">
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max={filteredTotalPages}
-                                        value={pageInput}
-                                        onChange={(e) => setPageInput(e.target.value)}
-                                        placeholder="Go to page"
-                                        className="form-control me-2"
-                                    />
-                                    <button
-                                        className="btn btn-primary"
-                                        onClick={handlePageNavigation}
-                                    >
-                                        Go
-                                    </button>
-                                </div>
-                            </nav>
                         </div>
                     </div>
                 </div>

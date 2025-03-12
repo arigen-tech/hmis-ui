@@ -27,13 +27,13 @@ const CountryMaster = () => {
 
     // Fetch countries from the backend
     useEffect(() => {
-        fetchCountries();
+        fetchCountries(0);
     }, []);
 
-    const fetchCountries = async () => {
+    const fetchCountries = async (flag = 0) => {
         setIsLoading(true);
         try {
-            const response = await axios.get(`${API_HOST}/country/all`);
+            const response = await axios.get(`${API_HOST}/country/getAllCountries/${flag}`);
             if (response.data && response.data.response) {
                 setCountries(response.data.response);
             }

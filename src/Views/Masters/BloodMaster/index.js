@@ -28,13 +28,13 @@ const BloodGroupMaster = () => {
 
   // Fetch blood groups from API
   useEffect(() => {
-    fetchBloodGroups();
+    fetchBloodGroups(0);
   }, []);
 
-  const fetchBloodGroups = async () => {
+  const fetchBloodGroups = async (flag = 0) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_HOST}/blood-group/all`);
+      const response = await axios.get(`${API_HOST}/blood-group/getAllBloodGroups/${flag}`);
 
       console.log("API Response:", response.data);
 

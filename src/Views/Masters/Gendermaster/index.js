@@ -31,23 +31,23 @@ const Gendermaster = () => {
 
   // Fetch gender data from API
   useEffect(() => {
-    fetchGenderData();
+    fetchGenderData(0); // Fetch gender data with flag = 1
   }, []);
 
-  const fetchGenderData = async () => {
+  const fetchGenderData = async (flag = 0) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_HOST}/gender/all`);
-      
+      const response = await axios.get(`${API_HOST}/gender/getAll/${flag}`);
+  
       if (response.data && response.data.response) {
         // Transform API response to match our component's data structure
         const transformedData = response.data.response.map(gender => ({
           id: gender.id,
           genderCode: gender.genderCode,
           genderName: gender.genderName,
-          status: gender.status // The API returns status as "y" or "n"
+          status: gender.status // Assuming "y" or "n"
         }));
-        
+  
         setGenderData(transformedData);
         setTotalFilteredProducts(transformedData.length);
         setFilteredTotalPages(Math.ceil(transformedData.length / itemsPerPage));
@@ -59,6 +59,7 @@ const Gendermaster = () => {
       setLoading(false);
     }
   };
+  
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);

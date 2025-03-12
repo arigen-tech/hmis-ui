@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
 import { API_HOST } from "../../../config/apiConfig";
+import LoadingScreen from "../../../Components/Loading";
 
 const Templatemaster = () => {
     const [templateData, setTemplateData] = useState([]);
@@ -18,12 +19,15 @@ const Templatemaster = () => {
     const [pageInput, setPageInput] = useState("");
     const itemsPerPage = 5;
 
+    const TEMPLATE_CODE_MAX_LENGTH=48;
+    const TEMPLATE_NAME_MAX_LENGTH=120;
+
     // Fetch all templates
-    const fetchTemplates = async () => {
+    const fetchTemplates = async (flag = 0) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await axios.get(`${API_HOST}/mas-templates/all`);
+            const response = await axios.get(`${API_HOST}/mas-templates/getAllTemplates/${flag}`);
             console.log("API Response:", response.data); // Log the full response
 
             const templateList = response.data.response || [];
@@ -44,7 +48,7 @@ const Templatemaster = () => {
     };
 
     useEffect(() => {
-        fetchTemplates();
+        fetchTemplates(0);
     }, []);
 
     const showPopup = (message, type = 'info') => {
@@ -374,11 +378,7 @@ const Templatemaster = () => {
                         </div>
                         <div className="card-body">
                             {loading ? (
-                                <div className="text-center">
-                                    <div className="spinner-border" role="status">
-                                        <span className="visually-hidden">Loading...</span>
-                                    </div>
-                                </div>
+                                <LoadingScreen />
                             ) : !showForm ? (
                                 <div className="table-responsive packagelist">
                                     {templateData.length === 0 ? (
@@ -493,6 +493,7 @@ const Templatemaster = () => {
                                             placeholder="Template Code"
                                             value={formData.templateCode}
                                             onChange={handleInputChange}
+                                            maxLength={TEMPLATE_CODE_MAX_LENGTH}
                                             required
                                         />
                                     </div>
@@ -506,6 +507,7 @@ const Templatemaster = () => {
                                             placeholder="Template Name"
                                             value={formData.templateName}
                                             onChange={handleInputChange}
+                                            maxLength={TEMPLATE_NAME_MAX_LENGTH}
                                             required
                                         />
                                     </div>

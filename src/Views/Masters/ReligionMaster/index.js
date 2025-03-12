@@ -25,13 +25,13 @@ const Religionmaster = () => {
 
     // Fetch religion data from API
     useEffect(() => {
-        fetchReligionData();
+        fetchReligionData(0);
     }, []);
 
-    const fetchReligionData = async () => {
+    const fetchReligionData = async (flag = 0) => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_HOST}/religion/all`);
+            const response = await axios.get(`${API_HOST}/religion/getAllReligions/${flag}`);
             if (response.data && response.data.response) {
                 // Map the API response to match your expected structure
                 const mappedData = response.data.response.map(item => ({

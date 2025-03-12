@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
 import { API_HOST } from "../../../config/apiConfig";
+import LoadingScreen from "../../../Components/Loading"
 
 const Rolemaster = () => {
     const [roleData, setRoleData] = useState([]);
@@ -17,6 +18,10 @@ const Rolemaster = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageInput, setPageInput] = useState("");
     const itemsPerPage = 5;
+
+
+    const ROLE_CODE_MAX_LENGTH=255;
+    const ROLE_NAME_MAX_LENGTH=255;
 
     // Fetch all roles
     const fetchRoles = async () => {
@@ -340,11 +345,7 @@ const Rolemaster = () => {
                         </div>
                         <div className="card-body">
                             {loading ? (
-                                <div className="text-center">
-                                    <div className="spinner-border" role="status">
-                                        <span className="visually-hidden">Loading...</span>
-                                    </div>
-                                </div>
+                                <LoadingScreen />
                             ) : !showForm ? (
                                 <div className="table-responsive packagelist">
                                     {roleData.length === 0 ? (
@@ -459,6 +460,7 @@ const Rolemaster = () => {
                                             placeholder="Role Code"
                                             value={formData.roleCode}
                                             onChange={handleInputChange}
+                                            maxLength={ROLE_CODE_MAX_LENGTH}
                                             required
                                         />
                                     </div>
@@ -472,6 +474,7 @@ const Rolemaster = () => {
                                             placeholder="Role Description"
                                             value={formData.roleDesc}
                                             onChange={handleInputChange}
+                                            maxLength={ROLE_NAME_MAX_LENGTH}
                                             required
                                         />
                                     </div>
