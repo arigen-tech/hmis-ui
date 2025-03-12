@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
 import { API_HOST } from "../../../config/apiConfig";
+import LoadingScreen from "../../../Components/Loading";
 
 const BloodGroupMaster = () => {
   const [bloodGroups, setBloodGroups] = useState([]);
@@ -118,7 +119,7 @@ const BloodGroupMaster = () => {
         const response = await axios.post(`${API_HOST}/blood-group/add`, {
           bloodGroupCode: formData.bloodGroupCode,
           bloodGroupName: formData.bloodGroupName,
-          status: "y",
+          status: "n",
         });
 
         if (response.data && response.data.response) {
@@ -278,11 +279,7 @@ const BloodGroupMaster = () => {
             </div>
             <div className="card-body">
               {loading ? (
-                <div className="text-center">
-                  <div className="spinner-border" role="status">
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
-                </div>
+                 <LoadingScreen />
               ) : !showForm ? (
                 <div className="table-responsive packagelist">
                   <table className="table table-bordered table-hover align-middle">

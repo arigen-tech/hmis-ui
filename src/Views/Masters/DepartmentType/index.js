@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
 import { API_HOST } from "../../../config/apiConfig";
+import LoadingScreen from "../../../Components/Loading";
 
 const Departmenttype = () => {
     const [departmentTypes, setDepartmentTypes] = useState([]);
@@ -130,7 +131,7 @@ const Departmenttype = () => {
                 const response = await axios.post(`${API_HOST}/department-type/create`, {
                     departmentTypeCode: formData.departmentTypeCode,
                     departmentTypeName: formData.departmentTypeName,
-                    status: "y",
+                    status: "n",
                 });
 
                 if (response.data && response.data.response) {
@@ -272,11 +273,7 @@ const Departmenttype = () => {
                         </div>
                         <div className="card-body">
                             {loading ? (
-                                <div className="text-center">
-                                    <div className="spinner-border" role="status">
-                                        <span className="visually-hidden">Loading...</span>
-                                    </div>
-                                </div>
+                                <LoadingScreen />
                             ) : !showForm ? (
                                 <div className="table-responsive packagelist">
                                     <table className="table table-bordered table-hover align-middle">

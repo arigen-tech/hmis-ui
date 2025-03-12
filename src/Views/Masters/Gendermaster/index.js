@@ -24,6 +24,9 @@ const Gendermaster = () => {
   const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
   const [itemsPerPage] = useState(10);
 
+  const Gender_NAME_MAX_LENGTH = 30;
+  const Gender_Code_MAX_LENGTH = 1;
+
   
 
   // Fetch gender data from API
@@ -112,7 +115,7 @@ const Gendermaster = () => {
           genderCode: formData.genderCode,
           genderName: formData.genderName,
           code: null,
-          status: "y"
+          status: "n"
         });
 
         const isDuplicate = genderData.some(
@@ -369,6 +372,7 @@ const Gendermaster = () => {
                         placeholder="Gender Code"
                         value={formData.genderCode}
                         onChange={handleInputChange}
+                        maxLength={Gender_Code_MAX_LENGTH}
                         required
                       />
                     </div>
@@ -383,6 +387,7 @@ const Gendermaster = () => {
                       placeholder="Gender Name"
                       value={formData.genderName}
                       onChange={handleInputChange}
+                      maxLength={Gender_NAME_MAX_LENGTH}
                       required
                     />
                   </div>

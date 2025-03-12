@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
 import { API_HOST } from "../../../config/apiConfig";
+import LoadingScreen from "../../../Components/Loading"
 
 const Religionmaster = () => {
     const [religionData, setReligionData] = useState([]);
@@ -121,7 +122,7 @@ const Religionmaster = () => {
                 // Add new religion
                 const response = await axios.post(`${API_HOST}/religion/add`, {
                     name: formData.religionName,
-                    status: "y", 
+                    status: "n", 
                 });
     
                 if (response.data && response.data.status === 200) {
@@ -250,11 +251,7 @@ const Religionmaster = () => {
                         </div>
                         <div className="card-body">
                             {loading ? (
-                                <div className="text-center">
-                                    <div className="spinner-border" role="status">
-                                        <span className="visually-hidden">Loading...</span>
-                                    </div>
-                                </div>
+                                <LoadingScreen />
                             ) : !showForm ? (
                                 <div className="table-responsive packagelist">
                                     <table className="table table-bordered table-hover align-middle">

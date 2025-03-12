@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
 import { API_HOST } from "../../../config/apiConfig";
+import LoadingScreen from "../../../Components/Loading"
 
 const Relationmaster = () => {
   const [relationData, setRelationData] = useState([]);
@@ -23,6 +24,9 @@ const Relationmaster = () => {
   const [filteredTotalPages, setFilteredTotalPages] = useState(1);
   const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
   const [itemsPerPage] = useState(10);
+
+  const RELATION_NAME_MAX_LENGTH = 30;
+  const RELATION_CODE_MAX_LENGTH = 30;
 
   // Fetch relation data from API
   useEffect(() => {
@@ -124,7 +128,7 @@ const Relationmaster = () => {
         const response = await axios.post(`${API_HOST}/relation/add`, {
           relationName: formData.relationName,
           code: formData.code,
-          status: "y",
+          status: "n",
         });
   
         if (response.data && response.data.response) {
@@ -279,11 +283,7 @@ const Relationmaster = () => {
             </div>
             <div className="card-body">
               {loading ? (
-                <div className="text-center">
-                  <div className="spinner-border" role="status">
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
-                </div>
+                <LoadingScreen />
               ) : !showForm ? (
                 <div className="table-responsive packagelist">
                   <table className="table table-bordered table-hover align-middle">
@@ -381,6 +381,7 @@ const Relationmaster = () => {
                       placeholder="Relation Name"
                       value={formData.relationName}
                       onChange={handleInputChange}
+                      maxLength={RELATION_NAME_MAX_LENGTH}
                       required
                     />
                   </div>
@@ -394,6 +395,7 @@ const Relationmaster = () => {
                       placeholder=" Relation code"
                       value={formData.code}
                       onChange={handleInputChange}
+                      maxLength={RELATION_CODE_MAX_LENGTH}
                       required
                     />
                   </div>
