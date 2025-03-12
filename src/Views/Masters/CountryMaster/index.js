@@ -288,7 +288,7 @@ const CountryMaster = () => {
                                         <label>Country Code <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control  mt-1"
                                             id="countryCode"
                                             placeholder="Country Code"
                                             defaultValue={editingCountry ? editingCountry.countryCode : ""}
@@ -300,7 +300,7 @@ const CountryMaster = () => {
                                         <label>Country Name <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control  mt-1"
                                             id="countryName"
                                             placeholder="Country Name"
                                             defaultValue={editingCountry ? editingCountry.countryName : ""}
@@ -310,7 +310,7 @@ const CountryMaster = () => {
                                     </div>
                                     <div className="form-group col-md-4 mt-3">
                                         <label>Currency <span className="text-danger">*</span></label>
-                                        <div className="col-md-4">
+                                        <div className="col-md-4  mt-1">
                                             <select
                                                 className="form-control"
                                                 id="currency"

@@ -459,13 +459,13 @@ const DepartmentMaster = () => {
                                         </button>
                                     </div>
 
-                                    <div className="form-group col-md-6">
-                                        <label>
+                                    <div className="form-group col-md-4">
+                                        <label >
                                             Department Code <span className="text-danger">*</span>
                                         </label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control  mt-1"
                                             id="departmentCode"
                                             name="departmentCode"
                                             placeholder="Department Code"
@@ -475,13 +475,13 @@ const DepartmentMaster = () => {
                                             required
                                         />
                                     </div>
-                                    <div className="form-group col-md-6">
-                                        <label>
+                                    <div className="form-group col-md-4">
+                                        <label >
                                             Department <span className="text-danger">*</span>
                                         </label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control  mt-1"
                                             id="departmentName"
                                             name="departmentName"
                                             placeholder="Department Name"
@@ -491,12 +491,12 @@ const DepartmentMaster = () => {
                                             required
                                         />
                                     </div>
-                                    <div className="form-group col-md-6 mt-2">
-                                        <label>
+                                    <div className="form-group col-md-4">
+                                        <label >
                                             Department Type <span className="text-danger">*</span>
                                         </label>
                                         <select
-                                            className="form-control"
+                                            className="form-control  mt-1"
                                             id="departmentType"
                                             name="departmentType"
                                             value={formData.departmentType}
@@ -523,13 +523,13 @@ const DepartmentMaster = () => {
 
 
                                     </div>
-                                    <div className="form-group col-md-6 mt-2">
-                                        <label>
+                                    <div className="form-group col-md-4 mt-2">
+                                        <label >
                                             Department Number <span className="text-danger">*</span>
                                         </label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control mt-1"
                                             id="departmentNo"
                                             name="departmentNo"
                                             placeholder="Department Number"

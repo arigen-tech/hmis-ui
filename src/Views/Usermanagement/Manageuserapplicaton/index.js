@@ -464,11 +464,11 @@ const Manageuserapplication = () => {
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
-                                    <div className="form-group col-md-6">
+                                    <div className="form-group col-md-4">
                                         <label>Menu Name<span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control mt-1"
                                             id="menuName"
                                             name="menuName"
                                             placeholder="Menu Name"
@@ -476,11 +476,11 @@ const Manageuserapplication = () => {
                                             onChange={handleInputChange}
                                             required
                                         />
-                                    </div><div className="form-group col-md-6">
+                                    </div><div className="form-group col-md-4">
                                         <label>URL<span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control  mt-1"
                                             id="url"
                                             name="url"
                                             placeholder="URL"

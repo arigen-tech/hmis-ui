@@ -483,11 +483,11 @@ const Templatemaster = () => {
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleTemplateSave}>
-                                    <div className="form-group col-md-6">
+                                    <div className="form-group col-md-4">
                                         <label>Template Code <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control  mt-1"
                                             id="templateCode"
                                             name="templateCode"
                                             placeholder="Template Code"
@@ -496,11 +496,11 @@ const Templatemaster = () => {
                                             required
                                         />
                                     </div>
-                                    <div className="form-group col-md-6">
+                                    <div className="form-group col-md-4">
                                         <label>Template Name <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control  mt-1"
                                             id="templateName"
                                             name="templateName"
                                             placeholder="Template Name"

@@ -360,7 +360,7 @@ const Religionmaster = () => {
                                         <label>Religion Name <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control  mt-1"
                                             id="religionName"
                                             placeholder="Religion Name"
                                             value={formData.religionName}

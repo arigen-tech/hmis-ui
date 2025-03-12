@@ -335,11 +335,11 @@ const Departmenttype = () => {
                                             <i className="mdi mdi-arrow-left"></i> Back
                                         </button>
                                     </div>
-                                    <div className="form-group col-md-6">
+                                    <div className="form-group col-md-4">
                                         <label>Department Type Code <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control  mt-1"
                                             id="departmentTypeCode"
                                             name="departmentTypeCode"
                                             placeholder="Code"
@@ -349,11 +349,11 @@ const Departmenttype = () => {
                                             required
                                         />
                                     </div>
-                                    <div className="form-group col-md-6">
+                                    <div className="form-group col-md-4">
                                         <label>Department Type Name <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control  mt-1"
                                             id="departmentTypeName"
                                             name="departmentTypeName"
                                             placeholder="Name"

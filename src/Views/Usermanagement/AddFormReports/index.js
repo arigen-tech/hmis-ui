@@ -76,48 +76,48 @@ const Addformreports = () => {
                                         </div>
                                         </div>
                                     )}
-                                    <div className="form-group col-md-4"> {/* Added margin-top to create space above */}
+                                    <div className="form-group col-md-4 mt-1"> {/* Added margin-top to create space above */}
                                         <label>Menu Id <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control  mt-1"
                                             id="menuId"
                                             placeholder="Menu Id"
                                             required
                                         />
                                     </div>
-                                    <div className="form-group col-md-4">
+                                    <div className="form-group col-md-4  mt-1">
                                         <label>Menu Name <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control  mt-1"
                                             id="menuName"
                                             placeholder="Menu Name"
                                             required
                                         />
                                     </div>
-                                    <div className="form-group col-md-4">
+                                    <div className="form-group col-md-4  mt-1">
                                         <label>Parent Id</label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control  mt-1"
                                             id="parentId"
                                             placeholder="Parent Id"
                                         />
                                     </div>
-                                    <div className="form-group col-md-4">
+                                    <div className="form-group col-md-4  mt-1">
                                         <label>URL <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control  mt-1"
                                             id="url"
                                             placeholder="URL"
                                             required
                                         />
                                     </div>
-                                    <div className="form-group col-md-4">
+                                    <div className="form-group col-md-4  mt-1">
                                         <label>Status <span className="text-danger">*</span></label>
-                                        <select className="form-control" id="status" required>
+                                        <select className="form-control  mt-1" id="status" required>
                                             <option value="">Select Status</option>
                                             <option value="active">Active</option>
                                             <option value="inactive">Inactive</option>

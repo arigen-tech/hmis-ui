@@ -275,7 +275,7 @@ const Statemaster = () => {
                                             <label>State Code <span className="text-danger">*</span></label>
                                             <input
                                                 type="text"
-                                                className="form-control"
+                                                className="form-control  mt-1"
                                                 id="stateCode"
                                                 placeholder="State Code"
                                                 required
@@ -288,7 +288,7 @@ const Statemaster = () => {
                                             <label>State Name <span className="text-danger">*</span></label>
                                             <input
                                                 type="text"
-                                                className="form-control"
+                                                className="form-control  mt-1"
                                                 id="stateName"
                                                 placeholder="State Name"
                                                 maxLength={STATE_NAME_MAX_LENGTH}
@@ -302,7 +302,7 @@ const Statemaster = () => {
                                             <label>Country <span className="text-danger">*</span></label>
                                             <div className="col-md-4">
                                                 <select
-                                                    className="form-control"
+                                                    className="form-control  mt-1"
                                                     id="country"
                                                     required
                                                     value={formData.country} // Bind to formData

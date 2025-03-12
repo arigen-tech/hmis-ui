@@ -449,11 +449,11 @@ const Rolemaster = () => {
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleRoleSave}>
-                                    <div className="form-group col-md-6">
+                                    <div className="form-group col-md-4">
                                         <label>Role Code <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control  mt-1"
                                             id="roleCode"
                                             name="roleCode"
                                             placeholder="Role Code"
@@ -462,11 +462,11 @@ const Rolemaster = () => {
                                             required
                                         />
                                     </div>
-                                    <div className="form-group col-md-6">
+                                    <div className="form-group col-md-4">
                                         <label>Role Description <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control"
+                                            className="form-control  mt-1"
                                             id="roleDesc"
                                             name="roleDesc"
                                             placeholder="Role Description"

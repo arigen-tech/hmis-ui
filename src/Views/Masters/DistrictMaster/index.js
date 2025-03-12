@@ -270,7 +270,7 @@ const DistrictMaster = () => {
                                             <label>District Code <span className="text-danger">*</span></label>
                                             <input
                                                 type="text"
-                                                className="form-control"
+                                                className="form-control  mt-1"
                                                 id="districtCode"
                                                 placeholder="District Code"
                                                 required
@@ -282,7 +282,7 @@ const DistrictMaster = () => {
                                             <label>District Name <span className="text-danger">*</span></label>
                                             <input
                                                 type="text"
-                                                className="form-control"
+                                                className="form-control  mt-1"
                                                 id="districtName"
                                                 placeholder="District Name"
                                                 maxLength={DISTRICT_NAME_MAX_LENGTH}
@@ -293,7 +293,7 @@ const DistrictMaster = () => {
                                         </div>
                                         <div className="form-group col-md-4 mt-3">
                                             <label>State <span className="text-danger">*</span></label>
-                                            <div className="col-md-4">
+                                            <div className="col-md-4  mt-1">
                                                 <select
                                                     className="form-control"
                                                     id="state"

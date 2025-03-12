@@ -369,11 +369,11 @@ const BloodGroupMaster = () => {
                 </div>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
-                  <div className="form-group col-md-6">
+                  <div className="form-group col-md-4">
                     <label>Blood Group Code <span className="text-danger">*</span></label>
                     <input
                       type="text"
-                      className="form-control"
+                      className="form-control  mt-1"
                       id="bloodGroupCode"
                       name="bloodGroupCode"
                       placeholder="e.g., O+"
@@ -384,11 +384,11 @@ const BloodGroupMaster = () => {
                       required
                     />
                   </div>
-                  <div className="form-group col-md-6">
+                  <div className="form-group col-md-4">
                     <label>Blood Group Name <span className="text-danger">*</span></label>
                     <input
                       type="text"
-                      className="form-control"
+                      className="form-control  mt-1"
                       id="bloodGroupName"
                       name="bloodGroupName"
                       placeholder="Blood Group Name"
