@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup";
+import LoadingScreen from "../../../Components/Loading"
 import axios from "axios";
 import { API_HOST } from "../../../config/apiConfig";
 
@@ -183,7 +184,9 @@ const Gendermaster = () => {
         console.error("Error updating gender status:", err);
         showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
       } finally {
-        setLoading(false);
+        setTimeout(() => {
+          setLoading(false);
+        }, 2000); // Adjust the delay time (in milliseconds) as needed
       }
     }
     setConfirmDialog({ isOpen: false, genderId: null, newStatus: null });
@@ -267,12 +270,8 @@ const Gendermaster = () => {
               </div>
             </div>
             <div className="card-body">
-              {loading ? (
-                <div className="text-center">
-                  <div className="spinner-border" role="status">
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
-                </div>
+            {loading ? (
+                <LoadingScreen /> 
               ) : !showForm ? (
                 <div className="table-responsive packagelist">
                   <table className="table table-bordered table-hover align-middle">
