@@ -1,15 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
+import axios from "axios";
+import { API_HOST } from "../../../config/apiConfig";
+import LoadingScreen from "../../../Components/Loading";
 
 const CountryMaster = () => {
-    const [countries, setCountries] = useState([
-        { id: 1, countryCode: "US", countryName: "United States", currency: "USD", status: "y" },
-        { id: 2, countryCode: "CA", countryName: "Canada", currency: "CAD", status: "y" },
-        { id: 3, countryCode: "GB", countryName: "United Kingdom", currency: "GBP", status: "y" },
-        { id: 4, countryCode: "AU", countryName: "Australia", currency: "AUD", status: "y" },
-        { id: 5, countryCode: "IN", countryName: "India", currency: "INR", status: "y" },
-    ]);
-
+    const [countries, setCountries] = useState([]);
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, countryId: null, newStatus: false });
     const [formData, setFormData] = useState({
         countryCode: "",
@@ -22,18 +18,42 @@ const CountryMaster = () => {
     const [editingCountry, setEditingCountry] = useState(null);
     const [popupMessage, setPopupMessage] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const [totalFilteredItems, setTotalFilteredItems] = useState(0);
     const [pageInput, setPageInput] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
     const itemsPerPage = 4;
+
+    const COUNTRY_CODE_MAX_LENGTH = 8;
+    const COUNTRY_NAME_MAX_LENGTH = 30;
+
+    // Fetch countries from the backend
+    useEffect(() => {
+        fetchCountries();
+    }, []);
+
+    const fetchCountries = async () => {
+        setIsLoading(true);
+        try {
+            const response = await axios.get(`${API_HOST}/country/all`);
+            if (response.data && response.data.response) {
+                setCountries(response.data.response);
+            }
+        } catch (err) {
+            console.error("Error fetching countries:", err);
+            showPopup("Failed to load countries", "error");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
         setCurrentPage(1); // Reset to first page when search changes
     };
 
-    const filteredCountries = countries.filter(country =>
-        country.countryName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        country.countryCode.toLowerCase().includes(searchQuery.toLowerCase())
+    const filteredCountries = countries.filter(
+        (country) =>
+            country.countryName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            country.countryCode.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const filteredTotalPages = Math.ceil(filteredCountries.length / itemsPerPage);
@@ -42,50 +62,82 @@ const CountryMaster = () => {
         currentPage * itemsPerPage
     );
 
-
     const handleEdit = (country) => {
         setEditingCountry(country);
+        setFormData({
+            countryCode: country.countryCode,
+            countryName: country.countryName,
+            currency: country.currency,
+        });
+        setIsFormValid(true);
         setShowForm(true);
     };
 
-    const handleSave = (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
         if (!isFormValid) return;
-
-        const formElement = e.target;
-        const updatedCountryName = formElement.countryName.value;
-        const updatedCountryCode = formElement.countryCode.value;
-        const updatedCurrency = formElement.currency.value;
-
-        if (editingCountry) {
-            setCountries(countries.map(country =>
-                country.id === editingCountry.id
-                    ? { ...country, countryName: updatedCountryName, countryCode: updatedCountryCode, currency: updatedCurrency }
-                    : country
-            ));
-        } else {
-            const newCountry = {
-                id: countries.length + 1,
-                countryCode: updatedCountryCode,
-                countryName: updatedCountryName,
-                currency: updatedCurrency,
-                status: "y"
-            };
-            setCountries([...countries, newCountry]);
+        
+        setIsLoading(true);
+        try {
+            // Check for duplicate country before saving
+            const isDuplicate = countries.some(
+                (country) =>
+                    country.id !== (editingCountry ? editingCountry.id : null) &&
+                    (country.countryCode.toLowerCase() === formData.countryCode.toLowerCase() ||
+                     country.countryName.toLowerCase() === formData.countryName.toLowerCase())
+            );
+    
+            if (isDuplicate) {
+                showPopup("Country with the same code or name already exists!", "error");
+                setIsLoading(false);
+                return;
+            }
+    
+            if (editingCountry) {
+                // Update existing country
+                const response = await axios.put(`${API_HOST}/country/edit/${editingCountry.id}`, {
+                    countryCode: formData.countryCode,
+                    countryName: formData.countryName,
+                    status: editingCountry.status,
+                });
+    
+                if (response.data && response.data.status === 200) {
+                    fetchCountries(); // Refresh data from backend
+                    showPopup("Country updated successfully!", "success");
+                }
+            } else {
+                // Add new country
+                const response = await axios.post(`${API_HOST}/country/create`, {
+                    countryCode: formData.countryCode,
+                    countryName: formData.countryName,
+                    status: "y",
+                });
+    
+                if (response.data && response.data.status === 200) {
+                    fetchCountries(); // Refresh data from backend
+                    showPopup("New country added successfully!", "success");
+                }
+            }
+    
+            // Reset form
+            setEditingCountry(null);
+            setFormData({ countryCode: "", countryName: "" });
+            setShowForm(false);
+        } catch (err) {
+            console.error("Error saving country:", err);
+            showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+            setIsLoading(false);
         }
-
-        setEditingCountry(null);
-        setShowForm(false);
-        showPopup("Changes saved successfully!", "success");
     };
+    
 
-    const showPopup = (message, type = 'info') => {
+    const showPopup = (message, type = "info") => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
                 setPopupMessage(null);
-            }
+            },
         });
     };
 
@@ -93,33 +145,41 @@ const CountryMaster = () => {
         setConfirmDialog({ isOpen: true, countryId: id, newStatus });
     };
 
-    const handleConfirm = (confirmed) => {
+    const handleConfirm = async (confirmed) => {
         if (confirmed && confirmDialog.countryId !== null) {
-            setCountries((prevData) =>
-                prevData.map((country) =>
-                    country.id === confirmDialog.countryId ? { ...country, status: confirmDialog.newStatus } : country
-                )
-            );
+            setIsLoading(true);
+            try {
+                const response = await axios.put(
+                    `${API_HOST}/country/status/${confirmDialog.countryId}?status=${confirmDialog.newStatus}`
+                );
+                if (response.data && response.data.status === 200) {
+                    fetchCountries(); // Refresh data from backend
+                    showPopup(
+                        `Country ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                        "success"
+                    );
+                }
+            } catch (err) {
+                console.error("Error updating country status:", err);
+                showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+                setIsLoading(false);
+            }
         }
         setConfirmDialog({ isOpen: false, countryId: null, newStatus: null });
     };
 
     const handleInputChange = (e) => {
         const { id, value } = e.target;
-        setFormData((prevData) => ({ ...prevData, [id]: value }));
+        setFormData((prevData) => {
+            const updatedData = { ...prevData, [id]: value };
+            setIsFormValid(
+                updatedData.countryCode.trim() !== "" &&
+                updatedData.countryName.trim() !== ""
+            );
+            return updatedData;
+        });
     };
-
-    const handleCreateFormSubmit = (e) => {
-        e.preventDefault();
-        if (formData.countryCode && formData.countryName && formData.currency) {
-            setCountries([...countries, { ...formData, id: Date.now(), status: "y" }]);
-            setFormData({ countryCode: "", countryName: "", currency: "" });
-            setShowForm(false);
-        } else {
-            alert("Please fill out all required fields.");
-        }
-    };
-
+    
     const handlePageNavigation = () => {
         const pageNumber = parseInt(pageInput, 10);
         if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
@@ -129,42 +189,9 @@ const CountryMaster = () => {
         }
     };
 
-    const renderPagination = () => {
-        const pageNumbers = [];
-        const maxVisiblePages = 5; // Maximum number of visible page links
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-        const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
-
-        if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
-        }
-
-        if (startPage > 1) {
-            pageNumbers.push(1);
-            if (startPage > 2) pageNumbers.push("..."); // Add ellipsis
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            pageNumbers.push(i);
-        }
-
-        if (endPage < filteredTotalPages) {
-            if (endPage < filteredTotalPages - 1) pageNumbers.push("..."); // Add ellipsis
-            pageNumbers.push(filteredTotalPages);
-        }
-
-        return pageNumbers.map((number, index) => (
-            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-                {typeof number === "number" ? (
-                    <button className="page-link" onClick={() => setCurrentPage(number)}>
-                        {number}
-                    </button>
-                ) : (
-                    <span className="page-link disabled">{number}</span>
-                )}
-            </li>
-        ));
-    };
+    if (isLoading) {
+        return <LoadingScreen />;
+    }
 
     return (
         <div className="content-wrapper">
@@ -174,24 +201,6 @@ const CountryMaster = () => {
                         <div className="card-header">
                             <h4 className="card-title p-2">Country Master</h4>
                             <div className="d-flex justify-content-between align-items-center mt-3">
-
-
-                                {!showForm && (
-                                    <div className="d-flex align-items-center">
-                                        <div className="me-3">
-                                            <label>
-                                                <input type="radio" name="searchType" value="code" />
-                                                <span style={{ marginLeft: '5px' }}>Country Code</span>
-                                            </label>
-                                        </div>
-                                        <div className="me-3">
-                                            <label>
-                                                <input type="radio" name="searchType" value="description" />
-                                                <span style={{ marginLeft: '5px' }}>Country Name</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                )}
                                 {!showForm && (
                                     <form className="d-inline-block searchform me-4" role="search">
                                         <div className="input-group searchinput">
@@ -212,20 +221,17 @@ const CountryMaster = () => {
                                 <div className="d-flex align-items-center ms-auto">
                                     {!showForm ? (
                                         <>
-                                            <button type="button" className="btn btn-success me-2" onClick={() => (setShowForm(true))}>
+                                            <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                                                 <i className="mdi mdi-plus"></i> ADD
                                             </button>
                                             <button type="button" className="btn btn-success me-2">
-                                                <i className="mdi mdi-plus"></i> Generate Report 
+                                                <i className="mdi mdi-plus"></i> Generate Report
                                             </button>
                                         </>
-
                                     ) : (
-                                        <div className="ms-auto"> {/* Added this div to push the button to the right */}
-                                            <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
-                                                <i className="mdi mdi-arrow-left"></i> Back
-                                            </button>
-                                        </div>
+                                        <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                                            <i className="mdi mdi-arrow-left"></i> Back
+                                        </button>
                                     )}
                                 </div>
                             </div>
@@ -238,7 +244,7 @@ const CountryMaster = () => {
                                             <tr>
                                                 <th>Country Code</th>
                                                 <th>Country Name</th>
-                                                <th>Currency</th>
+                                                {/* <th>Currency</th> */}
                                                 <th>Status</th>
                                                 <th>Edit</th>
                                             </tr>
@@ -248,7 +254,7 @@ const CountryMaster = () => {
                                                 <tr key={country.id}>
                                                     <td>{country.countryCode}</td>
                                                     <td>{country.countryName}</td>
-                                                    <td>{country.currency}</td>
+                                                    {/* <td>{country.currency}</td> */}
                                                     <td>
                                                         <div className="form-check form-switch">
                                                             <input
@@ -261,9 +267,8 @@ const CountryMaster = () => {
                                                             <label
                                                                 className="form-check-label px-0"
                                                                 htmlFor={`switch-${country.id}`}
-                                                                onClick={() => handleSwitchChange(country.id, country.status === "y" ? "n" : "y")}
                                                             >
-                                                                {country.status === "y" ? 'Active' : 'Deactivated'}
+                                                                {country.status === "y" ? "Active" : "Deactivated"}
                                                             </label>
                                                         </div>
                                                     </td>
@@ -280,7 +285,60 @@ const CountryMaster = () => {
                                             ))}
                                         </tbody>
                                     </table>
-
+                                    <nav className="d-flex justify-content-between align-items-center mt-3">
+                                        <div>
+                                            <span>
+                                                Page {currentPage} of {filteredTotalPages} | Total Records: {filteredCountries.length}
+                                            </span>
+                                        </div>
+                                        <ul className="pagination mb-0">
+                                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                                                <button
+                                                    className="page-link"
+                                                    onClick={() => setCurrentPage(currentPage - 1)}
+                                                    disabled={currentPage === 1}
+                                                >
+                                                    &laquo; Previous
+                                                </button>
+                                            </li>
+                                            {[...Array(filteredTotalPages)].map((_, index) => (
+                                                <li
+                                                    className={`page-item ${currentPage === index + 1 ? "active" : ""}`}
+                                                    key={index}
+                                                >
+                                                    <button className="page-link" onClick={() => setCurrentPage(index + 1)}>
+                                                        {index + 1}
+                                                    </button>
+                                                </li>
+                                            ))}
+                                            <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                                                <button
+                                                    className="page-link"
+                                                    onClick={() => setCurrentPage(currentPage + 1)}
+                                                    disabled={currentPage === filteredTotalPages}
+                                                >
+                                                    Next &raquo;
+                                                </button>
+                                            </li>
+                                        </ul>
+                                        <div className="d-flex align-items-center">
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max={filteredTotalPages}
+                                                value={pageInput}
+                                                onChange={(e) => setPageInput(e.target.value)}
+                                                placeholder="Go to page"
+                                                className="form-control me-2"
+                                            />
+                                            <button
+                                                className="btn btn-primary"
+                                                onClick={handlePageNavigation}
+                                            >
+                                                Go
+                                            </button>
+                                        </div>
+                                    </nav>
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
@@ -288,11 +346,12 @@ const CountryMaster = () => {
                                         <label>Country Code <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control  mt-1"
+                                            className="form-control"
                                             id="countryCode"
                                             placeholder="Country Code"
-                                            defaultValue={editingCountry ? editingCountry.countryCode : ""}
-                                            onChange={() => setIsFormValid(true)}
+                                            value={formData.countryCode}
+                                            onChange={handleInputChange}
+                                            maxLength={COUNTRY_CODE_MAX_LENGTH}
                                             required
                                         />
                                     </div>
@@ -300,33 +359,16 @@ const CountryMaster = () => {
                                         <label>Country Name <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control  mt-1"
+                                            className="form-control"
                                             id="countryName"
                                             placeholder="Country Name"
-                                            defaultValue={editingCountry ? editingCountry.countryName : ""}
-                                            onChange={() => setIsFormValid(true)}
+                                            value={formData.countryName}
+                                            onChange={handleInputChange}
+                                            maxLength={COUNTRY_NAME_MAX_LENGTH}
                                             required
                                         />
                                     </div>
-                                    <div className="form-group col-md-4 mt-3">
-                                        <label>Currency <span className="text-danger">*</span></label>
-                                        <div className="col-md-4  mt-1">
-                                            <select
-                                                className="form-control"
-                                                id="currency"
-                                                defaultValue={editingCountry ? editingCountry.currency : ""} // Set default value for editing
-                                                required
-                                            >
-                                                <option value="" disabled>Select</option>
-                                                <option value="USD">United States Dollar (USD)</option>
-                                                <option value="CAD">Canadian Dollar (CAD)</option>
-                                                <option value="GBP">British Pound (GBP)</option>
-                                                <option value="AUD">Australian Dollar (AUD)</option>
-                                                <option value="INR">Indian Rupee (INR)</option>
-                                                <option value="EUR">Euro (EUR)</option>
-                                            </select>
-                                        </div>
-                                    </div>
+                                    
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                                             Save
@@ -356,7 +398,8 @@ const CountryMaster = () => {
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{countries.find(country => country.id === confirmDialog.countryId)?.countryName}</strong>?
+                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                    <strong>{countries.find((country) => country.id === confirmDialog.countryId)?.countryName}</strong>?
                                                 </p>
                                             </div>
                                             <div className="modal-footer">
@@ -367,53 +410,6 @@ const CountryMaster = () => {
                                     </div>
                                 </div>
                             )}
-
-
-                            <nav className="d-flex justify-content-between align-items-center mt-3">
-                                <div>
-                                    <span>
-                                        Page {currentPage} of {filteredTotalPages} | Total Records: {filteredCountries.length}
-                                    </span>
-                                </div>
-                                <ul className="pagination mb-0">
-                                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                        <button
-                                            className="page-link"
-                                            onClick={() => setCurrentPage(currentPage - 1)}
-                                            disabled={currentPage === 1}
-                                        >
-                                            &laquo; Previous
-                                        </button>
-                                    </li>
-                                    {renderPagination()}
-                                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                        <button
-                                            className="page-link"
-                                            onClick={() => setCurrentPage(currentPage + 1)}
-                                            disabled={currentPage === filteredTotalPages}
-                                        >
-                                            Next &raquo;
-                                        </button>
-                                    </li>
-                                </ul>
-                                <div className="d-flex align-items-center">
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max={filteredTotalPages}
-                                        value={pageInput}
-                                        onChange={(e) => setPageInput(e.target.value)}
-                                        placeholder="Go to page"
-                                        className="form-control me-2"
-                                    />
-                                    <button
-                                        className="btn btn-primary"
-                                        onClick={handlePageNavigation}
-                                    >
-                                        Go
-                                    </button>
-                                </div>
-                            </nav>
                         </div>
                     </div>
                 </div>
