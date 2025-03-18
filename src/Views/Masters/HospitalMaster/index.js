@@ -183,7 +183,7 @@ const HospitalMaster = () => {
       district: "",
       districtId: ""
     }));
-    
+
     // Filtering states is now handled by the useEffect
   };
 
@@ -199,7 +199,7 @@ const HospitalMaster = () => {
       district: "",
       districtId: ""
     }));
-    
+
     // Filtering districts is now handled by the useEffect
   };
 
@@ -231,9 +231,9 @@ const HospitalMaster = () => {
         (updatedFormData.countryId || "") !== "" &&
         (updatedFormData.stateId || "") !== "" &&
         (updatedFormData.city || "").trim() !== "" &&
-        (updatedFormData.regCostApplicable || "").trim() !== "" && 
-        (updatedFormData.appCostApplicable || "").trim() !== "" && 
-        (updatedFormData.preConsultationAvailable || "").trim() !== ""; 
+        (updatedFormData.regCostApplicable || "").trim() !== "" &&
+        (updatedFormData.appCostApplicable || "").trim() !== "" &&
+        (updatedFormData.preConsultationAvailable || "").trim() !== "";
 
       setIsFormValid(isValid);
       return updatedFormData;
@@ -282,9 +282,9 @@ const HospitalMaster = () => {
     const regCostValue = hospital.regCostApplicable === "y" ? "Yes" : "No";
     const appCostValue = hospital.appCostApplicable === "y" ? "Yes" : "No";
     const preConsultationValue = hospital.preConsultationAvailable === "y" ? "Yes" : "No";
-    
+
     setEditingHospital(hospital);
-    
+
     // Set form data with proper format for dropdowns
     setFormData({
       hospitalCode: hospital.hospitalCode,
@@ -305,7 +305,7 @@ const HospitalMaster = () => {
       appCostApplicable: appCostValue,
       preConsultationAvailable: preConsultationValue,
     });
-    
+
     setIsFormValid(true);
     setShowForm(true);
   };
@@ -322,8 +322,8 @@ const HospitalMaster = () => {
         (hospital) =>
           hospital.id !== (editingHospital ? editingHospital.id : null) &&
           (hospital.hospitalCode.toLowerCase() === formData.hospitalCode.toLowerCase() ||
-            hospital.hospitalName.toLowerCase() === formData.hospitalName.toLowerCase()||
-            hospital.email.toLowerCase()=== formData.email.toLowerCase() ),
+            hospital.hospitalName.toLowerCase() === formData.hospitalName.toLowerCase() ||
+            hospital.email.toLowerCase() === formData.email.toLowerCase()),
       );
 
       if (isDuplicate) {
@@ -351,8 +351,8 @@ const HospitalMaster = () => {
           contactNumber1: formData.contactNumber1,
           contactNumber2: formData.contactNumber2,
           email: formData.email,
-          regCostApplicable: regCostValue,           
-          appCostApplicable: appCostValue,          
+          regCostApplicable: regCostValue,
+          appCostApplicable: appCostValue,
           preConsultationAvailable: preConsultationValue,
           status: editingHospital.status,
         });
@@ -377,8 +377,8 @@ const HospitalMaster = () => {
           contactNumber1: formData.contactNumber1,
           contactNumber2: formData.contactNumber2,
           email: formData.email,
-          regCostApplicable: regCostValue,         
-          appCostApplicable: appCostValue,           
+          regCostApplicable: regCostValue,
+          appCostApplicable: appCostValue,
           preConsultationAvailable: preConsultationValue,
           status: "n",
         });
@@ -793,6 +793,9 @@ const HospitalMaster = () => {
                           onChange={handleInputChange}
                           placeholder="Enter contact number"
                           maxLength={CONTACT_NUMBER_MAX_LENGTH}
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          onInput={(e) => e.target.value = e.target.value.replace(/\D/g, '')}
                         />
                       </div>
                       <div className="col-md-6">
@@ -808,7 +811,11 @@ const HospitalMaster = () => {
                           onChange={handleInputChange}
                           placeholder="Enter alternate contact number"
                           maxLength={CONTACT_NUMBER_MAX_LENGTH}
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          onInput={(e) => e.target.value = e.target.value.replace(/\D/g, '')}
                         />
+
                       </div>
                       <div className="col-md-6">
                         <label htmlFor="email" className="form-label">
@@ -887,44 +894,51 @@ const HospitalMaster = () => {
                   </div>
                 </form>
               )}
-              {!showForm && currentItems.length > 0 && (
-                <div className="d-flex justify-content-between align-items-center mt-4">
+              {!showForm && filteredHospitals.length > 0 && (
+                <nav className="d-flex justify-content-between align-items-center mt-3">
                   <div>
-                    Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                    {Math.min(currentPage * itemsPerPage, totalFilteredItems)} of {totalFilteredItems} entries
+                    <span>
+                      Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredItems}
+                    </span>
                   </div>
-                  <div className="d-flex align-items-center">
-                    <ul className="pagination mb-0">
-                      <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                        <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)}>
-                          Previous
-                        </button>
-                      </li>
-                      {renderPagination()}
-                      <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                        <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)}>
-                          Next
-                        </button>
-                      </li>
-                    </ul>
-                    <div className="ms-3 d-flex align-items-center">
-                      <span className="me-2">Go to page:</span>
-                      <input
-                        type="number"
-                        min="1"
-                        max={filteredTotalPages}
-                        className="form-control form-control-sm me-2"
-                        style={{ width: "60px" }}
-                        value={pageInput}
-                        onChange={(e) => setPageInput(e.target.value)}
-                      />
-                      <button className="btn btn-sm btn-primary" onClick={handlePageNavigation}>
-                        Go
+                  <ul className="pagination mb-0">
+                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                      <button
+                        className="page-link"
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        &laquo; Previous
                       </button>
-                    </div>
+                    </li>
+                    {renderPagination()}
+                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                      <button
+                        className="page-link"
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        disabled={currentPage === filteredTotalPages}
+                      >
+                        Next &raquo;
+                      </button>
+                    </li>
+                  </ul>
+                  <div className="d-flex align-items-center">
+                    <input
+                      type="number"
+                      min="1"
+                      max={filteredTotalPages}
+                      value={pageInput}
+                      onChange={(e) => setPageInput(e.target.value)}
+                      placeholder="Go to page"
+                      className="form-control me-2"
+                    />
+                    <button className="btn btn-primary" onClick={handlePageNavigation}>
+                      Go
+                    </button>
                   </div>
-                </div>
+                </nav>
               )}
+
             </div>
           </div>
         </div>
@@ -936,37 +950,37 @@ const HospitalMaster = () => {
           onClose={popupMessage.onClose}
         />
       )}
-       {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog">
-                  <div className="modal-dialog" role="document">
-                    <div className="modal-content">
-                      <div className="modal-header">
-                        <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="close" onClick={() => handleConfirm(false)}>
-                          <span>&times;</span>
-                        </button>
-                      </div>
-                      <div className="modal-body">
-                        <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                          <strong>
-                            {hospitals.find((hospital) => hospital.id === confirmDialog.hospitalId)?.hospitalName}
-                          </strong>
-                          ?
-                        </p>
-                      </div>
-                      <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
-                          No
-                        </button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
-                          Yes
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+      {confirmDialog.isOpen && (
+        <div className="modal d-block" tabIndex="-1" role="dialog">
+          <div className="modal-dialog" role="document">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Confirm Status Change</h5>
+                <button type="button" className="close" onClick={() => handleConfirm(false)}>
+                  <span>&times;</span>
+                </button>
+              </div>
+              <div className="modal-body">
+                <p>
+                  Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                  <strong>
+                    {hospitals.find((hospital) => hospital.id === confirmDialog.hospitalId)?.hospitalName}
+                  </strong>
+                  ?
+                </p>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                  No
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                  Yes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
