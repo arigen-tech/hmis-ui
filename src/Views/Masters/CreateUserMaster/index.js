@@ -267,6 +267,43 @@ const Createusermaster = () => {
             </li>
         ));
     };
+
+
+    const [availableRoles, setAvailableRoles] = useState(["ADMIN", "APM", "AUDIT", "AUDITOR", "CITY OFFICER", "COMMISSIONER", "DISTRICT OFFICER", "DOCTOR"]); // Example roles
+    const [assignedRoles, setAssignedRoles] = useState([]);
+    const [selectedRoles, setSelectedRoles] = useState([]);
+
+    // Handle selecting multiple roles
+    const handleSelectRoles = (event) => {
+        const options = event.target.options;
+        const selectedValues = [];
+        for (let i = 0; i < options.length; i++) {
+            if (options[i].selected) {
+                selectedValues.push(options[i].value);
+            }
+        }
+        setSelectedRoles(selectedValues);
+    };
+
+    // Move selected roles to Assigned Roles
+    const handleAssignRoles = () => {
+        if (selectedRoles.length > 0) {
+            setAssignedRoles([...assignedRoles, ...selectedRoles]);
+            setAvailableRoles(availableRoles.filter(role => !selectedRoles.includes(role)));
+            setSelectedRoles([]); // Reset selection
+        }
+    };
+
+    // Remove selected roles from Assigned Roles
+    const handleRemoveRoles = () => {
+        if (selectedRoles.length > 0) {
+            setAvailableRoles([...availableRoles, ...selectedRoles]);
+            setAssignedRoles(assignedRoles.filter(role => !selectedRoles.includes(role)));
+            setSelectedRoles([]); // Reset selection
+        }
+    };
+
+
     return (
         <div className="content-wrapper">
             <div className="row">
@@ -275,10 +312,10 @@ const Createusermaster = () => {
                         <div className="card-header">
                             <h4 className="card-title p-2">User Management</h4>
                             {!showForm && (
-                                <div className="d-flex justify-content-between align-items-spacearound mt-3">
-                                    <div className="d-flex align-items-center justify-content-center">
-                                        <div className="col-md-6 d-flex align-items-center me-2">
-                                            <label htmlFor="userName" className="flex-shrink-0">
+                                <div className="d-flex mt-3 mx-0">
+                                    <div className="col-md-7 row">
+                                        <div className="col-md-6 d-flex">
+                                            <label htmlFor="userName" className="flex-shrink-0 mt-1">
                                                 Name of User
                                             </label>
                                             <input
@@ -291,7 +328,7 @@ const Createusermaster = () => {
                                                 onChange={handleSearchChange}
                                             />
                                         </div>
-                                        <div className="col-md-6 d-flex align-items-center">
+                                        <div className="col-md-4 d-flex">
                                             <label htmlFor="status" className="form-label flex-shrink-0 mt-1">
                                                 Status
                                             </label>
@@ -307,13 +344,14 @@ const Createusermaster = () => {
                                                 <option value="n">Inactive</option>
                                             </select>
                                         </div>
-                                    </div>
-                                    <div className="d-flex align-items-center">
+                                        <div className="col-md-2 d-flex">
                                         <button type="button" className="btn btn-primary ms-2" onClick={handleSearch}>
                                             <i className="mdi mdi-magnify"></i> Search
                                         </button>
+                                        </div>
                                     </div>
-                                    <div className="d-flex align-items-center">
+                                    
+                                    <div className="col-md-5 text-end">
                                         <button type="button" className="btn btn-success me-1" onClick={handleRefresh}>
                                             <i className="mdi mdi-plus"></i> Show All
                                         </button>
@@ -472,6 +510,41 @@ const Createusermaster = () => {
                                             <option value="AUFITOR">AUFITOR</option>
                                             <option value="DOCTOR">DOCTOR</option>
                                         </select>
+                                    </div>
+                                    <div className="form-group col-12 mt-3">
+                                        <label><b>Role Assigned</b></label>
+                                        <div className="row">
+                                            {/* All Roles Section */}
+                                            <div className="col-md-5">
+                                                <label className="mb-2"><b>All Roles</b></label>
+                                                <select
+                                                    className="form-control w-100"
+                                                    size="8"
+                                                    multiple
+                                                    onChange={handleSelectRoles}
+                                                >
+                                                    {availableRoles.map((role, index) => (
+                                                        <option key={index} value={role}>{role}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            {/* Transfer Buttons Section */}
+                                            <div className="col-md-2 d-flex flex-column align-items-center justify-content-center rollarrows">
+                                                <i class="icofont-bubble-right" onClick={handleAssignRoles}></i>
+                                                <i class="icofont-bubble-left" onClick={handleRemoveRoles}></i>
+                                            </div>
+
+                                            {/* Assigned Roles Section */}
+                                            <div className="col-md-5">
+                                                <label className="mb-2"><b>Assigned Role</b></label>
+                                                <select className="form-control w-100" size="8" multiple onChange={handleSelectRoles}>
+                                                    {assignedRoles.map((role, index) => (
+                                                        <option key={index} value={role}>{role}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-4">

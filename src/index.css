@@ -20507,6 +20507,10 @@
    .ui-state-default {
    color: #919ba3;
  }
+ .rollarrows i{
+  font-size: 55px;
+  color: #6aab9c;
+ }
  @media only screen and (max-width: 600px) {
    .wrapper .inner-wrap .request br {
      display: block;
