@@ -308,6 +308,16 @@ const Sidebar = () => {
                     District Master
                   </Link>
                 </li>
+                <li>
+                  <Link className={`ms-link ${isActive('/createusermaster') ? 'active' : ''}`} to="createusermaster">
+                    Create User Master
+                  </Link>
+                </li>
+                <li>
+                  <Link className={`ms-link ${isActive('/userdepartment') ? 'active' : ''}`} to="userdepartment">
+                    User Department
+                  </Link>
+                </li>
               </ul>
             </li>
 

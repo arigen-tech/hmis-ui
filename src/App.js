@@ -24,6 +24,8 @@ import Statemaster from './Views/Masters/StateMaster';
 import Districtmaster from './Views/Masters/DistrictMaster';
 import Religionmaster from './Views/Masters/ReligionMaster';
 import Hospitalmaster from './Views/Masters/HospitalMaster';
+import Createusermaster from './Views/Masters/CreateUserMaster';
+import Userdepartment from './Views/Masters/UserDepartment';
 // import Drugmaster from './Views/Stores/DrugMaster';
 
 
@@ -84,6 +86,8 @@ function App() {
               <Route path="/ViewSearchEmployee" element={<ViewSearchEmployee />} />
               <Route path="/religionmaster" element={<Religionmaster/>} />
               <Route path="/hospitalmaster" element={<Hospitalmaster/>} />
+              <Route path="/createusermaster" element={<Createusermaster/>} />
+              <Route path="/userdepartment" element={<Userdepartment/>} />
  
 
 
