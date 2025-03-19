@@ -15,6 +15,8 @@ const Userdepartment = () => {
     const [pageInput, setPageInput] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 5;
+    const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+
 
     const [users, setUsers] = useState([
         { id: 1, name: "ANM" },
@@ -340,28 +342,34 @@ const Userdepartment = () => {
                                         <label>
                                             User Name <span className="text-danger">*</span>
                                         </label>
-                                        <select
+                                        <input
+                                            type="text"
                                             className="form-control mt-1"
+                                            placeholder="Search User"
+                                            value={formData.userName} // Bind to formData for controlled input
+                                            onChange={(e) => {
+                                                setFormData({ ...formData, userName: e.target.value }); // Update formData
+                                                setIsDropdownVisible(true); // Show dropdown when typing
+                                            }}
                                             id="userName" // Ensure this matches the key in formData
-                                            required
-                                            value={formData.userName} // Use value instead of defaultValue
-                                            onChange={handleInputChange} // Call handleInputChange on change
-                                        >
-                                            <option value="">Select User</option>
-                                            <option value="ANM">ANM</option>
-                                            <option value="AUFITOR">AUFITOR</option>
-                                            <option value="DOCTOR">DOCTOR</option>
-                                            <option value="NURSE">NURSE</option>
-                                            <option value="ADMIN">ADMIN</option>
-                                            {users.map(user => (
-                                                <option key={user.id} value={user.name}>
-                                                    {user.name}
-                                                </option>
-                                            ))}
-                                        </select>
-
+                                        />
+                                        {isDropdownVisible && formData.userName && (
+                                            <ul className="list-group mt-1">
+                                                {users.filter(user => user.name.toLowerCase().includes(formData.userName.toLowerCase())).map(user => (
+                                                    <li
+                                                        key={user.id}
+                                                        className="list-group-item list-group-item-action"
+                                                        onClick={() => {
+                                                            setFormData({ ...formData, userName: user.name }); // Set selected user
+                                                            setIsDropdownVisible(false); // Hide dropdown after selection
+                                                        }}
+                                                    >
+                                                        {user.name}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
                                     </div>
-
                                     <div className="form-group col-md-4 mt-1">
                                         <label>
                                             Department Name <span className="text-danger">*</span>
