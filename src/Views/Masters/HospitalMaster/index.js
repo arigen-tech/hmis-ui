@@ -793,8 +793,6 @@ const HospitalMaster = () => {
                           onChange={handleInputChange}
                           placeholder="Enter contact number"
                           maxLength={CONTACT_NUMBER_MAX_LENGTH}
-                          inputMode="numeric"
-                          pattern="[0-9]*"
                           onInput={(e) => e.target.value = e.target.value.replace(/\D/g, '')}
                         />
                       </div>
@@ -811,8 +809,6 @@ const HospitalMaster = () => {
                           onChange={handleInputChange}
                           placeholder="Enter alternate contact number"
                           maxLength={CONTACT_NUMBER_MAX_LENGTH}
-                          inputMode="numeric"
-                          pattern="[0-9]*"
                           onInput={(e) => e.target.value = e.target.value.replace(/\D/g, '')}
                         />
 
