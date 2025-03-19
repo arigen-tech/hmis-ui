@@ -1,9 +1,9 @@
 {
   "files": {
-    "main.css": "/hmis-ui/static/css/main.b146cb8f.css",
-    "main.js": "/hmis-ui/static/js/main.5357b010.js",
+    "main.css": "/hmis-ui/static/css/main.649b245e.css",
+    "main.js": "/hmis-ui/static/js/main.8c15ee8d.js",
     "static/css/920.22f09731.chunk.css": "/hmis-ui/static/css/920.22f09731.chunk.css",
-    "static/js/920.1fcc1e95.chunk.js": "/hmis-ui/static/js/920.1fcc1e95.chunk.js",
+    "static/js/920.ac6cdf5e.chunk.js": "/hmis-ui/static/js/920.ac6cdf5e.chunk.js",
     "static/css/793.31d6cfe0.chunk.css": "/hmis-ui/static/css/793.31d6cfe0.chunk.css",
     "static/js/793.335a6621.chunk.js": "/hmis-ui/static/js/793.335a6621.chunk.js",
     "static/css/116.6d9b6a01.chunk.css": "/hmis-ui/static/css/116.6d9b6a01.chunk.css",
@@ -11,31 +11,34 @@
     "static/js/769.348a51f8.chunk.js": "/hmis-ui/static/js/769.348a51f8.chunk.js",
     "static/js/322.758402ce.chunk.js": "/hmis-ui/static/js/322.758402ce.chunk.js",
     "static/js/709.926345c8.chunk.js": "/hmis-ui/static/js/709.926345c8.chunk.js",
-    "static/js/236.6c9d60f3.chunk.js": "/hmis-ui/static/js/236.6c9d60f3.chunk.js",
+    "static/js/28.a573877b.chunk.js": "/hmis-ui/static/js/28.a573877b.chunk.js",
     "static/js/840.da5064e1.chunk.js": "/hmis-ui/static/js/840.da5064e1.chunk.js",
     "static/js/194.23bce20f.chunk.js": "/hmis-ui/static/js/194.23bce20f.chunk.js",
     "static/js/488.cd8d8221.chunk.js": "/hmis-ui/static/js/488.cd8d8221.chunk.js",
+    "static/js/64.31d77343.chunk.js": "/hmis-ui/static/js/64.31d77343.chunk.js",
     "static/media/icofont.woff": "/hmis-ui/static/media/icofont.dad3accba068281878f1.woff",
     "static/media/profile_av.png": "/hmis-ui/static/media/profile_av.44c2efc2a616d067c2c3.png",
     "static/media/login-img.svg": "/hmis-ui/static/media/login-img.05b38127828f48c4f6f78f90409e219e.svg",
+    "static/media/ambulanceimage.jpg": "/hmis-ui/static/media/ambulanceimage.ff86134df321af9f9e73.jpg",
     "index.html": "/hmis-ui/index.html",
-    "main.b146cb8f.css.map": "/hmis-ui/static/css/main.b146cb8f.css.map",
-    "main.5357b010.js.map": "/hmis-ui/static/js/main.5357b010.js.map",
+    "main.649b245e.css.map": "/hmis-ui/static/css/main.649b245e.css.map",
+    "main.8c15ee8d.js.map": "/hmis-ui/static/js/main.8c15ee8d.js.map",
     "920.22f09731.chunk.css.map": "/hmis-ui/static/css/920.22f09731.chunk.css.map",
-    "920.1fcc1e95.chunk.js.map": "/hmis-ui/static/js/920.1fcc1e95.chunk.js.map",
+    "920.ac6cdf5e.chunk.js.map": "/hmis-ui/static/js/920.ac6cdf5e.chunk.js.map",
     "793.335a6621.chunk.js.map": "/hmis-ui/static/js/793.335a6621.chunk.js.map",
     "116.6d9b6a01.chunk.css.map": "/hmis-ui/static/css/116.6d9b6a01.chunk.css.map",
     "116.900097ec.chunk.js.map": "/hmis-ui/static/js/116.900097ec.chunk.js.map",
     "769.348a51f8.chunk.js.map": "/hmis-ui/static/js/769.348a51f8.chunk.js.map",
     "322.758402ce.chunk.js.map": "/hmis-ui/static/js/322.758402ce.chunk.js.map",
     "709.926345c8.chunk.js.map": "/hmis-ui/static/js/709.926345c8.chunk.js.map",
-    "236.6c9d60f3.chunk.js.map": "/hmis-ui/static/js/236.6c9d60f3.chunk.js.map",
+    "28.a573877b.chunk.js.map": "/hmis-ui/static/js/28.a573877b.chunk.js.map",
     "840.da5064e1.chunk.js.map": "/hmis-ui/static/js/840.da5064e1.chunk.js.map",
     "194.23bce20f.chunk.js.map": "/hmis-ui/static/js/194.23bce20f.chunk.js.map",
-    "488.cd8d8221.chunk.js.map": "/hmis-ui/static/js/488.cd8d8221.chunk.js.map"
+    "488.cd8d8221.chunk.js.map": "/hmis-ui/static/js/488.cd8d8221.chunk.js.map",
+    "64.31d77343.chunk.js.map": "/hmis-ui/static/js/64.31d77343.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.b146cb8f.css",
-    "static/js/main.5357b010.js"
+    "static/css/main.649b245e.css",
+    "static/js/main.8c15ee8d.js"
   ]
 }
