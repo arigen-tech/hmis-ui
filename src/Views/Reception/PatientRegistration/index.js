@@ -11,6 +11,7 @@ import {
   STATE_BY_COUNTRY
 } from "../../../config/apiConfig";
 import {DEPARTMENT_CODE_OPD} from "../../../config/constants";
+import axios from "axios";
 const PatientRegistration = () => {
   useEffect(() => {
     // Fetching gender data (simulated API response)
@@ -75,7 +76,13 @@ const PatientRegistration = () => {
     speciality: "",
     doctor: "",
     session: "",
-    appointmentDate: ""
+    appointmentDate: "",
+    maritalStatus: "",
+    religion: "",
+    emergencyRelationId: "",
+    nokRelation: "",
+    idealWeight: "",
+    varation:""
 
   });
   const [image, setImage] = useState(placeholderImage);
@@ -192,7 +199,7 @@ const PatientRegistration = () => {
     setLoading(true);
 
     try {
-      const data = await getRequest(`${ALL_GENDER}`);
+      const data = await getRequest(`${ALL_GENDER}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setGenderData(data.response);
       } else {
@@ -211,7 +218,7 @@ async function fetchRelationData() {
     setLoading(true);
 
     try {
-      const data = await getRequest(`${ALL_RELATION}`);
+      const data = await getRequest(`${ALL_RELATION}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setRelationData(data.response);
       } else {
@@ -228,7 +235,7 @@ async function fetchRelationData() {
     setLoading(true);
 
     try {
-      const data = await getRequest(`${ALL_COUNTRY}`);
+      const data = await getRequest(`${ALL_COUNTRY}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setCountryData(data.response);
       } else {
@@ -308,7 +315,7 @@ async function fetchRelationData() {
   }
 async function fetchDepartment() {
     try {
-      const data = await getRequest(`${ALL_DEPARTMENT}`);
+      const data = await getRequest(`${ALL_DEPARTMENT}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         const filteredDepartments = data.response.filter(
             (dept) => dept.departmentCode === DEPARTMENT_CODE_OPD
@@ -327,7 +334,116 @@ async function fetchDepartment() {
 
   function sendRegistrationRequest() {
 console.log(formData);
+
   }
+
+  const sendPatientData = async () => {
+    const requestData = {
+      patient: {
+        id: 0,
+        patientFn: formData.firstName,
+        patientMn: formData.middleName,
+        patientLn: formData.lastName,
+        patientDob: formData.dob,
+        patientAge: formData.age,
+        patientGenderId: formData.gender,
+        patientEmailId: formData.email,
+        patientMobileNumber: formData.mobileNo,
+        patientImage: imageURL,
+        fileName: "string",
+        patientRelationId: formData.relation,
+        patientMaritalStatusId: formData.maritalStatus,
+        patientReligionId: formData.religion,
+        patientAddress1: formData.address1,
+        patientAddress2: formData.address2,
+        patientCity: formData.city,
+        patientPincode: formData.pinCode,
+        patientDistrictId: formData.district,
+        patientStateId: formData.district,
+        patientCountryId: formData.country,
+        pincode: "string",
+        emerFn: formData.emergencyFirstName,
+        emerLn: formData.emergencyLastName,
+        emerRelationId: formData.emergencyRelationId,
+        emerMobile: formData.emergencyMobile,
+        nokFn: formData.nokFirstName,
+        nokLn: formData.nokLastName,
+        nokEmail: formData.nokEmail,
+        nokMobileNumber: formData.nokMobile,
+        nokAddress1: formData.nokAddress1,
+        nokAddress2: formData.nokAddress2,
+        nokCity: formData.nokCity,
+        nokDistrictId: formData.nokDistrict,
+        nokStateId: formData.nokState,
+        nokCountryId: formData.nokCountry,
+        nokPincode: formData.nokPinCode,
+        nokRelationId: formData.nokRelation
+      },
+      opdPatientDetail: {
+        height: formData.height,
+        idealWeight: formData.idealWeight,
+        weight: formData.weight,
+        pulse: formData.pulse,
+        temperature: formData.temperature,
+        opdDate: "2025-03-13T09:13:33.182Z",
+        rr: formData.rr,
+        bmi: formData.bmi,
+        spo2: formData.spo2,
+        varation: formData.varation,
+        bpSystolic: formData.systolicBP,
+        bpDiastolic: formData.diastolicBP,
+        icdDiag: "string",
+        workingDiag: "string",
+        followUpFlag: "string",
+        followUpDays: 0,
+        pastMedicalHistory: "string",
+        presentComplaints: "string",
+        familyHistory: "string",
+        treatmentAdvice: "string",
+        sosFlag: "string",
+        recmmdMedAdvice: "string",
+        medicineFlag: "s",
+        labFlag: "s",
+        radioFlag: "s",
+        referralFlag: "s",
+        mlcFlag: "s",
+        policeStation: "string",
+        policeName: "string",
+        patientId: 0,
+        visitId: 0,
+        departmentId: 0,
+        hospitalId: 0,
+        doctorId: 0,
+        lastChgBy: "string",
+      },
+      visit: {
+        id: 0,
+        tokenNo: 0,
+        visitDate: "2025-03-13T09:13:33.182Z",
+        visitStatus: "string",
+        priority: 0,
+        departmentId: 0,
+        doctorId: 0,
+        doctorName: "string",
+        patientId: 0,
+        hospitalId: 0,
+        iniDoctorId: 0,
+        sessionId: 0,
+        billingStatus: "string",
+      },
+    };
+
+    try {
+      const response = await axios.post("https://your-api-endpoint.com/api/patient", requestData, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      console.log("Response:", response.data);
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
 
   async function fetchDoctor(value) {
     try {
