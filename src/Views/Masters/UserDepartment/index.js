@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup";
+import LoadingScreen from "../../../Components/Loading";
+import axios from "axios";
+import { API_HOST } from "../../../config/apiConfig";
 
 const Userdepartment = () => {
     const [formData, setFormData] = useState({
+        userId: "",
         userName: "",
+        departmentId: "",
         departmentName: ""
     });
     const [showForm, setShowForm] = useState(false);
@@ -12,84 +17,199 @@ const Userdepartment = () => {
     const [editingDepartment, setEditingDepartment] = useState(null);
     const [popupMessage, setPopupMessage] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
-    const [pageInput, setPageInput] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
-    const [isDropdownVisible, setIsDropdownVisible] = useState(false);
-
-
-    const [users, setUsers] = useState([
-        { id: 1, name: "ANM" },
-        { id: 2, name: "AUFITOR" },
-        { id: 3, name: "DOCTOR" },
-        { id: 4, name: "NURSE" },
-        { id: 5, name: "ADMIN" }
-    ]);
-
-    const [departments, setDepartments] = useState([
-        { id: 1, name: "CARDIOLOGY" },
-        { id: 2, name: "NEUROLOGY" },
-        { id: 3, name: "PEDIATRICS" },
-        { id: 4, name: "ORTHOPEDICS" },
-        { id: 5, name: "EMERGENCY" }
-    ]);
-
-    const [userDepartmentData, setUserDepartmentData] = useState([
-        { id: 1, userName: "John Doe", departmentName: "Cardiology", status: "y" },
-        { id: 2, userName: "Jane Smith", departmentName: "Neurology", status: "y" },
-        { id: 3, userName: "Alice Johnson", departmentName: "Pediatrics", status: "y" },
-        // ... add more sample data as needed ...
-    ]);
-
-    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, departmentId: null, newStatus: false });
+    const [filteredTotalPages, setFilteredTotalPages] = useState(1);
     const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
+    const [itemsPerPage] = useState(5);
+    const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [pageInput, setPageInput] = useState("");
 
-    const filteredDepartments = userDepartmentData.filter(department =>
-        department.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        department.departmentName.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // State for users and departments
+    const [users, setUsers] = useState([]);
+    const [departments, setDepartments] = useState([]);
+    const [userDepartmentData, setUserDepartmentData] = useState([]);
+    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, departmentId: null, newStatus: false });
 
-    const handleSearch = (e) => {
-        setSearchQuery(e.target.value);
-        setCurrentPage(1); // Reset to first page when search changes
+
+    useEffect(() => {
+        fetchUserDepartmentData();
+        fetchUsers(1);
+        fetchDepartments(1);
+        console.log("Departments:", departments);
+    }, []);
+
+
+    const fetchUserDepartmentData = async () => {
+        try {
+            setLoading(true);
+            const response = await axios.get(`${API_HOST}/user-departments/getAllUserDepartments`);
+
+            if (response.data && response.data.response) {
+                const transformedData = response.data.response.map(userDept => ({
+                    id: userDept.id,
+                    userId: userDept.userId,
+                    userName: userDept.username,
+                    departmentId: userDept.departmentId,
+                    departmentName: userDept.departmentName,
+
+                }));
+
+                setUserDepartmentData(transformedData);
+                setTotalFilteredProducts(transformedData.length);
+                setFilteredTotalPages(Math.ceil(transformedData.length / itemsPerPage));
+            }
+        } catch (err) {
+            console.error("Error fetching user department data:", err);
+            showPopup("Failed to load user department data", "error");
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleEdit = (department) => {
-        setEditingDepartment(department);
+
+    const fetchUsers = async (flag = 1) => {
+        try {
+            setLoading(true);
+            const response = await axios.get(`${API_HOST}/users/getAll/${flag}`);
+
+            if (response.data && response.data.response) {
+
+                const mappedUsers = response.data.response.map(user => ({
+                    userId: user.userId,
+                    userName: user.userName,
+                    email: user.email
+                }));
+                setUsers(mappedUsers);
+            }
+        } catch (err) {
+            console.error("Error fetching users:", err);
+            showPopup("Failed to load users", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchDepartments = async (flag = 1) => {
+        try {
+            setLoading(true);
+            const response = await axios.get(`${API_HOST}/department/getAllDepartments/${flag}`);
+
+            if (response.data && response.data.response) {
+                setDepartments(response.data.response);
+            }
+        } catch (err) {
+            console.error("Error fetching departments:", err);
+            showPopup("Failed to load departments", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+    const handleSearchChange = (e) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1); // Reset to first page when searching
+    };
+
+    const filteredUserDepartmentData = userDepartmentData.filter(userDept =>
+        (userDept.userName?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+        (userDept.departmentName?.toLowerCase() || "").includes(searchQuery.toLowerCase())
+
+    );
+
+    // Get current page items
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = filteredUserDepartmentData.slice(indexOfFirstItem, indexOfLastItem);
+
+    const handleEdit = (userDept) => {
+        setEditingDepartment(userDept);
         setFormData({
-            userName: department.userName,
-            departmentName: department.departmentName
+            userId: userDept.userId,
+            userName: userDept.userName,
+            departmentId: userDept.departmentId,
+            departmentName: userDept.departmentName
         });
-        setIsFormValid(true); // Since we're editing, form is already valid
+        setIsFormValid(true);
         setShowForm(true);
     };
 
-    const handleSave = (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
-        if (!formData.userName || !formData.departmentName) {
-            alert("Please fill out all required fields.");
-            return;
+        if (!isFormValid) return;
+
+        try {
+            setLoading(true);
+
+            if (editingDepartment) {
+                // Check for duplicates when updating, excluding the current record
+                const isDuplicate = userDepartmentData.some(
+                    (userDept) =>
+                        String(userDept.userId) === String(formData.userId) &&
+                        String(userDept.departmentId) === String(formData.departmentId) &&
+                        userDept.id !== editingDepartment.id // Exclude the current record
+                );
+
+                if (isDuplicate) {
+                    showPopup("This user and department combination already exists!", "error");
+                    setLoading(false);
+                    return;
+                }
+
+                // Update existing department
+                const response = await axios.put(`${API_HOST}/user-departments/edit/${editingDepartment.id}`, {
+                    id: editingDepartment.id,
+                    userId: formData.userId,
+                    departmentId: formData.departmentId,
+                    status: editingDepartment.status
+                });
+
+                if (response.data && response.data.response) {
+                    showPopup("User department updated successfully!", "success");
+                    fetchUserDepartmentData(1);
+                }
+            } else {
+                // Check for duplicates when adding new
+                const isDuplicate = userDepartmentData.some(
+                    (userDept) =>
+                        String(userDept.userId) === String(formData.userId) &&
+                        String(userDept.departmentId) === String(formData.departmentId)
+                );
+
+                if (isDuplicate) {
+                    showPopup("This user and department combination already exists!", "error");
+                    setLoading(false);
+                    return;
+                }
+
+                // Add new user department
+                const response = await axios.post(`${API_HOST}/user-departments/create`, {
+                    userId: formData.userId,
+                    departmentId: formData.departmentId,
+                });
+
+                if (response.data && response.data.response) {
+                    showPopup("User department added successfully!", "success");
+                    fetchUserDepartmentData(1);
+                }
+            }
+
+            // Reset form and state
+            setEditingDepartment(null);
+            setFormData({
+                userId: "",
+                userName: "",
+                departmentId: "",
+                departmentName: ""
+            });
+            setShowForm(false);
+        } catch (err) {
+            console.error("Error saving user department data:", err);
+            showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+        } finally {
+            setLoading(false);
         }
-
-        const newDepartment = {
-            id: editingDepartment ? editingDepartment.id : userDepartmentData.length + 1,
-            userName: formData.userName,
-            departmentName: formData.departmentName,
-            status: "y"
-        };
-
-        if (editingDepartment) {
-            setUserDepartmentData(userDepartmentData.map(department =>
-                department.id === editingDepartment.id ? newDepartment : department
-            ));
-        } else {
-            setUserDepartmentData([...userDepartmentData, newDepartment]);
-        }
-
-        setEditingDepartment(null);
-        setShowForm(false);
-        setFormData({ userName: "", departmentName: "" });
-        showPopup("Changes saved successfully!", "success");
     };
 
     const showPopup = (message, type = 'info') => {
@@ -102,93 +222,128 @@ const Userdepartment = () => {
         });
     };
 
-    const handleInputChange = (e) => {
-        const { id, value } = e.target;
-        const newFormData = { ...formData, [id]: value };
-        setFormData(newFormData);
+    // const handleSwitchChange = (id, newStatus) => {
+    //     setConfirmDialog({ isOpen: true, departmentId: id, newStatus });
+    // };
 
-        // Validate form immediately
-        const isValid = newFormData.userName && newFormData.departmentName;
-        setIsFormValid(isValid);
+    // const handleConfirm = async (confirmed) => {
+    //     if (confirmed && confirmDialog.departmentId !== null) {
+    //         try {
+    //             setLoading(true);
+    //             // Update status via API
+    //             const response = await axios.put(
+    //                 `${API_HOST}/userDepartment/status/${confirmDialog.departmentId}?status=${confirmDialog.newStatus}`
+    //             );
+
+    //             if (response.data && response.data.response) {
+    //                 // Update local state
+    //                 setUserDepartmentData((prevData) =>
+    //                     prevData.map((userDept) =>
+    //                         userDept.id === confirmDialog.departmentId ? 
+    //                             { ...userDept, status: confirmDialog.newStatus } : 
+    //                             userDept
+    //                     )
+    //                 );
+    //                 showPopup(`User department ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+    //             }
+    //         } catch (err) {
+    //             console.error("Error updating user department status:", err);
+    //             showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+    //         } finally {
+    //             setTimeout(() => {
+    //                 setLoading(false);
+    //             }, 1000);
+    //         }
+    //     }
+    //     setConfirmDialog({ isOpen: false, departmentId: null, newStatus: null });
+    // };
+
+    const handleUserSelect = (user) => {
+        setFormData({
+            ...formData,
+            userId: user.userId,
+            userName: user.userName
+        });
+        setIsDropdownVisible(false);
     };
 
-    const handleCreateFormSubmit = (e) => {
-        e.preventDefault()
-        if (formData.userName && formData.departmentName) {
-            setUserDepartmentData([...userDepartmentData, { ...formData, id: Date.now(), status: "y" }])
-            setFormData({ userName: "", departmentName: "" })
-            setShowForm(false)
-        } else {
-            alert("Please fill out all required fields.")
-        }
-    }
+    const handleDepartmentChange = (e) => {
+        const selectedDepartmentId = e.target.value;
+        const selectedDepartment = departments.find(dept => dept.id.toString() === selectedDepartmentId);
 
-    const handleSwitchChange = (id, newStatus) => {
-        setConfirmDialog({ isOpen: true, departmentId: id, newStatus });
+        setFormData({
+            ...formData,
+            departmentId: selectedDepartmentId,
+            departmentName: selectedDepartment ? selectedDepartment.name : ""
+        });
+
+        // Validate form
+        setIsFormValid(formData.userId !== "" && selectedDepartmentId !== "");
     };
 
-    const handleConfirm = (confirmed) => {
-        if (confirmed && confirmDialog.departmentId !== null) {
-            setUserDepartmentData((prevData) =>
-                prevData.map((department) =>
-                    department.id === confirmDialog.departmentId ? { ...department, status: confirmDialog.newStatus } : department
-                )
-            );
-        }
-        setConfirmDialog({ isOpen: false, departmentId: null, newStatus: null });
+    const handleRefresh = () => {
+        setSearchQuery("");
+        setCurrentPage(1);
+        fetchUserDepartmentData(0); // Show all records
     };
-
-    const filteredTotalPages = Math.ceil(filteredDepartments.length / itemsPerPage);
-
-    const currentItems = filteredDepartments.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
 
     const handlePageNavigation = () => {
-        const pageNumber = parseInt(pageInput, 10);
-        if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
+        const pageNumber = parseInt(pageInput);
+        if (pageNumber >= 1 && pageNumber <= filteredTotalPages) {
             setCurrentPage(pageNumber);
         } else {
-            alert("Please enter a valid page number.");
+            // Optional: Show an error message
+            showPopup("Please enter a valid page number", "error");
         }
     };
-
+    
+    // Add this function to render page numbers
     const renderPagination = () => {
         const pageNumbers = [];
-        const maxVisiblePages = 5;
+        const maxVisiblePages = 5; // Number of page links to show
+        
         let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-        const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
-
-        if (endPage - startPage < maxVisiblePages - 1) {
+        let endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
+        
+        // Adjust startPage if we're near the end
+        if (endPage - startPage + 1 < maxVisiblePages) {
             startPage = Math.max(1, endPage - maxVisiblePages + 1);
         }
-
+        
+        // First page
         if (startPage > 1) {
-            pageNumbers.push(1);
-            if (startPage > 2) pageNumbers.push("...");
+            pageNumbers.push(
+                <li key={1} className="page-item">
+                    <button className="page-link" onClick={() => setCurrentPage(1)}>1</button>
+                </li>
+            );
+            if (startPage > 2) {
+                pageNumbers.push(<li key="ellipsis1" className="page-item disabled"><span className="page-link">...</span></li>);
+            }
         }
-
+        
+        // Page numbers
         for (let i = startPage; i <= endPage; i++) {
-            pageNumbers.push(i);
+            pageNumbers.push(
+                <li key={i} className={`page-item ${currentPage === i ? "active" : ""}`}>
+                    <button className="page-link" onClick={() => setCurrentPage(i)}>{i}</button>
+                </li>
+            );
         }
-
+        
+        // Last page
         if (endPage < filteredTotalPages) {
-            if (endPage < filteredTotalPages - 1) pageNumbers.push("...");
-            pageNumbers.push(filteredTotalPages);
+            if (endPage < filteredTotalPages - 1) {
+                pageNumbers.push(<li key="ellipsis2" className="page-item disabled"><span className="page-link">...</span></li>);
+            }
+            pageNumbers.push(
+                <li key={filteredTotalPages} className="page-item">
+                    <button className="page-link" onClick={() => setCurrentPage(filteredTotalPages)}>{filteredTotalPages}</button>
+                </li>
+            );
         }
-
-        return pageNumbers.map((number, index) => (
-            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-                {typeof number === "number" ? (
-                    <button className="page-link" onClick={() => setCurrentPage(number)}>
-                        {number}
-                    </button>
-                ) : (
-                    <span className="page-link disabled">{number}</span>
-                )}
-            </li>
-        ));
+        
+        return pageNumbers;
     };
 
     return (
@@ -199,40 +354,50 @@ const Userdepartment = () => {
                         <div className="card-header d-flex justify-content-between align-items-center">
                             <h4 className="card-title">User Department Master</h4>
                             <div className="d-flex justify-content-between align-items-center">
-
-                                {!showForm ? (
+                                {!showForm && (
                                     <form className="d-inline-block searchform me-4" role="search">
                                         <div className="input-group searchinput">
                                             <input
                                                 type="search"
                                                 className="form-control"
-                                                placeholder="Search Departments"
+                                                placeholder="Search"
                                                 aria-label="Search"
                                                 value={searchQuery}
-                                                onChange={handleSearch}
-
+                                                onChange={handleSearchChange}
                                             />
                                             <span className="input-group-text" id="search-icon">
                                                 <i className="fa fa-search"></i>
                                             </span>
                                         </div>
                                     </form>
-                                ) : (
-                                    <></>
                                 )}
-
 
                                 <div className="d-flex align-items-center">
                                     {!showForm ? (
                                         <>
-                                            <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2"
+                                                onClick={() => {
+                                                    setEditingDepartment(null);
+                                                    setFormData({
+                                                        userId: "",
+                                                        userName: "",
+                                                        departmentId: "",
+                                                        departmentName: ""
+                                                    });
+                                                    setIsFormValid(false);
+                                                    setShowForm(true);
+                                                }}
+                                            >
                                                 <i className="mdi mdi-plus"></i> Add
                                             </button>
-                                            <button type="button" className="btn btn-success me-2">
-                                                <i className="mdi mdi-plus"></i> Show All
-                                            </button>
-                                            <button type="button" className="btn btn-success me-2" onClick={() => setShowModal(true)}>
-                                                <i className="mdi mdi-plus"></i> Reports
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2"
+                                                onClick={handleRefresh}
+                                            >
+                                                <i className="mdi mdi-refresh"></i> Show All
                                             </button>
                                         </>
                                     ) : (
@@ -244,156 +409,163 @@ const Userdepartment = () => {
                             </div>
                         </div>
                         <div className="card-body">
-                            {!showForm ? (
+                            {loading ? (
+                                <LoadingScreen />
+                            ) : !showForm ? (
                                 <div className="table-responsive packagelist">
                                     <table className="table table-bordered table-hover align-middle">
                                         <thead className="table-light">
                                             <tr>
                                                 <th>User Name</th>
                                                 <th>Department Name</th>
+                                                {/* <th>Status</th> */}
                                                 <th>Edit</th>
-                                                <th>Status</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {currentItems.map((department) => (
-                                                <tr key={department.id}>
-                                                    <td>{department.userName}</td>
-                                                    <td>{department.departmentName}</td>
-                                                    <td>
-                                                        <div className="form-check form-switch">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={department.status === "y"}
-                                                                onChange={() => handleSwitchChange(department.id, department.status === "y" ? "n" : "y")}
-                                                                id={`switch-${department.id}`}
-                                                            />
-                                                            <label
-                                                                className="form-check-label px-0"
-                                                                htmlFor={`switch-${department.id}`}
+                                            {currentItems.length > 0 ? (
+                                                currentItems.map((userDept) => (
+                                                    <tr key={userDept.id}>
+                                                        <td>{userDept.userName}</td>
+                                                        <td>{userDept.departmentName}</td>
+                                                        {/* <td>
+                                                            <div className="form-check form-switch">
+                                                                <input
+                                                                    className="form-check-input"
+                                                                    type="checkbox"
+                                                                    checked={userDept.status === "y"}
+                                                                    onChange={() => handleSwitchChange(userDept.id, userDept.status === "y" ? "n" : "y")}
+                                                                    id={`switch-${userDept.id}`}
+                                                                />
+                                                                <label
+                                                                    className="form-check-label px-0"
+                                                                    htmlFor={`switch-${userDept.id}`}
+                                                                >
+                                                                    {userDept.status === "y" ? 'Active' : 'Deactivated'}
+                                                                </label>
+                                                            </div>
+                                                        </td> */}
+                                                        <td>
+                                                            <button
+                                                                className="btn btn-sm btn-success me-2"
+                                                                onClick={() => handleEdit(userDept)}
+                                                            // disabled={userDept.status !== "y"}
                                                             >
-                                                                {department.status === "y" ? 'Active' : 'Deactive'}
-                                                            </label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-success me-2"
-                                                            onClick={() => handleEdit(department)}
-                                                            disabled={department.status !== "y"}
-                                                        >
-                                                            <i className="fa fa-pencil"></i>
-                                                        </button>
-                                                    </td>
+                                                                <i className="fa fa-pencil"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="4" className="text-center">No user department data found</td>
                                                 </tr>
-                                            ))}
+                                            )}
                                         </tbody>
                                     </table>
-                                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                                        <div>
-                                            <span>
-                                                Page {currentPage} of {filteredTotalPages} | Total Records: {filteredDepartments.length}
-                                            </span>
-                                        </div>
-                                        <ul className="pagination mb-0">
-                                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                                    {filteredUserDepartmentData.length > 0 && (
+                                        <nav className="d-flex justify-content-between align-items-center mt-3">
+                                            <div>
+                                                <span>
+                                                    Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredProducts}
+                                                </span>
+                                            </div>
+                                            <ul className="pagination mb-0">
+                                                <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                                                    <button
+                                                        className="page-link"
+                                                        onClick={() => setCurrentPage(currentPage - 1)}
+                                                        disabled={currentPage === 1}
+                                                    >
+                                                        &laquo; Previous
+                                                    </button>
+                                                </li>
+                                                {renderPagination()}
+                                                <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                                                    <button
+                                                        className="page-link"
+                                                        onClick={() => setCurrentPage(currentPage + 1)}
+                                                        disabled={currentPage === filteredTotalPages}
+                                                    >
+                                                        Next &raquo;
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                            <div className="d-flex align-items-center">
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max={filteredTotalPages}
+                                                    value={pageInput}
+                                                    onChange={(e) => setPageInput(e.target.value)}
+                                                    placeholder="Go to page"
+                                                    className="form-control me-2"
+                                                />
                                                 <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage - 1)}
-                                                    disabled={currentPage === 1}
+                                                    className="btn btn-primary"
+                                                    onClick={handlePageNavigation}
                                                 >
-                                                    &laquo; Previous
+                                                    Go
                                                 </button>
-                                            </li>
-                                            {renderPagination()}
-                                            <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                                <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage + 1)}
-                                                    disabled={currentPage === filteredTotalPages}
-                                                >
-                                                    Next &raquo;
-                                                </button>
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex align-items-center">
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max={filteredTotalPages}
-                                                value={pageInput}
-                                                onChange={(e) => setPageInput(e.target.value)}
-                                                placeholder="Go to page"
-                                                className="form-control me-2"
-                                            />
-                                            <button
-                                                className="btn btn-primary"
-                                                onClick={handlePageNavigation}
-                                            >
-                                                Go
-                                            </button>
-                                        </div>
-                                    </nav>
+                                            </div>
+                                        </nav>
+                                    )}
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
-                                    <div className="form-group col-md-4 mt-1">
-                                        <label>
-                                            User Name <span className="text-danger">*</span>
-                                        </label>
+                                    <div className="form-group col-md-4 position-relative">
+                                        <label>User Name <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
                                             className="form-control mt-1"
+                                            id="userName"
                                             placeholder="Search User"
-                                            value={formData.userName} // Bind to formData for controlled input
+                                            value={formData.userName}
                                             onChange={(e) => {
-                                                setFormData({ ...formData, userName: e.target.value }); // Update formData
-                                                setIsDropdownVisible(true); // Show dropdown when typing
+                                                setFormData({
+                                                    ...formData,
+                                                    userId: "",
+                                                    userName: e.target.value
+                                                });
+                                                setIsDropdownVisible(true);
+                                                setIsFormValid(false);
                                             }}
-                                            id="userName" // Ensure this matches the key in formData
+                                            autoComplete="off"
+                                            required
                                         />
                                         {isDropdownVisible && formData.userName && (
-                                            <ul className="list-group mt-1">
-                                                {users.filter(user => user.name.toLowerCase().includes(formData.userName.toLowerCase())).map(user => (
-                                                    <li
-                                                        key={user.id}
-                                                        className="list-group-item list-group-item-action"
-                                                        onClick={() => {
-                                                            setFormData({ ...formData, userName: user.name }); // Set selected user
-                                                            setIsDropdownVisible(false); // Hide dropdown after selection
-                                                        }}
-                                                    >
-                                                        {user.name}
-                                                    </li>
-                                                ))}
+                                            <ul className="list-group position-absolute w-100 mt-1" style={{ zIndex: 1000 }}>
+                                                {users
+                                                    .filter(user => user.userName.toLowerCase().includes(formData.userName.toLowerCase()))
+                                                    .map(user => (
+                                                        <li
+                                                            key={user.userId}
+                                                            className="list-group-item list-group-item-action"
+                                                            onClick={() => handleUserSelect(user)}
+                                                        >
+                                                            {user.userName}  ({user.email})
+                                                        </li>
+                                                    ))}
                                             </ul>
                                         )}
                                     </div>
-                                    <div className="form-group col-md-4 mt-1">
-                                        <label>
-                                            Department Name <span className="text-danger">*</span>
-                                        </label>
+
+                                    <div className="form-group col-md-4">
+                                        <label>Department <span className="text-danger">*</span></label>
                                         <select
                                             className="form-control mt-1"
-                                            id="departmentName" // Ensure this matches the key in formData
+                                            id="departmentId"
+                                            value={formData.departmentId}
+                                            onChange={handleDepartmentChange}
                                             required
-                                            value={formData.departmentName} // Use value instead of defaultValue
-                                            onChange={handleInputChange} // Call handleInputChange on change
                                         >
                                             <option value="">Select Department</option>
-                                            <option value="CARDIOLOGY">Cardiology</option>
-                                            <option value="NEUROLOGY">Neurology</option>
-                                            <option value="PEDIATRICS">Pediatrics</option>
-                                            <option value="ORTHOPEDICS">Orthopedics</option>
-                                            <option value="EMERGENCY">Emergency</option>
                                             {departments.map(dept => (
-                                                <option key={dept.id} value={dept.name}>
-                                                    {dept.name}
+                                                <option key={dept.id} value={dept.id}>
+                                                    {dept.departmentName}
                                                 </option>
                                             ))}
                                         </select>
-
                                     </div>
 
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-2">
@@ -406,26 +578,6 @@ const Userdepartment = () => {
                                     </div>
                                 </form>
                             )}
-                            {showModal && (
-                                <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
-                                    <div className="modal-dialog">
-                                        <div className="modal-content">
-                                            <div className="modal-header">
-                                                <h1 className="modal-title fs-5" id="staticBackdropLabel">Modal title</h1>
-                                                <button type="button" className="btn-close" onClick={() => setShowModal(false)} aria-label="Close"></button>
-                                            </div>
-                                            <div className="modal-body">
-                                                {/* Your modal content goes here */}
-                                                ...
-                                            </div>
-                                            <div className="modal-footer">
-                                                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
-                                                <button type="button" className="btn btn-primary">Understood</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
                             {popupMessage && (
                                 <Popup
                                     message={popupMessage.message}
@@ -433,7 +585,7 @@ const Userdepartment = () => {
                                     onClose={popupMessage.onClose}
                                 />
                             )}
-                            {confirmDialog.isOpen && (
+                            {/* {confirmDialog.isOpen && (
                                 <div className="modal d-block" tabIndex="-1" role="dialog">
                                     <div className="modal-dialog" role="document">
                                         <div className="modal-content">
@@ -445,7 +597,10 @@ const Userdepartment = () => {
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{userDepartmentData.find(department => department.id === confirmDialog.departmentId)?.userName} - {userDepartmentData.find(department => department.id === confirmDialog.departmentId)?.departmentName}</strong>?
+                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>
+                                                    {userDepartmentData.find(userDept => userDept.id === confirmDialog.departmentId)?.userName} - 
+                                                    {userDepartmentData.find(userDept => userDept.id === confirmDialog.departmentId)?.departmentName}
+                                                    </strong>?
                                                 </p>
                                             </div>
                                             <div className="modal-footer">
@@ -455,12 +610,12 @@ const Userdepartment = () => {
                                         </div>
                                     </div>
                                 </div>
-                            )}
+                            )} */}
                         </div>
                     </div>
                 </div>
             </div>
-        </div >
+        </div>
     )
 }
 
