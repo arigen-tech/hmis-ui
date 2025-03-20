@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST } from "../../../config/apiConfig";
-import LoadingScreen from "../../../Components/Loading"
+import { API_HOST,ROLE,ALL_ROLE } from "../../../config/apiConfig";
+import LoadingScreen from "../../../Components/Loading";
+import { postRequest,putRequest,getRequest } from "../../../service/apiService";
 
 const Rolemaster = () => {
     const [roleData, setRoleData] = useState([]);
@@ -20,20 +21,29 @@ const Rolemaster = () => {
     const itemsPerPage = 5;
 
 
-    const ROLE_CODE_MAX_LENGTH=255;
-    const ROLE_NAME_MAX_LENGTH=255;
+    const ROLE_CODE_MAX_LENGTH = 255;
+    const ROLE_NAME_MAX_LENGTH = 255;
 
-    // Fetch all roles
-    const fetchRoles = async () => {
+    useEffect(() => {
+        fetchRoles(0);
+    }, []);
+
+
+    const fetchRoles = async (flag = 0) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await axios.get(`${API_HOST}/roles/all`);
-            console.log("API Response:", response.data); // Log the full response
-
-            // Ensure the response contains the expected data structure
-            if (response.data && response.data.response) {
-                setRoleData(response.data.response);
+            const response = await getRequest(`${ALL_ROLE}/${flag}`);
+            console.log("API Response:", response);
+    
+            if (response && response.response) {
+                const mappedRoles = response.response.map(role => ({
+                    id: role.id,
+                    roleCode: role.roleCode,
+                    roleDesc: role.roleDesc,
+                    isActive: role.status?.toLowerCase()
+                }));
+                setRoleData(mappedRoles);
             } else {
                 throw new Error("Invalid response structure");
             }
@@ -44,10 +54,8 @@ const Rolemaster = () => {
             setLoading(false);
         }
     };
+    
 
-    useEffect(() => {
-        fetchRoles();
-    }, []);
 
     const showPopup = (message, type = 'info') => {
         setPopupMessage({
@@ -73,10 +81,11 @@ const Rolemaster = () => {
         const { id, value } = e.target;
         setFormData(prevData => ({ ...prevData, [id]: value }));
 
-        // Form validation
+        // Check form validity after state update
+        const updatedFormData = { ...formData, [id]: value };
         setIsFormValid(
-            formData.roleCode.trim() !== "" &&
-            formData.roleDesc.trim() !== ""
+            updatedFormData.roleCode.trim() !== "" &&
+            updatedFormData.roleDesc.trim() !== ""
         );
     };
 
@@ -97,11 +106,11 @@ const Rolemaster = () => {
         try {
             setLoading(true);
     
-            // Check for duplicate role before saving
+            // Check for duplicates excluding the current editing role
             const isDuplicate = roleData.some(
                 (role) =>
-                    role.roleCode.toLowerCase() === formData.roleCode.toLowerCase() ||
-                    role.roleDesc.toLowerCase() === formData.roleDesc.toLowerCase()
+                    (editingRole ? role.id !== editingRole.id : true) &&
+                    (role.roleCode === formData.roleCode || role.roleDesc === formData.roleDesc)
             );
     
             if (isDuplicate) {
@@ -112,27 +121,26 @@ const Rolemaster = () => {
     
             if (editingRole) {
                 // Update existing role
-                const response = await axios.put(`${API_HOST}/roles/update/${editingRole.id}`, {
+                const response = await putRequest(`${ROLE}/update/${editingRole.id}`, {
                     roleCode: formData.roleCode,
                     roleDesc: formData.roleDesc,
-                    isActive: editingRole.isActive, // Preserve the existing isActive status
+                    status: editingRole.isActive,
                 });
     
-                console.log("Update Response:", response.data);
+                console.log("Update Response:", response);
     
-                if (response.data && response.data.response) {
-                    const updatedRole = response.data.response;
+                if (response && response.response) {
+                    const updatedRole = response.response;
     
-                    // Update local state using the response from backend
-                    setRoleData(prevData =>
-                        prevData.map(role =>
+                    setRoleData((prevData) =>
+                        prevData.map((role) =>
                             role.id === editingRole.id
                                 ? {
-                                    ...role,
-                                    roleCode: updatedRole.roleCode || formData.roleCode,
-                                    roleDesc: updatedRole.roleDesc || formData.roleDesc,
-                                    isActive: editingRole.isActive, // Preserve the existing isActive status
-                                }
+                                      ...role,
+                                      roleCode: updatedRole.roleCode || formData.roleCode,
+                                      roleDesc: updatedRole.roleDesc || formData.roleDesc,
+                                      isActive: (updatedRole.status || role.isActive)?.toLowerCase(),
+                                  }
                                 : role
                         )
                     );
@@ -142,93 +150,91 @@ const Rolemaster = () => {
                     throw new Error("Invalid response from server");
                 }
             } else {
-                // Create new role
-                const response = await axios.post(`${API_HOST}/roles/create`, {
+                // Create a new role
+                const response = await postRequest(`${ROLE}/create`, {
                     roleCode: formData.roleCode,
                     roleDesc: formData.roleDesc,
-                    isActive: true, // Default isActive status for new roles
+                    status: "n",
                 });
     
-                console.log("Create Response:", response.data);
+                console.log("Create Response:", response);
     
-                if (response.data && response.data.response) {
-                    const newRole = response.data.response;
+                if (response && response.response) {
+                    const newRole = response.response;
     
-                    // Add new entry to local state using the response from backend
-                    setRoleData(prevData => [
+                    setRoleData((prevData) => [
                         ...prevData,
                         {
                             id: newRole.id || Date.now(),
                             roleCode: newRole.roleCode || formData.roleCode,
                             roleDesc: newRole.roleDesc || formData.roleDesc,
-                            isActive: newRole.isActive || true, // Default isActive status for new roles
-                        }
+                            isActive: newRole.status || "n",
+                        },
                     ]);
     
-                    showPopup("New role added successfully!", "success");
+                    showPopup("Role added successfully!", "success");
                 } else {
                     throw new Error("Invalid response from server");
                 }
             }
     
-            // Reset form
             setFormData({ roleCode: "", roleDesc: "" });
-            setShowForm(false);
             setEditingRole(null);
-            setIsFormValid(false);
-        } catch (err) {
-            console.error("Error saving role:", err);
-            showPopup(`Failed to save: ${err.response?.data?.message || err.message}`, "error");
+        } catch (error) {
+            console.error("Error saving role:", error);
+            showPopup("An error occurred while saving the role!", "error");
         } finally {
             setLoading(false);
         }
     };
     
 
+
     const handleSwitchChange = (id, currentStatus) => {
+        
+        const newStatus = (currentStatus?.toLowerCase() === "y") ? "n" : "y";
+        
         setConfirmDialog({
             isOpen: true,
             roleId: id,
-            newStatus: !currentStatus // Toggle the status
+            newStatus: newStatus
         });
     };
 
-    // Modified handleConfirm function
-
     const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.roleId !== null) {
-        try {
-            setLoading(true);
-
-            // Make a PATCH request with id as path parameter and isActive as query parameter
-            const response = await axios({
-                method: 'Put', 
-                url: `${API_HOST}/roles/status/${confirmDialog.roleId}`, // id as path parameter
-                params: { isActive: confirmDialog.newStatus }, // isActive as query parameter
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            // After successful update, refresh the data
-            await fetchRoles();
-            showPopup(
-                `Role ${confirmDialog.newStatus ? 'activated' : 'deactivated'} successfully!`,
-                "success"
-            );
-        } catch (err) {
-            console.error("Error updating status:", err);
-            showPopup("Failed to change status", "error");
-        } finally {
-            setLoading(false);
-            setConfirmDialog({ isOpen: false, roleId: null, newStatus: null });
+        if (confirmed && confirmDialog.roleId !== null) {
+            try {
+                setLoading(true);
+                
+                const response = await putRequest(
+                    `${ROLE}/status/${confirmDialog.roleId}?status=${confirmDialog.newStatus}`
+                );
+                
+                if (response && response.status === 200) {
+                    // Update the local state with the string value as received from the API
+                    setRoleData(prevData =>
+                        prevData.map(role =>
+                            role.id === confirmDialog.roleId
+                                ? { ...role, isActive: confirmDialog.newStatus }
+                                : role
+                        )
+                    );
+                    
+                    showPopup(
+                        `Role ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                        "success"
+                    );
+                }
+            } catch (err) {
+                console.error("Error updating role status:", err);
+                showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+            } finally {
+                setLoading(false);
+            }
         }
-    } else {
         setConfirmDialog({ isOpen: false, roleId: null, newStatus: null });
-    }
-};
+    };
 
-    // Pagination calculations
     const filteredTotalPages = Math.ceil(filteredRoleData.length / itemsPerPage);
     const currentItems = filteredRoleData.slice(
         (currentPage - 1) * itemsPerPage,
@@ -323,7 +329,7 @@ const Rolemaster = () => {
                                             <button
                                                 type="button"
                                                 className="btn btn-success me-2"
-                                                onClick={fetchRoles}
+                                                onClick={() => fetchRoles(0)}
                                             >
                                                 <i className="mdi mdi-refresh"></i> Show All
                                             </button>
@@ -372,7 +378,7 @@ const Rolemaster = () => {
                                                                 <input
                                                                     className="form-check-input"
                                                                     type="checkbox"
-                                                                    checked={role.isActive}
+                                                                    checked={role.isActive?.toLowerCase() === "y"}
                                                                     onChange={() => handleSwitchChange(role.id, role.isActive)}
                                                                     id={`switch-${role.id}`}
                                                                 />
@@ -380,7 +386,7 @@ const Rolemaster = () => {
                                                                     className="form-check-label px-0"
                                                                     htmlFor={`switch-${role.id}`}
                                                                 >
-                                                                    {role.isActive ? 'Active' : 'Deactivated'}
+                                                                    {role.isActive?.toLowerCase() === "y" ? 'Active' : 'Deactivated'}
                                                                 </label>
                                                             </div>
                                                         </td>
@@ -388,7 +394,7 @@ const Rolemaster = () => {
                                                             <button
                                                                 className="btn btn-sm btn-success me-2"
                                                                 onClick={() => handleRoleEdit(role)}
-                                                                disabled={!role.isActive}
+                                                                disabled={role.isActive?.toLowerCase() !== "y"}
                                                             >
                                                                 <i className="fa fa-pencil"></i>
                                                             </button>
@@ -527,7 +533,7 @@ const Rolemaster = () => {
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus ? 'activate' : 'deactivate'} <strong>{roleData.find(role => role.id === confirmDialog.roleId)?.roleDesc}</strong>?
+                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{roleData.find(role => role.id === confirmDialog.roleId)?.roleDesc}</strong>?
                                                 </p>
                                             </div>
                                             <div className="modal-footer">

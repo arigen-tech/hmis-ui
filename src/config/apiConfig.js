@@ -22,6 +22,17 @@ export const ALL_BLOODGROUPS="/blood-group/getAllBloodGroups";
 export const ALL_DEPARTMENT_TYPE="/department-type/getAllDepartmentTypes";
 export const ALL_STATE="/state/getAllStates";
 export const ALL_DISTRICT="/district/getAllDistricts";
+export const ALL_ROLE="/roles/getAllRoles";
+
+
+
+
+
+
+
+
+
+
 
 
 export const COUNTRYAPI = "/country";
@@ -33,3 +44,4 @@ export const EMPLOYEE = "/employees";
 
 export const BLOOD_GROUPS = "/blood-group";
 export const DEPARTMENT_TYPE ="/department-type";
+export const ROLE="/roles";
