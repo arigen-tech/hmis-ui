@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST } from "../../../config/apiConfig";
+import { API_HOST,ALL_COUNTRY,ALL_STATE,STATEAPI } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
 
 const StateMaster = () => {
@@ -11,8 +11,8 @@ const StateMaster = () => {
     const [formData, setFormData] = useState({
         stateCode: "",
         stateName: "",
-        country: "", // For display purposes
-        countryId: "", // For storing the ID
+        country: "", 
+        countryId: "", 
     });
     const [searchQuery, setSearchQuery] = useState("");
     const [showForm, setShowForm] = useState(false);
@@ -27,7 +27,7 @@ const StateMaster = () => {
     const STATE_CODE_MAX_LENGTH = 8;
     const STATE_NAME_MAX_LENGTH = 30;
 
-    // Fetch states and countries from the backend
+    
     useEffect(() => {
         fetchStates(0);
         fetchCountries(1);
@@ -36,7 +36,7 @@ const StateMaster = () => {
     const fetchStates = async (flag = 0) => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_HOST}/state/getAllStates/${flag}`);
+            const response = await axios.get(`${API_HOST}${ALL_STATE}/${flag}`);
             if (response.data && response.data.response) {
                 setStates(response.data.response);
             }
@@ -50,7 +50,7 @@ const StateMaster = () => {
 
     const fetchCountries = async (flag = 1) => {
         try {
-            const response = await axios.get(`${API_HOST}/country/getAllCountries/${flag}`);
+            const response = await axios.get(`${API_HOST}${ALL_COUNTRY}/${flag}`);
             if (response.data && response.data.response) {
                 setCountries(response.data.response);
             }
@@ -62,7 +62,7 @@ const StateMaster = () => {
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
-        setCurrentPage(1); // Reset to first page when search changes
+        setCurrentPage(1); 
     };
 
     const filteredStates = states.filter(
@@ -78,7 +78,7 @@ const StateMaster = () => {
     );
 
     const handleEdit = (state) => {
-        // Find the country name based on the country ID
+        
         const countryObj = countries.find(c => c.id === state.countryId);
         const countryName = countryObj ? countryObj.countryName : "";
 
@@ -99,12 +99,12 @@ const StateMaster = () => {
 
         try {
             setLoading(true);
-            // Check for duplicate state before saving
+            
             const isDuplicate = states.some(
                 (state) =>
                     state.id !== (editingState ? editingState.id : null) &&
-                    (state.stateCode.toLowerCase() === formData.stateCode.toLowerCase() ||
-                     state.stateName.toLowerCase() === formData.stateName.toLowerCase())
+                    (state.stateCode === formData.stateCode ||
+                     state.stateName === formData.stateName)
             );
 
             if (isDuplicate) {
@@ -114,34 +114,34 @@ const StateMaster = () => {
             }
 
             if (editingState) {
-                // Update existing state
-                const response = await axios.put(`${API_HOST}/state/edit/${editingState.id}`, {
+                
+                const response = await axios.put(`${API_HOST}${STATEAPI}/edit/${editingState.id}`, {
                     stateCode: formData.stateCode,
                     stateName: formData.stateName,
-                    countryId: formData.countryId, // Send the ID to the backend
+                    countryId: formData.countryId, 
                     status: editingState.status,
                 });
 
                 if (response.data && response.data.status === 200) {
-                    fetchStates(); // Refresh data from backend
+                    fetchStates(); 
                     showPopup("State updated successfully!", "success");
                 }
             } else {
-                // Add new state
-                const response = await axios.post(`${API_HOST}/state/create`, {
+                
+                const response = await axios.post(`${API_HOST}${STATEAPI}/create`, {
                     stateCode: formData.stateCode,
                     stateName: formData.stateName,
-                    countryId: formData.countryId, // Send the ID to the backend
+                    countryId: formData.countryId, 
                     status: "n",
                 });
 
                 if (response.data && response.data.status === 200) {
-                    fetchStates(); // Refresh data from backend
+                    fetchStates(); 
                     showPopup("New state added successfully!", "success");
                 }
             }
 
-            // Reset form
+            
             setEditingState(null);
             setFormData({ stateCode: "", stateName: "", country: "", countryId: "" });
             setShowForm(false);
@@ -172,10 +172,10 @@ const StateMaster = () => {
             try {
                 setLoading(true);
                 const response = await axios.put(
-                    `${API_HOST}/state/status/${confirmDialog.stateId}?status=${confirmDialog.newStatus}`
+                    `${API_HOST}${STATEAPI}/status/${confirmDialog.stateId}?status=${confirmDialog.newStatus}`
                 );
                 if (response.data && response.data.status === 200) {
-                    fetchStates(); // Refresh data from backend
+                    fetchStates(); 
                     showPopup(
                         `State ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
                         "success"
@@ -196,9 +196,9 @@ const StateMaster = () => {
         setFormData((prevData) => {
             const updatedData = { ...prevData, [id]: value };
             
-            // Handle country selection separately
+            
             if (id === "country") {
-                // Find the selected country object
+                
                 const selectedIndex = e.target.selectedIndex;
                 const selectedOption = e.target.options[selectedIndex];
                 const countryId = parseInt(selectedOption.getAttribute('data-id'), 10);
@@ -209,7 +209,7 @@ const StateMaster = () => {
             setIsFormValid(
                 updatedData.stateCode.trim() !== "" &&
                 updatedData.stateName.trim() !== "" &&
-                updatedData.countryId // Check countryId instead of country
+                updatedData.countryId 
             );
             
             return updatedData;

@@ -18,6 +18,10 @@ export const DISTRICT_BY_STATE="/district/state/";
 export const ALL_COUNTRY="/country/getAllCountries";
 export const STATE_BY_COUNTRY="/state/country/";
 export const DOCTOR_BY_SPECIALITY="/users/doctorBySpeciality/";
+export const ALL_BLOODGROUPS="/blood-group/getAllBloodGroups";
+export const ALL_DEPARTMENT_TYPE="/department-type/getAllDepartmentTypes";
+export const ALL_STATE="/state/getAllStates";
+export const ALL_DISTRICT="/district/getAllDistricts";
 
 
 export const COUNTRYAPI = "/country";
@@ -26,3 +30,6 @@ export const DISTRICTAPI = "/district";
 export const GENDERAPI = "/gender";
 
 export const EMPLOYEE = "/employees";
+
+export const BLOOD_GROUPS = "/blood-group";
+export const DEPARTMENT_TYPE ="/department-type";

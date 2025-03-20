@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST } from "../../../config/apiConfig";
+import { API_HOST ,ALL_STATE,DISTRICTAPI, ALL_DISTRICT} from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const DistrictMaster = () => {
@@ -10,8 +10,8 @@ const DistrictMaster = () => {
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, districtId: null, newStatus: false });
     const [formData, setFormData] = useState({
         districtName: "",
-        state: "", // For display purposes
-        stateId: "", // For storing the ID
+        state: "", 
+        stateId: "", 
     });
     const [searchQuery, setSearchQuery] = useState("");
     const [showForm, setShowForm] = useState(false);
@@ -26,7 +26,7 @@ const DistrictMaster = () => {
 
     const DISTRICT_NAME_MAX_LENGTH = 50;
 
-    // Fetch districts and states from the backend
+   
     useEffect(() => {
         fetchDistricts(0);
         fetchStates(1);
@@ -35,7 +35,7 @@ const DistrictMaster = () => {
     const fetchDistricts = async (flag = 0) => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_HOST}/district/getAllDistricts/${flag}`);
+            const response = await axios.get(`${API_HOST}${ALL_DISTRICT}/${flag}`);
             if (response.data && response.data.response) {
                 setDistricts(response.data.response);
             }
@@ -49,7 +49,7 @@ const DistrictMaster = () => {
 
     const fetchStates = async (flag = 1) => {
         try {
-            const response = await axios.get(`${API_HOST}/state/getAllStates/${flag}`);
+            const response = await axios.get(`${API_HOST}${ALL_STATE}/${flag}`);
             if (response.data && response.data.response) {
                 setStates(response.data.response);
             }
@@ -61,7 +61,7 @@ const DistrictMaster = () => {
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
-        setCurrentPage(1); // Reset to first page when search changes
+        setCurrentPage(1); 
     };
 
     const handleSearchTypeChange = (e) => {
@@ -77,7 +77,7 @@ const DistrictMaster = () => {
         if (searchType === "name") {
             return district.districtName.toLowerCase().includes(query);
         } else {
-            // Default: search in all fields (now just name)
+            
             return district.districtName.toLowerCase().includes(query);
         }
     });
@@ -89,7 +89,7 @@ const DistrictMaster = () => {
     );
 
     const handleEdit = (district) => {
-        // Find the state name based on the state ID
+        
         const stateObj = states.find(s => s.id === district.stateId);
         const stateName = stateObj ? stateObj.stateName : "";
 
@@ -109,11 +109,11 @@ const DistrictMaster = () => {
 
         try {
             setLoading(true);
-            // Check for duplicate district before saving
+            
             const isDuplicate = districts.some(
                 (district) =>
                     district.id !== (editingDistrict ? editingDistrict.id : null) &&
-                    district.districtName.toLowerCase() === formData.districtName.toLowerCase()
+                    district.districtName === formData.districtName
             );
 
             if (isDuplicate) {
@@ -123,34 +123,34 @@ const DistrictMaster = () => {
             }
 
             if (editingDistrict) {
-                // Update existing district
-                const response = await axios.put(`${API_HOST}/district/edit/${editingDistrict.id}`, {
-                    districtCode: editingDistrict.districtCode, // Keep the existing code
+                
+                const response = await axios.put(`${API_HOST}${DISTRICTAPI}/edit/${editingDistrict.id}`, {
+                    districtCode: editingDistrict.districtCode, 
                     districtName: formData.districtName,
-                    stateId: formData.stateId, // Send the ID to the backend
+                    stateId: formData.stateId, 
                     status: editingDistrict.status,
                 });
 
                 if (response.data && response.data.status === 200) {
-                    fetchDistricts(); // Refresh data from backend
+                    fetchDistricts(); 
                     showPopup("District updated successfully!", "success");
                 }
             } else {
-                // Add new district
-                const response = await axios.post(`${API_HOST}/district/create`, {
-                    districtCode: Date.now().toString().slice(-8), // Generate a unique code
+                
+                const response = await axios.post(`${API_HOST}${DISTRICTAPI}/create`, {
+                    districtCode: Date.now().toString().slice(-8), 
                     districtName: formData.districtName,
-                    stateId: formData.stateId, // Send the ID to the backend
+                    stateId: formData.stateId, 
                     status: "n",
                 });
 
                 if (response.data && response.data.status === 200) {
-                    fetchDistricts(); // Refresh data from backend
+                    fetchDistricts(); 
                     showPopup("New district added successfully!", "success");
                 }
             }
 
-            // Reset form
+           
             setEditingDistrict(null);
             setFormData({ districtName: "", state: "", stateId: "" });
             setShowForm(false);
@@ -181,10 +181,10 @@ const DistrictMaster = () => {
             try {
                 setLoading(true);
                 const response = await axios.put(
-                    `${API_HOST}/district/status/${confirmDialog.districtId}?status=${confirmDialog.newStatus}`
+                    `${API_HOST}${DISTRICTAPI}/status/${confirmDialog.districtId}?status=${confirmDialog.newStatus}`
                 );
                 if (response.data && response.data.status === 200) {
-                    fetchDistricts(); // Refresh data from backend
+                    fetchDistricts();
                     showPopup(
                         `District ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
                         "success"
@@ -205,9 +205,9 @@ const DistrictMaster = () => {
         setFormData((prevData) => {
             const updatedData = { ...prevData, [id]: value };
             
-            // Handle state selection separately
+            
             if (id === "state") {
-                // Find the selected state object
+                
                 const selectedIndex = e.target.selectedIndex;
                 const selectedOption = e.target.options[selectedIndex];
                 const stateId = parseInt(selectedOption.getAttribute('data-id'), 10);
@@ -217,7 +217,7 @@ const DistrictMaster = () => {
             
             setIsFormValid(
                 updatedData.districtName.trim() !== "" &&
-                updatedData.stateId // Check stateId instead of state
+                updatedData.stateId 
             );
             
             return updatedData;
@@ -353,7 +353,7 @@ const DistrictMaster = () => {
                                         <tbody>
                                             {currentItems.length > 0 ? (
                                                 currentItems.map((district) => {
-                                                    // Find the matching state for this district
+                                                    
                                                     const state = states.find(s => s.id === district.stateId);
                                                     const stateName = state ? state.stateName : "N/A";
                                                     

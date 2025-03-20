@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST } from "../../../config/apiConfig";
+import { API_HOST,DEPARTMENT,ALL_DEPARTMENT,ALL_DEPARTMENT_TYPE } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const DepartmentMaster = () => {
@@ -11,8 +11,8 @@ const DepartmentMaster = () => {
     const [formData, setFormData] = useState({
         departmentCode: "",
         departmentName: "",
-        departmentType: "", // Keep this for display purposes
-        departmentTypeId: "", // Add this to store the ID
+        departmentType: "", 
+        departmentTypeId: "", 
         departmentNo: "",
     });
     const [searchQuery, setSearchQuery] = useState("");
@@ -26,12 +26,12 @@ const DepartmentMaster = () => {
     const [loading, setLoading] = useState(true);
     const itemsPerPage = 5;
 
-    // Constants for max lengths
+   
     const DEPARTMENT_CODE_MAX_LENGTH = 8;
     const DEPARTMENT_NAME_MAX_LENGTH = 30;
     const DEPARTMENT_NUMBER_MAX_LENGTH = 8;
 
-    // Fetch departments from API
+    
     useEffect(() => {
         fetchDepartments(0);
         fetchDepartmentTypes(1);
@@ -40,7 +40,7 @@ const DepartmentMaster = () => {
     const fetchDepartments = async (flag = 0) => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_HOST}/department/getAllDepartments/${flag}`);
+            const response = await axios.get(`${API_HOST}${ALL_DEPARTMENT}/${flag}`);
             if (response.data && response.data.response) {
                 setDepartments(response.data.response);
             }
@@ -54,7 +54,7 @@ const DepartmentMaster = () => {
 
     const fetchDepartmentTypes = async (flag = 1) => {
         try {
-            const response = await axios.get(`${API_HOST}/department-type/getAllDepartmentTypes/${flag}`);
+            const response = await axios.get(`${API_HOST}${ALL_DEPARTMENT_TYPE}/${flag}`);
             if (response.data && response.data.response) {
                 setDepartmentTypes(response.data.response);
             }
@@ -179,7 +179,7 @@ const DepartmentMaster = () => {
             departmentCode: dept.departmentCode,
             departmentName: dept.departmentName,
             departmentType: dept.departmentTypeName,
-            departmentTypeId: dept.departmentTypeId, // Store the ID
+            departmentTypeId: dept.departmentTypeId, 
             departmentNo: dept.departmentNo,
         });
         console.log("dept.departmentTypeId", dept.departmentTypeId);
@@ -194,13 +194,13 @@ const DepartmentMaster = () => {
         try {
             setLoading(true);
 
-            // Check for duplicate department before saving
+            
             const isDuplicate = departments.some(
                 (dept) =>
                     dept.id !== (editingDepartment ? editingDepartment.id : null) &&
-                    (dept.departmentCode.toLowerCase() === formData.departmentCode.toLowerCase() ||
-                        dept.departmentName.toLowerCase() === formData.departmentName.toLowerCase() ||
-                        dept.departmentNo.toLowerCase() === formData.departmentNo.toLowerCase())
+                    (dept.departmentCode === formData.departmentCode ||
+                        dept.departmentName === formData.departmentName ||
+                        dept.departmentNo === formData.departmentNo)
             );
 
             if (isDuplicate) {
@@ -213,7 +213,7 @@ const DepartmentMaster = () => {
                 // Update existing department
 
                 console.log("form formdata", formData.departmentTypeId);
-                const response = await axios.put(`${API_HOST}/department/edit/${editingDepartment.id}`, {
+                const response = await axios.put(`${API_HOST}${DEPARTMENT}/edit/${editingDepartment.id}`, {
                     departmentCode: formData.departmentCode,
                     departmentName: formData.departmentName,
                     departmentTypeId: formData.departmentTypeId,
@@ -231,7 +231,7 @@ const DepartmentMaster = () => {
                 }
             } else {
                 // Add new department
-                const response = await axios.post(`${API_HOST}/department/add`, {
+                const response = await axios.post(`${API_HOST}${DEPARTMENT}/add`, {
                     departmentCode: formData.departmentCode,
                     departmentName: formData.departmentName,
                     departmentTypeId: formData.departmentTypeId,
@@ -245,11 +245,11 @@ const DepartmentMaster = () => {
                 }
             }
 
-            // Reset form and refresh data
+            
             setEditingDepartment(null);
             setFormData({ departmentCode: "", departmentName: "", departmentType: "", departmentNo: "" });
             setShowForm(false);
-            fetchDepartments(); // Refresh data from backend
+            fetchDepartments(); 
         } catch (err) {
             console.error("Error saving department:", err);
             showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
@@ -278,7 +278,7 @@ const DepartmentMaster = () => {
                 setLoading(true);
                 const status = confirmDialog.newStatus;
                 const response = await axios.put(
-                    `${API_HOST}/department/status/${confirmDialog.categoryId}?status=${status}`
+                    `${API_HOST}${DEPARTMENT}/status/${confirmDialog.categoryId}?status=${status}`
                 );
 
                 if (response.data && response.data.status === 200) {

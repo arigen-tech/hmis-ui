@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST } from "../../../config/apiConfig";
+import { API_HOST ,ALL_COUNTRY,COUNTRYAPI} from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const CountryMaster = () => {
@@ -25,7 +25,7 @@ const CountryMaster = () => {
     const COUNTRY_CODE_MAX_LENGTH = 8;
     const COUNTRY_NAME_MAX_LENGTH = 30;
 
-    // Fetch countries from the backend
+    
     useEffect(() => {
         fetchCountries(0);
     }, []);
@@ -33,7 +33,7 @@ const CountryMaster = () => {
     const fetchCountries = async (flag = 0) => {
         setIsLoading(true);
         try {
-            const response = await axios.get(`${API_HOST}/country/getAllCountries/${flag}`);
+            const response = await axios.get(`${API_HOST}${ALL_COUNTRY}/${flag}`);
             if (response.data && response.data.response) {
                 setCountries(response.data.response);
             }
@@ -47,7 +47,7 @@ const CountryMaster = () => {
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
-        setCurrentPage(1); // Reset to first page when search changes
+        setCurrentPage(1); 
     };
 
     const filteredCountries = countries.filter(
@@ -79,12 +79,12 @@ const CountryMaster = () => {
         
         setIsLoading(true);
         try {
-            // Check for duplicate country before saving
+            
             const isDuplicate = countries.some(
                 (country) =>
                     country.id !== (editingCountry ? editingCountry.id : null) &&
-                    (country.countryCode.toLowerCase() === formData.countryCode.toLowerCase() ||
-                     country.countryName.toLowerCase() === formData.countryName.toLowerCase())
+                    (country.countryCode === formData.countryCode ||
+                     country.countryName === formData.countryName)
             );
     
             if (isDuplicate) {
@@ -94,32 +94,32 @@ const CountryMaster = () => {
             }
     
             if (editingCountry) {
-                // Update existing country
-                const response = await axios.put(`${API_HOST}/country/edit/${editingCountry.id}`, {
+                
+                const response = await axios.put(`${API_HOST}${COUNTRYAPI}/edit/${editingCountry.id}`, {
                     countryCode: formData.countryCode,
                     countryName: formData.countryName,
                     status: editingCountry.status,
                 });
     
                 if (response.data && response.data.status === 200) {
-                    fetchCountries(); // Refresh data from backend
+                    fetchCountries(); 
                     showPopup("Country updated successfully!", "success");
                 }
             } else {
                 // Add new country
-                const response = await axios.post(`${API_HOST}/country/create`, {
+                const response = await axios.post(`${API_HOST}${COUNTRYAPI}/create`, {
                     countryCode: formData.countryCode,
                     countryName: formData.countryName,
                     status: "n",
                 });
     
                 if (response.data && response.data.status === 200) {
-                    fetchCountries(); // Refresh data from backend
+                    fetchCountries(); 
                     showPopup("New country added successfully!", "success");
                 }
             }
     
-            // Reset form
+            
             setEditingCountry(null);
             setFormData({ countryCode: "", countryName: "" });
             setShowForm(false);
@@ -150,10 +150,10 @@ const CountryMaster = () => {
             setIsLoading(true);
             try {
                 const response = await axios.put(
-                    `${API_HOST}/country/status/${confirmDialog.countryId}?status=${confirmDialog.newStatus}`
+                    `${API_HOST}${COUNTRYAPI}/status/${confirmDialog.countryId}?status=${confirmDialog.newStatus}`
                 );
                 if (response.data && response.data.status === 200) {
-                    fetchCountries(); // Refresh data from backend
+                    fetchCountries(); 
                     showPopup(
                         `Country ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
                         "success"

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST } from "../../../config/apiConfig";
+import { API_HOST,DEPARTMENT_TYPE,ALL_DEPARTMENT_TYPE } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const Departmenttype = () => {
@@ -25,7 +25,6 @@ const Departmenttype = () => {
     const DepartmentType__NAME_MAX_LENGTH = 30;
     const DepartmentType_CODE_MAX_LENGTH = 8;
 
-    // Fetch department types from API
     useEffect(() => {
         fetchDepartmentTypes(0);
     }, []);
@@ -33,7 +32,7 @@ const Departmenttype = () => {
     const fetchDepartmentTypes = async (flag = 0) => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_HOST}/department-type/getAllDepartmentTypes/${flag}`);
+            const response = await axios.get(`${API_HOST}${ALL_DEPARTMENT_TYPE}/${flag}`);
             if (response.data && response.data.response) {
                 setDepartmentTypes(response.data.response);
             }
@@ -50,7 +49,7 @@ const Departmenttype = () => {
         setCurrentPage(1);
     };
 
-    // Add a new function to handle radio button changes
+    
     const handleSearchTypeChange = (e) => {
         setSearchType(e.target.value);
         setCurrentPage(1);
@@ -97,11 +96,11 @@ const Departmenttype = () => {
         try {
             setLoading(true);
 
-            // Check for duplicate department type before saving
+            
             const isDuplicate = departmentTypes.some(
                 (type) =>
-                    type.departmentTypeCode.toLowerCase() === formData.departmentTypeCode.toLowerCase() ||
-                    type.departmentTypeName.toLowerCase() === formData.departmentTypeName.toLowerCase()
+                    type.departmentTypeCode === formData.departmentTypeCode ||
+                    type.departmentTypeName === formData.departmentTypeName
             );
 
             if (isDuplicate) {
@@ -111,8 +110,8 @@ const Departmenttype = () => {
             }
 
             if (editingType) {
-                // Update existing department type
-                const response = await axios.put(`${API_HOST}/department-type/edit/${editingType.id}`, {
+                
+                const response = await axios.put(`${API_HOST}${DEPARTMENT_TYPE}/edit/${editingType.id}`, {
                     departmentTypeCode: formData.departmentTypeCode,
                     departmentTypeName: formData.departmentTypeName,
                     status: editingType.status,
@@ -127,8 +126,8 @@ const Departmenttype = () => {
                     showPopup("Department type updated successfully!", "success");
                 }
             } else {
-                // Add new department type
-                const response = await axios.post(`${API_HOST}/department-type/create`, {
+                
+                const response = await axios.post(`${API_HOST}${DEPARTMENT_TYPE}/create`, {
                     departmentTypeCode: formData.departmentTypeCode,
                     departmentTypeName: formData.departmentTypeName,
                     status: "n",
@@ -140,11 +139,11 @@ const Departmenttype = () => {
                 }
             }
 
-            // Reset form and refresh data
+            
             setEditingType(null);
             setFormData({ departmentTypeCode: "", departmentTypeName: "" });
             setShowForm(false);
-            fetchDepartmentTypes(); // Refresh data from backend
+            fetchDepartmentTypes(); 
         } catch (err) {
             console.error("Error saving department type:", err);
             showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
@@ -173,7 +172,7 @@ const Departmenttype = () => {
             try {
                 setLoading(true);
                 const response = await axios.put(
-                    `${API_HOST}/department-type/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
+                    `${API_HOST}${DEPARTMENT_TYPE}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
                 );
                 if (response.data && response.data.response) {
                     setDepartmentTypes((prevData) =>

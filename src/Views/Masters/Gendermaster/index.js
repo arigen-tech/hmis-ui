@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading"
 import axios from "axios";
-import { API_HOST } from "../../../config/apiConfig";
+import { API_HOST,GENDERAPI,ALL_GENDER } from "../../../config/apiConfig";
 
 const Gendermaster = () => {
   const [genderData, setGenderData] = useState([]);
@@ -30,23 +30,23 @@ const Gendermaster = () => {
 
   
 
-  // Fetch gender data from API
+  
   useEffect(() => {
-    fetchGenderData(0); // Fetch gender data with flag = 1
+    fetchGenderData(0); 
   }, []);
 
   const fetchGenderData = async (flag = 0) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_HOST}/gender/getAll/${flag}`);
+      const response = await axios.get(`${API_HOST}${ALL_GENDER}/${flag}`);
   
       if (response.data && response.data.response) {
-        // Transform API response to match our component's data structure
+        
         const transformedData = response.data.response.map(gender => ({
           id: gender.id,
           genderCode: gender.genderCode,
           genderName: gender.genderName,
-          status: gender.status // Assuming "y" or "n"
+          status: gender.status 
         }));
   
         setGenderData(transformedData);
@@ -64,7 +64,7 @@ const Gendermaster = () => {
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1);
   };
 
   const filteredGenderData = genderData.filter(gender =>
@@ -72,7 +72,7 @@ const Gendermaster = () => {
     gender.genderCode.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Get current page items
+  
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredGenderData.slice(indexOfFirstItem, indexOfLastItem);
@@ -95,8 +95,8 @@ const Gendermaster = () => {
       setLoading(true);
       
       if (editingGender) {
-        // Update existing gender using PUT /gender/update/{id}
-        const response = await axios.put(`${API_HOST}/gender/update/${editingGender.id}`, {
+        
+        const response = await axios.put(`${API_HOST}${GENDERAPI}/update/${editingGender.id}`, {
           id: editingGender.id,
           genderCode: formData.genderCode,
           genderName: formData.genderName,
@@ -105,15 +105,15 @@ const Gendermaster = () => {
         });
         
         if (response.data && response.data.response) {
-          // Update the local state to reflect changes
+         
           setGenderData(genderData.map(gender =>
             gender.id === editingGender.id ? response.data.response : gender
           ));
           showPopup("Gender updated successfully!", "success");
         }
       } else {
-        // Add new gender using POST /gender/add
-        const response = await axios.post(`${API_HOST}/gender/add`, {
+       
+        const response = await axios.post(`${API_HOST}${GENDERAPI}/add`, {
           genderCode: formData.genderCode,
           genderName: formData.genderName,
           code: null,
@@ -122,8 +122,8 @@ const Gendermaster = () => {
 
         const isDuplicate = genderData.some(
           (gender) =>
-            gender.genderCode.toLowerCase() === formData.genderCode.toLowerCase() ||
-            gender.genderName.toLowerCase() === formData.genderName.toLowerCase()
+            gender.genderCode === formData.genderCode ||
+            gender.genderName === formData.genderName
         );
     
         if (isDuplicate) {
@@ -133,7 +133,7 @@ const Gendermaster = () => {
         }
         
         if (response.data && response.data.response) {
-          // Add the new gender to local state
+          
           setGenderData([...genderData, response.data.response]);
           showPopup("New gender added successfully!", "success");
         }
@@ -142,7 +142,7 @@ const Gendermaster = () => {
       setEditingGender(null);
       setFormData({ genderCode: "", genderName: "" });
       setShowForm(false);
-      fetchGenderData(); // Refresh the data from server
+      fetchGenderData(); 
     } catch (err) {
       console.error("Error saving gender data:", err);
       showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
@@ -169,13 +169,13 @@ const Gendermaster = () => {
     if (confirmed && confirmDialog.genderId !== null) {
       try {
         setLoading(true);
-        // Update status using PUT /gender/status/{id}?status=y/n
+        
         const response = await axios.put(
-          `${API_HOST}/gender/status/${confirmDialog.genderId}?status=${confirmDialog.newStatus}`
+          `${API_HOST}${GENDERAPI}/status/${confirmDialog.genderId}?status=${confirmDialog.newStatus}`
         );
         
         if (response.data && response.data.response) {
-          // Update the local state to reflect changes
+         
           setGenderData((prevData) =>
             prevData.map((gender) =>
               gender.id === confirmDialog.genderId ? 
@@ -191,7 +191,7 @@ const Gendermaster = () => {
       } finally {
         setTimeout(() => {
           setLoading(false);
-        }, 2000); // Adjust the delay time (in milliseconds) as needed
+        }, 2000); 
       }
     }
     setConfirmDialog({ isOpen: false, genderId: null, newStatus: null });
@@ -201,11 +201,11 @@ const Gendermaster = () => {
     const { id, value } = e.target;
     setFormData((prevData) => ({ ...prevData, [id]: value }));
     
-    // Validate the form
+   
     if (id === "genderName") {
       setIsFormValid(value.trim() !== "");
     } else if (id === "genderCode") {
-      // Only needed for new gender entries
+      
       if (!editingGender) {
         setIsFormValid(value.trim() !== "" && formData.genderName.trim() !== "");
       }

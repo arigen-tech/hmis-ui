@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST } from "../../../config/apiConfig";
+import { API_HOST,BLOOD_GROUPS,ALL_BLOODGROUPS } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const BloodGroupMaster = () => {
@@ -27,7 +27,7 @@ const BloodGroupMaster = () => {
   const BLOOD_CODE_MAX_LENGTH = 8;
   const [pageInput, setPageInput] = useState("");
 
-  // Fetch blood groups from API
+ 
   useEffect(() => {
     fetchBloodGroups(0);
   }, []);
@@ -35,7 +35,7 @@ const BloodGroupMaster = () => {
   const fetchBloodGroups = async (flag = 0) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_HOST}/blood-group/getAllBloodGroups/${flag}`);
+      const response = await axios.get(`${API_HOST}${ALL_BLOODGROUPS}/${flag}`);
 
       console.log("API Response:", response.data);
 
@@ -55,7 +55,7 @@ const BloodGroupMaster = () => {
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1); 
   };
 
   const filteredBloodGroups = bloodGroups.filter(
@@ -64,7 +64,7 @@ const BloodGroupMaster = () => {
       bloodGroup.bloodGroupCode.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Get current page items
+  
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredBloodGroups.slice(indexOfFirstItem, indexOfLastItem);
@@ -86,11 +86,11 @@ const BloodGroupMaster = () => {
     try {
       setLoading(true);
 
-      // Check for duplicate blood group before saving
+      
       const isDuplicate = bloodGroups.some(
         (group) =>
-          group.bloodGroupCode.toLowerCase() === formData.bloodGroupCode.toLowerCase() ||
-          group.bloodGroupName.toLowerCase() === formData.bloodGroupName.toLowerCase()
+          group.bloodGroupCode === formData.bloodGroupCode ||
+          group.bloodGroupName === formData.bloodGroupName
       );
 
       if (isDuplicate) {
@@ -100,8 +100,8 @@ const BloodGroupMaster = () => {
       }
 
       if (editingBloodGroup) {
-        // Update existing blood group
-        const response = await axios.put(`${API_HOST}/blood-group/update/${editingBloodGroup.bloodGroupId}`, {
+        
+        const response = await axios.put(`${API_HOST}${BLOOD_GROUPS}/update/${editingBloodGroup.bloodGroupId}`, {
           bloodGroupCode: formData.bloodGroupCode,
           bloodGroupName: formData.bloodGroupName,
           status: editingBloodGroup.status,
@@ -116,8 +116,8 @@ const BloodGroupMaster = () => {
           showPopup("Blood group updated successfully!", "success");
         }
       } else {
-        // Add new blood group
-        const response = await axios.post(`${API_HOST}/blood-group/add`, {
+        
+        const response = await axios.post(`${API_HOST}${BLOOD_GROUPS}/add`, {
           bloodGroupCode: formData.bloodGroupCode,
           bloodGroupName: formData.bloodGroupName,
           status: "n",
@@ -129,11 +129,11 @@ const BloodGroupMaster = () => {
         }
       }
 
-      // Reset form and refresh data
+      
       setEditingBloodGroup(null);
       setFormData({ bloodGroupCode: "", bloodGroupName: "" });
       setShowForm(false);
-      fetchBloodGroups(); // Refresh data from backend
+      fetchBloodGroups(); 
     } catch (err) {
       console.error("Error saving blood group:", err);
       showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
@@ -152,16 +152,16 @@ const BloodGroupMaster = () => {
     });
   };
 
-  // Modified handler for switch change
+  
   const handleSwitchChange = (bloodGroupId, newStatus) => {
-    console.log("Switch change - ID:", bloodGroupId, "New status:", newStatus); // Debug log
+    console.log("Switch change - ID:", bloodGroupId, "New status:", newStatus); 
     if (bloodGroupId === undefined || bloodGroupId === null) {
       console.error("Invalid ID received in handleSwitchChange");
       showPopup("Error: Invalid blood group ID", "error");
       return;
     }
 
-    // Store the ID in a local variable to ensure it's not lost
+    
     setConfirmDialog({
       isOpen: true,
       bloodGroupId: bloodGroupId,
@@ -169,24 +169,24 @@ const BloodGroupMaster = () => {
     });
   };
 
-  // Modified confirm handler
+  
   const handleConfirm = async (confirmed) => {
-    console.log("Confirm dialog state:", confirmDialog); // Debug log
+    console.log("Confirm dialog state:", confirmDialog); 
 
     if (confirmed && confirmDialog.bloodGroupId) {
       try {
         setLoading(true);
         console.log("Making API call with ID:", confirmDialog.bloodGroupId, "Status:", confirmDialog.newStatus);
 
-        // Make the API call with the ID as a path variable and status as a query parameter
+       
         const response = await axios.put(
-          `${API_HOST}/blood-group/status/${confirmDialog.bloodGroupId}`,
+          `${API_HOST}${BLOOD_GROUPS}/status/${confirmDialog.bloodGroupId}`,
           {},
           { params: { status: confirmDialog.newStatus } }
         );
 
         if (response.data && response.data.response) {
-          // Update local state
+          
           setBloodGroups((prevData) =>
             prevData.map((group) =>
               group.bloodGroupId === confirmDialog.bloodGroupId
@@ -207,7 +207,7 @@ const BloodGroupMaster = () => {
       }
     }
 
-    // Reset the confirm dialog
+    
     setConfirmDialog({ isOpen: false, bloodGroupId: null, newStatus: null });
   };
 
