@@ -67,6 +67,57 @@ export const postRequest = async (endpoint, data, headers = {}) => {
   }
 };
 
+
+
+/**
+ * Function to call POST API with FormData
+ * @param {string} endpoint - The API endpoint
+ * @param {FormData} formData - FormData object
+ * @returns {Promise<object>} - API response
+ */
+export const postRequestWithFormData = async (endpoint, formData) => {
+  try {
+    let token = localStorage.getItem("token") || sessionStorage.getItem("token");
+
+    console.log(`Sending request to: ${BASE_URL}${endpoint}`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`, // Token is included if available
+        Accept: "application/json", // Accept JSON response
+      },
+      body: formData, // Automatically sets multipart/form-data
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Server response:", errorText);
+      throw new Error(`POST request failed: ${response.status} - ${errorText || response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("POST Error:", error);
+
+    if (error.name === "AbortError") {
+      throw new Error("Request timed out. Please check your network connection and try again.");
+    } else if (error.message.includes("Failed to fetch")) {
+      throw new Error("Network connection error. Please check if the server is running and accessible.");
+    }
+
+    throw error;
+  }
+};
+
+
+
 /**
  * Function to call PUT API
  * @param {string} endpoint - The API endpoint
@@ -220,6 +271,8 @@ async function uploadMultiFileWithJson(endpoint, jsonData, files1, files2) {
     throw error;
   }
 }
+
+
 export { uploadMultiFileWithJson };
 
 
