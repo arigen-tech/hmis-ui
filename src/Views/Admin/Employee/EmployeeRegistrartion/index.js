@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import placeholderImage from "../../../../assets/images/placeholder.jpg";
-import { COUNTRYAPI, DISTRICTAPI, STATEAPI, GENDERAPI, API_HOST, EMPLOYEE } from "../../../../config/apiConfig";
-import { getRequest, putRequest, postRequest } from "../../../../service/apiService";
+import { COUNTRYAPI, DISTRICTAPI, STATEAPI, DEPARTMENT, GENDERAPI, EMPLOYEE_REGISTRATION, IDENTITY_TYPE, API_HOST } from "../../../../config/apiConfig";
+import { getRequest, putRequest, postRequestWithFormData } from "../../../../service/apiService";
 import Popup from "../../../../Components/popup";
-let EMPLOYEE_REGISTRATION = `${EMPLOYEE}/create`
+
 const EmployeeRegistration = () => {
     const initialFormData = {
         profilePicName: null,
@@ -22,7 +22,11 @@ const EmployeeRegistration = () => {
         pincode: "",
         mobileNo: "",
         registrationNo: "",
-        identificationType: 2,
+        employmentTypeId: 1,
+        deprtId: "",
+        identificationType: "",
+        employeeTypeId: 1,
+        email:"dkraj@gmail.com",
         fromDate: "",
 
         qualification: [{ employeeQualificationId: 1, institutionName: "", completionYear: 0, qualificationName: "", filePath: null }],
@@ -33,6 +37,7 @@ const EmployeeRegistration = () => {
     const [popupMessage, setPopupMessage] = useState("");
     const [profileImage, setProfileImage] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [departmentData, setDepartmentData] = useState([]);
     const [countryData, setCountryData] = useState([]);
     const [stateData, setStateData] = useState([]);
     const [districtData, setDistrictData] = useState([]);
@@ -41,12 +46,13 @@ const EmployeeRegistration = () => {
     const [countryIds, setCountryIds] = useState("");
     const [stateIds, setStateIds] = useState("");
     // const token = sessionStorage.getItem("token");
-    const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhYmNAZ21haWwuY29tIiwiaG9zcGl0YWxJZCI6MSwiZW1wbG95ZWVJZCI6MSwiZXhwIjoxNzQyMjc1NDg0LCJ1c2VySWQiOjQsImlhdCI6MTc0MTY3MDY4NH0.8EEshDklEiZBRhDBKDzWvPsqHxUQ63mKpTxa1hBShpzghNga5Ie4YDpvdue1T9nlozXsvxySR3YNKnetvW9oEA";
+    const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhYmNAZ21haWwuY29tIiwiaG9zcGl0YWxJZCI6MSwiZW1wbG95ZWVJZCI6MSwiZXhwIjoxNzQzMTMwNjU4LCJ1c2VySWQiOjQsImlhdCI6MTc0MjUyNTg1OH0.AeMNmzHXYHfNDXZvwfMFTJ8sM3qL6ghzMB81fPjiV7mTVHKn17d14YLoKMuxMrq7kqljpibrjnPayeG9bUBa6g";
 
 
 
     useEffect(() => {
         fetchCountryData();
+        fetchDepartmentData();
         fetchGenderData();
         fetchIdTypeData();
     }, []);
@@ -65,7 +71,7 @@ const EmployeeRegistration = () => {
     const fetchCountryData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${COUNTRYAPI}/all`);
+            const data = await getRequest(`${COUNTRYAPI}/getAllCountries/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setCountryData(data.response);
             } else {
@@ -74,6 +80,23 @@ const EmployeeRegistration = () => {
             }
         } catch (error) {
             console.error("Error fetching country data:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchDepartmentData = async () => {
+        setLoading(true);
+        try {
+            const data = await getRequest(`${DEPARTMENT}/getAllDepartments/1`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setDepartmentData(data.response);
+            } else {
+                console.error("Unexpected API response format:", data);
+                setDepartmentData([]);
+            }
+        } catch (error) {
+            console.error("Error fetching Department data:", error);
         } finally {
             setLoading(false);
         }
@@ -118,7 +141,7 @@ const EmployeeRegistration = () => {
     const fetchGenderData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${GENDERAPI}/all`);
+            const data = await getRequest(`${GENDERAPI}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setGenderData(data.response);
             } else {
@@ -135,8 +158,7 @@ const EmployeeRegistration = () => {
     const fetchIdTypeData = async () => {
         setLoading(true);
         try {
-            const GETALL = "/masterController/getAllHotelType";
-            const data = await getRequest(GETALL);
+            const data = await getRequest(`${IDENTITY_TYPE}/getAllIdentificationTypes/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setIdTypeData(data.response);
             } else {
@@ -180,6 +202,14 @@ const EmployeeRegistration = () => {
         setFormData((prevState) => ({
             ...prevState,
             genderId: gendersId,
+        }));
+    };
+
+    
+    const handleDepartmentChange = (deprtId) => {
+        setFormData((prevState) => ({
+            ...prevState,
+            deprtId: deprtId,
         }));
     };
 
@@ -269,151 +299,150 @@ const EmployeeRegistration = () => {
         });
     };
 
-    // const handleSubmit = async (e) => {
-    //     e.preventDefault();
 
-    //     if (!formData.firstName || !formData.lastName || !formData.dob || !formData.mobileNo) {
-    //         alert("Please fill in all required fields.");
-    //         return;
-    //     }
-
-    //     const submissionData = new FormData();
-    //     submissionData.append("firstName", formData.firstName);
-    //     submissionData.append("middleName", formData.middleName);
-    //     submissionData.append("lastName", formData.lastName);
-    //     submissionData.append("dob", formData.dob);
-    //     submissionData.append("genderId", formData.genderId);
-    //     submissionData.append("address1", formData.address1);
-    //     submissionData.append("countryId", formData.countryId);
-    //     submissionData.append("stateId", formData.stateId);
-    //     submissionData.append("districtId", formData.districtId);
-    //     submissionData.append("city", formData.city);
-    //     submissionData.append("pincode", formData.pincode);
-    //     submissionData.append("mobileNo", formData.mobileNo);
-    //     submissionData.append("registrationNo", formData.registrationNo);
-    //     submissionData.append("identificationType", formData.identificationType);
-    //     submissionData.append("fromDate", formData.fromDate);
-
-    //     if (formData.profilePicName)
-    //         submissionData.append("profilePicName", formData.profilePicName);
-    //     if (formData.idDocumentName)
-    //         submissionData.append("idDocumentName", formData.idDocumentName);
-
-    //     formData.qualification.forEach((qual, index) => {
-    //         submissionData.append(`qualification[${index}][employeeQualificationId]`, qual.employeeQualificationId);
-    //         submissionData.append(`qualification[${index}][institutionName]`, qual.institutionName);
-    //         submissionData.append(`qualification[${index}][completionYear]`, qual.completionYear);
-    //         submissionData.append(`qualification[${index}][qualificationName]`, qual.qualificationName);
-    //         submissionData.append(`qualification[${index}][filePath]`, qual.filePath);
-    //     });
-
-    //     formData.document.forEach((doc, index) => {
-    //         submissionData.append(`document[${index}][employeeDocumentId]`, doc.employeeDocumentId);
-    //         submissionData.append(`document[${index}][documentName]`, doc.documentName);
-    //         submissionData.append(`document[${index}][filePath]`, doc.filePath);
-    //     });
-
-    //     try {
-    //         const response = await fetch(`http://localhost:8080${EMPLOYEE}/employee`, {
-    //             method: "POST",
-    //             body: submissionData,
-    //         });
-
-    //         if (!response.ok) {
-    //             throw new Error("Failed to submit form");
-    //         }
-
-    //         const responseData = await response.json();
-    //         console.log("Form submitted successfully:", responseData);
-    //         alert("Form submitted successfully!");
-
-    //         setFormData(initialFormData);
-    //     } catch (error) {
-    //         console.error("Error submitting form:", error);
-    //         alert("Error submitting form. Please try again.");
-    //     }
-    // };
+    console.log("my data", formData);
 
 
-    const handleSubmit = async (e) => {
+    const handleCreateEmployee = async (e) => {
         e.preventDefault();
-
-        const formDataToSubmit = new FormData();
-
-        formDataToSubmit.append("profilePicName", formData.profilePicName);
-        formDataToSubmit.append("idDocumentName", formData.idDocumentName);
-        formDataToSubmit.append("firstName", formData.firstName);
-        formDataToSubmit.append("middleName", formData.middleName);
-        formDataToSubmit.append("lastName", formData.lastName);
-        formDataToSubmit.append("dob", formData.dob);
-        formDataToSubmit.append("genderId", formData.genderId);
-        formDataToSubmit.append("address1", formData.address1);
-        formDataToSubmit.append("countryId", formData.countryId);
-        formDataToSubmit.append("stateId", formData.stateId);
-        formDataToSubmit.append("districtId", formData.districtId);
-        formDataToSubmit.append("city", formData.city);
-        formDataToSubmit.append("pincode", formData.pincode);
-        formDataToSubmit.append("mobileNo", formData.mobileNo);
-        formDataToSubmit.append("registrationNo", formData.registrationNo);
-        formDataToSubmit.append("identificationType", formData.identificationType);
-        formDataToSubmit.append("fromDate", formData.fromDate);
-
-        // Append qualification details
-        formData.qualification.forEach((qual, index) => {
-            formDataToSubmit.append(`qualification[${index}][employeeQualificationId]`, qual.employeeQualificationId);
-            formDataToSubmit.append(`qualification[${index}][institutionName]`, qual.institutionName);
-            formDataToSubmit.append(`qualification[${index}][completionYear]`, qual.completionYear);
-            formDataToSubmit.append(`qualification[${index}][qualificationName]`, qual.qualificationName);
-            if (qual.filePath) {
-                formDataToSubmit.append(`qualification[${index}][filePath]`, qual.filePath);
-            }
-        });
-
-        // Append document details
-        formData.document.forEach((doc, index) => {
-            formDataToSubmit.append(`document[${index}][employeeDocumentId]`, doc.employeeDocumentId);
-            formDataToSubmit.append(`document[${index}][documentName]`, doc.documentName);
-            if (doc.filePath) {
-                formDataToSubmit.append(`document[${index}][filePath]`, doc.filePath);
-            }
-        });
-
+        setLoading(true);
+    
         try {
-            setLoading(true);
-
-            const response = await fetch(`${API_HOST}${EMPLOYEE_REGISTRATION}`, {
-                method: "POST",
-                body: formDataToSubmit,
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to submit form: ${response.statusText}`);
+            const formDataObj = new FormData();
+    
+            // Basic employee details
+            formDataObj.append("firstName", formData.firstName);
+            formDataObj.append("middleName", formData.middleName || "");
+            formDataObj.append("lastName", formData.lastName || "");
+            formDataObj.append("dob", formData.dob);
+            formDataObj.append("genderId", formData.genderId);
+            formDataObj.append("address1", formData.address1);
+            formDataObj.append("countryId", formData.countryId);
+            formDataObj.append("stateId", formData.stateId);
+            formDataObj.append("districtId", formData.districtId);
+            formDataObj.append("city", formData.city);
+            formDataObj.append("pincode", formData.pincode);
+            formDataObj.append("mobileNo", formData.mobileNo);
+            formDataObj.append("registrationNo", formData.registrationNo);
+            formDataObj.append("identificationType", formData.identificationType);
+            formDataObj.append("fromDate", formData.fromDate);
+            formDataObj.append("departmentId", formData.departmentId);
+    
+            // Profile and ID document
+            if (formData.profilePic) {
+                formDataObj.append("profilePicName", formData.profilePic);
             }
-
-            const data = await response.json();
-            showPopup(response?.message || "Form submitted successfully!", "success");
-            // resetForm();
+            if (formData.idDocument) {
+                formDataObj.append("idDocumentName", formData.idDocument);
+            }
+    
+            // Append documents correctly
+            formData.document.forEach((doc, index) => {
+                formDataObj.append(`document[${index}].documentName`, doc.documentName);
+                formDataObj.append(`document[${index}].filePath`, doc.filePath); // MultipartFile
+            });
+    
+            // Append qualifications correctly
+            formData.qualification.forEach((qual, index) => {
+                formDataObj.append(`qualification[${index}].institutionName`, qual.institutionName);
+                formDataObj.append(`qualification[${index}].completionYear`, qual.completionYear);
+                formDataObj.append(`qualification[${index}].qualificationName`, qual.qualificationName);
+                formDataObj.append(`qualification[${index}].filePath`, qual.filePath); // MultipartFile
+            });
+    
+            // Send request
+            const response = await postRequestWithFormData("/employee/create", formDataObj);
+    
+            if (response.status === 200) {
+                showPopup("Employee created successfully", "success");
+                setFormData(initialFormData);
+            } else {
+                showPopup(response.message || "Failed to create employee", "error");
+            }
         } catch (error) {
-            showPopup(
-                error?.response?.message || "Failed to submit form. Please try again.",
-                "error"
-            );
-            console.error("Form submission failed", error);
+            console.error("Error creating employee:", error);
+            showPopup(error.message || "An error occurred while creating employee", "error");
         } finally {
             setLoading(false);
         }
     };
-
-
-
-    console.log("my data", formData);
-
+    
+    
+    
+    const handleCreateEmployeeWithApprove = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        
+        try {
+            // Create FormData object to handle file uploads
+            const formDataObj = new FormData();
+            
+            // Add basic employee information
+            formDataObj.append("firstName", formData.firstName);
+            formDataObj.append("middleName", formData.middleName || "");
+            formDataObj.append("lastName", formData.lastName || "");
+            formDataObj.append("dob", formData.dob);
+            formDataObj.append("genderId", formData.genderId);
+            formDataObj.append("address1", formData.address1);
+            formDataObj.append("countryId", formData.countryId);
+            formDataObj.append("stateId", formData.stateId);
+            formDataObj.append("districtId", formData.districtId);
+            formDataObj.append("city", formData.city);
+            formDataObj.append("pincode", formData.pincode);
+            formDataObj.append("mobileNo", formData.mobileNo);
+            formDataObj.append("registrationNo", formData.registrationNo);
+            formDataObj.append("identificationType", formData.identificationType);
+            formDataObj.append("email", formData.email);
+            formDataObj.append("fromDate", formData.fromDate);
+            formDataObj.append("departmentId", formData.deprtId);
+            
+            // Add profile picture and ID document
+            if (formData.profilePicName) {
+                formDataObj.append("profilePicName", formData.profilePicName);
+            }
+            
+            if (formData.idDocumentName) {
+                formDataObj.append("idDocumentName", formData.idDocumentName);
+            }
+            
+            // Add qualifications
+            formData.qualification.forEach((qual, index) => {
+                formDataObj.append(`qualification[${index}].institutionName`, qual.institutionName);
+                formDataObj.append(`qualification[${index}].completionYear`, qual.completionYear);
+                formDataObj.append(`qualification[${index}].qualificationName`, qual.qualificationName);
+                if (qual.filePath) {
+                    formDataObj.append(`qualification[${index}].filePath`, qual.filePath);
+                }
+            });
+            
+            // Add documents
+            formData.document.forEach((doc, index) => {
+                formDataObj.append(`document[${index}].documentName`, doc.documentName);
+                if (doc.filePath) {
+                    formDataObj.append(`document[${index}].filePath`, doc.filePath);
+                }
+            });
+            
+            // Send the request to create and approve
+            const response = await postRequestWithFormData(EMPLOYEE_REGISTRATION + "/create-and-approve", formDataObj);
+            
+            if (response.status === 200) {
+                showPopup("Employee created and approved successfully", "success");
+                setFormData(initialFormData);
+                setProfileImage(null);
+            } else {
+                showPopup(response.message || "Failed to create and approve employee", "error");
+            }
+        } catch (error) {
+            console.error("Error creating and approving employee:", error);
+            showPopup(error.message || "An error occurred while creating and approving employee", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
     return (
         <>
-            <div className="body d-flex py-3">
+            <div className="d-flex body py-3">
                 <div className="container-xxl">
                     {popupMessage && (
                         <Popup
@@ -425,7 +454,7 @@ const EmployeeRegistration = () => {
 
                     <div className="row align-items-center">
                         <div className="border-0 mb-4">
-                            <div className="card-header py-3 bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
+                            <div className="d-flex flex-wrap card-header align-items-center bg-transparent border-bottom justify-content-between px-0 py-3">
                                 <h3 className="fw-bold mb-0">Register of Employee</h3>
                             </div>
                         </div>
@@ -435,14 +464,14 @@ const EmployeeRegistration = () => {
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header py-3 bg-light border-bottom-1">
-                                    <h6 className="mb-0 fw-bold">Employee Registration</h6>
+                                <div className="card-header bg-light border-bottom-1 py-3">
+                                    <h6 className="fw-bold mb-0">Employee Registration</h6>
                                 </div>
                                 <div className="card-body">
                                     <form>
-                                        <div className="row g-3">
+                                        <div className="g-3 row">
                                             <div className="col-md-9">
-                                                <div className="row g-3">
+                                                <div className="g-3 row">
                                                     <div className="col-md-4">
                                                         <label className="form-label">First Name *</label>
                                                         <input
@@ -633,7 +662,7 @@ const EmployeeRegistration = () => {
                                                         >
                                                             <option value="">Select ID Type</option>
                                                             {idTypeData.map((idType) => (
-                                                                <option key={idType.id} value={idType.id}>
+                                                                <option key={idType.identificationTypeId} value={idType.identificationTypeId}>
                                                                     {idType.identificationName}
                                                                 </option>
                                                             ))}
@@ -665,6 +694,26 @@ const EmployeeRegistration = () => {
                                                     </div>
 
                                                     <div className="col-md-4">
+                                                        <label className="form-label">Depatment Name *</label>
+                                                        <select
+                                                            className="form-select"
+                                                            style={{ paddingRight: "40px" }}
+                                                            value={formData.deprtId}
+                                                            onChange={(e) =>
+                                                                handleDepartmentChange(parseInt(e.target.value, 10))
+                                                            }
+                                                            disabled={loading}
+                                                        >
+                                                            <option value="">Select Depatment</option>
+                                                            {departmentData.map((depa) => (
+                                                                <option key={depa.id} value={depa.id}>
+                                                                    {depa.departmentName}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="col-md-4">
                                                         <label className="form-label">Period of Employment From Date</label>
                                                         <input
                                                             type="date"
@@ -680,7 +729,7 @@ const EmployeeRegistration = () => {
                                             </div>
                                             <div className="col-md-3 d-flex flex-column">
                                                 <label className="form-label">Profile Image *</label>
-                                                <div className="border p-2 d-flex flex-column align-items-center">
+                                                <div className="d-flex flex-column align-items-center border p-2">
                                                     <img
                                                         src={profileImage || placeholderImage}
                                                         alt="Profile"
@@ -709,8 +758,8 @@ const EmployeeRegistration = () => {
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header py-3 bg-light border-bottom-1">
-                                    <h6 className="mb-0 fw-bold">Educational Qualification</h6>
+                                <div className="card-header bg-light border-bottom-1 py-3">
+                                    <h6 className="fw-bold mb-0">Educational Qualification</h6>
                                 </div>
                                 <div className="card-body">
                                     <table className="table table-bordered">
@@ -782,8 +831,8 @@ const EmployeeRegistration = () => {
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header py-3 bg-light border-bottom-1">
-                                    <h6 className="mb-0 fw-bold">Required Documents</h6>
+                                <div className="card-header bg-light border-bottom-1 py-3">
+                                    <h6 className="fw-bold mb-0">Required Documents</h6>
                                 </div>
                                 <div className="card-body">
                                     <table className="table table-bordered">
@@ -831,9 +880,9 @@ const EmployeeRegistration = () => {
                         </div>
                     </div>
 
-                    <div className="mt-4 d-flex justify-content-end">
-                        <button type="reset" className="btn btn-secondary me-2">Save</button>
-                        <button onClick={handleSubmit} type="submit" className="btn btn-primary">Submit</button>
+                    <div className="d-flex justify-content-end mt-4">
+                        <button onClick={handleCreateEmployee} type="reset" className="btn btn-secondary me-2">Save</button>
+                        <button onClick={handleCreateEmployeeWithApprove} type="submit" className="btn btn-primary">Submit</button>
                     </div>
                 </div>
             </div>
