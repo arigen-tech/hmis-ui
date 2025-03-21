@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import axios from "axios";
-import { API_HOST } from "../../../config/apiConfig";
-
+import { API_HOST,ALL_MARITAL_STATUS,MARITAL_STATUS } from "../../../config/apiConfig";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 const MaritalStatusMaster = () => {
   const [maritalStatusData, setMaritalStatusData] = useState([]);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, maritalStatusId: null, newStatus: false });
@@ -34,20 +34,10 @@ const [pageInput, setPageInput] = useState(1);
   const fetchMaritalStatusData = async (flag = 0) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_HOST}/marital-status/getAllMaritalStatuses/${flag}`);
-
-      if (response.data && response.data.response) {
-        const transformedData = response.data.response.map((status) => ({
-          id: status.id,
-          name: status.name || "",
-          status: status.status,
-          lastChgBy: status.lastChgBy,
-          lastChgDate: status.lastChgDate
-        }));
-
-        setMaritalStatusData(transformedData);
-        setTotalFilteredProducts(transformedData.length);
-        setFilteredTotalPages(Math.ceil(transformedData.length / itemsPerPage));
+      const response = await getRequest(`${ALL_MARITAL_STATUS}/${flag}`);
+  
+      if (response && response.response) {
+        setMaritalStatusData(response.response);
       }
     } catch (err) {
       console.error("Error fetching marital status data:", err);
@@ -56,6 +46,7 @@ const [pageInput, setPageInput] = useState(1);
       setLoading(false);
     }
   };
+  
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -91,7 +82,7 @@ const [pageInput, setPageInput] = useState(1);
       // Check for duplicates before making the API call
       const isDuplicate = maritalStatusData.some(
         (status) =>
-          (status.name || "").toLowerCase() === formData.name.toLowerCase() &&
+          (status.name || "") === formData.name &&
           (!editingStatus || status.id !== editingStatus.id)
       );
 
@@ -103,29 +94,29 @@ const [pageInput, setPageInput] = useState(1);
 
       if (editingStatus) {
         // Update existing marital status
-        const response = await axios.put(`${API_HOST}/marital-status/edit/${editingStatus.id}`, {
+        const response = await putRequest(`${MARITAL_STATUS}/edit/${editingStatus.id}`, {
           id: editingStatus.id,
           name: formData.name,
           status: editingStatus.status,
         });
 
-        if (response.data && response.data.response) {
+        if (response && response.response) {
           setMaritalStatusData((prevData) =>
             prevData.map((status) =>
-              status.id === editingStatus.id ? response.data.response : status
+              status.id === editingStatus.id ? response.response : status
             )
           );
           showPopup("Marital status updated successfully!", "success");
         }
       } else {
         // Add new marital status
-        const response = await axios.post(`${API_HOST}/marital-status/create`, {
+        const response = await postRequest(`${MARITAL_STATUS}/create`, {
           name: formData.name,
           status: "n",
         });
 
-        if (response.data && response.data.response) {
-          setMaritalStatusData((prevData) => [...prevData, response.data.response]);
+        if (response && response.response) {
+          setMaritalStatusData((prevData) => [...prevData, response.response]);
           showPopup("New marital status added successfully!", "success");
         }
       }
@@ -133,7 +124,7 @@ const [pageInput, setPageInput] = useState(1);
       setEditingStatus(null);
       setFormData({ name: "" });
       setShowForm(false);
-      fetchMaritalStatusData(); // Refresh the data from server
+      fetchMaritalStatusData(); 
     } catch (err) {
       console.error("Error saving marital status data:", err);
       showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
@@ -160,11 +151,11 @@ const [pageInput, setPageInput] = useState(1);
     if (confirmed && confirmDialog.maritalStatusId !== null) {
       try {
         setLoading(true);
-        const response = await axios.put(
-          `${API_HOST}/marital-status/status/${confirmDialog.maritalStatusId}?status=${confirmDialog.newStatus}`
+        const response = await putRequest(
+          `${MARITAL_STATUS}/status/${confirmDialog.maritalStatusId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response.data && response.data.response) {
+        if (response && response.response) {
           setMaritalStatusData((prevData) =>
             prevData.map((status) =>
               status.id === confirmDialog.maritalStatusId

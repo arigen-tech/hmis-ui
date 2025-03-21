@@ -1,5 +1,5 @@
-// export const API_HOST = 'http://103.133.215.182:8085';
-export const API_HOST = 'http://localhost:8080';
+export const API_HOST = 'http://103.133.215.182:8085';
+// export const API_HOST = 'http://localhost:8080';
 // export const API_HOST = 'http://192.168.35.20:8080';
 
 
@@ -23,6 +23,15 @@ export const ALL_DEPARTMENT_TYPE="/department-type/getAllDepartmentTypes";
 export const ALL_STATE="/state/getAllStates";
 export const ALL_DISTRICT="/district/getAllDistricts";
 export const ALL_ROLE="/roles/getAllRoles";
+export const ALL_HOSPITAL="/hospital/getAllHospitals";
+export const ALL_MARITAL_STATUS="/marital-status/getAllMaritalStatuses";
+
+
+
+
+
+
+
 
 
 export const COUNTRYAPI = "/country";
@@ -35,6 +44,11 @@ export const EMPLOYEE = "/employees";
 export const BLOOD_GROUPS = "/blood-group";
 export const DEPARTMENT_TYPE ="/department-type";
 export const ROLE="/roles";
+export const HOSPITAL="/hospital";
+export const MARITAL_STATUS="/marital-status";
+export const RELATION="/relation";
+
+
 
 
 export const IDENTITY_TYPE = "/identification-types";

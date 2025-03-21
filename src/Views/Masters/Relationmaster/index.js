@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST } from "../../../config/apiConfig";
+import { API_HOST,RELATION,ALL_RELATION } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
 const Relationmaster = () => {
   const [relationData, setRelationData] = useState([]);
@@ -31,7 +32,7 @@ const Relationmaster = () => {
   const RELATION_NAME_MAX_LENGTH = 30;
   const RELATION_CODE_MAX_LENGTH = 30;
 
-  // Fetch relation data from API
+ 
   useEffect(() => {
     fetchRelationData(0);
   }, []);
@@ -39,15 +40,15 @@ const Relationmaster = () => {
   const fetchRelationData = async (flag = 0) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_HOST}/relation/getAllRelations/${flag}`);
+      const response = await getRequest(`${ALL_RELATION}/${flag}`);
 
-      if (response.data && response.data.response) {
-        // Transform API response to match our component's data structure
-        const transformedData = response.data.response.map((relation) => ({
+      if (response && response.response) {
+        
+        const transformedData = response.response.map((relation) => ({
           id: relation.id,
           relationName: relation.relationName,
           code: relation.code,
-          status: relation.status, // The API returns status as "y" or "n"
+          status: relation.status, 
         }));
 
         setRelationData(transformedData);
@@ -69,8 +70,8 @@ const Relationmaster = () => {
 
   const filteredRelationData = relationData.filter(
     (relation) =>
-      relation.relationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      relation.code.toLowerCase().includes(searchQuery.toLowerCase())
+      relation.relationName.includes(searchQuery) ||
+      relation.code.includes(searchQuery)
   );
 
   // Get current page items
@@ -109,42 +110,42 @@ const Relationmaster = () => {
       }
   
       if (editingRelation) {
-        // Update existing relation using PUT /relation/update/{id}
-        const response = await axios.put(`${API_HOST}/relation/update/${editingRelation.id}`, {
+       
+        const response = await putRequest(`${RELATION}/update/${editingRelation.id}`, {
           id: editingRelation.id,
           relationName: formData.relationName,
           code: formData.code,
           status: editingRelation.status,
         });
   
-        if (response.data && response.data.response) {
+        if (response && response.response) {
           // Update the local state to reflect changes
           setRelationData((prevData) =>
             prevData.map((relation) =>
-              relation.id === editingRelation.id ? response.data.response : relation
+              relation.id === editingRelation.id ? response.response : relation
             )
           );
           showPopup("Relation updated successfully!", "success");
         }
       } else {
-        // Add new relation using POST /relation/add
-        const response = await axios.post(`${API_HOST}/relation/add`, {
+        
+        const response = await postRequest(`${RELATION}/add`, {
           relationName: formData.relationName,
           code: formData.code,
           status: "n",
         });
-  
-        if (response.data && response.data.response) {
-          // Add the new relation to local state
-          setRelationData([...relationData, response.data.response]);
+        
+        if (response && response.response) {
+          setRelationData((prevData) => [...prevData, response.response]);
           showPopup("New relation added successfully!", "success");
         }
+        
       }
   
       setEditingRelation(null);
       setFormData({ relationName: "", code: "" });
       setShowForm(false);
-      fetchRelationData(); // Refresh the data from server
+      fetchRelationData(); 
     } catch (err) {
       console.error("Error saving relation data:", err);
       showPopup(
@@ -175,13 +176,13 @@ const Relationmaster = () => {
     if (confirmed && confirmDialog.relationId !== null) {
       try {
         setLoading(true);
-        // Update status using PUT /relation/status/{id}?status=y/n
-        const response = await axios.put(
-          `${API_HOST}/relation/status/${confirmDialog.relationId}?status=${confirmDialog.newStatus}`
+        
+        const response = await putRequest(
+          `${RELATION}/status/${confirmDialog.relationId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response.data && response.data.response) {
-          // Update the local state to reflect changes
+        if (response && response.response) {
+          
           setRelationData((prevData) =>
             prevData.map((relation) =>
               relation.id === confirmDialog.relationId
@@ -210,7 +211,7 @@ const Relationmaster = () => {
     setFormData((prevData) => {
         const updatedData = { ...prevData, [id]: value };
 
-        // Validate the form
+        
         if (id === "relationName" || id === "code") {
             setIsFormValid(
                 (updatedData.relationName?.trim() || "") !== "" &&

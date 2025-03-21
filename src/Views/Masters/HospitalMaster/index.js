@@ -1,8 +1,10 @@
+"use client"
+
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
-import axios from "axios"
-import { API_HOST } from "../../../config/apiConfig"
+import { ALL_HOSPITAL, HOSPITAL, ALL_COUNTRY, STATE_BY_COUNTRY, DISTRICT_BY_STATE } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
 const HospitalMaster = () => {
   const [hospitals, setHospitals] = useState([])
@@ -39,8 +41,8 @@ const HospitalMaster = () => {
   const [pageInput, setPageInput] = useState("")
   const [loading, setLoading] = useState(true)
   const itemsPerPage = 5
-  const [filteredStates, setFilteredStates] = useState([]);
-  const [filteredDistricts, setFilteredDistricts] = useState([]);
+  const [filteredStates, setFilteredStates] = useState([])
+  const [filteredDistricts, setFilteredDistricts] = useState([])
 
   const HOSPITAL_CODE_MAX_LENGTH = 8
   const HOSPITAL_NAME_MAX_LENGTH = 30
@@ -52,16 +54,14 @@ const HospitalMaster = () => {
   useEffect(() => {
     fetchHospitals(0)
     fetchCountries(1)
-    fetchStates(1)
-    fetchDistricts(1)
   }, [])
 
   const fetchHospitals = async (flag = 0) => {
     try {
       setLoading(true)
-      const response = await axios.get(`${API_HOST}/hospital/getAllHospitals/${flag}`)
-      if (response.data && response.data.response) {
-        setHospitals(response.data.response)
+      const response = await getRequest(`${ALL_HOSPITAL}/${flag}`)
+      if (response && response.response) {
+        setHospitals(response.response)
       }
     } catch (err) {
       console.error("Error fetching hospitals:", err)
@@ -73,9 +73,9 @@ const HospitalMaster = () => {
 
   const fetchCountries = async (flag = 1) => {
     try {
-      const response = await axios.get(`${API_HOST}/country/getAllCountries/${flag}`)
-      if (response.data && response.data.response) {
-        setCountries(response.data.response)
+      const response = await getRequest(`${ALL_COUNTRY}/${flag}`)
+      if (response && response.response) {
+        setCountries(response.response)
       }
     } catch (err) {
       console.error("Error fetching countries:", err)
@@ -83,47 +83,45 @@ const HospitalMaster = () => {
     }
   }
 
-  const fetchStates = async (flag = 1) => {
+  // Fetch states by country ID using the API endpoint
+  const fetchStatesByCountryId = async (countryId) => {
     try {
-      const response = await axios.get(`${API_HOST}/state/getAllStates/${flag}`)
-      if (response.data && response.data.response) {
-        setStates(response.data.response)
+      setLoading(true)
+      const response = await getRequest(`${STATE_BY_COUNTRY}${countryId}`)
+      if (response && response.response) {
+        setFilteredStates(response.response)
+      } else {
+        console.error("Unexpected API response format:", response)
+        setFilteredStates([])
       }
     } catch (err) {
-      console.error("Error fetching states:", err)
-      showPopup("Failed to load states", "error")
+      console.error("Error fetching states by country:", err)
+      showPopup("Failed to load states for selected country", "error")
+      setFilteredStates([])
+    } finally {
+      setLoading(false)
     }
   }
 
-  const fetchDistricts = async (flag = 1) => {
+  // Fetch districts by state ID using the API endpoint
+  const fetchDistrictsByStateId = async (stateId) => {
     try {
-      const response = await axios.get(`${API_HOST}/district/getAllDistricts/${flag}`)
-      if (response.data && response.data.response) {
-        setDistricts(response.data.response)
+      setLoading(true)
+      const response = await getRequest(`${DISTRICT_BY_STATE}${stateId}`)
+      if (response && response.response) {
+        setFilteredDistricts(response.response)
+      } else {
+        console.error("Unexpected API response format:", response)
+        setFilteredDistricts([])
       }
     } catch (err) {
-      console.error("Error fetching districts:", err)
-      showPopup("Failed to load districts", "error")
+      console.error("Error fetching districts by state:", err)
+      showPopup("Failed to load districts for selected state", "error")
+      setFilteredDistricts([])
+    } finally {
+      setLoading(false)
     }
   }
-
-  useEffect(() => {
-    if (formData.countryId) {
-      const statesForCountry = states.filter(state => state.countryId === formData.countryId);
-      setFilteredStates(statesForCountry);
-    } else {
-      setFilteredStates([]);
-    }
-  }, [formData.countryId, states]);
-
-  useEffect(() => {
-    if (formData.stateId) {
-      const districtsForState = districts.filter(district => district.stateId === formData.stateId);
-      setFilteredDistricts(districtsForState);
-    } else {
-      setFilteredDistricts([]);
-    }
-  }, [formData.stateId, districts]);
 
   const getFilteredHospitals = () => {
     if (!searchQuery) return hospitals
@@ -170,9 +168,9 @@ const HospitalMaster = () => {
   }
 
   const handleCountryChange = (e) => {
-    const selectedIndex = e.target.selectedIndex;
-    const selectedOption = e.target.options[selectedIndex];
-    const countryId = Number.parseInt(selectedOption.getAttribute("data-id"), 10);
+    const selectedIndex = e.target.selectedIndex
+    const selectedOption = e.target.options[selectedIndex]
+    const countryId = Number.parseInt(selectedOption.getAttribute("data-id"), 10)
 
     setFormData((prev) => ({
       ...prev,
@@ -181,48 +179,54 @@ const HospitalMaster = () => {
       state: "",
       stateId: "",
       district: "",
-      districtId: ""
-    }));
+      districtId: "",
+    }))
 
-    // Filtering states is now handled by the useEffect
-  };
+    // Fetch states for the selected country
+    if (!isNaN(countryId)) {
+      fetchStatesByCountryId(countryId)
+    }
+  }
 
   const handleStateChange = (e) => {
-    const selectedIndex = e.target.selectedIndex;
-    const selectedOption = e.target.options[selectedIndex];
-    const stateId = Number.parseInt(selectedOption.getAttribute("data-id"), 10);
+    const selectedIndex = e.target.selectedIndex
+    const selectedOption = e.target.options[selectedIndex]
+    const stateId = Number.parseInt(selectedOption.getAttribute("data-id"), 10)
 
     setFormData((prev) => ({
       ...prev,
       state: e.target.value,
       stateId: isNaN(stateId) ? null : stateId,
       district: "",
-      districtId: ""
-    }));
+      districtId: "",
+    }))
 
-    // Filtering districts is now handled by the useEffect
-  };
+    // Fetch districts for the selected state
+    if (!isNaN(stateId)) {
+      fetchDistrictsByStateId(stateId)
+    }
+  }
 
   const handleDistrictChange = (e) => {
-    const selectedIndex = e.target.selectedIndex;
-    const selectedOption = e.target.options[selectedIndex];
-    const districtId = Number.parseInt(selectedOption.getAttribute("data-id"), 10);
+    const selectedIndex = e.target.selectedIndex
+    const selectedOption = e.target.options[selectedIndex]
+    const districtId = Number.parseInt(selectedOption.getAttribute("data-id"), 10)
 
     setFormData((prev) => ({
       ...prev,
       district: e.target.value,
       districtId: isNaN(districtId) ? null : districtId,
-    }));
-  };
+    }))
+  }
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value } = e.target
 
     setFormData((prevData) => {
       const updatedFormData = {
         ...prevData,
         [name]: value,
-      };
+      }
 
       const isValid =
         (updatedFormData.hospitalCode || "").trim() !== "" &&
@@ -233,12 +237,12 @@ const HospitalMaster = () => {
         (updatedFormData.city || "").trim() !== "" &&
         (updatedFormData.regCostApplicable || "").trim() !== "" &&
         (updatedFormData.appCostApplicable || "").trim() !== "" &&
-        (updatedFormData.preConsultationAvailable || "").trim() !== "";
+        (updatedFormData.preConsultationAvailable || "").trim() !== ""
 
-      setIsFormValid(isValid);
-      return updatedFormData;
-    });
-  };
+      setIsFormValid(isValid)
+      return updatedFormData
+    })
+  }
 
   const renderPagination = () => {
     const pageNumbers = []
@@ -279,11 +283,11 @@ const HospitalMaster = () => {
 
   const handleEdit = (hospital) => {
     // Convert backend "y"/"n" values to "Yes"/"No" for form display
-    const regCostValue = hospital.regCostApplicable === "y" ? "Yes" : "No";
-    const appCostValue = hospital.appCostApplicable === "y" ? "Yes" : "No";
-    const preConsultationValue = hospital.preConsultationAvailable === "y" ? "Yes" : "No";
+    const regCostValue = hospital.regCostApplicable === "y" ? "Yes" : "No"
+    const appCostValue = hospital.appCostApplicable === "y" ? "Yes" : "No"
+    const preConsultationValue = hospital.preConsultationAvailable === "y" ? "Yes" : "No"
 
-    setEditingHospital(hospital);
+    setEditingHospital(hospital)
 
     // Set form data with proper format for dropdowns
     setFormData({
@@ -304,42 +308,50 @@ const HospitalMaster = () => {
       regCostApplicable: regCostValue,
       appCostApplicable: appCostValue,
       preConsultationAvailable: preConsultationValue,
-    });
+    })
 
-    setIsFormValid(true);
-    setShowForm(true);
-  };
+    // Fetch states and districts for the selected country and state
+    if (hospital.countryId) {
+      fetchStatesByCountryId(hospital.countryId)
+    }
+    if (hospital.stateId) {
+      fetchDistrictsByStateId(hospital.stateId)
+    }
+
+    setIsFormValid(true)
+    setShowForm(true)
+  }
 
   const handleSave = async (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
+    e.preventDefault()
+    if (!isFormValid) return
 
     try {
-      setLoading(true);
+      setLoading(true)
 
       // Check for duplicate hospital before saving
       const isDuplicate = hospitals.some(
         (hospital) =>
           hospital.id !== (editingHospital ? editingHospital.id : null) &&
-          (hospital.hospitalCode.toLowerCase() === formData.hospitalCode.toLowerCase() ||
-            hospital.hospitalName.toLowerCase() === formData.hospitalName.toLowerCase() ||
-            hospital.email.toLowerCase() === formData.email.toLowerCase()),
-      );
+          (hospital.hospitalCode === formData.hospitalCode ||
+            hospital.hospitalName === formData.hospitalName ||
+            hospital.email === formData.email),
+      )
 
       if (isDuplicate) {
-        showPopup("Hospital with the same code or name already exists!", "error");
-        setLoading(false);
-        return;
+        showPopup("Hospital with the same code or name already exists!", "error")
+        setLoading(false)
+        return
       }
 
       // Convert Yes/No values to y/n for backend
-      const regCostValue = formData.regCostApplicable === "Yes" ? "y" : "n";
-      const appCostValue = formData.appCostApplicable === "Yes" ? "y" : "n";
-      const preConsultationValue = formData.preConsultationAvailable === "Yes" ? "y" : "n";
+      const regCostValue = formData.regCostApplicable === "Yes" ? "y" : "n"
+      const appCostValue = formData.appCostApplicable === "Yes" ? "y" : "n"
+      const preConsultationValue = formData.preConsultationAvailable === "Yes" ? "y" : "n"
 
       if (editingHospital) {
         // Update existing hospital
-        const response = await axios.put(`${API_HOST}/hospital/update/${editingHospital.id}`, {
+        const response = await putRequest(`${HOSPITAL}/update/${editingHospital.id}`, {
           hospitalCode: formData.hospitalCode,
           hospitalName: formData.hospitalName,
           address: formData.address,
@@ -355,17 +367,17 @@ const HospitalMaster = () => {
           appCostApplicable: appCostValue,
           preConsultationAvailable: preConsultationValue,
           status: editingHospital.status,
-        });
+        })
 
-        if (response.data && response.data.response) {
+        if (response && response.response) {
           setHospitals((prevData) =>
-            prevData.map((hospital) => (hospital.id === editingHospital.id ? response.data.response : hospital)),
-          );
-          showPopup("Hospital updated successfully!", "success");
+            prevData.map((hospital) => (hospital.id === editingHospital.id ? response.response : hospital)),
+          )
+          showPopup("Hospital updated successfully!", "success")
         }
       } else {
         // Add new hospital
-        const response = await axios.post(`${API_HOST}/hospital/add`, {
+        const response = await postRequest(`${HOSPITAL}/add`, {
           hospitalCode: formData.hospitalCode,
           hospitalName: formData.hospitalName,
           address: formData.address,
@@ -381,16 +393,16 @@ const HospitalMaster = () => {
           appCostApplicable: appCostValue,
           preConsultationAvailable: preConsultationValue,
           status: "n",
-        });
+        })
 
-        if (response.data && response.data.response) {
-          setHospitals([...hospitals, response.data.response]);
-          showPopup("New hospital added successfully!", "success");
+        if (response && response.response) {
+          setHospitals([...hospitals, response.response])
+          showPopup("New hospital added successfully!", "success")
         }
       }
 
-      // Reset form with correct field names
-      setEditingHospital(null);
+     
+      setEditingHospital(null)
       setFormData({
         hospitalCode: "",
         hospitalName: "",
@@ -409,16 +421,16 @@ const HospitalMaster = () => {
         regCostApplicable: "",
         appCostApplicable: "",
         preConsultationAvailable: "",
-      });
-      setShowForm(false);
-      fetchHospitals(); // Refresh data from backend
+      })
+      setShowForm(false)
+      fetchHospitals() 
     } catch (err) {
-      console.error("Error saving hospital:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      console.error("Error saving hospital:", err)
+      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -439,9 +451,9 @@ const HospitalMaster = () => {
       try {
         setLoading(true)
         const status = confirmDialog.newStatus
-        const response = await axios.put(`${API_HOST}/hospital/status/${confirmDialog.hospitalId}?status=${status}`)
+        const response = await putRequest(`${HOSPITAL}/status/${confirmDialog.hospitalId}?status=${status}`)
 
-        if (response.data && response.data.status === 200) {
+        if (response && response.status === 200) {
           setHospitals((prevData) =>
             prevData.map((hospital) =>
               hospital.id === confirmDialog.hospitalId ? { ...hospital, status: confirmDialog.newStatus } : hospital,
@@ -683,7 +695,7 @@ const HospitalMaster = () => {
                           Country <span className="text-danger">*</span>
                         </label>
                         <select
-                          className="form-control"
+                          className="form-select"
                           id="country"
                           name="country"
                           value={formData.country}
@@ -705,7 +717,7 @@ const HospitalMaster = () => {
                           State <span className="text-danger">*</span>
                         </label>
                         <select
-                          className="form-control"
+                          className="form-select"
                           id="state"
                           name="state"
                           value={formData.state}
@@ -713,15 +725,11 @@ const HospitalMaster = () => {
                           required
                         >
                           <option value="">Select State</option>
-                          {filteredStates.length > 0 ? (
-                            filteredStates.map((state) => (
-                              <option key={state.id} value={state.stateName} data-id={state.id}>
-                                {state.stateName}
-                              </option>
-                            ))
-                          ) : (
-                            formData.country ? <option value="" disabled>No states found for this country</option> : null
-                          )}
+                          {filteredStates.map((state) => (
+                            <option key={state.id} value={state.stateName} data-id={state.id}>
+                              {state.stateName}
+                            </option>
+                          ))}
                         </select>
                       </div>
 
@@ -731,22 +739,18 @@ const HospitalMaster = () => {
                           District
                         </label>
                         <select
-                          className="form-control"
+                          className="form-select"
                           id="district"
                           name="district"
                           value={formData.district}
                           onChange={handleDistrictChange}
                         >
                           <option value="">Select District</option>
-                          {filteredDistricts.length > 0 ? (
-                            filteredDistricts.map((district) => (
-                              <option key={district.id} value={district.districtName} data-id={district.id}>
-                                {district.districtName}
-                              </option>
-                            ))
-                          ) : (
-                            formData.state ? <option value="" disabled>No districts found for this state</option> : null
-                          )}
+                          {filteredDistricts.map((district) => (
+                            <option key={district.id} value={district.districtName} data-id={district.id}>
+                              {district.districtName}
+                            </option>
+                          ))}
                         </select>
                       </div>
 
@@ -793,7 +797,7 @@ const HospitalMaster = () => {
                           onChange={handleInputChange}
                           placeholder="Enter contact number"
                           maxLength={CONTACT_NUMBER_MAX_LENGTH}
-                          onInput={(e) => e.target.value = e.target.value.replace(/\D/g, '')}
+                          onInput={(e) => (e.target.value = e.target.value.replace(/\D/g, ""))}
                         />
                       </div>
                       <div className="col-md-6">
@@ -809,9 +813,8 @@ const HospitalMaster = () => {
                           onChange={handleInputChange}
                           placeholder="Enter alternate contact number"
                           maxLength={CONTACT_NUMBER_MAX_LENGTH}
-                          onInput={(e) => e.target.value = e.target.value.replace(/\D/g, '')}
+                          onInput={(e) => (e.target.value = e.target.value.replace(/\D/g, ""))}
                         />
-
                       </div>
                       <div className="col-md-6">
                         <label htmlFor="email" className="form-label">
@@ -841,7 +844,8 @@ const HospitalMaster = () => {
                           required
                         >
                           <option value="">Select</option>
-                          <option value="Yes">Yes</option><option value="No">No</option>
+                          <option value="Yes">Yes</option>
+                          <option value="No">No</option>
                         </select>
                       </div>
                       <div className="col-md-6">
@@ -934,18 +938,11 @@ const HospitalMaster = () => {
                   </div>
                 </nav>
               )}
-
             </div>
           </div>
         </div>
       </div>
-      {popupMessage && (
-        <Popup
-          message={popupMessage.message}
-          type={popupMessage.type}
-          onClose={popupMessage.onClose}
-        />
-      )}
+      {popupMessage && <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />}
       {confirmDialog.isOpen && (
         <div className="modal d-block" tabIndex="-1" role="dialog">
           <div className="modal-dialog" role="document">
@@ -978,7 +975,8 @@ const HospitalMaster = () => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default HospitalMaster;
+export default HospitalMaster
+
