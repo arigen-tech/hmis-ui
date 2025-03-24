@@ -1,5 +1,5 @@
-export const API_HOST = 'http://103.133.215.182:8085';
-// export const API_HOST = 'http://localhost:8080';
+// export const API_HOST = 'http://103.133.215.182:8085';
+export const API_HOST = 'http://localhost:8080';
 // export const API_HOST = 'http://192.168.35.20:8080';
 
 
@@ -27,6 +27,9 @@ export const ALL_HOSPITAL="/hospital/getAllHospitals";
 export const ALL_MARITAL_STATUS="/marital-status/getAllMaritalStatuses";
 export const ALL_RELIGION="/religion/getAllReligions";
 export const ALL_USER_DEPARTMENT="/user-departments/getAllUserDepartments";
+export const ALL_USER_APPLICATION="/applications/getAllUserApplications";
+export const ALL_TEMPLATES="/mas-templates/getAllTemplates";
+
 
 
 
@@ -51,6 +54,8 @@ export const MARITAL_STATUS="/marital-status";
 export const RELATION="/relation";
 export const RELIGION="/religion";
 export const USER_DEPARTMENT="/user-departments";
+export const USER_APPLICATION="/applications";
+export const TEMPLATES="/mas-templates";
 
 
 

@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
-import axios from "axios";
-import { API_HOST } from "../../../config/apiConfig";
+import { API_HOST,ALL_TEMPLATES,TEMPLATES } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 
 const Templatemaster = () => {
     const [templateData, setTemplateData] = useState([]);
@@ -19,18 +19,18 @@ const Templatemaster = () => {
     const [pageInput, setPageInput] = useState("");
     const itemsPerPage = 5;
 
-    const TEMPLATE_CODE_MAX_LENGTH=48;
-    const TEMPLATE_NAME_MAX_LENGTH=120;
+    const TEMPLATE_CODE_MAX_LENGTH = 48;
+    const TEMPLATE_NAME_MAX_LENGTH = 120;
 
-    // Fetch all templates
+   
     const fetchTemplates = async (flag = 0) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await axios.get(`${API_HOST}/mas-templates/getAllTemplates/${flag}`);
-            console.log("API Response:", response.data); // Log the full response
+            const response = await getRequest(`${ALL_TEMPLATES}/${flag}`);
+            
 
-            const templateList = response.data.response || [];
+            const templateList = response.response || [];
             const mappedTemplates = templateList.map(template => ({
                 id: template.id,
                 templateCode: template.templateCode || "No Code",
@@ -39,10 +39,10 @@ const Templatemaster = () => {
             }));
 
             setTemplateData(mappedTemplates);
-            setLoading(false);
         } catch (err) {
             console.error("Error fetching templates:", err);
             setError("Failed to fetch templates. Please try again later.");
+        } finally {
             setLoading(false);
         }
     };
@@ -99,11 +99,11 @@ const Templatemaster = () => {
         try {
             setLoading(true);
     
-            // Check for duplicate template before saving
+            
             const isDuplicate = templateData.some(
                 (template) =>
-                    template.templateCode.toLowerCase() === formData.templateCode.toLowerCase() ||
-                    template.templateName.toLowerCase() === formData.templateName.toLowerCase()
+                    template.templateCode === formData.templateCode ||
+                    template.templateName === formData.templateName
             );
     
             if (isDuplicate) {
@@ -114,15 +114,15 @@ const Templatemaster = () => {
     
             if (editingTemplate) {
                 // Update existing template
-                const response = await axios.put(`${API_HOST}/mas-templates/edit/${editingTemplate.id}`, {
+                const response = await putRequest(`${TEMPLATES}/edit/${editingTemplate.id}`, {
                     templateCode: formData.templateCode,
                     templateName: formData.templateName
                 });
     
-                console.log("Update Response:", response.data);
+                console.log("Update Response:", response);
     
-                if (response.data && response.data.response) {
-                    const updatedTemplate = response.data.response;
+                if (response && response.response) {
+                    const updatedTemplate = response.response;
     
                     // Update local state using the response from backend
                     setTemplateData(prevData =>
@@ -144,16 +144,16 @@ const Templatemaster = () => {
                 }
             } else {
                 // Create new template
-                const response = await axios.post(`${API_HOST}/mas-templates/create`, {
+                const response = await postRequest(`${TEMPLATES}/create`, {
                     templateCode: formData.templateCode,
                     templateName: formData.templateName,
-                    status: "y"
+                    status: "n"
                 });
     
-                console.log("Create Response:", response.data);
+                console.log("Create Response:", response);
     
-                if (response.data && response.data.response) {
-                    const newTemplate = response.data.response;
+                if (response && response.response) {
+                    const newTemplate = response.response;
     
                     // Add new entry to local state using the response from backend
                     setTemplateData(prevData => [
@@ -162,7 +162,7 @@ const Templatemaster = () => {
                             id: newTemplate.id || Date.now(),
                             templateCode: newTemplate.templateCode || formData.templateCode,
                             templateName: newTemplate.templateName || formData.templateName,
-                            status: newTemplate.status || "y"
+                            status:  "n"
                         }
                     ]);
     
@@ -184,7 +184,6 @@ const Templatemaster = () => {
             setLoading(false);
         }
     };
-    
 
     const handleSwitchChange = (id, currentStatus) => {
         setConfirmDialog({
@@ -198,21 +197,16 @@ const Templatemaster = () => {
         if (confirmed && confirmDialog.applicationId !== null) {
             try {
                 setLoading(true);
-                const response = await axios.put(
-                    `${API_HOST}/mas-templates/status/${confirmDialog.applicationId}`,
-                    null,
-                    {
-                        params: { status: confirmDialog.newStatus }
-                    }
+                const response = await putRequest(
+                    `${TEMPLATES}/status/${confirmDialog.applicationId}?status=${confirmDialog.newStatus}`
                 );
 
-                console.log("API Response:", response.data); // Log the full response
+                console.log("API Response:", response);
 
-                // Ensure the backend returns the updated template in the response
-                if (response.data && response.data.response) {
-                    const updatedTemplate = response.data.response;
+                if (response && response.response) {
+                    const updatedTemplate = response.response;
 
-                    // Update local state using the response from backend
+                   
                     setTemplateData(prevData =>
                         prevData.map(template =>
                             template.id === confirmDialog.applicationId
@@ -258,24 +252,6 @@ const Templatemaster = () => {
             showPopup("Please enter a valid page number.", "warning");
         }
     };
-
-
-
-    // Pagination calculations
-    // const filteredTotalPages = Math.ceil(filteredTemplateData.length / itemsPerPage);
-    // const currentItems = filteredTemplateData.slice(
-    //     (currentPage - 1) * itemsPerPage,
-    //     currentPage * itemsPerPage
-    // );
-
-    // const handlePageNavigation = () => {
-    //     const pageNumber = parseInt(pageInput, 10);
-    //     if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-    //         setCurrentPage(pageNumber);
-    //     } else {
-    //         showPopup("Please enter a valid page number.", "warning");
-    //     }
-    // };
 
     const renderPagination = () => {
         const pageNumbers = [];
@@ -569,6 +545,7 @@ const Templatemaster = () => {
                                                 <button
                                                     type="button"
                                                     className="btn btn-secondary"
+                                                   
                                                     onClick={() => handleConfirm(false)}
                                                 >
                                                     No

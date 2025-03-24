@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup";
-import axios from "axios";
-import { API_HOST } from "../../../config/apiConfig";
+import { API_HOST,ALL_USER_APPLICATION,USER_APPLICATION } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 
 const Manageuserapplication = () => {
     const [userApplicationData, setUserApplicationData] = useState([]);
@@ -27,36 +27,37 @@ const Manageuserapplication = () => {
     const itemsPerPage = 5;
 
     const MENU_NAME_MAX_LENGTH = 250;
-    const URL_MAX_LENGTH=250;
-
-    // Fetch all applications
-    const fetchApplications = async (flag = 0) => {
-        setLoading(true);
-        setError(null);
-        try {
-            const response = await axios.get(`${API_HOST}/applications/getAllUserApplications/${flag}`);
-            console.log("API Response:", response.data); // Log the full response
-    
-            const applicationList = response.data.response || [];
-            const mappedApplications = applicationList.map(app => ({
-                id: app.id,
-                menuName: app.userAppName || "No Name", // Use userAppName instead of menuName
-                url: app.url || "No URL",
-                status: app.status || "n"
-            }));
-    
-            setUserApplicationData(mappedApplications);
-            setLoading(false);
-        } catch (err) {
-            console.error("Error fetching applications:", err);
-            setError("Failed to fetch applications. Please try again later.");
-            setLoading(false);
-        }
-    };
+    const URL_MAX_LENGTH = 250;
 
     useEffect(() => {
         fetchApplications(0);
     }, []);
+
+    const fetchApplications = async (flag = 0) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await getRequest(`${ALL_USER_APPLICATION}/${flag}`);
+            console.log("API Response:", response);
+
+            if (response && response.response) {
+                const mappedApplications = response.response.map(app => ({
+                    id: app.id,
+                    menuName: app.userAppName || "No Name",
+                    url: app.url || "No URL",
+                    status: app.status || "n"
+                }));
+                setUserApplicationData(mappedApplications);
+            } else {
+                throw new Error("Invalid response structure");
+            }
+        } catch (err) {
+            console.error("Error fetching applications:", err);
+            setError("Failed to fetch applications. Please try again later.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const showPopup = (message, type = 'info') => {
         setPopupMessage({
@@ -82,10 +83,11 @@ const Manageuserapplication = () => {
         const { id, value } = e.target;
         setFormData(prevData => ({ ...prevData, [id]: value }));
 
-        // Form validation
+        // Form validation after state update
+        const updatedFormData = { ...formData, [id]: value };
         setIsFormValid(
-            formData.menuName.trim() !== "" &&
-            formData.url.trim() !== ""
+            updatedFormData.menuName.trim() !== "" &&
+            updatedFormData.url.trim() !== ""
         );
     };
 
@@ -106,88 +108,95 @@ const Manageuserapplication = () => {
         try {
             setLoading(true);
     
-            // Check for duplicate application
+            // Check for duplicates excluding the current editing application
             const isDuplicate = userApplicationData.some(
                 (app) =>
-                    app.menuName.toLowerCase() === formData.menuName.toLowerCase() ||
-                    app.url.toLowerCase() === formData.url.toLowerCase()
+                    (editingApplication ? app.id !== editingApplication.id : true) &&
+                    (app.menuName === formData.menuName)
             );
     
             if (isDuplicate) {
-                showPopup("Application already exists!", "error");
+                showPopup("Application with the same name or URL already exists!", "error");
                 setLoading(false);
                 return;
             }
     
             if (editingApplication) {
                 // Update existing application
-                const response = await axios.put(`${API_HOST}/applications/edit/${editingApplication.id}`, {
+                const response = await putRequest(`${USER_APPLICATION}/edit/${editingApplication.id}`, {
                     userAppName: formData.menuName,
                     url: formData.url
                 });
     
-                console.log("Update Response:", response.data);
+                console.log("Update Response:", response);
     
-                // Update local state using the response from backend
-                const updatedApplication = response.data.data || {};
-                setUserApplicationData(prevData =>
-                    prevData.map(application =>
-                        application.id === editingApplication.id
-                            ? {
-                                id: updatedApplication.id || editingApplication.id,
-                                menuName: updatedApplication.userAppName || formData.menuName,
-                                url: updatedApplication.url || formData.url,
-                                status: updatedApplication.status || editingApplication.status
-                            }
-                            : application
-                    )
-                );
+                if (response && response.response) {
+                    const updatedApplication = response.response;
     
-                showPopup("Application updated successfully!", "success");
+                    setUserApplicationData(prevData =>
+                        prevData.map(app =>
+                            app.id === editingApplication.id
+                                ? {
+                                    ...app,
+                                    menuName: updatedApplication.userAppName || formData.menuName,
+                                    url: updatedApplication.url || formData.url,
+                                    status: (updatedApplication.status || app.status)
+                                }
+                                : app
+                        )
+                    );
+    
+                    showPopup("Application updated successfully!", "success");
+                } else {
+                    throw new Error("Invalid response from server");
+                }
             } else {
-                // Create new application
-                const response = await axios.post(`${API_HOST}/applications/create`, {
+                // Create a new application
+                const response = await postRequest(`${USER_APPLICATION}/create`, {
                     userAppName: formData.menuName,
                     url: formData.url,
-                    status: "y"
+                    status: "n"
                 });
     
-                console.log("Create Response:", response.data);
+                console.log("Create Response:", response);
     
-                // Add new entry to local state using the response from backend
-                const newApplication = response.data.data || {};
-                setUserApplicationData(prevData => [
-                    ...prevData,
-                    {
-                        id: newApplication.id || Date.now(),
-                        menuName: newApplication.userAppName || formData.menuName,
-                        url: newApplication.url || formData.url,
-                        status: newApplication.status || "y"
-                    }
-                ]);
+                if (response && response.response) {
+                    const newApplication = response.response;
     
-                showPopup("New application added successfully!", "success");
+                    setUserApplicationData(prevData => [
+                        ...prevData,
+                        {
+                            id: newApplication.id || Date.now(),
+                            menuName: newApplication.userAppName || formData.menuName,
+                            url: newApplication.url || formData.url,
+                            status: "n"
+                        }
+                    ]);
+    
+                    showPopup("Application added successfully!", "success");
+                } else {
+                    throw new Error("Invalid response from server");
+                }
             }
     
-            // Reset form
             setFormData({ menuName: "", url: "" });
-            setShowForm(false);
             setEditingApplication(null);
-            setIsFormValid(false);
-        } catch (err) {
-            console.error("Error saving application:", err);
-            showPopup(`Failed to save: ${err.response?.data?.message || err.message}`, "error");
+            setShowForm(false);
+        } catch (error) {
+            console.error("Error saving application:", error);
+            showPopup("An error occurred while saving the application!", "error");
         } finally {
             setLoading(false);
         }
     };
-    
 
     const handleSwitchChange = (id, currentStatus) => {
+        const newStatus = (currentStatus?.toLowerCase() === "y") ? "n" : "y";
+        
         setConfirmDialog({
             isOpen: true,
             applicationId: id,
-            newStatus: currentStatus === "y" ? "n" : "y"
+            newStatus: newStatus
         });
     };
 
@@ -195,54 +204,36 @@ const Manageuserapplication = () => {
         if (confirmed && confirmDialog.applicationId !== null) {
             try {
                 setLoading(true);
-                const response = await axios.put(
-                    `${API_HOST}/applications/status/${confirmDialog.applicationId}`,
-                    null,
-                    {
-                        params: { status: confirmDialog.newStatus }
-                    }
+                
+                const response = await putRequest(
+                    `${USER_APPLICATION}/status/${confirmDialog.applicationId}?status=${confirmDialog.newStatus}`
                 );
-    
-                console.log("API Response:", response.data); // Log the full response
-                console.log("Updated Application:", response.data.data); // Log the updated application
-    
-                // Update local state using the response from backend
-                const updatedApplication = response.data.data || { status: confirmDialog.newStatus };
-                if (!updatedApplication.status) {
-                    throw new Error("Invalid response from server");
+                
+                if (response && response.status === 200) {
+                    
+                    setUserApplicationData(prevData =>
+                        prevData.map(app =>
+                            app.id === confirmDialog.applicationId
+                                ? { ...app, status: confirmDialog.newStatus }
+                                : app
+                        )
+                    );
+                    
+                    showPopup(
+                        `Application ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                        "success"
+                    );
                 }
-    
-                setUserApplicationData(prevData => {
-                    console.log("Previous Data:", prevData); // Log the previous state
-                    return prevData.map(application => {
-                        if (application.id === confirmDialog.applicationId) {
-                            console.log("Matched Application:", application); // Log the matched application
-                            return {
-                                ...application,
-                                status: updatedApplication.status
-                            };
-                        }
-                        return application;
-                    });
-                });
-    
-                showPopup(
-                    `Application ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
-                    "success"
-                );
             } catch (err) {
-                console.error("Error updating status:", err);
-                showPopup("Failed to change status", "error");
+                console.error("Error updating application status:", err);
+                showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
             } finally {
                 setLoading(false);
-                setConfirmDialog({ isOpen: false, applicationId: null, newStatus: null });
             }
-        } else {
-            setConfirmDialog({ isOpen: false, applicationId: null, newStatus: null });
         }
+        setConfirmDialog({ isOpen: false, applicationId: null, newStatus: null });
     };
 
-    // Pagination calculations
     const filteredTotalPages = Math.ceil(filteredUserApplicationData.length / itemsPerPage);
     const currentItems = filteredUserApplicationData.slice(
         (currentPage - 1) * itemsPerPage,
@@ -337,7 +328,7 @@ const Manageuserapplication = () => {
                                             <button
                                                 type="button"
                                                 className="btn btn-success me-2"
-                                                onClick={fetchApplications}
+                                                onClick={() => fetchApplications(0)}
                                             >
                                                 <i className="mdi mdi-refresh"></i> Show All
                                             </button>
@@ -359,7 +350,7 @@ const Manageuserapplication = () => {
                         </div>
                         <div className="card-body">
                             {loading ? (
-                               <LoadingScreen />
+                                <LoadingScreen />
                             ) : !showForm ? (
                                 <div className="table-responsive packagelist">
                                     {userApplicationData.length === 0 ? (
@@ -386,7 +377,7 @@ const Manageuserapplication = () => {
                                                                 <input
                                                                     className="form-check-input"
                                                                     type="checkbox"
-                                                                    checked={application.status === "y"}
+                                                                    checked={application.status?.toLowerCase() === "y"}
                                                                     onChange={() => handleSwitchChange(application.id, application.status)}
                                                                     id={`switch-${application.id}`}
                                                                 />
@@ -394,7 +385,7 @@ const Manageuserapplication = () => {
                                                                     className="form-check-label px-0"
                                                                     htmlFor={`switch-${application.id}`}
                                                                 >
-                                                                    {application.status === "y" ? 'Active' : 'Deactivated'}
+                                                                    {application.status?.toLowerCase() === "y" ? 'Active' : 'Deactivated'}
                                                                 </label>
                                                             </div>
                                                         </td>
@@ -402,7 +393,7 @@ const Manageuserapplication = () => {
                                                             <button
                                                                 className="btn btn-sm btn-success me-2"
                                                                 onClick={() => handleEdit(application)}
-                                                                disabled={application.status !== "y"}
+                                                                disabled={application.status?.toLowerCase() !== "y"}
                                                             >
                                                                 <i className="fa fa-pencil"></i>
                                                             </button>
@@ -465,7 +456,7 @@ const Manageuserapplication = () => {
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
                                     <div className="form-group col-md-4">
-                                        <label>Menu Name<span className="text-danger">*</span></label>
+                                        <label>Menu Name <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
                                             className="form-control mt-1"
@@ -477,11 +468,12 @@ const Manageuserapplication = () => {
                                             maxLength={MENU_NAME_MAX_LENGTH}
                                             required
                                         />
-                                    </div><div className="form-group col-md-4">
-                                        <label>URL<span className="text-danger">*</span></label>
+                                    </div>
+                                    <div className="form-group col-md-4">
+                                        <label>URL <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
-                                            className="form-control  mt-1"
+                                            className="form-control mt-1"
                                             id="url"
                                             name="url"
                                             placeholder="URL"
@@ -540,26 +532,12 @@ const Manageuserapplication = () => {
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>
-                                                        {userApplicationData.find(app => app.id === confirmDialog.applicationId)?.menuName}
-                                                    </strong>?
+                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{userApplicationData.find(app => app.id === confirmDialog.applicationId)?.menuName}</strong>?
                                                 </p>
                                             </div>
                                             <div className="modal-footer">
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-secondary"
-                                                    onClick={() => handleConfirm(false)}
-                                                >
-                                                    No
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-primary"
-                                                    onClick={() => handleConfirm(true)}
-                                                >
-                                                    Yes
-                                                </button>
+                                                <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
+                                                <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
                                             </div>
                                         </div>
                                     </div>
