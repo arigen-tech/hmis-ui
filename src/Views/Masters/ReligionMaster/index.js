@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST } from "../../../config/apiConfig";
+import { API_HOST, ALL_RELIGION,RELIGION } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+
 
 const Religionmaster = () => {
     const [religionData, setReligionData] = useState([]);
@@ -23,7 +25,7 @@ const Religionmaster = () => {
 
     const Religion_NAME_MAX_LENGTH = 30;
 
-    // Fetch religion data from API
+    
     useEffect(() => {
         fetchReligionData(0);
     }, []);
@@ -31,12 +33,12 @@ const Religionmaster = () => {
     const fetchReligionData = async (flag = 0) => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_HOST}/religion/getAllReligions/${flag}`);
-            if (response.data && response.data.response) {
-                // Map the API response to match your expected structure
-                const mappedData = response.data.response.map(item => ({
+            const response = await getRequest(`${ALL_RELIGION}/${flag}`);
+            if (response && response.response) {
+                
+                const mappedData = response.response.map(item => ({
                     id: item.id,
-                    religionName: item.name, // Map 'name' to 'religionName'
+                    religionName: item.name, 
                     status: item.status,
                     lastChgBy: item.lastChgBy,
                     lastChgDate: item.lastChgDate
@@ -94,10 +96,10 @@ const Religionmaster = () => {
         try {
             setLoading(true);
     
-            // Check for duplicate religion before saving
+           
             const isDuplicate = religionData.some(
                 (religion) =>
-                    religion.religionName.toLowerCase() === formData.religionName.toLowerCase()
+                    religion.religionName === formData.religionName
             );
     
             if (isDuplicate && !editingReligion) {
@@ -107,32 +109,32 @@ const Religionmaster = () => {
             }
     
             if (editingReligion) {
-                // Update existing religion
-                const response = await axios.put(`${API_HOST}/religion/update/${editingReligion.id}`, {
+                
+                const response = await putRequest(`${RELIGION}/update/${editingReligion.id}`, {
                     name: formData.religionName,
                     status: editingReligion.status, 
                 });
     
-                if (response.data && response.data.status === 200) {
-                    // Refresh data from backend instead of partial update
+                if (response && response.status === 200) {
+                   
                     fetchReligionData();
                     showPopup("Religion updated successfully!", "success");
                 }
             } else {
-                // Add new religion
-                const response = await axios.post(`${API_HOST}/religion/add`, {
+                
+                const response = await postRequest(`${RELIGION}/add`, {
                     name: formData.religionName,
                     status: "n", 
                 });
     
-                if (response.data && response.data.status === 200) {
-                    // Refresh data from backend instead of partial update
+                if (response && response.status === 200) {
+                    
                     fetchReligionData();
                     showPopup("New religion added successfully!", "success");
                 }
             }
     
-            // Reset form
+           
             setEditingReligion(null);
             setFormData({ religionName: "" });
             setShowForm(false);
@@ -162,10 +164,10 @@ const Religionmaster = () => {
         if (confirmed && confirmDialog.religionId !== null) {
             try {
                 setLoading(true);
-                const response = await axios.put(
-                    `${API_HOST}/religion/status/${confirmDialog.religionId}?status=${confirmDialog.newStatus}`
+                const response = await putRequest(
+                    `${RELIGION}/status/${confirmDialog.religionId}?status=${confirmDialog.newStatus}`
                 );
-                if (response.data && response.data.response) {
+                if (response && response.response) {
                     setReligionData((prevData) =>
                         prevData.map((religion) =>
                             religion.id === confirmDialog.religionId

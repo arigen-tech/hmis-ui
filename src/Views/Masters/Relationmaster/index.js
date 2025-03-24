@@ -96,11 +96,11 @@ const Relationmaster = () => {
     try {
       setLoading(true);
   
-      // Check for duplicate relation before making API request
+      
       const isDuplicate = relationData.some(
         (relation) =>
-          relation.relationName.toLowerCase() === formData.relationName.toLowerCase() ||
-          relation.code.toLowerCase() === formData.code.toLowerCase()
+          relation.relationName === formData.relationName ||
+          relation.code === formData.code
       );
   
       if (isDuplicate) {
@@ -119,7 +119,7 @@ const Relationmaster = () => {
         });
   
         if (response && response.response) {
-          // Update the local state to reflect changes
+         
           setRelationData((prevData) =>
             prevData.map((relation) =>
               relation.id === editingRelation.id ? response.response : relation

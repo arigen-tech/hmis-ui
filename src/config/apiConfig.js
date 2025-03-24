@@ -25,6 +25,8 @@ export const ALL_DISTRICT="/district/getAllDistricts";
 export const ALL_ROLE="/roles/getAllRoles";
 export const ALL_HOSPITAL="/hospital/getAllHospitals";
 export const ALL_MARITAL_STATUS="/marital-status/getAllMaritalStatuses";
+export const ALL_RELIGION="/religion/getAllReligions";
+export const ALL_USER_DEPARTMENT="/user-departments/getAllUserDepartments";
 
 
 
@@ -47,6 +49,8 @@ export const ROLE="/roles";
 export const HOSPITAL="/hospital";
 export const MARITAL_STATUS="/marital-status";
 export const RELATION="/relation";
+export const RELIGION="/religion";
+export const USER_DEPARTMENT="/user-departments";
 
 
 

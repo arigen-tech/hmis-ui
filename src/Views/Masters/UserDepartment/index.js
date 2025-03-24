@@ -2,7 +2,9 @@ import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import axios from "axios";
-import { API_HOST } from "../../../config/apiConfig";
+import { API_HOST,ALL_DEPARTMENT,USER_DEPARTMENT,ALL_USER_DEPARTMENT } from "../../../config/apiConfig";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+
 
 const Userdepartment = () => {
     const [formData, setFormData] = useState({
@@ -25,7 +27,7 @@ const Userdepartment = () => {
     const [loading, setLoading] = useState(true);
     const [pageInput, setPageInput] = useState("");
 
-    // State for users and departments
+    
     const [users, setUsers] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [userDepartmentData, setUserDepartmentData] = useState([]);
@@ -43,10 +45,10 @@ const Userdepartment = () => {
     const fetchUserDepartmentData = async () => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_HOST}/user-departments/getAllUserDepartments`);
+            const response = await getRequest(`${ALL_USER_DEPARTMENT}`);
 
-            if (response.data && response.data.response) {
-                const transformedData = response.data.response.map(userDept => ({
+            if (response && response.response) {
+                const transformedData = response.response.map(userDept => ({
                     id: userDept.id,
                     userId: userDept.userId,
                     userName: userDept.username,
@@ -93,10 +95,10 @@ const Userdepartment = () => {
     const fetchDepartments = async (flag = 1) => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_HOST}/department/getAllDepartments/${flag}`);
+            const response = await getRequest(`${ALL_DEPARTMENT}/${flag}`);
 
-            if (response.data && response.data.response) {
-                setDepartments(response.data.response);
+            if (response && response.response) {
+                setDepartments(response.response);
             }
         } catch (err) {
             console.error("Error fetching departments:", err);
@@ -109,7 +111,7 @@ const Userdepartment = () => {
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
-        setCurrentPage(1); // Reset to first page when searching
+        setCurrentPage(1);
     };
 
     const filteredUserDepartmentData = userDepartmentData.filter(userDept =>
@@ -118,7 +120,7 @@ const Userdepartment = () => {
 
     );
 
-    // Get current page items
+   
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const currentItems = filteredUserDepartmentData.slice(indexOfFirstItem, indexOfLastItem);
@@ -143,12 +145,12 @@ const Userdepartment = () => {
             setLoading(true);
 
             if (editingDepartment) {
-                // Check for duplicates when updating, excluding the current record
+                
                 const isDuplicate = userDepartmentData.some(
                     (userDept) =>
                         String(userDept.userId) === String(formData.userId) &&
                         String(userDept.departmentId) === String(formData.departmentId) &&
-                        userDept.id !== editingDepartment.id // Exclude the current record
+                        userDept.id !== editingDepartment.id
                 );
 
                 if (isDuplicate) {
@@ -157,20 +159,20 @@ const Userdepartment = () => {
                     return;
                 }
 
-                // Update existing department
-                const response = await axios.put(`${API_HOST}/user-departments/edit/${editingDepartment.id}`, {
+               
+                const response = await putRequest(`${USER_DEPARTMENT}/edit/${editingDepartment.id}`, {
                     id: editingDepartment.id,
                     userId: formData.userId,
                     departmentId: formData.departmentId,
                     status: editingDepartment.status
                 });
 
-                if (response.data && response.data.response) {
+                if (response && response.response) {
                     showPopup("User department updated successfully!", "success");
                     fetchUserDepartmentData(1);
                 }
             } else {
-                // Check for duplicates when adding new
+                
                 const isDuplicate = userDepartmentData.some(
                     (userDept) =>
                         String(userDept.userId) === String(formData.userId) &&
@@ -183,19 +185,19 @@ const Userdepartment = () => {
                     return;
                 }
 
-                // Add new user department
-                const response = await axios.post(`${API_HOST}/user-departments/create`, {
+                
+                const response = await postRequest(`${USER_DEPARTMENT}/create`, {
                     userId: formData.userId,
                     departmentId: formData.departmentId,
                 });
 
-                if (response.data && response.data.response) {
+                if (response && response.response) {
                     showPopup("User department added successfully!", "success");
                     fetchUserDepartmentData(1);
                 }
             }
 
-            // Reset form and state
+           
             setEditingDepartment(null);
             setFormData({
                 userId: "",
@@ -277,14 +279,14 @@ const Userdepartment = () => {
             departmentName: selectedDepartment ? selectedDepartment.name : ""
         });
 
-        // Validate form
+       
         setIsFormValid(formData.userId !== "" && selectedDepartmentId !== "");
     };
 
     const handleRefresh = () => {
         setSearchQuery("");
         setCurrentPage(1);
-        fetchUserDepartmentData(0); // Show all records
+        fetchUserDepartmentData(0); 
     };
 
     const handlePageNavigation = () => {
@@ -292,15 +294,15 @@ const Userdepartment = () => {
         if (pageNumber >= 1 && pageNumber <= filteredTotalPages) {
             setCurrentPage(pageNumber);
         } else {
-            // Optional: Show an error message
+           
             showPopup("Please enter a valid page number", "error");
         }
     };
     
-    // Add this function to render page numbers
+    
     const renderPagination = () => {
         const pageNumbers = [];
-        const maxVisiblePages = 5; // Number of page links to show
+        const maxVisiblePages = 5; 
         
         let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
         let endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
