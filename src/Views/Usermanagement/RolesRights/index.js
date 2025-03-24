@@ -18,13 +18,21 @@ const Rolesrights = () => {
         setIsEditMode(!isEditMode); // Toggle edit mode
     };
 
+    const handleResetClick = () => {
+        document.getElementById("templateSelect").value = ""; // Reset dropdown to default
+        const checkboxes = document.querySelectorAll(".form-check-input");
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false; // Uncheck all checkboxes
+        });
+    };
+
     const roleCheckboxMapping = {
         admin: ["ADMIN", "ANM"],
         anm: ["APM", "AUDIT", "AUDITOR"],
         // Add more mappings as needed
     };
 
-    const handleAddClick = () => {
+    const handleAddClick = (event) => {
         const selectedRole = document.getElementById("templateSelect").value;
         const checkboxesToCheck = roleCheckboxMapping[selectedRole] || [];
 
@@ -43,6 +51,36 @@ const Rolesrights = () => {
         });
     }
 
+
+
+    const [roles, setRoles] = useState([
+        { name: "ADMIN", checked: false },
+        { name: "ANM", checked: false },
+        { name: "APM", checked: false },
+        { name: "AUDIT", checked: false },
+        { name: "AUDITOR", checked: false },
+        { name: "CITY OFFICER", checked: false },
+        { name: "CMHO", checked: false },
+        { name: "CMO", checked: false },
+        { name: "COMMISSIONER", checked: false },
+        { name: "DISTRICT OFFICER", checked: false },
+        { name: "Doctor", checked: false },
+        { name: "DRIVER", checked: false },
+        { name: "Lab Tech", checked: false },
+        { name: "NODAL OFFICER", checked: false },
+        { name: "PAYMENT OFFICER", checked: false },
+        { name: "PHARMACIST", checked: false },
+        { name: "SR. AUDITOR", checked: false },
+        { name: "SENIOR AUDITOR", checked: false },
+        { name: "STATE OFFICER", checked: false },
+        { name: "SUB COMMISSIONER", checked: false },
+        { name: "SUB NODAL OFFICER", checked: false },
+        { name: "SUPER ADMIN", checked: false },
+        { name: "SUPER USER", checked: false },
+        { name: "UPSS", checked: false },
+        { name: "UPSS OFFICER", checked: false },
+        { name: "VENDOR", checked: false }
+    ]);
 
 
     const handlePrevious = () => {
@@ -86,7 +124,7 @@ const Rolesrights = () => {
                                             onChange={handleAddClick}
                                             required
                                         >
-                                            <option value="" disabled>Select Template</option>
+                                            <option value="" selected>Select Template</option>
                                             <option value="admin">ADMIN</option>
                                             <option value="anm">ANM</option>
                                             <option value="apm">APM</option>
@@ -124,266 +162,29 @@ const Rolesrights = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <tr>
-                                                <td>ADMIN</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>ANM</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>APM</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>AUDIT</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>AUDITOR</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>CITY OFFICER</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>CMHO</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>CMO</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>COMMISSIONER</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>DISTRICT OFFICER</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>Doctor</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>DRIVER</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>Lab Tech</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>NODAL OFFICER</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>PAYMENT OFFICER</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>PHARMACIST</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>SR. AUDITOR</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>SENIOR AUDITOR</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>STATE OFFICER</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>SUB COMMISSIONER</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>SUB NODAL OFFICER</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>SUPER ADMIN</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>SUPER USER</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>UPSS</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>UPSS OFFICER</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>VENDOR</td>
-                                                <td>
-                                                    <div className="form-check form-check-muted m-0">
-                                                        <label className="form-check-label">
-                                                            <input type="checkbox" style={{ width: '20px', height: '20px', border: '2px solid black' }} className="form-check-input" />
-                                                        </label>
-                                                    </div>
-                                                </td>
-                                            </tr>
+                                        {roles.map((role, index) => (
+                        <tr key={index}>
+                            <td>{role.name}</td>
+                            <td>
+                                <div className="form-check form-check-muted m-0">
+                                    <label className="form-check-label">
+                                        <input
+                                            type="checkbox"
+                                            style={{ width: '20px', height: '20px', border: '2px solid black' }}
+                                            className="form-check-input"
+                                            checked={role.checked}
+                                            onChange={() => {
+                                                const updatedRoles = [...roles];
+                                                updatedRoles[index].checked = !updatedRoles[index].checked;
+                                                setRoles(updatedRoles);
+                                            }}
+                                        />
+                                    </label>
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                                          
                                         </tbody>
                                     </table>
                                 </div>
@@ -391,7 +192,7 @@ const Rolesrights = () => {
                                     <button type="button" className="btn btn-success me-2" >
                                         <i className="mdi mdi-plus"></i> Save
                                     </button>
-                                    <button type="button" className="btn btn-warning">
+                                    <button type="button" className="btn btn-warning" onClick={handleResetClick}>
                                         <i className="mdi mdi-refresh"></i> Reset
                                     </button>
                                 </div>
