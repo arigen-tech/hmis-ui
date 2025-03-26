@@ -116,7 +116,7 @@ const Manageuserapplication = () => {
             );
     
             if (isDuplicate) {
-                showPopup("Application with the same name or URL already exists!", "error");
+                showPopup("Application with the same name already exists!", "error");
                 setLoading(false);
                 return;
             }
