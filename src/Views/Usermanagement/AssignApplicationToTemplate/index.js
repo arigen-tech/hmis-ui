@@ -213,6 +213,12 @@ const Assignapplication = () => {
                                                 ))}
                                             </tbody>
                                         </table>
+                                        <div className="form-group col-md-12 d-flex justify-content-end mt-2">
+                                        <button type="submit" className="btn btn-primary me-2" >
+                                            Save
+                                        </button>
+                                        
+                                    </div>
                                     </div>
                                 )}
                             </form>
