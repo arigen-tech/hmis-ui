@@ -66,34 +66,35 @@ const Addformreports = () => {
         fetchMenuNameOptions()
     }, [])
 
-    // Fetch parent ID options
-    useEffect(() => {
-        const fetchParentIdOptions = async () => {
-            try {
-                setLoading(true)
-                const response = await getRequest(`${USER_APPLICATION}/getAllParentId/1`)
+   
+   // Fetch parent ID options
+useEffect(() => {
+    const fetchParentIdOptions = async () => {
+        try {
+            setLoading(true)
+            const response = await getRequest(`${APPLICATION}/getAllParents/1`)
 
-                if (response && response.response) {
-                    const parentOptions = response.response.map((item) => ({
-                        id: item.id.toString(),
-                        name: item.userAppName,
-                        url: item.url,
-                    }))
-                    setParentIdOptions(parentOptions)
-                } else {
-                    console.log("Unexpected response structure:", response)
-                    setParentIdOptions([])
-                }
-            } catch (err) {
-                console.error("Error fetching parent IDs:", err)
-                showPopup("Error fetching parent IDs. Please try again later.", "error")
-            } finally {
-                setLoading(false)
+            if (response && response.response) {
+                const parentOptions = response.response.map((item) => ({
+                    id: item.appId ? item.appId.toString() : "",
+                    name: item.name || "",
+                    url: item.url || "",
+                }))
+                setParentIdOptions(parentOptions)
+            } else {
+                console.log("Unexpected response structure:", response)
+                setParentIdOptions([])
             }
+        } catch (err) {
+            console.error("Error fetching parent IDs:", err)
+            showPopup("Error fetching parent IDs. Please try again later.", "error")
+        } finally {
+            setLoading(false)
         }
+    }
 
-        fetchParentIdOptions()
-    }, [])
+    fetchParentIdOptions()
+}, [])
 
     // Fetch application names for edit mode dropdown
     useEffect(() => {
@@ -156,17 +157,17 @@ const Addformreports = () => {
         setIsMenuNameDropdownVisible(true)
     }
 
-    const handleMenuNameSelect = (selectedMenu) => {
-        setFormData((prev) => ({
-            ...prev,
-            // Only update menuId if not in edit mode
-            ...(!isEditMode && { menuId: selectedMenu.id }),
-            menuName: selectedMenu.name,
-            // Only update url if not in edit mode
-            ...(!isEditMode && { url: selectedMenu.url || "" }),
-        }))
-        setIsMenuNameDropdownVisible(false)
-    }
+    // const handleMenuNameSelect = (selectedMenu) => {
+    //     setFormData((prev) => ({
+    //         ...prev,
+    //         // Only update menuId if not in edit mode
+    //         ...(!isEditMode && { menuId: selectedMenu.id }),
+    //         menuName: selectedMenu.name,
+    //         // Only update url if not in edit mode
+    //         ...(!isEditMode && { url: selectedMenu.url || "" }),
+    //     }))
+    //     setIsMenuNameDropdownVisible(false)
+    // }
 
     const handleInputChange = (e) => {
         const { id, value } = e.target
@@ -180,6 +181,27 @@ const Addformreports = () => {
             ...prev,
             [id]: value,
         }))
+    }
+    const handleMenuNameSelect = (selectedMenu) => {
+        setFormData((prev) => ({
+            ...prev,
+            // Only update menuId if not in edit mode
+            ...(!isEditMode && { menuId: selectedMenu.id }),
+            menuName: selectedMenu.name,
+            // In edit mode, also update the URL based on the selected menu name
+            ...(isEditMode && { url: selectedMenu.url || generateUrlFromName(selectedMenu.name) }),
+            // Only update url if not in edit mode
+            ...(!isEditMode && { url: selectedMenu.url || generateUrlFromName(selectedMenu.name) }),
+        }))
+        setIsMenuNameDropdownVisible(false)
+    }
+    
+    // Add this helper function to generate a URL-friendly version of the name
+    const generateUrlFromName = (name) => {
+        return name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')  // Replace non-alphanumeric characters with hyphens
+            .replace(/^-+|-+$/g, '')      // Remove leading and trailing hyphens
     }
 
     const handleParentIdChange = (e) => {
@@ -210,12 +232,15 @@ const Addformreports = () => {
     }
 
     const handleAppNameSelect = (selectedApp) => {
+        // Find the parent name corresponding to the parent ID
+        const parentName = parentIdOptions.find(parent => parent.id === selectedApp.parentId)?.name || '';
+    
         setSelectedAppName(selectedApp.name)
         setFormData({
             menuId: selectedApp.id,
             menuName: selectedApp.name,
             parentId: selectedApp.parentId,
-            parentName: selectedApp.parentId,
+            parentName: parentName,
             url: selectedApp.url,
             status: selectedApp.status,
         })
@@ -223,7 +248,6 @@ const Addformreports = () => {
         setIsEditDataLoaded(true)
         setIsAppNameDropdownVisible(false)
     }
-
     const handleSubmit = async (e) => {
         e.preventDefault()
 
@@ -280,7 +304,7 @@ const Addformreports = () => {
                 : {
                     menuId: formData.menuId,
                     name: formData.menuName,
-                    parentId: formData.parentName || null,
+                    parentId: formData.parentId || null,
                     url: formData.url,
                     status: formData.status === "active" ? "y" : "n",
                 }
@@ -456,7 +480,11 @@ const Addformreports = () => {
                                             className="form-control mt-1"
                                             id="parentName"
                                             placeholder="Search Parent ID"
-                                            value={formData.parentName}
+                                            value={
+                                                isEditMode 
+                                                    ? (formData.parentId ? `${formData.parentId} - ${formData.parentName}` : formData.parentName)
+                                                    : formData.parentName
+                                            }
                                             onChange={handleParentIdChange}
                                             autoComplete="off"
                                             disabled={isEditMode}
