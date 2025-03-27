@@ -157,17 +157,7 @@ useEffect(() => {
         setIsMenuNameDropdownVisible(true)
     }
 
-    // const handleMenuNameSelect = (selectedMenu) => {
-    //     setFormData((prev) => ({
-    //         ...prev,
-    //         // Only update menuId if not in edit mode
-    //         ...(!isEditMode && { menuId: selectedMenu.id }),
-    //         menuName: selectedMenu.name,
-    //         // Only update url if not in edit mode
-    //         ...(!isEditMode && { url: selectedMenu.url || "" }),
-    //     }))
-    //     setIsMenuNameDropdownVisible(false)
-    // }
+   
 
     const handleInputChange = (e) => {
         const { id, value } = e.target
@@ -185,24 +175,18 @@ useEffect(() => {
     const handleMenuNameSelect = (selectedMenu) => {
         setFormData((prev) => ({
             ...prev,
-            // Only update menuId if not in edit mode
+            
             ...(!isEditMode && { menuId: selectedMenu.id }),
             menuName: selectedMenu.name,
-            // In edit mode, also update the URL based on the selected menu name
-            ...(isEditMode && { url: selectedMenu.url || generateUrlFromName(selectedMenu.name) }),
-            // Only update url if not in edit mode
-            ...(!isEditMode && { url: selectedMenu.url || generateUrlFromName(selectedMenu.name) }),
+            
+            ...(isEditMode && { url: selectedMenu.url  }),
+           
+            ...(!isEditMode && { url: selectedMenu.url  }),
         }))
         setIsMenuNameDropdownVisible(false)
     }
     
-    // Add this helper function to generate a URL-friendly version of the name
-    const generateUrlFromName = (name) => {
-        return name
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')  // Replace non-alphanumeric characters with hyphens
-            .replace(/^-+|-+$/g, '')      // Remove leading and trailing hyphens
-    }
+   
 
     const handleParentIdChange = (e) => {
         const inputValue = e.target.value
@@ -272,16 +256,16 @@ useEffect(() => {
         try {
             setLoading(true)
 
-            // Fetch current application data to check for duplicates
+           
             const allApplicationsResponse = await getRequest(`${ALL_APPLICATIONS}/0`)
 
             if (allApplicationsResponse && allApplicationsResponse.response) {
-                // Check for duplicate menu names with the same parent
+                
                 const isDuplicate = allApplicationsResponse.response.some(app =>
                     app.name.toLowerCase() === formData.menuName.toLowerCase() &&
-                    // Compare parent IDs, handling potential null/undefined cases
-                    (app.parentId || '') === (isEditMode ? originalParentId : (formData.parentName || '')) &&
-                    // Exclude the current item in edit mode
+                    
+                    (app.parentId || '') === (isEditMode ? originalParentId : (formData.parentId || '')) &&
+                    
                     (!isEditMode || app.appId.toString() !== formData.menuId)
                 )
 
@@ -327,7 +311,7 @@ useEffect(() => {
                     // Reset form and states
                     resetForm()
                 } else {
-                    // Log the full response for debugging
+                    
                     console.error('Unexpected response structure:', response)
                     showPopup(
                         isEditMode
@@ -340,14 +324,14 @@ useEffect(() => {
                 showPopup("No response received from server", "error")
             }
         } catch (err) {
-            // More Comprehensive Error Logging
+            
             console.error("Full error details:", {
                 message: err.message,
                 response: err.response,
                 stack: err.stack
             })
 
-            // More Informative Error Message
+           
             const errorMessage =
                 err.response?.data?.message ||
                 err.message ||
@@ -359,7 +343,7 @@ useEffect(() => {
         }
     }
 
-    // Helper method to reset form
+   
     const resetForm = () => {
         setFormData({
             menuId: "",
@@ -370,7 +354,7 @@ useEffect(() => {
             status: "",
         })
 
-        // Reset edit mode states
+        
         setIsEditDataLoaded(false)
         setSelectedAppName("")
         setOriginalParentId("")
