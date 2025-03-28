@@ -87,12 +87,11 @@ export const postRequestWithFormData = async (endpoint, formData) => {
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`, // Token is included if available
-        Accept: "application/json", // Accept JSON response
+        Authorization: `Bearer ${token}`,  // ✅ Keep only this
       },
-      body: formData, // Automatically sets multipart/form-data
-      signal: controller.signal,
+      body: formData,  // ✅ Browser sets Content-Type automatically
     });
+    
 
     clearTimeout(timeoutId);
 

@@ -4,7 +4,6 @@ import { getRequest, putRequest, postRequest } from "../../../../service/apiServ
 import LoadingScreen from "../../../../Components/Loading";
 import Popup from "../../../../Components/popup";
 
-
 const DoctorRoaster = () => {
   const [department, setDepartment] = useState("");
   const [doctor, setDoctor] = useState("");
@@ -12,12 +11,10 @@ const DoctorRoaster = () => {
   const [departmentData, setDepartmentData] = useState([]);
   const [doctorData, setDoctorData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [doctorRoasterData, setDoctorRoasterData] = useState(null);
-  const [rosterSchedule, setRosterSchedule] = useState([]);
+  const [rosterDoctorData, setRosterDoctorData] = useState(null);
   const [popup, setPopup] = useState("");
   const [popupMessage, setPopupMessage] = useState("");
-  const [existingRosterFound, setExistingRosterFound] = useState(false);
-
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -40,16 +37,10 @@ const DoctorRoaster = () => {
   }, [department]);
 
   useEffect(() => {
-    if (fromDate) {
-      generateDatesFromSelectedDate();
-    }
-  }, [fromDate, doctorData]);
-
-  useEffect(() => {
     if (department && fromDate) {
-      handleFetchDoctorRoster();
+      prepareRosterData();
     }
-  }, [department, doctor, fromDate]);
+  }, [department, doctor, fromDate, doctorData]);
 
   const fetchDepartmentData = async () => {
     setLoading(true);
@@ -85,24 +76,29 @@ const DoctorRoaster = () => {
     }
   };
 
-  // Modified to correctly handle the date range (selected date to selected date + 6 days)
   const generateDatesFromSelectedDate = () => {
-    if (!fromDate) return;
-
+    if (!fromDate) return [];
+  
     const startDate = new Date(fromDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); 
+  
     const dates = [];
-
-    // Generate 7 dates (from selected date to selected date + 6 days)
+  
     for (let i = 0; i < 7; i++) {
       const currentDate = new Date(startDate);
       currentDate.setDate(startDate.getDate() + i);
-      // Format date as DD/MM/YYYY
-      const formattedDate = `${currentDate.getDate().toString().padStart(2, '0')}/${(currentDate.getMonth() + 1).toString().padStart(2, '0')}/${currentDate.getFullYear()}`;
-      dates.push(formattedDate);
+      currentDate.setHours(0, 0, 0, 0); 
+  
+      if (currentDate > today) {
+        const formattedDate = `${currentDate.getDate().toString().padStart(2, '0')}/${(currentDate.getMonth() + 1).toString().padStart(2, '0')}/${currentDate.getFullYear()}`;
+        
+        dates.push(formattedDate);
+      }
     }
-
+  
     let doctorsToUse = [];
-
+  
     if (doctor) {
       const selectedDoctor = doctorData.find(doc => doc.userId === parseInt(doctor));
       if (selectedDoctor) {
@@ -117,21 +113,22 @@ const DoctorRoaster = () => {
         id: doc.userId
       }));
     }
-
-    const initialSchedule = doctorsToUse.map(doctorInfo => ({
-      doctorName: doctorInfo.name,
-      doctorId: doctorInfo.id,
-      schedule: dates.map(date => ({
-        date,
-        morning: true, // Default to true as per requirement "YY"
-        evening: true  // Default to true as per requirement "YY"
+  
+    const generatedDates = doctorsToUse.flatMap(doctorInfo => 
+      dates.map(date => ({
+        dates: date,
+        rosterVale: "YY", 
+        doctorId: doctorInfo.id,
+        id: null 
       }))
-    }));
-
-    setRosterSchedule(initialSchedule);
+    );
+  
+    return generatedDates;
   };
 
-  const handleFetchDoctorRoster = async () => {
+  const prepareRosterData = async () => {
+    if (!department || !fromDate) return;
+
     try {
       setLoading(true);
 
@@ -144,115 +141,127 @@ const DoctorRoaster = () => {
         queryParams.append("doctorId", doctor);
       }
 
-      const apiUrl = `${DOCTOR_ROSTER}/rosterfind?${queryParams.toString()}`;
-      const data = await getRequest(apiUrl);
-      setDoctorRoasterData(data);
-      
-      // Check if data exists to determine if this is a create or update operation
-      setExistingRosterFound(data && Array.isArray(data) && data.length > 0);
+      const apiUrl = `${DOCTOR_ROSTER}/rosterfindWithDays?${queryParams.toString()}`;
+      const existingRosterResponse = await getRequest(apiUrl);
 
-      if (data && Array.isArray(data) && data.length > 0) {
-        const updatedSchedule = [...rosterSchedule];
+      const generatedDates = generateDatesFromSelectedDate();
 
-        data.forEach(item => {
-          const doctorIndex = updatedSchedule.findIndex(d => d.doctorName === item.doctorName);
-          if (doctorIndex !== -1) {
-            const dateIndex = updatedSchedule[doctorIndex].schedule.findIndex(s => s.date === item.date);
-            if (dateIndex !== -1) {
-              if (item.rosterValue === "YN") {
-                updatedSchedule[doctorIndex].schedule[dateIndex].morning = true;
-                updatedSchedule[doctorIndex].schedule[dateIndex].evening = false;
-              } else if (item.rosterValue === "NY") {
-                updatedSchedule[doctorIndex].schedule[dateIndex].morning = false;
-                updatedSchedule[doctorIndex].schedule[dateIndex].evening = true;
-              } else if (item.rosterValue === "YY") {
-                updatedSchedule[doctorIndex].schedule[dateIndex].morning = true;
-                updatedSchedule[doctorIndex].schedule[dateIndex].evening = true;
-              } else if (item.rosterValue === "NN") {
-                updatedSchedule[doctorIndex].schedule[dateIndex].morning = false;
-                updatedSchedule[doctorIndex].schedule[dateIndex].evening = false;
-              }
-            }
-          }
+      let mergedDates = [];
+      if (existingRosterResponse.response && existingRosterResponse.response.dates) {
+        const existingDates = existingRosterResponse.response.dates;
+
+        const existingDatesMap = new Map();
+        existingDates.forEach(date => {
+          const key = `${date.doctorId}-${date.dates}`;
+          existingDatesMap.set(key, date);
         });
 
-        setRosterSchedule(updatedSchedule);
+        mergedDates = generatedDates.map(genDate => {
+          const key = `${genDate.doctorId}-${genDate.dates}`;
+          const existingDate = existingDatesMap.get(key);
+          
+          return existingDate || genDate;
+        });
+
+        existingDates.forEach(existDate => {
+          const key = `${existDate.doctorId}-${existDate.dates}`;
+          if (!mergedDates.some(md => `${md.doctorId}-${md.dates}` === key)) {
+            mergedDates.push(existDate);
+          }
+        });
+      } else {
+        mergedDates = generatedDates;
       }
+
+      const rosterData = {
+        departmentId: parseInt(department),
+        fromDate: fromDate,
+        dates: mergedDates
+      };
+
+      setRosterDoctorData(rosterData);
     } catch (error) {
-      console.error("Error fetching Doctor Roster data:", error);
-      setExistingRosterFound(false);
+      console.error("Error preparing roster data:", error);
+      showPopup("Error preparing roster data", "error");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCheckboxChange = (doctorIndex, dateIndex, session) => {
-    const updatedSchedule = [...rosterSchedule];
-    updatedSchedule[doctorIndex].schedule[dateIndex][session] =
-      !updatedSchedule[doctorIndex].schedule[dateIndex][session];
-    setRosterSchedule(updatedSchedule);
+  const handleCheckboxChange = (doctorId, date, session) => {
+    const formattedDate = formatDateToLocal(date);
+    if (formattedDate < currentDate) return;
+
+    const updatedDates = rosterDoctorData.dates.map(item => {
+      if (item.doctorId === doctorId && item.dates === date) {
+        let newRosterValue;
+        switch(item.rosterVale) {
+          case "YY":
+            newRosterValue = session === 'morning' ? "NY" : "YN";
+            break;
+          case "YN":
+            newRosterValue = session === 'morning' ? "NN" : "YY";
+            break;
+          case "NY":
+            newRosterValue = session === 'morning' ? "YY" : "NN";
+            break;
+          case "NN":
+            newRosterValue = session === 'morning' ? "YN" : "NY";
+            break;
+          default:
+            newRosterValue = "YY";
+        }
+
+        return { ...item, rosterVale: newRosterValue };
+      }
+      return item;
+    });
+
+    setRosterDoctorData(prev => ({
+      ...prev,
+      dates: updatedDates
+    }));
   };
 
-  const formatDateToISO = (dateString) => {
+  const formatDateToLocal = (dateString) => {
     const [day, month, year] = dateString.split('/');
-    return `${year}-${month}-${day}T00:00:00.000Z`;
+    return new Date(`${year}-${month}-${day}`);
   };
 
-  const getRosterValue = (morning, evening) => {
-    if (morning && evening) return "YY";
-    if (morning && !evening) return "YN";
-    if (!morning && evening) return "NY";
-    return "NN";
+  const formatDisplayDate = (dateString) => {
+    if (!dateString) return "";
+    const [day, month, year] = dateString.split('/');
+    const date = new Date(`${year}-${month}-${day}`);
+    return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  const isDateDisabled = (dateString) => {
+    const rosterDate = formatDateToLocal(dateString);
+    return rosterDate < currentDate;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!department || !fromDate) {
-      alert("Please fill all required fields");
+      showPopup("Please select Department and From Date", "error");
       return;
     }
 
     setLoading(true);
 
     try {
-      const dates = [];
-
-      rosterSchedule.forEach(doctorItem => {
-        doctorItem.schedule.forEach(dateItem => {
-          const rosterValue = getRosterValue(dateItem.morning, dateItem.evening);
-
-          dates.push({
-            dates: formatDateToISO(dateItem.date),
-            rosterVale: rosterValue,  // Note: There's a typo here in the original code ("rosterVale" instead of "rosterValue")
-            doctorId: doctorItem.doctorId,
-            id: 0
-          });
-        });
-      });
-
-      const submitData = {
-        departmentId: parseInt(department),
-        fromDate: fromDate,
-        dates: dates
-      };
-
-      // Use a single endpoint for both create and update
       const endpoint = `${DOCTOR_ROSTER}/roster`;
-      // Select the appropriate method based on whether existing data was found
-      const requestMethod = existingRosterFound ? putRequest : postRequest;
-
-      const response = await requestMethod(endpoint, submitData);
+      const response = await postRequest(endpoint, rosterDoctorData);
 
       if (response.status === 200) {
-        showPopup(`Roster ${existingRosterFound ? "updated" : "added"} successfully!`, "success");
-        // After successful submission, fetch the roster again to ensure we have the latest data
-        handleFetchDoctorRoster();
+        showPopup("Roster saved successfully!", "success");
+        prepareRosterData(); 
       } else {
-        showPopup(`Error ${existingRosterFound ? "updating" : "adding"} roster: ${response.message || "Unknown error"}`, "error");
+        showPopup(`Error saving roster: ${response.message || "Unknown error"}`, "error");
       }
     } catch (error) {
-      console.error("Error saving/updating roster:", error);
+      console.error("Error saving roster:", error);
       showPopup("An error occurred while saving the roster", "error");
     } finally {
       setLoading(false);
@@ -263,24 +272,104 @@ const DoctorRoaster = () => {
     setDepartment("");
     setDoctor("");
     setFromDate("");
-    setDoctorRoasterData(null);
-    setRosterSchedule([]);
-    setExistingRosterFound(false);
+    setRosterDoctorData(null);
   };
 
-  // Helper function to display dates in a more readable format (e.g., "21 Mar 2025")
-  const formatDisplayDate = (dateString) => {
-    if (!dateString) return "";
-    const [day, month, year] = dateString.split('/');
-    const date = new Date(`${year}-${month}-${day}`);
-    return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
-  };
+  const renderRosterTable = () => {
+    if (!rosterDoctorData || !rosterDoctorData.dates || rosterDoctorData.dates.length === 0) return null;
 
-  const getDisplayDates = () => {
-    if (!fromDate || rosterSchedule.length === 0 || rosterSchedule[0].schedule.length === 0) {
-      return Array(7).fill(null).map((_, i) => `Date ${i + 1}`);
-    }
-    return rosterSchedule[0].schedule.map(s => formatDisplayDate(s.date));
+    const doctorRosterMap = new Map();
+    rosterDoctorData.dates.forEach(item => {
+      if (!doctorRosterMap.has(item.doctorId)) {
+        doctorRosterMap.set(item.doctorId, []);
+      }
+      doctorRosterMap.get(item.doctorId).push(item);
+    });
+
+    const allDates = [...new Set(rosterDoctorData.dates.map(item => item.dates))].sort((a, b) => {
+      const dateA = formatDateToLocal(a);
+      const dateB = formatDateToLocal(b);
+      return dateA - dateB;
+    });
+
+    return (
+      <div className="table-responsive">
+        <table className="table table-bordered">
+          <thead>
+            <tr>
+              <th>Doctor</th>
+              {allDates.map(date => (
+                <th key={date} className="text-center">
+                  {formatDisplayDate(date)}
+                  <div className="small text-muted">
+                    {formatDateToLocal(date).toLocaleDateString('en-US', { weekday: 'short' })}
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {[...doctorRosterMap.entries()].map(([doctorId, doctorDates]) => {
+              const doctor = doctorData.find(d => d.userId === doctorId);
+              const doctorName = doctor ? `${doctor.firstName} ${doctor.lastName}` : 'Unknown Doctor';
+
+              return (
+                <tr key={doctorId}>
+                  <td>{doctorName}</td>
+                  {allDates.map(date => {
+                    const dateItem = doctorDates.find(d => d.dates === date);
+                    
+                    if (!dateItem) {
+                      return (
+                        <td key={date} className="text-center text-muted">
+                          N/A
+                        </td>
+                      );
+                    }
+
+                    const isDisabled = isDateDisabled(date);
+                    const rosterValue = dateItem.rosterVale;
+
+                    return (
+                      <td key={date} className="text-center">
+                        <div className="form-check form-check-inline">
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            checked={rosterValue === "YY" || rosterValue === "YN"}
+                            onChange={() => handleCheckboxChange(doctorId, date, 'morning')}
+                            disabled={isDisabled}
+                          />
+                          <label 
+                            className={`form-check-label ${isDisabled ? 'text-muted' : ''}`}
+                          >
+                            M
+                          </label>
+                        </div>
+                        <div className="form-check form-check-inline">
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            checked={rosterValue === "YY" || rosterValue === "NY"}
+                            onChange={() => handleCheckboxChange(doctorId, date, 'evening')}
+                            disabled={isDisabled}
+                          />
+                          <label 
+                            className={`form-check-label ${isDisabled ? 'text-muted' : ''}`}
+                          >
+                            E
+                          </label>
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
   };
 
   return (
@@ -355,70 +444,16 @@ const DoctorRoaster = () => {
                       />
                     </div>
 
-                    {rosterSchedule.length > 0 && (
-                      <div className="col-md-12 mt-4">
-                        <div className="table-responsive">
-                          <table className="table table-bordered">
-                            <thead>
-                              <tr>
-                                <th>Doctor</th>
-                                {getDisplayDates().map((date, i) => (
-                                  <th key={i} className="text-center">
-                                    {date}
-                                    <div className="small text-muted">
-                                      {rosterSchedule[0].schedule[i] ? 
-                                        new Date(formatDateToISO(rosterSchedule[0].schedule[i].date))
-                                          .toLocaleDateString('en-US', { weekday: 'short' }) : 
-                                        ''}
-                                    </div>
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {rosterSchedule.map((doctorItem, doctorIndex) => (
-                                <tr key={doctorIndex}>
-                                  <td>{doctorItem.doctorName}</td>
-                                  {doctorItem.schedule.map((dateItem, dateIndex) => (
-                                    <td key={dateIndex} className="text-center">
-                                      <div className="form-check form-check-inline">
-                                        <input
-                                          type="checkbox"
-                                          className="form-check-input"
-                                          id={`morning-${doctorIndex}-${dateIndex}`}
-                                          checked={dateItem.morning}
-                                          onChange={() => handleCheckboxChange(doctorIndex, dateIndex, 'morning')}
-                                        />
-                                        <label className="form-check-label" htmlFor={`morning-${doctorIndex}-${dateIndex}`}>M</label>
-                                      </div>
-                                      <div className="form-check form-check-inline">
-                                        <input
-                                          type="checkbox"
-                                          className="form-check-input"
-                                          id={`evening-${doctorIndex}-${dateIndex}`}
-                                          checked={dateItem.evening}
-                                          onChange={() => handleCheckboxChange(doctorIndex, dateIndex, 'evening')}
-                                        />
-                                        <label className="form-check-label" htmlFor={`evening-${doctorIndex}-${dateIndex}`}>E</label>
-                                      </div>
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
+                    {rosterDoctorData && renderRosterTable()}
                   </div>
 
                   <div className="mt-4">
                     <button
                       type="submit"
                       className="btn btn-primary me-2"
-                      disabled={loading || rosterSchedule.length === 0}
+                      disabled={loading || !rosterDoctorData}
                     >
-                      {loading ? 'Processing...' : (existingRosterFound ? 'Update Roster' : 'Save Roster')}
+                      {loading ? 'Processing...' : 'Save Roster'}
                     </button>
                     <button
                       type="button"

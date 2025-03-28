@@ -5,7 +5,7 @@ export const API_HOST = 'http://103.133.215.182:8085';
 
 export const DEPARTMENT ="/department";
 export const ALL_DEPARTMENT ="/department/getAllDepartments";
-export const DOCTOR ="/authController/getAllUsers";
+export const DOCTOR ="/users";
 export const SESSION = "/opd-session";
 export const APPOINTMENT = "/app";
 
