@@ -3,6 +3,7 @@ import placeholderImage from "../../../../assets/images/placeholder.jpg";
 import { COUNTRYAPI, DISTRICTAPI, STATEAPI, DEPARTMENT, GENDERAPI, EMPLOYEE_REGISTRATION, IDENTITY_TYPE, API_HOST } from "../../../../config/apiConfig";
 import { getRequest, putRequest, postRequestWithFormData } from "../../../../service/apiService";
 import Popup from "../../../../Components/popup";
+import axios from 'axios';
 
 const EmployeeRegistration = () => {
     const initialFormData = {
@@ -26,7 +27,7 @@ const EmployeeRegistration = () => {
         deprtId: "",
         identificationType: "",
         employeeTypeId: 1,
-        email:"dkraj@gmail.com",
+        email: "dkraj@gmail.com",
         fromDate: "",
 
         qualification: [{ employeeQualificationId: 1, institutionName: "", completionYear: 0, qualificationName: "", filePath: null }],
@@ -38,6 +39,7 @@ const EmployeeRegistration = () => {
     const [profileImage, setProfileImage] = useState(null);
     const [loading, setLoading] = useState(false);
     const [departmentData, setDepartmentData] = useState([]);
+    const [viewDept, setviewDept] = useState(false);
     const [countryData, setCountryData] = useState([]);
     const [stateData, setStateData] = useState([]);
     const [districtData, setDistrictData] = useState([]);
@@ -46,9 +48,7 @@ const EmployeeRegistration = () => {
     const [countryIds, setCountryIds] = useState("");
     const [stateIds, setStateIds] = useState("");
     // const token = sessionStorage.getItem("token");
-    const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhYmNAZ21haWwuY29tIiwiaG9zcGl0YWxJZCI6MSwiZW1wbG95ZWVJZCI6MSwiZXhwIjoxNzQzMTMwNjU4LCJ1c2VySWQiOjQsImlhdCI6MTc0MjUyNTg1OH0.AeMNmzHXYHfNDXZvwfMFTJ8sM3qL6ghzMB81fPjiV7mTVHKn17d14YLoKMuxMrq7kqljpibrjnPayeG9bUBa6g";
-
-
+    const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhYmNAZ21haWwuY29tIiwiaG9zcGl0YWxJZCI6MSwiZW1wbG95ZWVJZCI6MSwiZXhwIjoxNzQzODM2MDE1LCJ1c2VySWQiOjQsImlhdCI6MTc0MzIzMTIxNX0.b37GjRlhTd0ArKkc-DbcvOIlcW0KBcSs_I1MI5aAmfEfLMUJDSJYNbEqu6JyGyWeie7iUILLQOt_xvjD-0fnYA";
 
     useEffect(() => {
         fetchCountryData();
@@ -63,7 +63,6 @@ const EmployeeRegistration = () => {
             type,
             onClose: () => {
                 setPopupMessage(null);
-
             },
         });
     };
@@ -205,7 +204,6 @@ const EmployeeRegistration = () => {
         }));
     };
 
-    
     const handleDepartmentChange = (deprtId) => {
         setFormData((prevState) => ({
             ...prevState,
@@ -230,7 +228,6 @@ const EmployeeRegistration = () => {
 
         if (file) {
             const imageUrl = URL.createObjectURL(file);
-
             setProfileImage(imageUrl);
             setFormData((prevData) => ({
                 ...prevData,
@@ -240,10 +237,10 @@ const EmployeeRegistration = () => {
     };
 
     const handleFileChange = (e) => {
-        const { id, files } = e.target;
+        const { name, files } = e.target;
         setFormData((prevData) => ({
             ...prevData,
-            [id]: files[0],
+            [name]: files[0],
         }));
     };
 
@@ -266,13 +263,14 @@ const EmployeeRegistration = () => {
         }));
     };
 
-    const handleQualificationChange = (index, field, value) => {
-        setFormData((prev) => {
-            const updatedQualification = [...prev.qualification];
-            updatedQualification[index][field] = value;
-            return { ...prev, qualification: updatedQualification };
-        });
-    };
+    // const handleQualificationChange = (index, field, value) => {
+    //     setFormData((prev) => ({
+    //         ...prev,
+    //         qualification: prev.qualification.map((item, i) =>
+    //             i === index ? { ...item, [field]: value } : item
+    //         ),
+    //     }));
+    // };
 
     const addDocumentRow = () => {
         setFormData((prev) => ({
@@ -291,155 +289,271 @@ const EmployeeRegistration = () => {
         }));
     };
 
+    // const handleDocumentChange = (index, field, value) => {
+    //     setFormData((prev) => ({
+    //         ...prev,
+    //         document: prev.document.map((item, i) =>
+    //             i === index ? { ...item, [field]: value } : item
+    //         ),
+    //     }));
+    // };
+
+    const handleQualificationChange = (index, field, value) => {
+        setFormData(prev => ({
+            ...prev,
+            qualification: prev.qualification.map((item, i) =>
+                i === index ? { ...item, [field]: value } : item
+            )
+        }));
+    };
+
     const handleDocumentChange = (index, field, value) => {
-        setFormData((prev) => {
-            const updatedDocuments = [...prev.document];
-            updatedDocuments[index][field] = value;
-            return { ...prev, document: updatedDocuments };
-        });
+        setFormData(prev => ({
+            ...prev,
+            document: prev.document.map((item, i) =>
+                i === index ? { ...item, [field]: value } : item
+            )
+        }));
     };
 
+    // Validation function to check required fields
+    const validateForm = () => {
+        const requiredFields = [
+            'firstName', 'lastName', 'dob', 'genderId', 'address1',
+            'countryId', 'stateId', 'districtId', 'city', 'pincode',
+            'mobileNo', 'identificationType', 'registrationNo'
+        ];
 
-    console.log("my data", formData);
-
-
-    const handleCreateEmployee = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-    
-        try {
-            const formDataObj = new FormData();
-    
-            // Basic employee details
-            formDataObj.append("firstName", formData.firstName);
-            formDataObj.append("middleName", formData.middleName || "");
-            formDataObj.append("lastName", formData.lastName || "");
-            formDataObj.append("dob", formData.dob);
-            formDataObj.append("genderId", formData.genderId);
-            formDataObj.append("address1", formData.address1);
-            formDataObj.append("countryId", formData.countryId);
-            formDataObj.append("stateId", formData.stateId);
-            formDataObj.append("districtId", formData.districtId);
-            formDataObj.append("city", formData.city);
-            formDataObj.append("pincode", formData.pincode);
-            formDataObj.append("mobileNo", formData.mobileNo);
-            formDataObj.append("registrationNo", formData.registrationNo);
-            formDataObj.append("identificationType", formData.identificationType);
-            formDataObj.append("fromDate", formData.fromDate);
-            formDataObj.append("departmentId", formData.departmentId);
-    
-            // Profile and ID document
-            if (formData.profilePic) {
-                formDataObj.append("profilePicName", formData.profilePic);
+        for (const field of requiredFields) {
+            if (!formData[field]) {
+                showPopup(`Please fill in the required field: ${field.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase())}`, "error");
+                return false;
             }
-            if (formData.idDocument) {
-                formDataObj.append("idDocumentName", formData.idDocument);
-            }
-    
-            // Append documents correctly
-            formData.document.forEach((doc, index) => {
-                formDataObj.append(`document[${index}].documentName`, doc.documentName);
-                formDataObj.append(`document[${index}].filePath`, doc.filePath); // MultipartFile
-            });
-    
-            // Append qualifications correctly
-            formData.qualification.forEach((qual, index) => {
-                formDataObj.append(`qualification[${index}].institutionName`, qual.institutionName);
-                formDataObj.append(`qualification[${index}].completionYear`, qual.completionYear);
-                formDataObj.append(`qualification[${index}].qualificationName`, qual.qualificationName);
-                formDataObj.append(`qualification[${index}].filePath`, qual.filePath); // MultipartFile
-            });
-    
-            // Send request
-            const response = await postRequestWithFormData("/employee/create", formDataObj);
-    
-            if (response.status === 200) {
-                showPopup("Employee created successfully", "success");
-                setFormData(initialFormData);
-            } else {
-                showPopup(response.message || "Failed to create employee", "error");
-            }
-        } catch (error) {
-            console.error("Error creating employee:", error);
-            showPopup(error.message || "An error occurred while creating employee", "error");
-        } finally {
-            setLoading(false);
         }
+
+        if (!formData.profilePicName) {
+            showPopup("Profile picture is required", "error");
+            return false;
+        }
+
+        if (!formData.idDocumentName) {
+            showPopup("ID document is required", "error");
+            return false;
+        }
+
+        return true;
     };
-    
-    
-    
-    const handleCreateEmployeeWithApprove = async (e) => {
+
+    const prepareFormDataForSubmission = () => {
+        if (!validateForm()) {
+            return null;
+        }
+
+        const formDataForSubmit = new FormData();
+
+        formDataForSubmit.append("firstName", formData.firstName);
+        formDataForSubmit.append("middleName", formData.middleName || "");
+        formDataForSubmit.append("lastName", formData.lastName);
+        formDataForSubmit.append("dob", formData.dob);
+        formDataForSubmit.append("genderId", formData.genderId);
+        formDataForSubmit.append("address1", formData.address1);
+        formDataForSubmit.append("countryId", formData.countryId);
+        formDataForSubmit.append("stateId", formData.stateId);
+        formDataForSubmit.append("districtId", formData.districtId);
+        formDataForSubmit.append("city", formData.city);
+        formDataForSubmit.append("pincode", formData.pincode);
+        formDataForSubmit.append("mobileNo", formData.mobileNo);
+        formDataForSubmit.append("registrationNo", formData.registrationNo);
+        formDataForSubmit.append("identificationType", formData.identificationType);
+
+        if (formData.deprtId) {
+            formDataForSubmit.append("departmentId", formData.deprtId);
+        }
+
+        if (formData.fromDate) {
+            formDataForSubmit.append("fromDate", formData.fromDate);
+        }
+
+        if (formData.profilePicName) {
+            formDataForSubmit.append("profilePicName", formData.profilePicName);
+        }
+
+        if (formData.idDocumentName) {
+            formDataForSubmit.append("idDocumentName", formData.idDocumentName);
+        }
+
+        formData.qualification.forEach((qual, index) => {
+            if (qual.qualificationName) {
+                formDataForSubmit.append(`qualification[${index}].qualificationName`, qual.qualificationName);
+            }
+            if (qual.institutionName) {
+                formDataForSubmit.append(`qualification[${index}].institutionName`, qual.institutionName);
+            }
+            if (qual.completionYear) {
+                formDataForSubmit.append(`qualification[${index}].completionYear`, qual.completionYear.toString());
+            }
+            if (qual.employeeQualificationId) {
+                formDataForSubmit.append(`qualification[${index}].employeeQualificationId`, qual.employeeQualificationId.toString());
+            }
+            if (qual.filePath && qual.filePath instanceof File) {
+                formDataForSubmit.append(`qualification[${index}].filePath`, qual.filePath);
+            }
+        });
+
+        formData.document.forEach((doc, index) => {
+            if (doc.documentName) {
+                formDataForSubmit.append(`document[${index}].documentName`, doc.documentName);
+            }
+            if (doc.employeeDocumentId) {
+                formDataForSubmit.append(`document[${index}].employeeDocumentId`, doc.employeeDocumentId.toString());
+            }
+            if (doc.filePath && doc.filePath instanceof File) {
+                formDataForSubmit.append(`document[${index}].filePath`, doc.filePath);
+            }
+        });
+
+        return formDataForSubmit;
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        const formDataForSubmit = prepareFormDataForSubmission();
+
+        if (!formDataForSubmit) {
+            return;
+        }
+
         setLoading(true);
-        
+
         try {
-            // Create FormData object to handle file uploads
-            const formDataObj = new FormData();
-            
-            // Add basic employee information
-            formDataObj.append("firstName", formData.firstName);
-            formDataObj.append("middleName", formData.middleName || "");
-            formDataObj.append("lastName", formData.lastName || "");
-            formDataObj.append("dob", formData.dob);
-            formDataObj.append("genderId", formData.genderId);
-            formDataObj.append("address1", formData.address1);
-            formDataObj.append("countryId", formData.countryId);
-            formDataObj.append("stateId", formData.stateId);
-            formDataObj.append("districtId", formData.districtId);
-            formDataObj.append("city", formData.city);
-            formDataObj.append("pincode", formData.pincode);
-            formDataObj.append("mobileNo", formData.mobileNo);
-            formDataObj.append("registrationNo", formData.registrationNo);
-            formDataObj.append("identificationType", formData.identificationType);
-            formDataObj.append("email", formData.email);
-            formDataObj.append("fromDate", formData.fromDate);
-            formDataObj.append("departmentId", formData.deprtId);
-            
-            // Add profile picture and ID document
-            if (formData.profilePicName) {
-                formDataObj.append("profilePicName", formData.profilePicName);
-            }
-            
-            if (formData.idDocumentName) {
-                formDataObj.append("idDocumentName", formData.idDocumentName);
-            }
-            
-            // Add qualifications
-            formData.qualification.forEach((qual, index) => {
-                formDataObj.append(`qualification[${index}].institutionName`, qual.institutionName);
-                formDataObj.append(`qualification[${index}].completionYear`, qual.completionYear);
-                formDataObj.append(`qualification[${index}].qualificationName`, qual.qualificationName);
-                if (qual.filePath) {
-                    formDataObj.append(`qualification[${index}].filePath`, qual.filePath);
+            // debugger;
+            // const response = await axios.post(
+            //     `${API_HOST}/api/employee/create-and-approve`,
+            //     formDataForSubmit,
+            //     {
+            //         headers: {
+            //             'Authorization': `Bearer ${token}`,
+            //             'Content-Type': 'multipart/form-data'
+            //         }
+            //     }
+            // );
+
+            const response = await axios.post(
+                `http://localhost:8080/api/employee/create-and-approve`,
+                formDataForSubmit,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    }
                 }
-            });
-            
-            // Add documents
-            formData.document.forEach((doc, index) => {
-                formDataObj.append(`document[${index}].documentName`, doc.documentName);
-                if (doc.filePath) {
-                    formDataObj.append(`document[${index}].filePath`, doc.filePath);
-                }
-            });
-            
-            // Send the request to create and approve
-            const response = await postRequestWithFormData(EMPLOYEE_REGISTRATION + "/create-and-approve", formDataObj);
-            
+            );
+
             if (response.status === 200) {
-                showPopup("Employee created and approved successfully", "success");
+                showPopup("Employee created and approved successfully!", "success");
                 setFormData(initialFormData);
                 setProfileImage(null);
             } else {
-                showPopup(response.message || "Failed to create and approve employee", "error");
+                showPopup(`Error: ${response.data.message || "Unknown error"}`, "error");
             }
+
         } catch (error) {
-            console.error("Error creating and approving employee:", error);
-            showPopup(error.message || "An error occurred while creating and approving employee", "error");
+            console.error("Error submitting form:", error);
+            showPopup(`Error: ${error.response?.data?.message || error.message || "Unknown error"}`, "error");
         } finally {
             setLoading(false);
         }
     };
+
+    const handleCreateEmployee = async (e) => {
+        e.preventDefault();
+        const formDataForSubmit = prepareFormDataForSubmission();
+
+        if (!formDataForSubmit) {
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            const response = await axios.post(
+                `${API_HOST}/api/employee/create`,
+                formDataForSubmit,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'multipart/form-data'
+                    }
+                }
+            );
+
+            if (response.status === 200) {
+                showPopup("Employee created successfully!", "success");
+                setFormData(initialFormData);
+                setProfileImage(null);
+            } else {
+                showPopup(`Error: ${response.data.message || "Unknown error"}`, "error");
+            }
+        } catch (error) {
+            console.error("Error submitting form:", error);
+            showPopup(`Error: ${error.response?.data?.message || error.message || "Unknown error"}`, "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCreate = async (e) => {
+        e.preventDefault();
+    
+        const formDataForSubmit = prepareFormDataForSubmission();
+        if (!formDataForSubmit) return;
+    
+        try {
+            const response = await fetch("http://localhost:8080/api/employee/create", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                body: formDataForSubmit,
+            });
+    
+            const result = await response.json();
+            if (response.ok) {
+                console.log("Employee Created Successfully:", result);
+            } else {
+                console.error("Error creating employee:", result);
+            }
+        } catch (error) {
+            console.error("Network error:", error);
+        }
+    };
+    
+    const handleCreateWithApprove = async (e) => {
+        e.preventDefault();
+    
+        const formDataForSubmit = prepareFormDataForSubmission();
+        if (!formDataForSubmit) return;
+    
+        try {
+            const response = await fetch("http://localhost:8080/api/employee/create-and-approve", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                body: formDataForSubmit,
+            });
+    
+            const result = await response.json();
+            if (response.ok) {
+                console.log("Employee Created & Approved Successfully:", result);
+            } else {
+                console.error("Error creating and approving employee:", result);
+            }
+        } catch (error) {
+            console.error("Network error:", error);
+        }
+    };
+    
+
     return (
         <>
             <div className="d-flex body py-3">
@@ -488,7 +602,6 @@ const EmployeeRegistration = () => {
                                                         <label className="form-label">Middle Name</label>
                                                         <input
                                                             type="text"
-                                                            required
                                                             className="form-control"
                                                             id="middleName"
                                                             placeholder="Middle Name"
@@ -684,40 +797,39 @@ const EmployeeRegistration = () => {
                                                         <label className="form-label">ID Upload (JPEG/PDF) *</label>
                                                         <input
                                                             type="file"
-                                                            required
                                                             id="idDocumentName"
-                                                            className="form-control"
+                                                            className="form-control mt-2"
                                                             accept=".jpg,.jpeg,.png,.pdf"
-                                                            onChange={handleFileChange}
+                                                            onChange={(e) => setFormData({ ...formData, idDocumentName: e.target.files[0] })}
                                                         />
-
                                                     </div>
 
-                                                    <div className="col-md-4">
-                                                        <label className="form-label">Depatment Name *</label>
-                                                        <select
-                                                            className="form-select"
-                                                            style={{ paddingRight: "40px" }}
-                                                            value={formData.deprtId}
-                                                            onChange={(e) =>
-                                                                handleDepartmentChange(parseInt(e.target.value, 10))
-                                                            }
-                                                            disabled={loading}
-                                                        >
-                                                            <option value="">Select Depatment</option>
-                                                            {departmentData.map((depa) => (
-                                                                <option key={depa.id} value={depa.id}>
-                                                                    {depa.departmentName}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
+                                                    {viewDept && (
+                                                        <div className="col-md-4">
+                                                            <label className="form-label">Depatment Name *</label>
+                                                            <select
+                                                                className="form-select"
+                                                                style={{ paddingRight: "40px" }}
+                                                                value={formData.deprtId}
+                                                                onChange={(e) =>
+                                                                    handleDepartmentChange(parseInt(e.target.value, 10))
+                                                                }
+                                                                disabled={loading}
+                                                            >
+                                                                <option value="">Select Depatment</option>
+                                                                {departmentData.map((depa) => (
+                                                                    <option key={depa.id} value={depa.id}>
+                                                                        {depa.departmentName}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    )}
 
                                                     <div className="col-md-4">
                                                         <label className="form-label">Period of Employment From Date</label>
                                                         <input
                                                             type="date"
-                                                            required
                                                             id="fromDate"
                                                             value={formData.fromDate}
                                                             className="form-control"
@@ -738,12 +850,12 @@ const EmployeeRegistration = () => {
                                                     />
                                                     <input
                                                         type="file"
+                                                        id="profilePicName"
                                                         className="form-control mt-2"
                                                         accept="image/*"
-                                                        onChange={handleImageChange}
-                                                        required
-                                                        id="profilePicName"
+                                                        onChange={(e) => setFormData({ ...formData, profilePicName: e.target.files[0] })}
                                                     />
+
                                                 </div>
 
                                             </div>
@@ -753,6 +865,8 @@ const EmployeeRegistration = () => {
                             </div>
                         </div>
                     </div>
+
+
 
                     {/* Educational Qualification */}
                     <div className="row mb-3">
@@ -808,7 +922,9 @@ const EmployeeRegistration = () => {
                                                             type="file"
                                                             className="form-control"
                                                             onChange={(e) => handleQualificationChange(index, "filePath", e.target.files[0])}
+                                                            accept=".pdf,.jpg,.jpeg,.png"
                                                         />
+
                                                     </td>
                                                     <td>
                                                         <button type="button" className="btn btn-danger" onClick={() => removeEducationRow(index)}>
@@ -861,7 +977,9 @@ const EmployeeRegistration = () => {
                                                             type="file"
                                                             className="form-control"
                                                             onChange={(e) => handleDocumentChange(index, "filePath", e.target.files[0])}
+                                                            accept=".pdf,.jpg,.jpeg,.png"
                                                         />
+
                                                     </td>
                                                     <td>
                                                         <button type="button" className="btn btn-danger" onClick={() => removeDocumentRow(index)}>
@@ -882,7 +1000,7 @@ const EmployeeRegistration = () => {
 
                     <div className="d-flex justify-content-end mt-4">
                         <button onClick={handleCreateEmployee} type="reset" className="btn btn-secondary me-2">Save</button>
-                        <button onClick={handleCreateEmployeeWithApprove} type="submit" className="btn btn-primary">Submit</button>
+                        <button onClick={handleSubmit} type="submit" className="btn btn-primary">Save & Apprve</button>
                     </div>
                 </div>
             </div>
