@@ -80,45 +80,44 @@ const Assignapplication = () => {
     };
 
     
-const handleParentApplicationSelect = async (e) => {
-    const selectedParentId = e.target.value;
-    setSelectedParentApp(selectedParentId);
-
-    try {
-        const response = await getRequest(`${APPLICATION}/getAllChildren/${selectedParentId}`);
-
-        if (response && response.response) {
-           
-            const mappedChildApplications = response.response.map((app, index) => {
-                // Check if this child app is already in the template modules
-                const isAssigned = templateModules.some(
-                    template => template.appId === app.appId
-                );
-                
-                return {
-                    srNo: index + 1,
-                    module: app.name,
-                    templateId: app.appId,
-                    appId: app.appId,
-                    status: app.status,
-                    lastChgDate: app.lastChgDate,
-                    checked: isAssigned // Auto-check if it's already assigned to the selected template
-                };
+    const handleParentApplicationSelect = async (e) => {
+        const selectedParentId = e.target.value;
+        setSelectedParentApp(selectedParentId);
+    
+        try {
+            const response = await getRequest(`${APPLICATION}/getAllChildren/${selectedParentId}`);
+    
+            if (response && response.response) {
+               
+                const mappedChildApplications = response.response.map((app, index) => {
+                    // Set the checked state based on the status field from API
+                    // If status is "y", set checked to true, otherwise false
+                    const isChecked = app.status === "y";
+                    
+                    return {
+                        srNo: index + 1,
+                        module: app.name,
+                        templateId: app.appId,
+                        appId: app.appId,
+                        status: app.status,
+                        lastChgDate: app.lastChgDate,
+                        checked: isChecked // Set checked based on status
+                    };
+                });
+    
+                setChildApplications(mappedChildApplications);
+                setShowModuleTable(true);
+            }
+        } catch (error) {
+            console.error("Error fetching child applications:", error);
+            setPopupMessage({
+                message: "Failed to load child applications",
+                type: "error",
+                onClose: () => setPopupMessage(null)
             });
-
-            setChildApplications(mappedChildApplications);
-            setShowModuleTable(true);
+            setShowModal(true);
         }
-    } catch (error) {
-        console.error("Error fetching child applications:", error);
-        setPopupMessage({
-            message: "Failed to load child applications",
-            type: "error",
-            onClose: () => setPopupMessage(null)
-        });
-        setShowModal(true);
-    }
-};
+    };
 
     // Existing template select handler
     const handleTemplateSelect = async (e) => {
@@ -201,18 +200,27 @@ const handleParentApplicationSelect = async (e) => {
                 return;
             }
             
+            // Create applicationStatusUpdates array for all child applications
+            // This will update the status based on whether they are checked or not
+            const applicationStatusUpdates = childApplications.map(child => ({
+                appId: child.appId,
+                status: child.checked ? "y" : "n"
+            }));
+            
+            // Take only the first selected child for templateApplicationAssignments
+            const firstSelectedChild = selectedChildren[0];
             
             const payload = {
+                // Include all child applications with their updated status
+                applicationStatusUpdates: applicationStatusUpdates,
                 
-                applicationStatusUpdates: [],
-                
-                
-                templateApplicationAssignments: selectedChildren.map(child => ({
+                // Include only the first checked child for template assignment
+                templateApplicationAssignments: [{
                     templateId: Number(selectedTemplate), 
-                    appId: child.appId, 
+                    appId: firstSelectedChild.appId, 
                     lastChgBy: 0, 
-                    orderNo: child.srNo 
-                }))
+                    orderNo: firstSelectedChild.srNo 
+                }]
             };
             
             console.log("Sending payload:", JSON.stringify(payload));

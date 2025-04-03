@@ -1,211 +1,363 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
-
+import LoadingScreen from "../../../Components/Loading";
+import { getRequest, postRequest } from "../../../service/apiService"; 
+import { ALL_ROLE, ALL_TEMPLATES, ROLE_TEMPLATE } from "../../../config/apiConfig"; 
 
 const Rolesrights = () => {
-    const [showForm, setShowForm] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
-    const totalPages = 3;
-    const totalProducts = 12;
     const [popupMessage, setPopupMessage] = useState(null);
     const [showModal, setShowModal] = useState(false);
-    const [isEditMode, setIsEditMode] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [roleData, setRoleData] = useState([]);
+    const [templateData, setTemplateData] = useState([]);
+    const [templates, setTemplates] = useState([]);
+    const [selectedRole, setSelectedRole] = useState("");
+    const [selectedRoleId, setSelectedRoleId] = useState(null);
+    const [originalTemplateState, setOriginalTemplateState] = useState([]);
 
+    useEffect(() => {
+        fetchRoles(1);
+        fetchTemplates(1);
+       
+    }, []);
 
+    const fetchRoles = async (flag = 1) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await getRequest(`${ALL_ROLE}/${flag}`);
+            console.log("API Response (Roles):", response);
+            
+            if (response && response.response) {
+                const mappedRoles = response.response.map(role => ({
+                    id: role.id,
+                    roleCode: role.roleCode,
+                    roleDesc: role.roleDesc,
+                    isActive: role.status?.toLowerCase()
+                }));
+                setRoleData(mappedRoles);
+            } else {
+                throw new Error("Invalid response structure");
+            }
+        } catch (err) {
+            console.error("Error fetching roles:", err);
+            setError("Failed to fetch roles. Please try again later.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
+    const fetchTemplates = async (flag = 1) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await getRequest(`${ALL_TEMPLATES}/${flag}`);
+            
+            if (response && response.response) {
+                const templateList = response.response || [];
+                const mappedTemplates = templateList.map(template => ({
+                    id: template.id,
+                    code: template.templateCode || "No Code",
+                    name: template.templateName || "No Name",
+                    status: template.status || "n",
+                    checked: false
+                }));
+                
+                setTemplateData(mappedTemplates);
+                setTemplates(mappedTemplates);
+            } else {
+                throw new Error("Invalid template response structure");
+            }
+        } catch (err) {
+            console.error("Error fetching templates:", err);
+            setError("Failed to fetch templates. Please try again later.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    const handleEditClick = () => {
-        setIsEditMode(!isEditMode); // Toggle edit mode
+    const fetchRoleTemplateAssignments = async (roleId, flag = 1) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await getRequest(`${ROLE_TEMPLATE}/getAllAssignedTemplates/${roleId}/${flag}`);
+            console.log("API Response (Role-Templates):", response);
+            
+            if (response && response.response) {
+                const assignedTemplateIds = response.response.map(item => item.templateId);
+                
+                // Update templates with checked status based on role assignment
+                const updatedTemplates = templateData.map(template => ({
+                    ...template,
+                    checked: assignedTemplateIds.includes(template.id)
+                }));
+                
+                setTemplates(updatedTemplates);
+                
+                // Store the original state to track changes
+                setOriginalTemplateState(updatedTemplates.map(template => ({
+                    id: template.id,
+                    checked: template.checked
+                })));
+            } else {
+                // If no templates assigned, uncheck all
+                const updatedTemplates = templateData.map(template => ({
+                    ...template,
+                    checked: false
+                }));
+                
+                setTemplates(updatedTemplates);
+                setOriginalTemplateState(updatedTemplates.map(template => ({
+                    id: template.id,
+                    checked: false
+                })));
+            }
+        } catch (err) {
+            console.error("Error fetching role-template assignments:", err);
+            setError("Failed to fetch template assignments. Please try again later.");
+            
+            // Reset templates to unchecked state on error
+            const updatedTemplates = templateData.map(template => ({
+                ...template,
+                checked: false
+            }));
+            
+            setTemplates(updatedTemplates);
+            setOriginalTemplateState(updatedTemplates.map(template => ({
+                id: template.id,
+                checked: false
+            })));
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleResetClick = () => {
-        document.getElementById("templateSelect").value = ""; // Reset dropdown to default
-        const checkboxes = document.querySelectorAll(".form-check-input");
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = false; // Uncheck all checkboxes
-        });
+        const selectElement = document.getElementById("roleSelect");
+        if (selectElement) {
+            selectElement.value = ""; // Reset dropdown to default
+        }
+        setSelectedRole("");
+        setSelectedRoleId(null);
+        
+        // Reset templates to unchecked state
+        setTemplates(prevTemplates => prevTemplates.map(template => ({
+            ...template,
+            checked: false
+        })));
+        
+        setOriginalTemplateState([]);
     };
 
-    const roleCheckboxMapping = {
-        admin: ["ADMIN", "ANM"],
-        anm: ["APM", "AUDIT", "AUDITOR"],
-        // Add more mappings as needed
+    const handleRoleChange = (event) => {
+        const selectedValue = event.target.value;
+        
+        if (!selectedValue) {
+            handleResetClick();
+            return;
+        }
+        
+        const role = roleData.find(r => r.roleCode === selectedValue);
+        
+        if (role) {
+            setSelectedRole(role.roleCode);
+            setSelectedRoleId(role.id);
+            fetchRoleTemplateAssignments(role.id, 1); 
+        } else {
+            showPopup("Error: Selected role not found", "error");
+        }
+    };
+    const handleSave = async () => {
+        // Check if a role is selected
+        if (!selectedRole || !selectedRoleId) {
+            showPopup("Please select a role first!", "warning");
+            return;
+        }
+        
+        // Get templates whose status changed (both newly checked and newly unchecked)
+        const changedTemplates = templates.filter(template => {
+            const originalState = originalTemplateState.find(t => t.id === template.id);
+            return originalState && originalState.checked !== template.checked;
+        });
+        
+        if (changedTemplates.length === 0) {
+            showPopup("No changes detected. Please modify at least one template assignment.", "warning");
+            return;
+        }
+        
+        // Format templates based on their checked status
+        const templateUpdates = changedTemplates.map(template => ({
+            roleId: selectedRoleId,
+            templateId: template.id,
+            status: template.checked ? "y" : "n",
+            lastChgBy: 0
+        }));
+        
+        setLoading(true);
+        try {
+            // Match the format from Swagger documentation
+            const requestPayload = {
+                applicationStatusUpdates: templateUpdates
+            };
+            
+            console.log("Sending payload to API:", JSON.stringify(requestPayload));
+            
+            // Call API to save the template assignments
+            const response = await postRequest(`${ROLE_TEMPLATE}/assignTemplates`, requestPayload);
+            
+            // Check for numeric status 200 instead of string 'SUCCESS'
+            if (response && (response.status === 200 || response.message?.toLowerCase() === 'success')) {
+                showPopup("Roles and rights saved successfully!", "success");
+                
+                // Update the original state to reflect the saved changes
+                setOriginalTemplateState(templates.map(template => ({
+                    id: template.id,
+                    checked: template.checked
+                })));
+            } else {
+                showPopup("Failed to save roles and rights. Please try again.", "error");
+            }
+        } catch (err) {
+            console.error("Error saving role-template assignments:", err);
+            showPopup("An error occurred while saving. Please try again later.", "error");
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleAddClick = (event) => {
-        const selectedRole = document.getElementById("templateSelect").value;
-        const checkboxesToCheck = roleCheckboxMapping[selectedRole] || [];
-
-        // Reset all checkboxes
-        const checkboxes = document.querySelectorAll(".form-check-input");
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = false;
-        });
-
-        // Check the relevant checkboxes
-        checkboxesToCheck.forEach(role => {
-            const checkbox = Array.from(checkboxes).find(cb => cb.closest("tr").firstChild.textContent === role);
-            if (checkbox) {
-                checkbox.checked = true;
+    const showPopup = (message, type = 'info') => {
+        setPopupMessage({
+            message,
+            type,
+            onClose: () => {
+                setPopupMessage(null);
             }
         });
-    }
-
-
-
-    const [roles, setRoles] = useState([
-        { name: "ADMIN", checked: false },
-        { name: "ANM", checked: false },
-        { name: "APM", checked: false },
-        { name: "AUDIT", checked: false },
-        { name: "AUDITOR", checked: false },
-        { name: "CITY OFFICER", checked: false },
-        { name: "CMHO", checked: false },
-        { name: "CMO", checked: false },
-        { name: "COMMISSIONER", checked: false },
-        { name: "DISTRICT OFFICER", checked: false },
-        { name: "Doctor", checked: false },
-        { name: "DRIVER", checked: false },
-        { name: "Lab Tech", checked: false },
-        { name: "NODAL OFFICER", checked: false },
-        { name: "PAYMENT OFFICER", checked: false },
-        { name: "PHARMACIST", checked: false },
-        { name: "SR. AUDITOR", checked: false },
-        { name: "SENIOR AUDITOR", checked: false },
-        { name: "STATE OFFICER", checked: false },
-        { name: "SUB COMMISSIONER", checked: false },
-        { name: "SUB NODAL OFFICER", checked: false },
-        { name: "SUPER ADMIN", checked: false },
-        { name: "SUPER USER", checked: false },
-        { name: "UPSS", checked: false },
-        { name: "UPSS OFFICER", checked: false },
-        { name: "VENDOR", checked: false }
-    ]);
-
-
-    const handlePrevious = () => {
-        if (currentPage > 1) {
-            setCurrentPage(currentPage - 1);
-        }
-    };
-
-    const handleNext = () => {
-        if (currentPage < totalPages) {
-            setCurrentPage(currentPage + 1);
-        }
+        setShowModal(true);
     };
 
     return (
         <div className="content-wrapper">
-
             <div className="row">
-
                 <div className="col-12 grid-margin stretch-card">
-
                     <div className="card form-card">
-
-
+                        <div className="card-header d-flex justify-content-between align-items-center">
+                            <h4 className="card-title p-2">Role Rights</h4>
+                            <div className="d-flex justify-content-between align-items-center">
+                                <button
+                                    type="button"
+                                    className="btn btn-success me-2"
+                                    onClick={() => {
+                                        fetchRoles(0);
+                                        fetchTemplates(0);
+                                        handleResetClick();
+                                    }}
+                                >
+                                    <i className="mdi mdi-refresh"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
                         <div className="card-body">
-
-
-                            <form className="forms row">
-
-                                <h5 className="bg-light p-3 rounded">Role Rights</h5>
-
-
-                                <div className="row mt-3">
-                                    <div className="col-md-2">
-                                        <label>Select Role</label>
+                            {loading ? (
+                                <LoadingScreen />
+                            ) : error ? (
+                                <div className="alert alert-danger" role="alert">
+                                    {error}
+                                </div>
+                            ) : (
+                                <form className="forms row">
+                                    <div className="row mb-4">
+                                        <div className="col-md-4">
+                                            <div className="form-group">
+                                                <label className="mb-2">Select Role</label>
+                                                <select
+                                                    className="form-control"
+                                                    id="roleSelect"
+                                                    value={selectedRole}
+                                                    onChange={handleRoleChange}
+                                                    required
+                                                >
+                                                    <option value="">Select Role</option>
+                                                    {roleData
+                                                        .filter(role => role.isActive === "y")
+                                                        .map(role => (
+                                                            <option key={role.id} value={role.roleCode}>
+                                                                {role.roleDesc}
+                                                            </option>
+                                                        ))
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="col-md-4">
-                                        <select
-                                            className="form-control"
-                                            id="templateSelect"
-                                            onChange={handleAddClick}
-                                            required
-                                        >
-                                            <option value="" selected>Select Template</option>
-                                            <option value="admin">ADMIN</option>
-                                            <option value="anm">ANM</option>
-                                            <option value="apm">APM</option>
-                                            <option value="audit">AUDIT</option>
-                                            <option value="auditor">AUDITOR</option>
-                                            <option value="city_officer">CITY OFFICER</option>
-                                            <option value="cmho">CMHO</option>
-                                            <option value="cmo">CMO</option>
-                                            <option value="commissioner">COMMISSIONER</option>
-                                            <option value="district_officer">DISTRICT OFFICER</option>
-                                            <option value="doctor">Doctor</option>
-                                            <option value="driver">DRIVER</option>
-                                            <option value="lab_tech">Lab Tech</option>
-                                            <option value="nodal_officer">NODAL OFFICER</option>
-                                            <option value="payment_officer">PAYMENT OFFICER</option>
-                                            <option value="pharmacist">PHARMACIST</option>
-                                            <option value="sr_auditor">SR. AUDITOR</option>
-                                            <option value="senior_auditor">SENIOR AUDITOR</option>
-                                            <option value="state_officer">STATE OFFICER</option>
-                                            <option value="sub_commissioner">SUB COMMISSIONER</option>
-                                            <option value="sub_nodal_officer">SUB NODAL OFFICER</option>
-                                            <option value="super_admin">SUPER ADMIN</option>
-                                            <option value="super_user">SUPER USER</option>
-                                            <option value="upss">UPSS</option>
-                                            <option value="upss_officer">UPSS OFFICER</option>
-                                            <option value="vendor">VENDOR</option>
-                                        </select>
+
+                                    <div className="table-responsive" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                        <table className="table table-bordered table-hover align-middle">
+                                            <thead className="table-light">
+                                                <tr>
+                                                    <th colSpan="2">Templates</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {templates.length > 0 ? (
+                                                    templates.map((template, index) => (
+                                                        <tr key={template.id}>
+                                                            <td>{template.name}</td>
+                                                            <td width="100" className="text-center">
+                                                                <div className="form-check form-check-muted m-0">
+                                                                    <label className="form-check-label">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            style={{ width: '20px', height: '20px', border: '2px solid #6c757d' }}
+                                                                            className="form-check-input"
+                                                                            checked={template.checked || false}
+                                                                            onChange={() => {
+                                                                                const updatedTemplates = [...templates];
+                                                                                updatedTemplates[index].checked = !updatedTemplates[index].checked;
+                                                                                setTemplates(updatedTemplates);
+                                                                            }}
+                                                                            disabled={!selectedRole}
+                                                                        />
+                                                                        <i className="input-helper"></i>
+                                                                    </label>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan="2" className="text-center">No templates available</td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
                                     </div>
-                                </div>
-                                <div className="table-responsive" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                    <table className="mt-3 table table-bordered table-hover align-middle">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th colSpan="2">Templates</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                        {roles.map((role, index) => (
-                        <tr key={index}>
-                            <td>{role.name}</td>
-                            <td>
-                                <div className="form-check form-check-muted m-0">
-                                    <label className="form-check-label">
-                                        <input
-                                            type="checkbox"
-                                            style={{ width: '20px', height: '20px', border: '2px solid black' }}
-                                            className="form-check-input"
-                                            checked={role.checked}
-                                            onChange={() => {
-                                                const updatedRoles = [...roles];
-                                                updatedRoles[index].checked = !updatedRoles[index].checked;
-                                                setRoles(updatedRoles);
-                                            }}
-                                        />
-                                    </label>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                                          
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div className="d-flex justify-content-end mt-4">
-                                    <button type="button" className="btn btn-success me-2" >
-                                        <i className="mdi mdi-plus"></i> Save
-                                    </button>
-                                    <button type="button" className="btn btn-warning" onClick={handleResetClick}>
-                                        <i className="mdi mdi-refresh"></i> Reset
-                                    </button>
-                                </div>
-                            </form>
+                                    <div className="d-flex justify-content-end mt-4">
+                                        <button type="button" className="btn btn-primary me-2" onClick={handleSave}>
+                                            <i className="mdi mdi-content-save"></i> Save
+                                        </button>
+                                        <button type="button" className="btn btn-warning me-2" onClick={handleResetClick}>
+                                            <i className="mdi mdi-refresh"></i> Reset
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+
+                            {/* Popup Component */}
+                            {showModal && popupMessage && (
+                                <Popup
+                                    message={popupMessage.message}
+                                    type={popupMessage.type}
+                                    onClose={() => {
+                                        setShowModal(false);
+                                        setPopupMessage(null);
+                                    }}
+                                />
+                            )}
                         </div>
                     </div>
-                    {showModal && popupMessage && (
-                        <Popup
-                            message={popupMessage.message}
-                            type={popupMessage.type}
-                            onClose={popupMessage.onClose}
-                        />
-                    )}
                 </div>
             </div>
         </div>

@@ -63,6 +63,7 @@ export const USER_APPLICATION="/applications";
 export const TEMPLATES="/mas-templates";
 export const APPLICATION="/mas-applications";
 export const ASSIGN_TEMPLATES="/template-applications";
+export const ROLE_TEMPLATE="/role-template";
 
 
 
