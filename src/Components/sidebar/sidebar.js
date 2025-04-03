@@ -313,7 +313,16 @@ const Sidebar = () => {
                     Identification Master
                   </Link>
                 </li>
-                
+                <li>
+                  <Link className={`ms-link ${isActive('/rcmc') ? 'active' : ''}`} to="rcmc">
+                    RCMC Master
+                  </Link>
+                </li>
+                <li>
+                  <Link className={`ms-link ${isActive('/treatmentadvicemaster') ? 'active' : ''}`} to="treatmentadvicemaster">
+                    Treatment Advice Master
+                  </Link>
+                </li>
                 <li>
                   <Link className={`ms-link ${isActive('/createusermaster') ? 'active' : ''}`} to="createusermaster">
                     Create User Master
