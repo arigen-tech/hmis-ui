@@ -24,7 +24,7 @@ const Assignapplication = () => {
 
     // Fetch parent applications on component mount
     useEffect(() => {
-        fetchTemplates(0);
+        fetchTemplates(1);
         fetchParentApplications();
     }, []);
 
@@ -33,7 +33,7 @@ const Assignapplication = () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await getRequest(`${APPLICATION}/getAllParents/0`);
+            const response = await getRequest(`${APPLICATION}/getAllParents/1`);
 
             if (response && response.response) {
                 const mappedApplications = response.response
@@ -56,7 +56,7 @@ const Assignapplication = () => {
         }
     };
    
-    const fetchTemplates = async (flag = 0) => {
+    const fetchTemplates = async (flag = 1) => {
         setLoading(true);
         setError(null);
         try {
@@ -90,8 +90,7 @@ const Assignapplication = () => {
             if (response && response.response) {
                
                 const mappedChildApplications = response.response.map((app, index) => {
-                    // Set the checked state based on the status field from API
-                    // If status is "y", set checked to true, otherwise false
+                    
                     const isChecked = app.status === "y";
                     
                     return {
@@ -101,7 +100,7 @@ const Assignapplication = () => {
                         appId: app.appId,
                         status: app.status,
                         lastChgDate: app.lastChgDate,
-                        checked: isChecked // Set checked based on status
+                        checked: isChecked 
                     };
                 });
     
@@ -200,21 +199,20 @@ const Assignapplication = () => {
                 return;
             }
             
-            // Create applicationStatusUpdates array for all child applications
-            // This will update the status based on whether they are checked or not
+            
             const applicationStatusUpdates = childApplications.map(child => ({
                 appId: child.appId,
                 status: child.checked ? "y" : "n"
             }));
             
-            // Take only the first selected child for templateApplicationAssignments
+            
             const firstSelectedChild = selectedChildren[0];
             
             const payload = {
-                // Include all child applications with their updated status
+                
                 applicationStatusUpdates: applicationStatusUpdates,
                 
-                // Include only the first checked child for template assignment
+                
                 templateApplicationAssignments: [{
                     templateId: Number(selectedTemplate), 
                     appId: firstSelectedChild.appId, 

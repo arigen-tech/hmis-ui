@@ -33,6 +33,7 @@ export const ALL_USER_DEPARTMENT="/user-departments/getAllUserDepartments";
 export const ALL_USER_APPLICATION="/applications/getAllUserApplications";
 export const ALL_TEMPLATES="/mas-templates/getAllTemplates";
 export const ALL_APPLICATIONS="/mas-applications/getAllApplications";
+export const ALL_IDENTIFICATION_TYPE="/identification-types/getAllIdentificationTypes";
 
 
 
