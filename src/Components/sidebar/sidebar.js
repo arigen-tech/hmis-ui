@@ -465,6 +465,13 @@ const Sidebar = () => {
                 </li>
 
               </ul>
+              <ul className="sub-menu collapse" id="menu-Reception">
+                <li>
+                  <Link className={`ms-link ${isActive('/approveemployee') ? 'active' : ''}`} to="approveemployee">
+                    Approve Employee
+                  </Link>
+                </li>
+              </ul>
             </li>
 
 
