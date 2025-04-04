@@ -29,7 +29,7 @@ import Userdepartment from './Views/Masters/UserDepartment';
 import Identificationmaster from './Views/Masters/identificationMaster';
 import RCMC from './Views/Masters/RCMC';
 import Treatmentadvicemaster from './Views/Masters/TreatmentAdviceMaster';
-import Approveemployee from './Views/Reception/ApproveEmployee';
+import Approveemployee from './Views/Admin/ApproveEmployee';
 // import Drugmaster from './Views/Stores/DrugMaster';
 
 
