@@ -1,93 +1,157 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
+import {
+    DEPARTMENT,
+    EMPLOYEE_REGISTRATION,
+} from "../../../config/apiConfig";
+import { getRequest, putRequest } from "../../../service/apiService";
+import LoadingScreen from "../../../Components/Loading/index";
+
 
 const Approveemployee = () => {
- 
+    const [departmentData, setDepartmentData] = useState([]);
+    const [employeeData, setEmployeeData] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [popupMessage, setPopupMessage] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [pageInput, setPageInput] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 5;
+    const [loading, setLoading] = useState(false);
 
-    const departmentOptions = [
-        "HR",
-        "IT",
-        "Finance",
-        "Marketing",
-        "Operations",
-        "Sales"
-    ];
+    const [selectedDepartments, setSelectedDepartments] = useState({});
+    const [confirmDialog, setConfirmDialog] = useState({
+        isOpen: false,
+        employeeId: null,
+        departmentId: null,
+    });
 
+    useEffect(() => {
+        fetchDepartmentData();
+        fetchEmployeeData();
+    }, []);
 
-    const [employeeData, setEmployeeData] = useState([
-        { id: 1, employeeName: "John Doe", email: "john@example.com", department: "HR", status: "n" },
-        { id: 2, employeeName: "Jane Smith", email: "jane@example.com", department: "IT", status: "n" },
-        { id: 2, employeeName: "Jane Smith", email: "jane@example.com", department: "IT", status: "n" },
-        { id: 2, employeeName: "Jane Smith", email: "jane@example.com", department: "IT", status: "n" },
-
-    ]);
-
-    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, employeeId: null, newStatus: false });
-    const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
-
-    const filteredEmployees = employeeData.filter(employee =>
-        employee.employeeName.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    const handleSearch = (e) => {
-        setSearchQuery(e.target.value);
-        setCurrentPage(1); // Reset to first page when search changes
+    const fetchDepartmentData = async () => {
+        setLoading(true);
+        try {
+            const data = await getRequest(`${DEPARTMENT}/getAllDepartments/1`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setDepartmentData(data.response);
+            } else {
+                setDepartmentData([]);
+            }
+        } catch (error) {
+            console.error("Error fetching Department data:", error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    
+    const fetchEmployeeData = async () => {
+        setLoading(true);
+        try {
+            const data = await getRequest(`${EMPLOYEE_REGISTRATION}/status/S`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                const cleanedEmployees = data.response.map((emp) => ({
+                    ...emp,
+                    department: emp.department?.id
+                        ? {
+                            id: emp.department.id,
+                            departmentName: emp.department.departmentName,
+                        }
+                        : null,
+                }));
+                setEmployeeData(cleanedEmployees);
 
-
-
-    const showPopup = (message, type = 'info') => {
-        setPopupMessage({
-            message,
-            type,
-            onClose: () => {
-                setPopupMessage(null);
+                // Initialize the selectedDepartments object with current values
+                const initialDeptSelections = {};
+                cleanedEmployees.forEach(emp => {
+                    if (emp.department?.id) {
+                        initialDeptSelections[emp.id] = emp.department.id;
+                    }
+                });
+                setSelectedDepartments(initialDeptSelections);
+            } else {
+                setEmployeeData([]);
             }
+        } catch (error) {
+            console.error("Error fetching Employee data:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDepartmentChange = (employeeId, departmentId) => {
+        setSelectedDepartments({
+            ...selectedDepartments,
+            [employeeId]: departmentId
         });
     };
 
-
-
-   
-
-    const handleActivate = (id) => {
-        setConfirmDialog({ isOpen: true, employeeId: id, newStatus: "y" });
+    const openConfirmDialog = (employeeId, departmentId) => {
+        setConfirmDialog({
+            isOpen: true,
+            employeeId,
+            departmentId
+        });
     };
 
-    const handleDepartmentChange = (employeeId, newDepartment) => {
-        setEmployeeData(prevData =>
-            prevData.map(employee =>
-                employee.id === employeeId ? { ...employee, department: newDepartment } : employee
-            )
-        );
-    };
-
-    const handleConfirm = (confirmed) => {
-        if (confirmed && confirmDialog.employeeId !== null) {
-            setEmployeeData(prevData =>
-                prevData.map(employee =>
-                    employee.id === confirmDialog.employeeId ? { ...employee, status: confirmDialog.newStatus } : employee
-                )
-            );
-            showPopup("Employee activated successfully!", "success");
+    const handleConfirm = async (confirmed) => {
+        if (confirmed) {
+            await approveEmployee(confirmDialog.employeeId, confirmDialog.departmentId);
         }
-        setConfirmDialog({ isOpen: false, employeeId: null, newStatus: null });
+
+        setConfirmDialog({
+            isOpen: false,
+            employeeId: null,
+            departmentId: null
+        });
     };
 
-    const filteredTotalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+    const approveEmployee = async (employeeId, departmentId) => {
+        setLoading(true);
+        try {
+            const response = await putRequest(`${EMPLOYEE_REGISTRATION}/approve/${employeeId}/${departmentId}`);
+
+            if (response.status === 200) {
+                showPopup("Employee approved successfully", "success");
+                fetchEmployeeData();
+            } else {
+                showPopup("Failed to approve employee: " + (response.message || "Unknown error"), "error");
+            }
+        } catch (error) {
+            console.error("Error approving employee:", error);
+            showPopup("Error approving employee: " + (error.message || "Unknown error"), "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const filteredEmployees = employeeData.filter((employee) =>
+        `${employee.firstName} ${employee.middleName} ${employee.lastName}`
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase())
+    );
 
     const currentItems = filteredEmployees.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
+
+    const filteredTotalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+
+    const showPopup = (message, type = "info") => {
+        setPopupMessage({
+            message,
+            type,
+            onClose: () => setPopupMessage(null),
+        });
+    };
+
+    const handleSearch = (e) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1);
+    };
 
     const handlePageNavigation = () => {
         const pageNumber = parseInt(pageInput, 10);
@@ -135,179 +199,200 @@ const Approveemployee = () => {
         ));
     };
 
+    const getDepartmentName = (deptId) => {
+        const dept = departmentData.find(d => d.id === deptId);
+        return dept ? dept.departmentName : "";
+    };
+
     return (
         <div className="content-wrapper">
-            <div className="row">
-                <div className="col-12 grid-margin stretch-card">
-                    <div className="card form-card">
-                        <div className="card-header d-flex justify-content-between align-items-center">
-                            <h4 className="card-title">Approve Employee</h4>
-                            <div className="d-flex justify-content-between align-items-center">
-                                    <form className="d-inline-block searchform me-4" role="search">
-                                        <div className="input-group searchinput">
-                                            <input
-                                                type="search"
-                                                className="form-control"
-                                                placeholder="Search Employees"
-                                                aria-label="Search"
-                                                value={searchQuery}
-                                                onChange={handleSearch}
-                                            />
-                                            <span className="input-group-text" id="search-icon">
-                                                <i className="fa fa-search"></i>
-                                            </span>
-                                        </div>
-                                    </form>
-                               
+            {loading && <LoadingScreen />}
+            {popupMessage && (
+                <Popup
+                    message={popupMessage.message}
+                    type={popupMessage.type}
+                    onClose={popupMessage.onClose}
+                />
+            )}
+
+            <div className="card form-card">
+                <div className="card-header d-flex justify-content-between align-items-center">
+                    <h4 className="card-title">Approve Employee</h4>
+                    <form className="d-inline-block searchform me-4" role="search">
+                        <div className="input-group searchinput">
+                            <input
+                                type="search"
+                                className="form-control"
+                                placeholder="Search Employees"
+                                value={searchQuery}
+                                onChange={handleSearch}
+                            />
+                            <span className="input-group-text">
+                                <i className="fa fa-search"></i>
+                            </span>
+                        </div>
+                    </form>
+                </div>
+
+                <div className="card-body">
+                    <div className="table-responsive packagelist">
+                        <table className="table table-bordered table-hover align-middle">
+                            <thead className="table-light">
+                                <tr>
+                                    <th>Employee Name</th>
+                                    <th>Mobile No.</th>
+                                    <th>Department</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {currentItems.map((employee) => (
+                                    <tr key={employee.employeeId}>
+                                        <td>
+                                            {employee.firstName} {employee.middleName} {employee.lastName}
+                                        </td>
+                                        <td>{employee.mobileNo}</td>
+                                        <td>
+                                            <select
+                                                className="form-select"
+                                                value={selectedDepartments[employee.employeeId] || ""}
+                                                onChange={(e) => handleDepartmentChange(employee.employeeId, e.target.value)}
+                                                required
+                                            >
+                                                <option value="" disabled>Select Department</option>
+                                                {departmentData.map((dept) => (
+                                                    <option key={dept.id} value={dept.id}>
+                                                        {dept.departmentName}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <button
+                                                className="btn btn-warning"
+                                                disabled={!selectedDepartments[employee.employeeId]}
+                                                onClick={() => openConfirmDialog(employee.employeeId, selectedDepartments[employee.employeeId])}
+                                            >
+                                                <i className="mdi mdi-check"></i> Approve
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+
+                        {filteredEmployees.length === 0 && (
+                            <div className="text-center py-4">No employees found</div>
+                        )}
+
+                        <nav className="d-flex justify-content-between align-items-center mt-3">
+                            <span>
+                                Page {currentPage} of {filteredTotalPages} | Total Records:{" "}
+                                {filteredEmployees.length}
+                            </span>
+                            <ul className="pagination mb-0">
+                                <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                                    <button
+                                        className="page-link"
+                                        onClick={() => setCurrentPage(currentPage - 1)}
+                                        disabled={currentPage === 1}
+                                    >
+                                        &laquo; Previous
+                                    </button>
+                                </li>
+                                {renderPagination()}
+                                <li
+                                    className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}
+                                >
+                                    <button
+                                        className="page-link"
+                                        onClick={() => setCurrentPage(currentPage + 1)}
+                                        disabled={currentPage === filteredTotalPages}
+                                    >
+                                        Next &raquo;
+                                    </button>
+                                </li>
+                            </ul>
+                            <div className="d-flex align-items-center">
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max={filteredTotalPages}
+                                    value={pageInput}
+                                    onChange={(e) => setPageInput(e.target.value)}
+                                    placeholder="Go to page"
+                                    className="form-control me-2"
+                                    style={{ width: "100px" }}
+                                />
+                                <button className="btn btn-primary" onClick={handlePageNavigation}>
+                                    Go
+                                </button>
+                            </div>
+                        </nav>
+                    </div>
+
+
+
+                    {confirmDialog.isOpen && (
+                        <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                            <div className="modal-dialog" role="document">
+                                <div className="modal-content">
+                                    <div className="modal-header">
+                                        <h5 className="modal-title">Confirm Approval</h5>
+                                        <button
+                                            type="button"
+                                            className="close"
+                                            onClick={() => handleConfirm(false)}
+                                        >
+                                            <span>&times;</span>
+                                        </button>
+                                    </div>
+                                    <div className="modal-body">
+                                        <p>
+                                            Are you sure you want to approve{" "}
+                                            <strong>
+                                                {
+                                                    employeeData.find(
+                                                        (emp) => emp.id === confirmDialog.employeeId
+                                                    )?.firstName
+                                                }{" "}
+                                                {
+                                                    employeeData.find(
+                                                        (emp) => emp.id === confirmDialog.employeeId
+                                                    )?.lastName
+                                                }
+                                            </strong>
+                                            {" "} with department{" "}
+                                            <strong>
+                                                {getDepartmentName(confirmDialog.departmentId)}
+                                            </strong>
+                                            ?
+                                        </p>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button
+                                            type="button"
+                                            className="btn btn-secondary"
+                                            onClick={() => handleConfirm(false)}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary"
+                                            onClick={() => handleConfirm(true)}
+                                        >
+                                            Confirm
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div className="card-body">
-                                <div className="table-responsive packagelist">
-                                    <table className="table table-bordered table-hover align-middle">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th>Employee Name</th>
-                                                <th>Email</th>
-                                                <th>Department</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentItems.map(employee => (
-                                                <tr key={employee.id}>
-                                                    <td>{employee.employeeName}</td>
-                                                    <td>{employee.email}</td>
-                                                    <td>
-                                                        <select
-                                                            className="form-control"
-                                                            value={employee.department}
-                                                            onChange={(e) => handleDepartmentChange(employee.id, e.target.value)}
-                                                        >
-                                                            <option value="">Select Department</option>
-                                                            {departmentOptions.map((dept, index) => (
-                                                                <option key={index} value={dept}>
-                                                                    {dept}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            type="button"
-                                                            className="btn btn-warning me-2"
-                                                            onClick={() => handleActivate(employee.id)}
-                                                            disabled={employee.status === "y"}
-                                                        >
-                                                            <i className="mdi mdi-check"></i> {employee.status === "y" ? "Activated" : "Activate"}
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                                        <div>
-                                            <span>
-                                                Page {currentPage} of {filteredTotalPages} | Total Records: {filteredEmployees.length}
-                                            </span>
-                                        </div>
-                                        <ul className="pagination mb-0">
-                                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                                <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage - 1)}
-                                                    disabled={currentPage === 1}
-                                                >
-                                                    &laquo; Previous
-                                                </button>
-                                            </li>
-                                            {renderPagination()}
-                                            <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                                <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage + 1)}
-                                                    disabled={currentPage === filteredTotalPages}
-                                                >
-                                                    Next &raquo;
-                                                </button>
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex align-items-center">
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max={filteredTotalPages}
-                                                value={pageInput}
-                                                onChange={(e) => setPageInput(e.target.value)}
-                                                placeholder="Go to page"
-                                                className="form-control me-2"
-                                            />
-                                            <button
-                                                className="btn btn-primary"
-                                                onClick={handlePageNavigation}
-                                            >
-                                                Go
-                                            </button>
-                                        </div>
-                                    </nav>
-                                </div>
-                            
-                            {showModal && (
-                                <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
-                                    <div className="modal-dialog">
-                                        <div className="modal-content">
-                                            <div className="modal-header">
-                                                <h1 className="modal-title fs-5" id="staticBackdropLabel">Modal title</h1>
-                                                <button type="button" className="btn-close" onClick={() => setShowModal(false)} aria-label="Close"></button>
-                                            </div>
-                                            <div className="modal-body">
-                                                {/* Your modal content goes here */}
-                                                ...
-                                            </div>
-                                            <div className="modal-footer">
-                                                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
-                                                <button type="button" className="btn btn-primary">Understood</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            {popupMessage && (
-                                <Popup
-                                    message={popupMessage.message}
-                                    type={popupMessage.type}
-                                    onClose={popupMessage.onClose}
-                                />
-                            )}
-                            {confirmDialog.isOpen && (
-                                <div className="modal d-block" tabIndex="-1" role="dialog">
-                                    <div className="modal-dialog" role="document">
-                                        <div className="modal-content">
-                                            <div className="modal-header">
-                                                <h5 className="modal-title">Confirm Status Change</h5>
-                                                <button type="button" className="close" onClick={() => handleConfirm(false)}>
-                                                    <span>&times;</span>
-                                                </button>
-                                            </div>
-                                            <div className="modal-body">
-                                                <p>
-                                                    Are you sure you want to activate <strong>{employeeData.find(employee => employee.id === confirmDialog.employeeId)?.employeeName}</strong>?
-                                                </p>
-                                            </div>
-                                            <div className="modal-footer">
-                                                <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                                                <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>
-    )
-}
+    );
+};
 
 export default Approveemployee;

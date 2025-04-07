@@ -20,6 +20,7 @@ const AppointmentSetup = () => {
   const [loading, setLoading] = useState(false);
   const [appointmentData, setAppointmentData] = useState(null);
   const [modifiedFields, setModifiedFields] = useState({});
+  const [dataFromDB, setDataFromDB] = useState(false);
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -33,13 +34,14 @@ const AppointmentSetup = () => {
 
   const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const initialDaysState = daysOfWeek.reduce((acc, day) => {
+    const isWeekend = day === "Sunday" || day === "Saturday";
     acc[day] = {
-      startToken: "",
-      totalInterval: "",
-      totalToken: "",
-      totalOnlineToken: "",
-      maxNoOfDays: "",
-      minNoOfDays: ""
+      startToken: isWeekend ? "0" : "",
+      totalInterval: isWeekend ? "0" : "",
+      totalToken: isWeekend ? "0" : "",
+      totalOnlineToken: isWeekend ? "0" : "",
+      maxNoOfDays: isWeekend ? "0" : "30",
+      minNoOfDays: isWeekend ? "0" : "1"
     };
     return acc;
   }, {});
@@ -67,11 +69,11 @@ const AppointmentSetup = () => {
           (dept) => dept.departmentTypeName === "OPD"
         );
         setDepartmentData(data.response);
-        setFilterDepartment(filteredDepartments); // Set filtered OPD departments
+        setFilterDepartment(filteredDepartments);
       } else {
         console.error("Unexpected API response format:", data);
         setDepartmentData([]);
-        setFilterDepartment([]); // Reset filtered data in case of unexpected response
+        setFilterDepartment([]);
       }
     } catch (error) {
       console.error("Error fetching Department data:", error);
@@ -132,24 +134,24 @@ const AppointmentSetup = () => {
         setStartTime(startTime);
         setEndTime(endTime);
         setTimeTaken(timeTaken);
+        setDataFromDB(true);
+
         if (Array.isArray(days)) {
           const updatedDaysConfig = { ...initialDaysState };
           days.forEach((dayConfig) => {
             const dayName = dayConfig.days || dayConfig.day;
             if (dayName && updatedDaysConfig[dayName]) {
               updatedDaysConfig[dayName] = {
-                startToken: dayConfig.startToken !== null ? dayConfig.startToken : "",
-                totalInterval: dayConfig.totalInterval !== null ? dayConfig.totalInterval : "",
-                totalToken: dayConfig.totalToken !== null ? dayConfig.totalToken : "",
-                totalOnlineToken: dayConfig.totalOnlineToken !== null ? dayConfig.totalOnlineToken : "",
-                maxNoOfDays: dayConfig.maxNoOfDays !== null ? dayConfig.maxNoOfDays : "",
-                minNoOfDays: dayConfig.minNoOfDays !== null ? dayConfig.minNoOfDays : ""
+                startToken: dayConfig.startToken !== null ? String(dayConfig.startToken) : "",
+                totalInterval: dayConfig.totalInterval !== null ? String(dayConfig.totalInterval) : "",
+                totalToken: dayConfig.totalToken !== null ? String(dayConfig.totalToken) : "",
+                totalOnlineToken: dayConfig.totalOnlineToken !== null ? String(dayConfig.totalOnlineToken) : "",
+                maxNoOfDays: dayConfig.maxNoOfDays !== null ? String(dayConfig.maxNoOfDays) : "30",
+                minNoOfDays: dayConfig.minNoOfDays !== null ? String(dayConfig.minNoOfDays) : "1"
               };
             }
           });
           setDaysConfig(updatedDaysConfig);
-
-
           setOriginalDaysConfig(JSON.parse(JSON.stringify(updatedDaysConfig)));
         }
       } else {
@@ -159,40 +161,90 @@ const AppointmentSetup = () => {
         setEndTime("");
         setTimeTaken("");
         setOriginalDaysConfig(initialDaysState);
+        setDataFromDB(false);
       }
     } catch (error) {
       console.error("Error fetching appointment data:", error);
+      setDataFromDB(false);
     } finally {
       setLoading(false);
     }
   };
 
+  const calculateOnlineToken = (totalToken, totalInterval) => {
+    if (!totalToken || !totalInterval || parseInt(totalInterval) === 0) {
+      return "0";
+    }
+
+    const calculatedValue = parseInt(totalToken) / parseInt(totalInterval);
+    return String(Math.ceil(calculatedValue));
+  };
+
   const handleDayConfigChange = (day, field, value) => {
+    const stringValue = value === 0 || value ? String(value) : "";
+    const isWeekend = day === "Sunday" || day === "Saturday";
+
+    const updatedDayConfig = { ...daysConfig[day] };
+
+    updatedDayConfig[field] = stringValue;
+
+
+    if (field === "totalToken" && (stringValue === "0" || stringValue === "")) {
+      updatedDayConfig.startToken = "0";
+      updatedDayConfig.totalInterval = "0";
+      updatedDayConfig.totalOnlineToken = "0";
+    }
+
+    if ((field === "totalInterval" && (stringValue === "0" || stringValue === "")) ||
+      (field === "totalToken" && (updatedDayConfig.totalToken === "0" || updatedDayConfig.totalToken === ""))) {
+      updatedDayConfig.totalOnlineToken = "0";
+    } else if (field === "totalInterval" || field === "totalToken") {
+      updatedDayConfig.totalOnlineToken = calculateOnlineToken(
+        updatedDayConfig.totalToken,
+        updatedDayConfig.totalInterval
+      );
+    }
+
+    if (field === "minNoOfDays") {
+      const minVal = parseInt(stringValue) || 0;
+      const maxVal = parseInt(updatedDayConfig.maxNoOfDays) || 30;
+      if (minVal > maxVal) {
+        updatedDayConfig.minNoOfDays = updatedDayConfig.maxNoOfDays;
+      }
+    }
+
+    if (field === "maxNoOfDays") {
+      const maxVal = parseInt(stringValue) || 30;
+      const minVal = parseInt(updatedDayConfig.minNoOfDays) || 1;
+      if (maxVal < minVal) {
+        updatedDayConfig.minNoOfDays = String(maxVal);
+      }
+    }
+
     setDaysConfig({
       ...daysConfig,
-      [day]: {
-        ...daysConfig[day],
-        [field]: value
-      }
+      [day]: updatedDayConfig
     });
 
-    const originalValue = originalDaysConfig[day][field];
-    const isModified = value !== originalValue;
+    if (dataFromDB) {
+      const originalValue = originalDaysConfig[day][field];
+      const isModified = stringValue !== originalValue;
 
-    if (isModified) {
-      setModifiedFields({
-        ...modifiedFields,
-        [`${day}-${field}`]: true
-      });
-    } else {
-      const newModifiedFields = { ...modifiedFields };
-      delete newModifiedFields[`${day}-${field}`];
-      setModifiedFields(newModifiedFields);
+      if (isModified) {
+        setModifiedFields({
+          ...modifiedFields,
+          [`${day}-${field}`]: true
+        });
+      } else {
+        const newModifiedFields = { ...modifiedFields };
+        delete newModifiedFields[`${day}-${field}`];
+        setModifiedFields(newModifiedFields);
+      }
     }
   };
 
   const isFieldModified = (day, field) => {
-    return modifiedFields[`${day}-${field}`] === true;
+    return dataFromDB && modifiedFields[`${day}-${field}`] === true;
   };
 
   const handleSubmit = async (e) => {
@@ -252,6 +304,7 @@ const AppointmentSetup = () => {
     setAppointmentData(null);
     setModifiedFields({});
     setOriginalDaysConfig(initialDaysState);
+    setDataFromDB(false);
   };
 
   return (
@@ -264,12 +317,9 @@ const AppointmentSetup = () => {
               type={popupMessage.type}
               onClose={popupMessage.onClose}
             />
-
           )}
-          {loading && (
-            <LoadingScreen />
 
-          )}
+          {loading && <LoadingScreen />}
 
           <div className="row align-items-center">
             <div className="border-0 mb-4">
@@ -317,7 +367,6 @@ const AppointmentSetup = () => {
                             </option>
                           ))}
                         </select>
-
                       </div>
 
                       <div className="col-md-4">
@@ -365,7 +414,7 @@ const AppointmentSetup = () => {
                           type="number"
                           className="form-control"
                           value={timeTaken}
-                          onChange={(e) => setTimeTaken(parseInt(e.target.value))}
+                          onChange={(e) => setTimeTaken(e.target.value ? parseInt(e.target.value) : "")}
                           required
                         />
                       </div>
@@ -389,58 +438,56 @@ const AppointmentSetup = () => {
                                 <td>{day}</td>
                                 <td>
                                   <input
-                                    type="text"
+                                    type="number"
                                     className="form-control"
-                                    style={{ backgroundColor: isFieldModified(day, "startToken") ? "#d4edda" : "" }}
+                                    style={{ backgroundColor: isFieldModified(day, "startToken") ? "#55bf70" : "" }}
                                     value={daysConfig[day].startToken}
-                                    onChange={(e) => handleDayConfigChange(day, "startToken", e.target.value === "" ? "" : parseInt(e.target.value))}
+                                    onChange={(e) => handleDayConfigChange(day, "startToken", e.target.value)}
                                   />
                                 </td>
                                 <td>
                                   <input
-                                    type="text"
+                                    type="number"
                                     className="form-control"
-                                    style={{ backgroundColor: isFieldModified(day, "totalInterval") ? "#d4edda" : "" }}
+                                    style={{ backgroundColor: isFieldModified(day, "totalInterval") ? "#55bf70" : "" }}
                                     value={daysConfig[day].totalInterval}
-                                    onChange={(e) => handleDayConfigChange(day, "totalInterval", e.target.value === "" ? "" : parseInt(e.target.value))}
+                                    onChange={(e) => handleDayConfigChange(day, "totalInterval", e.target.value)}
                                   />
                                 </td>
                                 <td>
                                   <input
-                                    type="text"
+                                    type="number"
                                     className="form-control"
-                                    style={{ backgroundColor: isFieldModified(day, "totalToken") ? "#d4edda" : "" }}
+                                    style={{ backgroundColor: isFieldModified(day, "totalToken") ? "#55bf70" : "" }}
                                     value={daysConfig[day].totalToken}
-                                    onChange={(e) => handleDayConfigChange(day, "totalToken", e.target.value === "" ? "" : parseInt(e.target.value) || 0)}
+                                    onChange={(e) => handleDayConfigChange(day, "totalToken", e.target.value)}
                                   />
                                 </td>
                                 <td>
                                   <input
-                                    type="text"
+                                    type="number"
                                     className="form-control"
-                                    style={{ backgroundColor: isFieldModified(day, "totalOnlineToken") ? "#d4edda" : "" }}
+                                    style={{ backgroundColor: isFieldModified(day, "totalOnlineToken") ? "#55bf70" : "" }}
                                     value={daysConfig[day].totalOnlineToken}
-                                    onChange={(e) =>
-                                      handleDayConfigChange(day, "totalOnlineToken", e.target.value === "" ? "" : parseInt(e.target.value) || 0)
-                                    }
+                                    onChange={(e) => handleDayConfigChange(day, "totalOnlineToken", e.target.value)}
                                   />
                                 </td>
                                 <td>
                                   <input
-                                    type="text"
+                                    type="number"
                                     className="form-control"
-                                    style={{ backgroundColor: isFieldModified(day, "maxNoOfDays") ? "#d4edda" : "" }}
+                                    style={{ backgroundColor: isFieldModified(day, "maxNoOfDays") ? "#55bf70" : "" }}
                                     value={daysConfig[day].maxNoOfDays}
-                                    onChange={(e) => handleDayConfigChange(day, "maxNoOfDays", e.target.value === "" ? "" : parseInt(e.target.value) || 0)}
+                                    onChange={(e) => handleDayConfigChange(day, "maxNoOfDays", e.target.value)}
                                   />
                                 </td>
                                 <td>
                                   <input
-                                    type="text"
+                                    type="number"
                                     className="form-control"
-                                    style={{ backgroundColor: isFieldModified(day, "minNoOfDays") ? "#d4edda" : "" }}
+                                    style={{ backgroundColor: isFieldModified(day, "minNoOfDays") ? "#55bf70" : "" }}
                                     value={daysConfig[day].minNoOfDays}
-                                    onChange={(e) => handleDayConfigChange(day, "minNoOfDays", e.target.value === "" ? "" : parseInt(e.target.value) || 0)}
+                                    onChange={(e) => handleDayConfigChange(day, "minNoOfDays", e.target.value)}
                                   />
                                 </td>
                               </tr>
@@ -449,11 +496,18 @@ const AppointmentSetup = () => {
                         </table>
                       </div>
                     </div>
+                    <div className="mt-2">
+
+                      <div className="d-flex align-items-center mb-2">
+                        <div style={{ width: '20px', height: '20px', backgroundColor: '#55bf70', marginRight: '10px' }}></div>
+                        <span>Modified database data</span>
+                      </div>
+
+                    </div>
                     <div className="mt-4">
                       <button type="submit" className="btn btn-primary me-2" disabled={loading}>
                         {loading ? "Processing..." : appointmentData ? "Update Appointment" : "Create Appointment"}
                       </button>
-
                       <button type="button" className="btn btn-secondary" onClick={handleReset}>Reset</button>
                     </div>
                   </form>

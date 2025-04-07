@@ -46,7 +46,7 @@ const EmployeeRegistration = () => {
     const [idTypeData, setIdTypeData] = useState([]);
     const [countryIds, setCountryIds] = useState("");
     const [stateIds, setStateIds] = useState("");
-    const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhYmNAZ21haWwuY29tIiwiaG9zcGl0YWxJZCI6MSwiZW1wbG95ZWVJZCI6MSwiZXhwIjoxNzQ0MTc2MTQ1LCJ1c2VySWQiOjQsImlhdCI6MTc0MzU3MTM0NX0.3PZYyg8u5o_vdifT-Zoyg259CnLrvFEl0EBdqccndzDOsUwxVwClToST3s6BnQQGP0CnUjijpix9nguuqBz0ow";
+    const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhYmNAZ21haWwuY29tIiwiaG9zcGl0YWxJZCI6MSwiZW1wbG95ZWVJZCI6MSwiZXhwIjoxNzQ0NjE3MDk3LCJ1c2VySWQiOjQsImlhdCI6MTc0NDAxMjI5N30.ozKxfQcQUz1tuUgwxCSlwchFnEjfFJg89MeMmUlil13v3bjH-k9TvFnYhsz4k4gsFOyYq9pkwp5xbA1lkQ-6NQ";
 
     useEffect(() => {
         fetchCountryData();
@@ -894,7 +894,7 @@ const EmployeeRegistration = () => {
                         <button
                             onClick={handleCreate}
                             type="button"
-                            className="btn btn-secondary me-2"
+                            className="btn btn-primary me-2"
                             disabled={loading}
                         >
                             {loading ? "Saving..." : "Save"}
