@@ -117,7 +117,7 @@ const Gendermaster = () => {
           genderCode: formData.genderCode,
           genderName: formData.genderName,
           code: null,
-          status: "n"
+          status: "y"
         });
 
         const isDuplicate = genderData.some(

@@ -110,7 +110,7 @@ const CountryMaster = () => {
                 const response = await axios.post(`${API_HOST}${COUNTRYAPI}/create`, {
                     countryCode: formData.countryCode,
                     countryName: formData.countryName,
-                    status: "n",
+                    status: "y",
                 });
     
                 if (response.data && response.data.status === 200) {

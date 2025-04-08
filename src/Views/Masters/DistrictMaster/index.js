@@ -141,7 +141,7 @@ const DistrictMaster = () => {
                     districtCode: Date.now().toString().slice(-8), 
                     districtName: formData.districtName,
                     stateId: formData.stateId, 
-                    status: "n",
+                    status: "y",
                 });
 
                 if (response.data && response.data.status === 200) {

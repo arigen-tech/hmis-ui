@@ -132,7 +132,7 @@ const Relationmaster = () => {
         const response = await postRequest(`${RELATION}/add`, {
           relationName: formData.relationName,
           code: formData.code,
-          status: "n",
+          status: "y",
         });
         
         if (response && response.response) {

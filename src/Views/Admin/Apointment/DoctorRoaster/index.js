@@ -15,6 +15,7 @@ const DoctorRoaster = () => {
   const [popup, setPopup] = useState("");
   const [popupMessage, setPopupMessage] = useState("");
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [originalRosterData, setOriginalRosterData] = useState(null); // To track original data from database
   const jwtToken = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhYmNAZ21haWwuY29tIiwiaG9zcGl0YWxJZCI6MSwiZW1wbG95ZWVJZCI6MSwiZXhwIjoxNzQ0Mjc5MDc0LCJ1c2VySWQiOjQsImlhdCI6MTc0MzY3NDI3NH0._lLEDlJG85GljjCscLe7l7YHyNAFg0h25JSseZvfvTMA1-7BDwGX7vPRzemg-yHyYm8jAUHREJ_leEst1x20lA";
 
   localStorage.setItem("token", jwtToken);
@@ -122,7 +123,8 @@ const DoctorRoaster = () => {
         dates: date,
         rosterVale: "YY", 
         doctorId: doctorInfo.id,
-        id: null 
+        id: null,
+        fromDatabase: false
       }))
     );
   
@@ -151,7 +153,11 @@ const DoctorRoaster = () => {
 
       let mergedDates = [];
       if (existingRosterResponse.response && existingRosterResponse.response.dates) {
-        const existingDates = existingRosterResponse.response.dates;
+        const existingDates = existingRosterResponse.response.dates.map(date => ({
+          ...date,
+          fromDatabase: true,
+          modified: false     
+        }));
 
         const existingDatesMap = new Map();
         existingDates.forEach(date => {
@@ -182,6 +188,9 @@ const DoctorRoaster = () => {
         dates: mergedDates
       };
 
+      const originalData = JSON.parse(JSON.stringify(rosterData));
+      setOriginalRosterData(originalData);
+      
       setRosterDoctorData(rosterData);
     } catch (error) {
       console.error("Error preparing roster data:", error);
@@ -215,7 +224,17 @@ const DoctorRoaster = () => {
             newRosterValue = "YY";
         }
 
-        return { ...item, rosterVale: newRosterValue };
+        const originalItem = originalRosterData?.dates.find(orig => 
+          orig.doctorId === doctorId && orig.dates === date
+        );
+        
+        const modified = originalItem ? originalItem.rosterVale !== newRosterValue : false;
+
+        return { 
+          ...item, 
+          rosterVale: newRosterValue,
+          modified: item.fromDatabase && modified 
+        };
       }
       return item;
     });
@@ -255,7 +274,13 @@ const DoctorRoaster = () => {
 
     try {
       const endpoint = `${DOCTOR_ROSTER}/roster`;
-      const response = await postRequest(endpoint, rosterDoctorData);
+      
+      const dataToSend = {
+        ...rosterDoctorData,
+        dates: rosterDoctorData.dates.map(({ fromDatabase, modified, ...rest }) => rest)
+      };
+      
+      const response = await postRequest(endpoint, dataToSend);
 
       if (response.status === 200) {
         showPopup("Roster saved successfully!", "success");
@@ -277,6 +302,17 @@ const DoctorRoaster = () => {
     setDoctor("");
     setFromDate("");
     setRosterDoctorData(null);
+    setOriginalRosterData(null);
+  };
+
+  const getCheckboxStyle = (dateItem) => {
+    if (dateItem.fromDatabase && dateItem.modified) {
+      return { backgroundColor: "#55bf70", borderColor: "#55bf70" }; // Green
+    } 
+    else if (dateItem.fromDatabase) {
+      return { backgroundColor: "#e35d6a", borderColor: "#e35d6a" }; // Red
+    }
+    return {};
   };
 
   const renderRosterTable = () => {
@@ -333,6 +369,10 @@ const DoctorRoaster = () => {
 
                     const isDisabled = isDateDisabled(date);
                     const rosterValue = dateItem.rosterVale;
+                    
+                    // Get styles based on data source
+                    const morningStyle = rosterValue === "YY" || rosterValue === "YN" ? getCheckboxStyle(dateItem) : {};
+                    const eveningStyle = rosterValue === "YY" || rosterValue === "NY" ? getCheckboxStyle(dateItem) : {};
 
                     return (
                       <td key={date} className="text-center">
@@ -343,6 +383,7 @@ const DoctorRoaster = () => {
                             checked={rosterValue === "YY" || rosterValue === "YN"}
                             onChange={() => handleCheckboxChange(doctorId, date, 'morning')}
                             disabled={isDisabled}
+                            style={morningStyle}
                           />
                           <label 
                             className={`form-check-label ${isDisabled ? 'text-muted' : ''}`}
@@ -357,6 +398,7 @@ const DoctorRoaster = () => {
                             checked={rosterValue === "YY" || rosterValue === "NY"}
                             onChange={() => handleCheckboxChange(doctorId, date, 'evening')}
                             disabled={isDisabled}
+                            style={eveningStyle}
                           />
                           <label 
                             className={`form-check-label ${isDisabled ? 'text-muted' : ''}`}
@@ -372,6 +414,20 @@ const DoctorRoaster = () => {
             })}
           </tbody>
         </table>
+        <div className="mt-2">
+          <div className="d-flex align-items-center mb-2">
+            <div style={{width: '20px', height: '20px', backgroundColor: '#e35d6a', marginRight: '10px'}}></div>
+            <span>Data from database</span>
+          </div>
+          <div className="d-flex align-items-center mb-2">
+            <div style={{width: '20px', height: '20px', backgroundColor: '#55bf70', marginRight: '10px'}}></div>
+            <span>Modified database data</span>
+          </div>
+          <div className="d-flex align-items-center">
+            <div style={{width: '20px', height: '20px', backgroundColor: '#0d6efd', marginRight: '10px'}}></div>
+            <span>New data</span>
+          </div>
+        </div>
       </div>
     );
   };

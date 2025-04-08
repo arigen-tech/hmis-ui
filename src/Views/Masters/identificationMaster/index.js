@@ -136,7 +136,7 @@ const Identificationmaster = () => {
         const response = await postRequest(`${IDENTITY_TYPE}/create`, {
           identificationCode: formData.identificationCode,
           identificationName: formData.identificationName,
-          status: "n",
+          status: "y",
         });
 
         if (response && response.response) {

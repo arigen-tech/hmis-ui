@@ -147,7 +147,7 @@ const Templatemaster = () => {
                 const response = await postRequest(`${TEMPLATES}/create`, {
                     templateCode: formData.templateCode,
                     templateName: formData.templateName,
-                    status: "n"
+                    status: "y"
                 });
     
                 console.log("Create Response:", response);

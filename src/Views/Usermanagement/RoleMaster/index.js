@@ -154,7 +154,7 @@ const Rolemaster = () => {
                 const response = await postRequest(`${ROLE}/create`, {
                     roleCode: formData.roleCode,
                     roleDesc: formData.roleDesc,
-                    status: "n",
+                    status: "y",
                 });
     
                 console.log("Create Response:", response);

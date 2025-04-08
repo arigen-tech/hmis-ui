@@ -130,7 +130,7 @@ const Departmenttype = () => {
                 const response = await axios.post(`${API_HOST}${DEPARTMENT_TYPE}/create`, {
                     departmentTypeCode: formData.departmentTypeCode,
                     departmentTypeName: formData.departmentTypeName,
-                    status: "n",
+                    status: "y",
                 });
 
                 if (response.data && response.data.response) {
