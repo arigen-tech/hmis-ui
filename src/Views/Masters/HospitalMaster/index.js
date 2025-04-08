@@ -392,7 +392,7 @@ const HospitalMaster = () => {
           regCostApplicable: regCostValue,
           appCostApplicable: appCostValue,
           preConsultationAvailable: preConsultationValue,
-          status: "n",
+          status: "y",
         })
 
         if (response && response.response) {

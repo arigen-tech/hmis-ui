@@ -155,7 +155,7 @@ const Manageuserapplication = () => {
                 const response = await postRequest(`${USER_APPLICATION}/create`, {
                     userAppName: formData.menuName,
                     url: formData.url,
-                    status: "n"
+                    status: "y"
                 });
     
                 console.log("Create Response:", response);

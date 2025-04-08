@@ -132,7 +132,7 @@ const StateMaster = () => {
                     stateCode: formData.stateCode,
                     stateName: formData.stateName,
                     countryId: formData.countryId, 
-                    status: "n",
+                    status: "y",
                 });
 
                 if (response.data && response.data.status === 200) {

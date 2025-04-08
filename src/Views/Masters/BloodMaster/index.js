@@ -120,7 +120,7 @@ const BloodGroupMaster = () => {
         const response = await axios.post(`${API_HOST}${BLOOD_GROUPS}/add`, {
           bloodGroupCode: formData.bloodGroupCode,
           bloodGroupName: formData.bloodGroupName,
-          status: "n",
+          status: "y",
         });
 
         if (response.data && response.data.response) {

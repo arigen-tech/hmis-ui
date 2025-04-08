@@ -112,7 +112,7 @@ const [pageInput, setPageInput] = useState(1);
         // Add new marital status
         const response = await postRequest(`${MARITAL_STATUS}/create`, {
           name: formData.name,
-          status: "n",
+          status: "y",
         });
 
         if (response && response.response) {

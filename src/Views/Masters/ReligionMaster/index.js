@@ -124,7 +124,7 @@ const Religionmaster = () => {
                 
                 const response = await postRequest(`${RELIGION}/add`, {
                     name: formData.religionName,
-                    status: "n", 
+                    status: "y", 
                 });
     
                 if (response && response.status === 200) {

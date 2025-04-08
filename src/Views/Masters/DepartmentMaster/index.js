@@ -236,7 +236,7 @@ const DepartmentMaster = () => {
                     departmentName: formData.departmentName,
                     departmentTypeId: formData.departmentTypeId,
                     departmentNo: formData.departmentNo,
-                    status: "n",
+                    status: "y",
                 });
 
                 if (response.data && response.data.response) {
