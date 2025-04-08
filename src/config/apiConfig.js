@@ -1,5 +1,5 @@
-export const API_HOST = 'https://103.133.215.182:8445';
-// export const API_HOST = 'http://localhost:8080';
+// export const API_HOST = 'https://103.133.215.182:8445';
+export const API_HOST = 'http://localhost:8080';
 // export const API_HOST = 'http://192.168.35.20:8080';
 
 
@@ -11,9 +11,7 @@ export const ALL_DEPARTMENT ="/department/getAllDepartments";
 export const DOCTOR ="/users";
 export const SESSION = "/opd-session";
 export const APPOINTMENT = "/app";
-
 export const LOGIN = "/authController/login";
-
 export const ALL_GENDER="/gender/getAll";
 export const PATIENT_IMAGE_UPLOAD="/patient/image";
 export const ALL_RELATION="/relation/getAllRelations";
@@ -34,24 +32,11 @@ export const ALL_USER_APPLICATION="/applications/getAllUserApplications";
 export const ALL_TEMPLATES="/mas-templates/getAllTemplates";
 export const ALL_APPLICATIONS="/mas-applications/getAllApplications";
 export const ALL_IDENTIFICATION_TYPE="/identification-types/getAllIdentificationTypes";
-
-
-
-
-
-
-
-
-
-
-
 export const COUNTRYAPI = "/country";
 export const STATEAPI = "/state";
 export const DISTRICTAPI = "/district";
 export const GENDERAPI = "/gender";
-
 export const EMPLOYEE = "/employees";
-
 export const BLOOD_GROUPS = "/blood-group";
 export const DEPARTMENT_TYPE ="/department-type";
 export const ROLE="/roles";
@@ -65,13 +50,8 @@ export const TEMPLATES="/mas-templates";
 export const APPLICATION="/mas-applications";
 export const ASSIGN_TEMPLATES="/template-applications";
 export const ROLE_TEMPLATE="/role-template";
-
-
-
-
 export const IDENTITY_TYPE = "/identification-types";
-
 export const DOCTOR_ROSTER = "/doctor";
-
-
+export const GET_DOCTOR_SESSION="/doctor/rosterfind?";
 export const EMPLOYEE_REGISTRATION = "/api/employee";
+export const PATIENT_REGISTRATION="/patient/register";

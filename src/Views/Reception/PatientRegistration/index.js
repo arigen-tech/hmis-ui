@@ -1,6 +1,6 @@
 import React, {useState, useRef, useEffect} from "react";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
-import {getRequest} from "../../../service/apiService";
+import {getRequest, postRequest} from "../../../service/apiService";
 import Swal from "sweetalert2";
 import {
   API_HOST,
@@ -8,7 +8,7 @@ import {
   ALL_GENDER,
   ALL_RELATION,
   DISTRICT_BY_STATE, DOCTOR_BY_SPECIALITY, PATIENT_IMAGE_UPLOAD,
-  STATE_BY_COUNTRY
+  STATE_BY_COUNTRY, GET_DOCTOR_SESSION, PATIENT_REGISTRATION
 } from "../../../config/apiConfig";
 import {DEPARTMENT_CODE_OPD} from "../../../config/constants";
 import axios from "axios";
@@ -31,6 +31,7 @@ const PatientRegistration = () => {
   const [nokDistrictData,setNokDistrictData]=useState([]);
   const [departmentData,setDepartmentData]=useState([]);
   const [doctorData,setDoctorData]=useState([]);
+  const [session,setSession]=useState([]);
   const [formData, setFormData] = useState({
     imageurl:"",
     firstName: "",
@@ -82,7 +83,10 @@ const PatientRegistration = () => {
     emergencyRelationId: "",
     nokRelation: "",
     idealWeight: "",
-    varation:""
+    varation:"",
+    department: "",
+    selDoctorId: "",
+    selSession: ""
 
   });
   const [image, setImage] = useState(placeholderImage);
@@ -192,6 +196,7 @@ const PatientRegistration = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
   const handleAddChange = (e) => {
+    debugger;
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -318,7 +323,7 @@ async function fetchDepartment() {
       const data = await getRequest(`${ALL_DEPARTMENT}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         const filteredDepartments = data.response.filter(
-            (dept) => dept.departmentCode === DEPARTMENT_CODE_OPD
+            (dept) => dept.departmentTypeId === DEPARTMENT_CODE_OPD
         );
         setDepartmentData(filteredDepartments);
       } else {
@@ -334,7 +339,7 @@ async function fetchDepartment() {
 
   function sendRegistrationRequest() {
 console.log(formData);
-
+    sendPatientData();
   }
 
   const sendPatientData = async () => {
@@ -385,65 +390,42 @@ console.log(formData);
         weight: formData.weight,
         pulse: formData.pulse,
         temperature: formData.temperature,
-        opdDate: "2025-03-13T09:13:33.182Z",
+        opdDate: formData.appointmentDate,
         rr: formData.rr,
         bmi: formData.bmi,
         spo2: formData.spo2,
         varation: formData.varation,
         bpSystolic: formData.systolicBP,
         bpDiastolic: formData.diastolicBP,
-        icdDiag: "string",
-        workingDiag: "string",
-        followUpFlag: "string",
-        followUpDays: 0,
-        pastMedicalHistory: "string",
-        presentComplaints: "string",
-        familyHistory: "string",
-        treatmentAdvice: "string",
-        sosFlag: "string",
-        recmmdMedAdvice: "string",
-        medicineFlag: "s",
-        labFlag: "s",
-        radioFlag: "s",
-        referralFlag: "s",
-        mlcFlag: "s",
-        policeStation: "string",
-        policeName: "string",
-        patientId: 0,
-        visitId: 0,
-        departmentId: 0,
-        hospitalId: 0,
-        doctorId: 0,
-        lastChgBy: "string",
       },
       visit: {
-        id: 0,
-        tokenNo: 0,
-        visitDate: "2025-03-13T09:13:33.182Z",
-        visitStatus: "string",
-        priority: 0,
-        departmentId: 0,
-        doctorId: 0,
-        doctorName: "string",
-        patientId: 0,
+        visitDate: formData.appointmentDate,
+        departmentId: formData.department,
+        doctorId: formData.selDoctorId,
+        doctorName: "",
         hospitalId: 0,
-        iniDoctorId: 0,
-        sessionId: 0,
+        sessionId: formData.selSession,
         billingStatus: "string",
       },
     };
+    // requestData.opdPatientDetail=null;
+    // requestData.visit=null;
 
     try {
-      const response = await axios.post("https://your-api-endpoint.com/api/patient", requestData, {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      console.log("Response:", response.data);
+      debugger;
+      const data = await postRequest(`${PATIENT_REGISTRATION}`,requestData);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        console.log(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setDoctorData([]);
+      }
     } catch (error) {
       console.error("Error:", error);
     }
   };
+
+
 
   async function fetchDoctor(value) {
     try {
@@ -459,6 +441,38 @@ console.log(formData);
     } finally {
       setLoading(false);
     }
+  }
+
+  async function fetchSession(doc) {
+
+    console.log(doc.target.value);
+    if(formData.speciality!=''&&doc){
+      console.log(doc);
+      let timestamp = Date.now();
+      let value = new Date(timestamp).toJSON().split('.')[0].split('T')[0];
+      console.log(value);
+      const data = await getRequest(`${GET_DOCTOR_SESSION}deptId=${formData.speciality}&doctorId=${doc.target.value}&rosterDate=${value}`);
+      if(data.status==200){
+        console.log(data.response[0].rosterVal);
+        let sessionVal=[{key:0,value:''},{key:1,value: ''}];
+        if(data.response[0].rosterVal=="YY"){
+          sessionVal=[{key:0,value:'Morning'},{key:1,value: 'Evening'}]
+        }
+        else if (data.response[0].rosterVal=="NY"){
+          sessionVal=[{key:0,value: 'Evening'}]
+        }
+        else if (data.response[0].rosterVal=="YN"){
+          sessionVal=[{key:0,value: 'Morning'}]
+        }
+        setSession(sessionVal);
+      }
+      else{
+        Swal.fire(data.message);
+      }
+
+
+    }
+
   }
 
   return (
@@ -826,28 +840,28 @@ console.log(formData);
                     {/* Pulse */}
                     <div className="col-md-4 d-flex">
                       <label className="form-label me-2">Pulse<span className="text-danger">*</span></label>
-                      <input type="text" className="form-control" placeholder="Pulse" name="pulse" value={formData.pulse} onChange={handleChange}/>/>
+                      <input type="text" className="form-control" placeholder="Pulse" name="pulse" value={formData.pulse} onChange={handleChange}/>
                       <span className="input-group-text">/min</span>
                     </div>
 
                     {/* BMI */}
                     <div className="col-md-4 d-flex">
                       <label className="form-label me-2">BMI</label>
-                      <input type="text" className="form-control" placeholder="BMI" name="bmi" value={formData.bmi} onChange={handleChange}/> disabled />
+                      <input type="text" className="form-control" placeholder="BMI" name="bmi" value={formData.bmi} onChange={handleChange}/>
                       <span className="input-group-text">kg/m²</span>
                     </div>
 
                     {/* RR */}
                     <div className="col-md-4 d-flex">
                       <label className="form-label me-2">RR</label>
-                      <input type="text" className="form-control" placeholder="RR" name="rr" value={formData.rr} onChange={handleChange}/>/>
+                      <input type="text" className="form-control" placeholder="RR" name="rr" value={formData.rr} onChange={handleChange}/>
                       <span className="input-group-text">/min</span>
                     </div>
 
                     {/* SpO2 */}
                     <div className="col-md-4 d-flex">
                       <label className="form-label me-2">SpO2</label>
-                      <input type="text" className="form-control" placeholder="SpO2" name="spo2" value={formData.spo2} onChange={handleChange}/>/>
+                      <input type="text" className="form-control" placeholder="SpO2" name="spo2" value={formData.spo2} onChange={handleChange}/>
                       <span className="input-group-text">%</span>
                     </div>
                   </div>
@@ -884,28 +898,46 @@ console.log(formData);
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Doctor Name</label>
-                      <select className="form-select">
+                      <select className="form-select"  name="selDoctorId" value={formData.selDoctorId} onChange={(e) => {
+                        handleAddChange(e);
+                        fetchSession(e);
+                      }}
+                      >
                         <option value="">Select Doctor</option>
                         {doctorData.map((doctor) => (
-                            <option key={doctor.id} value={doctor.id}>
+                            <option key={doctor.id} value={doctor.userId}>
                               {`${doctor.firstName} ${doctor.middleName?doctor.middleName:""} ${doctor.lastName?doctor.lastName:""}`}
                             </option>))}
                         {/* Add dynamic options here */}
                       </select>
                     </div>
-                    <div className="col-md-4">
-                      <label className="form-label">Date *</label>
-                      <input type="date" name="appointmentDate" className="form-control" name="appointmentDate" value={formData.appointmentDate}
-                             onChange={handleChange}
-                             min={new Date().toISOString().split("T")[0]}
-                             placeholder="Select Date of Appointment"/>
-                    </div>
+                    {/*<div className="col-md-4">*/}
+                    {/*  <label className="form-label">Date *</label>*/}
+                    {/*  <input type="date" name="appointmentDate" className="form-control" name="appointmentDate" value={formData.appointmentDate}*/}
+                    {/*         onChange={(e) => {*/}
+                    {/*           handleAddChange(e);*/}
+                    {/*           fetchSession(e.target.value);*/}
+                    {/*         }}*/}
+                    {/*         min={new Date().toISOString().split("T")[0]}*/}
+                    {/*         placeholder="Select Date of Appointment"/>*/}
+                    {/*</div>*/}
                     <div className="col-md-4">
                       <label className="form-label">Session</label>
-                      <select className="form-select">
+                      <select className="form-select" name="selSession" value={formData.selSession} onChange={(e) => {
+                        handleAddChange(e);
+                      }}
+                      >
                         <option value="">Select Session</option>
+                        {session.map((ses) => (
+                            <option key={ses.key} value={ses.value}>
+                              {ses.value}
+                            </option>))}
                         {/* Add dynamic options here */}
                       </select>
+                      {/*<select className="form-select">*/}
+                      {/*  <option value="">Select Session</option>*/}
+                      {/*  /!* Add dynamic options here *!/*/}
+                      {/*</select>*/}
                     </div>
                   </div>
                 </form>
@@ -921,7 +953,9 @@ console.log(formData);
               <div className="card-body">
                 <div className="row g-3">
                   <div className="mt-4">
-                    <button type="submit" className="btn btn-primary me-2" onClick={sendRegistrationRequest()}>Registration</button>
+                    <button type="submit" className="btn btn-primary me-2"
+                            onClick={sendRegistrationRequest}>Registration
+                    </button>
                     <button type="reset" className="btn btn-secondary">Reset</button>
                   </div>
                 </div>
