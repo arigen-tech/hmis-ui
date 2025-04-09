@@ -8,7 +8,7 @@ import {
   ALL_GENDER,
   ALL_RELATION,
   DISTRICT_BY_STATE, DOCTOR_BY_SPECIALITY, PATIENT_IMAGE_UPLOAD,
-  STATE_BY_COUNTRY, GET_DOCTOR_SESSION, PATIENT_REGISTRATION
+  STATE_BY_COUNTRY, GET_DOCTOR_SESSION, PATIENT_REGISTRATION, GET_SESSION
 } from "../../../config/apiConfig";
 import {DEPARTMENT_CODE_OPD} from "../../../config/constants";
 import axios from "axios";
@@ -19,6 +19,7 @@ const PatientRegistration = () => {
     fetchRelationData();
     fetchCountryData();
     fetchDepartment();
+    fetchSesion();
   }, []);
   const [loading, setLoading] = useState(false);
   const [genderData,setGenderData]=useState([]);
@@ -33,60 +34,60 @@ const PatientRegistration = () => {
   const [doctorData,setDoctorData]=useState([]);
   const [session,setSession]=useState([]);
   const [formData, setFormData] = useState({
-    imageurl:"",
-    firstName: "",
-      middleName: "",
-      lastName: "",
-      mobileNo: "",
-      gender: "",
-      relation: "",
-      dob: "",
-      age: "",
-      email: "",
-    address1: "",
-    address2: "",
-    country: "",
-    state: "",
-    district: "",
-    city: "",
-    pinCode: "",
-    nokFirstName: "",
-    nokMiddleName: "",
-    nokLastName: "",
-    nokEmail: "",
-    nokMobile: "",
-    nokAddress1: "",
-    nokAddress2: "",
-    nokCountry: "",
-    nokState: "",
-    nokDistrict: "",
-    nokCity: "",
-    nokPinCode: "",
-    emergencyFirstName: "",
-    emergencyLastName: "",
-    emergencyMobile: "",
-    height: "",
-    weight: "",
-    temperature: "",
-    systolicBP: "",
-    diastolicBP: "",
-    pulse: "",
-    bmi: "",
-    rr: "",
-    spo2: "",
-    speciality: "",
-    doctor: "",
-    session: "",
-    appointmentDate: "",
-    maritalStatus: "",
-    religion: "",
-    emergencyRelationId: "",
-    nokRelation: "",
-    idealWeight: "",
-    varation:"",
-    department: "",
-    selDoctorId: "",
-    selSession: ""
+    imageurl:undefined,
+    firstName: undefined,
+      middleName: undefined,
+      lastName: undefined,
+      mobileNo: undefined,
+      gender: undefined,
+      relation: undefined,
+      dob: undefined,
+      age: undefined,
+      email: undefined,
+    address1: undefined,
+    address2: undefined,
+    country: undefined,
+    state: undefined,
+    district: undefined,
+    city: undefined,
+    pinCode: undefined,
+    nokFirstName: undefined,
+    nokMiddleName: undefined,
+    nokLastName: undefined,
+    nokEmail: undefined,
+    nokMobile: undefined,
+    nokAddress1: undefined,
+    nokAddress2: undefined,
+    nokCountry: undefined,
+    nokState: undefined,
+    nokDistrict: undefined,
+    nokCity: undefined,
+    nokPinCode: undefined,
+    emergencyFirstName: undefined,
+    emergencyLastName: undefined,
+    emergencyMobile: undefined,
+    height: undefined,
+    weight: undefined,
+    temperature: undefined,
+    systolicBP: undefined,
+    diastolicBP: undefined,
+    pulse: undefined,
+    bmi: undefined,
+    rr: undefined,
+    spo2: undefined,
+    speciality: undefined,
+    doctor: undefined,
+    session: undefined,
+    appointmentDate: undefined,
+    maritalStatus: undefined,
+    religion: undefined,
+    emergencyRelationId: undefined,
+    nokRelation: undefined,
+    idealWeight: undefined,
+    varation:undefined,
+    department: undefined,
+    selDoctorId: undefined,
+    selSession: undefined
 
   });
   const [image, setImage] = useState(placeholderImage);
@@ -269,7 +270,21 @@ async function fetchRelationData() {
       setLoading(false);
     }
   }
-
+  async function fetchSesion() {
+    try {
+      const data = await getRequest(`${GET_SESSION}1`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setSession(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setSession([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Department data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
   async function fetchDistrict(value) {
     try {
       const data = await getRequest(`${DISTRICT_BY_STATE}${value}`);
@@ -346,6 +361,11 @@ console.log(formData);
     const requestData = {
       patient: {
         id: 0,
+        uhidNo:"",
+        patientStatus:"",
+        regDate:new Date(Date.now()).toJSON().split('.')[0].split('T')[0],
+        lastChgBy:"",
+        patientHospitalId:0,
         patientFn: formData.firstName,
         patientMn: formData.middleName,
         patientLn: formData.lastName,
@@ -397,19 +417,49 @@ console.log(formData);
         varation: formData.varation,
         bpSystolic: formData.systolicBP,
         bpDiastolic: formData.diastolicBP,
+        icdDiag: "string",
+        workingDiag: "string",
+        followUpFlag: "string",
+        followUpDays: 0,
+        pastMedicalHistory: "string",
+        presentComplaints: "string",
+        familyHistory: "string",
+        treatmentAdvice: "string",
+        sosFlag: "string",
+        recmmdMedAdvice: "string",
+        medicineFlag: "s",
+        labFlag: "s",
+        radioFlag: "s",
+        referralFlag: "s",
+        mlcFlag: "s",
+        policeStation: "string",
+        policeName: "string",
+        patientId: 0,
+        visitId: 0,
+        departmentId: 0,
+        hospitalId: 0,
+        doctorId: 0,
+        lastChgBy: "string"
       },
       visit: {
-        visitDate: formData.appointmentDate,
-        departmentId: formData.department,
-        doctorId: formData.selDoctorId,
+        id: 0,
+        tokenNo: 0,
+        visitStatus: "string",
+        // visitDate: new Date(Date.now()).toJSON().split('.')[0],
+        visitDate: new Date(Date.now()).toJSON(),
+        departmentId: Number(formData.speciality),
+        doctorId: Number(formData.selDoctorId),
         doctorName: "",
-        hospitalId: 0,
-        sessionId: formData.selSession,
+        hospitalId: 1,
+        sessionId: Number(formData.selSession),
         billingStatus: "string",
+        priority:0,
+        patientId: 0,
+        iniDoctorId: 0,
       },
     };
     // requestData.opdPatientDetail=null;
-    // requestData.visit=null;
+    console.log(new Date(Date.now()).toJSON())
 
     try {
       debugger;
@@ -464,7 +514,7 @@ console.log(formData);
         else if (data.response[0].rosterVal=="YN"){
           sessionVal=[{key:0,value: 'Morning'}]
         }
-        setSession(sessionVal);
+        // setSession(sessionVal);
       }
       else{
         Swal.fire(data.message);
@@ -929,8 +979,8 @@ console.log(formData);
                       >
                         <option value="">Select Session</option>
                         {session.map((ses) => (
-                            <option key={ses.key} value={ses.value}>
-                              {ses.value}
+                            <option key={ses.id} value={ses.id}>
+                              {ses.sessionName}
                             </option>))}
                         {/* Add dynamic options here */}
                       </select>
