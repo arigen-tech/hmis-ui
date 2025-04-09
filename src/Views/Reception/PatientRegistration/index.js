@@ -465,7 +465,7 @@ console.log(formData);
       debugger;
       const data = await postRequest(`${PATIENT_REGISTRATION}`,requestData);
       if (data.status === 200 && Array.isArray(data.response)) {
-        console.log(data.response);
+        Swal.fire("Patient Registration Successful")
       } else {
         console.error("Unexpected API response format:", data);
         setDoctorData([]);
