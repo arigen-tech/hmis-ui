@@ -176,9 +176,11 @@ const Identificationmaster = () => {
   const handleConfirm = async () => {
     try {
       setLoading(true);
+      
       const response = await putRequest(
-        `${IDENTITY_TYPE}/status/${identificationId}/${newStatus}`
+        `${IDENTITY_TYPE}/status/${confirmDialog.identificationId}?status=${confirmDialog.newStatus}`
       );
+      
       if (response && response.response) {
         setIdentificationTypes((prevData) =>
           prevData.map((type) =>
@@ -200,7 +202,6 @@ const Identificationmaster = () => {
       setConfirmDialog({ isOpen: false, identificationId: null, newStatus: null });
     }
   };
-
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prevData) => ({ ...prevData, [id]: value }));
