@@ -60,3 +60,4 @@ export const ALL_FREQUENCY="/MasFrequencyController/getByAll";
 export const FREQUENCY="/MasFrequencyController";
 export const EMPLOYMENT_TYPE="/employmentType";
 export const EMPLOYEE_TYPE="/userType";
+export const OPD_SESSION = "/opd-session"
