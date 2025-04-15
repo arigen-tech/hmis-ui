@@ -56,4 +56,6 @@ export const GET_DOCTOR_SESSION="/doctor/rosterfind?";
 export const EMPLOYEE_REGISTRATION = "/api/employee";
 export const PATIENT_REGISTRATION="/patient/register";
 export const GET_SESSION="/opd-session/getAllOpdSessions/";
+export const ALL_FREQUENCY="/MasFrequencyController/getByAll";
+export const FREQUENCY="/MasFrequencyController";
 

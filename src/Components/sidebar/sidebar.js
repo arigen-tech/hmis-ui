@@ -318,6 +318,13 @@ const Sidebar = () => {
                     RCMC Master
                   </Link>
                 </li>
+
+                <li>
+                  <Link className={`ms-link ${isActive('/frequencymaster') ? 'active' : ''}`}to="frequencymaster">
+                    Frequency Master
+                  </Link>
+                </li>
+
                 <li>
                   <Link className={`ms-link ${isActive('/treatmentadvicemaster') ? 'active' : ''}`} to="treatmentadvicemaster">
                     Treatment Advice Master

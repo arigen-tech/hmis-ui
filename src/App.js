@@ -30,6 +30,7 @@ import Identificationmaster from './Views/Masters/identificationMaster';
 import RCMC from './Views/Masters/RCMC';
 import Treatmentadvicemaster from './Views/Masters/TreatmentAdviceMaster';
 import Approveemployee from './Views/Admin/ApproveEmployee';
+import Frequencymaster from './Views/Masters/Frequencymaster';
 // import Drugmaster from './Views/Stores/DrugMaster';
 
 
@@ -96,6 +97,7 @@ function App() {
               <Route path="/rcmc" element={<RCMC/>} />
               <Route path="/treatmentadvicemaster" element={<Treatmentadvicemaster/>} />
               <Route path="/approveemployee" element={<Approveemployee/>} />
+              <Route path = "/frequencymaster" element={<Frequencymaster/>} />
   
 
 
