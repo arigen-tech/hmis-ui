@@ -245,7 +245,7 @@ const ItemCategory = () => {
                                             <i className="mdi mdi-plus"></i> Add
                                         </button>
                                         <button type="button" className="btn btn-success me-2">
-                                            <i className="mdi mdi-plus"></i> Generate Report Based On Search
+                                            <i className="mdi mdi-plus"></i> Generate Report 
                                         </button>
                                     </div>
                                 </div>
