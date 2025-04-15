@@ -709,7 +709,7 @@ const ViewSearchEmployee = () => {
                       {filteredEmployees.length > 0 ? (
                         currentItems.map((employee, index) => (
                           <tr key={index}>
-                            <td>{index + 1}</td>
+                            <td>{(currentPage - 1) * itemsPerPage + index + 1}</td>
                             <td>{employee.firstName} {employee.middleName} {employee.lastName}</td>
                             <td>{employee.gender}</td>
                             <td>{employee.dob}</td>
