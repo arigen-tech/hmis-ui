@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import placeholderImage from "../../../../assets/images/placeholder.jpg";
-import { COUNTRYAPI, DISTRICTAPI, STATEAPI, DEPARTMENT, GENDERAPI, EMPLOYEE_REGISTRATION, IDENTITY_TYPE, API_HOST } from "../../../../config/apiConfig";
+import { COUNTRYAPI, DISTRICTAPI, STATEAPI, DEPARTMENT, GENDERAPI, ALL_ROLE, IDENTITY_TYPE, API_HOST, EMPLOYMENT_TYPE, EMPLOYEE_TYPE, EMPLOYEE_REGISTRATION } from "../../../../config/apiConfig";
 import { getRequest, putRequest, postRequestWithFormData } from "../../../../service/apiService";
 import Popup from "../../../../Components/popup";
 
@@ -21,15 +21,16 @@ const EmployeeRegistration = () => {
         city: "",
         pincode: "",
         mobileNo: "",
-        registrationNo: "",
-        employmentTypeId: 1,
-        deprtId: "",
         identificationType: "",
-        employeeTypeId: 1,
-        email: "dkraj@gmail.com",
+        registrationNo: "",
+        employmentTypeId: "",
+        employeeTypeId: "",
+        roleId: "",
         fromDate: "",
 
-        qualification: [{ employeeQualificationId: 1, institutionName: "", completionYear: 0, qualificationName: "", filePath: null }],
+        deprtId: "",
+
+        qualification: [{ employeeQualificationId: 1, institutionName: "", completionYear: "", qualificationName: "", filePath: null }],
         document: [{ employeeDocumentId: 1, documentName: "", filePath: null }],
     };
     const [formData, setFormData] = useState(initialFormData);
@@ -44,15 +45,29 @@ const EmployeeRegistration = () => {
     const [districtData, setDistrictData] = useState([]);
     const [genderData, setGenderData] = useState([]);
     const [idTypeData, setIdTypeData] = useState([]);
+    const [roleData, setRoleData] = useState([]);
+    const [employeeTypeData, setEmployeeTypeData] = useState([]);
+    const [employmentTypeData, setEmploymentTypeData] = useState([]);
+
     const [countryIds, setCountryIds] = useState("");
     const [stateIds, setStateIds] = useState("");
     const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhYmNAZ21haWwuY29tIiwiaG9zcGl0YWxJZCI6MSwiZW1wbG95ZWVJZCI6MSwiZXhwIjoxNzQ0NjE3MDk3LCJ1c2VySWQiOjQsImlhdCI6MTc0NDAxMjI5N30.ozKxfQcQUz1tuUgwxCSlwchFnEjfFJg89MeMmUlil13v3bjH-k9TvFnYhsz4k4gsFOyYq9pkwp5xbA1lkQ-6NQ";
+
+    console.log("form", formData);
+
+
+    const mlenght = 15;
+
+    const today = new Date().toISOString().split("T")[0];
 
     useEffect(() => {
         fetchCountryData();
         fetchDepartmentData();
         fetchGenderData();
         fetchIdTypeData();
+        fetchRoleData();
+        fetchEmployeeTypeData();
+        fetchEmploymentTypeData();
     }, []);
 
     const showPopup = (message, type = "info") => {
@@ -146,7 +161,7 @@ const EmployeeRegistration = () => {
                 setGenderData([]);
             }
         } catch (error) {
-            console.error("Error fetching HotelType data:", error);
+            console.error("Error fetching Gender data:", error);
         } finally {
             setLoading(false);
         }
@@ -163,7 +178,58 @@ const EmployeeRegistration = () => {
                 setIdTypeData([]);
             }
         } catch (error) {
-            console.error("Error fetching HotelType data:", error);
+            console.error("Error fetching IdType data:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchEmployeeTypeData = async () => {
+        setLoading(true);
+        try {
+            const data = await getRequest(`${EMPLOYEE_TYPE}/getAllUserType/1`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setEmployeeTypeData(data.response);
+            } else {
+                console.error("Unexpected API response format:", data);
+                setEmployeeTypeData([]);
+            }
+        } catch (error) {
+            console.error("Error fetching EmployeeType data:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchEmploymentTypeData = async () => {
+        setLoading(true);
+        try {
+            const data = await getRequest(`${EMPLOYMENT_TYPE}/getAllEmploymentType/1`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setEmploymentTypeData(data.response);
+            } else {
+                console.error("Unexpected API response format:", data);
+                setEmploymentTypeData([]);
+            }
+        } catch (error) {
+            console.error("Error fetching EmploymentType data:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchRoleData = async () => {
+        setLoading(true);
+        try {
+            const data = await getRequest(`${ALL_ROLE}/1`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setRoleData(data.response);
+            } else {
+                console.error("Unexpected API response format:", data);
+                setRoleData([]);
+            }
+        } catch (error) {
+            console.error("Error fetching Role data:", error);
         } finally {
             setLoading(false);
         }
@@ -209,6 +275,27 @@ const EmployeeRegistration = () => {
         }));
     };
 
+    const handleEmploymentTypeChange = (emptTypeId) => {
+        setFormData((prevState) => ({
+            ...prevState,
+            employmentTypeId: emptTypeId,
+        }));
+    };
+
+    const handleEmployeeTypeChange = (empTypeId) => {
+        setFormData((prevState) => ({
+            ...prevState,
+            employeeTypeId: empTypeId,
+        }));
+    };
+
+    const handleRoleChange = (role) => {
+        setFormData((prevState) => ({
+            ...prevState,
+            roleId: role,
+        }));
+    };
+
     const handleIdTypeChange = (idTypeId) => {
         setFormData((prevState) => ({
             ...prevState,
@@ -218,20 +305,26 @@ const EmployeeRegistration = () => {
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];
-    
+
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
                 setFormData((prevFormData) => ({
                     ...prevFormData,
-                    profilePicName: file,  
-                    profilePicPreview: reader.result, 
+                    profilePicName: file,
+                    profilePicPreview: reader.result,
                 }));
             };
             reader.readAsDataURL(file);
         }
     };
-    
+
+    const handleInputMobileChange = (e) => {
+        const { id, value } = e.target;
+        const numericValue = value.replace(/\D/g, '');
+        setFormData((prevData) => ({ ...prevData, [id]: numericValue }));
+    };
+
 
     const handleInputChange = (e) => {
         const { id, value } = e.target;
@@ -282,6 +375,17 @@ const EmployeeRegistration = () => {
             )
         }));
     };
+
+    const handleQualificationYearChange = (index, field, value) => {
+        const numericValue = value.replace(/\D/g, '').slice(0, 4);
+        setFormData(prev => ({
+            ...prev,
+            qualification: prev.qualification.map((item, i) =>
+                i === index ? { ...item, [field]: numericValue } : item
+            )
+        }));
+    };
+
 
     const handleDocumentChange = (index, field, value) => {
         setFormData(prev => ({
@@ -340,6 +444,9 @@ const EmployeeRegistration = () => {
         formDataToSend.append('mobileNo', formData.mobileNo);
         formDataToSend.append('registrationNo', formData.registrationNo);
         formDataToSend.append('identificationType', formData.identificationType);
+        formDataToSend.append('employeeTypeId', formData.employeeTypeId);
+        formDataToSend.append('employmentTypeId', formData.employmentTypeId);
+        formDataToSend.append('roleId', formData.roleId);
         formDataToSend.append('fromDate', new Date(formData.fromDate).toISOString());
 
         if (formData.deprtId) {
@@ -388,7 +495,7 @@ const EmployeeRegistration = () => {
 
         setLoading(true);
         try {
-            const response = await fetch(`${API_HOST}/api/employee/create`, {
+            const response = await fetch(`${API_HOST}/${EMPLOYEE_REGISTRATION}/create`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -426,7 +533,7 @@ const EmployeeRegistration = () => {
 
         setLoading(true);
         try {
-            const response = await fetch(`${API_HOST}/api/employee/create-and-approve`, {
+            const response = await fetch(`${API_HOST}/${EMPLOYEE_REGISTRATION}/create-and-approve`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -450,6 +557,7 @@ const EmployeeRegistration = () => {
             setLoading(false);
         }
     };
+
 
     return (
         <>
@@ -493,6 +601,7 @@ const EmployeeRegistration = () => {
                                                             placeholder="First Name"
                                                             onChange={handleInputChange}
                                                             value={formData.firstName}
+                                                            maxLength={mlenght}
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
@@ -504,6 +613,7 @@ const EmployeeRegistration = () => {
                                                             placeholder="Middle Name"
                                                             onChange={handleInputChange}
                                                             value={formData.middleName}
+                                                            maxLength={mlenght}
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
@@ -516,6 +626,7 @@ const EmployeeRegistration = () => {
                                                             placeholder="Last Name"
                                                             onChange={handleInputChange}
                                                             value={formData.lastName}
+                                                            maxLength={mlenght}
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
@@ -556,6 +667,7 @@ const EmployeeRegistration = () => {
                                                             value={formData.address1}
                                                             className="form-control"
                                                             onChange={handleInputChange}
+                                                            placeholder="Address"
                                                         ></textarea>
 
                                                     </div>
@@ -633,6 +745,7 @@ const EmployeeRegistration = () => {
                                                             placeholder="City"
                                                             onChange={handleInputChange}
                                                             value={formData.city}
+                                                            maxLength={mlenght}
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
@@ -643,8 +756,12 @@ const EmployeeRegistration = () => {
                                                             className="form-control"
                                                             id="pincode"
                                                             placeholder="Pincode"
-                                                            onChange={handleInputChange}
+                                                            onChange={handleInputMobileChange}
                                                             value={formData.pincode}
+                                                            maxLength={6}
+                                                            minLength={6}
+                                                            inputMode="numeric"
+                                                            pattern="\d*"
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
@@ -655,9 +772,14 @@ const EmployeeRegistration = () => {
                                                             className="form-control"
                                                             id="mobileNo"
                                                             placeholder="Mobile No."
-                                                            onChange={handleInputChange}
+                                                            onChange={handleInputMobileChange}
                                                             value={formData.mobileNo}
+                                                            maxLength={10}
+                                                            minLength={10}
+                                                            inputMode="numeric"
+                                                            pattern="\d*"
                                                         />
+
                                                     </div>
                                                     <div className="col-md-4">
                                                         <label className="form-label">ID Type *</label>
@@ -688,6 +810,7 @@ const EmployeeRegistration = () => {
                                                             placeholder="ID Number"
                                                             onChange={handleInputChange}
                                                             value={formData.registrationNo}
+                                                            maxLength={mlenght}
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
@@ -724,6 +847,66 @@ const EmployeeRegistration = () => {
                                                     )}
 
                                                     <div className="col-md-4">
+                                                        <label className="form-label">Employee Type *</label>
+                                                        <select
+                                                            className="form-select"
+                                                            style={{ paddingRight: "40px" }}
+                                                            value={formData.employeeTypeId}
+                                                            onChange={(e) =>
+                                                                handleEmployeeTypeChange(parseInt(e.target.value, 10))
+                                                            }
+                                                            disabled={loading}
+                                                        >
+                                                            <option value="">Select Employee Type</option>
+                                                            {employeeTypeData.map((empType) => (
+                                                                <option key={empType.userTypeId} value={empType.userTypeId}>
+                                                                    {empType.userTypeName}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="col-md-4">
+                                                        <label className="form-label">Employment Type *</label>
+                                                        <select
+                                                            className="form-select"
+                                                            style={{ paddingRight: "40px" }}
+                                                            value={formData.employmentTypeId}
+                                                            onChange={(e) =>
+                                                                handleEmploymentTypeChange(parseInt(e.target.value, 10))
+                                                            }
+                                                            disabled={loading}
+                                                        >
+                                                            <option value="">Select Employment Type</option>
+                                                            {employmentTypeData.map((emptType) => (
+                                                                <option key={emptType.id} value={emptType.id}>
+                                                                    {emptType.employmentType}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="col-md-4">
+                                                        <label className="form-label">Role *</label>
+                                                        <select
+                                                            className="form-select"
+                                                            style={{ paddingRight: "40px" }}
+                                                            value={formData.roleId}
+                                                            onChange={(e) =>
+                                                                handleRoleChange(parseInt(e.target.value, 10))
+                                                            }
+                                                            disabled={loading}
+                                                        >
+                                                            <option value="">Select Role</option>
+                                                            {roleData.map((role) => (
+                                                                <option key={role.id} value={role.id}>
+                                                                    {role.roleDesc}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="col-md-4">
                                                         <label className="form-label">Period of Employment From Date</label>
                                                         <input
                                                             type="date"
@@ -731,9 +914,9 @@ const EmployeeRegistration = () => {
                                                             value={formData.fromDate}
                                                             className="form-control"
                                                             onChange={handleInputChange}
+                                                            min={today}
                                                         />
                                                     </div>
-
                                                 </div>
                                             </div>
                                             <div className="col-md-3 d-flex flex-column">
@@ -791,7 +974,9 @@ const EmployeeRegistration = () => {
                                                             type="text"
                                                             className="form-control"
                                                             value={row.qualificationName}
+                                                            placeholder="Degree"
                                                             onChange={(e) => handleQualificationChange(index, "qualificationName", e.target.value)}
+                                                            maxLength={mlenght}
                                                         />
                                                     </td>
                                                     <td>
@@ -799,7 +984,9 @@ const EmployeeRegistration = () => {
                                                             type="text"
                                                             className="form-control"
                                                             value={row.institutionName}
+                                                            placeholder="Institution Name"
                                                             onChange={(e) => handleQualificationChange(index, "institutionName", e.target.value)}
+                                                            maxLength={mlenght}
                                                         />
                                                     </td>
                                                     <td>
@@ -808,8 +995,13 @@ const EmployeeRegistration = () => {
                                                             className="form-control"
                                                             placeholder="YYYY"
                                                             value={row.completionYear}
-                                                            onChange={(e) => handleQualificationChange(index, "completionYear", e.target.value)}
+                                                            onChange={(e) => handleQualificationYearChange(index, "completionYear", e.target.value)}
+                                                            maxLength={4}
+                                                            minLength={4}
+                                                            inputMode="numeric"
+                                                            pattern="\d{4}"
                                                         />
+
                                                     </td>
                                                     <td>
                                                         <input
@@ -863,6 +1055,8 @@ const EmployeeRegistration = () => {
                                                             className="form-control"
                                                             value={row.documentName}
                                                             onChange={(e) => handleDocumentChange(index, "documentName", e.target.value)}
+                                                            placeholder="Document Name"
+                                                            maxLength={mlenght}
                                                         />
                                                     </td>
                                                     <td>

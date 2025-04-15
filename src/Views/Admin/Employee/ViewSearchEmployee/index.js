@@ -1,170 +1,657 @@
-import { useState } from "react"
+import React, { useState, useEffect } from "react";
+import placeholderImage from "../../../../assets/images/placeholder.jpg";
+import { COUNTRYAPI, DISTRICTAPI, STATEAPI, DEPARTMENT, GENDERAPI, ALL_ROLE, IDENTITY_TYPE, API_HOST, EMPLOYMENT_TYPE, EMPLOYEE_TYPE, EMPLOYEE_REGISTRATION } from "../../../../config/apiConfig";
+import { getRequest, putRequest, postRequestWithFormData } from "../../../../service/apiService";
+import Popup from "../../../../Components/popup";
+import LoadingScreen from "../../../../Components/Loading";
 
 const ViewSearchEmployee = () => {
-  const [showForm, setShowForm] = useState(false)
-  const [editingEmployee, setEditingEmployee] = useState(null)
-
-  const [employees, setEmployees] = useState([
-    {
-      id: 1,
-      employeeName: "HULESH NATH YOGI",
-      gender: "MALE",
-      dateOfBirth: "16/02/1993",
-      mobileNo: "7770000654",
-      typeOfEmployee: "Doctor",
-      lastStatus: "Approved By APM",
-      status: "y",
-    },
-    {
-      id: 2,
-      employeeName: "Chitra Sahu",
-      gender: "FEMALE",
-      dateOfBirth: "07/03/1992",
-      mobileNo: "9827157828",
-      typeOfEmployee: "Doctor",
-      lastStatus: "Approved By APM/Auditor",
-      status: "n",
-    },
-    {
-      id: 3,
-      employeeName: "Vijay Laxmi Srivastav",
-      gender: "FEMALE",
-      dateOfBirth: "21/07/1994",
-      mobileNo: "8827184834",
-      typeOfEmployee: "Doctor",
-      lastStatus: "Approved By APM",
-      status: "y",
-    },
-    {
-      id: 4,
-      employeeName: "APURVA LONHARE",
-      gender: "FEMALE",
-      dateOfBirth: "20/08/1992",
-      mobileNo: "9893146477",
-      typeOfEmployee: "Doctor",
-      lastStatus: "Approved By APM",
-      status: "n",
-    },
-    {
-      id: 5,
-      employeeName: "Akash Chandrakar",
-      gender: "MALE",
-      dateOfBirth: "20/04/1991",
-      mobileNo: "8058384085",
-      typeOfEmployee: "Doctor",
-      lastStatus: "Approved By APM",
-      status: "y",
-    },
-  ])
-
-  const [formData, setFormData] = useState({
-    qualification: [
-      { employeeQualificationId: 1, institutionName: "", completionYear: 0, qualificationName: "", filePath: null },
-    ],
+  const initialFormData = {
+    profilePicName: null,
+    idDocumentName: null,
+    firstName: "",
+    middleName: "",
+    lastName: "",
+    dob: "",
+    genderId: "",
+    address1: "",
+    countryId: "",
+    stateId: "",
+    districtId: "",
+    city: "",
+    pincode: "",
+    mobileNo: "",
+    identificationType: "",
+    registrationNo: "",
+    employmentTypeId: "",
+    employeeTypeId: "",
+    roleId: "",
+    fromDate: "",
+    qualification: [{ employeeQualificationId: 1, institutionName: "", completionYear: "", qualificationName: "", filePath: null }],
     document: [{ employeeDocumentId: 1, documentName: "", filePath: null }],
-  })
+  };
 
-  const [educationFormData, setEducationFormData] = useState({
-    qualification: [
-      { employeeQualificationId: 1, institutionName: "", completionYear: 0, qualificationName: "", filePath: null },
-    ],
-    document: [{ employeeDocumentId: 1, documentName: "", filePath: null }],
-  })
+  const [formData, setFormData] = useState(initialFormData);
+  const mlenght = 15;
+  const [showForm, setShowForm] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [employees, setEmployees] = useState([]);
+  const [popup, setPopup] = useState("");
+  const [popupMessage, setPopupMessage] = useState("");
+  const [empUpdateId, setEmpUpdateId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [countryData, setCountryData] = useState([]);
+  const [stateData, setStateData] = useState([]);
+  const [districtData, setDistrictData] = useState([]);
+  const [genderData, setGenderData] = useState([]);
+  const [countryIds, setCountryIds] = useState("");
+  const [stateIds, setStateIds] = useState("");
+  const [idTypeData, setIdTypeData] = useState([]);
+  const [roleData, setRoleData] = useState([]);
+  const [employeeTypeData, setEmployeeTypeData] = useState([]);
+  const [employmentTypeData, setEmploymentTypeData] = useState([]);
+  const [filteredEmployees, setFilteredEmployees] = useState([]);
+  const [searchMobile, setSearchMobile] = useState("");
+  const [searchName, setSearchName] = useState("");
+  const [pageInput, setPageInput] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhYmNAZ21haWwuY29tIiwiaG9zcGl0YWxJZCI6MSwiZW1wbG95ZWVJZCI6MSwiZXhwIjoxNzQ1MjI2Nzg3LCJ1c2VySWQiOjQsImlhdCI6MTc0NDYyMTk4N30.7Rf_Bzy5bbvdWMXIXC6yuFo9u48i9peUyGd4bS0D5nb4ib8vRWWIsk5Uie0dIM6pVyGt0awYymUlAEDv0OeiLw";
+
+  useEffect(() => {
+    fetchEmployeesData();
+    fetchCountryData();
+    fetchGenderData();
+    fetchIdTypeData();
+    fetchRoleData();
+    fetchEmployeeTypeData();
+    fetchEmploymentTypeData();
+  }, []);
+
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+      },
+    });
+  };
+
+  const fetchEmployeesData = async () => {
+    setLoading(true);
+    try {
+      const data = await getRequest(`${EMPLOYEE_REGISTRATION}/getAllEmployee`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setEmployees(data.response);
+        setFilteredEmployees(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setEmployees([]);
+        setFilteredEmployees([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Employees data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const fetchCountryData = async () => {
+    setLoading(true);
+    try {
+      const data = await getRequest(`${COUNTRYAPI}/getAllCountries/1`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setCountryData(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setCountryData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching country data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStateData = async (countryIds) => {
+    setLoading(true);
+    try {
+      const GET_STATES = `${STATEAPI}/country/${countryIds}`;
+      const data = await getRequest(GET_STATES);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setStateData(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setStateData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching state data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchDistrictData = async (stateIds) => {
+    setLoading(true);
+    try {
+      const GET_CITIES = `${DISTRICTAPI}/state/${stateIds}`;
+      const data = await getRequest(GET_CITIES);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setDistrictData(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setDistrictData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching city data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchGenderData = async () => {
+    setLoading(true);
+    try {
+      const data = await getRequest(`${GENDERAPI}/getAll/1`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setGenderData(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setGenderData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Gender data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchIdTypeData = async () => {
+    setLoading(true);
+    try {
+      const data = await getRequest(`${IDENTITY_TYPE}/getAllIdentificationTypes/1`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setIdTypeData(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setIdTypeData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching IdType data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchEmployeeTypeData = async () => {
+    setLoading(true);
+    try {
+      const data = await getRequest(`${EMPLOYEE_TYPE}/getAllUserType/1`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setEmployeeTypeData(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setEmployeeTypeData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching EmployeeType data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchEmploymentTypeData = async () => {
+    setLoading(true);
+    try {
+      const data = await getRequest(`${EMPLOYMENT_TYPE}/getAllEmploymentType/1`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setEmploymentTypeData(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setEmploymentTypeData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching EmploymentType data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRoleData = async () => {
+    setLoading(true);
+    try {
+      const data = await getRequest(`${ALL_ROLE}/1`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setRoleData(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setRoleData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Role data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCountryChange = (id) => {
+    setFormData((prevState) => ({
+      ...prevState,
+      countryId: id,
+      stateId: "",
+      districtId: "",
+    }));
+    fetchStateData(id);
+  };
+
+  const handleStateChange = (id) => {
+    setFormData((prevState) => ({
+      ...prevState,
+      stateId: id,
+      districtId: "",
+    }));
+    fetchDistrictData(id);
+  };
+
+  const handleDistrictChange = (districtId) => {
+    setFormData((prevState) => ({
+      ...prevState,
+      districtId: districtId,
+    }));
+  };
+
+  const handleGenderChange = (gendersId) => {
+    setFormData((prevState) => ({
+      ...prevState,
+      genderId: gendersId,
+    }));
+  };
+
+  const handleEmploymentTypeChange = (emptTypeId) => {
+    setFormData((prevState) => ({
+      ...prevState,
+      employmentTypeId: emptTypeId,
+    }));
+  };
+
+  const handleEmployeeTypeChange = (empTypeId) => {
+    setFormData((prevState) => ({
+      ...prevState,
+      employeeTypeId: empTypeId,
+    }));
+  };
+
+  const handleRoleChange = (role) => {
+    setFormData((prevState) => ({
+      ...prevState,
+      roleId: role,
+    }));
+  };
+
+  const handleIdTypeChange = (idTypeId) => {
+    setFormData((prevState) => ({
+      ...prevState,
+      identificationType: idTypeId,
+    }));
+  };
 
   const handleQualificationChange = (index, field, value) => {
-    setEducationFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      qualification: prev.qualification.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
-    }))
-  }
+      qualification: prev.qualification.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item
+      )
+    }));
+  };
 
   const removeEducationRow = (index) => {
-    setEducationFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       qualification: prev.qualification.filter((_, i) => i !== index),
-    }))
-  }
+    }));
+  };
 
   const addEducationRow = (e) => {
-    e.preventDefault()
-
-    setEducationFormData((prev) => ({
+    e.preventDefault();
+    setFormData(prev => ({
       ...prev,
       qualification: [
         ...prev.qualification,
         {
-          employeeQualificationId: prev.qualification.length + 1,
+          employeeQualificationId: null,
           institutionName: "",
           completionYear: "",
           qualificationName: "",
           filePath: null,
         },
       ],
-    }))
-  }
+    }));
+  };
 
-  // Document handlers
+
   const handleDocumentChange = (index, field, value) => {
-    setEducationFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      document: prev.document.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
-    }))
-  }
+      document: prev.document.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item
+      )
+    }));
+  };
 
-  const addDocumentRow = () => {
-    setEducationFormData((prev) => ({
+  const addDocumentRow = (e) => {
+    e.preventDefault();
+    setFormData(prev => ({
       ...prev,
-      document: [...prev.document, { employeeDocumentId: prev.document.length + 1, documentName: "", filePath: null }],
-    }))
-  }
+      document: [
+        ...prev.document,
+        { employeeDocumentId: null, documentName: "", filePath: null },
+      ],
+    }));
+  };
 
   const removeDocumentRow = (index) => {
-    setEducationFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       document: prev.document.filter((_, i) => i !== index),
-    }))
-  }
+    }));
+  };
 
-  const handleSwitchChange = (id, newStatus) => {
-    setEmployees((prevEmployees) =>
-      prevEmployees.map((employee) => (employee.id === id ? { ...employee, status: newStatus } : employee)),
-    )
-  }
+  const handleAnotherAction = async (employee) => {
+    setEditingEmployee(employee);
+    setShowForm(true);
+    setEmpUpdateId(employee.employeeId);
+    // Set basic form data
+    const newFormData = {
+      ...initialFormData,
+      profilePicName: employee.profilePicName || null,
+      idDocumentName: employee.idDocumentName || null,
+      firstName: employee.firstName || "",
+      middleName: employee.middleName || "",
+      lastName: employee.lastName || "",
+      dob: employee.dob || "",
+      genderId: employee.genderId || "",
+      address1: employee.address1 || "",
+      countryId: employee.countryId || "",
+      stateId: employee.stateId || "",
+      districtId: employee.districtId || "",
+      city: employee.city || "",
+      pincode: employee.pincode || "",
+      mobileNo: employee.mobileNo || "",
+      identificationType: employee.identificationTypeId || "",
+      registrationNo: employee.registrationNo || "",
+      employmentTypeId: employee.employmentTypeId || "",
+      employeeTypeId: employee.employeeTypeId || "",
+      roleId: employee.roleId || "",
+      fromDate: employee.fromDate ? employee.fromDate.slice(0, 10) : "",
+    };
 
-  const handleAnotherAction = (employee) => {
-    // Set the employee data to edit
-    setEditingEmployee(employee)
+    // Set qualifications and documents
+    if (employee.qualifications?.length) {
+      newFormData.qualification = employee.qualifications.map((q) => ({
+        employeeQualificationId: q.employeeQualificationId,
+        institutionName: q.institutionName || "",
+        completionYear: q.completionYear || "",
+        qualificationName: q.qualificationName || "",
+        filePath: q.filePath || null,
+      }));
+    }
 
-    // Split the name into first, middle, and last
-    const nameParts = employee.employeeName.split(" ")
-    const firstName = nameParts[0] || ""
-    const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : ""
-    const middleName = nameParts.length > 2 ? nameParts.slice(1, -1).join(" ") : ""
+    if (employee.documents?.length) {
+      newFormData.document = employee.documents.map((d) => ({
+        employeeDocumentId: d.employeeDocumentId,
+        documentName: d.documentName || "",
+        filePath: d.filePath || null,
+      }));
+    }
 
-    // Format date from DD/MM/YYYY to YYYY-MM-DD for input type="date"
-    const dateParts = employee.dateOfBirth.split("/")
-    const formattedDate = dateParts.length === 3 ? `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}` : ""
+    setFormData(newFormData);
 
-    // Show the form
-    setShowForm(true)
-  }
+    if (employee.countryId) {
+
+      await fetchStateData(employee.countryId);
+
+      if (employee.stateId) {
+        await fetchDistrictData(employee.stateId);
+
+      }
+
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { id, value } = e.target;
+    setFormData((prevData) => ({ ...prevData, [id]: value }));
+  };
+
+  const handleInputMobileChange = (e) => {
+    const { id, value } = e.target;
+    const numericValue = value.replace(/\D/g, '');
+    setFormData((prevData) => ({ ...prevData, [id]: numericValue }));
+  };
+
+  const handleSearch = () => {
+    const lowerName = searchName.toLowerCase();
+    const filtered = employees.filter(emp => {
+      const fullName = `${emp.firstName} ${emp.middleName} ${emp.lastName}`.toLowerCase();
+      return (
+        (searchMobile === "" || emp.mobileNo.includes(searchMobile)) &&
+        (searchName === "" || fullName.includes(lowerName))
+      );
+    });
+    setFilteredEmployees(filtered);
+  };
+
+  const handleShowAll = () => {
+    setFilteredEmployees(employees);
+    setSearchMobile("");
+    setSearchName("");
+  };
+
+  const filteredTotalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+
+  const renderPagination = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    if (startPage > 1) {
+      pageNumbers.push(1);
+      if (startPage > 2) pageNumbers.push("...");
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    if (endPage < filteredTotalPages) {
+      if (endPage < filteredTotalPages - 1) pageNumbers.push("...");
+      pageNumbers.push(filteredTotalPages);
+    }
+
+    return pageNumbers.map((number, index) => (
+      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
+        {typeof number === "number" ? (
+          <button className="page-link" onClick={() => setCurrentPage(number)}>
+            {number}
+          </button>
+        ) : (
+          <span className="page-link disabled">{number}</span>
+        )}
+      </li>
+    ));
+  };
+
+  const handlePageNavigation = () => {
+    const pageNumber = parseInt(pageInput, 10);
+    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
+      setCurrentPage(pageNumber);
+    } else {
+      alert("Please enter a valid page number.");
+    }
+  };
+
+  const currentItems = filteredEmployees.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
 
   const resetForm = () => {
-    setEditingEmployee(null)
-    setShowForm(false)
-    setEducationFormData({
-      qualification: [
-        { employeeQualificationId: 1, institutionName: "", completionYear: 0, qualificationName: "", filePath: null },
-      ],
-      document: [{ employeeDocumentId: 1, documentName: "", filePath: null }],
-    })
-  }
+    setFormData(initialFormData);
+    setShowForm(false);
+    setEditingEmployee(null);
+  };
+
+  const validateForm = () => {
+    const requiredFields = [
+      'firstName', 'lastName', 'dob', 'genderId', 'address1',
+      'countryId', 'stateId', 'districtId', 'city', 'pincode',
+      'mobileNo', 'identificationType', 'registrationNo'
+    ];
+
+    for (const field of requiredFields) {
+      if (!formData[field]) {
+        showPopup(`Please fill in the required field: ${field.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase())}`, "error");
+        return false;
+      }
+    }
+
+    if (!formData.profilePicName && !editingEmployee?.profilePicName) {
+      showPopup("Profile picture is required", "error");
+      return false;
+    }
+
+    if (!formData.idDocumentName && !editingEmployee?.idDocumentName) {
+      showPopup("ID document is required", "error");
+      return false;
+    }
+
+    return true;
+  };
+
+  const prepareFormData = () => {
+    if (!validateForm()) {
+      return null;
+    }
+
+    const formDataToSend = new FormData();
+
+    // Basic info fields
+    formDataToSend.append('firstName', formData.firstName);
+    formDataToSend.append('lastName', formData.lastName);
+    if (formData.middleName) formDataToSend.append('middleName', formData.middleName);
+    formDataToSend.append('dob', new Date(formData.dob).toISOString().split('T')[0]);
+    formDataToSend.append('genderId', formData.genderId);
+    formDataToSend.append('address1', formData.address1);
+    formDataToSend.append('countryId', formData.countryId);
+    formDataToSend.append('stateId', formData.stateId);
+    formDataToSend.append('districtId', formData.districtId);
+    formDataToSend.append('city', formData.city);
+    formDataToSend.append('pincode', formData.pincode);
+    formDataToSend.append('mobileNo', formData.mobileNo);
+    formDataToSend.append('registrationNo', formData.registrationNo);
+    formDataToSend.append('identificationType', formData.identificationType);
+    formDataToSend.append('employeeTypeId', formData.employeeTypeId);
+    formDataToSend.append('employmentTypeId', formData.employmentTypeId);
+    formDataToSend.append('roleId', formData.roleId);
+    formDataToSend.append('fromDate', new Date(formData.fromDate).toISOString());
+
+    if (formData.deprtId) {
+      formDataToSend.append('departmentId', formData.deprtId);
+    }
+
+    if (formData.profilePicName instanceof File) {
+      formDataToSend.append('profilePicName', formData.profilePicName);
+    }
+
+    if (formData.idDocumentName instanceof File) {
+      formDataToSend.append('idDocumentName', formData.idDocumentName);
+    }
+
+    formData.qualification.forEach((qual, index) => {
+      formDataToSend.append(`qualification[${index}].institutionName`, qual.institutionName);
+      formDataToSend.append(`qualification[${index}].completionYear`, qual.completionYear);
+      formDataToSend.append(`qualification[${index}].qualificationName`, qual.qualificationName);
+
+      if (qual.employeeQualificationId && qual.employeeQualificationId !== 1) {
+        formDataToSend.append(`qualification[${index}].employeeQualificationId`, qual.employeeQualificationId);
+      }
+
+      if (qual.filePath instanceof File) {
+        formDataToSend.append(`qualification[${index}].filePath`, qual.filePath);
+      }
+    });
+
+    formData.document.forEach((doc, index) => {
+      formDataToSend.append(`document[${index}].documentName`, doc.documentName);
+
+      if (doc.employeeDocumentId && doc.employeeDocumentId !== 1) {
+        formDataToSend.append(`document[${index}].employeeDocumentId`, doc.employeeDocumentId);
+      }
+
+      if (doc.filePath instanceof File) {
+        formDataToSend.append(`document[${index}].filePath`, doc.filePath);
+      }
+    });
+
+    return formDataToSend;
+  };
+
+
+  const handleSave = async () => {
+    const formDataToSend = prepareFormData();
+    if (!formDataToSend) return;
+    console.log("Form data to send:", formDataToSend);
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_HOST}${EMPLOYEE_REGISTRATION}/employee/${empUpdateId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+        body: formDataToSend
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showPopup("Employee updated successfully", "success");
+        resetForm();
+      } else {
+        showPopup(`Error: ${data.message || 'Failed to update employee'}`, "error");
+      }
+    } catch (error) {
+      console.error("Error updating employee:", error);
+      showPopup("Error submitting form. Please try again.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   return (
     <div className="body d-flex py-3">
       <div className="container-xxl">
         <div className="row align-items-center">
           <div className="border-0 mb-4">
+            {popupMessage && (
+              <Popup
+                message={popupMessage.message}
+                type={popupMessage.type}
+                onClose={popupMessage.onClose}
+              />
+            )}
+            {loading && <LoadingScreen />}
+
             <div className="card-header py-3 bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
               <h3 className="fw-bold mb-0">Employee List</h3>
             </div>
@@ -179,93 +666,137 @@ const ViewSearchEmployee = () => {
                   {/* Search Section */}
                   <div className="row mb-4">
                     <div className="col-md-3">
-                      <input type="text" className="form-control" placeholder="Mobile Number" />
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Mobile Number"
+                        value={searchMobile}
+                        onChange={(e) => setSearchMobile(e.target.value)}
+                      />
                     </div>
                     <div className="col-md-4">
-                      <input type="text" className="form-control" placeholder="Employee Name" />
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Employee Name"
+                        value={searchName}
+                        onChange={(e) => setSearchName(e.target.value)}
+                      />
                     </div>
                     <div className="col-md-2">
-                      <button className="btn btn-primary w-100">Search</button>
+                      <button className="btn btn-primary w-100" onClick={handleSearch}>Search</button>
                     </div>
-                   
                     <div className="col-md-2">
-                      <button className="btn btn-warning w-100">Show All</button>
+                      <button className="btn btn-warning w-100" onClick={handleShowAll}>Show All</button>
                     </div>
                   </div>
+
                   <table className="table table-bordered">
                     <thead>
                       <tr>
+                        <th>S.N.</th>
                         <th>Employee Name</th>
                         <th>Gender</th>
                         <th>Date Of Birth</th>
                         <th>Mobile No</th>
                         <th>Type Of Employee</th>
-                        <th>Last Status</th>
+                        <th>Role</th>
                         <th>Status</th>
                         <th>Edit</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {employees.length > 0 ? (
-                        employees.map((employee, index) => (
+                      {filteredEmployees.length > 0 ? (
+                        currentItems.map((employee, index) => (
                           <tr key={index}>
-                            <td>{employee.employeeName}</td>
+                            <td>{index + 1}</td>
+                            <td>{employee.firstName} {employee.middleName} {employee.lastName}</td>
                             <td>{employee.gender}</td>
-                            <td>{employee.dateOfBirth}</td>
+                            <td>{employee.dob}</td>
                             <td>{employee.mobileNo}</td>
-                            <td>{employee.typeOfEmployee}</td>
-                            <td>{employee.lastStatus}</td>
+                            <td>{employee.employeeType}</td>
+                            <td>{employee.role}</td>
                             <td>
-                              <div className="form-check form-switch">
-                                <input
-                                  className="form-check-input"
-                                  type="checkbox"
-                                  checked={employee.status === "y"}
-                                  onChange={() => handleSwitchChange(employee.id, employee.status === "y" ? "n" : "y")}
-                                  id={`switch-${employee.id}`}
-                                />
-                                <label className="form-check-label px-0" htmlFor={`switch-${employee.id}`}>
-                                  {employee.status === "y" ? "Active" : "Inactive"}
-                                </label>
-                              </div>
+                              {employee.status === "A" ? (
+                                <i className="fa fa-check-circle text-success fa-2x"></i>
+                              ) : (
+                                <i className="fa fa-times-circle fa-2x text-danger"></i>
+                              )}
                             </td>
                             <td>
-                              <button className="btn btn-sm btn-success" onClick={() => handleAnotherAction(employee)} disabled={employee.status === "n"} >
+                              <button
+                                className="btn btn-sm btn-success"
+                                onClick={() => handleAnotherAction(employee)}
+                                disabled={employee.status !== "S"}
+                              >
                                 <i className="fa fa-pencil"></i>
                               </button>
                             </td>
                           </tr>
                         ))
-                      ) : (
-                        <tr>
-                          <td colSpan="7" className="text-center text-danger">
-                            No Record Found
-                          </td>
-                        </tr>
-                      )}
+                      ) : (<tr>
+                        <td colSpan="7" className="text-center text-danger">
+                          No Record Found
+                        </td>
+                      </tr>)}
+
                     </tbody>
                   </table>
-                  {/* Pagination */}
-                  <div className="d-flex align-items-center justify-content-end">
-                    <span className="me-2">Go To Page</span>
-                    <input type="text" className="form-control me-2" style={{ width: "60px" }} />
-                    <button className="btn btn-warning">Go</button>
-                    <span className="mx-3">Page 1 of 2</span>
-                    <button className="btn btn-light" disabled>
-                      &laquo;
-                    </button>
-                    <button className="btn btn-light" disabled>
-                      &lsaquo;
-                    </button>
-                    <button className="btn btn-light">&rsaquo;</button>
-                    <button className="btn btn-light">&raquo;</button>
-                  </div>
+
+                  <nav className="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                      <span>
+                        Page {currentPage} of {filteredTotalPages} | Total Records: {filteredEmployees.length}
+                      </span>
+                    </div>
+                    <ul className="pagination mb-0">
+                      <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                        <button
+                          className="page-link"
+                          onClick={() => setCurrentPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                        >
+                          &laquo; Previous
+                        </button>
+                      </li>
+                      {renderPagination()}
+                      <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                        <button
+                          className="page-link"
+                          onClick={() => setCurrentPage(currentPage + 1)}
+                          disabled={currentPage === filteredTotalPages}
+                        >
+                          Next &raquo;
+                        </button>
+                      </li>
+                    </ul>
+                    <div className="d-flex align-items-center">
+                      <input
+                        type="number"
+                        min="1"
+                        max={filteredTotalPages}
+                        value={pageInput}
+                        onChange={(e) => setPageInput(e.target.value)}
+                        placeholder="Go to page"
+                        className="form-control me-2"
+                      />
+                      <button
+                        className="btn btn-primary"
+                        onClick={handlePageNavigation}
+                      >
+                        Go
+                      </button>
+                    </div>
+                  </nav>
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          <form className="forms row">
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }} className="forms row">
             <div className="g-3 row">
               <div className="col-md-4">
                 <label className="form-label">First Name *</label>
@@ -275,7 +806,9 @@ const ViewSearchEmployee = () => {
                   className="form-control"
                   id="firstName"
                   placeholder="First Name"
-                  defaultValue={editingEmployee ? editingEmployee.employeeName.split(" ")[0] : ""}
+                  onChange={handleInputChange}
+                  value={formData.firstName}
+                  maxLength={mlenght}
                 />
               </div>
               <div className="col-md-4">
@@ -285,11 +818,9 @@ const ViewSearchEmployee = () => {
                   className="form-control"
                   id="middleName"
                   placeholder="Middle Name"
-                  defaultValue={
-                    editingEmployee && editingEmployee.employeeName.split(" ").length > 2
-                      ? editingEmployee.employeeName.split(" ").slice(1, -1).join(" ")
-                      : ""
-                  }
+                  onChange={handleInputChange}
+                  value={formData.middleName}
+                  maxLength={mlenght}
                 />
               </div>
               <div className="col-md-4">
@@ -300,11 +831,9 @@ const ViewSearchEmployee = () => {
                   className="form-control"
                   id="lastName"
                   placeholder="Last Name"
-                  defaultValue={
-                    editingEmployee && editingEmployee.employeeName.split(" ").length > 1
-                      ? editingEmployee.employeeName.split(" ").pop()
-                      : ""
-                  }
+                  onChange={handleInputChange}
+                  value={formData.lastName}
+                  maxLength={mlenght}
                 />
               </div>
               <div className="col-md-4">
@@ -313,12 +842,9 @@ const ViewSearchEmployee = () => {
                   type="date"
                   required
                   id="dob"
+                  value={formData.dob}
                   className="form-control"
-                  defaultValue={
-                    editingEmployee
-                      ? `${editingEmployee.dateOfBirth.split("/")[2]}-${editingEmployee.dateOfBirth.split("/")[1]}-${editingEmployee.dateOfBirth.split("/")[0]}`
-                      : ""
-                  }
+                  onChange={handleInputChange}
                 />
               </div>
               <div className="col-md-4">
@@ -326,12 +852,18 @@ const ViewSearchEmployee = () => {
                 <select
                   className="form-select"
                   style={{ paddingRight: "40px" }}
-                  defaultValue={editingEmployee ? editingEmployee.gender : ""}
+                  value={formData.genderId}
+                  onChange={(e) =>
+                    handleGenderChange(parseInt(e.target.value, 10))
+                  }
+                  disabled={loading}
                 >
                   <option value="">Select Gender</option>
-                  <option value="MALE">MALE</option>
-                  <option value="FEMALE">FEMALE</option>
-                  <option value="OTHER">OTHER</option>
+                  {genderData.map((gender) => (
+                    <option key={gender.id} value={gender.id}>
+                      {gender.genderName}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="col-md-4">
@@ -339,35 +871,76 @@ const ViewSearchEmployee = () => {
                 <textarea
                   required
                   id="address1"
+                  value={formData.address1}
                   className="form-control"
-                  defaultValue={editingEmployee ? editingEmployee.address : ""}
+                  onChange={handleInputChange}
+                  placeholder="Address"
                 ></textarea>
               </div>
               <div className="col-md-4">
                 <label className="form-label">Country *</label>
-                <select className="form-select" defaultValue={editingEmployee ? editingEmployee.country : ""}>
+                <select
+                  className="form-select"
+                  value={formData.countryId}
+                  onChange={(e) => {
+                    const selectedCountry = countryData.find(
+                      (country) => country.id.toString() === e.target.value
+                    );
+                    if (selectedCountry) {
+                      handleCountryChange(selectedCountry.id);
+                      setCountryIds(selectedCountry.id);
+                      fetchStateData(selectedCountry.id);
+                    }
+                  }}
+                  disabled={loading}
+                >
                   <option value="">Select Country</option>
-                  <option value="1">Country 1</option>
-                  <option value="2">Country 2</option>
-                  <option value="3">Country 3</option>
+                  {countryData.map((country) => (
+                    <option key={country.id} value={country.id}>
+                      {country.countryName}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="col-md-4">
                 <label className="form-label">State *</label>
-                <select className="form-select" defaultValue={editingEmployee ? editingEmployee.state : ""}>
+                <select
+                  className="form-select"
+                  value={formData.stateId}
+                  onChange={(e) => {
+                    const selectedState = stateData.find(
+                      (state) => state.id.toString() === e.target.value
+                    );
+                    if (selectedState) {
+                      handleStateChange(selectedState.id);
+                      setStateIds(selectedState.id);
+                      fetchDistrictData(selectedState.id);
+                    }
+                  }}
+                  disabled={loading || !formData.countryId}
+                >
                   <option value="">Select State</option>
-                  <option value="1">State 1</option>
-                  <option value="2">State 2</option>
-                  <option value="3">State 3</option>
+                  {stateData.map((state) => (
+                    <option key={state.id} value={state.id}>
+                      {state.stateName}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="col-md-4">
                 <label className="form-label">District *</label>
-                <select className="form-select" defaultValue={editingEmployee ? editingEmployee.district : ""}>
+                <select
+                  className="form-select"
+                  value={formData.districtId}
+                  onChange={(e) => handleDistrictChange(e.target.value)}
+                  disabled={loading || !formData.stateId}
+                >
                   <option value="">Select District</option>
-                  <option value="1">District 1</option>
-                  <option value="2">District 2</option>
-                  <option value="3">District 3</option>
+                  {districtData.map((dist) => (
+                    <option key={dist.id} value={dist.id}>
+                      {dist.districtName}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="col-md-4">
@@ -378,7 +951,9 @@ const ViewSearchEmployee = () => {
                   className="form-control"
                   id="city"
                   placeholder="City"
-                  defaultValue={editingEmployee ? editingEmployee.city : ""}
+                  onChange={handleInputChange}
+                  value={formData.city}
+                  maxLength={mlenght}
                 />
               </div>
               <div className="col-md-4">
@@ -389,7 +964,12 @@ const ViewSearchEmployee = () => {
                   className="form-control"
                   id="pincode"
                   placeholder="Pincode"
-                  defaultValue={editingEmployee ? editingEmployee.pincode : ""}
+                  onChange={handleInputMobileChange}
+                  value={formData.pincode}
+                  maxLength={6}
+                  minLength={6}
+                  inputMode="numeric"
+                  pattern="\d*"
                 />
               </div>
               <div className="col-md-4">
@@ -400,7 +980,12 @@ const ViewSearchEmployee = () => {
                   className="form-control"
                   id="mobileNo"
                   placeholder="Mobile No."
-                  defaultValue={editingEmployee ? editingEmployee.mobileNo : ""}
+                  onChange={handleInputMobileChange}
+                  value={formData.mobileNo}
+                  maxLength={10}
+                  minLength={10}
+                  inputMode="numeric"
+                  pattern="\d*"
                 />
               </div>
               <div className="col-md-4">
@@ -408,14 +993,18 @@ const ViewSearchEmployee = () => {
                 <select
                   className="form-select"
                   style={{ paddingRight: "40px" }}
-                  defaultValue={editingEmployee ? editingEmployee.idType : ""}
+                  value={formData.identificationType}
+                  onChange={(e) =>
+                    handleIdTypeChange(parseInt(e.target.value, 10))
+                  }
+                  disabled={loading}
                 >
-                  <option value="">Select ID</option>
-                  <option value="1">ID 1 </option>
-                  <option value="2">ID 2</option>
-                  <option value="3">ID 3</option>
-                  <option value="4">ID 4</option>
-                  <option value="5">ID 5</option>
+                  <option value="">Select ID Type</option>
+                  {idTypeData.map((idType) => (
+                    <option key={idType.identificationTypeId} value={idType.identificationTypeId}>
+                      {idType.identificationName}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="col-md-4">
@@ -424,32 +1013,45 @@ const ViewSearchEmployee = () => {
                   type="text"
                   required
                   className="form-control"
-                  id="ID Number"
+                  id="registrationNo"
                   placeholder="ID Number"
-                  defaultValue={editingEmployee ? editingEmployee.idNumber : ""}
+                  onChange={handleInputChange}
+                  value={formData.registrationNo}
+                  maxLength={mlenght}
                 />
               </div>
               <div className="col-md-4">
                 <label className="form-label">ID Upload (JPEG/PDF) *</label>
-                <input type="file" id="idDocumentName" className="form-control mt-2" accept=".jpg,.jpeg,.png,.pdf" />
-                {editingEmployee && editingEmployee.idDocument && (
-                  <small className="text-muted">Current file: {editingEmployee.idDocument}</small>
+                <input
+                  type="file"
+                  id="idDocumentName"
+                  className="form-control mt-2"
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  onChange={(e) => setFormData({ ...formData, idDocumentName: e.target.files[0] })}
+                />
+                {editingEmployee?.idDocumentName && formData.idDocumentName && (
+                  <small className="text-muted">Current file: {editingEmployee.idDocumentName.split('/').pop().replace(/^\d+_/, '')}</small>
                 )}
               </div>
+
+
               <div className="col-md-4">
                 <label className="form-label">Role Name *</label>
                 <select
                   className="form-select"
                   style={{ paddingRight: "40px" }}
-                  defaultValue={editingEmployee ? editingEmployee.Role : ""}
+                  value={formData.roleId}
+                  onChange={(e) =>
+                    handleRoleChange(parseInt(e.target.value, 10))
+                  }
+                  disabled={loading}
                 >
                   <option value="">Select Role</option>
-                  <option value="">Role 1</option>
-                  <option value="1">Role 2</option>
-                  <option value="2">Role 3</option>
-                  <option value="3">Role 4</option>
-                  <option value="4">Role 5</option>
-                  <option value="5">Role 6</option>
+                  {roleData.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.roleDesc}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -458,8 +1060,9 @@ const ViewSearchEmployee = () => {
                 <input
                   type="date"
                   id="fromDate"
+                  value={formData.fromDate}
                   className="form-control"
-                  defaultValue={editingEmployee ? editingEmployee.fromDate : ""}
+                  onChange={handleInputChange}
                 />
               </div>
               <div className="col-md-4">
@@ -467,22 +1070,37 @@ const ViewSearchEmployee = () => {
                 <select
                   className="form-select"
                   style={{ paddingRight: "40px" }}
+                  value={formData.employeeTypeId}
+                  onChange={(e) =>
+                    handleEmployeeTypeChange(parseInt(e.target.value, 10))
+                  }
+                  disabled={loading}
                 >
-                  <option value="">Select type of employee</option>
-                  <option value="option 1">Option 1</option>
-                  <option value="option 2">Option 2</option>
-                  <option value="option 3">Option 3</option>
+                  <option value="">Select Employee Type</option>
+                  {employeeTypeData.map((empType) => (
+                    <option key={empType.userTypeId} value={empType.userTypeId}>
+                      {empType.userTypeName}
+                    </option>
+                  ))}
                 </select>
-              </div> <div className="col-md-4">
+              </div>
+              <div className="col-md-4">
                 <label className="form-label">Type of Employment *</label>
                 <select
                   className="form-select"
                   style={{ paddingRight: "40px" }}
+                  value={formData.employmentTypeId}
+                  onChange={(e) =>
+                    handleEmploymentTypeChange(parseInt(e.target.value, 10))
+                  }
+                  disabled={loading}
                 >
-                  <option value="">Select type of Employment</option>
-                  <option value="option 1">Option 1</option>
-                  <option value="option 2">Option 2</option>
-                  <option value="option 3">Option 3</option>
+                  <option value="">Select Employment Type</option>
+                  {employmentTypeData.map((emptType) => (
+                    <option key={emptType.id} value={emptType.id}>
+                      {emptType.employmentType}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -506,7 +1124,7 @@ const ViewSearchEmployee = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {educationFormData.qualification.map((row, index) => (
+                        {formData.qualification.map((row, index) => (
                           <tr key={index}>
                             <td>{index + 1}</td>
                             <td>
@@ -542,7 +1160,7 @@ const ViewSearchEmployee = () => {
                                 accept=".pdf,.jpg,.jpeg,.png"
                               />
                               {row.filePath && typeof row.filePath === "string" && (
-                                <small className="text-muted">Current file: {row.filePath}</small>
+                                <small className="text-muted">Current file: {row.filePath.split('/').pop().replace(/^\d+_/, '')}</small>
                               )}
                             </td>
                             <td>
@@ -583,7 +1201,7 @@ const ViewSearchEmployee = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {educationFormData.document.map((row, index) => (
+                        {formData.document.map((row, index) => (
                           <tr key={index}>
                             <td>{index + 1}</td>
                             <td>
@@ -602,7 +1220,7 @@ const ViewSearchEmployee = () => {
                                 accept=".pdf,.jpg,.jpeg,.png"
                               />
                               {row.filePath && typeof row.filePath === "string" && (
-                                <small className="text-muted">Current file: {row.filePath}</small>
+                                <small className="text-muted">Current file: {row.filePath.split('/').pop().replace(/^\d+_/, '')}</small>
                               )}
                             </td>
                             <td>
@@ -621,10 +1239,10 @@ const ViewSearchEmployee = () => {
                 </div>
               </div>
             </div>
-            
 
             <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-              <button type="submit" className="btn btn-primary me-2">
+              <button
+                type="submit" className="btn btn-primary me-2">
                 {editingEmployee ? "Update" : "Save"}
               </button>
               <button type="button" className="btn btn-danger" onClick={resetForm}>
@@ -635,7 +1253,7 @@ const ViewSearchEmployee = () => {
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ViewSearchEmployee
+export default ViewSearchEmployee;

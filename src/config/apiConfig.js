@@ -58,4 +58,5 @@ export const PATIENT_REGISTRATION="/patient/register";
 export const GET_SESSION="/opd-session/getAllOpdSessions/";
 export const ALL_FREQUENCY="/MasFrequencyController/getByAll";
 export const FREQUENCY="/MasFrequencyController";
-
+export const EMPLOYMENT_TYPE="/employmentType";
+export const EMPLOYEE_TYPE="/userType";

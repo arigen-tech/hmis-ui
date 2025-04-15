@@ -440,7 +440,7 @@ const AppointmentSetup = () => {
                                   <input
                                     type="number"
                                     className="form-control"
-                                    style={{ backgroundColor: isFieldModified(day, "startToken") ? "#55bf70" : "" }}
+                                    style={{ backgroundColor: isFieldModified(day, "startToken") ? "#ffd24d" : "" }}
                                     value={daysConfig[day].startToken}
                                     onChange={(e) => handleDayConfigChange(day, "startToken", e.target.value)}
                                   />
@@ -449,7 +449,7 @@ const AppointmentSetup = () => {
                                   <input
                                     type="number"
                                     className="form-control"
-                                    style={{ backgroundColor: isFieldModified(day, "totalInterval") ? "#55bf70" : "" }}
+                                    style={{ backgroundColor: isFieldModified(day, "totalInterval") ? "#ffd24d" : "" }}
                                     value={daysConfig[day].totalInterval}
                                     onChange={(e) => handleDayConfigChange(day, "totalInterval", e.target.value)}
                                   />
@@ -458,7 +458,7 @@ const AppointmentSetup = () => {
                                   <input
                                     type="number"
                                     className="form-control"
-                                    style={{ backgroundColor: isFieldModified(day, "totalToken") ? "#55bf70" : "" }}
+                                    style={{ backgroundColor: isFieldModified(day, "totalToken") ? "#ffd24d" : "" }}
                                     value={daysConfig[day].totalToken}
                                     onChange={(e) => handleDayConfigChange(day, "totalToken", e.target.value)}
                                   />
@@ -467,7 +467,7 @@ const AppointmentSetup = () => {
                                   <input
                                     type="number"
                                     className="form-control"
-                                    style={{ backgroundColor: isFieldModified(day, "totalOnlineToken") ? "#55bf70" : "" }}
+                                    style={{ backgroundColor: isFieldModified(day, "totalOnlineToken") ? "#ffd24d" : "" }}
                                     value={daysConfig[day].totalOnlineToken}
                                     onChange={(e) => handleDayConfigChange(day, "totalOnlineToken", e.target.value)}
                                   />
@@ -476,7 +476,7 @@ const AppointmentSetup = () => {
                                   <input
                                     type="number"
                                     className="form-control"
-                                    style={{ backgroundColor: isFieldModified(day, "maxNoOfDays") ? "#55bf70" : "" }}
+                                    style={{ backgroundColor: isFieldModified(day, "maxNoOfDays") ? "#ffd24d" : "" }}
                                     value={daysConfig[day].maxNoOfDays}
                                     onChange={(e) => handleDayConfigChange(day, "maxNoOfDays", e.target.value)}
                                   />
@@ -485,7 +485,7 @@ const AppointmentSetup = () => {
                                   <input
                                     type="number"
                                     className="form-control"
-                                    style={{ backgroundColor: isFieldModified(day, "minNoOfDays") ? "#55bf70" : "" }}
+                                    style={{ backgroundColor: isFieldModified(day, "minNoOfDays") ? "#ffd24d" : "" }}
                                     value={daysConfig[day].minNoOfDays}
                                     onChange={(e) => handleDayConfigChange(day, "minNoOfDays", e.target.value)}
                                   />
@@ -499,7 +499,7 @@ const AppointmentSetup = () => {
                     <div className="mt-2">
 
                       <div className="d-flex align-items-center mb-2">
-                        <div style={{ width: '20px', height: '20px', backgroundColor: '#55bf70', marginRight: '10px' }}></div>
+                        <div style={{ width: '20px', height: '20px', backgroundColor: '#ffd24d', marginRight: '10px' }}></div>
                         <span>Modified database data</span>
                       </div>
 

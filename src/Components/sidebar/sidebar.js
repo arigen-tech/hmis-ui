@@ -415,7 +415,7 @@ const Sidebar = () => {
                 </li> 
                 <li>
                   <Link className={`ms-link ${isActive('/approveemployee') ? 'active' : ''}`} to="approveemployee">
-                    Approve Employee
+                  Pending for Approval
                   </Link>
                 </li>
                 <li>

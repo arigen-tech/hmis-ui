@@ -128,7 +128,7 @@ const Approveemployee = () => {
     };
 
     const filteredEmployees = employeeData.filter((employee) =>
-        `${employee.firstName} ${employee.middleName} ${employee.lastName}`
+        `${employee.firstName} ${employee.middleName} ${employee.lastName} ${employee.mobileNo}`
             .toLowerCase()
             .includes(searchQuery.toLowerCase())
     );
@@ -217,7 +217,7 @@ const Approveemployee = () => {
 
             <div className="card form-card">
                 <div className="card-header d-flex justify-content-between align-items-center">
-                    <h4 className="card-title">Approve Employee</h4>
+                    <h4 className="card-title">Pending for Approval</h4>
                     <form className="d-inline-block searchform me-4" role="search">
                         <div className="input-group searchinput">
                             <input

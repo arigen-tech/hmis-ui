@@ -8,6 +8,7 @@ const DoctorRoaster = () => {
   const [department, setDepartment] = useState("");
   const [doctor, setDoctor] = useState("");
   const [fromDate, setFromDate] = useState("");
+  const [rowDepartmentData, setRowDepartmentData] = useState([]);
   const [departmentData, setDepartmentData] = useState([]);
   const [doctorData, setDoctorData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -15,7 +16,7 @@ const DoctorRoaster = () => {
   const [popup, setPopup] = useState("");
   const [popupMessage, setPopupMessage] = useState("");
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [originalRosterData, setOriginalRosterData] = useState(null); // To track original data from database
+  const [originalRosterData, setOriginalRosterData] = useState(null); 
   const jwtToken = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhYmNAZ21haWwuY29tIiwiaG9zcGl0YWxJZCI6MSwiZW1wbG95ZWVJZCI6MSwiZXhwIjoxNzQ0Mjc5MDc0LCJ1c2VySWQiOjQsImlhdCI6MTc0MzY3NDI3NH0._lLEDlJG85GljjCscLe7l7YHyNAFg0h25JSseZvfvTMA1-7BDwGX7vPRzemg-yHyYm8jAUHREJ_leEst1x20lA";
 
   localStorage.setItem("token", jwtToken);
@@ -46,22 +47,29 @@ const DoctorRoaster = () => {
     }
   }, [department, doctor, fromDate, doctorData]);
 
-  const fetchDepartmentData = async () => {
-    setLoading(true);
-    try {
-      const data = await getRequest(`${DEPARTMENT}/getAllDepartments/1`);
-      if (data.status === 200 && Array.isArray(data.response)) {
-        setDepartmentData(data.response);
-      } else {
-        console.error("Unexpected API response format:", data);
-        setDepartmentData([]);
+
+
+   const fetchDepartmentData = async () => {
+      setLoading(true);
+      try {
+        const data = await getRequest(`${DEPARTMENT}/getAllDepartments/1`);
+        if (data.status === 200 && Array.isArray(data.response)) {
+          const filteredDepartments = data.response.filter(
+            (dept) => dept.departmentTypeName === "OPD"
+          );
+          setRowDepartmentData(data.response);
+          setDepartmentData(filteredDepartments);
+        } else {
+          console.error("Unexpected API response format:", data);
+          setRowDepartmentData([]);
+          setDepartmentData([]);
+        }
+      } catch (error) {
+        console.error("Error fetching Department data:", error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching Department data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   const fetchDoctorData = async () => {
     setLoading(true);
@@ -124,7 +132,9 @@ const DoctorRoaster = () => {
         rosterVale: "YY", 
         doctorId: doctorInfo.id,
         id: null,
-        fromDatabase: false
+        fromDatabase: false,
+        morningModified: false,
+        eveningModified: false
       }))
     );
   
@@ -156,7 +166,8 @@ const DoctorRoaster = () => {
         const existingDates = existingRosterResponse.response.dates.map(date => ({
           ...date,
           fromDatabase: true,
-          modified: false     
+          morningModified: false,
+          eveningModified: false
         }));
 
         const existingDatesMap = new Map();
@@ -228,13 +239,26 @@ const DoctorRoaster = () => {
           orig.doctorId === doctorId && orig.dates === date
         );
         
-        const modified = originalItem ? originalItem.rosterVale !== newRosterValue : false;
-
-        return { 
-          ...item, 
-          rosterVale: newRosterValue,
-          modified: item.fromDatabase && modified 
-        };
+        if (originalItem && item.fromDatabase) {
+          const originalValue = originalItem.rosterVale;
+          
+          const morningModified = session === 'morning' ? 
+            originalValue.charAt(0) !== newRosterValue.charAt(0) : 
+            item.morningModified;
+            
+          const eveningModified = session === 'evening' ? 
+            originalValue.charAt(1) !== newRosterValue.charAt(1) : 
+            item.eveningModified;
+          
+          return { 
+            ...item, 
+            rosterVale: newRosterValue,
+            morningModified,
+            eveningModified
+          };
+        }
+        
+        return { ...item, rosterVale: newRosterValue };
       }
       return item;
     });
@@ -277,7 +301,7 @@ const DoctorRoaster = () => {
       
       const dataToSend = {
         ...rosterDoctorData,
-        dates: rosterDoctorData.dates.map(({ fromDatabase, modified, ...rest }) => rest)
+        dates: rosterDoctorData.dates.map(({ fromDatabase, morningModified, eveningModified, ...rest }) => rest)
       };
       
       const response = await postRequest(endpoint, dataToSend);
@@ -305,12 +329,22 @@ const DoctorRoaster = () => {
     setOriginalRosterData(null);
   };
 
-  const getCheckboxStyle = (dateItem) => {
-    if (dateItem.fromDatabase && dateItem.modified) {
-      return { backgroundColor: "#55bf70", borderColor: "#55bf70" }; // Green
+  const getMorningCheckboxStyle = (dateItem) => {
+    if (dateItem.fromDatabase && dateItem.morningModified) {
+      return { backgroundColor: "#ffd24d", borderColor: "#ffd24d" };
     } 
     else if (dateItem.fromDatabase) {
-      return { backgroundColor: "#e35d6a", borderColor: "#e35d6a" }; // Red
+      return { backgroundColor: "#55bf70", borderColor: "#55bf70" }; 
+    }
+    return {};
+  };
+  
+  const getEveningCheckboxStyle = (dateItem) => {
+    if (dateItem.fromDatabase && dateItem.eveningModified) {
+      return { backgroundColor: "#ffd24d", borderColor: "#ffd24d" }; 
+    } 
+    else if (dateItem.fromDatabase) {
+      return { backgroundColor: "#55bf70", borderColor: "#55bf70" }; 
     }
     return {};
   };
@@ -369,10 +403,6 @@ const DoctorRoaster = () => {
 
                     const isDisabled = isDateDisabled(date);
                     const rosterValue = dateItem.rosterVale;
-                    
-                    // Get styles based on data source
-                    const morningStyle = rosterValue === "YY" || rosterValue === "YN" ? getCheckboxStyle(dateItem) : {};
-                    const eveningStyle = rosterValue === "YY" || rosterValue === "NY" ? getCheckboxStyle(dateItem) : {};
 
                     return (
                       <td key={date} className="text-center">
@@ -383,9 +413,9 @@ const DoctorRoaster = () => {
                             checked={rosterValue === "YY" || rosterValue === "YN"}
                             onChange={() => handleCheckboxChange(doctorId, date, 'morning')}
                             disabled={isDisabled}
-                            style={morningStyle}
+                            style={getMorningCheckboxStyle(dateItem)}
                           />
-                          <label 
+                          <label
                             className={`form-check-label ${isDisabled ? 'text-muted' : ''}`}
                           >
                             M
@@ -398,9 +428,9 @@ const DoctorRoaster = () => {
                             checked={rosterValue === "YY" || rosterValue === "NY"}
                             onChange={() => handleCheckboxChange(doctorId, date, 'evening')}
                             disabled={isDisabled}
-                            style={eveningStyle}
+                            style={getEveningCheckboxStyle(dateItem)}
                           />
-                          <label 
+                          <label
                             className={`form-check-label ${isDisabled ? 'text-muted' : ''}`}
                           >
                             E
@@ -416,11 +446,11 @@ const DoctorRoaster = () => {
         </table>
         <div className="mt-2">
           <div className="d-flex align-items-center mb-2">
-            <div style={{width: '20px', height: '20px', backgroundColor: '#e35d6a', marginRight: '10px'}}></div>
+            <div style={{width: '20px', height: '20px', backgroundColor: '#55bf70', marginRight: '10px'}}></div>
             <span>Data from database</span>
           </div>
           <div className="d-flex align-items-center mb-2">
-            <div style={{width: '20px', height: '20px', backgroundColor: '#55bf70', marginRight: '10px'}}></div>
+            <div style={{width: '20px', height: '20px', backgroundColor: '#ffd24d', marginRight: '10px'}}></div>
             <span>Modified database data</span>
           </div>
           <div className="d-flex align-items-center">
