@@ -32,6 +32,7 @@ import Treatmentadvicemaster from './Views/Masters/TreatmentAdviceMaster';
 import Approveemployee from './Views/Admin/ApproveEmployee';
 import Frequencymaster from './Views/Masters/Frequencymaster';
 import OpdMaster from './Views/Masters/OpdMaster';
+import UpdatePatientRegistration from './Views/Reception/updatePatientRegistration';
 
 // import Drugmaster from './Views/Stores/DrugMaster';
 
@@ -101,7 +102,8 @@ function App() {
               <Route path="/approveemployee" element={<Approveemployee/>} />
               <Route path = "/frequencymaster" element={<Frequencymaster/>} />
               <Route path = "/opdmaster" element={<OpdMaster/>} />
-  
+              <Route path="updatepatientregistration" element={<UpdatePatientRegistration/>}/>
+
 
 
             </Route>

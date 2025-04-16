@@ -481,10 +481,18 @@ const Sidebar = () => {
                     Patient Registration
                   </Link>
                 </li>
+                <li>
+                  <Link className={`ms-link ${isActive('/updatepatientregistration') ? 'active' : ''}`}  to="/updatepatientregistration">
+                    Update Patient Registration
+                  </Link>
+                </li>
 
               </ul>
                 
             </li>
+
+
+
 
 
 
