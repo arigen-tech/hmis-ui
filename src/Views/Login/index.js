@@ -24,30 +24,30 @@ const Login = () => {
 
   const handleLogin = async (event) => {
     event.preventDefault();
-    // try {
-    //   const response = await postRequest(LOGIN, formData);
+    try {
+      const response = await postRequest(LOGIN, formData);
 
-    //   if (response?.response?.jwtToken) {
-    //     const { jwtToken, role, username } = response.response;
+      if (response?.response?.jwtToken) {
+        const { jwtToken, role, username } = response.response;
 
-    //     if (formData.rememberMe) {
-    //       localStorage.setItem("token", jwtToken);
-    //       if (role) localStorage.setItem("role", role);
-    //       if (username) localStorage.setItem("username", username);
-    //     } else {
-    //       sessionStorage.setItem("token", jwtToken);
-    //       if (role) sessionStorage.setItem("role", role);
-    //       if (username) sessionStorage.setItem("username", username);
-    //     }
+        if (formData.rememberMe) {
+          localStorage.setItem("token", jwtToken);
+          if (role) localStorage.setItem("role", role);
+          if (username) localStorage.setItem("username", username);
+        } else {
+          sessionStorage.setItem("token", jwtToken);
+          if (role) sessionStorage.setItem("role", role);
+          if (username) sessionStorage.setItem("username", username);
+        }
 
-    //     navigate("/dashboard");
-    //   } else {
-    //     console.error("Login failed: Missing token in response.");
-    //   }
-    // } catch (error) {
-    //   console.error("Login request failed:", error);
-    // }
-    navigate("/dashboard");
+        navigate("/dashboard");
+      } else {
+        console.error("Login failed: Missing token in response.");
+      }
+    } catch (error) {
+      console.error("Login request failed:", error);
+    }
+    // navigate("/dashboard");
 
   };
 
@@ -84,7 +84,7 @@ const Login = () => {
                         <div className="mb-2">
                           <label className="form-label">Email address</label>
                           <input
-                            type="email"
+                            type="text"
                             name="username"
                             className="form-control form-control-lg"
                             placeholder="name@example.com"

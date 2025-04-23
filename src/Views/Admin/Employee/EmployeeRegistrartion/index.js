@@ -51,7 +51,10 @@ const EmployeeRegistration = () => {
 
     const [countryIds, setCountryIds] = useState("");
     const [stateIds, setStateIds] = useState("");
-    const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhYmNAZ21haWwuY29tIiwiaG9zcGl0YWxJZCI6MSwiZW1wbG95ZWVJZCI6MSwiZXhwIjoxNzQ0NjE3MDk3LCJ1c2VySWQiOjQsImlhdCI6MTc0NDAxMjI5N30.ozKxfQcQUz1tuUgwxCSlwchFnEjfFJg89MeMmUlil13v3bjH-k9TvFnYhsz4k4gsFOyYq9pkwp5xbA1lkQ-6NQ";
+    // const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI2MjA5MTUwOTUzIiwiaG9zcGl0YWxJZCI6MTIsImVtcGxveWVlSWQiOjI0LCJleHAiOjE3NDU5MjM0MDEsInVzZXJJZCI6MjYsImlhdCI6MTc0NTMxODYwMX0.LkEVliY-PDFfP8wEN500oWOt-fv2prXTR2EkuGhOtFbWfHhPN1jUruuQAphE2-YMXI6a9RkGTfw_APgWgq9WQg";
+
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+
 
     console.log("form", formData);
 
@@ -492,7 +495,7 @@ const EmployeeRegistration = () => {
     const handleCreate = async () => {
         const formDataToSend = prepareFormData();
         if (!formDataToSend) return;
-
+    
         setLoading(true);
         try {
             const response = await fetch(`${API_HOST}/${EMPLOYEE_REGISTRATION}/create`, {
@@ -503,61 +506,62 @@ const EmployeeRegistration = () => {
                 },
                 body: formDataToSend
             });
-
+    
             const data = await response.json();
-
-            if (response.ok) {
-                showPopup("Employee created successfully", "success");
-                handleReset();
-            } else {
-                showPopup(`Error: ${data.message || 'Failed to create employee'}`, "error");
+    
+            if (!response.ok || data.status === 500) {
+                throw new Error(data.message || "Failed to create employee");
             }
+    
+            showPopup("Employee created successfully", "success");
+            handleReset();
+    
         } catch (error) {
             console.error("Error creating employee:", error);
-            showPopup("Error submitting form. Please try again.", "error");
+            showPopup(error.message || "Error submitting form. Please try again.", "error");
         } finally {
             setLoading(false);
         }
     };
+    
 
     const handleCreateWithApprove = async () => {
         const formDataToSend = prepareFormData();
         if (!formDataToSend) return;
-
-        // Ensure department ID is provided for approval
+    
         if (!formData.deprtId) {
             setviewDept(true);
             showPopup("Department is required for approval. Please select a department.", "error");
             return;
         }
-
+    
         setLoading(true);
         try {
             const response = await fetch(`${API_HOST}/${EMPLOYEE_REGISTRATION}/create-and-approve`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
+                    'Authorization': `Bearer ${token}`
                 },
                 body: formDataToSend
             });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                showPopup("Employee created and approved successfully", "success");
-                handleReset();
-            } else {
-                showPopup(`Error: ${data.message || 'Failed to create and approve employee'}`, "error");
+    
+            const data = await response.json(); 
+    
+            if (!response.ok || data.status === 500) {
+                throw new Error(data.message || `Failed with status: ${response.status}`);
             }
+    
+            showPopup("Employee created and approved successfully", "success");
+            handleReset();
+    
         } catch (error) {
             console.error("Error creating and approving employee:", error);
-            showPopup("Error submitting form. Please try again.", "error");
+            showPopup(error.message || "Error creating and approving employee", "error");
         } finally {
             setLoading(false);
         }
     };
-
+    
 
     return (
         <>

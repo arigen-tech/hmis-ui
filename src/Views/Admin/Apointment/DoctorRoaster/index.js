@@ -17,9 +17,9 @@ const DoctorRoaster = () => {
   const [popupMessage, setPopupMessage] = useState("");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [originalRosterData, setOriginalRosterData] = useState(null); 
-  const jwtToken = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhYmNAZ21haWwuY29tIiwiaG9zcGl0YWxJZCI6MSwiZW1wbG95ZWVJZCI6MSwiZXhwIjoxNzQ0Mjc5MDc0LCJ1c2VySWQiOjQsImlhdCI6MTc0MzY3NDI3NH0._lLEDlJG85GljjCscLe7l7YHyNAFg0h25JSseZvfvTMA1-7BDwGX7vPRzemg-yHyYm8jAUHREJ_leEst1x20lA";
 
-  localStorage.setItem("token", jwtToken);
+  const jwtToken = sessionStorage.getItem("token") || localStorage.getItem("token");
+
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
