@@ -38,7 +38,7 @@ const Assignapplication = () => {
             if (response && response.response) {
                 const mappedApplications = response.response
                     // Filter only applications where parentId matches appId (parent applications)
-                    .filter(app => app.parentId === app.appId)
+                    .filter(app => app.parentId === "0")
                     .map(app => ({
                         id: app.appId,
                         applicationCode: app.appId,
@@ -122,19 +122,26 @@ const Assignapplication = () => {
     const handleTemplateSelect = async (e) => {
         const selectedTemplateId = e.target.value;
         setSelectedTemplate(selectedTemplateId);
-
+    
         try {
             const response = await getRequest(`${ASSIGN_TEMPLATES}/getAllTemplateById/${selectedTemplateId}`);
-
+    
             if (response && response.response) {
-                const formattedData = response.response.map((template, index) => ({
-                    srNo: index + 1,
-                    module: template.appName,
-                    templateId: template.templateId,
-                    appId: template.appId,
-                    status: template.status,
-                    lastChgDate: template.lastChgDate
-                }));
+                console.log("Template response:", response.response);
+                
+                const formattedData = response.response.map((template, index) => {
+                    console.log("Individual template item:", template);
+                    
+                    return {
+                        srNo: index + 1,
+                        module: template.appName || "Unknown Module", // Use the correct property name
+                        templateId: template.templateId,
+                        appId: template.appId,
+                        status: template.status,
+                        lastChgDate: template.lastChgDate
+                    };
+                });
+                
                 setTemplateModules(formattedData);
             }
         } catch (error) {
@@ -199,35 +206,52 @@ const Assignapplication = () => {
                 return;
             }
             
+            // Get the current parent application information
+            const parentApp = parentApplications.find(app => app.id === selectedParentApp);
+            const parentName = parentApp?.applicationName;
             
+            // Check if this parent is already assigned to the selected template
+            const parentAlreadyAssigned = templateModules.some(
+                module => module.module === parentName || 
+                         module.module.startsWith(parentName + '->')
+            );
+            
+            // Prepare application status updates for all children
             const applicationStatusUpdates = childApplications.map(child => ({
                 appId: child.appId,
                 status: child.checked ? "y" : "n"
             }));
             
-            
-            const firstSelectedChild = selectedChildren[0];
+            // Create a single assignment for the parent, but only if it's not already assigned
+            const templateApplicationAssignments = [];
+            if (!parentAlreadyAssigned && selectedChildren.length > 0) {
+                templateApplicationAssignments.push({
+                    templateId: Number(selectedTemplate),
+                    appId: selectedParentApp,  // Use parent ID here
+                    lastChgBy: 0,
+                    orderNo: 1
+                });
+            }
             
             const payload = {
-                
                 applicationStatusUpdates: applicationStatusUpdates,
-                
-                
-                templateApplicationAssignments: [{
-                    templateId: Number(selectedTemplate), 
-                    appId: firstSelectedChild.appId, 
-                    lastChgBy: 0, 
-                    orderNo: firstSelectedChild.srNo 
-                }]
+                templateApplicationAssignments: templateApplicationAssignments,
+                parentAlreadyExists: parentAlreadyAssigned
             };
             
             console.log("Sending payload:", JSON.stringify(payload));
             
+            // Proceed with API call if there are status updates or a new parent to assign
             const response = await postRequest(`${APPLICATION}/assignUpdateTemplate`, payload);
             
             if (response && (response.success || response.status === 200)) {
+                let message = "Application status updated successfully!";
+                if (templateApplicationAssignments.length > 0) {
+                    message = "Template application assigned successfully!";
+                }
+                
                 setPopupMessage({
-                    message: "Template application assigned successfully!",
+                    message: message,
                     type: "success",
                     onClose: () => setPopupMessage(null)
                 });
@@ -251,7 +275,6 @@ const Assignapplication = () => {
             setShowModal(true);
         }
     };
-
    
 
     const handlePrevious = () => {

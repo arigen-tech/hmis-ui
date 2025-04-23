@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import { ALL_APPLICATIONS, APPLICATION, ALL_USER_APPLICATION, USER_APPLICATION } from "../../../config/apiConfig"
@@ -22,14 +20,14 @@ const Addformreports = () => {
     const [isParentIdDropdownVisible, setIsParentIdDropdownVisible] = useState(false)
     const [isAppNameDropdownVisible, setIsAppNameDropdownVisible] = useState(false)
 
-    // Form data state
+    // Form data state - removed status from the UI but keeping it in state with default value 'active'
     const [formData, setFormData] = useState({
         menuId: "",
         menuName: "",
         parentId: "",
         parentName: "",
         url: "",
-        status: "",
+        status: "active", // Default status set to active (will be sent as 'y')
     })
 
     // Edit mode specific states
@@ -68,33 +66,33 @@ const Addformreports = () => {
 
    
    // Fetch parent ID options
-useEffect(() => {
-    const fetchParentIdOptions = async () => {
-        try {
-            setLoading(true)
-            const response = await getRequest(`${APPLICATION}/getAllParents/1`)
+    useEffect(() => {
+        const fetchParentIdOptions = async () => {
+            try {
+                setLoading(true)
+                const response = await getRequest(`${APPLICATION}/getAllParents/1`)
 
-            if (response && response.response) {
-                const parentOptions = response.response.map((item) => ({
-                    id: item.appId ? item.appId.toString() : "",
-                    name: item.name || "",
-                    url: item.url || "",
-                }))
-                setParentIdOptions(parentOptions)
-            } else {
-                console.log("Unexpected response structure:", response)
-                setParentIdOptions([])
+                if (response && response.response) {
+                    const parentOptions = response.response.map((item) => ({
+                        id: item.appId ? item.appId.toString() : "",
+                        name: item.name || "",
+                        url: item.url || "",
+                    }))
+                    setParentIdOptions(parentOptions)
+                } else {
+                    console.log("Unexpected response structure:", response)
+                    setParentIdOptions([])
+                }
+            } catch (err) {
+                console.error("Error fetching parent IDs:", err)
+                showPopup("Error fetching parent IDs. Please try again later.", "error")
+            } finally {
+                setLoading(false)
             }
-        } catch (err) {
-            console.error("Error fetching parent IDs:", err)
-            showPopup("Error fetching parent IDs. Please try again later.", "error")
-        } finally {
-            setLoading(false)
         }
-    }
 
-    fetchParentIdOptions()
-}, [])
+        fetchParentIdOptions()
+    }, [])
 
     // Fetch application names for edit mode dropdown
     useEffect(() => {
@@ -112,7 +110,7 @@ useEffect(() => {
                                 name: item.name || "",
                                 parentId: item.parentId || "",
                                 url: item.url || "",
-                                status: item.status === "y" ? "active" : "inactive",
+                                status: "active", // Always set to active since we're removing the field
                             }
                         })
                         setAppNameOptions(appOptions)
@@ -190,12 +188,23 @@ useEffect(() => {
 
     const handleParentIdChange = (e) => {
         const inputValue = e.target.value
-        setFormData((prev) => ({
-            ...prev,
-            parentId: "",
-            parentName: inputValue,
-        }))
-        setIsParentIdDropdownVisible(true)
+        
+        // If user explicitly types "0", set parentId to "0"
+        if (inputValue === "0") {
+            setFormData((prev) => ({
+                ...prev,
+                parentId: "0",
+                parentName: "0",
+            }))
+            setIsParentIdDropdownVisible(false)
+        } else {
+            setFormData((prev) => ({
+                ...prev,
+                parentId: "",
+                parentName: inputValue,
+            }))
+            setIsParentIdDropdownVisible(true)
+        }
     }
 
 
@@ -226,7 +235,7 @@ useEffect(() => {
             parentId: selectedApp.parentId,
             parentName: parentName,
             url: selectedApp.url,
-            status: selectedApp.status,
+            status: "active", // Always set to active
         })
         setOriginalParentId(selectedApp.parentId)
         setIsEditDataLoaded(true)
@@ -248,10 +257,7 @@ useEffect(() => {
             showPopup("URL is required", "warning")
             return
         }
-        if (!formData.status) {
-            showPopup("Status is required", "warning")
-            return
-        }
+        // Removed status validation since it will always be 'active'
 
         try {
             setLoading(true)
@@ -276,21 +282,21 @@ useEffect(() => {
                 }
             }
 
-            // Prepare submit data
+            // Prepare submit data - always send status as "y"
             const submitData = isEditMode
                 ? {
                     appId: formData.menuId,
                     name: formData.menuName,
                     parentId: originalParentId,
                     url: formData.url,
-                    status: formData.status === "active" ? "y" : "n",
+                    status: "y", // Always set to "y"
                 }
                 : {
                     menuId: formData.menuId,
                     name: formData.menuName,
                     parentId: formData.parentId || null,
                     url: formData.url,
-                    status: formData.status === "active" ? "y" : "n",
+                    status: "y", // Always set to "y"
                 }
 
             const apiCall = isEditMode ? putRequest : postRequest
@@ -351,7 +357,7 @@ useEffect(() => {
             parentId: "",
             parentName: "",
             url: "",
-            status: "",
+            status: "active", // Reset with default active
         })
 
         
@@ -508,23 +514,7 @@ useEffect(() => {
                                         />
                                     </div>
 
-                                    <div className="form-group col-md-4">
-                                        <label>
-                                            Status <span className="text-danger">*</span>
-                                        </label>
-                                        <select
-                                            className="form-control mt-1"
-                                            id="status"
-                                            value={formData.status}
-                                            onChange={handleInputChange}
-                                            required
-                                            disabled={isEditMode && !isEditDataLoaded}
-                                        >
-                                            <option value="">Select Status</option>
-                                            <option value="active">Active</option>
-                                            <option value="inactive">Inactive</option>
-                                        </select>
-                                    </div>
+                                    {/* Status field has been removed */}
 
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-3">
                                         {isEditMode ? (
@@ -542,7 +532,7 @@ useEffect(() => {
                                                             parentId: "",
                                                             parentName: "",
                                                             url: "",
-                                                            status: "",
+                                                            status: "active", // Reset with default active
                                                         })
                                                     }}
                                                     className="btn btn-secondary me-2"
@@ -580,4 +570,3 @@ useEffect(() => {
 }
 
 export default Addformreports
-

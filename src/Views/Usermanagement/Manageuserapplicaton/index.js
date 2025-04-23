@@ -169,7 +169,7 @@ const Manageuserapplication = () => {
                             id: newApplication.id || Date.now(),
                             menuName: newApplication.userAppName || formData.menuName,
                             url: newApplication.url || formData.url,
-                            status: "n"
+                            status: "y"
                         }
                     ]);
     
