@@ -389,6 +389,33 @@ const Sidebar = () => {
 
               </ul>
             </li>
+            <li className="collapsed">
+              <Link
+                className="m-link"
+                data-bs-toggle="collapse"
+                data-bs-target="#menu-laboratory"
+                to="#"
+              >
+                <i className="icofont-test-tube fs-5" /> <span>Laboratory</span>
+                <span className="arrow icofont-rounded-down ms-auto text-end fs-5" />
+              </Link>
+              <ul className="sub-menu collapse" id="menu-laboratory">
+               
+                <li>
+                  <Link className={`ms-link ${isActive('/mainchargecode') ? 'active' : ''}`} to="mainchargecode">
+                  Main Charge Code
+                  </Link>
+                </li>
+
+                <li>
+                  <Link className={`ms-link ${isActive('/subchargecode') ? 'active' : ''}`} to="subchargecode">
+                  Sub Charge Code
+                  </Link>
+                </li>
+
+
+              </ul>
+            </li>
 
 
             {/* admin */}
