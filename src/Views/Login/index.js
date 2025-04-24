@@ -14,6 +14,9 @@ const Login = () => {
     rememberMe: false,
   });
 
+  // First, add a new state for password visibility
+  const [showPassword, setShowPassword] = useState(false);
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prevFormData) => ({
@@ -28,17 +31,50 @@ const Login = () => {
       const response = await postRequest(LOGIN, formData);
 
       if (response?.response?.jwtToken) {
-        const { jwtToken, role, username } = response.response;
+        const {
+          jwtToken,
+          refreshToken,
+          username,
+          role,
+          jwtTokenExpiry,
+        } = response.response;
+
+        const currentTime = Date.now();
+        const isTokenValid = jwtTokenExpiry > currentTime;
+        const validTime = jwtTokenExpiry;
+
+        console.log("Current Time:", new Date(currentTime).toLocaleString());
+        console.log("Token Expiry Time:", new Date(jwtTokenExpiry).toLocaleString());
+        console.log("Is Token Valid:", isTokenValid);
+
 
         if (formData.rememberMe) {
           localStorage.setItem("token", jwtToken);
+          localStorage.setItem("refreshToken", refreshToken);
+          localStorage.setItem("username", username);
           if (role) localStorage.setItem("role", role);
-          if (username) localStorage.setItem("username", username);
+          localStorage.setItem("AuthValidation", validTime);
+          localStorage.setItem("isTokenValid", isTokenValid);
         } else {
           sessionStorage.setItem("token", jwtToken);
+          sessionStorage.setItem("refreshToken", refreshToken);
+          sessionStorage.setItem("username", username);
           if (role) sessionStorage.setItem("role", role);
-          if (username) sessionStorage.setItem("username", username);
+          sessionStorage.setItem("AuthValidation", validTime);
+          sessionStorage.setItem("isTokenValid", isTokenValid);
         }
+
+        // Set up a timeout to auto-mark the token as expired
+        const timeUntilExpiry = jwtTokenExpiry - currentTime;
+        setTimeout(() => {
+          if (formData.rememberMe) {
+            localStorage.setItem("isTokenValid", "false");
+            logout();
+          } else {
+            sessionStorage.setItem("isTokenValid", "false");
+            logout();
+          }
+        }, timeUntilExpiry);
 
         navigate("/dashboard");
       } else {
@@ -47,9 +83,29 @@ const Login = () => {
     } catch (error) {
       console.error("Login request failed:", error);
     }
-    // navigate("/dashboard");
-
   };
+
+  const logout = () => {
+    // localStorage.removeItem("token");
+    // localStorage.removeItem("refreshToken");
+    // localStorage.removeItem("username");
+    // localStorage.removeItem("role");
+    // localStorage.removeItem("AuthValidation");
+    // localStorage.removeItem("isTokenValid");
+
+    // sessionStorage.removeItem("token");
+    // sessionStorage.removeItem("refreshToken");
+    // sessionStorage.removeItem("username");
+    // sessionStorage.removeItem("role");
+    // sessionStorage.removeItem("AuthValidation");
+    // sessionStorage.removeItem("isTokenValid");
+
+    localStorage.clear();
+    sessionStorage.clear();
+
+    navigate("/");
+  };
+
 
   return (
     <>
@@ -82,36 +138,53 @@ const Login = () => {
 
                       <div className="col-12">
                         <div className="mb-2">
-                          <label className="form-label">Email address</label>
+                          <label className="form-label">Username <span className="text-danger"
+                          >*</span></label>
                           <input
                             type="text"
                             name="username"
                             className="form-control form-control-lg"
-                            placeholder="name@example.com"
+                            placeholder="5711139824"
                             value={formData.username}
                             onChange={handleInputChange}
-                            // required
+                            required
                           />
                         </div>
                       </div>
                       <div className="col-12">
                         <div className="mb-2">
-                          <div className="form-label">
-                            <span className="d-flex justify-content-between align-items-center">
-                              Password
-                              <a href="/forgot-password">Forgot Password?</a>
-                            </span>
+                          <label className="form-label">Password <span className="text-danger"
+                          >*</span></label>
+                          <div className="position-relative">
+                            <input
+                              type={showPassword ? "text" : "password"}
+                              name="password"
+                              className="form-control form-control-lg"
+                              placeholder="***************"
+                              value={formData.password}
+                              onChange={handleInputChange}
+                              required
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-link position-absolute end-0 top-50 translate-middle-y text-decoration-none"
+                              onClick={() => setShowPassword(!showPassword)}
+                              style={{ zIndex: 1 }}
+                            >
+                              {showPassword ? (
+                                <i className="bi bi-eye-slash"></i>
+                              ) : (
+                                <i className="bi bi-eye"></i>
+                              )}
+                            </button>
                           </div>
-                          <input
-                            type="password"
-                            name="password"
-                            className="form-control form-control-lg"
-                            placeholder="***************"
-                            value={formData.password}
-                            onChange={handleInputChange}
-                            // required
-                          />
                         </div>
+                      </div>
+                      <div className="form-label">
+                        <span className="d-flex justify-content-between align-items-center">
+                          Password
+                          <a href="/forgot-password">Forgot Password?</a>
+                        </span>
                       </div>
                       <div className="col-12">
                         <div className="form-check">
@@ -133,11 +206,7 @@ const Login = () => {
                           SIGN IN
                         </button>
                       </div>
-                      <div className="col-12 text-center mt-4">
-                        <span>
-                          Don't have an account yet? <a href="/register">Sign up here</a>
-                        </span>
-                      </div>
+
                     </form>
                   </div>
                 </div>

@@ -1,5 +1,5 @@
 import React, { Suspense, useContext } from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, Outlet } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle';
 import { MenuProvider } from './context/MenuContext';
@@ -52,68 +52,74 @@ const ViewSearchEmployee = React.lazy(() => import('./Views/Admin/Employee/ViewS
 
 
 const isAuthenticated = () => {
-  // Replace this with real authentication check logic
- // return Cookies.get('isAuthenticated') === "true";
- return true;
+  const expiry = sessionStorage.getItem("isTokenValid") || localStorage.getItem("isTokenValid");
+  if (expiry) {
+    return true;
+  } else {
+    return false
+  }
 };
-const PrivateRoute = ({ element, path }) => {
-  return isAuthenticated() ? element : <Navigate to="/" />;
+
+
+const PrivateRoute = () => {
+  return isAuthenticated() ? <Outlet /> : <Navigate to="/" replace />;
 };
 function App() {
   return (
     <MenuProvider>
-    <Router>
-      <Suspense>
-        <Routes>
+      <Router>
+        <Suspense>
+          <Routes>
+            {/* Public Route */}
             <Route path="/" element={<Login />} />
-            <Route path="/" element={<PrivateRoute element={<Layout />} />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/AddDoctor" element={<AddDoctor />} />
-              <Route path="/Gendermaster" element={<Gendermaster/>}/>
-              <Route path="/Relationmaster" element={<Relationmaster/>} />
-              <Route path="/Bloodmaster" element={<Bloodmaster/>} />
-              <Route path="/maritalstatusmaster" element={<Maritalstatus/>} />
-              <Route path="/manageuserapplication" element={<Manageuserapplication/>} />
-              <Route path="/addformreports" element={<Addformreports/>} />
-              <Route path="/templatemaster" element={<Templatemaster/>} />
-              <Route path="/assignapplication" element={<Assignapplication/>} />
-              <Route path="/rolesrights" element={<Rolesrights/>} />
-              <Route path="/itemclass" element={<Itemclass/>} />
-              <Route path="/itemcategory" element={<Itemcategory/>} />
-              <Route path="/itemtype" element={<Itemtype/>} />
-              <Route path="/Itemunit" element={<Itemunit/>} />
-              {/* <Route path="/Drugmaster" element={<Drugmaster/>} /> */}
-              <Route path="/ApointmentSetup" element={<ApointmentSetup />} />
-              <Route path="/DoctorRoaster" element={<DoctorRoaster />} />
-              <Route path="/PatientRegistration" element={<PatientRegistration />} />
-              <Route path="/rolemaster" element={<Rolemaster/>} />
-              <Route path="/departmenttype" element={<Departmenttype/>} />
-              <Route path="/departmentmaster" element={<Departmentmaster/>} />
-              <Route path="/countrymaster" element={<Countrymaster/>} />
-              <Route path="/statemaster" element={<Statemaster/>} />
-              <Route path="/districtmaster" element={<Districtmaster/>} />
-              <Route path="/RegisterEmployee" element={<RegisterEmployee />} />
-              <Route path="/ViewSearchEmployee" element={<ViewSearchEmployee />} />
-              <Route path="/religionmaster" element={<Religionmaster/>} />
-              <Route path="/hospitalmaster" element={<Hospitalmaster/>} />
-              <Route path="/createusermaster" element={<Createusermaster/>} />
-              <Route path="/userdepartment" element={<Userdepartment/>} />
-              <Route path="/Identificationmaster" element={<Identificationmaster/>} />
-              <Route path="/rcmc" element={<RCMC/>} />
-              <Route path="/treatmentadvicemaster" element={<Treatmentadvicemaster/>} />
-              <Route path="/approveemployee" element={<Approveemployee/>} />
-              <Route path = "/frequencymaster" element={<Frequencymaster/>} />
-              <Route path = "/opdmaster" element={<OpdMaster/>} />
-              <Route path="updatepatientregistration" element={<UpdatePatientRegistration/>}/>
-              <Route path="/mainchargecode" element={<Mainchargecode/>} />
-              <Route path="/subchargecode" element={<Subchargecode/>} />
 
-
-
+            {/* Protected Routes */}
+            <Route element={<PrivateRoute />}>
+              <Route path="/" element={<Layout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/AddDoctor" element={<AddDoctor />} />
+                <Route path="/Gendermaster" element={<Gendermaster />} />
+                <Route path="/Relationmaster" element={<Relationmaster />} />
+                <Route path="/Bloodmaster" element={<Bloodmaster />} />
+                <Route path="/maritalstatusmaster" element={<Maritalstatus />} />
+                <Route path="/manageuserapplication" element={<Manageuserapplication />} />
+                <Route path="/addformreports" element={<Addformreports />} />
+                <Route path="/templatemaster" element={<Templatemaster />} />
+                <Route path="/assignapplication" element={<Assignapplication />} />
+                <Route path="/rolesrights" element={<Rolesrights />} />
+                <Route path="/itemclass" element={<Itemclass />} />
+                <Route path="/itemcategory" element={<Itemcategory />} />
+                <Route path="/itemtype" element={<Itemtype />} />
+                <Route path="/Itemunit" element={<Itemunit />} />
+                <Route path="/ApointmentSetup" element={<ApointmentSetup />} />
+                <Route path="/DoctorRoaster" element={<DoctorRoaster />} />
+                <Route path="/PatientRegistration" element={<PatientRegistration />} />
+                <Route path="/rolemaster" element={<Rolemaster />} />
+                <Route path="/departmenttype" element={<Departmenttype />} />
+                <Route path="/departmentmaster" element={<Departmentmaster />} />
+                <Route path="/countrymaster" element={<Countrymaster />} />
+                <Route path="/statemaster" element={<Statemaster />} />
+                <Route path="/districtmaster" element={<Districtmaster />} />
+                <Route path="/RegisterEmployee" element={<RegisterEmployee />} />
+                <Route path="/ViewSearchEmployee" element={<ViewSearchEmployee />} />
+                <Route path="/religionmaster" element={<Religionmaster />} />
+                <Route path="/hospitalmaster" element={<Hospitalmaster />} />
+                <Route path="/createusermaster" element={<Createusermaster />} />
+                <Route path="/userdepartment" element={<Userdepartment />} />
+                <Route path="/Identificationmaster" element={<Identificationmaster />} />
+                <Route path="/rcmc" element={<RCMC />} />
+                <Route path="/treatmentadvicemaster" element={<Treatmentadvicemaster />} />
+                <Route path="/approveemployee" element={<Approveemployee />} />
+                <Route path="/frequencymaster" element={<Frequencymaster />} />
+                <Route path="/opdmaster" element={<OpdMaster />} />
+                <Route path="/updatepatientregistration" element={<UpdatePatientRegistration />} />
+                <Route path="/mainchargecode" element={<Mainchargecode/>} />
+                <Route path="/subchargecode" element={<Subchargecode/>} />
+              </Route>
             </Route>
-        </Routes>
-      </Suspense>
-    </Router>
+          </Routes>
+        </Suspense>
+      </Router>
     </MenuProvider>
   );
 }

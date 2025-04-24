@@ -82,7 +82,7 @@ const ViewSearchEmployee = () => {
   const fetchEmployeesData = async () => {
     setLoading(true);
     try {
-      const data = await getRequest(`${EMPLOYEE_REGISTRATION}/getAllEmployee`);
+      const data = await getRequest(`/${EMPLOYEE_REGISTRATION}/getAllEmployee`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setEmployees(data.response);
         setFilteredEmployees(data.response);
