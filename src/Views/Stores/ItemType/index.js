@@ -1,90 +1,218 @@
-import { useState } from "react"
+
+
+import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
+import { ITEM_TYPE, ALL_ITEM_TYPE, ALL_STORE_GROUP } from "../../../config/apiConfig"
+import LoadingScreen from "../../../Components/Loading"
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
-const Itemtype = () => {
-  const [itemTypes, setItemTypes] = useState([
-    { id: 1, itemTypeCode: "T1", itemTypeName: "MEDICAL ASSET", itemGroup: "ASSET", status: "y" },
-    { id: 2, itemTypeCode: "T2", itemTypeName: "MEDICAL ASSET", itemGroup: "ASSET", status: "y" },
-    { id: 3, itemTypeCode: "T3", itemTypeName: "MEDICAL ASSET", itemGroup: "ASSET", status: "y" },
-    { id: 4, itemTypeCode: "T4", itemTypeName: "NON MEDICAL ASSET", itemGroup: "CONSUMABLE", status: "y" },
-    { id: 5, itemTypeCode: "T5", itemTypeName: "NON MEDICAL ASSET", itemGroup: "CONSUMABLE", status: "y" },
-  ])
-
+const ItemTypeManagement = () => {
+  const [itemTypes, setItemTypes] = useState([])
+  const [storeGroups, setStoreGroups] = useState([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageInput, setPageInput] = useState("")
+  const itemsPerPage = 4
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, itemTypeId: null, newStatus: false })
+  const [popupMessage, setPopupMessage] = useState(null)
+  const [showForm, setShowForm] = useState(false)
+  const [newStatus, setNewStatus] = useState("")
+  const [itemTypeId, setItemTypeId] = useState("")
+
+  const [editingType, setEditingType] = useState(null)
+  const [isFormValid, setIsFormValid] = useState(false)
   const [formData, setFormData] = useState({
     itemTypeCode: "",
     itemTypeName: "",
     itemGroup: "",
   })
-  const [searchQuery, setSearchQuery] = useState("")
-  const [showForm, setShowForm] = useState(false)
-  const [isFormValid, setIsFormValid] = useState(false)
-  const [editingItemType, setEditingItemType] = useState(null)
-  const [popupMessage, setPopupMessage] = useState(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
-  const itemsPerPage = 3
+  const [loading, setLoading] = useState(true)
+  const [searchType, setSearchType] = useState("code")
+
+  const ITEM_TYPE_NAME_MAX_LENGTH = 30
+  const ITEM_TYPE_CODE_MAX_LENGTH = 8
+
+  useEffect(() => {
+    fetchItemTypes(0)
+    fetchStoreGroups(1)
+  }, [])
+
+  const fetchItemTypes = async (flag = 0) => {
+    try {
+      setLoading(true)
+      const response = await getRequest(`${ALL_ITEM_TYPE}/${flag}`)
+      if (response && response.response) {
+        // Map the response to match our component's expected structure
+        const mappedItemTypes = response.response.map((item) => ({
+          itemTypeId: item.id,
+          itemTypeCode: item.code,
+          itemTypeName: item.name,
+          itemGroup: storeGroups.find((group) => group.id === item.masStoreGroupId)?.groupName || "",
+          status: item.status.toLowerCase(),
+          masStoreGroupId: item.masStoreGroupId,
+        }))
+        setItemTypes(mappedItemTypes)
+      }
+    } catch (err) {
+      console.error("Error fetching item types:", err)
+      showPopup("Failed to load item types", "error")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchStoreGroups = async (flag=1) => {
+    try {
+      // Based on your error and response, we need to adjust the endpoint
+      const response = await getRequest(`${ALL_STORE_GROUP}/${flag}`)
+
+      if (response && response.response) {
+        const mappedStoreGroups = response.response.map((group) => ({
+          id: group.id,
+          groupName: group.groupName,
+          groupCode: group.groupCode,
+          status: group.status,
+        }))
+        setStoreGroups(mappedStoreGroups)
+
+        // Refresh item types to ensure they have the correct group names
+        if (itemTypes.length > 0) {
+          const updatedItemTypes = itemTypes.map((item) => ({
+            ...item,
+            itemGroup: mappedStoreGroups.find((group) => group.id === item.masStoreGroupId)?.groupName || "",
+          }))
+          setItemTypes(updatedItemTypes)
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching store groups:", err)
+      showPopup("Failed to load store groups. Using default values.", "error")
+
+     
+     
+    }
+  }
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
     setCurrentPage(1)
   }
 
-  const filteredItemTypes = itemTypes.filter(
-    (item) =>
-      item.itemTypeCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.itemTypeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.itemGroup.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  const handleSearchTypeChange = (e) => {
+    setSearchType(e.target.value)
+    setCurrentPage(1)
+  }
 
-  const filteredTotalPages = Math.ceil(filteredItemTypes.length / itemsPerPage)
+  const filteredItemTypes = itemTypes.filter((type) => {
+    if (searchType === "code") {
+      return type.itemTypeCode.toLowerCase().includes(searchQuery.toLowerCase())
+    } else {
+      return type.itemTypeName.toLowerCase().includes(searchQuery.toLowerCase())
+    }
+  })
 
   const currentItems = filteredItemTypes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
-  const handleEdit = (item) => {
-    setEditingItemType(item)
-    setShowForm(true)
-    setFormData({
-      itemTypeCode: item.itemTypeCode,
-      itemTypeName: item.itemTypeName,
-      itemGroup: item.itemGroup,
-    })
-    setIsFormValid(true)
+  const filteredTotalPages = Math.ceil(filteredItemTypes.length / itemsPerPage)
+
+  const handlePageNavigation = () => {
+    const pageNumber = Number.parseInt(pageInput, 10)
+    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
+      setCurrentPage(pageNumber)
+    } else {
+      alert("Please enter a valid page number.")
+    }
   }
 
-  const handleSave = (e) => {
+  const handleEdit = (type) => {
+    setEditingType({
+      ...type,
+      itemTypeId: type.itemTypeId,
+    })
+    setFormData({
+      itemTypeCode: type.itemTypeCode,
+      itemTypeName: type.itemTypeName,
+      itemGroup: type.masStoreGroupId.toString(), // Store the ID instead of the name
+    })
+    setIsFormValid(true)
+    setShowForm(true)
+  }
+
+  const handleSave = async (e) => {
     e.preventDefault()
     if (!isFormValid) return
 
-    if (editingItemType) {
-      setItemTypes(
-        itemTypes.map((item) =>
-          item.id === editingItemType.id
-            ? {
-                ...item,
-                itemTypeCode: formData.itemTypeCode,
-                itemTypeName: formData.itemTypeName,
-                itemGroup: formData.itemGroup,
-              }
-            : item,
-        ),
-      )
-      showPopup("Item type updated successfully!", "success")
-    } else {
-      const newItemType = {
-        id: Date.now(),
-        itemTypeCode: formData.itemTypeCode,
-        itemTypeName: formData.itemTypeName,
-        itemGroup: formData.itemGroup,
-        status: "y",
-      }
-      setItemTypes([...itemTypes, newItemType])
-      showPopup("New item type added successfully!", "success")
-    }
+    try {
+      setLoading(true)
 
-    setEditingItemType(null)
-    setShowForm(false)
-    setFormData({ itemTypeCode: "", itemTypeName: "", itemGroup: "" })
+      const isDuplicate = itemTypes.some(
+        (type) =>
+          (type.itemTypeCode === formData.itemTypeCode || type.itemTypeName === formData.itemTypeName) &&
+          (!editingType || type.itemTypeId !== editingType.itemTypeId),
+      )
+
+      if (isDuplicate) {
+        showPopup("Item type with the same code or name already exists!", "error")
+        setLoading(false)
+        return
+      }
+
+      // Convert request to match API expectations
+      const requestData = {
+        code: formData.itemTypeCode,
+        name: formData.itemTypeName,
+        masStoreGroupId: Number.parseInt(formData.itemGroup, 10),
+        status: editingType ? editingType.status : "y",
+      }
+
+      if (editingType) {
+        const response = await putRequest(`${ITEM_TYPE}/updateMasItemTypeId/${editingType.itemTypeId}`, requestData)
+
+        if (response && response.response) {
+          // Map the response to match our component's expected structure
+          const updatedItem = {
+            itemTypeId: response.response.id,
+            itemTypeCode: response.response.code,
+            itemTypeName: response.response.name,
+            itemGroup: storeGroups.find((group) => group.id === response.response.masStoreGroupId)?.groupName || "",
+            status: response.response.status.toLowerCase(),
+            masStoreGroupId: response.response.masStoreGroupId,
+          }
+
+          setItemTypes((prevData) =>
+            prevData.map((type) => (type.itemTypeId === editingType.itemTypeId ? updatedItem : type)),
+          )
+          showPopup("Item type updated successfully!", "success")
+        }
+      } else {
+        const response = await postRequest(`${ITEM_TYPE}/addMasItemType`, requestData)
+
+        if (response && response.response) {
+          // Map the response to match our component's expected structure
+          const newItem = {
+            itemTypeId: response.response.id,
+            itemTypeCode: response.response.code,
+            itemTypeName: response.response.name,
+            itemGroup: storeGroups.find((group) => group.id === response.response.masStoreGroupId)?.groupName || "",
+            status: response.response.status.toLowerCase(),
+            masStoreGroupId: response.response.masStoreGroupId,
+          }
+
+          setItemTypes([...itemTypes, newItem])
+          showPopup("New item type added successfully!", "success")
+        }
+      }
+
+      setEditingType(null)
+      setFormData({ itemTypeCode: "", itemTypeName: "", itemGroup: "" })
+      setShowForm(false)
+      fetchItemTypes()
+    } catch (err) {
+      console.error("Error saving item type:", err)
+      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const showPopup = (message, type = "info") => {
@@ -98,18 +226,34 @@ const Itemtype = () => {
   }
 
   const handleSwitchChange = (id, newStatus) => {
+    setItemTypeId(id)
+    setNewStatus(newStatus)
     setConfirmDialog({ isOpen: true, itemTypeId: id, newStatus })
   }
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed && confirmDialog.itemTypeId !== null) {
-      setItemTypes((prevData) =>
-        prevData.map((item) =>
-          item.id === confirmDialog.itemTypeId ? { ...item, status: confirmDialog.newStatus } : item,
-        ),
+  const handleConfirm = async () => {
+    try {
+      setLoading(true)
+
+      const response = await putRequest(
+        `${ITEM_TYPE}/updateMasItemTypeStatus/${confirmDialog.itemTypeId}/${confirmDialog.newStatus}`,
       )
+
+      if (response && response.response) {
+        setItemTypes((prevData) =>
+          prevData.map((type) =>
+            type.itemTypeId === confirmDialog.itemTypeId ? { ...type, status: confirmDialog.newStatus } : type,
+          ),
+        )
+        showPopup(`Item type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success")
+      }
+    } catch (err) {
+      console.error("Error updating item type status:", err)
+      showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error")
+    } finally {
+      setLoading(false)
+      setConfirmDialog({ isOpen: false, itemTypeId: null, newStatus: null })
     }
-    setConfirmDialog({ isOpen: false, itemTypeId: null, newStatus: null })
   }
 
   const handleInputChange = (e) => {
@@ -118,16 +262,17 @@ const Itemtype = () => {
 
     // Check if all required fields have values
     const updatedFormData = { ...formData, [id]: value }
-    setIsFormValid(!!updatedFormData.itemTypeCode && !!updatedFormData.itemTypeName && !!updatedFormData.itemGroup)
+    setIsFormValid(
+      updatedFormData.itemTypeCode.trim() !== "" &&
+        updatedFormData.itemTypeName.trim() !== "" &&
+        updatedFormData.itemGroup.trim() !== "",
+    )
   }
 
-  const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10)
-    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-      setCurrentPage(pageNumber)
-    } else {
-      alert("Please enter a valid page number.")
-    }
+  const handleRefresh = () => {
+    setSearchQuery("")
+    setCurrentPage(1)
+    fetchItemTypes()
   }
 
   const renderPagination = () => {
@@ -174,54 +319,64 @@ const Itemtype = () => {
           <div className="card form-card">
             <div className="card-header">
               <h4 className="card-title p-2">Item Type Master</h4>
-              <div className="d-flex justify-content-between align-items-spacearound mt-3">
-                {!showForm && (
+              {!showForm && (
+                <div className="d-flex justify-content-between align-items-spacearound mt-3">
                   <div className="d-flex align-items-center">
                     <div className="me-3">
                       <label>
-                        <input type="radio" name="searchType" value="code" />
+                        <input
+                          type="radio"
+                          name="searchType"
+                          value="code"
+                          checked={searchType === "code"}
+                          onChange={handleSearchTypeChange}
+                        />
                         <span style={{ marginLeft: "5px" }}>Item Type Code</span>
                       </label>
                     </div>
                     <div className="me-3">
                       <label>
-                        <input type="radio" name="searchType" value="description" />
+                        <input
+                          type="radio"
+                          name="searchType"
+                          value="description"
+                          checked={searchType === "description"}
+                          onChange={handleSearchTypeChange}
+                        />
                         <span style={{ marginLeft: "5px" }}>Item Type Name</span>
                       </label>
                     </div>
                   </div>
-                )}
-                <div className="d-flex align-items-center">
-                  {!showForm && (
-                    <>
-                      <form className="d-inline-block searchform me-4" role="search">
-                        <div className="input-group searchinput">
-                          <input
-                            type="search"
-                            className="form-control"
-                            placeholder="Search"
-                            aria-label="Search"
-                            value={searchQuery}
-                            onChange={handleSearchChange}
-                          />
-                          <span className="input-group-text" id="search-icon">
-                            <i className="fa fa-search"></i>
-                          </span>
-                        </div>
-                      </form>
-                      <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
-                        <i className="mdi mdi-plus"></i> Add
-                      </button>
-                      <button type="button" className="btn btn-success me-2">
-                        <i className="mdi mdi-plus"></i> Generate Report
-                      </button>
-                    </>
-                  )}
+                  <div className="d-flex align-items-center">
+                    <form className="d-inline-block searchform me-4" role="search">
+                      <div className="input-group searchinput">
+                        <input
+                          type="search"
+                          className="form-control"
+                          placeholder="Search"
+                          aria-label="Search"
+                          value={searchQuery}
+                          onChange={handleSearchChange}
+                        />
+                        <span className="input-group-text" id="search-icon">
+                          <i className="fa fa-search"></i>
+                        </span>
+                      </div>
+                    </form>
+                    <button type="button" className="btn btn-success me-1" onClick={() => setShowForm(true)}>
+                      <i className="mdi mdi-plus"></i> ADD
+                    </button>
+                    <button type="button" className="btn btn-success me-2">
+                      <i className="mdi mdi-plus"></i> Generate Report
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
             <div className="card-body">
-              {!showForm ? (
+              {loading ? (
+                <LoadingScreen />
+              ) : !showForm ? (
                 <div className="table-responsive packagelist">
                   <table className="table table-bordered table-hover align-middle">
                     <thead className="table-light">
@@ -234,34 +389,30 @@ const Itemtype = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {currentItems.map((item) => (
-                        <tr key={item.id}>
-                          <td>{item.itemTypeCode}</td>
-                          <td>{item.itemTypeName}</td>
-                          <td>{item.itemGroup}</td>
+                      {currentItems.map((type) => (
+                        <tr key={type.itemTypeId}>
+                          <td>{type.itemTypeCode}</td>
+                          <td>{type.itemTypeName}</td>
+                          <td>{type.itemGroup}</td>
                           <td>
                             <div className="form-check form-switch">
                               <input
                                 className="form-check-input"
                                 type="checkbox"
-                                checked={item.status === "y"}
-                                onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
-                                id={`switch-${item.id}`}
+                                checked={type.status === "y"}
+                                onChange={() => handleSwitchChange(type.itemTypeId, type.status === "y" ? "n" : "y")}
+                                id={`switch-${type.itemTypeId}`}
                               />
-                              <label
-                                className="form-check-label px-0"
-                                htmlFor={`switch-${item.id}`}
-                                onClick={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
-                              >
-                                {item.status === "y" ? "Active" : "Deactivated"}
+                              <label className="form-check-label px-0" htmlFor={`switch-${type.itemTypeId}`}>
+                                {type.status === "y" ? "Active" : "Deactivated"}
                               </label>
                             </div>
                           </td>
                           <td>
                             <button
                               className="btn btn-sm btn-success me-2"
-                              onClick={() => handleEdit(item)}
-                              disabled={item.status !== "y"}
+                              onClick={() => handleEdit(type)}
+                              disabled={type.status !== "y"}
                             >
                               <i className="fa fa-pencil"></i>
                             </button>
@@ -278,53 +429,69 @@ const Itemtype = () => {
                       <i className="mdi mdi-arrow-left"></i> Back
                     </button>
                   </div>
-                  <div className="row">
-                    <div className="form-group col-md-4 mt-3">
-                      <label>
-                        Item Type Code <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        id="itemTypeCode"
-                        placeholder="Item Type Code"
-                        onChange={handleInputChange}
-                        value={formData.itemTypeCode}
-                        required
-                      />
-                    </div>
-                    <div className="form-group col-md-4 mt-3">
-                      <label>
-                        Item Type Name <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        id="itemTypeName"
-                        placeholder="Item Type Name"
-                        onChange={handleInputChange}
-                        value={formData.itemTypeName}
-                        required
-                      />
-                    </div>
-                    <div className="form-group col-md-4 mt-3">
-                      <label>
-                        Item Group <span className="text-danger">*</span>
-                      </label>
-                      <select
-                        className="form-control"
-                        id="itemGroup"
-                        onChange={handleInputChange}
-                        value={formData.itemGroup}
-                        required
-                      >
-                        <option value="" disabled>
-                          Select Item Group
-                        </option>
-                        <option value="ASSET">ASSET</option>
-                        <option value="CONSUMABLE">CONSUMABLE</option>
-                      </select>
-                    </div>
+                  <div className="form-group col-md-4">
+                    <label>
+                      Item Type Code <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control mt-1"
+                      id="itemTypeCode"
+                      name="itemTypeCode"
+                      placeholder="Code"
+                      value={formData.itemTypeCode}
+                      maxLength={ITEM_TYPE_CODE_MAX_LENGTH}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="form-group col-md-4">
+                    <label>
+                      Item Type Name <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control mt-1"
+                      id="itemTypeName"
+                      name="itemTypeName"
+                      placeholder="Name"
+                      value={formData.itemTypeName}
+                      onChange={handleInputChange}
+                      maxLength={ITEM_TYPE_NAME_MAX_LENGTH}
+                      required
+                    />
+                  </div>
+                  <div className="form-group col-md-4">
+                    <label>
+                      Item Group <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      className="form-control mt-1"
+                      id="itemGroup"
+                      name="itemGroup"
+                      value={formData.itemGroup}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="" disabled>
+                        Select Item Group
+                      </option>
+                      {storeGroups
+                        .filter((group) => group.status.toLowerCase() === "y")
+                        .map((group) => (
+                          <option key={group.id} value={group.id}>
+                            {group.groupName}
+                          </option>
+                        ))}
+
+                      {/* Fallback options if no store groups are loaded */}
+                      {storeGroups.length === 0 && (
+                        <>
+                          <option value="1">ASSET</option>
+                          <option value="2">CONSUMABLE</option>
+                        </>
+                      )}
+                    </select>
                   </div>
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                     <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
@@ -345,7 +512,7 @@ const Itemtype = () => {
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="close" onClick={() => handleConfirm(false)}>
+                        <button type="button" className="close" onClick={() => setConfirmDialog({ isOpen: false })}>
                           <span>&times;</span>
                         </button>
                       </div>
@@ -353,16 +520,20 @@ const Itemtype = () => {
                         <p>
                           Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
-                            {itemTypes.find((item) => item.id === confirmDialog.itemTypeId)?.itemTypeName}
+                            {itemTypes.find((type) => type.itemTypeId === confirmDialog.itemTypeId)?.itemTypeName}
                           </strong>
                           ?
                         </p>
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => setConfirmDialog({ isOpen: false })}
+                        >
                           No
                         </button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                        <button type="button" className="btn btn-primary" onClick={handleConfirm}>
                           Yes
                         </button>
                       </div>
@@ -370,7 +541,6 @@ const Itemtype = () => {
                   </div>
                 </div>
               )}
-
               <nav className="d-flex justify-content-between align-items-center mt-3">
                 <div>
                   <span>
@@ -421,4 +591,4 @@ const Itemtype = () => {
   )
 }
 
-export default Itemtype
+export default ItemTypeManagement

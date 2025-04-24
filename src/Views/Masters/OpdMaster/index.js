@@ -25,7 +25,7 @@ const OpdSessionMaster = () => {
   })
   const [loading, setLoading] = useState(true)
 
-  const SESSION_NAME_MAX_LENGTH = 30
+  const SESSION_NAME_MAX_LENGTH = 255
 
   useEffect(() => {
     fetchOpdSessionData(0)
@@ -216,9 +216,9 @@ const OpdSessionMaster = () => {
   // Function to convert time input to HH:MM:SS format
   const formatTimeInput = (timeInput) => {
     if (!timeInput) return ""
-    // If the input already has seconds, return as is
+    
     if (timeInput.split(":").length === 3) return timeInput
-    // Otherwise add ":00" for seconds
+    
     return timeInput + ":00"
   }
 

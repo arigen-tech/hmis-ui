@@ -26,8 +26,8 @@ const FrequencyMaster = () => {
   const [loading, setLoading] = useState(true)
 
   const FREQUENCY_NAME_MAX_LENGTH = 30
-  const FREQUENCY_MAX_LENGTH = 10
-  const ORDER_NO_MAX_LENGTH = 5
+  // const FREQUENCY_MAX_LENGTH = 10
+  // const ORDER_NO_MAX_LENGTH = 5
 
   useEffect(() => {
     fetchFrequencyData(0)
@@ -377,7 +377,7 @@ const FrequencyMaster = () => {
                       placeholder="Frequency"
                       value={formData.frequency}
                       onChange={handleInputChange}
-                      maxLength={FREQUENCY_MAX_LENGTH}
+                      // maxLength={FREQUENCY_MAX_LENGTH}
                       required
                     />
                   </div>
@@ -407,7 +407,7 @@ const FrequencyMaster = () => {
                       placeholder="Order No"
                       value={formData.orderNo}
                       onChange={handleInputChange}
-                      maxLength={ORDER_NO_MAX_LENGTH}
+                      // maxLength={ORDER_NO_MAX_LENGTH}
                       required
                     />
                   </div>

@@ -1,5 +1,5 @@
-export const API_HOST = 'https://103.133.215.182:8445';
-// export const API_HOST = 'http://localhost:8080';
+// export const API_HOST = 'https://103.133.215.182:8445';
+export const API_HOST = 'http://localhost:8080';
 // export const API_HOST = 'http://192.168.35.20:8080';
 
 
@@ -61,3 +61,9 @@ export const FREQUENCY="/MasFrequencyController";
 export const EMPLOYMENT_TYPE="/employmentType";
 export const EMPLOYEE_TYPE="/userType";
 export const OPD_SESSION = "/opd-session"
+export const STORE_UNIT_API = "/store-unit";
+export const ALL_STORE_UNITS = "/store-unit/getAllUnits";
+export const ITEM_TYPE = "/MasItemType";
+export const ALL_ITEM_TYPE = "/MasItemType/getByAllMasItemTypeStatus";
+export const STORE_GROUP = "/masStoreGroup";
+export const ALL_STORE_GROUP = "/masStoreGroup/getByAllId";
