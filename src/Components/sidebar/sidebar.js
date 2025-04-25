@@ -127,11 +127,7 @@ const Sidebar = () => {
                 <span>Accidents</span>
               </Link>
             </li>
-            <li>
-              <Link className="m-link" to="labs">
-                <i className="icofont-blood-test fs-5" /> <span>Labs</span>
-              </Link>
-            </li>
+           
             <li>
               <Link className="m-link" to="department">
                 <i className="icofont-hospital fs-5" />
