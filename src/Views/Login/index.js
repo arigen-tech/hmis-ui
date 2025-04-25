@@ -35,7 +35,7 @@ const Login = () => {
           jwtToken,
           refreshToken,
           username,
-          role,
+          roleId,
           jwtTokenExpiry,
         } = response.response;
 
@@ -52,14 +52,14 @@ const Login = () => {
           localStorage.setItem("token", jwtToken);
           localStorage.setItem("refreshToken", refreshToken);
           localStorage.setItem("username", username);
-          if (role) localStorage.setItem("role", role);
+          localStorage.setItem("roleId", roleId);
           localStorage.setItem("AuthValidation", validTime);
           localStorage.setItem("isTokenValid", isTokenValid);
         } else {
           sessionStorage.setItem("token", jwtToken);
           sessionStorage.setItem("refreshToken", refreshToken);
           sessionStorage.setItem("username", username);
-          if (role) sessionStorage.setItem("role", role);
+          sessionStorage.setItem("roleId", roleId);
           sessionStorage.setItem("AuthValidation", validTime);
           sessionStorage.setItem("isTokenValid", isTokenValid);
         }
@@ -86,20 +86,6 @@ const Login = () => {
   };
 
   const logout = () => {
-    // localStorage.removeItem("token");
-    // localStorage.removeItem("refreshToken");
-    // localStorage.removeItem("username");
-    // localStorage.removeItem("role");
-    // localStorage.removeItem("AuthValidation");
-    // localStorage.removeItem("isTokenValid");
-
-    // sessionStorage.removeItem("token");
-    // sessionStorage.removeItem("refreshToken");
-    // sessionStorage.removeItem("username");
-    // sessionStorage.removeItem("role");
-    // sessionStorage.removeItem("AuthValidation");
-    // sessionStorage.removeItem("isTokenValid");
-
     localStorage.clear();
     sessionStorage.clear();
 
@@ -144,7 +130,7 @@ const Login = () => {
                             type="text"
                             name="username"
                             className="form-control form-control-lg"
-                            placeholder="5711139824"
+                            placeholder="6209150953"
                             value={formData.username}
                             onChange={handleInputChange}
                             required
@@ -160,7 +146,7 @@ const Login = () => {
                               type={showPassword ? "text" : "password"}
                               name="password"
                               className="form-control form-control-lg"
-                              placeholder="***************"
+                              placeholder="174620"
                               value={formData.password}
                               onChange={handleInputChange}
                               required
