@@ -412,6 +412,36 @@ const Sidebar = () => {
                   Sub Charge Code
                   </Link>
                 </li>
+                <li>
+                  <Link className={`ms-link ${isActive('/labregistration') ? 'active' : ''}`} to="labregistration">
+                  Lab Registration
+                  </Link>
+                </li>
+                <li>
+                  <Link className={`ms-link ${isActive('/uommaster') ? 'active' : ''}`} to="uommaster">
+                  UOM Master
+                  </Link>
+                </li>
+                <li>
+                  <Link className={`ms-link ${isActive('/samplecollectionmaster') ? 'active' : ''}`} to="samplecollectionmaster">
+                  Sample Collection Master
+                  </Link>
+                </li>
+                <li>
+                  <Link className={`ms-link ${isActive('/investigationmaster') ? 'active' : ''}`} to="investigationmaster">
+                  Investigation Master
+                  </Link>
+                </li>
+                <li>
+                  <Link className={`ms-link ${isActive('/packagemaster') ? 'active' : ''}`} to="packagemaster">
+                  Package Master
+                  </Link>
+                </li>
+                <li>
+                  <Link className={`ms-link ${isActive('/packageinvestigationmaster') ? 'active' : ''}`} to="packageinvestigationmaster">
+                  Package Investigation Master
+                  </Link>
+                </li>
 
 
               </ul>
@@ -513,6 +543,7 @@ const Sidebar = () => {
                     Update Patient Registration
                   </Link>
                 </li>
+                
 
               </ul>
                 
