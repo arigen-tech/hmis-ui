@@ -272,8 +272,14 @@ const Createusermaster = () => {
     const [availableRoles, setAvailableRoles] = useState(["ADMIN", "APM", "AUDIT", "AUDITOR", "CITY OFFICER", "COMMISSIONER", "DISTRICT OFFICER", "DOCTOR"]); // Example roles
     const [assignedRoles, setAssignedRoles] = useState([]);
     const [selectedRoles, setSelectedRoles] = useState([]);
+    const [availableDepartments, setAvailableDepartments] = useState([
+        "Department A",
+        "Department B",
+        "Department C",
+    ]);
+    const [assignedDepartments, setAssignedDepartments] = useState([]);
+    const [selectedDepartments, setSelectedDepartments] = useState([]);
 
-    // Handle selecting multiple roles
     const handleSelectRoles = (event) => {
         const options = event.target.options;
         const selectedValues = [];
@@ -285,21 +291,46 @@ const Createusermaster = () => {
         setSelectedRoles(selectedValues);
     };
 
-    // Move selected roles to Assigned Roles
     const handleAssignRoles = () => {
         if (selectedRoles.length > 0) {
             setAssignedRoles([...assignedRoles, ...selectedRoles]);
             setAvailableRoles(availableRoles.filter(role => !selectedRoles.includes(role)));
-            setSelectedRoles([]); // Reset selection
+            setSelectedRoles([]); 
         }
     };
 
-    // Remove selected roles from Assigned Roles
     const handleRemoveRoles = () => {
         if (selectedRoles.length > 0) {
             setAvailableRoles([...availableRoles, ...selectedRoles]);
             setAssignedRoles(assignedRoles.filter(role => !selectedRoles.includes(role)));
-            setSelectedRoles([]); // Reset selection
+            setSelectedRoles([]); 
+        }
+    };
+
+    const handleSelectDepartments = (e) => {
+        const options = e.target.options;
+        const selected = [];
+        for (let i = 0; i < options.length; i++) {
+            if (options[i].selected) {
+                selected.push(options[i].value);
+            }
+        }
+        setSelectedDepartments(selected);
+    };
+
+    const handleAssignDepartments = () => {
+        if (selectedDepartments.length > 0) {
+            setAssignedDepartments([...assignedDepartments, ...selectedDepartments]);
+            setAvailableDepartments(availableDepartments.filter(department => !selectedDepartments.includes(department)));
+            setSelectedDepartments([]); 
+        }
+    };
+
+    const handleRemoveDepartments = () => {
+        if (selectedDepartments.length > 0) {
+            setAvailableDepartments([...availableDepartments, ...selectedDepartments]);
+            setAssignedDepartments(assignedDepartments.filter(department => !selectedDepartments.includes(department)));
+            setSelectedDepartments([]); 
         }
     };
 
@@ -345,12 +376,12 @@ const Createusermaster = () => {
                                             </select>
                                         </div>
                                         <div className="col-md-2 d-flex">
-                                        <button type="button" className="btn btn-primary ms-2" onClick={handleSearch}>
-                                            <i className="mdi mdi-magnify"></i> Search
-                                        </button>
+                                            <button type="button" className="btn btn-primary ms-2" onClick={handleSearch}>
+                                                <i className="mdi mdi-magnify"></i> Search
+                                            </button>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="col-md-5 text-end">
                                         <button type="button" className="btn btn-success me-1" onClick={handleRefresh}>
                                             <i className="mdi mdi-plus"></i> Show All
@@ -541,6 +572,41 @@ const Createusermaster = () => {
                                                 <select className="form-control w-100" size="8" multiple onChange={handleSelectRoles}>
                                                     {assignedRoles.map((role, index) => (
                                                         <option key={index} value={role}>{role}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="form-group col-12 mt-3">
+                                        <label><b>Assigned Department</b></label>
+                                        <div className="row">
+                                            {/* All Departments Section */}
+                                            <div className="col-md-5">
+                                                <label className="mb-2"><b>All Departments</b></label>
+                                                <select
+                                                    className="form-control w-100"
+                                                    size="8"
+                                                    multiple
+                                                    onChange={handleSelectDepartments} // Create this function to handle selection
+                                                >
+                                                    {availableDepartments.map((department, index) => (
+                                                        <option key={index} value={department}>{department}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            {/* Transfer Buttons Section */}
+                                            <div className="col-md-2 d-flex flex-column align-items-center justify-content-center rollarrows">
+                                                <i className="icofont-bubble-right" onClick={handleAssignDepartments}></i>
+                                                <i className="icofont-bubble-left" onClick={handleRemoveDepartments}></i>
+                                            </div>
+
+                                            {/* Assigned Departments Section */}
+                                            <div className="col-md-5">
+                                                <label className="mb-2"><b>Assigned Departments</b></label>
+                                                <select className="form-control w-100" size="8" multiple onChange={handleSelectDepartments}>
+                                                    {assignedDepartments.map((department, index) => (
+                                                        <option key={index} value={department}>{department}</option>
                                                     ))}
                                                 </select>
                                             </div>
