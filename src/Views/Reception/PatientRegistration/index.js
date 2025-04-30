@@ -262,7 +262,7 @@ const PatientRegistration = () => {
     ];
 
     if (numericFields.includes(name)) {
-      if (value !== "" && (isNaN(value) || Number(value) < 0)) {
+      if (value!= undefined && (value !== "" && (isNaN(value) || Number(value) < 0))) {
         error = `${name.charAt(0).toUpperCase() + name.slice(1)} must be a non-negative number.`;
       }
     }
@@ -597,6 +597,9 @@ async function fetchDepartment() {
         iniDoctorId: 0,
       },
     };
+    debugger;
+    if(isNaN(requestData.visit.doctorId))
+      requestData.visit=null;
     // requestData.opdPatientDetail=null;
     console.log(new Date(Date.now()).toJSON())
 
