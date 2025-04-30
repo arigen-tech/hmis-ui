@@ -55,7 +55,7 @@ const Assignapplication = () => {
             setLoading(false);
         }
     };
-   
+
     const fetchTemplates = async (flag = 1) => {
         setLoading(true);
         setError(null);
@@ -79,34 +79,32 @@ const Assignapplication = () => {
         }
     };
 
-    
+
     const handleParentApplicationSelect = async (e) => {
         const selectedParentId = e.target.value;
         setSelectedParentApp(selectedParentId);
-    
+
         try {
-            const response = await getRequest(`${APPLICATION}/getAllChildren/${selectedParentId}`);
-    
-            if (response && response.response) {
-               
-                const mappedChildApplications = response.response.map((app, index) => {
-                    
-                    const isChecked = app.status === "y";
-                    
-                    return {
-                        srNo: index + 1,
-                        module: app.name,
-                        templateId: app.appId,
-                        appId: app.appId,
-                        status: app.status,
-                        lastChgDate: app.lastChgDate,
-                        checked: isChecked 
-                    };
-                });
-    
-                setChildApplications(mappedChildApplications);
-                setShowModuleTable(true);
+            // 1. Fetch child applications for the selected parent
+            const childResponse = await getRequest(`${APPLICATION}/getAllChildren/${selectedParentId}?templateId=${selectedTemplate || ''}`);
+
+            if (!childResponse?.response) {
+                throw new Error("Failed to fetch child applications");
             }
+
+            // 2. Transform the response data
+            const mappedChildApplications = childResponse.response.map((app, index) => ({
+                srNo: index + 1,
+                module: app.name,
+                templateId: app.templateId || null,
+                appId: app.appId,
+                status: app.status?.toLowerCase() || 'n', // Ensure lowercase
+                lastChgDate: app.lastChgDate,
+                checked: app.assigned && app.status?.toLowerCase() === 'y' // Only checked if assigned AND status is 'y'
+            }));
+
+            setChildApplications(mappedChildApplications);
+            setShowModuleTable(true);
         } catch (error) {
             console.error("Error fetching child applications:", error);
             setPopupMessage({
@@ -118,31 +116,40 @@ const Assignapplication = () => {
         }
     };
 
-    // Existing template select handler
+
+
+    // Existing template select handler with minor improvements
     const handleTemplateSelect = async (e) => {
         const selectedTemplateId = e.target.value;
         setSelectedTemplate(selectedTemplateId);
-    
+
         try {
             const response = await getRequest(`${ASSIGN_TEMPLATES}/getAllTemplateById/${selectedTemplateId}`);
-    
+
             if (response && response.response) {
                 console.log("Template response:", response.response);
-                
+
+                // The backend is already returning only parent modules (parentId = 0)
                 const formattedData = response.response.map((template, index) => {
                     console.log("Individual template item:", template);
-                    
+
                     return {
                         srNo: index + 1,
-                        module: template.appName || "Unknown Module", // Use the correct property name
+                        module: template.appName || "Unknown Module",
                         templateId: template.templateId,
                         appId: template.appId,
                         status: template.status,
                         lastChgDate: template.lastChgDate
                     };
                 });
-                
+
                 setTemplateModules(formattedData);
+
+                // If a parent application is already selected, refresh the child applications
+                if (selectedParentApp) {
+                    // Re-fetch child applications with updated assigned status
+                    handleParentApplicationSelect({ target: { value: selectedParentApp } });
+                }
             }
         } catch (error) {
             console.error("Error fetching template details:", error);
@@ -190,83 +197,168 @@ const Assignapplication = () => {
         );
     };
 
-    
+
     const handleSave = async () => {
         try {
-            // Get the selected child applications that are checked
+            // Get the selected (checked) and unselected (unchecked) child applications
             const selectedChildren = childApplications.filter(item => item.checked);
-            
-            if (selectedChildren.length === 0) {
+            const unselectedChildren = childApplications.filter(item => !item.checked);
+
+            console.log("Selected children:", selectedChildren);
+            console.log("Unselected children:", unselectedChildren);
+
+            if (childApplications.length === 0) {
                 setPopupMessage({
-                    message: "Please select at least one child application.",
+                    message: "No child applications available to update.",
                     type: "warning",
                     onClose: () => setPopupMessage(null)
                 });
                 setShowModal(true);
                 return;
             }
-            
-            // Get the current parent application information
-            const parentApp = parentApplications.find(app => app.id === selectedParentApp);
-            const parentName = parentApp?.applicationName;
-            
-            // Check if this parent is already assigned to the selected template
-            const parentAlreadyAssigned = templateModules.some(
-                module => module.module === parentName || 
-                         module.module.startsWith(parentName + '->')
+
+            // Get list of app IDs already assigned to this template
+            const assignedAppIds = new Set(
+                Array.isArray(templateModules) ? templateModules.map(module => module.appId) : []
             );
-            
-            // Prepare application status updates for all children
-            const applicationStatusUpdates = childApplications.map(child => ({
-                appId: child.appId,
-                status: child.checked ? "y" : "n"
-            }));
-            
-            // Create a single assignment for the parent, but only if it's not already assigned
-            const templateApplicationAssignments = [];
-            if (!parentAlreadyAssigned && selectedChildren.length > 0) {
-                templateApplicationAssignments.push({
-                    templateId: Number(selectedTemplate),
-                    appId: selectedParentApp,  // Use parent ID here
-                    lastChgBy: 0,
-                    orderNo: 1
+
+            console.log("Currently assigned app IDs:", Array.from(assignedAppIds));
+
+            // Debug template modules
+            if (Array.isArray(templateModules)) {
+                templateModules.forEach(module => {
+                    console.log(`Template module check: ${module.appId}, status: ${module.status}`);
                 });
             }
-            
-            const payload = {
-                applicationStatusUpdates: applicationStatusUpdates,
-                templateApplicationAssignments: templateApplicationAssignments,
-                parentAlreadyExists: parentAlreadyAssigned
-            };
-            
-            console.log("Sending payload:", JSON.stringify(payload));
-            
-            // Proceed with API call if there are status updates or a new parent to assign
-            const response = await postRequest(`${APPLICATION}/assignUpdateTemplate`, payload);
-            
-            if (response && (response.success || response.status === 200)) {
-                let message = "Application status updated successfully!";
-                if (templateApplicationAssignments.length > 0) {
-                    message = "Template application assigned successfully!";
+
+            // Prepare application status updates and template assignments
+            const applicationStatusUpdates = [];
+            const templateApplicationAssignments = [];
+
+            // If parent app is not assigned yet, add it
+            if (!assignedAppIds.has(selectedParentApp)) {
+                templateApplicationAssignments.push({
+                    templateId: Number(selectedTemplate),
+                    appId: selectedParentApp,
+                    lastChgBy: 0,
+                    orderNo: 1,
+                    status: "y"  // Always set parent as active
+                });
+            }
+
+            // Process each child application
+            // Process each child application
+            childApplications.forEach(child => {
+                const appId = child.appId;
+                const isChecked = child.checked;
+                const status = isChecked ? "y" : "n";
+                const isAssigned = assignedAppIds.has(appId);
+
+                console.log(`Processing app ${appId}, checked: ${isChecked}, assigned: ${isAssigned}`);
+
+                if (isAssigned) {
+                    // For already assigned apps, always include a status update
+                    applicationStatusUpdates.push({
+                        appId: appId,
+                        status: status
+                    });
+                    console.log(`Added status update for ${appId}: ${status}`);
+                } else if (isChecked) {
+                    // For new assignments, only include checked ones
+                    templateApplicationAssignments.push({
+                        templateId: Number(selectedTemplate),
+                        appId: appId,
+                        lastChgBy: 0,
+                        orderNo: 1,
+                        status: "y"
+                    });
+                    console.log(`Added new assignment for ${appId}`);
+                } else {
+                    // CHANGE HERE: Don't skip unchecked applications - add a status update to explicitly mark them as inactive
+                    applicationStatusUpdates.push({
+                        appId: appId,
+                        status: "n" // Set unchecked apps to inactive
+                    });
+                    console.log(`Added status update for unchecked app ${appId}: n`);
                 }
-                
+            });
+
+            // CRITICAL ADDITION: Make sure to get all template applications for the template
+            // and explicitly set unchecked ones to status: 'n'
+            const allTemplateApps = await getRequest(`${ASSIGN_TEMPLATES}/getAllTemplateById/${selectedTemplate}`);
+            if (allTemplateApps?.response) {
+                allTemplateApps.response.forEach(app => {
+                    const appId = app.appId;
+                    // Skip the parent app
+                    if (appId === selectedParentApp) return;
+
+                    // Find if this app is checked or not in our current state
+                    const childApp = childApplications.find(child => child.appId === appId);
+                    if (childApp && !childApp.checked) {
+                        // Make sure we have a status update for this unchecked app
+                        const hasUpdate = applicationStatusUpdates.some(update => update.appId === appId);
+                        if (!hasUpdate) {
+                            applicationStatusUpdates.push({
+                                appId: appId,
+                                status: "n"  // Explicitly set to 'n' for unchecked
+                            });
+                            console.log(`Added missing status update for unchecked app ${appId}: n`);
+                        }
+                    }
+                });
+            }
+
+            console.log("Status updates:", applicationStatusUpdates);
+            console.log("Template assignments:", templateApplicationAssignments);
+
+            // Only proceed if we have something to update
+            if (applicationStatusUpdates.length === 0 && templateApplicationAssignments.length === 0) {
                 setPopupMessage({
-                    message: message,
-                    type: "success",
+                    message: "No changes detected to apply.",
+                    type: "info",
                     onClose: () => setPopupMessage(null)
                 });
                 setShowModal(true);
-                setSelectedTemplate('');
-                setSelectedParentApp('');
-                setChildApplications([]);
-                setShowModuleSection(false);
-                setShowModuleTable(false);
-            } else {
-                throw new Error((response && response.message) || "Failed to assign template to application");
+                return;
             }
+
+            const payload = {
+                applicationStatusUpdates: applicationStatusUpdates,
+                templateApplicationAssignments: templateApplicationAssignments
+            };
+
+            console.log("Final payload being sent to API:", payload);
+
+            // Make the API call
+            const response = await postRequest(`${APPLICATION}/assignUpdateTemplate`, payload);
+            console.log("API response:", response);
+
+            if (response) {
+                if (response.status === 200 || response.status === 207) {
+                    // Success or partial success
+                    const message = response.data || "Assign template to application successfully";
+
+                    setPopupMessage({
+                        message: message,
+                        type: response.status === 200 ? "success" : "warning",
+                        onClose: () => {
+                            setPopupMessage(null);
+                            // Instead of refreshData, just reload the current data
+                            handleParentApplicationSelect({ target: { value: selectedParentApp } });
+                        }
+                    }); // Increased timeout to ensure backend processing completes
+                } else {
+                    // Error case
+                    throw new Error(response.message || "Failed to process request");
+                }
+            } else {
+                throw new Error("No response received from server");
+            }
+
+            setShowModal(true);
         } catch (error) {
             console.error("Error saving template application:", error);
-            
+
             setPopupMessage({
                 message: error.message || "Failed to assign template to application",
                 type: "error",
@@ -366,18 +458,26 @@ const Assignapplication = () => {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {templateModules.map((item) => (
-                                                    <tr key={item.srNo}>
-                                                        <td>{item.srNo}</td>
-                                                        <td>{item.module}</td>
+                                                {templateModules.length > 0 ? (
+                                                    templateModules.map((item) => (
+                                                        <tr key={item.srNo}>
+                                                            <td>{item.srNo}</td>
+                                                            <td>{item.module}</td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan="2" className="text-center">No modules assigned to this template</td>
                                                     </tr>
-                                                ))}
+                                                )}
                                             </tbody>
                                         </table>
                                     </div>
                                 )}
 
-                                {/* Parent Application Children Table with Checkboxes */}
+
+
+                                {/* Child Applications Table with Checkboxes */}
                                 {showModuleSection && showModuleTable && (
                                     <div className="mt-4">
                                         <h6 className="mb-3">Child Applications</h6>
@@ -392,7 +492,7 @@ const Assignapplication = () => {
                                                                 type="checkbox"
                                                                 style={{ width: "15px", height: '15px', border: '2px solid black' }}
                                                                 className="form-check-input me-2"
-                                                                checked={childApplications.every(item => item.checked)}
+                                                                checked={childApplications.length > 0 && childApplications.every(item => item.checked)}
                                                                 onChange={handleSelectAllFeatures}
                                                             />
                                                             Select All
@@ -401,28 +501,36 @@ const Assignapplication = () => {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {childApplications.map((item) => (
-                                                    <tr key={item.srNo}>
-                                                        <td>{item.srNo}</td>
-                                                        <td>
-                                                            {parentApplications.find(app => app.id === selectedParentApp)?.applicationName}
-                                                            {'->'} {item.module}
-                                                        </td>
-                                                        <td>
-                                                            <div className="form-check form-check-muted m-0">
-                                                                <label className="form-check-label">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        style={{ width: '20px', height: '20px', border: '2px solid black' }}
-                                                                        className="form-check-input"
-                                                                        checked={item.checked}
-                                                                        onChange={() => handleFeatureToggle(item.srNo)}
-                                                                    />
-                                                                </label>
-                                                            </div>
-                                                        </td>
+                                                {childApplications.length > 0 ? (
+                                                    childApplications.map((item) => (
+                                                        <tr key={item.srNo}>
+                                                            <td>{item.srNo}</td>
+                                                            <td>
+                                                                {/* If the module name is the same as parent name, show only the module name */}
+                                                                {item.module === parentApplications.find(app => app.id === selectedParentApp)?.applicationName
+                                                                    ? item.module
+                                                                    : `${parentApplications.find(app => app.id === selectedParentApp)?.applicationName} -> ${item.module}`}
+                                                            </td>
+                                                            <td>
+                                                                <div className="form-check form-check-muted m-0">
+                                                                    <label className="form-check-label">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            style={{ width: '20px', height: '20px', border: '2px solid black' }}
+                                                                            className="form-check-input"
+                                                                            checked={item.checked}
+                                                                            onChange={() => handleFeatureToggle(item.srNo)}
+                                                                        />
+                                                                    </label>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan="3" className="text-center">No child applications found</td>
                                                     </tr>
-                                                ))}
+                                                )}
                                             </tbody>
                                         </table>
                                         <div className="form-group col-md-12 d-flex justify-content-end mt-3">
