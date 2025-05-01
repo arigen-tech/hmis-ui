@@ -37,6 +37,7 @@ const Login = () => {
           username,
           roleId,
           jwtTokenExpiry,
+          hospitalId
         } = response.response;
 
         const currentTime = Date.now();
@@ -55,6 +56,7 @@ const Login = () => {
           localStorage.setItem("roleId", roleId);
           localStorage.setItem("AuthValidation", validTime);
           localStorage.setItem("isTokenValid", isTokenValid);
+          localStorage.setItem("hospitalId", hospitalId);
         } else {
           sessionStorage.setItem("token", jwtToken);
           sessionStorage.setItem("refreshToken", refreshToken);
@@ -62,6 +64,7 @@ const Login = () => {
           sessionStorage.setItem("roleId", roleId);
           sessionStorage.setItem("AuthValidation", validTime);
           sessionStorage.setItem("isTokenValid", isTokenValid);
+          sessionStorage.setItem("hospitalId", hospitalId);
         }
 
         // Set up a timeout to auto-mark the token as expired
