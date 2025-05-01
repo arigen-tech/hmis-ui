@@ -37,6 +37,8 @@ import Mainchargecode from './Views/Laboratory/Mainchargecode';
 import Subchargecode from './Views/Laboratory/Subchargecode';
 import Labregistration from './Views/Laboratory/LabRegistration';
 import ProtectedRoute from './service/ProtectedRoute';
+import SampleCollectionMaster from './Views/Laboratory/SampleCollectionMaster';
+import UOMMaster from './Views/Laboratory/UOMMaster';
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -109,7 +111,8 @@ function App() {
                 <Route path="mainchargecode" element={<Mainchargecode />} />
                 <Route path="subchargecode" element={<Subchargecode />} />
                 <Route path="labregistration" element={<Labregistration />} />
-
+                <Route path='/uommaster' element={<UOMMaster/>} />
+                <Route path='/samplecollectionmaster' element={<SampleCollectionMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
