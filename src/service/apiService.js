@@ -33,6 +33,46 @@ export const getRequest = async (endpoint, headers = {}) => {
   }
 };
 
+
+
+export const getImageRequest = async (endpoint, headers = {}, responseType = "json") => {
+  try {
+    let token;
+    if (localStorage.token) {
+      token = { Authorization: `Bearer ${localStorage.getItem("token")}` };
+    } else {
+      token = { Authorization: `Bearer ${sessionStorage.getItem("token")}` };
+    }
+
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+      method: "GET",
+      headers: {
+        ...(responseType === "json" && { "Content-Type": "application/json" }),
+        ...token,
+        ...headers,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`GET request failed: ${response.status}`);
+    }
+
+    switch (responseType) {
+      case "blob":
+        return await response.blob();
+      case "text":
+        return await response.text();
+      case "json":
+      default:
+        return await response.json();
+    }
+  } catch (error) {
+    console.error("GET Error:", error);
+    throw error;
+  }
+};
+
+
 /**
  * Function to call POST API
  * @param {string} endpoint - The API endpoint
