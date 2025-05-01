@@ -51,7 +51,7 @@ const Assignapplication = () => {
                                 status: app.status || "n"
                             });
                         }
-                        // Check children recursively
+                        
                         if (app.children) {
                             findParentApps(app.children);
                         }
@@ -101,26 +101,22 @@ const Assignapplication = () => {
         if (!apps || !Array.isArray(apps)) return result;
 
         for (const app of apps) {
-            // Determine the display path with -> separator
+            
             const displayPath = parentPath ? `${parentPath}->${app.name}` : app.name;
 
-            // Add this app to the result
+            
             const currentApp = {
                 srNo: currentSrNo++,
                 module: app.name,
-                displayName: displayPath, // Now using -> as separator instead of " -> "
+                displayName: displayPath, 
                 templateId: app.templateId || null,
                 appId: app.appId,
                 status: app.status?.toLowerCase() || 'n',
                 lastChgDate: app.lastChgDate,
                 checked: app.assigned && app.status?.toLowerCase() === 'y',
-                // Track the parent hierarchy for display purposes
                 parentHierarchy: parentPath,
-                // Track nesting level for indentation
                 nestLevel: parentPath ? parentPath.split("->").length : 0,
-                // Store if this is a parent (has children)
                 isParent: app.children && app.children.length > 0,
-                // Expanded state (initially expanded)
                 expanded: true
             };
 
@@ -134,10 +130,10 @@ const Assignapplication = () => {
                     currentSrNo
                 );
 
-                // Update our counter
+                
                 currentSrNo += childResults.length;
 
-                // Add children to result
+                
                 result = [...result, ...childResults];
             }
             
@@ -277,38 +273,68 @@ const Assignapplication = () => {
    
     const handleFeatureToggle = (appId) => {
         setChildApplications(prevData => {
-            
+            // Find the clicked item
             const itemIndex = prevData.findIndex(item => item.appId === appId);
             if (itemIndex === -1) return prevData;
-
-           
+    
+            // Get the clicked item
             const clickedItem = prevData[itemIndex];
-
-            
+    
+            // Toggle the checked state
             const newCheckedState = !clickedItem.checked;
-
-            
+    
+            // Create a new array to avoid mutating state directly
             const newData = [...prevData];
-
-            
+    
+            // Update the clicked item
             newData[itemIndex] = { ...clickedItem, checked: newCheckedState };
-
-            
-            if (clickedItem.isParent) {
-                const clickedPath = clickedItem.displayName;
-
+    
+            // If checking a child (not unchecking), ensure all its parents are checked too
+            if (newCheckedState && clickedItem.parentHierarchy) {
+                // Split the parent hierarchy to get each parent in the chain
+                const parentChain = clickedItem.displayName.split("->");
                 
-                for (let i = 0; i < newData.length; i++) {
-                    const item = newData[i];
-                   
-                    if (item.displayName !== clickedPath &&
-                        item.displayName.startsWith(clickedPath + " -> ")) {
-                        
-                        newData[i] = { ...item, checked: newCheckedState };
+                // Remove the last item (which is the current item)
+                parentChain.pop();
+                
+                // Start with an empty path to build up the parent paths
+                let currentPath = "";
+                
+                // Check each parent in the hierarchy
+                for (let i = 0; i < parentChain.length; i++) {
+                    // Build the current parent path
+                    if (i === 0) {
+                        currentPath = parentChain[i];
+                    } else {
+                        currentPath = `${currentPath}->${parentChain[i]}`;
+                    }
+                    
+                    // Find the parent item by its display name
+                    const parentIndex = newData.findIndex(item => item.displayName === currentPath);
+                    
+                    if (parentIndex !== -1) {
+                        // Ensure the parent is checked
+                        newData[parentIndex] = { ...newData[parentIndex], checked: true };
                     }
                 }
             }
-
+            
+            // If this is a parent item being unchecked, uncheck all its children
+            if (!newCheckedState && clickedItem.isParent) {
+                const clickedPath = clickedItem.displayName;
+                
+                // Find and uncheck all children
+                for (let i = 0; i < newData.length; i++) {
+                    const item = newData[i];
+                    // Check if this item is a child of the clicked parent
+                    if (item.displayName !== clickedPath && 
+                        item.displayName.startsWith(clickedPath + "->")) {
+                        // Uncheck this child
+                        newData[i] = { ...item, checked: false };
+                    }
+                }
+            }
+    
             return newData;
         });
     };
@@ -361,14 +387,14 @@ const Assignapplication = () => {
             const applicationStatusUpdates = [];
             const templateApplicationAssignments = [];
     
-            // If parent app is not assigned yet, add it
+            
             if (!assignedAppIds.has(selectedParentApp)) {
                 templateApplicationAssignments.push({
                     templateId: Number(selectedTemplate),
                     appId: selectedParentApp,
                     
                     
-                    status: "y"  // Always set parent as active
+                    status: "y"  
                 });
             }
     
@@ -389,7 +415,7 @@ const Assignapplication = () => {
                     });
                     console.log(`Added status update for ${appId}: ${status}`);
                 } else if (isChecked) {
-                    // For new assignments, only include checked ones
+                    
                     templateApplicationAssignments.push({
                         templateId: Number(selectedTemplate),
                         appId: appId,
@@ -399,10 +425,10 @@ const Assignapplication = () => {
                     });
                     console.log(`Added new assignment for ${appId}`);
                 } else {
-                    // Don't skip unchecked applications - add a status update to explicitly mark them as inactive
+                    
                     applicationStatusUpdates.push({
                         appId: appId,
-                        status: "n" // Set unchecked apps to inactive
+                        status: "n" 
                     });
                     console.log(`Added status update for unchecked app ${appId}: n`);
                 }
@@ -413,18 +439,18 @@ const Assignapplication = () => {
             if (allTemplateApps?.response) {
                 allTemplateApps.response.forEach(app => {
                     const appId = app.appId;
-                    // Skip the parent app
+                   
                     if (appId === selectedParentApp) return;
     
-                    // Find if this app is checked or not in our current state
+                    
                     const childApp = childApplications.find(child => child.appId === appId);
                     if (childApp && !childApp.checked) {
-                        // Make sure we have a status update for this unchecked app
+                        
                         const hasUpdate = applicationStatusUpdates.some(update => update.appId === appId);
                         if (!hasUpdate) {
                             applicationStatusUpdates.push({
                                 appId: appId,
-                                status: "n"  // Explicitly set to 'n' for unchecked
+                                status: "n"  
                             });
                             console.log(`Added missing status update for unchecked app ${appId}: n`);
                         }
@@ -435,7 +461,7 @@ const Assignapplication = () => {
             console.log("Status updates:", applicationStatusUpdates);
             console.log("Template assignments:", templateApplicationAssignments);
     
-            // Only proceed if we have something to update
+           
             if (applicationStatusUpdates.length === 0 && templateApplicationAssignments.length === 0) {
                 setPopupMessage({
                     message: "No changes detected to apply.",
@@ -443,7 +469,7 @@ const Assignapplication = () => {
                     onClose: () => setPopupMessage(null)
                 });
                 setShowModal(true);
-                setLoading(false); // Set loading to false if there's nothing to update
+                setLoading(false); 
                 return;
             }
     
@@ -454,13 +480,13 @@ const Assignapplication = () => {
     
             console.log("Final payload being sent to API:", payload);
     
-            // Make the API call
+            
             const response = await postRequest(`${APPLICATION}/assignUpdateTemplate`, payload);
             console.log("API response:", response);
     
             if (response) {
                 if (response.status === 200 || response.status === 207) {
-                    // Success or partial success
+                    
                     const message = response.data || "Assign template to application successfully";
     
                     setPopupMessage({
@@ -468,12 +494,12 @@ const Assignapplication = () => {
                         type: response.status === 200 ? "success" : "warning",
                         onClose: () => {
                             setPopupMessage(null);
-                            // Instead of refreshData, just reload the current data
+                            
                             handleParentApplicationSelect({ target: { value: selectedParentApp } });
                         }
                     });
                 } else {
-                    // Error case
+                   
                     throw new Error(response.message || "Failed to process request");
                 }
             } else {
@@ -491,7 +517,7 @@ const Assignapplication = () => {
             });
             setShowModal(true);
         } finally {
-            // Always set loading to false when the operation completes
+            
             setLoading(false);
         }
     };
@@ -508,16 +534,16 @@ const Assignapplication = () => {
         }
     };
 
-    // Helper function to display nested items with proper indentation and toggles
+    
     const renderNestedItem = (item) => {
-        // Calculate indentation for visual clarity
+       
         const indentStyle = {
             paddingLeft: `${item.nestLevel * 20}px`,
             display: 'flex',
             alignItems: 'center'
         };
 
-        // Enhanced visual styling for expanded/collapsed indicators
+        
         const toggleIconStyle = {
             cursor: 'pointer',
             marginRight: '8px',
@@ -532,12 +558,10 @@ const Assignapplication = () => {
             background: item.isParent ? '#f0f7ff' : 'transparent'
         };
 
-        // Create the display name with hierarchy path
-        // For parent items at level 0, just show their name
-        // For children, show the full path with -> separator
+        
         const displayText = item.nestLevel === 0
             ? item.module
-            : item.displayName; // This already contains the full path in format "parent->child->grandchild"
+            : item.displayName; 
 
         return (
             <tr key={item.srNo} className={item.isParent ? "parent-row" : "child-row"}>

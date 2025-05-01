@@ -1,155 +1,119 @@
-import React, { useState, useRef } from "react";
-import placeholderImage from "../../../assets/images/placeholder.jpg";
+"use client"
+
+import { useState, useRef } from "react"
+import placeholderImage from "../../../assets/images/placeholder.jpg"
 
 const Labregistration = () => {
   // Update form data state for both investigation and package
   const [formData, setFormData] = useState({
     type: "investigation", // Default to investigation
-    investigation: [{ 
-      id: 1, 
-      investigationName: "", 
-      date: "", 
-      originalAmount: 0 
-    }],
-    package: [{ 
-      id: 1, 
-      packageName: "", 
-      date: "", 
-      originalAmount: 0 
-    }],
-    paymentMode: ""
-  });
+    rows: [
+      {
+        id: 1,
+        name: "",
+        date: "",
+        originalAmount: 0,
+      },
+    ],
+    paymentMode: "",
+  })
 
   // Add max length constant
-  const mlenght = 15;
+  const mlenght = 15
 
-  const [image, setImage] = useState(placeholderImage);
-  const [isCameraOn, setIsCameraOn] = useState(false);
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  let stream = null;
+  const [image, setImage] = useState(placeholderImage)
+  const [isCameraOn, setIsCameraOn] = useState(false)
+  const videoRef = useRef(null)
+  const canvasRef = useRef(null)
+  let stream = null
 
   const startCamera = async () => {
     try {
-      setIsCameraOn(true); // Ensure the video element is rendered before accessing ref
+      setIsCameraOn(true) // Ensure the video element is rendered before accessing ref
       setTimeout(async () => {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream = await navigator.mediaDevices.getUserMedia({ video: true })
         if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+          videoRef.current.srcObject = stream
         }
-      }, 100);
+      }, 100)
     } catch (error) {
-      console.error("Error accessing camera:", error);
+      console.error("Error accessing camera:", error)
     }
-  };
+  }
 
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
+      const video = videoRef.current
+      const canvas = canvasRef.current
 
       // Set canvas dimensions to match video stream
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
 
-      const context = canvas.getContext("2d");
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const context = canvas.getContext("2d")
+      context.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-      setImage(canvas.toDataURL("image/png"));
-      stopCamera();
+      setImage(canvas.toDataURL("image/png"))
+      stopCamera()
     }
-  };
-
+  }
 
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
-      videoRef.current.srcObject.getTracks().forEach(track => track.stop());
-      setIsCameraOn(false);
+      videoRef.current.srcObject.getTracks().forEach((track) => track.stop())
+      setIsCameraOn(false)
     }
-  };
+  }
 
   const clearPhoto = () => {
-    setImage(placeholderImage);
-  };
+    setImage(placeholderImage)
+  }
 
   const handleTypeChange = (type) => {
-    setFormData(prev => ({
-      ...prev,
-      type: type
-    }));
-  };
-
-  const handleInvestigationChange = (index, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      investigation: prev.investigation.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      )
-    }));
-  };
-
-  const handlePackageChange = (index, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      package: prev.package.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      )
-    }));
-  };
-
-  const addInvestigationRow = (e) => {
-    e.preventDefault();
     setFormData((prev) => ({
       ...prev,
-      investigation: [
-        ...prev.investigation,
-        { 
-          id: prev.investigation.length + 1, 
-          investigationName: "", 
-          date: "", 
-          originalAmount: 0 
-        }
-      ]
-    }));
-  };
+      type: type,
+    }))
+  }
 
-  const addPackageRow = (e) => {
-    e.preventDefault();
+  const handleRowChange = (index, field, value) => {
     setFormData((prev) => ({
       ...prev,
-      package: [
-        ...prev.package,
-        { 
-          id: prev.package.length + 1, 
-          packageName: "", 
-          date: "", 
-          originalAmount: 0 
-        }
-      ]
-    }));
-  };
+      rows: prev.rows.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
+    }))
+  }
 
-  const removeInvestigationRow = (index) => {
+  const addRow = (e) => {
+    e.preventDefault()
     setFormData((prev) => ({
       ...prev,
-      investigation: prev.investigation.filter((_, i) => i !== index)
-    }));
-  };
+      rows: [
+        ...prev.rows,
+        {
+          id: prev.rows.length + 1,
+          name: "",
+          date: "",
+          originalAmount: 0,
+        },
+      ],
+    }))
+  }
 
-  const removePackageRow = (index) => {
+  const removeRow = (index) => {
     setFormData((prev) => ({
       ...prev,
-      package: prev.package.filter((_, i) => i !== index)
-    }));
-  };
+      rows: prev.rows.filter((_, i) => i !== index),
+    }))
+  }
 
   // Calculate total amount based on selected type
   const calculateTotalAmount = () => {
-    const items = formData.type === "investigation" ? formData.investigation : formData.package;
-    return items.reduce((total, item) => {
-      return total + (parseFloat(item.originalAmount) || 0);
-    }, 0).toFixed(2);
-  };
+    return formData.rows
+      .reduce((total, item) => {
+        return total + (Number.parseFloat(item.originalAmount) || 0)
+      }, 0)
+      .toFixed(2)
+  }
 
   return (
     <div className="body d-flex py-3">
@@ -157,8 +121,7 @@ const Labregistration = () => {
         <div className="row align-items-center">
           <div className="border-0 mb-4">
             <div className="card-header py-3 no-bg bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
-              <h3 className="fw-bold mb-0"> Lab Registration
-              </h3>
+              <h3 className="fw-bold mb-0"> Lab Registration</h3>
             </div>
           </div>
         </div>
@@ -228,13 +191,28 @@ const Labregistration = () => {
                       <div className="text-center">
                         <div className="card p-3 shadow">
                           {isCameraOn ? (
-                            <video ref={videoRef} autoPlay className="d-block mx-auto" style={{ width: "100%", height: "150px" }}></video>
+                            <video
+                              ref={videoRef}
+                              autoPlay
+                              className="d-block mx-auto"
+                              style={{ width: "100%", height: "150px" }}
+                            ></video>
                           ) : (
-                            <img src={image} alt="Profile" className="img-fluid border" style={{ width: "100%", height: "150px" }} />
+                            <img
+                              src={image || "/placeholder.svg"}
+                              alt="Profile"
+                              className="img-fluid border"
+                              style={{ width: "100%", height: "150px" }}
+                            />
                           )}
                           <canvas ref={canvasRef} style={{ display: "none" }}></canvas>
                           <div className="mt-2">
-                            <button type="button" className="btn btn-primary me-2 mb-2" onClick={startCamera} disabled={isCameraOn}>
+                            <button
+                              type="button"
+                              className="btn btn-primary me-2 mb-2"
+                              onClick={startCamera}
+                              disabled={isCameraOn}
+                            >
                               Start Camera
                             </button>
                             {isCameraOn && (
@@ -249,7 +227,6 @@ const Labregistration = () => {
                         </div>
                       </div>
                     </div>
-
                   </div>
                 </form>
               </div>
@@ -411,22 +388,7 @@ const Labregistration = () => {
         </div>
 
 
-
-        {/* Submit and Reset Buttons */}
-        <div className="row mb-3">
-          <div className="col-sm-12">
-            <div className="card shadow mb-3">
-              <div className="card-body">
-                <div className="row g-3">
-                  <div className="mt-4">
-                    <button type="submit" className="btn btn-primary me-2">Registration</button>
-                    <button type="reset" className="btn btn-secondary">Reset</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        
 
         {/* Changed By, Date, and Time */}
         <div className="row mb-3">
@@ -456,7 +418,9 @@ const Labregistration = () => {
           <div className="col-sm-12">
             <div className="card shadow mb-3">
               <div className="card-header bg-light border-bottom-1 py-3">
-                <h6 className="fw-bold mb-0">{formData.type === "investigation" ? "Investigation Details" : "Package Details"}</h6>
+                <h6 className="fw-bold mb-0">
+                  {formData.type === "investigation" ? "Investigation Details" : "Package Details"}
+                </h6>
               </div>
               <div className="card-body">
                 <div className="mb-3">
@@ -500,111 +464,62 @@ const Labregistration = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {formData.type === "investigation" ? (
-                      formData.investigation.map((row, index) => (
-                        <tr key={index}>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={row.investigationName}
-                              placeholder="Investigation Name"
-                              onChange={(e) => handleInvestigationChange(index, "investigationName", e.target.value)}
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="date"
-                              className="form-control"
-                              value={row.date}
-                              onChange={(e) => handleInvestigationChange(index, "date", e.target.value)}
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control"
-                              value={row.originalAmount}
-                              onChange={(e) => handleInvestigationChange(index, "originalAmount", e.target.value)}
-                              min="0"
-                              step="0.01"
-                            />
-                          </td>
-                          <td>
-                            <button 
-                              type="button" 
-                              className="btn btn-danger" 
-                              onClick={() => removeInvestigationRow(index)}
-                            >
-                              <i className="icofont-close"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      formData.package.map((row, index) => (
-                        <tr key={index}>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={row.packageName}
-                              placeholder="Package Name"
-                              onChange={(e) => handlePackageChange(index, "packageName", e.target.value)}
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="date"
-                              className="form-control"
-                              value={row.date}
-                              onChange={(e) => handlePackageChange(index, "date", e.target.value)}
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control"
-                              value={row.originalAmount}
-                              onChange={(e) => handlePackageChange(index, "originalAmount", e.target.value)}
-                              min="0"
-                              step="0.01"
-                            />
-                          </td>
-                          <td>
-                            <button 
-                              type="button" 
-                              className="btn btn-danger" 
-                              onClick={() => removePackageRow(index)}
-                            >
-                              <i className="icofont-close"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
+                    {formData.rows.map((row, index) => (
+                      <tr key={index}>
+                        <td>
+                          <input
+                            type="text"
+                            className="form-control"
+                            value={row.name}
+                            placeholder={formData.type === "investigation" ? "Investigation Name" : "Package Name"}
+                            onChange={(e) => handleRowChange(index, "name", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="date"
+                            className="form-control"
+                            value={row.date}
+                            onChange={(e) => handleRowChange(index, "date", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            className="form-control"
+                            value={row.originalAmount}
+                            onChange={(e) => handleRowChange(index, "originalAmount", e.target.value)}
+                            min="0"
+                            step="0.01"
+                          />
+                        </td>
+                        <td>
+                          <button type="button" className="btn btn-danger" onClick={() => removeRow(index)}>
+                            <i className="icofont-close"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                   <tfoot>
                     <tr>
                       <td>Total Amount</td>
-                      <td colSpan="2" className="text-end">{calculateTotalAmount()}</td>
+                      <td colSpan="2" className="text-end">
+                        {calculateTotalAmount()}
+                      </td>
                       <td></td>
                     </tr>
                   </tfoot>
                 </table>
-                <button 
-                  type="button" 
-                  className="btn btn-success" 
-                  onClick={formData.type === "investigation" ? addInvestigationRow : addPackageRow}
-                >
+                <button type="button" className="btn btn-success" onClick={addRow}>
                   Add {formData.type === "investigation" ? "Investigation" : "Package"} +
                 </button>
                 <div className="col-md-4 mt-2">
                   <label className="form-label">Payment Mode</label>
-                  <select 
+                  <select
                     className="form-select"
                     value={formData.paymentMode}
-                    onChange={(e) => setFormData(prev => ({ ...prev, paymentMode: e.target.value }))}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, paymentMode: e.target.value }))}
                   >
                     <option value="">Select Mode</option>
                     <option value="cash">Cash</option>
@@ -617,9 +532,27 @@ const Labregistration = () => {
           </div>
         </div>
 
+        <div className="row mb-3">
+          <div className="col-sm-12">
+            <div className="card shadow mb-3">
+              <div className="card-body">
+                <div className="row g-3">
+                  <div className="mt-4">
+                    <button type="submit" className="btn btn-primary me-2">
+                      Registration
+                    </button>
+                    <button type="reset" className="btn btn-secondary">
+                      Reset
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Labregistration;
+export default Labregistration
