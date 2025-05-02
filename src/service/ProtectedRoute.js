@@ -43,7 +43,10 @@ const validRoutes = [
   "/updatepatientregistration",
   "/mainchargecode",
   "/subchargecode",
-  "/labregistration"
+  "/labregistration",
+  "/uommaster",
+  "/samplecollectionmaster",
+  "/investigationpricing"
 ];
 
 const NotAuthorized = () => {
