@@ -6,13 +6,58 @@ import { getRequest } from "../../service/apiService";
 const iconMap = {
   "OPD": "icofont-hospital",
   "OPD Waiting List": "icofont-waiter",
+  "Opd Preconsultation": "icofont-doctor",
+  
   "Master": "icofont-gear",
   "Department Master": "icofont-building",
+  "Religion master": "icofont-book",  
   "Gender Master": "icofont-user",
-  "Report": "icofont-chart-bar-graph",
-  "Report 1": "icofont-file-document"
+  "Relation Master": "icofont-users-alt-2",
+  "Blood Group Master": "icofont-blood-drop",
+  "Marital Status": "icofont-heart-alt",
+  "Department Type": "icofont-ui-settings",
+  "Hospital Master": "icofont-hospital",
+  "Country Master": "icofont-earth",
+  "State Master": "icofont-map",
+  "District Master": "icofont-map-pins",
+  "Identification Master": "icofont-id",
+  "RCMC": "icofont-clip",
+  "Frequency Master": "icofont-alarm",
+  "OPD Master": "icofont-doctor",
+  "Treatment Advice Master": "icofont-prescription",
+  "Create User Master": "icofont-user-alt-5",
+  "User Department": "icofont-building-alt",
 
+  "Report": "icofont-chart-bar-graph",
+  "Report 1": "icofont-file-document",
+  "Report2": "icofont-file-alt",
+
+  "Investigation Pricing": "icofont-calculator-alt-2",
+
+  "ADMIN": "icofont-lock",
+  "Manage User Application": "icofont-ui-user-group",
+  "Add Form Reports": "icofont-file-document", 
+  "Assign Application": "icofont-paper",
+  "Roles Rights": "icofont-users-alt-4",
+  "Appointment Setup": "icofont-ui-calendar",
+  "Doctor Roaster": "icofont-stethoscope",
+  "Role Master": "icofont-businessman",
+  "Template Master": "icofont-page",
+  "Patient Registration": "icofont-ui-add",
+  "Update Patient Registration": "icofont-edit",
+  "Register Employee": "icofont-users-alt-5",
+
+  "Stores": "icofont-shopping-cart",
+  "Item Class": "icofont-box",
+
+  "Laboratory": "icofont-laboratory",
+  "Lab Registration": "icofont-ui-add",
+  "Sub Charge Code": "icofont-code",
+  "Main Chargecode": "icofont-code-alt",
+  "UOM Master": "icofont-ruler-alt-1",
+  "Sample Collection Master": "icofont-test-bottle"
 };
+
 
 const getIconClass = (name) => iconMap[name] || "icofont-ui-folder";
 
@@ -50,7 +95,6 @@ const Sidebar = () => {
 
         const allowedUrls = extractUrls(data.response);
 
-        // Save to sessionStorage or localStorage
         sessionStorage.setItem("allowedUrls", JSON.stringify(allowedUrls));
       } else {
         console.error("Unexpected API response format:", data);

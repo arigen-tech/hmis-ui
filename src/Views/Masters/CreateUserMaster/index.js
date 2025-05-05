@@ -1,124 +1,180 @@
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import { EMPLOYEE_TYPE, DEPARTMENT, API_HOST } from "../../../config/apiConfig";
 
 
 const Createusermaster = () => {
+    const [formData, setFormData] = useState({
+        userId: "",
+        Name: "",
+        userName: "",
+        userType: "",
+        status: "y",
+        rolesIdForUsers: ""
+    })
     const [pageInput, setPageInput] = useState("");
-    const [users, setUsers] = useState([
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-        { id: 1, userId: "001", userName: "John Doe", userLevel: "Admin", status: "y" },
-
-        { id: 2, userId: "002", userName: "Jane Smith", userLevel: "User", status: "n" },
-    ])
-
+    const [allUserData, setAllUserData] = useState([]);
+    const [loading, setLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1)
     const [popupMessage, setPopupMessage] = useState(null);
     const itemsPerPage = 4
     const [showForm, setShowForm] = useState(false)
-    const [formData, setFormData] = useState({
-        userId: "",
-        userName: "",
-        userLevel: "",
-        status: "y",
-    })
     const [editMode, setEditMode] = useState(false)
     const [editId, setEditId] = useState(null)
+    const [employeeTypeData, setEmployeeTypeData] = useState([]);
+    const [departmentData, setDepartmentData] = useState([]);
+    const [allRolesData, setAllRolesData] = useState([]);
+    const [availableRoles, setAvailableRoles] = useState([]);
+    const [assignedRoles, setAssignedRoles] = useState([]);
+    const [selectedAvailable, setSelectedAvailable] = useState([]);
+    const [selectedAssigned, setSelectedAssigned] = useState([]);
+    const [userDepartmentData, setUserDepartmentData] = useState([]);
+    const [selectedAvailableDepartments, setSelectedAvailableDepartments] = useState([]);
+    const [selectedAssignedDepartments, setSelectedAssignedDepartments] = useState([]);
+    const [assignedDepartments, setAssignedDepartments] = useState([]);
+    const [availableDepartments, setAvailableDepartments] = useState([]);
     const [confirmDialog, setConfirmDialog] = useState({
         isOpen: false,
         userId: null,
         newStatus: null,
-        action: null, // 'status' or 'edit'
+        action: null,
     })
+    const [users, setUsers] = useState([]);
+    const [filteredUsers, setFilteredUsers] = useState([]);
+    const [originalAssignedRoles, setOriginalAssignedRoles] = useState([]);
+    const [originalAssignedDepartments, setOriginalAssignedDepartments] = useState([]);
+
+
+
+    useEffect(() => {
+        fetchUsersData();
+        fetchEmployeeTypeData();
+    }, []);
+
+    useEffect(() => {
+        if (formData?.rolesIdForUsers) {
+            fetchAllRolesData();
+        }
+        if (formData?.userId) {
+            fetchDepartmentAndUserDepartments();
+        }
+    }, [formData]);
+
+
+
+    const fetchAllRolesData = async () => {
+        setLoading(true);
+        try {
+            const data = await getRequest(`/roles/getAllRoles/1`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                const allRoles = data.response.filter(role => role.status === 'y');
+                setAllRolesData(allRoles);
+
+                const assignedIds = formData.rolesIdForUsers
+                    ?.split(',')
+                    .map(id => parseInt(id.trim()))
+                    .filter(id => !isNaN(id)) || [];
+
+                const assigned = allRoles.filter(role => assignedIds.includes(role.id));
+                const available = allRoles.filter(role => !assignedIds.includes(role.id));
+
+                setAssignedRoles(assigned);
+                setAvailableRoles(available);
+            } else {
+                console.error("Unexpected API response format:", data);
+            }
+        } catch (error) {
+            console.error("Error fetching roles:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchUsersData = async () => {
+        setLoading(true);
+        try {
+            const data = await getRequest(`/authController/getAllUsers`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setAllUserData(data.response);
+            } else {
+                console.error("Unexpected API response format:", data);
+                setAllUserData([]);
+            }
+        } catch (error) {
+            console.error("Error fetching User data:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchEmployeeTypeData = async () => {
+        setLoading(true);
+        try {
+            const data = await getRequest(`${EMPLOYEE_TYPE}/getAllUserType/1`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setEmployeeTypeData(data.response);
+            } else {
+                console.error("Unexpected API response format:", data);
+                setEmployeeTypeData([]);
+            }
+        } catch (error) {
+            console.error("Error fetching EmployeeType data:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchDepartmentAndUserDepartments = async () => {
+        setLoading(true);
+        try {
+            const [userDeptRes, allDeptRes] = await Promise.all([
+                getRequest(`${DEPARTMENT}/userDepartmentsByUser/${formData.userId}`),
+                getRequest(`${DEPARTMENT}/getAllDepartments/1`)
+            ]);
+
+            if (
+                userDeptRes.status === 200 &&
+                allDeptRes.status === 200 &&
+                Array.isArray(userDeptRes.response) &&
+                Array.isArray(allDeptRes.response)
+            ) {
+                const allDepartments = allDeptRes.response.filter(dep => dep.status === 'y');
+                const userDepartments = userDeptRes.response;
+
+                // Extract assigned department IDs
+                const assignedDeptIds = userDepartments.map(dep => dep.departmentId);
+
+                // Split assigned and available
+                const assigned = allDepartments.filter(dep => assignedDeptIds.includes(dep.id));
+                const available = allDepartments.filter(dep => !assignedDeptIds.includes(dep.id));
+
+                setDepartmentData(allDepartments);
+                setUserDepartmentData(userDepartments);
+                setAssignedDepartments(assigned);
+                setAvailableDepartments(available);
+            } else {
+                console.error("Unexpected API response format");
+                setAssignedDepartments([]);
+                setAvailableDepartments([]);
+            }
+        } catch (error) {
+            console.error("Error fetching department data:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleEmployeeTypeChange = (empTypeId) => {
+        setFormData((prevState) => ({
+            ...prevState,
+            employeeTypeId: empTypeId,
+        }));
+    };
 
     const [searchFilters, setSearchFilters] = useState({
-        userName: "",
-        status: "",
+        userName: ""
     })
-    const [filteredUsers, setFilteredUsers] = useState(users)
 
     const handleSearchChange = (e) => {
         const { name, value } = e.target
@@ -126,35 +182,65 @@ const Createusermaster = () => {
         setCurrentPage(1)
     }
 
-    const currentItems = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-
-    const filteredTotalPages = Math.ceil(filteredUsers.length / itemsPerPage)
-
     const handleInputChange = (e) => {
         const { id, value } = e.target
         setFormData((prevData) => ({ ...prevData, [id]: value }))
     }
 
-    const handleSave = (e) => {
-        e.preventDefault()
-        if (editMode) {
-            // Update existing user
-            const updatedUsers = users.map((user) => (user.id === editId ? { ...user, ...formData } : user))
-            setUsers(updatedUsers)
-            setFilteredUsers(updatedUsers)
-            setEditMode(false)
-            setEditId(null)
-        } else {
-            // Add new user
-            const newUser = { ...formData, id: users.length + 1 }
-            const updatedUsers = [...users, newUser]
-            setUsers(updatedUsers)
-            setFilteredUsers(updatedUsers)
-            showPopup("User added successfully!", "success");
+    const arraysAreEqual = (arr1, arr2, key = 'id') => {
+        const ids1 = arr1.map(item => item[key]).sort();
+        const ids2 = arr2.map(item => item[key]).sort();
+        return JSON.stringify(ids1) === JSON.stringify(ids2);
+    };
+    
+    const handleSave = async (e) => {
+        e.preventDefault();
+    
+        const userId = formData.userId;
+        const roleIds = assignedRoles.map(role => role.id).join(",");
+    
+        const departmentPayload = {
+            userId,
+            departments: assignedDepartments.map(dept => ({
+                departmentId: dept.id,
+                status: dept.status
+            }))
+        };
+    
+        const rolesChanged = !arraysAreEqual(assignedRoles, originalAssignedRoles);
+        const departmentsChanged = !arraysAreEqual(assignedDepartments, originalAssignedDepartments);
+    
+        let rolesSuccess = true;
+        let deptSuccess = true;
+    
+        try {
+            if (rolesChanged) {
+                await putRequest(`/authController/updateRoles/${userId}?roles=${roleIds}`, {});
+            }
+            if (departmentsChanged) {
+                await putRequest(`/user-departments/addOrUpdateUserDept`, departmentPayload);
+            }
+    
+            if (rolesChanged || departmentsChanged) {
+                showPopup("Roles and/or departments updated successfully!", "success");
+            } else {
+                showPopup("No changes detected. Nothing was updated.", "info");
+            }
+        } catch (error) {
+            console.error("Update error:", error);
+            if (rolesChanged) rolesSuccess = false;
+            if (departmentsChanged) deptSuccess = false;
+    
+            if (!rolesSuccess) showPopup("Error updating roles. Please try again.", "error");
+            if (!deptSuccess) showPopup("Error updating departments. Please try again.", "error");
         }
-        setFormData({ userId: "", userName: "", userLevel: "", status: "y" })
-        setShowForm(false)
-    }
+    
+        fetchUsersData();
+        setShowForm(false);
+        setEditMode(false);
+    };
+    
+
 
     const showPopup = (message, type = "info") => {
         setPopupMessage({
@@ -166,56 +252,80 @@ const Createusermaster = () => {
         });
     };
 
-    // Update search handler
-    const handleSearch = () => {
-        const filtered = users.filter((user) => {
-            const matchesName = user.userName.toLowerCase().includes(searchFilters.userName.toLowerCase())
-            const matchesStatus = searchFilters.status ? user.status === searchFilters.status : true
-            return matchesName && matchesStatus
-        })
-        setFilteredUsers(filtered)
-        setCurrentPage(1)
-    }
-
-    // Update refresh handler
     const handleRefresh = () => {
-        setSearchFilters({ userName: "", status: "" })
-        setFilteredUsers(users)
-        setCurrentPage(1)
-    }
+        setSearchFilters({ userName: "" });
+        setFilteredUsers(allUserData);
+        setCurrentPage(1);
+    };
 
-    const handleConfirm = (confirmed) => {
-        if (confirmed && confirmDialog.userId !== null) {
-            if (confirmDialog.action === "status") {
-                // Toggle the status for the selected user
-                setUsers((prevData) =>
-                    prevData.map((user) =>
-                        user.id === confirmDialog.userId ? { ...user, status: confirmDialog.newStatus } : user,
-                    ),
-                )
-                // Also update the filteredUsers to reflect the change
-                setFilteredUsers((prevData) =>
-                    prevData.map((user) =>
-                        user.id === confirmDialog.userId ? { ...user, status: confirmDialog.newStatus } : user,
-                    ),
-                )
-                showPopup(`User ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+    const handleSearch = () => {
+        const filtered = allUserData.filter((user) =>
+            user.username.toLowerCase().includes(searchFilters.userName.toLowerCase())
+        );
+        setFilteredUsers(filtered);
+    };
+
+    useEffect(() => {
+        setFilteredUsers(allUserData);
+    }, [allUserData]);
+    
+    
+
+    const handleConfirm = async (confirmed) => {
+        if (confirmed && confirmDialog.userId !== null && confirmDialog.action === "status") {
+            try {
+                const response = await fetch(
+                    `${API_HOST}/authController/updateStatus/${confirmDialog.userId}?status=${confirmDialog.newStatus}`,
+                    {
+                        method: "PUT",
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error("Failed to update status");
+                }
+
+                const updateUserStatus = (userId, newStatus) => (user) =>
+                    user.userId === userId ? { ...user, status: newStatus } : user;
+
+                setUsers((prevData) => prevData.map(updateUserStatus(confirmDialog.userId, confirmDialog.newStatus)));
+                setFilteredUsers((prevData) => prevData.map(updateUserStatus(confirmDialog.userId, confirmDialog.newStatus)));
+
+                showPopup(
+                    `User ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                    "success"
+                );
+                fetchUsersData();
+            } catch (error) {
+                console.error("Status update failed:", error);
+                showPopup("Failed to update user status. Please try again.", "error");
             }
         }
-        setConfirmDialog({ isOpen: false, userId: null, newStatus: null, action: null })
-    }
+
+        setConfirmDialog({ isOpen: false, userId: null, newStatus: null, action: null });
+    };
 
     const handleEditClick = (user) => {
+        const fullName = [user.firstName, user.middleName, user.lastName].filter(Boolean).join(' ');
+    
         setFormData({
             userId: user.userId,
-            userName: user.userName,
-            userLevel: user.userLevel,
+            userName: user.username,
+            Name: fullName,
+            userType: user?.userType?.userTypeId,
             status: user.status,
-        })
-        setShowForm(true)
-        setEditMode(true)
-        setEditId(user.id)
-    }
+            rolesIdForUsers: user.roleId
+        });
+    
+        setShowForm(true);
+        setEditMode(true);
+        setEditId(user.userId);
+    
+        // Create and store deep copies for comparison later
+        setOriginalAssignedRoles(JSON.parse(JSON.stringify(assignedRoles)));
+        setOriginalAssignedDepartments(JSON.parse(JSON.stringify(assignedDepartments)));
+    };
+    
 
     const handlePageNavigation = () => {
         const pageNumber = parseInt(pageInput, 10);
@@ -228,33 +338,28 @@ const Createusermaster = () => {
 
     const renderPagination = () => {
         const pageNumbers = [];
-        const maxVisiblePages = 5; // Number of visible page buttons
+        const maxVisiblePages = 5;
         let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
         const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
 
-        // Adjust startPage if there are not enough pages to show
         if (endPage - startPage < maxVisiblePages - 1) {
             startPage = Math.max(1, endPage - maxVisiblePages + 1);
         }
 
-        // Add the first page and ellipsis if needed
         if (startPage > 1) {
             pageNumbers.push(1);
             if (startPage > 2) pageNumbers.push("...");
         }
 
-        // Add the visible page numbers
         for (let i = startPage; i <= endPage; i++) {
             pageNumbers.push(i);
         }
 
-        // Add the last page and ellipsis if needed
         if (endPage < filteredTotalPages) {
             if (endPage < filteredTotalPages - 1) pageNumbers.push("...");
             pageNumbers.push(filteredTotalPages);
         }
 
-        // Render the pagination buttons
         return pageNumbers.map((number, index) => (
             <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
                 {typeof number === "number" ? (
@@ -268,73 +373,57 @@ const Createusermaster = () => {
         ));
     };
 
-
-    const [availableRoles, setAvailableRoles] = useState(["ADMIN", "APM", "AUDIT", "AUDITOR", "CITY OFFICER", "COMMISSIONER", "DISTRICT OFFICER", "DOCTOR"]); // Example roles
-    const [assignedRoles, setAssignedRoles] = useState([]);
-    const [selectedRoles, setSelectedRoles] = useState([]);
-    const [availableDepartments, setAvailableDepartments] = useState([
-        "Department A",
-        "Department B",
-        "Department C",
-    ]);
-    const [assignedDepartments, setAssignedDepartments] = useState([]);
-    const [selectedDepartments, setSelectedDepartments] = useState([]);
-
-    const handleSelectRoles = (event) => {
-        const options = event.target.options;
-        const selectedValues = [];
-        for (let i = 0; i < options.length; i++) {
-            if (options[i].selected) {
-                selectedValues.push(options[i].value);
-            }
-        }
-        setSelectedRoles(selectedValues);
-    };
-
-    const handleAssignRoles = () => {
-        if (selectedRoles.length > 0) {
-            setAssignedRoles([...assignedRoles, ...selectedRoles]);
-            setAvailableRoles(availableRoles.filter(role => !selectedRoles.includes(role)));
-            setSelectedRoles([]); 
-        }
-    };
-
-    const handleRemoveRoles = () => {
-        if (selectedRoles.length > 0) {
-            setAvailableRoles([...availableRoles, ...selectedRoles]);
-            setAssignedRoles(assignedRoles.filter(role => !selectedRoles.includes(role)));
-            setSelectedRoles([]); 
-        }
-    };
-
-    const handleSelectDepartments = (e) => {
-        const options = e.target.options;
-        const selected = [];
-        for (let i = 0; i < options.length; i++) {
-            if (options[i].selected) {
-                selected.push(options[i].value);
-            }
-        }
-        setSelectedDepartments(selected);
-    };
-
     const handleAssignDepartments = () => {
-        if (selectedDepartments.length > 0) {
-            setAssignedDepartments([...assignedDepartments, ...selectedDepartments]);
-            setAvailableDepartments(availableDepartments.filter(department => !selectedDepartments.includes(department)));
-            setSelectedDepartments([]); 
-        }
+        const toAssign = availableDepartments.filter(dept =>
+            selectedAvailableDepartments.includes(dept.id)
+        );
+
+        setAssignedDepartments((prev) => [...prev, ...toAssign]);
+        setAvailableDepartments((prev) =>
+            prev.filter((dept) => !selectedAvailableDepartments.includes(dept.id))
+        );
+        setSelectedAvailableDepartments([]);
     };
 
     const handleRemoveDepartments = () => {
-        if (selectedDepartments.length > 0) {
-            setAvailableDepartments([...availableDepartments, ...selectedDepartments]);
-            setAssignedDepartments(assignedDepartments.filter(department => !selectedDepartments.includes(department)));
-            setSelectedDepartments([]); 
-        }
+        const toRemove = assignedDepartments.filter(dept =>
+            selectedAssignedDepartments.includes(dept.id)
+        );
+
+        setAvailableDepartments((prev) => [...prev, ...toRemove]);
+        setAssignedDepartments((prev) =>
+            prev.filter((dept) => !selectedAssignedDepartments.includes(dept.id))
+        );
+        setSelectedAssignedDepartments([]);
     };
 
+    const handleSelectAvailableRoles = (e) => {
+        const selected = Array.from(e.target.selectedOptions).map(opt => parseInt(opt.value));
+        setSelectedAvailable(selected);
+    };
 
+    const handleSelectAssignedRoles = (e) => {
+        const selected = Array.from(e.target.selectedOptions).map(opt => parseInt(opt.value));
+        setSelectedAssigned(selected);
+    };
+
+    const handleAssignRoles = () => {
+        const moveToAssigned = availableRoles.filter(role => selectedAvailable.includes(role.id));
+        setAssignedRoles(prev => [...prev, ...moveToAssigned]);
+        setAvailableRoles(prev => prev.filter(role => !selectedAvailable.includes(role.id)));
+        setSelectedAvailable([]);
+    };
+
+    const handleRemoveRoles = () => {
+        const moveToAvailable = assignedRoles.filter(role => selectedAssigned.includes(role.id));
+        setAvailableRoles(prev => [...prev, ...moveToAvailable]);
+        setAssignedRoles(prev => prev.filter(role => !selectedAssigned.includes(role.id)));
+        setSelectedAssigned([]);
+    };
+
+    const currentItems = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    const filteredTotalPages = Math.ceil(filteredUsers.length / itemsPerPage)
     return (
         <div className="content-wrapper">
             <div className="row">
@@ -347,34 +436,19 @@ const Createusermaster = () => {
                                     <div className="col-md-7 row">
                                         <div className="col-md-6 d-flex">
                                             <label htmlFor="userName" className="flex-shrink-0 mt-1">
-                                                Name of User
+                                                Username
                                             </label>
                                             <input
                                                 type="text"
                                                 id="userName"
                                                 name="userName"
                                                 className="form-control ms-2 me-4"
-                                                placeholder="Enter Name"
+                                                placeholder="Enter Username"
                                                 value={searchFilters.userName}
                                                 onChange={handleSearchChange}
                                             />
                                         </div>
-                                        <div className="col-md-4 d-flex">
-                                            <label htmlFor="status" className="form-label flex-shrink-0 mt-1">
-                                                Status
-                                            </label>
-                                            <select
-                                                className="form-control ms-2"
-                                                id="status"
-                                                name="status"
-                                                value={searchFilters.status}
-                                                onChange={handleSearchChange}
-                                            >
-                                                <option value="">All</option>
-                                                <option value="y">Active</option>
-                                                <option value="n">Inactive</option>
-                                            </select>
-                                        </div>
+                                        
                                         <div className="col-md-2 d-flex">
                                             <button type="button" className="btn btn-primary ms-2" onClick={handleSearch}>
                                                 <i className="mdi mdi-magnify"></i> Search
@@ -386,17 +460,7 @@ const Createusermaster = () => {
                                         <button type="button" className="btn btn-success me-1" onClick={handleRefresh}>
                                             <i className="mdi mdi-plus"></i> Show All
                                         </button>
-                                        <button
-                                            type="button"
-                                            className="btn btn-success me-1"
-                                            onClick={() => {
-                                                setFormData({ userId: "", userName: "", userLevel: "", status: "y" })
-                                                setEditMode(false)
-                                                setShowForm(true)
-                                            }}
-                                        >
-                                            <i className="mdi mdi-plus"></i> ADD
-                                        </button>
+
                                     </div>
                                 </div>
                             )}
@@ -407,19 +471,19 @@ const Createusermaster = () => {
                                     <table className="table table-bordered table-hover align-middle">
                                         <thead className="table-light">
                                             <tr>
-                                                <th>User ID / Mobile Number</th>
+                                                <th>Username</th>
                                                 <th>Name of User</th>
-                                                <th>Level of User</th>
+                                                <th>Date of Birth</th>
                                                 <th>Edit</th>
                                                 <th>Status</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {currentItems.map((user) => (
-                                                <tr key={user.id}>
-                                                    <td>{user.userId}</td>
-                                                    <td>{user.userName}</td>
-                                                    <td>{user.userLevel}</td>
+                                                <tr key={user.userId}>
+                                                    <td>{user.username}</td>
+                                                    <td>{[user.firstName, user.middleName, user.lastName].filter(Boolean).join(' ')}</td>
+                                                    <td>{user.dateOfBirth}</td>
                                                     <td>
                                                         <button
                                                             className="btn btn-sm btn-success me-2"
@@ -439,14 +503,14 @@ const Createusermaster = () => {
                                                                     const newStatus = user.status === "y" ? "n" : "y"
                                                                     setConfirmDialog({
                                                                         isOpen: true,
-                                                                        userId: user.id,
+                                                                        userId: user.userId,
                                                                         newStatus: newStatus,
                                                                         action: "status",
                                                                     })
                                                                 }}
-                                                                id={`switch-${user.id}`}
+                                                                id={`switch-${user.userId}`}
                                                             />
-                                                            <label className="form-check-label px-0" htmlFor={`switch-${user.id}`}>
+                                                            <label className="form-check-label px-0" htmlFor={`switch-${user.userId}`}>
                                                                 {user.status === "y" ? "Active" : "Deactivated"}
                                                             </label>
                                                         </div>
@@ -457,7 +521,7 @@ const Createusermaster = () => {
                                     </table>
                                 </div>
                             ) : (
-                                <form className="forms row" onSubmit={handleSave}>
+                                <form className="forms row">
                                     <div className="d-flex justify-content-between">
                                         <h5>{editMode ? "Edit User" : "Add New User"}</h5>
                                         <button
@@ -466,7 +530,7 @@ const Createusermaster = () => {
                                             onClick={() => {
                                                 setShowForm(false)
                                                 setEditMode(false)
-                                                setFormData({ userId: "", userName: "", userLevel: "", status: "y" })
+                                                setFormData({ userId: "", username: "", userLevel: "", status: "y" })
                                             }}
                                         >
                                             <i className="mdi mdi-arrow-left"></i> Back
@@ -474,156 +538,160 @@ const Createusermaster = () => {
                                     </div>
                                     <div className="form-group col-md-4">
                                         <label>
-                                            User ID / Phone Number <span className="text-danger">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            className="form-control mt-1"
-                                            id="userId"
-                                            placeholder="User ID"
-                                            value={formData.userId}
-                                            onChange={handleInputChange}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="form-group col-md-4">
-                                        <label>
-                                            Name of User <span className="text-danger">*</span>
+                                            User Name <span className="text-danger">*</span>
                                         </label>
                                         <input
                                             type="text"
                                             className="form-control mt-1"
                                             id="userName"
-                                            placeholder="Name"
+                                            placeholder="Username"
                                             value={formData.userName}
-                                            onChange={handleInputChange}
-                                            required
+                                            readOnly
                                         />
                                     </div>
+
                                     <div className="form-group col-md-4">
                                         <label>
-                                            Email ID <span className="text-danger">*</span>
+                                            Name <span className="text-danger">*</span>
                                         </label>
                                         <input
                                             type="text"
                                             className="form-control mt-1"
-                                            id="email"
-                                            placeholder="Email"
-                                            required
+                                            id="Name"
+                                            placeholder="Name"
+                                            value={formData.Name}
+                                            readOnly
                                         />
                                     </div>
-                                    <div className="form-group col-md-4 mt-1">
-                                        <label>
-                                            Level of User <span className="text-danger">*</span>
-                                        </label>
-                                        <select
-                                            className="form-control mt-1"
-                                            id="userLevel"
-                                            value={formData.userLevel}
-                                            onChange={handleInputChange}
-                                            required
-                                        >
-                                            <option value="State">State</option>
-                                            <option value="City">City</option>
-                                            <option value="District">District</option>
-                                        </select>
-                                    </div>
+
                                     <div className="form-group col-md-4 mt-1">
                                         <label>
                                             Type of User <span className="text-danger">*</span>
                                         </label>
                                         <select
-                                            className="form-control mt-1"
-                                            id="typeofuser"
-                                            required
+                                            className="form-select"
+                                            style={{ paddingRight: "40px" }}
+                                            value={formData.userType}
+                                            disabled
                                         >
-                                            <option value="ANM">ANM</option>
-                                            <option value="AUFITOR">AUFITOR</option>
-                                            <option value="DOCTOR">DOCTOR</option>
+                                            <option value="">Select Employee Type</option>
+                                            {employeeTypeData.map((empType) => (
+                                                <option key={empType.userTypeId} value={empType.userTypeId}>
+                                                    {empType.userTypeName}
+                                                </option>
+                                            ))}
                                         </select>
                                     </div>
+
+
                                     <div className="form-group col-12 mt-3">
                                         <label><b>Role Assigned</b></label>
                                         <div className="row">
-                                            {/* All Roles Section */}
+                                            {/* All Roles */}
                                             <div className="col-md-5">
                                                 <label className="mb-2"><b>All Roles</b></label>
                                                 <select
                                                     className="form-control w-100"
                                                     size="8"
                                                     multiple
-                                                    onChange={handleSelectRoles}
+                                                    onChange={handleSelectAvailableRoles}
                                                 >
-                                                    {availableRoles.map((role, index) => (
-                                                        <option key={index} value={role}>{role}</option>
+                                                    {availableRoles.map(role => (
+                                                        <option key={role.id} value={role.id}>
+                                                            {role.roleDesc}
+                                                        </option>
                                                     ))}
                                                 </select>
                                             </div>
 
-                                            {/* Transfer Buttons Section */}
+                                            {/* Arrows */}
                                             <div className="col-md-2 d-flex flex-column align-items-center justify-content-center rollarrows">
-                                                <i class="icofont-bubble-right" onClick={handleAssignRoles}></i>
-                                                <i class="icofont-bubble-left" onClick={handleRemoveRoles}></i>
+                                                <i className="icofont-bubble-right" onClick={handleAssignRoles}></i>
+                                                <i className="icofont-bubble-left" onClick={handleRemoveRoles}></i>
                                             </div>
 
-                                            {/* Assigned Roles Section */}
+                                            {/* Assigned Roles */}
                                             <div className="col-md-5">
-                                                <label className="mb-2"><b>Assigned Role</b></label>
-                                                <select className="form-control w-100" size="8" multiple onChange={handleSelectRoles}>
-                                                    {assignedRoles.map((role, index) => (
-                                                        <option key={index} value={role}>{role}</option>
+                                                <label className="mb-2"><b>Assigned Roles</b></label>
+                                                <select
+                                                    className="form-control w-100"
+                                                    size="8"
+                                                    multiple
+                                                    onChange={handleSelectAssignedRoles}
+                                                >
+                                                    {assignedRoles.map(role => (
+                                                        <option key={role.id} value={role.id}>
+                                                            {role.roleDesc}
+                                                        </option>
                                                     ))}
                                                 </select>
                                             </div>
                                         </div>
                                     </div>
+
+
                                     <div className="form-group col-12 mt-3">
-                                        <label><b>Assigned Department</b></label>
+                                        <label><b>Department Assigned</b></label>
                                         <div className="row">
-                                            {/* All Departments Section */}
+                                            {/* Available Departments */}
                                             <div className="col-md-5">
                                                 <label className="mb-2"><b>All Departments</b></label>
                                                 <select
                                                     className="form-control w-100"
-                                                    size="8"
                                                     multiple
-                                                    onChange={handleSelectDepartments} // Create this function to handle selection
+                                                    size="8"
+                                                    onChange={(e) =>
+                                                        setSelectedAvailableDepartments(Array.from(e.target.selectedOptions, (opt) => parseInt(opt.value)))
+                                                    }
                                                 >
-                                                    {availableDepartments.map((department, index) => (
-                                                        <option key={index} value={department}>{department}</option>
+                                                    {availableDepartments.map((dept) => (
+                                                        <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
                                                     ))}
                                                 </select>
                                             </div>
 
-                                            {/* Transfer Buttons Section */}
+
+                                            {/* Arrows */}
                                             <div className="col-md-2 d-flex flex-column align-items-center justify-content-center rollarrows">
                                                 <i className="icofont-bubble-right" onClick={handleAssignDepartments}></i>
                                                 <i className="icofont-bubble-left" onClick={handleRemoveDepartments}></i>
                                             </div>
 
-                                            {/* Assigned Departments Section */}
+                                            {/* Assigned Departments */}
                                             <div className="col-md-5">
                                                 <label className="mb-2"><b>Assigned Departments</b></label>
-                                                <select className="form-control w-100" size="8" multiple onChange={handleSelectDepartments}>
-                                                    {assignedDepartments.map((department, index) => (
-                                                        <option key={index} value={department}>{department}</option>
+                                                <select className="form-control w-100" multiple size="8"
+                                                    onChange={(e) =>
+                                                        setSelectedAssignedDepartments(Array.from(e.target.selectedOptions, (opt) => parseInt(opt.value)))
+                                                    }>
+                                                    {assignedDepartments.map((dept) => (
+                                                        <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
                                                     ))}
                                                 </select>
                                             </div>
                                         </div>
                                     </div>
 
+
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-4">
-                                        <button type="submit" className="btn btn-primary me-2">
-                                            {editMode ? "Update" : "Save"}
+                                        <button onClick={handleSave} className="btn btn-primary me-2">
+                                            Update
                                         </button>
+
                                         <button
                                             type="button"
                                             className="btn btn-danger"
                                             onClick={() => {
                                                 setShowForm(false)
                                                 setEditMode(false)
-                                                setFormData({ userId: "", userName: "", userLevel: "", status: "y" })
+                                                setFormData({
+                                                    userId: "",
+                                                    Name: "",
+                                                    userName: "",
+                                                    userType: "",
+                                                    status: "y",
+                                                    rolesIdForUsers: ""
+                                                })
                                             }}
                                         >
                                             Cancel
@@ -637,7 +705,7 @@ const Createusermaster = () => {
                                         <div className="modal-content">
                                             <div className="modal-header">
                                                 <h5 className="modal-title">
-                                                    {confirmDialog.action === "status" ? "Confirm Status Change" : "Confirm Edit"}
+                                                    {confirmDialog.action === "status" ? "Confirm Status Change" : "Confirm Action"}
                                                 </h5>
                                                 <button type="button" className="close" onClick={() => handleConfirm(false)}>
                                                     <span>&times;</span>
@@ -647,14 +715,15 @@ const Createusermaster = () => {
                                                 <p>
                                                     {confirmDialog.action === "status" ? (
                                                         <>
-                                                            Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                                                            <strong>{users.find((user) => user.id === confirmDialog.userId)?.userName}</strong>?
+                                                            Are you sure you want to{" "}
+                                                            <strong>{confirmDialog.newStatus === "y" ? "activate" : "deactivate"}</strong>{" "}
+                                                            <strong>
+                                                                {allUserData.find((user) => user.userId === confirmDialog.userId)?.userName}
+                                                            </strong>
+                                                            ?
                                                         </>
                                                     ) : (
-                                                        <>
-                                                            Are you sure you want to edit the details of{" "}
-                                                            <strong>{users.find((user) => user.id === confirmDialog.userId)?.userName}</strong>?
-                                                        </>
+                                                        <>Are you sure you want to proceed with this action?</>
                                                     )}
                                                 </p>
                                             </div>
@@ -670,6 +739,7 @@ const Createusermaster = () => {
                                     </div>
                                 </div>
                             )}
+
                             {popupMessage && (
                                 <Popup
                                     message={popupMessage.message}
@@ -693,7 +763,7 @@ const Createusermaster = () => {
                                             &laquo; Previous
                                         </button>
                                     </li>
-                                    {renderPagination()} {/* Use the renderPagination function here */}
+                                    {renderPagination()}
                                     <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
                                         <button
                                             className="page-link"
