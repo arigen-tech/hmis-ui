@@ -317,7 +317,13 @@ const Investigationpricing = () => {
                           autoComplete="off"
                         />
                         {dropdownOpen && (
-                          <ul className="list-group position-absolute w-100 mt-1" style={{ zIndex: 1000}}>
+                          <ul className="list-group position-absolute w-100 mt-1" style={{
+                            zIndex: 1000,
+                            maxHeight: '200px', // Set a maximum height
+                            overflowY: 'auto', // Enable vertical scrolling
+                            backgroundColor: '#fff', // Optional: Set a background color for better visibility
+                            border: '1px solid #ccc', // Optional: Add a border for better definition
+                        }}>
 
                             {investigationList
                               .filter(
