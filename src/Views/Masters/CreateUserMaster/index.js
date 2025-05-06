@@ -192,13 +192,13 @@ const Createusermaster = () => {
         const ids2 = arr2.map(item => item[key]).sort();
         return JSON.stringify(ids1) === JSON.stringify(ids2);
     };
-    
+
     const handleSave = async (e) => {
         e.preventDefault();
-    
+
         const userId = formData.userId;
         const roleIds = assignedRoles.map(role => role.id).join(",");
-    
+
         const departmentPayload = {
             userId,
             departments: assignedDepartments.map(dept => ({
@@ -206,13 +206,13 @@ const Createusermaster = () => {
                 status: dept.status
             }))
         };
-    
+
         const rolesChanged = !arraysAreEqual(assignedRoles, originalAssignedRoles);
         const departmentsChanged = !arraysAreEqual(assignedDepartments, originalAssignedDepartments);
-    
+
         let rolesSuccess = true;
         let deptSuccess = true;
-    
+
         try {
             if (rolesChanged) {
                 await putRequest(`/authController/updateRoles/${userId}?roles=${roleIds}`, {});
@@ -220,7 +220,7 @@ const Createusermaster = () => {
             if (departmentsChanged) {
                 await putRequest(`/user-departments/addOrUpdateUserDept`, departmentPayload);
             }
-    
+
             if (rolesChanged || departmentsChanged) {
                 showPopup("Roles and/or departments updated successfully!", "success");
             } else {
@@ -230,16 +230,16 @@ const Createusermaster = () => {
             console.error("Update error:", error);
             if (rolesChanged) rolesSuccess = false;
             if (departmentsChanged) deptSuccess = false;
-    
+
             if (!rolesSuccess) showPopup("Error updating roles. Please try again.", "error");
             if (!deptSuccess) showPopup("Error updating departments. Please try again.", "error");
         }
-    
+
         fetchUsersData();
         setShowForm(false);
         setEditMode(false);
     };
-    
+
 
 
     const showPopup = (message, type = "info") => {
@@ -268,8 +268,8 @@ const Createusermaster = () => {
     useEffect(() => {
         setFilteredUsers(allUserData);
     }, [allUserData]);
-    
-    
+
+
 
     const handleConfirm = async (confirmed) => {
         if (confirmed && confirmDialog.userId !== null && confirmDialog.action === "status") {
@@ -307,7 +307,7 @@ const Createusermaster = () => {
 
     const handleEditClick = (user) => {
         const fullName = [user.firstName, user.middleName, user.lastName].filter(Boolean).join(' ');
-    
+
         setFormData({
             userId: user.userId,
             userName: user.username,
@@ -316,16 +316,16 @@ const Createusermaster = () => {
             status: user.status,
             rolesIdForUsers: user.roleId
         });
-    
+
         setShowForm(true);
         setEditMode(true);
         setEditId(user.userId);
-    
+
         // Create and store deep copies for comparison later
         setOriginalAssignedRoles(JSON.parse(JSON.stringify(assignedRoles)));
         setOriginalAssignedDepartments(JSON.parse(JSON.stringify(assignedDepartments)));
     };
-    
+
 
     const handlePageNavigation = () => {
         const pageNumber = parseInt(pageInput, 10);
@@ -448,7 +448,7 @@ const Createusermaster = () => {
                                                 onChange={handleSearchChange}
                                             />
                                         </div>
-                                        
+
                                         <div className="col-md-2 d-flex">
                                             <button type="button" className="btn btn-primary ms-2" onClick={handleSearch}>
                                                 <i className="mdi mdi-magnify"></i> Search
@@ -519,6 +519,53 @@ const Createusermaster = () => {
                                             ))}
                                         </tbody>
                                     </table>
+
+                                    <nav className="d-flex justify-content-between align-items-center mt-3">
+                                        <div>
+                                            <span>
+                                                Page {currentPage} of {filteredTotalPages} | Total Records: {filteredUsers.length}
+                                            </span>
+                                        </div>
+                                        <ul className="pagination mb-0">
+                                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                                                <button
+                                                    className="page-link"
+                                                    onClick={() => setCurrentPage(currentPage - 1)}
+                                                    disabled={currentPage === 1}
+                                                >
+                                                    &laquo; Previous
+                                                </button>
+                                            </li>
+                                            {renderPagination()}
+                                            <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                                                <button
+                                                    className="page-link"
+                                                    onClick={() => setCurrentPage(currentPage + 1)}
+                                                    disabled={currentPage === filteredTotalPages}
+                                                >
+                                                    Next &raquo;
+                                                </button>
+                                            </li>
+                                        </ul>
+                                        <div className="d-flex align-items-center">
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max={filteredTotalPages}
+                                                value={pageInput}
+                                                onChange={(e) => setPageInput(e.target.value)}
+                                                placeholder="Go to page"
+                                                className="form-control me-2"
+                                            />
+                                            <button
+                                                className="btn btn-primary"
+                                                onClick={handlePageNavigation}
+                                            >
+                                                Go
+                                            </button>
+                                        </div>
+                                    </nav>
+
                                 </div>
                             ) : (
                                 <form className="forms row">
@@ -747,51 +794,7 @@ const Createusermaster = () => {
                                     onClose={popupMessage.onClose}
                                 />
                             )}
-                            <nav className="d-flex justify-content-between align-items-center mt-3">
-                                <div>
-                                    <span>
-                                        Page {currentPage} of {filteredTotalPages} | Total Records: {filteredUsers.length}
-                                    </span>
-                                </div>
-                                <ul className="pagination mb-0">
-                                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                        <button
-                                            className="page-link"
-                                            onClick={() => setCurrentPage(currentPage - 1)}
-                                            disabled={currentPage === 1}
-                                        >
-                                            &laquo; Previous
-                                        </button>
-                                    </li>
-                                    {renderPagination()}
-                                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                        <button
-                                            className="page-link"
-                                            onClick={() => setCurrentPage(currentPage + 1)}
-                                            disabled={currentPage === filteredTotalPages}
-                                        >
-                                            Next &raquo;
-                                        </button>
-                                    </li>
-                                </ul>
-                                <div className="d-flex align-items-center">
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max={filteredTotalPages}
-                                        value={pageInput}
-                                        onChange={(e) => setPageInput(e.target.value)}
-                                        placeholder="Go to page"
-                                        className="form-control me-2"
-                                    />
-                                    <button
-                                        className="btn btn-primary"
-                                        onClick={handlePageNavigation}
-                                    >
-                                        Go
-                                    </button>
-                                </div>
-                            </nav>
+
                         </div>
                     </div>
                 </div>
