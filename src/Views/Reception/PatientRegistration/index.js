@@ -9,7 +9,7 @@ import {
   ALL_GENDER,
   ALL_RELATION,
   DISTRICT_BY_STATE, DOCTOR_BY_SPECIALITY, PATIENT_IMAGE_UPLOAD,
-  STATE_BY_COUNTRY, GET_DOCTOR_SESSION, PATIENT_REGISTRATION, GET_SESSION
+  STATE_BY_COUNTRY, GET_DOCTOR_SESSION, PATIENT_REGISTRATION, GET_SESSION, HOSPITAL
 } from "../../../config/apiConfig";
 import {DEPARTMENT_CODE_OPD} from "../../../config/constants";
 import axios from "axios";
@@ -21,6 +21,7 @@ const PatientRegistration = () => {
     fetchCountryData();
     fetchDepartment();
     fetchSesion();
+    fetchHospitalDetails();
   }, []);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -94,6 +95,7 @@ const PatientRegistration = () => {
   });
   const [image, setImage] = useState(placeholderImage);
   const [isCameraOn, setIsCameraOn] = useState(false);
+  const [preConsultationFlag, setPreConsultationFlag] = useState(false);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   let stream = null;
@@ -111,6 +113,23 @@ const PatientRegistration = () => {
       console.error("Error accessing camera:", error);
     }
   };
+  async function fetchHospitalDetails() {
+    try {
+      const data = await getRequest(`${HOSPITAL}/${sessionStorage.getItem('hospitalId')}`);
+      if (data.status === 200) {
+        if(data.response.preConsultationAvailable=='y'||data.response.preConsultationAvailable=='Y'){
+          setPreConsultationFlag(true);
+        }
+      } else {
+        console.error("Unexpected API response format:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching Department data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
 
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
@@ -198,11 +217,42 @@ const PatientRegistration = () => {
   // const handleChange = (e) => {
   //   setFormData({ ...formData, [e.target.name]: e.target.value });
   // };
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    const updatedFormData = { ...formData, [name]: value };
-    setFormData(updatedFormData);
+  function calculateDOBFromAge(age) {
+    const today = new Date();
+    const birthYear = today.getFullYear() - age;
 
+    // Default to today's month and day
+    return new Date(birthYear, today.getMonth(), today.getDate()).toISOString().split('T')[0];
+  }
+  function checkBMI(a,b)  {
+    debugger;
+    if(a === '' || b == ''){
+      return ;
+    }
+    var c=b/100;
+    var d=c*c;
+    var sub = a/d;
+    return(parseFloat(Math.round(sub * 100) / 100).toFixed(2));
+  }
+  const handleChange = (e) => {
+
+    const { name, value } = e.target;
+
+    const updatedFormData = { ...formData, [name]: value };
+    if(name=='dob'){
+      updatedFormData.age=calculateAgeFromDOB(value);
+    }
+    else if(name == 'age'){
+      updatedFormData.dob=calculateDOBFromAge(value)
+    }
+    else if(name == 'weight'&&formData.height!=undefined){
+      updatedFormData.bmi=checkBMI(value,formData.height);
+    }else if(name == 'height'&&formData.weight!=undefined){
+      updatedFormData.bmi=checkBMI(formData.weight,value);
+    }
+
+
+    setFormData(updatedFormData);
     let error = "";
 
     if (name === "firstName" && !value.trim()) {
@@ -481,7 +531,8 @@ async function fetchDepartment() {
 
     numericFields.forEach((field) => {
       const value = formData[field];
-      if (value !== "" && (isNaN(value) || Number(value) < 0)) {
+      if (value!=undefined && value !== "" && (isNaN(value) || Number(value) < 0)) {
+        debugger;
         newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} must be a non-negative number.`;
         valid = false;
       }
@@ -503,8 +554,8 @@ async function fetchDepartment() {
         uhidNo:"",
         patientStatus:"",
         regDate:new Date(Date.now()).toJSON().split('.')[0].split('T')[0],
-        lastChgBy:"",
-        patientHospitalId:0,
+        lastChgBy:sessionStorage.getItem('username'),
+        patientHospitalId:Number(sessionStorage.getItem('hospitalId')),
         patientFn: formData.firstName,
         patientMn: formData.middleName,
         patientLn: formData.lastName,
@@ -589,7 +640,7 @@ async function fetchDepartment() {
         departmentId: Number(formData.speciality),
         doctorId: Number(formData.selDoctorId),
         doctorName: "",
-        hospitalId: 1,
+        hospitalId: sessionStorage.getItem('hospitalId'),
         sessionId: Number(formData.selSession),
         billingStatus: "string",
         priority:0,
@@ -666,6 +717,22 @@ async function fetchDepartment() {
     }
 
   }
+
+  function calculateAgeFromDOB(dob) {
+    const birthDate = new Date(dob);
+    const today = new Date();
+
+    let age = today.getFullYear() - birthDate.getFullYear();
+
+    // Adjust if birth date hasn't occurred yet this year
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    return age;
+  }
+
 
   return (
     <div className="body d-flex py-3">
@@ -1012,107 +1079,124 @@ async function fetchDepartment() {
             </div>
           </div>
         </div>
-       
         {/* Vital Details Section */}
-        <div className="row mb-3">
-          <div className="col-sm-12">
-            <div className="card shadow mb-3">
-              <div className="card-header py-3 bg-light border-bottom-1">
-                <h6 className="mb-0 fw-bold">Vital Details</h6>
-              </div>
-              <div className="card-body">
-                <form className="vital">
-                  <div className="row g-3 align-items-center">
-                    {/* Patient Height */}
-                    <div className="col-md-4 d-flex">
-                      <label className="form-label me-2">Patient Height<span className="text-danger">*</span></label>
-                      <input type="number" className={`form-control ${errors.height ? 'is-invalid' : ''}`} placeholder="Height" name="height" value={formData.height} onChange={handleChange} />
-                      <span className="input-group-text">cm</span>
-                      {errors.height && (
-                          <div className="invalid-feedback d-block">{errors.height}</div>
-                      )}
-                    </div>
+        {!preConsultationFlag && (<>
 
-                    {/* Weight */}
-                    <div className="col-md-4 d-flex">
-                      <label className="form-label me-2">Weight<span className="text-danger">*</span></label>
-                      <input type="text" className={`form-control ${errors.weight ? 'is-invalid' : ''}`} placeholder="Weight" name="weight" value={formData.weight} onChange={handleChange}/>
-                      <span className="input-group-text">kg</span>
-                      {errors.weight && (
-                          <div className="invalid-feedback d-block">{errors.weight}</div>
-                      )}
-                    </div>
+          <div className="row mb-3">
+            <div className="col-sm-12">
+              <div className="card shadow mb-3">
+                <div className="card-header py-3 bg-light border-bottom-1">
+                  <h6 className="mb-0 fw-bold">Vital Details</h6>
+                </div>
+                <div className="card-body">
+                  <form className="vital">
+                    <div className="row g-3 align-items-center">
+                      {/* Patient Height */}
+                      <div className="col-md-4 d-flex">
+                        <label className="form-label me-2">Height<span className="text-danger">*</span></label>
+                        <input type="number" className={`form-control ${errors.height ? 'is-invalid' : ''}`} min={0}
+                               placeholder="Height" name="height" value={formData.height} onChange={handleChange}/>
+                        <span className="input-group-text">cm</span>
+                        {errors.height && (
+                            <div className="invalid-feedback d-block">{errors.height}</div>
+                        )}
+                      </div>
 
-                    {/* Temperature */}
-                    <div className="col-md-4 d-flex">
-                      <label className="form-label me-2">Temperature<span className="text-danger">*</span></label>
-                      <input type="text" className={`form-control ${errors.temperature ? 'is-invalid' : ''}`} placeholder="Temperature"  name="temperature" value={formData.temperature} onChange={handleChange}/>
-                      <span className="input-group-text">°F</span>
-                      {errors.temperature && (
-                          <div className="invalid-feedback d-block">{errors.temperature}</div>
-                      )}
-                    </div>
+                      {/* Weight */}
+                      <div className="col-md-4 d-flex">
+                        <label className="form-label me-2">Weight<span className="text-danger">*</span></label>
+                        <input type="number" min={0} className={`form-control ${errors.weight ? 'is-invalid' : ''}`}
+                               placeholder="Weight" name="weight" value={formData.weight} onChange={handleChange}/>
+                        <span className="input-group-text">kg</span>
+                        {errors.weight && (
+                            <div className="invalid-feedback d-block">{errors.weight}</div>
+                        )}
+                      </div>
 
-                    {/* BP (Systolic / Diastolic) */}
-                    <div className="col-md-4 d-flex">
-                      <label className="form-label me-2">BP<span className="text-danger">*</span></label>
-                      <input type="text" className={`form-control ${errors.systolicBP ? 'is-invalid' : ''}`} placeholder="Systolic" name="systolicBP" value={formData.systolicBP} onChange={handleChange}/>
-                      <span className="input-group-text">/</span>
-                      {errors.systolicBP && (
-                          <div className="invalid-feedback d-block">{errors.systolicBP}</div>
-                      )}
-                      <input type="text" className={`form-control ${errors.diastolicBP ? 'is-invalid' : ''}`} placeholder="Diastolic" name="diastolicBP" value={formData.diastolicBP} onChange={handleChange}/>
-                      <span className="input-group-text">mmHg</span>
-                      {errors.diastolicBP && (
-                          <div className="invalid-feedback d-block">{errors.diastolicBP}</div>
-                      )}
-                    </div>
+                      {/* Temperature */}
+                      <div className="col-md-4 d-flex">
+                        <label className="form-label me-2">Temperature<span className="text-danger">*</span></label>
+                        <input type="number" min={0}
+                               className={`form-control ${errors.temperature ? 'is-invalid' : ''}`}
+                               placeholder="Temperature" name="temperature" value={formData.temperature}
+                               onChange={handleChange}/>
+                        <span className="input-group-text">°F</span>
+                        {errors.temperature && (
+                            <div className="invalid-feedback d-block">{errors.temperature}</div>
+                        )}
+                      </div>
 
-                    {/* Pulse */}
-                    <div className="col-md-4 d-flex">
-                      <label className="form-label me-2">Pulse<span className="text-danger">*</span></label>
-                      <input type="text" className={`form-control ${errors.pulse ? 'is-invalid' : ''}`} placeholder="Pulse" name="pulse" value={formData.pulse} onChange={handleChange}/>
-                      <span className="input-group-text">/min</span>
-                      {errors.pulse && (
-                          <div className="invalid-feedback d-block">{errors.pulse}</div>
-                      )}
-                    </div>
+                      {/* BP (Systolic / Diastolic) */}
+                      <div className="col-md-4 d-flex">
+                        <label className="form-label me-2">BP<span className="text-danger">*</span></label>
+                        <input type="number" min={0} className={`form-control ${errors.systolicBP ? 'is-invalid' : ''}`}
+                               placeholder="Systolic" name="systolicBP" value={formData.systolicBP}
+                               onChange={handleChange}/>
+                        <span className="input-group-text">/</span>
+                        {errors.systolicBP && (
+                            <div className="invalid-feedback d-block">{errors.systolicBP}</div>
+                        )}
+                        <input type="number" min={0}
+                               className={`form-control ${errors.diastolicBP ? 'is-invalid' : ''}`}
+                               placeholder="Diastolic" name="diastolicBP" value={formData.diastolicBP}
+                               onChange={handleChange}/>
+                        <span className="input-group-text">mmHg</span>
+                        {errors.diastolicBP && (
+                            <div className="invalid-feedback d-block">{errors.diastolicBP}</div>
+                        )}
+                      </div>
 
-                    {/* BMI */}
-                    <div className="col-md-4 d-flex">
-                      <label className="form-label me-2">BMI</label>
-                      <input type="text" className={`form-control ${errors.bmi ? 'is-invalid' : ''}`} placeholder="BMI" name="bmi" value={formData.bmi} onChange={handleChange}/>
-                      <span className="input-group-text">kg/m²</span>
-                      {errors.bmi && (
-                          <div className="invalid-feedback d-block">{errors.bmi}</div>
-                      )}
-                    </div>
+                      {/* Pulse */}
+                      <div className="col-md-4 d-flex">
+                        <label className="form-label me-2">Pulse<span className="text-danger">*</span></label>
+                        <input type="number" min={0} className={`form-control ${errors.pulse ? 'is-invalid' : ''}`}
+                               placeholder="Pulse" name="pulse" value={formData.pulse} onChange={handleChange}/>
+                        <span className="input-group-text">/min</span>
+                        {errors.pulse && (
+                            <div className="invalid-feedback d-block">{errors.pulse}</div>
+                        )}
+                      </div>
 
-                    {/* RR */}
-                    <div className="col-md-4 d-flex">
-                      <label className="form-label me-2">RR</label>
-                      <input type="text" className={`form-control ${errors.rr ? 'is-invalid' : ''}`} placeholder="RR" name="rr" value={formData.rr} onChange={handleChange}/>
-                      <span className="input-group-text">/min</span>
-                      {errors.rr && (
-                          <div className="invalid-feedback d-block">{errors.rr}</div>
-                      )}
-                    </div>
+                      {/* BMI */}
+                      <div className="col-md-4 d-flex">
+                        <label className="form-label me-2">BMI</label>
+                        <input type="number" min={0} className={`form-control ${errors.bmi ? 'is-invalid' : ''}`}
+                               placeholder="BMI" name="bmi" value={formData.bmi} onChange={handleChange}/>
+                        <span className="input-group-text">kg/m²</span>
+                        {errors.bmi && (
+                            <div className="invalid-feedback d-block">{errors.bmi}</div>
+                        )}
+                      </div>
 
-                    {/* SpO2 */}
-                    <div className="col-md-4 d-flex">
-                      <label className="form-label me-2">SpO2</label>
-                      <input type="text" className={`form-control ${errors.spo2 ? 'is-invalid' : ''}`} placeholder="SpO2" name="spo2" value={formData.spo2} onChange={handleChange}/>
-                      <span className="input-group-text">%</span>
-                      {errors.height && (
-                          <div className="invalid-feedback d-block">{errors.spo2}</div>
-                      )}
+                      {/* RR */}
+                      <div className="col-md-4 d-flex">
+                        <label className="form-label me-2">RR</label>
+                        <input type="number" min={0} className={`form-control ${errors.rr ? 'is-invalid' : ''}`}
+                               placeholder="RR" name="rr" value={formData.rr} onChange={handleChange}/>
+                        <span className="input-group-text">/min</span>
+                        {errors.rr && (
+                            <div className="invalid-feedback d-block">{errors.rr}</div>
+                        )}
+                      </div>
+
+                      {/* SpO2 */}
+                      <div className="col-md-4 d-flex">
+                        <label className="form-label me-2">SpO2</label>
+                        <input type="number" min={0} className={`form-control ${errors.spo2 ? 'is-invalid' : ''}`}
+                               placeholder="SpO2" name="spo2" value={formData.spo2} onChange={handleChange}/>
+                        <span className="input-group-text">%</span>
+                        {errors.height && (
+                            <div className="invalid-feedback d-block">{errors.spo2}</div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </form>
+                  </form>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </>)}
+
 
 
         {/* Appointment Details Section */}
@@ -1141,7 +1225,7 @@ async function fetchDepartment() {
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Doctor Name</label>
-                      <select className="form-select"  name="selDoctorId" value={formData.selDoctorId} onChange={(e) => {
+                      <select className="form-select" name="selDoctorId" value={formData.selDoctorId} onChange={(e) => {
                         handleAddChange(e);
                         fetchSession(e);
                       }}
@@ -1149,7 +1233,7 @@ async function fetchDepartment() {
                         <option value="">Select Doctor</option>
                         {doctorData.map((doctor) => (
                             <option key={doctor.id} value={doctor.userId}>
-                              {`${doctor.firstName} ${doctor.middleName?doctor.middleName:""} ${doctor.lastName?doctor.lastName:""}`}
+                              {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""} ${doctor.lastName ? doctor.lastName : ""}`}
                             </option>))}
                         {/* Add dynamic options here */}
                       </select>
@@ -1197,7 +1281,7 @@ async function fetchDepartment() {
                 <div className="row g-3">
                   <div className="mt-4">
                     <button type="submit" className="btn btn-primary me-2"
-                            onClick={sendRegistrationRequest} >Registration
+                            onClick={sendRegistrationRequest}>Registration
                     </button>
                     <button type="reset" className="btn btn-secondary">Reset</button>
                   </div>
