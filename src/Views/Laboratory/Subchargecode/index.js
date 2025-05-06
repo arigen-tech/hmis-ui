@@ -1,17 +1,11 @@
-"use client"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
+import { ALL_SUBCHARGE, SUBCHARGE } from "../../../config/apiConfig"
+import LoadingScreen from "../../../Components/Loading"
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
 const SubChargeCode = () => {
-  const [subChargeCodes, setSubChargeCodes] = useState([
-    { id: 1, subChargeCode: "Sub Code 1", subChargeName: "Sub Code Name 1", mainChargeCode: "Item 1", status: "y" },
-    { id: 2, subChargeCode: "Sub Code 2", subChargeName: "Sub Code Name 2", mainChargeCode: "Item 2", status: "y" },
-    { id: 3, subChargeCode: "Sub Code 3", subChargeName: "Sub Code Name 3", mainChargeCode: "Item 3", status: "y" },
-    { id: 4, subChargeCode: "Sub Code 4", subChargeName: "Sub Code Name 4", mainChargeCode: "Item 1", status: "y" },
-    { id: 5, subChargeCode: "Sub Code 5", subChargeName: "Sub Code Name 5", mainChargeCode: "Item 2", status: "y" },
-  ])
-
+  const [subChargeCodes, setSubChargeCodes] = useState([])
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, subChargeId: null, newStatus: false })
   const [formData, setFormData] = useState({
     subChargeCode: "",
@@ -25,23 +19,97 @@ const SubChargeCode = () => {
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
-  const itemsPerPage = 3
+  const itemsPerPage = 5
+  const [loading, setLoading] = useState(true)
+  const [mainChargeCodes, setMainChargeCodes] = useState([])
 
+  useEffect(() => {
+    fetchSubChargeCodes(0)
+    fetchMainChargeCodes(1)
+  }, [])
+
+  const fetchSubChargeCodes = async (flag = 0) => {
+    try {
+      setLoading(true)
+      const response = await getRequest(`${ALL_SUBCHARGE}{flag}?flag=${flag}`)
+
+      console.log("API Response:", response)
+
+      if (response && response.status === 200) {
+        const responseData = response.response || response.data || response
+
+        console.log("Response data to map:", responseData)
+
+        if (Array.isArray(responseData)) {
+          const mappedData = responseData.map((item) => {
+            console.log("Mapping item:", item) // Log each item
+            return {
+              id: item.subId,
+              subChargeCode: item.subCode,
+              subChargeName: item.subName,
+              mainChargeCode: item.mainChargeId ? item.mainChargeId.toString() : "",
+              status: item.status,
+              lastChgBy: item.lastChgBy,
+              lastChgDate: item.lastChgDate,
+              lastChgTime: item.lastChgTime,
+            }
+          })
+          setSubChargeCodes(mappedData)
+        } else if (responseData && responseData.response && Array.isArray(responseData.response)) {
+          const mappedData = responseData.response.map((item) => ({
+            id: item.subId,
+            subChargeCode: item.subCode,
+            subChargeName: item.subName,
+            mainChargeCode: item.mainChargeId,
+            status: item.status,
+            lastChgBy: item.lastChgBy,
+            lastChgDate: item.lastChgDate,
+            lastChgTime: item.lastChgTime,
+          }))
+          setSubChargeCodes(mappedData)
+        } else {
+          console.error("Unexpected response structure:", responseData)
+          showPopup("Failed to parse response data", "error")
+        }
+      } else {
+        console.error("Invalid response:", response)
+        showPopup("Failed to load sub-charge codes", "error")
+      }
+    } catch (err) {
+      console.error("Error fetching sub-charge codes:", err)
+      showPopup(`Failed to load sub-charge codes: ${err.message}`, "error")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchMainChargeCodes = async (flag = 1) => {
+    try {
+      setLoading(true)
+      const response = await getRequest(`/main-charge-code/getAllChargeCode/${flag}`)
+      if (response && response.data && response.data.response) {
+        setMainChargeCodes(response.data.response)
+      } else if (response && response.response) {
+        setMainChargeCodes(response.response)
+      }
+    } catch (err) {
+      console.error("Error fetching main charge codes:", err)
+      showPopup("Failed to load main charge codes", "error")
+    } finally {
+      setLoading(false)
+    }
+  }
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
     setCurrentPage(1)
   }
 
-  const filteredSubChargeCodes = subChargeCodes.filter(
+  const filteredSubChargeCodes = (subChargeCodes || []).filter(
     (item) =>
       item.subChargeCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.subChargeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.mainChargeCode.toLowerCase().includes(searchQuery.toLowerCase()),
   )
-
-  const filteredTotalPages = Math.ceil(filteredSubChargeCodes.length / itemsPerPage)
-
-  const currentItems = filteredSubChargeCodes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const handleEdit = (item) => {
     setEditingSubCharge(item)
@@ -54,39 +122,59 @@ const SubChargeCode = () => {
     setIsFormValid(true)
   }
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault()
     if (!isFormValid) return
 
-    if (editingSubCharge) {
-      setSubChargeCodes(
-        subChargeCodes.map((item) =>
-          item.id === editingSubCharge.id
-            ? {
-                ...item,
-                subChargeCode: formData.subChargeCode,
-                subChargeName: formData.subChargeName,
-                mainChargeCode: formData.mainChargeCode,
-              }
-            : item,
-        ),
-      )
-      showPopup("Sub charge code updated successfully!", "success")
-    } else {
-      const newSubCharge = {
-        id: Date.now(),
-        subChargeCode: formData.subChargeCode,
-        subChargeName: formData.subChargeName,
-        mainChargeCode: formData.mainChargeCode,
-        status: "y",
-      }
-      setSubChargeCodes([...subChargeCodes, newSubCharge])
-      showPopup("New sub charge code added successfully!", "success")
-    }
+    try {
+      setLoading(true)
 
-    setEditingSubCharge(null)
-    setShowForm(false)
-    setFormData({ subChargeCode: "", subChargeName: "", mainChargeCode: "" })
+      // Check for duplicates
+      const isDuplicate = subChargeCodes.some(
+        (code) =>
+          code.subChargeCode.toLowerCase() === formData.subChargeCode.toLowerCase() &&
+          (!editingSubCharge || code.id !== editingSubCharge.id),
+      )
+
+      if (isDuplicate) {
+        showPopup("A sub charge code with this code already exists!", "error")
+        setLoading(false)
+        return
+      }
+
+      if (editingSubCharge) {
+        const response = await putRequest(`${SUBCHARGE}/update/${editingSubCharge.id}`, {
+          subCode: formData.subChargeCode,
+          subName: formData.subChargeName,
+          mainChargeId: formData.mainChargeCode,
+        })
+
+        if (response && response.status === 200) {
+          fetchSubChargeCodes()
+          showPopup("Sub charge code updated successfully!", "success")
+        }
+      } else {
+        const response = await postRequest(`${SUBCHARGE}/add`, {
+          subCode: formData.subChargeCode,
+          subName: formData.subChargeName,
+          mainChargeId: formData.mainChargeCode,
+        })
+
+        if (response && response.status === 200) {
+          fetchSubChargeCodes()
+          showPopup("New sub charge code added successfully!", "success")
+        }
+      }
+
+      setEditingSubCharge(null)
+      setFormData({ subChargeCode: "", subChargeName: "", mainChargeCode: "" })
+      setShowForm(false)
+    } catch (err) {
+      console.error("Error saving sub-charge code:", err)
+      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const showPopup = (message, type = "info") => {
@@ -103,13 +191,34 @@ const SubChargeCode = () => {
     setConfirmDialog({ isOpen: true, subChargeId: id, newStatus })
   }
 
-  const handleConfirm = (confirmed) => {
+  const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.subChargeId !== null) {
-      setSubChargeCodes((prevData) =>
-        prevData.map((item) =>
-          item.id === confirmDialog.subChargeId ? { ...item, status: confirmDialog.newStatus } : item,
-        ),
-      )
+      console.log("here2")
+
+      try {
+        setLoading(true)
+        const response = await putRequest(
+          `${SUBCHARGE}/status/${confirmDialog.subChargeId}?status=${confirmDialog.newStatus}`,
+          {},
+        )
+
+        if (response && response.status === 200) {
+          setSubChargeCodes((prevData) =>
+            prevData.map((item) =>
+              item.id === confirmDialog.subChargeId ? { ...item, status: confirmDialog.newStatus } : item,
+            ),
+          )
+          showPopup(
+            `Sub charge code ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            "success",
+          )
+        }
+      } catch (err) {
+        console.error("Error updating sub-charge code status:", err)
+        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error")
+      } finally {
+        setLoading(false)
+      }
     }
     setConfirmDialog({ isOpen: false, subChargeId: null, newStatus: null })
   }
@@ -118,7 +227,6 @@ const SubChargeCode = () => {
     const { id, value } = e.target
     setFormData((prevData) => ({ ...prevData, [id]: value }))
 
-    // Check if all required fields have values
     const updatedFormData = { ...formData, [id]: value }
     setIsFormValid(
       !!updatedFormData.subChargeCode && !!updatedFormData.subChargeName && !!updatedFormData.mainChargeCode,
@@ -127,7 +235,7 @@ const SubChargeCode = () => {
 
   const handlePageNavigation = () => {
     const pageNumber = Number.parseInt(pageInput, 10)
-    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
+    if (pageNumber > 0 && pageNumber <= filteredSubChargeCodes.length) {
       setCurrentPage(pageNumber)
     } else {
       alert("Please enter a valid page number.")
@@ -138,7 +246,7 @@ const SubChargeCode = () => {
     const pageNumbers = []
     const maxVisiblePages = 5
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1)
+    const endPage = Math.min(filteredSubChargeCodes.length, startPage + maxVisiblePages - 1)
 
     if (endPage - startPage < maxVisiblePages - 1) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1)
@@ -153,9 +261,9 @@ const SubChargeCode = () => {
       pageNumbers.push(i)
     }
 
-    if (endPage < filteredTotalPages) {
-      if (endPage < filteredTotalPages - 1) pageNumbers.push("...")
-      pageNumbers.push(filteredTotalPages)
+    if (endPage < filteredSubChargeCodes.length) {
+      if (endPage < filteredSubChargeCodes.length - 1) pageNumbers.push("...")
+      pageNumbers.push(filteredSubChargeCodes.length)
     }
 
     return pageNumbers.map((number, index) => (
@@ -170,6 +278,10 @@ const SubChargeCode = () => {
       </li>
     ))
   }
+
+  const filteredTotalPages = Math.ceil(filteredSubChargeCodes.length / itemsPerPage)
+
+  const currentItems = filteredSubChargeCodes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   return (
     <div className="content-wrapper">
@@ -208,7 +320,9 @@ const SubChargeCode = () => {
               </div>
             </div>
             <div className="card-body">
-              {!showForm ? (
+              {loading ? (
+                <LoadingScreen />
+              ) : !showForm ? (
                 <div className="table-responsive packagelist">
                   <table className="table table-bordered table-hover align-middle">
                     <thead className="table-light">
@@ -294,26 +408,33 @@ const SubChargeCode = () => {
                         required
                       />
                     </div>
+
                     <div className="form-group col-md-4 mt-3">
                       <label>
                         Main Charge Code <span className="text-danger">*</span>
                       </label>
-                      <div>
-                        <select
-                          className="form-control"
-                          id="mainChargeCode"
-                          onChange={handleInputChange}
-                          value={formData.mainChargeCode}
-                          required
-                        >
+                      <select
+                        className="form-control"
+                        id="mainChargeCode"
+                        value={formData.mainChargeCode}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="" disabled>
+                          Select Main Charge Code
+                        </option>
+                        {mainChargeCodes && mainChargeCodes.length > 0 ? (
+                          mainChargeCodes.map((code) => (
+                            <option key={code.chargecodeId} value={code.chargecodeId}>
+                              {code.chargecodeName}
+                            </option>
+                          ))
+                        ) : (
                           <option value="" disabled>
-                            Select Main Charge Code
+                            No main charge codes available
                           </option>
-                          <option value="Item 1">Item 1</option>
-                          <option value="Item 2">Item 2</option>
-                          <option value="Item 3">Item 3</option>
-                        </select>
-                      </div>
+                        )}
+                      </select>
                     </div>
                   </div>
 

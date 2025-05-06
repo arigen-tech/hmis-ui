@@ -69,3 +69,5 @@ export const ITEM_TYPE = "/MasItemType";
 export const ALL_ITEM_TYPE = "/MasItemType/getByAllMasItemTypeStatus";
 export const STORE_GROUP = "/masStoreGroup";
 export const ALL_STORE_GROUP = "/masStoreGroup/getByAllId";
+export const SUBCHARGE = "/sub-charge-code"; 
+export const ALL_SUBCHARGE = "/sub-charge-code/getAllSubCharge/"; 
