@@ -10,7 +10,7 @@ import {
   DISTRICT_BY_STATE,
   DOCTOR_BY_SPECIALITY,
   GET_DOCTOR_SESSION,
-  GET_SESSION, PATIENT_FOLLOW_UP,
+  GET_SESSION, HOSPITAL, PATIENT_FOLLOW_UP,
   PATIENT_IMAGE_UPLOAD,
   PATIENT_REGISTRATION,
   PATIENT_SEARCH,
@@ -19,6 +19,23 @@ import {
 import {DEPARTMENT_CODE_OPD} from "../../../config/constants";
 import Swal from "sweetalert2";
 const UpdatePatientRegistration = () => {
+  async function fetchHospitalDetails() {
+    try {
+      const data = await getRequest(`${HOSPITAL}/${sessionStorage.getItem('hospitalId')}`);
+      if (data.status === 200) {
+        if(data.response.preConsultationAvailable=='y'||data.response.preConsultationAvailable=='Y'){
+          setPreConsultationFlag(true);
+        }
+      } else {
+        console.error("Unexpected API response format:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching Department data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     // Fetching gender data (simulated API response)
     fetchGenderData();
@@ -26,6 +43,7 @@ const UpdatePatientRegistration = () => {
     fetchCountryData();
     fetchDepartment();
     fetchSesion();
+    fetchHospitalDetails();
   }, []);
   const [hospitalId, setHospitalId] = useState(12);
   const [errors, setErrors] = useState({});
@@ -42,12 +60,14 @@ const UpdatePatientRegistration = () => {
   const [doctorData,setDoctorData]=useState([]);
   const [session,setSession]=useState([]);
   const [appointmentFlag,setAppointmentFlag]=useState(false);
+  const [showPatientDetails,setShowPatientDetails]=useState(false);
 
   const [image, setImage] = useState(placeholderImage);
     const [isCameraOn, setIsCameraOn] = useState(false);
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
     const [showDetails, setShowDetails] = useState(false);
+    const [preConsultationFlag,setPreConsultationFlag]=useState(false);
   const [formData, setFormData] = useState({
     mobileNo: "",
     patientName: "",
@@ -64,7 +84,49 @@ const UpdatePatientRegistration = () => {
       [e.target.name]: e.target.value
     });
   };
+  function calculateDOBFromAge(age) {
+    const today = new Date();
+    const birthYear = today.getFullYear() - age;
+
+    // Default to today's month and day
+    return new Date(birthYear, today.getMonth(), today.getDate()).toISOString().split('T')[0];
+  }
+  function calculateAgeFromDOB(dob) {
+    const birthDate = new Date(dob);
+    const today = new Date();
+
+    let age = today.getFullYear() - birthDate.getFullYear();
+
+    // Adjust if birth date hasn't occurred yet this year
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    return age;
+  }
+  function checkBMI(a,b)  {
+    debugger;
+    if(a === '' || b == ''){
+      return ;
+    }
+    var c=b/100;
+    var d=c*c;
+    var sub = a/d;
+    return(parseFloat(Math.round(sub * 100) / 100).toFixed(2));
+  }
   const handleChange = (e) => {
+    if(e.target.name=='patientAge'){
+      patientDetailForm.patientDob=calculateDOBFromAge(e.target.value);
+    }
+    else if(e.target.name=='patientDob'){
+      patientDetailForm.patientAge=calculateAgeFromDOB(e.target.value);
+    }
+    else if(e.target.name == 'weight'&&patientDetailForm.height!=undefined){
+      patientDetailForm.bmi=checkBMI(e.target.value,patientDetailForm.height);
+    }else if(e.target.name == 'height'&&patientDetailForm.weight!=undefined){
+      patientDetailForm.bmi=checkBMI(patientDetailForm.weight,e.target.value);
+    }
     setPatientDetailForm({
       ...patientDetailForm,
       [e.target.name]: e.target.value
@@ -194,7 +256,7 @@ const UpdatePatientRegistration = () => {
     };
     const handleEdit = (patient) => {
         setPatientDetailForm(patient);
-        console.log(patient);
+        setShowPatientDetails(true);
 
       };
   async function fetchGenderData() {
@@ -407,15 +469,71 @@ const UpdatePatientRegistration = () => {
     }
 
   }
+  const validateForm = () => {
+    const requiredFields = ["patientFn", "patientGender", "patientRelation", "patientDob", "patientEmailId", "patientMobileNumber"];
+    const numericFields = [
+      "height",
+      "weight",
+      "temperature",
+      "systolicBP",
+      "diastolicBP",
+      "pulse",
+      "bmi",
+      "rr",
+      "spo2",
+      "age"
+    ];
+
+    let valid = true;
+    const newErrors = {};
+
+    requiredFields.forEach((field) => {
+      if (!patientDetailForm[field] || patientDetailForm[field].toString().trim() === "") {
+        newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} is required.`;
+        valid = false;
+      }
+    });
+
+    if (patientDetailForm.patientEmailId && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patientDetailForm.patientEmailId)) {
+      newErrors.email = "Invalid email format.";
+      valid = false;
+    }
+
+    if (patientDetailForm.patientMobileNumber && !/^\d{10}$/.test(patientDetailForm.patientMobileNumber)) {
+      newErrors.mobileNo = "Mobile number must be exactly 10 digits.";
+      valid = false;
+    }
+
+    if (patientDetailForm.patientPincode && !/^\d{6}$/.test(patientDetailForm.patientPincode)) {
+      newErrors.pinCode = "Pin Code must be exactly 6 digits.";
+      valid = false;
+    }
+
+    numericFields.forEach((field) => {
+      const value = patientDetailForm[field];
+      if (value!=undefined && value !== "" && (isNaN(value) || Number(value) < 0)) {
+        debugger;
+        newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} must be a non-negative number.`;
+        valid = false;
+      }
+      if ((field === "age" || requiredFields.includes(field)) && Number(value) <= 0) {
+        newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} must be greater than 0.`;
+        valid = false;
+      }
+    });
+
+    setErrors(newErrors);
+    return valid;
+  };
   const sendPatientData = async () => {
-    // if (validateForm()) {
+    if (validateForm()) {
       const requestData = {
         patient: {
           id: patientDetailForm.id,
           uhidNo:patientDetailForm.uhidNo,
           patientStatus:"",
           regDate:new Date(Date.now()).toJSON().split('.')[0].split('T')[0],
-          lastChgBy:"",
+          lastChgBy:sessionStorage.getItem('username'),
           patientHospitalId:hospitalId,
           patientFn: patientDetailForm.patientFn,
           patientMn: patientDetailForm.patientMn,
@@ -532,8 +650,9 @@ const UpdatePatientRegistration = () => {
       } catch (error) {
         console.error("Error:", error);
       }
-    // }
+    }
       };
+
 
   return (
     <div className="body d-flex py-3">
@@ -557,6 +676,7 @@ const UpdatePatientRegistration = () => {
             <div className="card-body">
               <form>
               <div className="row g-3">
+                {showPatientDetails && (<>
                 {/* Radio Buttons */}
                 <div className="">
                 <div className="form-check form-check-inline">
@@ -587,6 +707,7 @@ const UpdatePatientRegistration = () => {
                     </label>
                 </div>
                 </div>
+                </>)}
 
             {/* Mobile No, Patient Name, UHID No */}
                 <div className="row g-3">
@@ -685,10 +806,9 @@ const UpdatePatientRegistration = () => {
           </div>
         </div>
       </div>
-
-
-       {/* Patient Personal Details */}
-       <div className="row mb-3">
+      {showPatientDetails && (<>
+        {/* Patient Personal Details */}
+        <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
               <div className="card-header py-3 bg-light border-bottom-1">
@@ -800,447 +920,453 @@ const UpdatePatientRegistration = () => {
               </div>
             </div>
           </div>
-       </div>
+        </div>
 
-      {/* Patient address */}
-      <div className="row mb-3">
-        <div className="col-sm-12">
-          <div className="card shadow mb-3">
-            <div className="card-header py-3 bg-light border-bottom-1">
-              <h6 className="mb-0 fw-bold">Patient Address</h6>
-            </div>
-            <div className="card-body">
-              <form>
-                <div className="row g-3">
-                  <div className="col-md-4">
-                    <label className="form-label">Address 1</label>
-                    <input type="text" className="form-control" value={patientDetailForm.patientAddress1 || ""}
-                           name="patientAddress1" placeholder="Enter Address 1" onChange={handleChange}/>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Address 2</label>
-                    <input type="text" className="form-control" placeholder="Enter Address 2" name="patientAddress2"
-                           value={patientDetailForm.patientAddress2 || ""} onChange={handleChange}/>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Country</label>
-                    <select className="form-select" name="patientCountry"
-                            value={patientDetailForm.patientCountry ? JSON.stringify(patientDetailForm.patientCountry) : ""}
-                            onChange={(e) => {
-                              const selectedCountry = JSON.parse(e.target.value);
-                              handleAddChange({
-                                target: {name: 'patientCountry', value: selectedCountry }
-                    });
-                    fetchStates(selectedCountry.id); // pass id to fetchStates
-                  }}>
-                    <option value="">Select Country</option>
-                    {countryData.map((country) => (
-                        <option key={country.id} value={JSON.stringify(country)}>
-                          {country.countryName}
-                        </option>))}
-                  </select>
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label">State</label>
-                  <select className="form-select" name="patientState" value={patientDetailForm.patientState?JSON.stringify(patientDetailForm.patientState) : ""} onChange={(e) => {
-                    const selectedState = JSON.parse(e.target.value);
-                    handleAddChange({
-                      target: { name: 'patientState', value: selectedState }
-                    });
-                    fetchDistrict(selectedState.id); // pass id to fetchStates
-                  }}>
-                    <option value="">Select State</option>
-                    {stateData.map((state) => (
-                        <option key={state.id} value={JSON.stringify(state)}>
-                          {state.stateName}
-                        </option>))}
-                  </select>
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label">District</label>
-                  <select className="form-select" name="patientDistrict" value={patientDetailForm.patientDistrict?JSON.stringify(patientDetailForm.patientDistrict):""} onChange={(e) => {
-                    const selectedDistrict = JSON.parse(e.target.value);
-                    handleAddChange({
-                      target: { name: 'patientDistrict', value: selectedDistrict }
-                    });
-                  }}>
-                    <option value="">Select District</option>
-                    {districtData.map((district) => (
-                        <option key={district.id} value={JSON.stringify(district)}>
-                          {district.districtName}
-                        </option>))}
-                  </select>
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label">City</label>
-                  <input type="text" className="form-control" name="patientCity" value={patientDetailForm.patientCity}
-                         onChange={handleChange} placeholder="Enter City"/>
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label">Pin Code</label>
-                  <input type="text" className="form-control" placeholder="Enter Pin Code" name="patientPincode" onChange={handleChange}
-                         value={patientDetailForm.patientPincode || ""}/>
-                </div>
+        {/* Patient address */}
+        <div className="row mb-3">
+          <div className="col-sm-12">
+            <div className="card shadow mb-3">
+              <div className="card-header py-3 bg-light border-bottom-1">
+                <h6 className="mb-0 fw-bold">Patient Address</h6>
               </div>
-              </form>
+              <div className="card-body">
+                <form>
+                  <div className="row g-3">
+                    <div className="col-md-4">
+                      <label className="form-label">Address 1</label>
+                      <input type="text" className="form-control" value={patientDetailForm.patientAddress1 || ""}
+                             name="patientAddress1" placeholder="Enter Address 1" onChange={handleChange}/>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Address 2</label>
+                      <input type="text" className="form-control" placeholder="Enter Address 2" name="patientAddress2"
+                             value={patientDetailForm.patientAddress2 || ""} onChange={handleChange}/>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Country</label>
+                      <select className="form-select" name="patientCountry"
+                              value={patientDetailForm.patientCountry ? JSON.stringify(patientDetailForm.patientCountry) : ""}
+                              onChange={(e) => {
+                                const selectedCountry = JSON.parse(e.target.value);
+                                handleAddChange({
+                                  target: {name: 'patientCountry', value: selectedCountry }
+                                });
+                                fetchStates(selectedCountry.id); // pass id to fetchStates
+                              }}>
+                        <option value="">Select Country</option>
+                        {countryData.map((country) => (
+                            <option key={country.id} value={JSON.stringify(country)}>
+                              {country.countryName}
+                            </option>))}
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">State</label>
+                      <select className="form-select" name="patientState" value={patientDetailForm.patientState?JSON.stringify(patientDetailForm.patientState) : ""} onChange={(e) => {
+                        const selectedState = JSON.parse(e.target.value);
+                        handleAddChange({
+                          target: { name: 'patientState', value: selectedState }
+                        });
+                        fetchDistrict(selectedState.id); // pass id to fetchStates
+                      }}>
+                        <option value="">Select State</option>
+                        {stateData.map((state) => (
+                            <option key={state.id} value={JSON.stringify(state)}>
+                              {state.stateName}
+                            </option>))}
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">District</label>
+                      <select className="form-select" name="patientDistrict" value={patientDetailForm.patientDistrict?JSON.stringify(patientDetailForm.patientDistrict):""} onChange={(e) => {
+                        const selectedDistrict = JSON.parse(e.target.value);
+                        handleAddChange({
+                          target: { name: 'patientDistrict', value: selectedDistrict }
+                        });
+                      }}>
+                        <option value="">Select District</option>
+                        {districtData.map((district) => (
+                            <option key={district.id} value={JSON.stringify(district)}>
+                              {district.districtName}
+                            </option>))}
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">City</label>
+                      <input type="text" className="form-control" name="patientCity" value={patientDetailForm.patientCity}
+                             onChange={handleChange} placeholder="Enter City"/>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Pin Code</label>
+                      <input type="text" className="form-control" placeholder="Enter Pin Code" name="patientPincode" onChange={handleChange}
+                             value={patientDetailForm.patientPincode || ""}/>
+                    </div>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* NOK Details */}
-      <div className="row mb-3">
-        <div className="col-sm-12">
-          <div className="card shadow mb-3">
-            <div className="card-header py-3 bg-light border-bottom-1">
-              <h6 className="mb-0 fw-bold">NOK Details</h6>
-            </div>
-            <div className="card-body">
-              <form>
-                <div className="row g-3">
-                  <div className="col-md-4">
-                    <label className="form-label">First Name</label>
-                    <input type="text" className="form-control" onChange={handleChange} name="nokFn"
-                           value={patientDetailForm.nokFn || ""} placeholder="Enter First Name"/>
+        {/* NOK Details */}
+        <div className="row mb-3">
+          <div className="col-sm-12">
+            <div className="card shadow mb-3">
+              <div className="card-header py-3 bg-light border-bottom-1">
+                <h6 className="mb-0 fw-bold">NOK Details</h6>
+              </div>
+              <div className="card-body">
+                <form>
+                  <div className="row g-3">
+                    <div className="col-md-4">
+                      <label className="form-label">First Name</label>
+                      <input type="text" className="form-control" onChange={handleChange} name="nokFn"
+                             value={patientDetailForm.nokFn || ""} placeholder="Enter First Name"/>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Middle Name</label>
+                      <input type="text" className="form-control" onChange={handleChange} name="nokMn"
+                             placeholder="Enter Middle Name" value={patientDetailForm.nokMn || ""}/>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Last Name</label>
+                      <input type="text" className="form-control" onChange={handleChange} name="nokLn"
+                             placeholder="Enter Last Name" value={patientDetailForm.nokLn || ""}/>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Email</label>
+                      <input type="email" className="form-control" onChange={handleChange} name="nokEmail"
+                             placeholder="Enter Email" value={patientDetailForm.nokEmail || ""}/>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Mobile No.</label>
+                      <input type="text" className="form-control" onChange={handleChange} name="nokMobileNumber"
+                             placeholder="Enter Mobile Number" value={patientDetailForm.nokMobileNumber || ""}/>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Address 1</label>
+                      <input type="text" className="form-control" onChange={handleChange} name="nokAddress1"
+                             placeholder="Enter Address 1" value={patientDetailForm.nokAddress1 || ""}/>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Address 2</label>
+                      <input type="text" className="form-control" onChange={handleChange} name="nokAddress2"
+                             placeholder="Enter Address 2" value={patientDetailForm.nokAddress2 || ""}/>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Country</label>
+                      <select className="form-select" name="nokCountry" value={patientDetailForm.nokCountry?JSON.stringify(patientDetailForm.nokCountry) : ""} onChange={(e) => {
+                        const selectedCountry = JSON.parse(e.target.value);
+                        handleAddChange({
+                          target: { name: 'nokCountry', value: selectedCountry }
+                        });
+                        fetchNokStates(selectedCountry.id); // pass id to fetchStates
+                      }}>
+                        <option value="">Select Country</option>
+                        {countryData.map((country) => (
+                            <option key={country.id} value={JSON.stringify(country)}>
+                              {country.countryName}
+                            </option>))}
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">State</label>
+                      <select className="form-select" name="nokState" value={patientDetailForm.nokState?JSON.stringify(patientDetailForm.nokState) : ""} onChange={(e) => {
+                        const selectedState = JSON.parse(e.target.value);
+                        handleAddChange({
+                          target: { name: 'nokState', value: selectedState }
+                        });
+                        fetchNokDistrict(selectedState.id); // pass id to fetchStates
+                      }}>
+                        <option value="">Select State</option>
+                        {nokStateData.map((state) => (
+                            <option key={state.id} value={JSON.stringify(state)}>
+                              {state.stateName}
+                            </option>))}
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">District</label>
+                      <select className="form-select" name="nokDistrict" value={patientDetailForm.nokDistrict?JSON.stringify(patientDetailForm.nokDistrict):""} onChange={(e) => {
+                        const selectedDistrict = JSON.parse(e.target.value);
+                        handleAddChange({
+                          target: { name: 'nokDistrict', value: selectedDistrict }
+                        })
+                      }}>
+                        <option value="">Select District</option>
+                        {nokDistrictData.map((district) => (
+                            <option key={district.id} value={JSON.stringify(district)}>
+                              {district.districtName}
+                            </option>))}
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">City</label>
+                      <input type="text" className="form-control" placeholder="Enter City" onChange={handleChange}
+                             name="nokCity" value={patientDetailForm.nokCity || ""}/>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Pin Code</label>
+                      <input type="text" className="form-control" placeholder="Enter Pin Code" onChange={handleChange}
+                             name="nokPincode" value={patientDetailForm.nokPincode || ""}/>
+                    </div>
                   </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Middle Name</label>
-                    <input type="text" className="form-control" onChange={handleChange} name="nokMn"
-                           placeholder="Enter Middle Name" value={patientDetailForm.nokMn || ""}/>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Last Name</label>
-                    <input type="text" className="form-control" onChange={handleChange} name="nokLn"
-                           placeholder="Enter Last Name" value={patientDetailForm.nokLn || ""}/>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Email</label>
-                    <input type="email" className="form-control" onChange={handleChange} name="nokEmail"
-                           placeholder="Enter Email" value={patientDetailForm.nokEmail || ""}/>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Mobile No.</label>
-                    <input type="text" className="form-control" onChange={handleChange} name="nokMobileNumber"
-                           placeholder="Enter Mobile Number" value={patientDetailForm.nokMobileNumber || ""}/>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Address 1</label>
-                    <input type="text" className="form-control" onChange={handleChange} name="nokAddress1"
-                           placeholder="Enter Address 1" value={patientDetailForm.nokAddress1 || ""}/>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Address 2</label>
-                    <input type="text" className="form-control" onChange={handleChange} name="nokAddress2"
-                           placeholder="Enter Address 2" value={patientDetailForm.nokAddress2 || ""}/>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Country</label>
-                    <select className="form-select" name="nokCountry" value={patientDetailForm.nokCountry?JSON.stringify(patientDetailForm.nokCountry) : ""} onChange={(e) => {
-                      const selectedCountry = JSON.parse(e.target.value);
-                      handleAddChange({
-                        target: { name: 'nokCountry', value: selectedCountry }
-                      });
-                      fetchNokStates(selectedCountry.id); // pass id to fetchStates
-                    }}>
-                      <option value="">Select Country</option>
-                      {countryData.map((country) => (
-                          <option key={country.id} value={JSON.stringify(country)}>
-                            {country.countryName}
-                          </option>))}
-                    </select>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">State</label>
-                    <select className="form-select" name="nokState" value={patientDetailForm.nokState?JSON.stringify(patientDetailForm.nokState) : ""} onChange={(e) => {
-                      const selectedState = JSON.parse(e.target.value);
-                      handleAddChange({
-                        target: { name: 'nokState', value: selectedState }
-                      });
-                      fetchNokDistrict(selectedState.id); // pass id to fetchStates
-                    }}>
-                      <option value="">Select State</option>
-                      {nokStateData.map((state) => (
-                          <option key={state.id} value={JSON.stringify(state)}>
-                            {state.stateName}
-                          </option>))}
-                    </select>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">District</label>
-                    <select className="form-select" name="nokDistrict" value={patientDetailForm.nokDistrict?JSON.stringify(patientDetailForm.nokDistrict):""} onChange={(e) => {
-                      const selectedDistrict = JSON.parse(e.target.value);
-                      handleAddChange({
-                        target: { name: 'nokDistrict', value: selectedDistrict }
-                      })
-                    }}>
-                      <option value="">Select District</option>
-                      {nokDistrictData.map((district) => (
-                          <option key={district.id} value={JSON.stringify(district)}>
-                            {district.districtName}
-                          </option>))}
-                    </select>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">City</label>
-                    <input type="text" className="form-control" placeholder="Enter City" onChange={handleChange}
-                           name="nokCity" value={patientDetailForm.nokCity || ""}/>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Pin Code</label>
-                    <input type="text" className="form-control" placeholder="Enter Pin Code" onChange={handleChange}
-                           name="nokPincode" value={patientDetailForm.nokPincode || ""}/>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Emergency Contact Details Section */}
-      <div className="row mb-3">
-        <div className="col-sm-12">
-          <div className="card shadow mb-3">
-            <div className="card-header py-3 bg-light border-bottom-1">
-              <h6 className="mb-0 fw-bold">Emergency Contact Details</h6>
-            </div>
-            <div className="card-body">
-              <form>
-                <div className="row g-3">
-                  <div className="col-md-4">
-                    <label className="form-label">First Name</label>
-                    <input type="text" className="form-control" placeholder="Enter First Name" onChange={handleChange}
-                           name="emerFn" value={patientDetailForm.emerFn || ""}/>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Last Name</label>
-                    <input type="text" className="form-control" placeholder="Enter Last Name" onChange={handleChange}
-                           name="emerLn" value={patientDetailForm.emerLn || ""}/>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Mobile No.</label>
-                    <input type="text" className="form-control" placeholder="Enter Mobile Number"
-                           onChange={handleChange} name="emerMobile" value={patientDetailForm.emerMobile || ""}/>
-                  </div>
-                </div>
-              </form>
+                </form>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-
-      {showDetails && (
-          <>
-
-            {/* Vital Details Section */}
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-header py-3 bg-light border-bottom-1">
-                    <h6 className="mb-0 fw-bold">Vital Details</h6>
+        {/* Emergency Contact Details Section */}
+        <div className="row mb-3">
+          <div className="col-sm-12">
+            <div className="card shadow mb-3">
+              <div className="card-header py-3 bg-light border-bottom-1">
+                <h6 className="mb-0 fw-bold">Emergency Contact Details</h6>
+              </div>
+              <div className="card-body">
+                <form>
+                  <div className="row g-3">
+                    <div className="col-md-4">
+                      <label className="form-label">First Name</label>
+                      <input type="text" className="form-control" placeholder="Enter First Name" onChange={handleChange}
+                             name="emerFn" value={patientDetailForm.emerFn || ""}/>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Last Name</label>
+                      <input type="text" className="form-control" placeholder="Enter Last Name" onChange={handleChange}
+                             name="emerLn" value={patientDetailForm.emerLn || ""}/>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Mobile No.</label>
+                      <input type="text" className="form-control" placeholder="Enter Mobile Number"
+                             onChange={handleChange} name="emerMobile" value={patientDetailForm.emerMobile || ""}/>
+                    </div>
                   </div>
-                  <div className="card-body">
-                    <form className="vital">
-                      <div className="row g-3 align-items-center">
-                      {/* Patient Height */}
-                        <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">Patient Height<span
-                              className="text-danger">*</span></label>
-                          <input type="number" className={`form-control ${errors.height ? 'is-invalid' : ''}`}
-                                 placeholder="Height" name="height" value={patientDetailForm.height} onChange={handleChange}/>
-                          <span className="input-group-text">cm</span>
-                          {errors.height && (
-                              <div className="invalid-feedback d-block">{errors.height}</div>
-                          )}
-                        </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
 
-                        {/* Weight */}
-                        <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">Weight<span className="text-danger">*</span></label>
-                          <input type="text" className={`form-control ${errors.weight ? 'is-invalid' : ''}`}
-                                 placeholder="Weight" name="weight" value={patientDetailForm.weight} onChange={handleChange}/>
-                          <span className="input-group-text">kg</span>
-                          {errors.weight && (
-                              <div className="invalid-feedback d-block">{errors.weight}</div>
-                          )}
-                        </div>
 
-                        {/* Temperature */}
-                        <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">Temperature<span className="text-danger">*</span></label>
-                          <input type="text" className={`form-control ${errors.temperature ? 'is-invalid' : ''}`}
-                                 placeholder="Temperature" name="temperature" value={patientDetailForm.temperature}
-                                 onChange={handleChange}/>
-                          <span className="input-group-text">°F</span>
-                          {errors.temperature && (
-                              <div className="invalid-feedback d-block">{errors.temperature}</div>
-                          )}
-                        </div>
+        {showDetails && (
+            <>
 
-                        {/* BP (Systolic / Diastolic) */}
-                        <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">BP<span className="text-danger">*</span></label>
-                          <input type="text" className={`form-control ${errors.systolicBP ? 'is-invalid' : ''}`}
-                                 placeholder="Systolic" name="systolicBP" value={patientDetailForm.systolicBP}
-                                 onChange={handleChange}/>
-                          <span className="input-group-text">/</span>
-                          {errors.systolicBP && (
-                              <div className="invalid-feedback d-block">{errors.systolicBP}</div>
-                          )}
-                          <input type="text" className={`form-control ${errors.diastolicBP ? 'is-invalid' : ''}`}
-                                 placeholder="Diastolic" name="diastolicBP" value={patientDetailForm.diastolicBP}
-                                 onChange={handleChange}/>
-                          <span className="input-group-text">mmHg</span>
-                          {errors.diastolicBP && (
-                              <div className="invalid-feedback d-block">{errors.diastolicBP}</div>
-                          )}
-                        </div>
-
-                        {/* Pulse */}
-                        <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">Pulse<span className="text-danger">*</span></label>
-                          <input type="text" className={`form-control ${errors.pulse ? 'is-invalid' : ''}`}
-                                 placeholder="Pulse" name="pulse" value={patientDetailForm.pulse} onChange={handleChange}/>
-                          <span className="input-group-text">/min</span>
-                          {errors.pulse && (
-                              <div className="invalid-feedback d-block">{errors.pulse}</div>
-                          )}
-                        </div>
-
-                        {/* BMI */}
-                        <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">BMI</label>
-                          <input type="text" className={`form-control ${errors.bmi ? 'is-invalid' : ''}`}
-                                 placeholder="BMI" name="bmi" value={patientDetailForm.bmi} onChange={handleChange}/>
-                          <span className="input-group-text">kg/m²</span>
-                          {errors.bmi && (
-                              <div className="invalid-feedback d-block">{errors.bmi}</div>
-                          )}
-                        </div>
-
-                        {/* RR */}
-                        <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">RR</label>
-                          <input type="text" className={`form-control ${errors.rr ? 'is-invalid' : ''}`}
-                                 placeholder="RR" name="rr" value={patientDetailForm.rr} onChange={handleChange}/>
-                          <span className="input-group-text">/min</span>
-                          {errors.rr && (
-                              <div className="invalid-feedback d-block">{errors.rr}</div>
-                          )}
-                        </div>
-
-                        {/* SpO2 */}
-                        <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">SpO2</label>
-                          <input type="text" className={`form-control ${errors.spo2 ? 'is-invalid' : ''}`}
-                                 placeholder="SpO2" name="spo2" value={patientDetailForm.spo2} onChange={handleChange}/>
-                          <span className="input-group-text">%</span>
-                          {errors.height && (
-                              <div className="invalid-feedback d-block">{errors.spo2}</div>
-                          )}
-                        </div>
+              {/* Vital Details Section */}
+              {!preConsultationFlag && <>
+                <div className="row mb-3">
+                  <div className="col-sm-12">
+                    <div className="card shadow mb-3">
+                      <div className="card-header py-3 bg-light border-bottom-1">
+                        <h6 className="mb-0 fw-bold">Vital Details</h6>
                       </div>
-                    </form>
-                  </div>
-                </div>
-              </div>
-            </div>
+                      <div className="card-body">
+                        <form className="vital">
+                          <div className="row g-3 align-items-center">
+                            {/* Patient Height */}
+                            <div className="col-md-4 d-flex">
+                              <label className="form-label me-2">Patient Height<span
+                                  className="text-danger">*</span></label>
+                              <input type="number" className={`form-control ${errors.height ? 'is-invalid' : ''}`}
+                                     placeholder="Height" name="height" value={patientDetailForm.height} onChange={handleChange}/>
+                              <span className="input-group-text">cm</span>
+                              {errors.height && (
+                                  <div className="invalid-feedback d-block">{errors.height}</div>
+                              )}
+                            </div>
 
+                            {/* Weight */}
+                            <div className="col-md-4 d-flex">
+                              <label className="form-label me-2">Weight<span className="text-danger">*</span></label>
+                              <input type="text" className={`form-control ${errors.weight ? 'is-invalid' : ''}`}
+                                     placeholder="Weight" name="weight" value={patientDetailForm.weight} onChange={handleChange}/>
+                              <span className="input-group-text">kg</span>
+                              {errors.weight && (
+                                  <div className="invalid-feedback d-block">{errors.weight}</div>
+                              )}
+                            </div>
 
-            {/* Appointment Details Section */}
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-header py-3 bg-light border-bottom-1">
-                    <h6 className="mb-0 fw-bold">Appointment Details</h6>
-                  </div>
-                  <div className="card-body">
-                    <form>
-                      <div className="row g-3">
-                        <div className="col-md-4">
-                          <label className="form-label">Speciality</label>
-                          <select className="form-select" name="speciality" value={patientDetailForm.speciality}
-                                  onChange={(e) => {
-                                    handleAddChange(e);
-                                    fetchDoctor(e.target.value);
-                                  }}>
-                            <option value="">Select Speciality</option>
-                            {departmentData.map((department) => (
-                                <option key={department.id} value={department.id}>
-                                  {department.departmentName}
-                                </option>))}
-                          </select>
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Doctor Name</label>
-                          <select className="form-select" name="selDoctorId" value={patientDetailForm.selDoctorId}
-                                  onChange={(e) => {
-                                    handleAddChange(e);
-                                    fetchSession(e);
-                                  }}
-                          >
-                            <option value="">Select Doctor</option>
-                            {doctorData.map((doctor) => (
-                                <option key={doctor.id} value={doctor.userId}>
-                                  {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""} ${doctor.lastName ? doctor.lastName : ""}`}
-                                </option>))}
-                            {/* Add dynamic options here */}
-                          </select>
-                        </div>
-                        {/*<div className="col-md-4">*/}
-                        {/*  <label className="form-label">Date *</label>*/}
-                        {/*  <input type="date" name="appointmentDate" className="form-control" name="appointmentDate" value={patientDetailForm.appointmentDate}*/}
-                        {/*         onChange={(e) => {*/}
-                        {/*           handleAddChange(e);*/}
-                        {/*           fetchSession(e.target.value);*/}
-                        {/*         }}*/}
-                        {/*         min={new Date().toISOString().split("T")[0]}*/}
-                        {/*         placeholder="Select Date of Appointment"/>*/}
-                        {/*</div>*/}
-                        <div className="col-md-4">
-                          <label className="form-label">Session</label>
-                          <select className="form-select" name="selSession" value={patientDetailForm.selSession}
-                                  onChange={(e) => {
-                                    handleAddChange(e);
-                                  }}
-                          >
-                            <option value="">Select Session</option>
-                            {session.map((ses) => (
-                                <option key={ses.id} value={ses.id}>
-                                  {ses.sessionName}
-                                </option>))}
-                            {/* Add dynamic options here */}
-                          </select>
-                          {/*<select className="form-select">*/}
-                          {/*  <option value="">Select Session</option>*/}
-                          {/*  /!* Add dynamic options here *!/*/}
-                          {/*</select>*/}
-                        </div>
+                            {/* Temperature */}
+                            <div className="col-md-4 d-flex">
+                              <label className="form-label me-2">Temperature<span className="text-danger">*</span></label>
+                              <input type="text" className={`form-control ${errors.temperature ? 'is-invalid' : ''}`}
+                                     placeholder="Temperature" name="temperature" value={patientDetailForm.temperature}
+                                     onChange={handleChange}/>
+                              <span className="input-group-text">°F</span>
+                              {errors.temperature && (
+                                  <div className="invalid-feedback d-block">{errors.temperature}</div>
+                              )}
+                            </div>
+
+                            {/* BP (Systolic / Diastolic) */}
+                            <div className="col-md-4 d-flex">
+                              <label className="form-label me-2">BP<span className="text-danger">*</span></label>
+                              <input type="text" className={`form-control ${errors.systolicBP ? 'is-invalid' : ''}`}
+                                     placeholder="Systolic" name="systolicBP" value={patientDetailForm.systolicBP}
+                                     onChange={handleChange}/>
+                              <span className="input-group-text">/</span>
+                              {errors.systolicBP && (
+                                  <div className="invalid-feedback d-block">{errors.systolicBP}</div>
+                              )}
+                              <input type="text" className={`form-control ${errors.diastolicBP ? 'is-invalid' : ''}`}
+                                     placeholder="Diastolic" name="diastolicBP" value={patientDetailForm.diastolicBP}
+                                     onChange={handleChange}/>
+                              <span className="input-group-text">mmHg</span>
+                              {errors.diastolicBP && (
+                                  <div className="invalid-feedback d-block">{errors.diastolicBP}</div>
+                              )}
+                            </div>
+
+                            {/* Pulse */}
+                            <div className="col-md-4 d-flex">
+                              <label className="form-label me-2">Pulse<span className="text-danger">*</span></label>
+                              <input type="text" className={`form-control ${errors.pulse ? 'is-invalid' : ''}`}
+                                     placeholder="Pulse" name="pulse" value={patientDetailForm.pulse} onChange={handleChange}/>
+                              <span className="input-group-text">/min</span>
+                              {errors.pulse && (
+                                  <div className="invalid-feedback d-block">{errors.pulse}</div>
+                              )}
+                            </div>
+
+                            {/* BMI */}
+                            <div className="col-md-4 d-flex">
+                              <label className="form-label me-2">BMI</label>
+                              <input type="text" className={`form-control ${errors.bmi ? 'is-invalid' : ''}`}
+                                     placeholder="BMI" name="bmi" value={patientDetailForm.bmi} onChange={handleChange}/>
+                              <span className="input-group-text">kg/m²</span>
+                              {errors.bmi && (
+                                  <div className="invalid-feedback d-block">{errors.bmi}</div>
+                              )}
+                            </div>
+
+                            {/* RR */}
+                            <div className="col-md-4 d-flex">
+                              <label className="form-label me-2">RR</label>
+                              <input type="text" className={`form-control ${errors.rr ? 'is-invalid' : ''}`}
+                                     placeholder="RR" name="rr" value={patientDetailForm.rr} onChange={handleChange}/>
+                              <span className="input-group-text">/min</span>
+                              {errors.rr && (
+                                  <div className="invalid-feedback d-block">{errors.rr}</div>
+                              )}
+                            </div>
+
+                            {/* SpO2 */}
+                            <div className="col-md-4 d-flex">
+                              <label className="form-label me-2">SpO2</label>
+                              <input type="text" className={`form-control ${errors.spo2 ? 'is-invalid' : ''}`}
+                                     placeholder="SpO2" name="spo2" value={patientDetailForm.spo2} onChange={handleChange}/>
+                              <span className="input-group-text">%</span>
+                              {errors.height && (
+                                  <div className="invalid-feedback d-block">{errors.spo2}</div>
+                              )}
+                            </div>
+                          </div>
+                        </form>
                       </div>
-                    </form>
+                    </div>
+                  </div>
+                </div>
+                /</>
+              }
+
+
+              {/* Appointment Details Section */}
+              <div className="row mb-3">
+                <div className="col-sm-12">
+                  <div className="card shadow mb-3">
+                    <div className="card-header py-3 bg-light border-bottom-1">
+                      <h6 className="mb-0 fw-bold">Appointment Details</h6>
+                    </div>
+                    <div className="card-body">
+                      <form>
+                        <div className="row g-3">
+                          <div className="col-md-4">
+                            <label className="form-label">Speciality</label>
+                            <select className="form-select" name="speciality" value={patientDetailForm.speciality}
+                                    onChange={(e) => {
+                                      handleAddChange(e);
+                                      fetchDoctor(e.target.value);
+                                    }}>
+                              <option value="">Select Speciality</option>
+                              {departmentData.map((department) => (
+                                  <option key={department.id} value={department.id}>
+                                    {department.departmentName}
+                                  </option>))}
+                            </select>
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label">Doctor Name</label>
+                            <select className="form-select" name="selDoctorId" value={patientDetailForm.selDoctorId}
+                                    onChange={(e) => {
+                                      handleAddChange(e);
+                                      fetchSession(e);
+                                    }}
+                            >
+                              <option value="">Select Doctor</option>
+                              {doctorData.map((doctor) => (
+                                  <option key={doctor.id} value={doctor.userId}>
+                                    {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""} ${doctor.lastName ? doctor.lastName : ""}`}
+                                  </option>))}
+                              {/* Add dynamic options here */}
+                            </select>
+                          </div>
+                          {/*<div className="col-md-4">*/}
+                          {/*  <label className="form-label">Date *</label>*/}
+                          {/*  <input type="date" name="appointmentDate" className="form-control" name="appointmentDate" value={patientDetailForm.appointmentDate}*/}
+                          {/*         onChange={(e) => {*/}
+                          {/*           handleAddChange(e);*/}
+                          {/*           fetchSession(e.target.value);*/}
+                          {/*         }}*/}
+                          {/*         min={new Date().toISOString().split("T")[0]}*/}
+                          {/*         placeholder="Select Date of Appointment"/>*/}
+                          {/*</div>*/}
+                          <div className="col-md-4">
+                            <label className="form-label">Session</label>
+                            <select className="form-select" name="selSession" value={patientDetailForm.selSession}
+                                    onChange={(e) => {
+                                      handleAddChange(e);
+                                    }}
+                            >
+                              <option value="">Select Session</option>
+                              {session.map((ses) => (
+                                  <option key={ses.id} value={ses.id}>
+                                    {ses.sessionName}
+                                  </option>))}
+                              {/* Add dynamic options here */}
+                            </select>
+                            {/*<select className="form-select">*/}
+                            {/*  <option value="">Select Session</option>*/}
+                            {/*  /!* Add dynamic options here *!/*/}
+                            {/*</select>*/}
+                          </div>
+                        </div>
+                      </form>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </>
-      )}
+            </>
+        )}
 
-      {/* Submit and Reset Buttons */}
-      <div className="row mb-3">
-        <div className="col-sm-12">
-          <div className="card shadow mb-3">
-            <div className="card-body">
-              <div className="row g-3">
-                <div className="mt-4">
-                  <button type="button" onClick={handleSubmit} className="btn btn-primary me-2">Registration</button>
-                  <button type="reset" className="btn btn-secondary">Reset</button>
+        {/* Submit and Reset Buttons */}
+        <div className="row mb-3">
+          <div className="col-sm-12">
+            <div className="card shadow mb-3">
+              <div className="card-body">
+                <div className="row g-3">
+                  <div className="mt-4">
+                    <button type="button" onClick={handleSubmit} className="btn btn-primary me-2">Registration</button>
+                    <button type="reset" className="btn btn-secondary">Reset</button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </>)}
+
+
     </div>
     </div>
   );
