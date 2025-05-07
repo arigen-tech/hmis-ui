@@ -432,8 +432,8 @@ const Createusermaster = () => {
                         <div className="card-header">
                             <h4 className="card-title p-2">User Management</h4>
                             {!showForm && (
-                                <div className="d-flex mt-3 mx-0">
-                                    <div className="col-md-7 row">
+                                <div className="d-flex flex-wrap mt-3 mx-0">
+                                    <div className="col-md-7 d-flex">
                                         <div className="col-md-6 d-flex">
                                             <label htmlFor="userName" className="flex-shrink-0 mt-1">
                                                 Username
@@ -449,7 +449,7 @@ const Createusermaster = () => {
                                             />
                                         </div>
 
-                                        <div className="col-md-2 d-flex">
+                                        <div className="col-md-2 d-flex me-2">
                                             <button type="button" className="btn btn-primary ms-2" onClick={handleSearch}>
                                                 <i className="mdi mdi-magnify"></i> Search
                                             </button>
@@ -458,7 +458,7 @@ const Createusermaster = () => {
 
                                     <div className="col-md-5 text-end">
                                         <button type="button" className="btn btn-success me-1" onClick={handleRefresh}>
-                                            <i className="mdi mdi-plus"></i> Show All
+                                            <i className="mdi mdi-refresh"></i> Show All
                                         </button>
 
                                     </div>
