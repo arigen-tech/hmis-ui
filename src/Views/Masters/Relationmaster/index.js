@@ -334,8 +334,8 @@ const Relationmaster = () => {
                     <thead className="table-light">
                       <tr>
                         
-                        <th> Relation Code</th>
                         <th>Relation Name</th>
+                        <th> Relation Code</th>
                         <th>Status</th>
                         <th>Edit</th>
                       </tr>
