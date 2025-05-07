@@ -274,7 +274,7 @@ const renderPagination = () => {
                       </button>
                       <button
                         type="button"
-                        className="btn btn-success me-2"
+                        className="btn btn-success me-2 flex-shrink-0"
                         onClick={handleRefresh}
                       >
                         <i className="mdi mdi-refresh"></i> Show All
