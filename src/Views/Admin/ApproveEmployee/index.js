@@ -26,10 +26,7 @@ const Approveemployee = () => {
         departmentId: null,
     });
 
-    useEffect(() => {
-        fetchDepartmentData();
-        fetchEmployeeData();
-    }, []);
+
 
     const fetchDepartmentData = async () => {
         setLoading(true);
@@ -50,7 +47,7 @@ const Approveemployee = () => {
     const fetchEmployeeData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${EMPLOYEE_REGISTRATION}/status/S`);
+            const data = await getRequest(`/${EMPLOYEE_REGISTRATION}/status/S`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 const cleanedEmployees = data.response.map((emp) => ({
                     ...emp,
@@ -80,6 +77,11 @@ const Approveemployee = () => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchEmployeeData();
+        fetchDepartmentData();
+    }, []);
 
     const handleDepartmentChange = (employeeId, departmentId) => {
         setSelectedDepartments({

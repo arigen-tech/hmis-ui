@@ -489,8 +489,44 @@ const EmployeeRegistration = () => {
 
     const handleReset = () => {
         setFormData(initialFormData);
-    };
+        
+        // Reset profile image preview
+        const profileImageInput = document.getElementById('profilePicName');
+        if (profileImageInput) profileImageInput.value = '';
+        
+        // Reset ID document
+        const idDocumentInput = document.getElementById('idDocumentName');
+        if (idDocumentInput) idDocumentInput.value = '';
+        
+        // Reset all file inputs by their class name
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+        fileInputs.forEach(input => {
+            input.value = '';
+        });
 
+        // Reset form data with initial values
+        setFormData({
+            ...initialFormData,
+            profilePicPreview: null,
+            profilePicName: null,
+            idDocumentName: null,
+            qualification: [{ 
+                employeeQualificationId: 1, 
+                institutionName: "", 
+                completionYear: "", 
+                qualificationName: "", 
+                filePath: null 
+            }],
+            document: [{ 
+                employeeDocumentId: 1, 
+                documentName: "", 
+                filePath: null 
+            }]
+        });
+
+        // Reset file related states
+        setProfileImage(null);
+    };
 
     const handleCreate = async () => {
         const formDataToSend = prepareFormData();
@@ -1011,6 +1047,7 @@ const EmployeeRegistration = () => {
                                                         <input
                                                             type="file"
                                                             className="form-control"
+                                                            data-index={index}
                                                             onChange={(e) => handleQualificationChange(index, "filePath", e.target.files[0])}
                                                             accept=".pdf,.jpg,.jpeg,.png"
                                                         />
@@ -1067,9 +1104,11 @@ const EmployeeRegistration = () => {
                                                         <input
                                                             type="file"
                                                             className="form-control"
+                                                            data-index={index}
                                                             onChange={(e) => handleDocumentChange(index, "filePath", e.target.files[0])}
                                                             accept=".pdf,.jpg,.jpeg,.png"
                                                         />
+                                                        
                                                     </td>
                                                     <td>
                                                         <button type="button" className="btn btn-danger" onClick={() => removeDocumentRow(index)}>
@@ -1095,7 +1134,7 @@ const EmployeeRegistration = () => {
                             className="btn btn-primary me-2"
                             disabled={loading}
                         >
-                            {loading ? "Saving..." : "Save"}
+                            {loading ? "Submiting..." : "Submit"}
                         </button>
                         <button
                             onClick={handleCreateWithApprove}
@@ -1103,7 +1142,7 @@ const EmployeeRegistration = () => {
                             className="btn btn-primary"
                             disabled={loading}
                         >
-                            {loading ? "Processing..." : "Save & Approve"}
+                            {loading ? "Processing..." : "Submit & Approve"}
                         </button>
                     </div>
                 </div>
@@ -1112,4 +1151,5 @@ const EmployeeRegistration = () => {
     );
 };
 
-export default EmployeeRegistration;
+
+  export default EmployeeRegistration;

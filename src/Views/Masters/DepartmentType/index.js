@@ -244,7 +244,7 @@ const Departmenttype = () => {
                                             </label>
                                         </div>
                                     </div>
-                                    <div className="d-flex align-items-center">
+                                    <div className="d-flex flex-wrap align-items-center gap-2">
                                         <form className="d-inline-block searchform me-4" role="search">
                                             <div className="input-group searchinput">
                                                 <input
@@ -263,8 +263,8 @@ const Departmenttype = () => {
                                         <button type="button" className="btn btn-success me-1" onClick={() => setShowForm(true)}>
                                             <i className="mdi mdi-plus"></i> ADD
                                         </button>
-                                        <button type="button" className="btn btn-success me-2">
-                                            <i className="mdi mdi-plus"></i> Generate Report
+                                        <button type="button" className="btn btn-success me-2 d-flex align-items-center">
+                                            <i className="mdi mdi-plus d-sm-inlined-sm-inline ms-1"></i> Generate Report
                                         </button>
                                     </div>
                                 </div>

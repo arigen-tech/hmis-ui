@@ -224,7 +224,7 @@ const CountryMaster = () => {
                                             <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                                                 <i className="mdi mdi-plus"></i> ADD
                                             </button>
-                                            <button type="button" className="btn btn-success me-2">
+                                            <button type="button" className="btn btn-success me-2 flex-shrink-0">
                                                 <i className="mdi mdi-plus"></i> Generate Report
                                             </button>
                                         </>

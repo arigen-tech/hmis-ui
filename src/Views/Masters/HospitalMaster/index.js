@@ -521,7 +521,7 @@ const HospitalMaster = () => {
                   </div>
                 )}
                 {!showForm && (
-                  <div className="d-flex align-items-center">
+                  <div className="d-flex flex-wrap align-items-center gap-2">
                     <button
                       type="button"
                       className="btn btn-success me-2"
@@ -559,8 +559,8 @@ const HospitalMaster = () => {
                     >
                       <i className="mdi mdi-plus"></i> Add
                     </button>
-                    <button type="button" className="btn btn-success">
-                      <i className="mdi mdi-file-export"></i> Generate Report
+                    <button type="button" className="btn btn-success d-flex align-items-center">
+                      <i className="mdi mdi-file-export d-sm-inlined-sm-inline ms-1"></i> Generate Report
                     </button>
                   </div>
                 )}
