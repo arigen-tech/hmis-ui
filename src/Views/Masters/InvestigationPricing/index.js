@@ -490,7 +490,7 @@ const Investigationpricing = () => {
                                     <div className="row">
                                         <div className="form-group col-md-4 mt-3">
                                             <label>
-                                                Investigation ID <span className="text-danger">*</span>
+                                            Investigation <span className="text-danger">*</span>
                                             </label>
 
                                             <div className="dropdown-search-container position-relative">
@@ -533,7 +533,7 @@ const Investigationpricing = () => {
                                                                     style={{ backgroundColor: '#e3e8e6', cursor: 'pointer' }}
                                                                     onClick={() => handleInvestigationSelect(item)}
                                                                 >
-                                                                    {item.investigationId} - {item.investigationName || "N/A"}
+                                                                     {item.investigationName || "N/A"}
                                                                 </li>
                                                             ))}
                                                     </ul>
