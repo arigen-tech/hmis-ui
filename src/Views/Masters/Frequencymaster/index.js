@@ -249,7 +249,7 @@ const FrequencyMaster = () => {
                       <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                         <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button type="button" className="btn btn-success me-2" onClick={handleRefresh}>
+                      <button type="button" className="btn btn-success me-2 flex-shrink-0" onClick={handleRefresh}>
                         <i className="mdi mdi-refresh"></i> Show All
                       </button>
                       <button type="button" className="btn btn-success me-2" onClick={() => setShowModal(true)}>

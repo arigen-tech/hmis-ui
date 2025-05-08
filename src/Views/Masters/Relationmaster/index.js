@@ -311,7 +311,7 @@ const Relationmaster = () => {
                       </button>
                       <button
                         type="button"
-                        className="btn btn-success me-2"
+                        className="btn btn-success me-2 flex-shrink-0"
                         onClick={handleRefresh}
                       >
                         <i className="mdi mdi-refresh"></i> Show All
@@ -334,8 +334,8 @@ const Relationmaster = () => {
                     <thead className="table-light">
                       <tr>
                         
-                        <th> Relation Code</th>
                         <th>Relation Name</th>
+                        <th> Relation Code</th>
                         <th>Status</th>
                         <th>Edit</th>
                       </tr>

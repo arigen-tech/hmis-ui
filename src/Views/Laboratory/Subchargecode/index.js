@@ -31,7 +31,7 @@ const SubChargeCode = () => {
   const fetchSubChargeCodes = async (flag = 0) => {
     try {
       setLoading(true)
-      const response = await getRequest(`${ALL_SUBCHARGE}{flag}?flag=${flag}`)
+      const response = await getRequest(`${ALL_SUBCHARGE}${flag}`)
 
       console.log("API Response:", response)
 

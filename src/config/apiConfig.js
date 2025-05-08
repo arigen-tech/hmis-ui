@@ -74,3 +74,6 @@ export const STORE_GROUP = "/masStoreGroup";
 export const ALL_STORE_GROUP = "/masStoreGroup/getByAllId";
 export const SUBCHARGE = "/sub-charge-code"; 
 export const ALL_SUBCHARGE = "/sub-charge-code/getAllSubCharge/"; 
+export const INVESTIGATION_PRICE_DETAILS = "/investigation-price-details";
+export const ALL_INVESTIGATION = "/DgMasInvestigation/getAll";
+export const ALL_INVESTIGATION_PRICE_DETAILS = "/investigation-price-details/getAllPriceDetails";

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import placeholderImage from "../../../../assets/images/placeholder.jpg";
 import { COUNTRYAPI, DISTRICTAPI, STATEAPI, DEPARTMENT, GENDERAPI, ALL_ROLE, IDENTITY_TYPE, API_HOST, EMPLOYMENT_TYPE, EMPLOYEE_TYPE, EMPLOYEE_REGISTRATION } from "../../../../config/apiConfig";
-import { getRequest, putRequest, postRequestWithFormData } from "../../../../service/apiService";
+import { getRequest, putRequest, postRequestWithFormData, getImageRequest } from "../../../../service/apiService";
 import Popup from "../../../../Components/popup";
 import LoadingScreen from "../../../../Components/Loading";
 
@@ -55,9 +55,13 @@ const ViewSearchEmployee = () => {
   const [searchName, setSearchName] = useState("");
   const [pageInput, setPageInput] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [imageSrc, setImageSrc] = useState(null);
+  const [showDocModal, setShowDocModal] = useState(false);
+  const [docUrl, setDocUrl] = useState(null);
+  const [docType, setDocType] = useState("");
   const itemsPerPage = 5;
 
-  const token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhYmNAZ21haWwuY29tIiwiaG9zcGl0YWxJZCI6MSwiZW1wbG95ZWVJZCI6MSwiZXhwIjoxNzQ1MjI2Nzg3LCJ1c2VySWQiOjQsImlhdCI6MTc0NDYyMTk4N30.7Rf_Bzy5bbvdWMXIXC6yuFo9u48i9peUyGd4bS0D5nb4ib8vRWWIsk5Uie0dIM6pVyGt0awYymUlAEDv0OeiLw";
+  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
 
   useEffect(() => {
     fetchEmployeesData();
@@ -67,6 +71,8 @@ const ViewSearchEmployee = () => {
     fetchRoleData();
     fetchEmployeeTypeData();
     fetchEmploymentTypeData();
+
+
   }, []);
 
   const showPopup = (message, type = "info") => {
@@ -237,6 +243,34 @@ const ViewSearchEmployee = () => {
     }
   };
 
+  const fetchImageSrc = async (empId) => {
+    try {
+      const imageBlob = await getImageRequest(`/api/employee/getProfileImageSrcInEmployee/${empId}`, {}, "blob");
+      const imageUrl = URL.createObjectURL(imageBlob);
+      setImageSrc(imageUrl);
+    } catch (error) {
+      console.error("Error fetching image source", error);
+    }
+  };
+
+  const handleViewDocument = async (filePath) => {
+    try {
+      const blob = await getImageRequest(`/api/employee/viewDocument?filePath=${encodeURIComponent(filePath)}`, {}, "blob");
+
+      const fileURL = URL.createObjectURL(blob);
+      const fileType = blob.type;
+
+      setDocUrl(fileURL);
+      setDocType(fileType);
+      setShowDocModal(true);
+
+    } catch (error) {
+      console.error("Failed to load document:", error);
+    }
+  };
+
+
+
   const handleCountryChange = (id) => {
     setFormData((prevState) => ({
       ...prevState,
@@ -296,6 +330,22 @@ const ViewSearchEmployee = () => {
       ...prevState,
       identificationType: idTypeId,
     }));
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prevFormData) => ({
+          ...prevFormData,
+          profilePicName: file,
+          profilePicPreview: reader.result,
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleQualificationChange = (index, field, value) => {
@@ -363,6 +413,8 @@ const ViewSearchEmployee = () => {
     setEditingEmployee(employee);
     setShowForm(true);
     setEmpUpdateId(employee.employeeId);
+
+    await fetchImageSrc(employee.employeeId);
     // Set basic form data
     const newFormData = {
       ...initialFormData,
@@ -425,6 +477,8 @@ const ViewSearchEmployee = () => {
     const { id, value } = e.target;
     setFormData((prevData) => ({ ...prevData, [id]: value }));
   };
+
+
 
   const handleInputMobileChange = (e) => {
     const { id, value } = e.target;
@@ -612,7 +666,7 @@ const ViewSearchEmployee = () => {
     console.log("Form data to send:", formDataToSend);
     setLoading(true);
     try {
-      const response = await fetch(`${API_HOST}${EMPLOYEE_REGISTRATION}/employee/${empUpdateId}`, {
+      const response = await fetch(`${API_HOST}/api/employee/employee/${empUpdateId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -797,311 +851,354 @@ const ViewSearchEmployee = () => {
             e.preventDefault();
             handleSave();
           }} className="forms row">
+
             <div className="g-3 row">
-              <div className="col-md-4">
-                <label className="form-label">First Name *</label>
-                <input
-                  type="text"
-                  required
-                  className="form-control"
-                  id="firstName"
-                  placeholder="First Name"
-                  onChange={handleInputChange}
-                  value={formData.firstName}
-                  maxLength={mlenght}
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">Middle Name</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  id="middleName"
-                  placeholder="Middle Name"
-                  onChange={handleInputChange}
-                  value={formData.middleName}
-                  maxLength={mlenght}
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">Last Name *</label>
-                <input
-                  type="text"
-                  required
-                  className="form-control"
-                  id="lastName"
-                  placeholder="Last Name"
-                  onChange={handleInputChange}
-                  value={formData.lastName}
-                  maxLength={mlenght}
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">Date of Birth *</label>
-                <input
-                  type="date"
-                  required
-                  id="dob"
-                  value={formData.dob}
-                  className="form-control"
-                  onChange={handleInputChange}
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">Gender *</label>
-                <select
-                  className="form-select"
-                  style={{ paddingRight: "40px" }}
-                  value={formData.genderId}
-                  onChange={(e) =>
-                    handleGenderChange(parseInt(e.target.value, 10))
-                  }
-                  disabled={loading}
-                >
-                  <option value="">Select Gender</option>
-                  {genderData.map((gender) => (
-                    <option key={gender.id} value={gender.id}>
-                      {gender.genderName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">Address *</label>
-                <textarea
-                  required
-                  id="address1"
-                  value={formData.address1}
-                  className="form-control"
-                  onChange={handleInputChange}
-                  placeholder="Address"
-                ></textarea>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">Country *</label>
-                <select
-                  className="form-select"
-                  value={formData.countryId}
-                  onChange={(e) => {
-                    const selectedCountry = countryData.find(
-                      (country) => country.id.toString() === e.target.value
-                    );
-                    if (selectedCountry) {
-                      handleCountryChange(selectedCountry.id);
-                      setCountryIds(selectedCountry.id);
-                      fetchStateData(selectedCountry.id);
-                    }
-                  }}
-                  disabled={loading}
-                >
-                  <option value="">Select Country</option>
-                  {countryData.map((country) => (
-                    <option key={country.id} value={country.id}>
-                      {country.countryName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">State *</label>
-                <select
-                  className="form-select"
-                  value={formData.stateId}
-                  onChange={(e) => {
-                    const selectedState = stateData.find(
-                      (state) => state.id.toString() === e.target.value
-                    );
-                    if (selectedState) {
-                      handleStateChange(selectedState.id);
-                      setStateIds(selectedState.id);
-                      fetchDistrictData(selectedState.id);
-                    }
-                  }}
-                  disabled={loading || !formData.countryId}
-                >
-                  <option value="">Select State</option>
-                  {stateData.map((state) => (
-                    <option key={state.id} value={state.id}>
-                      {state.stateName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">District *</label>
-                <select
-                  className="form-select"
-                  value={formData.districtId}
-                  onChange={(e) => handleDistrictChange(e.target.value)}
-                  disabled={loading || !formData.stateId}
-                >
-                  <option value="">Select District</option>
-                  {districtData.map((dist) => (
-                    <option key={dist.id} value={dist.id}>
-                      {dist.districtName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">City *</label>
-                <input
-                  type="text"
-                  required
-                  className="form-control"
-                  id="city"
-                  placeholder="City"
-                  onChange={handleInputChange}
-                  value={formData.city}
-                  maxLength={mlenght}
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">Pincode *</label>
-                <input
-                  type="text"
-                  required
-                  className="form-control"
-                  id="pincode"
-                  placeholder="Pincode"
-                  onChange={handleInputMobileChange}
-                  value={formData.pincode}
-                  maxLength={6}
-                  minLength={6}
-                  inputMode="numeric"
-                  pattern="\d*"
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">Mobile No. *</label>
-                <input
-                  type="text"
-                  required
-                  className="form-control"
-                  id="mobileNo"
-                  placeholder="Mobile No."
-                  onChange={handleInputMobileChange}
-                  value={formData.mobileNo}
-                  maxLength={10}
-                  minLength={10}
-                  inputMode="numeric"
-                  pattern="\d*"
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">ID Type *</label>
-                <select
-                  className="form-select"
-                  style={{ paddingRight: "40px" }}
-                  value={formData.identificationType}
-                  onChange={(e) =>
-                    handleIdTypeChange(parseInt(e.target.value, 10))
-                  }
-                  disabled={loading}
-                >
-                  <option value="">Select ID Type</option>
-                  {idTypeData.map((idType) => (
-                    <option key={idType.identificationTypeId} value={idType.identificationTypeId}>
-                      {idType.identificationName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">ID Number *</label>
-                <input
-                  type="text"
-                  required
-                  className="form-control"
-                  id="registrationNo"
-                  placeholder="ID Number"
-                  onChange={handleInputChange}
-                  value={formData.registrationNo}
-                  maxLength={mlenght}
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">ID Upload (JPEG/PDF) *</label>
-                <input
-                  type="file"
-                  id="idDocumentName"
-                  className="form-control mt-2"
-                  accept=".jpg,.jpeg,.png,.pdf"
-                  onChange={(e) => setFormData({ ...formData, idDocumentName: e.target.files[0] })}
-                />
-                {editingEmployee?.idDocumentName && formData.idDocumentName && (
-                  <small className="text-muted">Current file: {editingEmployee.idDocumentName.split('/').pop().replace(/^\d+_/, '')}</small>
-                )}
-              </div>
+              <div className="col-md-9">
+                <div className="g-3 row">
+                  <div className="col-md-4">
+                    <label className="form-label">First Name *</label>
+                    <input
+                      type="text"
+                      required
+                      className="form-control"
+                      id="firstName"
+                      placeholder="First Name"
+                      onChange={handleInputChange}
+                      value={formData.firstName}
+                      maxLength={mlenght}
+                    />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">Middle Name</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="middleName"
+                      placeholder="Middle Name"
+                      onChange={handleInputChange}
+                      value={formData.middleName}
+                      maxLength={mlenght}
+                    />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">Last Name *</label>
+                    <input
+                      type="text"
+                      required
+                      className="form-control"
+                      id="lastName"
+                      placeholder="Last Name"
+                      onChange={handleInputChange}
+                      value={formData.lastName}
+                      maxLength={mlenght}
+                    />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">Date of Birth *</label>
+                    <input
+                      type="date"
+                      required
+                      id="dob"
+                      value={formData.dob}
+                      className="form-control"
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">Gender *</label>
+                    <select
+                      className="form-select"
+                      style={{ paddingRight: "40px" }}
+                      value={formData.genderId}
+                      onChange={(e) =>
+                        handleGenderChange(parseInt(e.target.value, 10))
+                      }
+                      disabled={loading}
+                    >
+                      <option value="">Select Gender</option>
+                      {genderData.map((gender) => (
+                        <option key={gender.id} value={gender.id}>
+                          {gender.genderName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">Address *</label>
+                    <textarea
+                      required
+                      id="address1"
+                      value={formData.address1}
+                      className="form-control"
+                      onChange={handleInputChange}
+                      placeholder="Address"
+                    ></textarea>
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">Country *</label>
+                    <select
+                      className="form-select"
+                      value={formData.countryId}
+                      onChange={(e) => {
+                        const selectedCountry = countryData.find(
+                          (country) => country.id.toString() === e.target.value
+                        );
+                        if (selectedCountry) {
+                          handleCountryChange(selectedCountry.id);
+                          setCountryIds(selectedCountry.id);
+                          fetchStateData(selectedCountry.id);
+                        }
+                      }}
+                      disabled={loading}
+                    >
+                      <option value="">Select Country</option>
+                      {countryData.map((country) => (
+                        <option key={country.id} value={country.id}>
+                          {country.countryName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">State *</label>
+                    <select
+                      className="form-select"
+                      value={formData.stateId}
+                      onChange={(e) => {
+                        const selectedState = stateData.find(
+                          (state) => state.id.toString() === e.target.value
+                        );
+                        if (selectedState) {
+                          handleStateChange(selectedState.id);
+                          setStateIds(selectedState.id);
+                          fetchDistrictData(selectedState.id);
+                        }
+                      }}
+                      disabled={loading || !formData.countryId}
+                    >
+                      <option value="">Select State</option>
+                      {stateData.map((state) => (
+                        <option key={state.id} value={state.id}>
+                          {state.stateName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">District *</label>
+                    <select
+                      className="form-select"
+                      value={formData.districtId}
+                      onChange={(e) => handleDistrictChange(e.target.value)}
+                      disabled={loading || !formData.stateId}
+                    >
+                      <option value="">Select District</option>
+                      {districtData.map((dist) => (
+                        <option key={dist.id} value={dist.id}>
+                          {dist.districtName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">City *</label>
+                    <input
+                      type="text"
+                      required
+                      className="form-control"
+                      id="city"
+                      placeholder="City"
+                      onChange={handleInputChange}
+                      value={formData.city}
+                      maxLength={mlenght}
+                    />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">Pincode *</label>
+                    <input
+                      type="text"
+                      required
+                      className="form-control"
+                      id="pincode"
+                      placeholder="Pincode"
+                      onChange={handleInputMobileChange}
+                      value={formData.pincode}
+                      maxLength={6}
+                      minLength={6}
+                      inputMode="numeric"
+                      pattern="\d*"
+                    />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">Mobile No. *</label>
+                    <input
+                      type="text"
+                      required
+                      className="form-control"
+                      id="mobileNo"
+                      placeholder="Mobile No."
+                      onChange={handleInputMobileChange}
+                      value={formData.mobileNo}
+                      maxLength={10}
+                      minLength={10}
+                      inputMode="numeric"
+                      pattern="\d*"
+                    />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">ID Type *</label>
+                    <select
+                      className="form-select"
+                      style={{ paddingRight: "40px" }}
+                      value={formData.identificationType}
+                      onChange={(e) =>
+                        handleIdTypeChange(parseInt(e.target.value, 10))
+                      }
+                      disabled={loading}
+                    >
+                      <option value="">Select ID Type</option>
+                      {idTypeData.map((idType) => (
+                        <option key={idType.identificationTypeId} value={idType.identificationTypeId}>
+                          {idType.identificationName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">ID Number *</label>
+                    <input
+                      type="text"
+                      required
+                      className="form-control"
+                      id="registrationNo"
+                      placeholder="ID Number"
+                      onChange={handleInputChange}
+                      value={formData.registrationNo}
+                      maxLength={mlenght}
+                    />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">ID Upload (JPEG/PDF) *</label>
+                    <input
+                      type="file"
+                      id="idDocumentName"
+                      className="form-control mt-2"
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      onChange={(e) => setFormData({ ...formData, idDocumentName: e.target.files[0] })}
+                    />
+                    {editingEmployee?.idDocumentName && formData.idDocumentName && (
+                      <div className="d-flex align-items-center mt-1">
+                        <small className="text-muted">Current file: {editingEmployee.idDocumentName.split('/').pop().replace(/^\d+_/, '')}</small>
+                        <div
+                          onClick={() => handleViewDocument(editingEmployee.idDocumentName)}
+                          className="text-success d-flex align-items-center ms-2"
+                          style={{ cursor: 'pointer' }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = '#0f8c75';
+                            e.currentTarget.style.fontWeight = 'bold';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                            e.currentTarget.style.color = '';
+                            e.currentTarget.style.fontWeight = 'normal';
+                          }}
+
+                        >
+                          <i className="icofont-eye me-1"></i>
+                          <small>View</small>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
 
-              <div className="col-md-4">
-                <label className="form-label">Role Name *</label>
-                <select
-                  className="form-select"
-                  style={{ paddingRight: "40px" }}
-                  value={formData.roleId}
-                  onChange={(e) =>
-                    handleRoleChange(parseInt(e.target.value, 10))
-                  }
-                  disabled={loading}
-                >
-                  <option value="">Select Role</option>
-                  {roleData.map((role) => (
-                    <option key={role.id} value={role.id}>
-                      {role.roleDesc}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <div className="col-md-4">
+                    <label className="form-label">Role Name *</label>
+                    <select
+                      className="form-select"
+                      style={{ paddingRight: "40px" }}
+                      value={formData.roleId}
+                      onChange={(e) =>
+                        handleRoleChange(parseInt(e.target.value, 10))
+                      }
+                      disabled={loading}
+                    >
+                      <option value="">Select Role</option>
+                      {roleData.map((role) => (
+                        <option key={role.id} value={role.id}>
+                          {role.roleDesc}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div className="col-md-4">
-                <label className="form-label">Period of Employment From Date</label>
-                <input
-                  type="date"
-                  id="fromDate"
-                  value={formData.fromDate}
-                  className="form-control"
-                  onChange={handleInputChange}
-                />
+                  <div className="col-md-4">
+                    <label className="form-label">Period of Employment From Date</label>
+                    <input
+                      type="date"
+                      id="fromDate"
+                      value={formData.fromDate}
+                      className="form-control"
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">Type of Employee *</label>
+                    <select
+                      className="form-select"
+                      style={{ paddingRight: "40px" }}
+                      value={formData.employeeTypeId}
+                      onChange={(e) =>
+                        handleEmployeeTypeChange(parseInt(e.target.value, 10))
+                      }
+                      disabled={loading}
+                    >
+                      <option value="">Select Employee Type</option>
+                      {employeeTypeData.map((empType) => (
+                        <option key={empType.userTypeId} value={empType.userTypeId}>
+                          {empType.userTypeName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label">Type of Employment *</label>
+                    <select
+                      className="form-select"
+                      style={{ paddingRight: "40px" }}
+                      value={formData.employmentTypeId}
+                      onChange={(e) =>
+                        handleEmploymentTypeChange(parseInt(e.target.value, 10))
+                      }
+                      disabled={loading}
+                    >
+                      <option value="">Select Employment Type</option>
+                      {employmentTypeData.map((emptType) => (
+                        <option key={emptType.id} value={emptType.id}>
+                          {emptType.employmentType}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
-              <div className="col-md-4">
-                <label className="form-label">Type of Employee *</label>
-                <select
-                  className="form-select"
-                  style={{ paddingRight: "40px" }}
-                  value={formData.employeeTypeId}
-                  onChange={(e) =>
-                    handleEmployeeTypeChange(parseInt(e.target.value, 10))
-                  }
-                  disabled={loading}
-                >
-                  <option value="">Select Employee Type</option>
-                  {employeeTypeData.map((empType) => (
-                    <option key={empType.userTypeId} value={empType.userTypeId}>
-                      {empType.userTypeName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">Type of Employment *</label>
-                <select
-                  className="form-select"
-                  style={{ paddingRight: "40px" }}
-                  value={formData.employmentTypeId}
-                  onChange={(e) =>
-                    handleEmploymentTypeChange(parseInt(e.target.value, 10))
-                  }
-                  disabled={loading}
-                >
-                  <option value="">Select Employment Type</option>
-                  {employmentTypeData.map((emptType) => (
-                    <option key={emptType.id} value={emptType.id}>
-                      {emptType.employmentType}
-                    </option>
-                  ))}
-                </select>
+              <div className="col-md-3 d-flex flex-column">
+                <label className="form-label">Profile Image *</label>
+                <div className="d-flex flex-column align-items-center border p-2">
+                  <img
+                    src={formData.profilePicPreview || imageSrc || placeholderImage}
+                    alt="Profile"
+                    className="img-fluid"
+                    style={{ objectFit: "cover", maxWidth: "100%", height: "150px" }}
+                  />
+                  <input
+                    type="file"
+                    id="profilePicName"
+                    className="form-control mt-2"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                  />
+                </div>
               </div>
             </div>
 
@@ -1159,9 +1256,35 @@ const ViewSearchEmployee = () => {
                                 onChange={(e) => handleQualificationChange(index, "filePath", e.target.files[0])}
                                 accept=".pdf,.jpg,.jpeg,.png"
                               />
-                              {row.filePath && typeof row.filePath === "string" && (
-                                <small className="text-muted">Current file: {row.filePath.split('/').pop().replace(/^\d+_/, '')}</small>
-                              )}
+
+                              {/* <i  className="icofont-eye"></i> */}
+
+
+                              <div className="d-flex align-items-center mt-1">
+                                {row.filePath && typeof row.filePath === "string" && (
+                                  <small className="text-muted">Current file: {row.filePath.split('/').pop().replace(/^\d+_/, '')}</small>
+                                )}
+                                <div
+                                  onClick={() => handleViewDocument(row.filePath)}
+                                  className="text-success d-flex align-items-center ms-2"
+                                  style={{ cursor: 'pointer' }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = '#0f8c75';
+                                    e.currentTarget.style.fontWeight = 'bold';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                    e.currentTarget.style.color = '';
+                                    e.currentTarget.style.fontWeight = 'normal';
+                                  }}
+
+                                >
+                                  <i className="icofont-eye me-1"></i>
+                                  <small>View</small>
+                                </div>
+                              </div>
+
+
                             </td>
                             <td>
                               <button
@@ -1219,10 +1342,41 @@ const ViewSearchEmployee = () => {
                                 onChange={(e) => handleDocumentChange(index, "filePath", e.target.files[0])}
                                 accept=".pdf,.jpg,.jpeg,.png"
                               />
-                              {row.filePath && typeof row.filePath === "string" && (
-                                <small className="text-muted">Current file: {row.filePath.split('/').pop().replace(/^\d+_/, '')}</small>
-                              )}
+
+
+                              <div className="d-flex align-items-center mt-1">
+                                {row.filePath && typeof row.filePath === "string" && (
+                                  <small className="text-muted mr-2">Current file: {row.filePath.split('/').pop().replace(/^\d+_/, '')}</small>
+                                )}
+                                <div
+                                  onClick={() => handleViewDocument(row.filePath)}
+                                  className="text-success d-flex align-items-center ms-2"
+                                  style={{ cursor: 'pointer' }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = '#0f8c75';
+                                    e.currentTarget.style.fontWeight = 'bold';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                    e.currentTarget.style.color = '';
+                                    e.currentTarget.style.fontWeight = 'normal';
+                                  }}
+
+                                >
+                                  <i onClick={() => handleViewDocument(row.filePath)} className="icofont-eye"></i>
+
+                                  <small>View</small>
+                                </div>
+                              </div>
+
+                              
+
                             </td>
+
+
+
+
+
                             <td>
                               <button type="button" className="btn btn-danger" onClick={() => removeDocumentRow(index)}>
                                 <i className="icofont-close"></i>
@@ -1252,6 +1406,44 @@ const ViewSearchEmployee = () => {
           </form>
         )}
       </div>
+      {showDocModal && (
+        <div
+          className="modal show d-block"
+          tabIndex="-1"
+          role="dialog"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            zIndex: 100000,
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            overflow: "auto"
+          }}
+        >
+
+          <div className="modal-dialog modal-xl" role="document" style={{ zIndex: 100000 }}>
+            <div className="modal-content" style={{ backgroundColor: "#20c997", color: "white" }}>
+              <div className="modal-header" >
+                <h5 className="modal-title"  >Document Viewer</h5>
+                <button type="button" className="close" onClick={() => setShowDocModal(false)}>
+                  <span>&times;</span>
+                </button>
+              </div>
+              <div className="modal-body" style={{ minHeight: '500px' }}>
+                {docType === "application/pdf" ? (
+                  <iframe src={docUrl} width="100%" height="500px" title="PDF Viewer" />
+                ) : (
+                  <img src={docUrl} alt="Document" className="img-fluid" />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+      )}
+
     </div>
   );
 };
