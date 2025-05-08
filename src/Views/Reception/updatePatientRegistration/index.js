@@ -3,9 +3,9 @@ import placeholderImage from "../../../assets/images/placeholder.jpg";
 import {getRequest, postRequest} from "../../../service/apiService";
 import {
   ALL_COUNTRY,
-  ALL_DEPARTMENT,
+  ALL_DEPARTMENT, ALL_DISTRICT,
   ALL_GENDER,
-  ALL_RELATION,
+  ALL_RELATION, ALL_STATE,
   API_HOST,
   DISTRICT_BY_STATE,
   DOCTOR_BY_SPECIALITY,
@@ -36,15 +36,51 @@ const UpdatePatientRegistration = () => {
     }
   }
 
+  async function fetchAllStateData() {
+    try {
+      const data = await getRequest(`${ALL_STATE}/1`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setStateData(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setStateData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Department data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+async function fetchAllDistrictData() {
+    try {
+      const data = await getRequest(`${ALL_DISTRICT}/1`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setDistrictData(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setStateData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Department data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     // Fetching gender data (simulated API response)
     fetchGenderData();
+    fetchAllStateData();
     fetchRelationData();
     fetchCountryData();
+    fetchAllNokDistrict();
+    fetchNokAllStates();
     fetchDepartment();
     fetchSesion();
+    fetchAllDistrictData();
     fetchHospitalDetails();
   }, []);
+  const [popupMessage, setPopupMessage] = useState(null);
   const [hospitalId, setHospitalId] = useState(12);
   const [errors, setErrors] = useState({});
   const [imageURL,setImageURL]=useState("");
@@ -256,6 +292,7 @@ const UpdatePatientRegistration = () => {
     };
     const handleEdit = (patient) => {
         setPatientDetailForm(patient);
+        console.log(patient)
         setShowPatientDetails(true);
 
       };
@@ -376,9 +413,41 @@ const UpdatePatientRegistration = () => {
     }
   }
 
+  async function fetchNokAllStates(value) {
+    try{
+
+      const data = await getRequest(`${ALL_STATE}/1`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setNokStateData(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setNokStateData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Department data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function fetchNokDistrict(value) {
     try {
       const data = await getRequest(`${DISTRICT_BY_STATE}${value}`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setNokDistrictData(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setNokDistrictData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Department data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+  async function fetchAllNokDistrict(value) {
+    try {
+      const data = await getRequest(`${ALL_DISTRICT}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokDistrictData(data.response);
       } else {
@@ -410,7 +479,8 @@ const UpdatePatientRegistration = () => {
     }
   }
   const handleAddChange = (e) => {
-    debugger;
+    if(e.target.name=='patientState')
+      debugger;
     const { name, value } = e.target;
     setPatientDetailForm((prev) => ({ ...prev, [name]: value }));
   };
@@ -641,8 +711,15 @@ const UpdatePatientRegistration = () => {
       try {
         debugger;
         const data = await postRequest(`${PATIENT_FOLLOW_UP}`,updateReq);
-        if (data.status === 200 && Array.isArray(data.response)) {
-          Swal.fire("Patient Registration Successful")
+        if (data.status === 200) {
+          if(appointmentFlag)
+          {
+            await Swal.fire("Appointment Scheduled", "", "success");
+          }
+          else{
+            await Swal.fire("Patient Details Updated", "", "success");
+          }
+          setShowPatientDetails(false);
         } else {
           console.error("Unexpected API response format:", data);
           setDoctorData([]);
@@ -652,6 +729,7 @@ const UpdatePatientRegistration = () => {
       }
     }
       };
+
 
 
   return (
@@ -962,43 +1040,64 @@ const UpdatePatientRegistration = () => {
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">State</label>
-                      <select className="form-select" name="patientState" value={patientDetailForm.patientState?JSON.stringify(patientDetailForm.patientState) : ""} onChange={(e) => {
-                        const selectedState = JSON.parse(e.target.value);
-                        handleAddChange({
-                          target: { name: 'patientState', value: selectedState }
-                        });
-                        fetchDistrict(selectedState.id); // pass id to fetchStates
-                      }}>
+
+
+                      <select
+                          className="form-select"
+                          name="patientState"
+                          value={patientDetailForm.patientState ? patientDetailForm.patientState.id : ""}
+                          onChange={(e) => {
+                            const selectedState = stateData.find(
+                                (state) => state.id === parseInt(e.target.value, 10)
+                            );
+                            handleAddChange({
+                              target: {name: "patientState", value: selectedState}
+                            });
+                            fetchDistrict(selectedState.id);
+                          }}
+                      >
                         <option value="">Select State</option>
                         {stateData.map((state) => (
-                            <option key={state.id} value={JSON.stringify(state)}>
+                            <option key={state.id} value={state.id}>
                               {state.stateName}
-                            </option>))}
+                            </option>
+                        ))}
                       </select>
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">District</label>
-                      <select className="form-select" name="patientDistrict" value={patientDetailForm.patientDistrict?JSON.stringify(patientDetailForm.patientDistrict):""} onChange={(e) => {
-                        const selectedDistrict = JSON.parse(e.target.value);
-                        handleAddChange({
-                          target: { name: 'patientDistrict', value: selectedDistrict }
-                        });
-                      }}>
+                      <select
+                          className="form-select"
+                          name="patientDistrict"
+                          value={patientDetailForm.patientDistrict ? patientDetailForm.patientDistrict.id : ""}
+                          onChange={(e) => {
+                            const selectedDistrictId = parseInt(e.target.value, 10);
+                            const selectedDistrict = districtData.find(
+                                (district) => district.id === selectedDistrictId
+                            );
+                            handleAddChange({
+                              target: {name: 'patientDistrict', value: selectedDistrict}
+                            });
+                          }}
+                      >
                         <option value="">Select District</option>
                         {districtData.map((district) => (
-                            <option key={district.id} value={JSON.stringify(district)}>
+                            <option key={district.id} value={district.id}>
                               {district.districtName}
-                            </option>))}
+                            </option>
+                        ))}
                       </select>
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">City</label>
-                      <input type="text" className="form-control" name="patientCity" value={patientDetailForm.patientCity}
+                      <input type="text" className="form-control" name="patientCity"
+                             value={patientDetailForm.patientCity}
                              onChange={handleChange} placeholder="Enter City"/>
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Pin Code</label>
-                      <input type="text" className="form-control" placeholder="Enter Pin Code" name="patientPincode" onChange={handleChange}
+                      <input type="text" className="form-control" placeholder="Enter Pin Code" name="patientPincode"
+                             onChange={handleChange}
                              value={patientDetailForm.patientPincode || ""}/>
                     </div>
                   </div>
@@ -1055,13 +1154,15 @@ const UpdatePatientRegistration = () => {
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Country</label>
-                      <select className="form-select" name="nokCountry" value={patientDetailForm.nokCountry?JSON.stringify(patientDetailForm.nokCountry) : ""} onChange={(e) => {
-                        const selectedCountry = JSON.parse(e.target.value);
-                        handleAddChange({
-                          target: { name: 'nokCountry', value: selectedCountry }
-                        });
-                        fetchNokStates(selectedCountry.id); // pass id to fetchStates
-                      }}>
+                      <select className="form-select" name="nokCountry"
+                              value={patientDetailForm.nokCountry ? JSON.stringify(patientDetailForm.nokCountry) : ""}
+                              onChange={(e) => {
+                                const selectedCountry = JSON.parse(e.target.value);
+                                handleAddChange({
+                                  target: {name: 'nokCountry', value: selectedCountry}
+                                });
+                                fetchNokStates(selectedCountry.id); // pass id to fetchStates
+                              }}>
                         <option value="">Select Country</option>
                         {countryData.map((country) => (
                             <option key={country.id} value={JSON.stringify(country)}>
@@ -1071,35 +1172,51 @@ const UpdatePatientRegistration = () => {
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">State</label>
-                      <select className="form-select" name="nokState" value={patientDetailForm.nokState?JSON.stringify(patientDetailForm.nokState) : ""} onChange={(e) => {
-                        const selectedState = JSON.parse(e.target.value);
-                        handleAddChange({
-                          target: { name: 'nokState', value: selectedState }
-                        });
-                        fetchNokDistrict(selectedState.id); // pass id to fetchStates
-                      }}>
+                      <select
+                          className="form-select"
+                          name="nokState"
+                          value={patientDetailForm.nokState ? patientDetailForm.nokState.id : ""}
+                          onChange={(e) => {
+                            const selectedStateId = parseInt(e.target.value, 10);
+                            const selectedState = nokStateData.find((state) => state.id === selectedStateId);
+                            handleAddChange({
+                              target: {name: 'nokState', value: selectedState}
+                            });
+                            fetchNokDistrict(selectedStateId); // fetch districts using selected state ID
+                          }}
+                      >
                         <option value="">Select State</option>
                         {nokStateData.map((state) => (
-                            <option key={state.id} value={JSON.stringify(state)}>
+                            <option key={state.id} value={state.id}>
                               {state.stateName}
-                            </option>))}
+                            </option>
+                        ))}
                       </select>
                     </div>
+
                     <div className="col-md-4">
                       <label className="form-label">District</label>
-                      <select className="form-select" name="nokDistrict" value={patientDetailForm.nokDistrict?JSON.stringify(patientDetailForm.nokDistrict):""} onChange={(e) => {
-                        const selectedDistrict = JSON.parse(e.target.value);
-                        handleAddChange({
-                          target: { name: 'nokDistrict', value: selectedDistrict }
-                        })
-                      }}>
+                      <select
+                          className="form-select"
+                          name="nokDistrict"
+                          value={patientDetailForm.nokDistrict ? patientDetailForm.nokDistrict.id : ""}
+                          onChange={(e) => {
+                            const selectedDistrictId = parseInt(e.target.value, 10);
+                            const selectedDistrict = nokDistrictData.find((district) => district.id === selectedDistrictId);
+                            handleAddChange({
+                              target: {name: 'nokDistrict', value: selectedDistrict}
+                            });
+                          }}
+                      >
                         <option value="">Select District</option>
                         {nokDistrictData.map((district) => (
-                            <option key={district.id} value={JSON.stringify(district)}>
+                            <option key={district.id} value={district.id}>
                               {district.districtName}
-                            </option>))}
+                            </option>
+                        ))}
                       </select>
                     </div>
+
                     <div className="col-md-4">
                       <label className="form-label">City</label>
                       <input type="text" className="form-control" placeholder="Enter City" onChange={handleChange}
@@ -1148,7 +1265,6 @@ const UpdatePatientRegistration = () => {
             </div>
           </div>
         </div>
-
 
         {showDetails && (
             <>

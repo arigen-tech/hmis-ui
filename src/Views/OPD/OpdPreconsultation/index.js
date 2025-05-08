@@ -1,120 +1,37 @@
-import { useState } from "react"
+import {useEffect, useState} from "react"
 import Popup from "../../../Components/popup"
+import {getRequest, postRequest} from "../../../service/apiService";
+import {ALL_DISTRICT, GET_PRECONSULTATION, PATIENT_FOLLOW_UP, SET_VITALS} from "../../../config/apiConfig";
+import Swal from "sweetalert2";
 
 const OpdPreconsultation = () => {
-  const [patients, setPatients] = useState([
-    {
-      id: 1,
-      patientName: "John Doe",
-      age: "30",
-      gender: "Male",
-      department: "Cardiology",
-      mobileNo: "123-456-7890",
-      typeOfPatient: "Inpatient",
-      doctorName: "Dr. Michael Johnson",
-      timeSlot: "09:30 AM",
-      vitals: {
-        height: "",
-        weight: "",
-        temperature: "",
-        systolic: "",
-        diastolic: "",
-        pulse: "",
-        bmi: "",
-        rr: "",
-        spo2: "",
-      },
-    },
-    {
-      id: 2,
-      patientName: "Jane Smith",
-      age: "28",
-      gender: "Female",
-      department: "Neurology",
-      mobileNo: "234-567-8901",
-      typeOfPatient: "Outpatient",
-      doctorName: "Dr. Sarah Williams",
-      timeSlot: "10:45 AM",
-      vitals: {
-        height: "",
-        weight: "",
-        temperature: "",
-        systolic: "",
-        diastolic: "",
-        pulse: "",
-        bmi: "",
-        rr: "",
-        spo2: "",
-      },
-    },
-    {
-      id: 3,
-      patientName: "Alice Johnson",
-      age: "45",
-      gender: "Female",
-      department: "Pediatrics",
-      mobileNo: "345-678-9012",
-      typeOfPatient: "Inpatient",
-      doctorName: "Dr. Robert Chen",
-      timeSlot: "11:15 AM",
-      vitals: {
-        height: "",
-        weight: "",
-        temperature: "",
-        systolic: "",
-        diastolic: "",
-        pulse: "",
-        bmi: "",
-        rr: "",
-        spo2: "",
-      },
-    },
-    {
-      id: 4,
-      patientName: "Bob Brown",
-      age: "50",
-      gender: "Male",
-      department: "Orthopedics",
-      mobileNo: "456-789-0123",
-      typeOfPatient: "Outpatient",
-      doctorName: "Dr. Emily Parker",
-      timeSlot: "02:30 PM",
-      vitals: {
-        height: "",
-        weight: "",
-        temperature: "",
-        systolic: "",
-        diastolic: "",
-        pulse: "",
-        bmi: "",
-        rr: "",
-        spo2: "",
-      },
-    },
-    {
-      id: 5,
-      patientName: "Charlie Davis",
-      age: "60",
-      gender: "Male",
-      department: "Oncology",
-      mobileNo: "567-890-1234",
-      typeOfPatient: "Inpatient",
-      doctorName: "Dr. James Wilson",
-      timeSlot: "04:00 PM",
-      vitals: {
-        height: "",
-        weight: "",
-        temperature: "",
-        systolic: "",
-        diastolic: "",
-        pulse: "",
-        bmi: "",
-        rr: "",
-        spo2: "",
-      },
-    },
-  ])
 
+  const setLoading = (b) => {
+
+  };
+
+  async function fetchPendingPreconsultation() {
+    try {
+
+      const data = await getRequest(`${GET_PRECONSULTATION}`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        console.log(data.response);
+        setVisits(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching Department data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    // Fetching gender data (simulated API response)
+    fetchPendingPreconsultation();
+  }, []);
+  const [visits,setVisits]=useState([]);
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
@@ -148,18 +65,11 @@ const OpdPreconsultation = () => {
     setCurrentPage(1)
   }
 
-  const filteredPatients = patients.filter(
-    (item) =>
-      item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.typeOfPatient.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.doctorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.mobileNo.includes(searchQuery),
-  )
 
-  const filteredTotalPages = Math.ceil(filteredPatients.length / itemsPerPage)
 
-  const currentItems = filteredPatients.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const filteredTotalPages = Math.ceil(visits.length / itemsPerPage)
+
+  const currentItems = visits.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const handleRowClick = (patient) => {
     if (selectedPatient && selectedPatient.id === patient.id) {
@@ -216,7 +126,7 @@ const OpdPreconsultation = () => {
   const handleSaveVitals = (e) => {
     e.preventDefault()
 
-    const updatedPatients = patients.map((patient) => {
+    const updatedPatients = visits.map((patient) => {
       if (patient.id === selectedPatient.id) {
         return {
           ...patient,
@@ -226,8 +136,8 @@ const OpdPreconsultation = () => {
       return patient
     })
 
-    setPatients(updatedPatients)
-    showPopup(`Vital details for ${selectedPatient?.patientName} have been saved successfully!`, "success")
+    setVisits(updatedPatients)
+    // showPopup(`Vital details for ${selectedPatient?.patientName} have been saved successfully!`, "success")
   }
 
   const handlePageNavigation = () => {
@@ -276,6 +186,40 @@ const OpdPreconsultation = () => {
     ))
   }
 
+  async function submitvitals() {
+    const requestData = {
+      height: vitalFormData.height,
+      weight: vitalFormData.weight,
+      pulse: vitalFormData.pulse,
+      temperature: vitalFormData.temperature,
+      opdDate: selectedPatient.visitDate,
+      rr: vitalFormData.rr,
+      bmi: vitalFormData.bmi,
+      spo2: vitalFormData.spo2,
+      bpSystolic: vitalFormData.systolic,
+      bpDiastolic: vitalFormData.diastolic,
+      patientId: selectedPatient.patient.id,
+      visitId: selectedPatient.id,
+      departmentId: selectedPatient.department.id,
+      hospitalId: sessionStorage.getItem('hospitalId'),
+      doctorId: selectedPatient.doctor.userId,
+      lastChgBy: sessionStorage.getItem('username')
+    };
+    try {
+      debugger;
+      const data = await postRequest(`${SET_VITALS}`, requestData);
+      if (data.status === 200) {
+        fetchPendingPreconsultation();
+          await Swal.fire("Vitals saved for appointment", "", "success");
+          setSelectedPatient(null);
+      } else {
+        console.error("Unexpected API response format:", data);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  }
+
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -322,30 +266,35 @@ const OpdPreconsultation = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {currentItems.map((item) => (
-                      <tr
-                        key={item.id}
-                        onClick={() => handleRowClick(item)}
-                        className={selectedPatient && selectedPatient.id === item.id ? "table-primary" : ""}
-                        style={{ cursor: "pointer" }}
-                      >
-                        <td>{item.patientName}</td>
-                        <td>{item.age}</td>
-                        <td>{item.gender}</td>
-                        <td>{item.department}</td>
-                        <td>{item.mobileNo}</td>
-                        <td>{item.typeOfPatient}</td>
-                        <td>{item.doctorName}</td>
-                        <td>{item.timeSlot}</td>
-                      </tr>
+                    {visits.map((item) => (
+                        <tr
+                            key={item.id}
+                            onClick={() => handleRowClick(item)}
+                            className={selectedPatient && selectedPatient.id === item.id ? "table-primary" : ""}
+                            style={{cursor: "pointer"}}
+                        >
+                          <td>{`${item.patient.patientFn} ${item.patient.patientMn != null ? item.patient.patientMn : ""} ${item.patient.patientLn != null ? item.patient.patientLn : ""}`}</td>
+                          <td>{item.patient.patientAge}</td>
+                          <td>{item.patient.patientGender.genderName}</td>
+                          <td>{item.department.departmentName}</td>
+                          <td>{item.patient.patientMobileNumber}</td>
+                          <td>{item.typeOfPatient}</td>
+                          <td>{`${item.doctor.employee.firstName} ${item.doctor.employee.middleName != null ? item.doctor.employee.middleName : ""} ${item.doctor.employee.lastName != null ? item.doctor.employee.middleName : ""}`}</td>
+                          {/*<td>{`${item.startTime} - ${item.endTime}`}</td>*/}
+                          <td>
+                            {`${item.startTime.substring(11, 16)} - ${item.endTime.substring(11, 16)}`}
+                          </td>
+
+
+                        </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
 
               {selectedPatient && (
-                <div className="row mb-3 mt-3">
-                  <div className="col-sm-12">
+                  <div className="row mb-3 mt-3">
+                    <div className="col-sm-12">
                     <div className="card shadow mb-3">
                       <div className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center">
                         <h6 className="mb-0 fw-bold">Vital Details for {selectedPatient.patientName}</h6>
@@ -492,7 +441,7 @@ const OpdPreconsultation = () => {
                             </div>
 
                             <div className="col-12 mt-3 d-flex justify-content-end">
-                              <button type="submit" className="btn btn-primary">
+                              <button type="submit" className="btn btn-primary" onClick={submitvitals}>
                                 Save Vital Details
                               </button>
                             </div>
@@ -507,7 +456,7 @@ const OpdPreconsultation = () => {
               <nav className="d-flex justify-content-between align-items-center mt-3">
                 <div>
                   <span>
-                    Page {currentPage} of {filteredTotalPages} | Total Records: {filteredPatients.length}
+                    Page {currentPage} of {filteredTotalPages} | Total Records: {visits.length}
                   </span>
                 </div>
                 <ul className="pagination mb-0">

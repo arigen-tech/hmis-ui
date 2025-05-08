@@ -55,6 +55,9 @@ export const DOCTOR_ROSTER = "/doctor";
 export const GET_DOCTOR_SESSION="/doctor/rosterfind?";
 export const EMPLOYEE_REGISTRATION = "api/employee";
 export const PATIENT_REGISTRATION="/patient/register";
+export const GET_PRECONSULTATION="/patient/getPendingPreConsultations";
+export const SET_VITALS="/patient/saveVitalDetails";
+
 export const PATIENT_FOLLOW_UP="/patient/update";
 export const PATIENT_SEARCH="/patient/search";
 export const GET_SESSION="/opd-session/getAllOpdSessions/";
