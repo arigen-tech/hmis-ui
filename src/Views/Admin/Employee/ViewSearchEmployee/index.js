@@ -1087,10 +1087,28 @@ const ViewSearchEmployee = () => {
                       onChange={(e) => setFormData({ ...formData, idDocumentName: e.target.files[0] })}
                     />
                     {editingEmployee?.idDocumentName && formData.idDocumentName && (
-                      <small className="text-muted mr-2">Current file: {editingEmployee.idDocumentName.split('/').pop().replace(/^\d+_/, '')} </small>
-                    )}
-                    <i onClick={() => handleViewDocument(editingEmployee.idDocumentName)} className="icofont-eye"></i>
+                      <div className="d-flex align-items-center mt-1">
+                        <small className="text-muted">Current file: {editingEmployee.idDocumentName.split('/').pop().replace(/^\d+_/, '')}</small>
+                        <div
+                          onClick={() => handleViewDocument(editingEmployee.idDocumentName)}
+                          className="text-success d-flex align-items-center ms-2"
+                          style={{ cursor: 'pointer' }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = '#0f8c75';
+                            e.currentTarget.style.fontWeight = 'bold';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                            e.currentTarget.style.color = '';
+                            e.currentTarget.style.fontWeight = 'normal';
+                          }}
 
+                        >
+                          <i className="icofont-eye me-1"></i>
+                          <small>View</small>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
 
@@ -1238,10 +1256,35 @@ const ViewSearchEmployee = () => {
                                 onChange={(e) => handleQualificationChange(index, "filePath", e.target.files[0])}
                                 accept=".pdf,.jpg,.jpeg,.png"
                               />
-                              {row.filePath && typeof row.filePath === "string" && (
-                                <small className="text-muted">Current file: {row.filePath.split('/').pop().replace(/^\d+_/, '')}</small>
-                              )}
-                              <i onClick={() => handleViewDocument(row.filePath)} className="icofont-eye"></i>
+
+                              {/* <i  className="icofont-eye"></i> */}
+
+
+                              <div className="d-flex align-items-center mt-1">
+                                {row.filePath && typeof row.filePath === "string" && (
+                                  <small className="text-muted">Current file: {row.filePath.split('/').pop().replace(/^\d+_/, '')}</small>
+                                )}
+                                <div
+                                  onClick={() => handleViewDocument(row.filePath)}
+                                  className="text-success d-flex align-items-center ms-2"
+                                  style={{ cursor: 'pointer' }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = '#0f8c75';
+                                    e.currentTarget.style.fontWeight = 'bold';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                    e.currentTarget.style.color = '';
+                                    e.currentTarget.style.fontWeight = 'normal';
+                                  }}
+
+                                >
+                                  <i className="icofont-eye me-1"></i>
+                                  <small>View</small>
+                                </div>
+                              </div>
+
+
                             </td>
                             <td>
                               <button
@@ -1299,12 +1342,41 @@ const ViewSearchEmployee = () => {
                                 onChange={(e) => handleDocumentChange(index, "filePath", e.target.files[0])}
                                 accept=".pdf,.jpg,.jpeg,.png"
                               />
-                              {row.filePath && typeof row.filePath === "string" && (
-                                <small className="text-muted mr-2">Current file: {row.filePath.split('/').pop().replace(/^\d+_/, '')}</small>
-                              )}
-                              <i onClick={() => handleViewDocument(row.filePath)} className="icofont-eye"></i>
+
+
+                              <div className="d-flex align-items-center mt-1">
+                                {row.filePath && typeof row.filePath === "string" && (
+                                  <small className="text-muted mr-2">Current file: {row.filePath.split('/').pop().replace(/^\d+_/, '')}</small>
+                                )}
+                                <div
+                                  onClick={() => handleViewDocument(row.filePath)}
+                                  className="text-success d-flex align-items-center ms-2"
+                                  style={{ cursor: 'pointer' }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = '#0f8c75';
+                                    e.currentTarget.style.fontWeight = 'bold';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                    e.currentTarget.style.color = '';
+                                    e.currentTarget.style.fontWeight = 'normal';
+                                  }}
+
+                                >
+                                  <i onClick={() => handleViewDocument(row.filePath)} className="icofont-eye"></i>
+
+                                  <small>View</small>
+                                </div>
+                              </div>
+
+                              
 
                             </td>
+
+
+
+
+
                             <td>
                               <button type="button" className="btn btn-danger" onClick={() => removeDocumentRow(index)}>
                                 <i className="icofont-close"></i>
@@ -1350,10 +1422,11 @@ const ViewSearchEmployee = () => {
             overflow: "auto"
           }}
         >
+
           <div className="modal-dialog modal-xl" role="document" style={{ zIndex: 100000 }}>
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Document Viewer</h5>
+            <div className="modal-content" style={{ backgroundColor: "#20c997", color: "white" }}>
+              <div className="modal-header" >
+                <h5 className="modal-title"  >Document Viewer</h5>
                 <button type="button" className="close" onClick={() => setShowDocModal(false)}>
                   <span>&times;</span>
                 </button>
