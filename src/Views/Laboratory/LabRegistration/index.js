@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useRef, useEffect } from "react"
 import placeholderImage from "../../../assets/images/placeholder.jpg"
 import { getRequest } from "../../../service/apiService"
@@ -33,6 +31,21 @@ const LabRegistration = () => {
   const [nokStateData, setNokStateData] = useState([])
   const [districtData, setDistrictData] = useState([])
   const [nokDistrictData, setNokDistrictData] = useState([])
+  const [activeRowIndex, setActiveRowIndex] = useState(null)
+
+  // Sample investigation/package items for dropdown
+  const investigationItems = [
+    { id: 1, name: "Complete Blood Count", price: 500 },
+    { id: 2, name: "Liver Function Test", price: 800 },
+    { id: 3, name: "Thyroid Profile", price: 1200 },
+    { id: 4, name: "Kidney Function Test", price: 900 },
+    { id: 5, name: "Lipid Profile", price: 700 },
+    { id: 6, name: "Blood Glucose", price: 300 },
+    { id: 7, name: "Hemoglobin A1C", price: 650 },
+    { id: 8, name: "Urine Analysis", price: 350 },
+    { id: 9, name: "Chest X-Ray", price: 1000 },
+    { id: 10, name: "ECG", price: 500 }
+  ]
 
   // Form data state
   const [formData, setFormData] = useState({
@@ -1231,13 +1244,62 @@ const LabRegistration = () => {
                     {formData.rows.map((row, index) => (
                       <tr key={index}>
                         <td>
-                          <input
-                            type="text"
-                            className="form-control"
-                            value={row.name}
-                            placeholder={formData.type === "investigation" ? "Investigation Name" : "Package Name"}
-                            onChange={(e) => handleRowChange(index, "name", e.target.value)}
-                          />
+                          <div className="dropdown-search-container position-relative">
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={row.name}
+                              autoComplete="off"
+                              placeholder={formData.type === "investigation" ? "Investigation Name" : "Package Name"}
+                              onChange={(e) => {
+                                handleRowChange(index, "name", e.target.value)
+                                if (e.target.value.trim() !== "") {
+                                  setActiveRowIndex(index)
+                                } else {
+                                  setActiveRowIndex(null)
+                                }
+                              }}
+                              onFocus={() => {
+                                if (row.name.trim() !== "") {
+                                  setActiveRowIndex(index)
+                                }
+                              }}
+                              onBlur={() => setTimeout(() => setActiveRowIndex(null), 200)}
+                            />
+                            {activeRowIndex === index && row.name.trim() !== "" && (
+                              <ul
+                                className="list-group position-absolute w-100 mt-1"
+                                style={{
+                                  zIndex: 1000,
+                                  maxHeight: '200px',
+                                  overflowY: 'auto',
+                                  backgroundColor: '#fff',
+                                  border: '1px solid #ccc',
+                                }}
+                              >
+                                {investigationItems
+                                  .filter(item => 
+                                    item.name.toLowerCase().includes(row.name.toLowerCase()) ||
+                                    item.id.toString().includes(row.name)
+                                  )
+                                  .map((item, i) => (
+                                    <li
+                                      key={i}
+                                      className="list-group-item list-group-item-action"
+                                      style={{ backgroundColor: '#e3e8e6', cursor: 'pointer' }}
+                                      onClick={() => {
+                                        handleRowChange(index, "name", item.name)
+                                        handleRowChange(index, "itemId", item.id)
+                                        handleRowChange(index, "originalAmount", item.price)
+                                        setActiveRowIndex(null)
+                                      }}
+                                    >
+                                      {item.name} - ₹{item.price}
+                                    </li>
+                                  ))}
+                              </ul>
+                            )}
+                          </div>
                         </td>
                         <td>
                           <input
