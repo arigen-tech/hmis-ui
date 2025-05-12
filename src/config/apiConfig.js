@@ -6,6 +6,63 @@ export const API_HOST = 'http://localhost:8080';
 
 
 
+export const MASTERS = "/master";
+
+export const MAS_APPLICATION = `${MASTERS}/mas-applications`;
+export const MAS_BLOODGROUP = `${MASTERS}/blood-group`;
+export const MAS_COUNTRY = `${MASTERS}/country`;
+export const MAS_STATE = `${MASTERS}/state`;
+export const MAS_DISTRICT = `${MASTERS}/district`;
+export const MAS_DEPARTMENT = `${MASTERS}/department`;
+export const MAS_DEPARTMENT_TYPE = `${MASTERS}/department-type`;
+export const MAS_GENDER = `${MASTERS}/gender`;
+export const MAS_MARITAL_STATUS = `${MASTERS}/marital-status`;
+export const MAS_ROLES = `${MASTERS}/roles`;
+export const MAS_RELIGION = `${MASTERS}/religion`;
+export const MAS_RELATION = `${MASTERS}/relation`;
+export const MAS_DG_SAMPLE = `${MASTERS}/dg-mas-sample`;
+export const MAS_DG_UOM = `${MASTERS}/dgUom`;
+export const MAS_FREQUENCY = `${MASTERS}/masFrequency`;
+export const MAS_IDENTIFICATION_TYPE = `${MASTERS}/identification-types`;
+export const MAS_ITEM_TYPE = `${MASTERS}/masItemType`;
+export const MAS_MAIN_CHARGE_CODE = `${MASTERS}/main-charge-code`;
+export const MAS_TEMPLATE = `${MASTERS}/mas-templates`;
+export const MAS_OPD_SESSION = `${MASTERS}/opd-session`;
+export const MAS_STORE_UNIT = `${MASTERS}/store-unit`;
+export const MAS_STORE_GROUP = `${MASTERS}/masStoreGroup`;
+export const MAS_SUB_CHARGE_CODE = `${MASTERS}/sub-charge-code`;
+export const MAS_USER_TYPE = `${MASTERS}/userType`;
+export const MAS_USER_DEPARTMENT = `${MASTERS}/user-departments`;
+export const MAS_HOSPITAL = `${MASTERS}/hospital`;
+export const MAS_EMPLOYMENT_TYPE = `${MASTERS}/employmentType`;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 export const DEPARTMENT ="/department";
 export const ALL_DEPARTMENT ="/department/getAllDepartments";
 export const DOCTOR ="/users";
