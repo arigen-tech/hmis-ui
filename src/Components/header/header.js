@@ -12,7 +12,7 @@ const Header = () => {
   const navigate = useNavigate();
   const [imageSrc, setImageSrc] = useState(null);
 
-
+console.log("Current User:", currentUserData);
 
   useEffect(() => {
     fetchCurrentUserData();
@@ -298,12 +298,13 @@ const Header = () => {
                       </a>
                       <a
                         onClick={logout}
-                        className="list-group-item list-group-item-action border-0"
+                        className="list-group-item list-group-item-action border-0 logout-link"
                         role="button"
                       >
                         <i className="icofont-logout fs-6 me-3" />
                         Signout
                       </a>
+
 
                       <div>
                         <hr className="dropdown-divider border-dark" />

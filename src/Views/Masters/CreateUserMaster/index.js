@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { EMPLOYEE_TYPE, DEPARTMENT, API_HOST } from "../../../config/apiConfig";
+import { MAS_USER_TYPE, MAS_ROLES, MAS_DEPARTMENT, API_HOST, MAS_USER_DEPARTMENT } from "../../../config/apiConfig";
+import LoadingScreen from "../../../Components/Loading/index";
+
 
 
 const Createusermaster = () => {
@@ -66,7 +68,7 @@ const Createusermaster = () => {
     const fetchAllRolesData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`/roles/getAllRoles/1`);
+            const data = await getRequest(`${MAS_ROLES}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 const allRoles = data.response.filter(role => role.status === 'y');
                 setAllRolesData(allRoles);
@@ -111,7 +113,7 @@ const Createusermaster = () => {
     const fetchEmployeeTypeData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${EMPLOYEE_TYPE}/getAllUserType/1`);
+            const data = await getRequest(`${MAS_USER_TYPE}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setEmployeeTypeData(data.response);
             } else {
@@ -129,8 +131,8 @@ const Createusermaster = () => {
         setLoading(true);
         try {
             const [userDeptRes, allDeptRes] = await Promise.all([
-                getRequest(`${DEPARTMENT}/userDepartmentsByUser/${formData.userId}`),
-                getRequest(`${DEPARTMENT}/getAllDepartments/1`)
+                getRequest(`${MAS_DEPARTMENT}/getUserDepartmentsByUserId/${formData.userId}`),
+                getRequest(`${MAS_DEPARTMENT}/getAll/1`)
             ]);
 
             if (
@@ -218,7 +220,7 @@ const Createusermaster = () => {
                 await putRequest(`/authController/updateRoles/${userId}?roles=${roleIds}`, {});
             }
             if (departmentsChanged) {
-                await putRequest(`/user-departments/addOrUpdateUserDept`, departmentPayload);
+                await putRequest(`${MAS_USER_DEPARTMENT}/addOrUpdateUserDept`, departmentPayload);
             }
 
             if (rolesChanged || departmentsChanged) {
@@ -795,7 +797,12 @@ const Createusermaster = () => {
                                 />
                             )}
 
+
+
                         </div>
+                        {loading && (
+                            <LoadingScreen />
+                        )}
                     </div>
                 </div>
             </div>

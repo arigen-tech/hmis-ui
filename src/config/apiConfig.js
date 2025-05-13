@@ -36,7 +36,7 @@ export const MAS_USER_DEPARTMENT = `${MASTERS}/user-departments`;
 export const MAS_HOSPITAL = `${MASTERS}/hospital`;
 export const MAS_EMPLOYMENT_TYPE = `${MASTERS}/employmentType`;
 
-
+export const FILTER_OPD_DEPT="OPD";
 
 
 

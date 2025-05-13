@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import {
-    DEPARTMENT,
+    MAS_DEPARTMENT,
     EMPLOYEE_REGISTRATION,
 } from "../../../config/apiConfig";
 import { getRequest, putRequest } from "../../../service/apiService";
@@ -31,7 +31,7 @@ const Approveemployee = () => {
     const fetchDepartmentData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${DEPARTMENT}/getAllDepartments/1`);
+            const data = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setDepartmentData(data.response);
             } else {

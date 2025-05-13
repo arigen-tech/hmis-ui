@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import placeholderImage from "../../../../assets/images/placeholder.jpg";
-import { COUNTRYAPI, DISTRICTAPI, STATEAPI, DEPARTMENT, GENDERAPI, ALL_ROLE, IDENTITY_TYPE, API_HOST, EMPLOYMENT_TYPE, EMPLOYEE_TYPE, EMPLOYEE_REGISTRATION } from "../../../../config/apiConfig";
+import { MAS_COUNTRY, MAS_DISTRICT, MAS_STATE, MAS_GENDER, MAS_ROLES, MAS_IDENTIFICATION_TYPE, API_HOST, MAS_EMPLOYMENT_TYPE, MAS_USER_TYPE, EMPLOYEE_REGISTRATION } from "../../../../config/apiConfig";
 import { getRequest, putRequest, postRequestWithFormData, getImageRequest } from "../../../../service/apiService";
 import Popup from "../../../../Components/popup";
 import LoadingScreen from "../../../../Components/Loading";
@@ -108,7 +108,7 @@ const ViewSearchEmployee = () => {
   const fetchCountryData = async () => {
     setLoading(true);
     try {
-      const data = await getRequest(`${COUNTRYAPI}/getAllCountries/1`);
+      const data = await getRequest(`${MAS_COUNTRY}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setCountryData(data.response);
       } else {
@@ -125,7 +125,7 @@ const ViewSearchEmployee = () => {
   const fetchStateData = async (countryIds) => {
     setLoading(true);
     try {
-      const GET_STATES = `${STATEAPI}/country/${countryIds}`;
+      const GET_STATES = `${MAS_STATE}/getByCountryId/${countryIds}`;
       const data = await getRequest(GET_STATES);
       if (data.status === 200 && Array.isArray(data.response)) {
         setStateData(data.response);
@@ -143,7 +143,7 @@ const ViewSearchEmployee = () => {
   const fetchDistrictData = async (stateIds) => {
     setLoading(true);
     try {
-      const GET_CITIES = `${DISTRICTAPI}/state/${stateIds}`;
+      const GET_CITIES = `${MAS_DISTRICT}/getByState/${stateIds}`;
       const data = await getRequest(GET_CITIES);
       if (data.status === 200 && Array.isArray(data.response)) {
         setDistrictData(data.response);
@@ -161,7 +161,7 @@ const ViewSearchEmployee = () => {
   const fetchGenderData = async () => {
     setLoading(true);
     try {
-      const data = await getRequest(`${GENDERAPI}/getAll/1`);
+      const data = await getRequest(`${MAS_GENDER}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setGenderData(data.response);
       } else {
@@ -178,7 +178,7 @@ const ViewSearchEmployee = () => {
   const fetchIdTypeData = async () => {
     setLoading(true);
     try {
-      const data = await getRequest(`${IDENTITY_TYPE}/getAllIdentificationTypes/1`);
+      const data = await getRequest(`${MAS_IDENTIFICATION_TYPE}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setIdTypeData(data.response);
       } else {
@@ -195,7 +195,7 @@ const ViewSearchEmployee = () => {
   const fetchEmployeeTypeData = async () => {
     setLoading(true);
     try {
-      const data = await getRequest(`${EMPLOYEE_TYPE}/getAllUserType/1`);
+      const data = await getRequest(`${MAS_USER_TYPE}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setEmployeeTypeData(data.response);
       } else {
@@ -212,7 +212,7 @@ const ViewSearchEmployee = () => {
   const fetchEmploymentTypeData = async () => {
     setLoading(true);
     try {
-      const data = await getRequest(`${EMPLOYMENT_TYPE}/getAllEmploymentType/1`);
+      const data = await getRequest(`${MAS_EMPLOYMENT_TYPE}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setEmploymentTypeData(data.response);
       } else {
@@ -229,7 +229,7 @@ const ViewSearchEmployee = () => {
   const fetchRoleData = async () => {
     setLoading(true);
     try {
-      const data = await getRequest(`${ALL_ROLE}/1`);
+      const data = await getRequest(`${MAS_ROLES}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setRoleData(data.response);
       } else {
@@ -666,7 +666,7 @@ const ViewSearchEmployee = () => {
     console.log("Form data to send:", formDataToSend);
     setLoading(true);
     try {
-      const response = await fetch(`${API_HOST}/api/employee/employee/${empUpdateId}`, {
+      const response = await fetch(`${API_HOST}/${EMPLOYEE_REGISTRATION}/employee/${empUpdateId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1261,27 +1261,31 @@ const ViewSearchEmployee = () => {
 
 
                               <div className="d-flex align-items-center mt-1">
-                                {row.filePath && typeof row.filePath === "string" && (
-                                  <small className="text-muted">Current file: {row.filePath.split('/').pop().replace(/^\d+_/, '')}</small>
-                                )}
-                                <div
-                                  onClick={() => handleViewDocument(row.filePath)}
-                                  className="text-success d-flex align-items-center ms-2"
-                                  style={{ cursor: 'pointer' }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.color = '#0f8c75';
-                                    e.currentTarget.style.fontWeight = 'bold';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                    e.currentTarget.style.color = '';
-                                    e.currentTarget.style.fontWeight = 'normal';
-                                  }}
 
-                                >
-                                  <i className="icofont-eye me-1"></i>
-                                  <small>View</small>
-                                </div>
+                                {row.filePath && typeof row.filePath === "string" && (
+                                  <>
+                                    <small className="text-muted">Current file: {row.filePath.split('/').pop().replace(/^\d+_/, '')}</small>
+                                    <div
+                                      onClick={() => handleViewDocument(row.filePath)}
+                                      className="text-success d-flex align-items-center ms-2"
+                                      style={{ cursor: 'pointer' }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.color = '#0f8c75';
+                                        e.currentTarget.style.fontWeight = 'bold';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                        e.currentTarget.style.color = '';
+                                        e.currentTarget.style.fontWeight = 'normal';
+                                      }}
+
+                                    >
+                                      <i className="icofont-eye me-1"></i>
+                                      <small>View</small>
+                                    </div>
+                                  </>
+                                )}
+
                               </div>
 
 
@@ -1346,30 +1350,34 @@ const ViewSearchEmployee = () => {
 
                               <div className="d-flex align-items-center mt-1">
                                 {row.filePath && typeof row.filePath === "string" && (
-                                  <small className="text-muted mr-2">Current file: {row.filePath.split('/').pop().replace(/^\d+_/, '')}</small>
+                                  <>
+                                    <small className="text-muted mr-2">Current file: {row.filePath.split('/').pop().replace(/^\d+_/, '')}</small>
+
+                                    <div
+                                      onClick={() => handleViewDocument(row.filePath)}
+                                      className="text-success d-flex align-items-center ms-2"
+                                      style={{ cursor: 'pointer' }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.color = '#0f8c75';
+                                        e.currentTarget.style.fontWeight = 'bold';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                        e.currentTarget.style.color = '';
+                                        e.currentTarget.style.fontWeight = 'normal';
+                                      }}
+
+                                    >
+                                      <i onClick={() => handleViewDocument(row.filePath)} className="icofont-eye"></i>
+
+                                      <small>View</small>
+                                    </div>
+                                  </>
                                 )}
-                                <div
-                                  onClick={() => handleViewDocument(row.filePath)}
-                                  className="text-success d-flex align-items-center ms-2"
-                                  style={{ cursor: 'pointer' }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.color = '#0f8c75';
-                                    e.currentTarget.style.fontWeight = 'bold';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                    e.currentTarget.style.color = '';
-                                    e.currentTarget.style.fontWeight = 'normal';
-                                  }}
 
-                                >
-                                  <i onClick={() => handleViewDocument(row.filePath)} className="icofont-eye"></i>
-
-                                  <small>View</small>
-                                </div>
                               </div>
 
-                              
+
 
                             </td>
 

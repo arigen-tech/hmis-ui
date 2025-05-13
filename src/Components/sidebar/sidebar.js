@@ -7,10 +7,10 @@ const iconMap = {
   "OPD": "icofont-hospital",
   "OPD Waiting List": "icofont-waiter",
   "Opd Preconsultation": "icofont-doctor",
-  
+
   "Master": "icofont-gear",
   "Department Master": "icofont-building",
-  "Religion master": "icofont-book",  
+  "Religion master": "icofont-book",
   "Gender Master": "icofont-user",
   "Relation Master": "icofont-users-alt-2",
   "Blood Group Master": "icofont-blood-drop",
@@ -36,7 +36,7 @@ const iconMap = {
 
   "ADMIN": "icofont-lock",
   "Manage User Application": "icofont-ui-user-group",
-  "Add Form Reports": "icofont-file-document", 
+  "Add Form Reports": "icofont-file-document",
   "Assign Application": "icofont-paper",
   "Roles Rights": "icofont-users-alt-4",
   "Appointment Setup": "icofont-ui-calendar",
@@ -127,7 +127,8 @@ const Sidebar = () => {
               >
                 <i className={`${getIconClass(item.name)} fs-5`} />
                 <span>{item.name}</span>
-                <span className="arrow icofont-rounded-down ms-auto text-end fs-5" />
+                <span className={`arrow icofont-rounded-down ms-auto text-end fs-5 ${hasChildren ? 'collapse-arrow' : ''}`} data-bs-toggle="collapse" />
+
               </Link>
               <ul className="sub-menu collapse" id={collapseId}>
                 {renderMenuItems(item.children, level + 1, `${parentId}-${index}`)}
@@ -158,7 +159,16 @@ const Sidebar = () => {
         </Link>
 
         <ul className="menu-list flex-grow-1 mt-3">
-          {loading ? <li>Loading...</li> : renderMenuItems(menuData)}
+          {loading
+            ? Array.from({ length: 6 }).map((_, i) => (
+              <li key={i} className="d-flex align-items-center mb-3">
+                <div className="skeleton-icon bg-custom me-3 rounded-circle"></div>
+                <div className="skeleton-text bg-custom rounded w-75"></div>
+              </li>
+            ))
+            : renderMenuItems(menuData)}
+
+
         </ul>
 
         <button type="button" className="btn btn-link sidebar-mini-btn text-light">
