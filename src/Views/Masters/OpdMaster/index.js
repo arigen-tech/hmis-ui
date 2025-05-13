@@ -1,8 +1,7 @@
 
-
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
-import { GET_SESSION, OPD_SESSION } from "../../../config/apiConfig"
+import { MAS_OPD_SESSION } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
@@ -34,7 +33,7 @@ const OpdSessionMaster = () => {
   const fetchOpdSessionData = async (flag = 0) => {
     try {
       setLoading(true)
-      const response = await getRequest(`${GET_SESSION}${flag}`)
+      const response = await getRequest(`${MAS_OPD_SESSION}/getAll${flag}`)
       if (response && response.response) {
         setOpdSessionData(response.response)
       }
@@ -70,7 +69,7 @@ const OpdSessionMaster = () => {
 
   const handleEdit = (session) => {
     setEditingSession(session)
-    // Keep the full time format HH:MM:SS for editing
+   
     setFormData({
       sessionName: session.sessionName,
       fromTime: session.fromTime,
@@ -108,7 +107,7 @@ const OpdSessionMaster = () => {
 
       if (editingSession) {
         // Update existing OPD session
-        const response = await putRequest(`${OPD_SESSION}/update/${editingSession.id}`, {
+        const response = await putRequest(`${MAS_OPD_SESSION}/updateById/${editingSession.id}`, {
           sessionName: formData.sessionName,
           fromTime: formData.fromTime,
           endTime: formData.endTime,
@@ -121,7 +120,7 @@ const OpdSessionMaster = () => {
         }
       } else {
         // Add new OPD session
-        const response = await postRequest(`${OPD_SESSION}/add`, {
+        const response = await postRequest(`${MAS_OPD_SESSION}/create`, {
           sessionName: formData.sessionName,
           fromTime: formData.fromTime,
           endTime: formData.endTime,
@@ -165,7 +164,7 @@ const OpdSessionMaster = () => {
       try {
         setLoading(true)
         const response = await putRequest(
-          `${OPD_SESSION}/status/${confirmDialog.sessionId}?status=${confirmDialog.newStatus}`,
+          `${MAS_OPD_SESSION}/status/${confirmDialog.sessionId}?status=${confirmDialog.newStatus}`,
         )
         if (response && response.status === 200) {
           setOpdSessionData((prevData) =>

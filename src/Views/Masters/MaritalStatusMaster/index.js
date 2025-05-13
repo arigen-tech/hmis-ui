@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import axios from "axios";
-import { API_HOST,ALL_MARITAL_STATUS,MARITAL_STATUS } from "../../../config/apiConfig";
+import { MAS_MARITAL_STATUS } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 const MaritalStatusMaster = () => {
   const [maritalStatusData, setMaritalStatusData] = useState([]);
@@ -34,7 +34,7 @@ const [pageInput, setPageInput] = useState(1);
   const fetchMaritalStatusData = async (flag = 0) => {
     try {
       setLoading(true);
-      const response = await getRequest(`${ALL_MARITAL_STATUS}/${flag}`);
+      const response = await getRequest(`${MAS_MARITAL_STATUS}/getAll/${flag}`);
   
       if (response && response.response) {
         setMaritalStatusData(response.response);
@@ -50,7 +50,7 @@ const [pageInput, setPageInput] = useState(1);
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1);  
   };
 
   // Add null check when filtering
@@ -94,7 +94,7 @@ const [pageInput, setPageInput] = useState(1);
 
       if (editingStatus) {
         // Update existing marital status
-        const response = await putRequest(`${MARITAL_STATUS}/edit/${editingStatus.id}`, {
+        const response = await putRequest(`${MAS_MARITAL_STATUS}/updateById/${editingStatus.id}`, {
           id: editingStatus.id,
           name: formData.name,
           status: editingStatus.status,
@@ -110,7 +110,7 @@ const [pageInput, setPageInput] = useState(1);
         }
       } else {
         // Add new marital status
-        const response = await postRequest(`${MARITAL_STATUS}/create`, {
+        const response = await postRequest(`${MAS_MARITAL_STATUS}/create`, {
           name: formData.name,
           status: "y",
         });
@@ -152,7 +152,7 @@ const [pageInput, setPageInput] = useState(1);
       try {
         setLoading(true);
         const response = await putRequest(
-          `${MARITAL_STATUS}/status/${confirmDialog.maritalStatusId}?status=${confirmDialog.newStatus}`
+          `${MAS_MARITAL_STATUS}/status/${confirmDialog.maritalStatusId}?status=${confirmDialog.newStatus}`
         );
 
         if (response && response.response) {

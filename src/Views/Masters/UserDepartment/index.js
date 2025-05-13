@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import axios from "axios";
-import { API_HOST,ALL_DEPARTMENT,USER_DEPARTMENT,ALL_USER_DEPARTMENT } from "../../../config/apiConfig";
+import { API_HOST,MAS_DEPARTMENT,MAS_USER_DEPARTMENT } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
 
@@ -45,7 +45,7 @@ const Userdepartment = () => {
     const fetchUserDepartmentData = async () => {
         try {
             setLoading(true);
-            const response = await getRequest(`${ALL_USER_DEPARTMENT}`);
+            const response = await getRequest(`${MAS_USER_DEPARTMENT}/getAll`);
 
             if (response && response.response) {
                 const transformedData = response.response.map(userDept => ({
@@ -95,7 +95,7 @@ const Userdepartment = () => {
     const fetchDepartments = async (flag = 1) => {
         try {
             setLoading(true);
-            const response = await getRequest(`${ALL_DEPARTMENT}/${flag}`);
+            const response = await getRequest(`${MAS_DEPARTMENT}/getAll/${flag}`);
 
             if (response && response.response) {
                 setDepartments(response.response);
@@ -160,7 +160,7 @@ const Userdepartment = () => {
                 }
 
                
-                const response = await putRequest(`${USER_DEPARTMENT}/edit/${editingDepartment.id}`, {
+                const response = await putRequest(`${MAS_USER_DEPARTMENT}/updateById/${editingDepartment.id}`, {
                     id: editingDepartment.id,
                     userId: formData.userId,
                     departmentId: formData.departmentId,
@@ -186,7 +186,7 @@ const Userdepartment = () => {
                 }
 
                 
-                const response = await postRequest(`${USER_DEPARTMENT}/create`, {
+                const response = await postRequest(`${MAS_USER_DEPARTMENT}/create`, {
                     userId: formData.userId,
                     departmentId: formData.departmentId,
                 });

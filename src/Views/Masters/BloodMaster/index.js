@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST,BLOOD_GROUPS,ALL_BLOODGROUPS } from "../../../config/apiConfig";
+import { API_HOST,MAS_BLOODGROUP } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
 const BloodGroupMaster = () => {
   const [bloodGroups, setBloodGroups] = useState([]);
@@ -32,26 +33,21 @@ const BloodGroupMaster = () => {
     fetchBloodGroups(0);
   }, []);
 
-  const fetchBloodGroups = async (flag = 0) => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`${API_HOST}${ALL_BLOODGROUPS}/${flag}`);
-
-      console.log("API Response:", response.data);
-
-      if (response.data && response.data.response) {
-        console.log("First blood group in response:", response.data.response[0]);
-        setBloodGroups(response.data.response);
-        setTotalFilteredProducts(response.data.response.length);
-        setFilteredTotalPages(Math.ceil(response.data.response.length / itemsPerPage));
-      }
-    } catch (err) {
-      console.error("Error fetching blood groups:", err);
-      showPopup("Failed to load blood groups", "error");
-    } finally {
-      setLoading(false);
+ const fetchBloodGroups = async (flag = 0) => {
+  try {
+    setLoading(true);
+    const response = await getRequest(`${MAS_BLOODGROUP}/getAll/${flag}`);
+    
+    if (response && response.response) {
+      setBloodGroups(response.response);
     }
-  };
+  } catch (err) {
+    console.error("Error fetching blood groups data:", err);
+    showPopup("Failed to load blood groups data", "error");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -101,30 +97,30 @@ const BloodGroupMaster = () => {
 
       if (editingBloodGroup) {
         
-        const response = await axios.put(`${API_HOST}${BLOOD_GROUPS}/update/${editingBloodGroup.bloodGroupId}`, {
+        const response = await putRequest(`${MAS_BLOODGROUP}/updateById/${editingBloodGroup.bloodGroupId}`, {
           bloodGroupCode: formData.bloodGroupCode,
           bloodGroupName: formData.bloodGroupName,
           status: editingBloodGroup.status,
         });
 
-        if (response.data && response.data.response) {
+        if (response && response.response) {
           setBloodGroups((prevData) =>
             prevData.map((group) =>
-              group.bloodGroupId === editingBloodGroup.bloodGroupId ? response.data.response : group
+              group.bloodGroupId === editingBloodGroup.bloodGroupId ? response.response : group
             )
           );
           showPopup("Blood group updated successfully!", "success");
         }
       } else {
         
-        const response = await axios.post(`${API_HOST}${BLOOD_GROUPS}/add`, {
+        const response = await postRequest(`${MAS_BLOODGROUP}/create`, {
           bloodGroupCode: formData.bloodGroupCode,
           bloodGroupName: formData.bloodGroupName,
           status: "y",
         });
 
-        if (response.data && response.data.response) {
-          setBloodGroups([...bloodGroups, response.data.response]);
+        if (response && response.response) {
+          setBloodGroups([...bloodGroups, response.response]);
           showPopup("New blood group added successfully!", "success");
         }
       }
@@ -170,46 +166,50 @@ const BloodGroupMaster = () => {
   };
 
   
-  const handleConfirm = async (confirmed) => {
-    console.log("Confirm dialog state:", confirmDialog); 
+ const handleConfirm = async (confirmed) => {
+  console.log("Confirm dialog state:", confirmDialog);
 
-    if (confirmed && confirmDialog.bloodGroupId) {
-      try {
-        setLoading(true);
-        console.log("Making API call with ID:", confirmDialog.bloodGroupId, "Status:", confirmDialog.newStatus);
+  if (confirmed && confirmDialog.bloodGroupId !== null) {
+    try {
+      setLoading(true);
+      console.log("Making API call with ID:", confirmDialog.bloodGroupId, "Status:", confirmDialog.newStatus);
 
-       
-        const response = await axios.put(
-          `${API_HOST}${BLOOD_GROUPS}/status/${confirmDialog.bloodGroupId}`,
-          {},
-          { params: { status: confirmDialog.newStatus } }
+      // API call to update status
+      const response = await putRequest(
+        `${MAS_BLOODGROUP}/status/${confirmDialog.bloodGroupId}?status=${confirmDialog.newStatus}`
+      );
+
+      console.log("API response:", response);
+
+      if (response &&  response.response) {
+        // Update local state to reflect the change
+        setBloodGroups((prevData) =>
+          prevData.map((group) =>
+            group.bloodGroupId === confirmDialog.bloodGroupId
+              ? { ...group, status: confirmDialog.newStatus }
+              : group
+          )
         );
-
-        if (response.data && response.data.response) {
-          
-          setBloodGroups((prevData) =>
-            prevData.map((group) =>
-              group.bloodGroupId === confirmDialog.bloodGroupId
-                ? { ...group, status: confirmDialog.newStatus }
-                : group
-            )
-          );
-          showPopup(
-            `Blood group ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success"
-          );
-        }
-      } catch (err) {
-        console.error("Error updating blood group status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
-      } finally {
-        setLoading(false);
+        
+        // Show success message
+        showPopup(
+          `Blood group ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+          "success"
+        );
+      } else {
+        throw new Error("Invalid response structure");
       }
+    } catch (err) {
+      console.error("Error updating blood group status:", err);
+      showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+    } finally {
+      setLoading(false);
     }
+  }
 
-    
-    setConfirmDialog({ isOpen: false, bloodGroupId: null, newStatus: null });
-  };
+  // Reset confirmation dialog state
+  setConfirmDialog({ isOpen: false, bloodGroupId: null, newStatus: null });
+};
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;

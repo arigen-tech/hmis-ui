@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST, DEPARTMENT, ALL_DEPARTMENT, ALL_DEPARTMENT_TYPE } from "../../../config/apiConfig";
+import { API_HOST, MAS_DEPARTMENT, MAS_DEPARTMENT_TYPE } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
 const DepartmentMaster = () => {
     const [departments, setDepartments] = useState([]);
@@ -40,9 +41,9 @@ const DepartmentMaster = () => {
     const fetchDepartments = async (flag = 0) => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_HOST}${ALL_DEPARTMENT}/${flag}`);
-            if (response.data && response.data.response) {
-                setDepartments(response.data.response);
+            const response = await getRequest(`${MAS_DEPARTMENT}/getAll/${flag}`);
+            if (response && response.response) {
+                setDepartments(response.response);
             }
         } catch (err) {
             console.error("Error fetching departments:", err);
@@ -54,9 +55,9 @@ const DepartmentMaster = () => {
 
     const fetchDepartmentTypes = async (flag = 1) => {
         try {
-            const response = await axios.get(`${API_HOST}${ALL_DEPARTMENT_TYPE}/${flag}`);
-            if (response.data && response.data.response) {
-                setDepartmentTypes(response.data.response);
+            const response = await getRequest(`${MAS_DEPARTMENT_TYPE}/getAll/${flag}`);
+            if (response && response.response) {
+                setDepartmentTypes(response.response);
             }
         } catch (err) {
             console.error("Error fetching department types:", err);
@@ -213,7 +214,7 @@ const DepartmentMaster = () => {
                 // Update existing department
 
                 console.log("form formdata", formData.departmentTypeId);
-                const response = await axios.put(`${API_HOST}${DEPARTMENT}/edit/${editingDepartment.id}`, {
+                const response = await putRequest(`${MAS_DEPARTMENT}/updateById/${editingDepartment.id}`, {
                     departmentCode: formData.departmentCode,
                     departmentName: formData.departmentName,
                     departmentTypeId: formData.departmentTypeId,
@@ -221,7 +222,7 @@ const DepartmentMaster = () => {
                     status: editingDepartment.status,
                 });
 
-                if (response.data && response.data.response) {
+                if (response && response.response) {
                     setDepartments((prevData) =>
                         prevData.map((dept) =>
                             dept.id === editingDepartment.id ? response.data.response : dept
@@ -231,7 +232,7 @@ const DepartmentMaster = () => {
                 }
             } else {
                 // Add new department
-                const response = await axios.post(`${API_HOST}${DEPARTMENT}/add`, {
+                const response = await postRequest(`${MAS_DEPARTMENT}/create`, {
                     departmentCode: formData.departmentCode,
                     departmentName: formData.departmentName,
                     departmentTypeId: formData.departmentTypeId,
@@ -239,8 +240,8 @@ const DepartmentMaster = () => {
                     status: "y",
                 });
 
-                if (response.data && response.data.response) {
-                    setDepartments([...departments, response.data.response]);
+                if (response && response.response) {
+                    setDepartments([...departments, response.response]);
                     showPopup("New department added successfully!", "success");
                 }
             }
@@ -277,11 +278,11 @@ const DepartmentMaster = () => {
             try {
                 setLoading(true);
                 const status = confirmDialog.newStatus;
-                const response = await axios.put(
-                    `${API_HOST}${DEPARTMENT}/status/${confirmDialog.categoryId}?status=${status}`
+                const response = await putRequest(
+                    `${MAS_DEPARTMENT}/status/${confirmDialog.categoryId}?status=${status}`
                 );
 
-                if (response.data && response.data.status === 200) {
+                if (response && response.status === 200) {
                     setDepartments((prevData) =>
                         prevData.map((dept) =>
                             dept.id === confirmDialog.categoryId

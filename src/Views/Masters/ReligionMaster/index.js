@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST, ALL_RELIGION,RELIGION } from "../../../config/apiConfig";
+import { API_HOST, MAS_RELIGION } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
@@ -33,7 +33,7 @@ const Religionmaster = () => {
     const fetchReligionData = async (flag = 0) => {
         try {
             setLoading(true);
-            const response = await getRequest(`${ALL_RELIGION}/${flag}`);
+            const response = await getRequest(`${MAS_RELIGION}/getAll/${flag}`);
             if (response && response.response) {
                 
                 const mappedData = response.response.map(item => ({
@@ -110,7 +110,7 @@ const Religionmaster = () => {
     
             if (editingReligion) {
                 
-                const response = await putRequest(`${RELIGION}/update/${editingReligion.id}`, {
+                const response = await putRequest(`${MAS_RELIGION}/updateById/${editingReligion.id}`, {
                     name: formData.religionName,
                     status: editingReligion.status, 
                 });
@@ -122,7 +122,7 @@ const Religionmaster = () => {
                 }
             } else {
                 
-                const response = await postRequest(`${RELIGION}/add`, {
+                const response = await postRequest(`${MAS_RELIGION}/create`, {
                     name: formData.religionName,
                     status: "y", 
                 });
@@ -165,7 +165,7 @@ const Religionmaster = () => {
             try {
                 setLoading(true);
                 const response = await putRequest(
-                    `${RELIGION}/status/${confirmDialog.religionId}?status=${confirmDialog.newStatus}`
+                    `${MAS_RELIGION}/status/${confirmDialog.religionId}?status=${confirmDialog.newStatus}`
                 );
                 if (response && response.response) {
                     setReligionData((prevData) =>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
-import { ALL_APPLICATIONS, APPLICATION, ALL_USER_APPLICATION, USER_APPLICATION } from "../../../config/apiConfig"
+import { MAS_APPLICATION, ALL_USER_APPLICATION, USER_APPLICATION } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
@@ -70,7 +70,7 @@ const Addformreports = () => {
         const fetchParentIdOptions = async () => {
             try {
                 setLoading(true)
-                const response = await getRequest(`${APPLICATION}/getAllParents/1`)
+                const response = await getRequest(`${MAS_APPLICATION}/getAllParents/1`)
 
                 if (response && response.response) {
                     const parentOptions = response.response.map((item) => ({
@@ -100,7 +100,7 @@ const Addformreports = () => {
             if (isEditMode) {
                 try {
                     setLoading(true)
-                    const response = await getRequest(`${ALL_APPLICATIONS}/0`)
+                    const response = await getRequest(`${MAS_APPLICATION}/getAll/0`)
 
                     if (response && response.response) {
                         const appOptions = response.response.map((item) => {
@@ -263,7 +263,7 @@ const Addformreports = () => {
             setLoading(true)
 
            
-            const allApplicationsResponse = await getRequest(`${ALL_APPLICATIONS}/0`)
+            const allApplicationsResponse = await getRequest(`${MAS_APPLICATION}/getAll/0`)
 
             if (allApplicationsResponse && allApplicationsResponse.response) {
                 
@@ -300,7 +300,7 @@ const Addformreports = () => {
                 }
 
             const apiCall = isEditMode ? putRequest : postRequest
-            const endpoint = isEditMode ? `${APPLICATION}/edit/${formData.menuId}` : `${APPLICATION}/create`
+            const endpoint = isEditMode ? `${MAS_APPLICATION}/updateById/${formData.menuId}` : `${MAS_APPLICATION}/create`
 
             const response = await apiCall(endpoint, submitData)
 

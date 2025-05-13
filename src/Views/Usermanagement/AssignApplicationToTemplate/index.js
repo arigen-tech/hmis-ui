@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
-import { API_HOST, ALL_TEMPLATES, ASSIGN_TEMPLATES, APPLICATION } from "../../../config/apiConfig";
+import { API_HOST, MAS_TEMPLATE, ASSIGN_TEMPLATES, MAS_APPLICATION } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
 
 const Assignapplication = () => {
@@ -34,7 +34,7 @@ const Assignapplication = () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await getRequest(`${APPLICATION}/getAllParents/1`);
+            const response = await getRequest(`${MAS_APPLICATION}/getAllParents/1`);
 
             if (response && response.response) {
                
@@ -73,7 +73,7 @@ const Assignapplication = () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await getRequest(`${ALL_TEMPLATES}/${flag}`);
+            const response = await getRequest(`${MAS_TEMPLATE}/getAll/${flag}`);
 
             const templateList = response.response || [];
             const mappedTemplates = templateList.map(template => ({
@@ -167,7 +167,7 @@ const Assignapplication = () => {
 
         try {
             
-            const childResponse = await getRequest(`${APPLICATION}/getAllChildren/${selectedParentId}?templateId=${selectedTemplate || ''}`);
+            const childResponse = await getRequest(`${MAS_APPLICATION}/getAllChildren/${selectedParentId}?templateId=${selectedTemplate || ''}`);
 
             if (!childResponse?.response) {
                 throw new Error("Failed to fetch child applications");
@@ -481,7 +481,7 @@ const Assignapplication = () => {
             console.log("Final payload being sent to API:", payload);
     
             
-            const response = await postRequest(`${APPLICATION}/assignUpdateTemplate`, payload);
+            const response = await postRequest(`${MAS_APPLICATION}/assignUpdateTemplate`, payload);
             console.log("API response:", response);
     
             if (response) {

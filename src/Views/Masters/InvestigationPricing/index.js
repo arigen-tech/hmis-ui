@@ -101,92 +101,88 @@ const Investigationpricing = () => {
     }
 
     const handleSave = async (e) => {
-        e.preventDefault()
-        
-        // Check form validation again just to be safe
-        if (!formData.investigationId || !formData.fromDate || !formData.toDate || !formData.price) {
-            showPopup("Please fill in all required fields", "error")
-            return
-        }
-        
-        // Check date validation
-        if (new Date(formData.toDate) < new Date(formData.fromDate)) {
-            showPopup("To Date must be after From Date", "error")
-            return
-        }
-
-        try {
-            setLoading(true)
-
-            const requestData = {
-                investigationId: parseInt(formData.investigationId),
-                fromDt: formData.fromDate,
-                toDt: formData.toDate,
-                price: parseFloat(formData.price),
-            }
-
-            if (editingInvestigation) {
-                // Update existing price details
-                putRequest(`${INVESTIGATION_PRICE_DETAILS}/update/${editingInvestigation.id}`, requestData)
-                    .then(response => {
-                        if (response && response.status === 200) {
-                            showPopup("Investigation pricing updated successfully!", "success")
-                            fetchInvestigationPriceDetails() // Refresh the list
-                            setEditingInvestigation(null)
-                            setShowForm(false)
-                            setFormData({ investigationId: "", fromDate: "", toDate: "", price: "" })
-                        }else{
-                            showPopup(response.message, "error")
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Error updating investigation price:", error)
-                        showPopup(error.response.data.message, "error")
-
-                        // Handle duplicate date range error
-                        if (error.response && (error.response.status === 400 || error.response.status === 409)) {
-                            showPopup(error.response.data.message, "error")
-                        } else {
-                            showPopup(`Failed to update: ${error.response?.data?.message || error.message}`, "error")
-                        }
-                    })
-                    .finally(() => {
-                        setLoading(false)
-                    })
-            } else {
-                // Add new price details
-                postRequest(`${INVESTIGATION_PRICE_DETAILS}/add`, requestData)
-                    .then(response => {
-                        if (response && response.status === 200) {
-                            showPopup("New investigation pricing added successfully!", "success")
-                            fetchInvestigationPriceDetails() // Refresh the list
-                            setEditingInvestigation(null)
-                            setShowForm(false)
-                            setFormData({ investigationId: "", fromDate: "", toDate: "", price: "" })
-                        }else{
-                            showPopup(response.message, "error")
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Error adding investigation price:", error)
-                        
-                        // Handle duplicate date range error
-                        if (error.response && (error.response.status === 400 || error.response.status === 409)) {
-                            showPopup(error.response.data.message, "error")
-                        } else {
-                            showPopup(`Failed to add: ${error.response?.data?.message || error.message}`, "error")
-                        }
-                    })
-                    .finally(() => {
-                        setLoading(false)
-                    })
-            }
-        } catch (err) {
-            console.error("Error in save operation:", err)
-            showPopup(`Failed to process request: ${err.message}`, "error")
-            setLoading(false)
-        }
+    e.preventDefault()
+    
+    // Check form validation again just to be safe
+    if (!formData.investigationId || !formData.fromDate || !formData.toDate || !formData.price) {
+        showPopup("Please fill in all required fields", "error")
+        return
     }
+    
+    // Check date validation
+    if (new Date(formData.toDate) < new Date(formData.fromDate)) {
+        showPopup("To Date must be after From Date", "error")
+        return
+    }
+
+    try {
+        setLoading(true)
+
+        const requestData = {
+            investigationId: parseInt(formData.investigationId),
+            fromDt: formData.fromDate,
+            toDt: formData.toDate,
+            price: parseFloat(formData.price),
+        }
+
+        if (editingInvestigation) {
+            // Update existing price details
+            putRequest(`${INVESTIGATION_PRICE_DETAILS}/update/${editingInvestigation.id}`, requestData)
+                .then(response => {
+                    if (response && response.status === 200) {
+                        showPopup("Investigation pricing updated successfully!", "success")
+                        fetchInvestigationPriceDetails() // Refresh the list
+                        resetForm()
+                    } else {
+                        showPopup(response.message || "Error updating pricing", "error")
+                    }
+                })
+                .catch(error => {
+                    console.error("Error updating investigation price:", error)
+                    
+                    // Extract error message from response
+                    const errorMessage = error.response?.data?.message || error.message || "Unknown error occurred"
+                    showPopup(errorMessage, "error")
+                })
+                .finally(() => {
+                    setLoading(false)
+                })
+        } else {
+            // Add new price details
+            postRequest(`${INVESTIGATION_PRICE_DETAILS}/add`, requestData)
+                .then(response => {
+                    if (response && response.status === 200) {
+                        showPopup("New investigation pricing added successfully!", "success")
+                        fetchInvestigationPriceDetails() // Refresh the list
+                        resetForm()
+                    } else {
+                        showPopup(response.message || "Error adding pricing", "error")
+                    }
+                })
+                .catch(error => {
+                    console.error("Error adding investigation price:", error)
+                    
+                    // Extract error message from response
+                    const errorMessage = error.response?.data?.message || error.message || "Unknown error occurred"
+                    showPopup(errorMessage, "error")
+                })
+                .finally(() => {
+                    setLoading(false)
+                })
+        }
+    } catch (err) {
+        console.error("Error in save operation:", err)
+        showPopup(`Failed to process request: ${err.message}`, "error")
+        setLoading(false)
+    }
+}
+
+// Helper function to reset form state
+const resetForm = () => {
+    setEditingInvestigation(null)
+    setShowForm(false)
+    setFormData({ investigationId: "", fromDate: "", toDate: "", price: "" })
+}
 
     const showPopup = (message, type = "info") => {
         setPopupMessage({

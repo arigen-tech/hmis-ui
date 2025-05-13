@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST, IDENTITY_TYPE, ALL_IDENTIFICATION_TYPE } from "../../../config/apiConfig";
+import { API_HOST, MAS_IDENTIFICATION_TYPE } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 
@@ -37,7 +37,7 @@ const Identificationmaster = () => {
   const fetchIdentificationTypes = async (flag = 0) => {
     try {
       setLoading(true);
-      const response = await getRequest(`${ALL_IDENTIFICATION_TYPE}/${flag}`);
+      const response = await getRequest(`${MAS_IDENTIFICATION_TYPE}/getAll/${flag}`);
       if (response && response.response) {
         setIdentificationTypes(response.response);
       }
@@ -116,7 +116,7 @@ const Identificationmaster = () => {
       }
 
       if (editingType) {
-        const response = await putRequest(`${IDENTITY_TYPE}/edit/${editingType.identificationId}`, {
+        const response = await putRequest(`${MAS_IDENTIFICATION_TYPE}/updateById/${editingType.identificationId}`, {
           identificationCode: formData.identificationCode,
           identificationName: formData.identificationName,
           status: editingType.status,
@@ -133,7 +133,7 @@ const Identificationmaster = () => {
           showPopup("Identification type updated successfully!", "success");
         }
       } else {
-        const response = await postRequest(`${IDENTITY_TYPE}/create`, {
+        const response = await postRequest(`${MAS_IDENTIFICATION_TYPE}/create`, {
           identificationCode: formData.identificationCode,
           identificationName: formData.identificationName,
           status: "y",
@@ -178,7 +178,7 @@ const Identificationmaster = () => {
       setLoading(true);
       
       const response = await putRequest(
-        `${IDENTITY_TYPE}/status/${confirmDialog.identificationId}?status=${confirmDialog.newStatus}`
+        `${MAS_IDENTIFICATION_TYPE}/status/${confirmDialog.identificationId}?status=${confirmDialog.newStatus}`
       );
       
       if (response && response.response) {

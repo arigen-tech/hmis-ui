@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST ,ALL_STATE,DISTRICTAPI, ALL_DISTRICT} from "../../../config/apiConfig";
+import { API_HOST ,MAS_STATE,DISTRICTAPI, MAS_DISTRICT} from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+
 
 const DistrictMaster = () => {
     const [districts, setDistricts] = useState([]);
@@ -35,9 +37,9 @@ const DistrictMaster = () => {
     const fetchDistricts = async (flag = 0) => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_HOST}${ALL_DISTRICT}/${flag}`);
-            if (response.data && response.data.response) {
-                setDistricts(response.data.response);
+            const response = await getRequest(`${MAS_DISTRICT}/getAll/${flag}`);
+            if (response && response.response) {
+                setDistricts(response.response);
             }
         } catch (err) {
             console.error("Error fetching districts:", err);
@@ -49,9 +51,9 @@ const DistrictMaster = () => {
 
     const fetchStates = async (flag = 1) => {
         try {
-            const response = await axios.get(`${API_HOST}${ALL_STATE}/${flag}`);
-            if (response.data && response.data.response) {
-                setStates(response.data.response);
+            const response = await getRequest(`${MAS_STATE}/getAll/${flag}`);
+            if (response && response.response) {
+                setStates(response.response);
             }
         } catch (err) {
             console.error("Error fetching states:", err);
@@ -124,27 +126,27 @@ const DistrictMaster = () => {
 
             if (editingDistrict) {
                 
-                const response = await axios.put(`${API_HOST}${DISTRICTAPI}/edit/${editingDistrict.id}`, {
+                const response = await putRequest(`${MAS_DISTRICT}/updateById/${editingDistrict.id}`, {
                     districtCode: editingDistrict.districtCode, 
                     districtName: formData.districtName,
                     stateId: formData.stateId, 
                     status: editingDistrict.status,
                 });
 
-                if (response.data && response.data.status === 200) {
+                if (response && response.status === 200) {
                     fetchDistricts(); 
                     showPopup("District updated successfully!", "success");
                 }
             } else {
                 
-                const response = await axios.post(`${API_HOST}${DISTRICTAPI}/create`, {
+                const response = await postRequest(`${MAS_DISTRICT}/create`, {
                     districtCode: Date.now().toString().slice(-8), 
                     districtName: formData.districtName,
                     stateId: formData.stateId, 
                     status: "y",
                 });
 
-                if (response.data && response.data.status === 200) {
+                if (response && response.status === 200) {
                     fetchDistricts(); 
                     showPopup("New district added successfully!", "success");
                 }
@@ -180,10 +182,10 @@ const DistrictMaster = () => {
         if (confirmed && confirmDialog.districtId !== null) {
             try {
                 setLoading(true);
-                const response = await axios.put(
-                    `${API_HOST}${DISTRICTAPI}/status/${confirmDialog.districtId}?status=${confirmDialog.newStatus}`
+                const response = await putRequest(
+                    `${MAS_DISTRICT}/status/${confirmDialog.districtId}?status=${confirmDialog.newStatus}`
                 );
-                if (response.data && response.data.status === 200) {
+                if (response && response.status === 200) {
                     fetchDistricts();
                     showPopup(
                         `District ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,

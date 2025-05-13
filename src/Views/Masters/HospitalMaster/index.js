@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
-import { ALL_HOSPITAL, HOSPITAL, ALL_COUNTRY, STATE_BY_COUNTRY, DISTRICT_BY_STATE } from "../../../config/apiConfig"
+import { MAS_HOSPITAL, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
@@ -59,7 +59,7 @@ const HospitalMaster = () => {
   const fetchHospitals = async (flag = 0) => {
     try {
       setLoading(true)
-      const response = await getRequest(`${ALL_HOSPITAL}/${flag}`)
+      const response = await getRequest(`${MAS_HOSPITAL}/getAll/${flag}`)
       if (response && response.response) {
         setHospitals(response.response)
       }
@@ -73,7 +73,7 @@ const HospitalMaster = () => {
 
   const fetchCountries = async (flag = 1) => {
     try {
-      const response = await getRequest(`${ALL_COUNTRY}/${flag}`)
+      const response = await getRequest(`${MAS_COUNTRY}/getAll/${flag}`)
       if (response && response.response) {
         setCountries(response.response)
       }
@@ -87,7 +87,7 @@ const HospitalMaster = () => {
   const fetchStatesByCountryId = async (countryId) => {
     try {
       setLoading(true)
-      const response = await getRequest(`${STATE_BY_COUNTRY}${countryId}`)
+      const response = await getRequest(`${MAS_STATE}/getByCountryId/${countryId}`)
       if (response && response.response) {
         setFilteredStates(response.response)
       } else {
@@ -107,7 +107,7 @@ const HospitalMaster = () => {
   const fetchDistrictsByStateId = async (stateId) => {
     try {
       setLoading(true)
-      const response = await getRequest(`${DISTRICT_BY_STATE}${stateId}`)
+      const response = await getRequest(`${MAS_DISTRICT}/getByState/${stateId}`)
       if (response && response.response) {
         setFilteredDistricts(response.response)
       } else {
@@ -351,7 +351,7 @@ const HospitalMaster = () => {
 
       if (editingHospital) {
         // Update existing hospital
-        const response = await putRequest(`${HOSPITAL}/update/${editingHospital.id}`, {
+        const response = await putRequest(`${MAS_HOSPITAL}/updateById/${editingHospital.id}`, {
           hospitalCode: formData.hospitalCode,
           hospitalName: formData.hospitalName,
           address: formData.address,
@@ -377,7 +377,7 @@ const HospitalMaster = () => {
         }
       } else {
         // Add new hospital
-        const response = await postRequest(`${HOSPITAL}/add`, {
+        const response = await postRequest(`${MAS_HOSPITAL}/create`, {
           hospitalCode: formData.hospitalCode,
           hospitalName: formData.hospitalName,
           address: formData.address,
@@ -451,7 +451,7 @@ const HospitalMaster = () => {
       try {
         setLoading(true)
         const status = confirmDialog.newStatus
-        const response = await putRequest(`${HOSPITAL}/status/${confirmDialog.hospitalId}?status=${status}`)
+        const response = await putRequest(`${MAS_HOSPITAL}/status/${confirmDialog.hospitalId}?status=${status}`)
 
         if (response && response.status === 200) {
           setHospitals((prevData) =>

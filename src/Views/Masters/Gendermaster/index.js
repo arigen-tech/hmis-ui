@@ -2,7 +2,9 @@ import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading"
 import axios from "axios";
-import { API_HOST,GENDERAPI,ALL_GENDER } from "../../../config/apiConfig";
+import { API_HOST,MAS_GENDER } from "../../../config/apiConfig";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+
 
 const Gendermaster = () => {
   const [genderData, setGenderData] = useState([]);
@@ -38,11 +40,11 @@ const Gendermaster = () => {
   const fetchGenderData = async (flag = 0) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_HOST}${ALL_GENDER}/${flag}`);
+      const response = await getRequest(`${MAS_GENDER}/getAll/${flag}`);
   
-      if (response.data && response.data.response) {
+      if (response && response.response) {
         
-        const transformedData = response.data.response.map(gender => ({
+        const transformedData = response.response.map(gender => ({
           id: gender.id,
           genderCode: gender.genderCode,
           genderName: gender.genderName,
@@ -96,7 +98,7 @@ const Gendermaster = () => {
       
       if (editingGender) {
         
-        const response = await axios.put(`${API_HOST}${GENDERAPI}/update/${editingGender.id}`, {
+        const response = await axios.put(`${MAS_GENDER}/updateById/${editingGender.id}`, {
           id: editingGender.id,
           genderCode: formData.genderCode,
           genderName: formData.genderName,
@@ -104,16 +106,16 @@ const Gendermaster = () => {
           status: editingGender.status
         });
         
-        if (response.data && response.data.response) {
+        if (response && response.response) {
          
           setGenderData(genderData.map(gender =>
-            gender.id === editingGender.id ? response.data.response : gender
+            gender.id === editingGender.id ? response.response : gender
           ));
           showPopup("Gender updated successfully!", "success");
         }
       } else {
        
-        const response = await axios.post(`${API_HOST}${GENDERAPI}/add`, {
+        const response = await postRequest(`${MAS_GENDER}/create`, {
           genderCode: formData.genderCode,
           genderName: formData.genderName,
           code: null,
@@ -132,9 +134,9 @@ const Gendermaster = () => {
           return;
         }
         
-        if (response.data && response.data.response) {
+        if (response && response.response) {
           
-          setGenderData([...genderData, response.data.response]);
+          setGenderData([...genderData, response.response]);
           showPopup("New gender added successfully!", "success");
         }
       }
@@ -170,11 +172,11 @@ const Gendermaster = () => {
       try {
         setLoading(true);
         
-        const response = await axios.put(
-          `${API_HOST}${GENDERAPI}/status/${confirmDialog.genderId}?status=${confirmDialog.newStatus}`
+        const response = await putRequest(
+          `${MAS_GENDER}/status/${confirmDialog.genderId}?status=${confirmDialog.newStatus}`
         );
         
-        if (response.data && response.data.response) {
+        if (response && response.response) {
          
           setGenderData((prevData) =>
             prevData.map((gender) =>

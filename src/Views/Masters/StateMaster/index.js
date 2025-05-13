@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST,ALL_COUNTRY,ALL_STATE,STATEAPI } from "../../../config/apiConfig";
+import { API_HOST,MAS_STATE,MAS_COUNTRY } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
 const StateMaster = () => {
     const [states, setStates] = useState([]);
@@ -36,9 +37,9 @@ const StateMaster = () => {
     const fetchStates = async (flag = 0) => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_HOST}${ALL_STATE}/${flag}`);
-            if (response.data && response.data.response) {
-                setStates(response.data.response);
+            const response = await getRequest(`${MAS_STATE}/getAll/${flag}`);
+            if (response && response.response) {
+                setStates(response.response);
             }
         } catch (err) {
             console.error("Error fetching states:", err);
@@ -50,9 +51,9 @@ const StateMaster = () => {
 
     const fetchCountries = async (flag = 1) => {
         try {
-            const response = await axios.get(`${API_HOST}${ALL_COUNTRY}/${flag}`);
-            if (response.data && response.data.response) {
-                setCountries(response.data.response);
+            const response = await getRequest(`${MAS_COUNTRY}/getAll/${flag}`);
+            if (response && response.response) {
+                setCountries(response.response);
             }
         } catch (err) {
             console.error("Error fetching countries:", err);
@@ -115,27 +116,27 @@ const StateMaster = () => {
 
             if (editingState) {
                 
-                const response = await axios.put(`${API_HOST}${STATEAPI}/edit/${editingState.id}`, {
+                const response = await putRequest(`${MAS_STATE}/updateById/${editingState.id}`, {
                     stateCode: formData.stateCode,
                     stateName: formData.stateName,
                     countryId: formData.countryId, 
                     status: editingState.status,
                 });
 
-                if (response.data && response.data.status === 200) {
+                if (response && response.status === 200) {
                     fetchStates(); 
                     showPopup("State updated successfully!", "success");
                 }
             } else {
                 
-                const response = await axios.post(`${API_HOST}${STATEAPI}/create`, {
+                const response = await postRequest(`${MAS_STATE}/create`, {
                     stateCode: formData.stateCode,
                     stateName: formData.stateName,
                     countryId: formData.countryId, 
                     status: "y",
                 });
 
-                if (response.data && response.data.status === 200) {
+                if (response && response.status === 200) {
                     fetchStates(); 
                     showPopup("New state added successfully!", "success");
                 }
@@ -171,10 +172,10 @@ const StateMaster = () => {
         if (confirmed && confirmDialog.stateId !== null) {
             try {
                 setLoading(true);
-                const response = await axios.put(
-                    `${API_HOST}${STATEAPI}/status/${confirmDialog.stateId}?status=${confirmDialog.newStatus}`
+                const response = await putRequest(
+                    `${MAS_STATE}/status/${confirmDialog.stateId}?status=${confirmDialog.newStatus}`
                 );
-                if (response.data && response.data.status === 200) {
+                if (response && response.status === 200) {
                     fetchStates(); 
                     showPopup(
                         `State ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,

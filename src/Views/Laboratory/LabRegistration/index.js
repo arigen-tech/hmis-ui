@@ -5,12 +5,12 @@ import Swal from "sweetalert2"
 
 import {
   API_HOST,
-  ALL_COUNTRY,
-  ALL_GENDER,
-  ALL_RELATION,
-  DISTRICT_BY_STATE,
+  MAS_COUNTRY,
+  MAS_GENDER,
+  MAS_RELATION,
+  MAS_STATE,
   PATIENT_IMAGE_UPLOAD,
-  STATE_BY_COUNTRY,
+  MAS_DISTRICT,
 } from "../../../config/apiConfig"
 
 const LabRegistration = () => {
@@ -351,7 +351,7 @@ const LabRegistration = () => {
     setLoading(true)
 
     try {
-      const data = await getRequest(`${ALL_GENDER}/1`)
+      const data = await getRequest(`${MAS_GENDER}/getAll/1`)
       if (data.status === 200 && Array.isArray(data.response)) {
         setGenderData(data.response)
       } else {
@@ -369,7 +369,7 @@ const LabRegistration = () => {
     setLoading(true)
 
     try {
-      const data = await getRequest(`${ALL_RELATION}/1`)
+      const data = await getRequest(`${MAS_RELATION}/getAll/1`)
       if (data.status === 200 && Array.isArray(data.response)) {
         setRelationData(data.response)
       } else {
@@ -387,7 +387,7 @@ const LabRegistration = () => {
     setLoading(true)
 
     try {
-      const data = await getRequest(`${ALL_COUNTRY}/1`)
+      const data = await getRequest(`${MAS_COUNTRY}/getAll/1`)
       if (data.status === 200 && Array.isArray(data.response)) {
         setCountryData(data.response)
       } else {
@@ -403,7 +403,7 @@ const LabRegistration = () => {
 
   async function fetchStates(value) {
     try {
-      const data = await getRequest(`${STATE_BY_COUNTRY}${value}`)
+      const data = await getRequest(`${MAS_STATE}/getByCountryId/${value}`)
       if (data.status === 200 && Array.isArray(data.response)) {
         setStateData(data.response)
       } else {
@@ -419,7 +419,7 @@ const LabRegistration = () => {
 
   async function fetchDistrict(value) {
     try {
-      const data = await getRequest(`${DISTRICT_BY_STATE}${value}`)
+      const data = await getRequest(`${MAS_DISTRICT}/getByState/${value}`)
       if (data.status === 200 && Array.isArray(data.response)) {
         setDistrictData(data.response)
       } else {
@@ -435,7 +435,7 @@ const LabRegistration = () => {
 
   async function fetchNokStates(value) {
     try {
-      const data = await getRequest(`${STATE_BY_COUNTRY}${value}`)
+      const data = await getRequest(`${MAS_STATE}/getByCountryId/${value}`)
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokStateData(data.response)
       } else {
@@ -451,7 +451,7 @@ const LabRegistration = () => {
 
   async function fetchNokDistrict(value) {
     try {
-      const data = await getRequest(`${DISTRICT_BY_STATE}${value}`)
+      const data = await getRequest(`${MAS_DISTRICT}/getByState/${value}`)
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokDistrictData(data.response)
       } else {
@@ -569,8 +569,8 @@ const LabRegistration = () => {
       console.log("Submitting data:", requestData)
       Swal.fire("Success", "Lab registration submitted successfully!", "success")
 
-      // Here you would typically send the data to your API
-      // const response = await postRequest('YOUR_LAB_REGISTRATION_ENDPOINT', requestData);
+      
+      
     }
   }
 

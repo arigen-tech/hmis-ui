@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST ,ALL_COUNTRY,COUNTRYAPI} from "../../../config/apiConfig";
+import { API_HOST, MAS_COUNTRY} from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
 const CountryMaster = () => {
     const [countries, setCountries] = useState([]);
@@ -33,9 +34,9 @@ const CountryMaster = () => {
     const fetchCountries = async (flag = 0) => {
         setIsLoading(true);
         try {
-            const response = await axios.get(`${API_HOST}${ALL_COUNTRY}/${flag}`);
-            if (response.data && response.data.response) {
-                setCountries(response.data.response);
+            const response = await getRequest(`${MAS_COUNTRY}/getAll/${flag}`);
+            if (response && response.response) {
+                setCountries(response.response);
             }
         } catch (err) {
             console.error("Error fetching countries:", err);
@@ -95,25 +96,25 @@ const CountryMaster = () => {
     
             if (editingCountry) {
                 
-                const response = await axios.put(`${API_HOST}${COUNTRYAPI}/edit/${editingCountry.id}`, {
+                const response = await putRequest(`${MAS_COUNTRY}/updateById/${editingCountry.id}`, {
                     countryCode: formData.countryCode,
                     countryName: formData.countryName,
                     status: editingCountry.status,
                 });
     
-                if (response.data && response.data.status === 200) {
+                if (response && response.status === 200) {
                     fetchCountries(); 
                     showPopup("Country updated successfully!", "success");
                 }
             } else {
                 // Add new country
-                const response = await axios.post(`${API_HOST}${COUNTRYAPI}/create`, {
+                const response = await postRequest(`${MAS_COUNTRY}/create`, {
                     countryCode: formData.countryCode,
                     countryName: formData.countryName,
                     status: "y",
                 });
     
-                if (response.data && response.data.status === 200) {
+                if (response && response.status === 200) {
                     fetchCountries(); 
                     showPopup("New country added successfully!", "success");
                 }
@@ -149,10 +150,10 @@ const CountryMaster = () => {
         if (confirmed && confirmDialog.countryId !== null) {
             setIsLoading(true);
             try {
-                const response = await axios.put(
-                    `${API_HOST}${COUNTRYAPI}/status/${confirmDialog.countryId}?status=${confirmDialog.newStatus}`
+                const response = await putRequest(
+                    `${MAS_COUNTRY}/status/${confirmDialog.countryId}?status=${confirmDialog.newStatus}`
                 );
-                if (response.data && response.data.status === 200) {
+                if (response && response.status === 200) {
                     fetchCountries(); 
                     showPopup(
                         `Country ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,

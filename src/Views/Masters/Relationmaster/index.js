@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST,RELATION,ALL_RELATION } from "../../../config/apiConfig";
+import { API_HOST,MAS_RELATION } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
@@ -40,7 +40,7 @@ const Relationmaster = () => {
   const fetchRelationData = async (flag = 0) => {
     try {
       setLoading(true);
-      const response = await getRequest(`${ALL_RELATION}/${flag}`);
+      const response = await getRequest(`${MAS_RELATION}/getAll/${flag}`);
 
       if (response && response.response) {
         
@@ -111,7 +111,7 @@ const Relationmaster = () => {
   
       if (editingRelation) {
        
-        const response = await putRequest(`${RELATION}/update/${editingRelation.id}`, {
+        const response = await putRequest(`${MAS_RELATION}/updateById/${editingRelation.id}`, {
           id: editingRelation.id,
           relationName: formData.relationName,
           code: formData.code,
@@ -129,7 +129,7 @@ const Relationmaster = () => {
         }
       } else {
         
-        const response = await postRequest(`${RELATION}/add`, {
+        const response = await postRequest(`${MAS_RELATION}/create`, {
           relationName: formData.relationName,
           code: formData.code,
           status: "y",
@@ -178,7 +178,7 @@ const Relationmaster = () => {
         setLoading(true);
         
         const response = await putRequest(
-          `${RELATION}/status/${confirmDialog.relationId}?status=${confirmDialog.newStatus}`
+          `${MAS_RELATION}/status/${confirmDialog.relationId}?status=${confirmDialog.newStatus}`
         );
 
         if (response && response.response) {
