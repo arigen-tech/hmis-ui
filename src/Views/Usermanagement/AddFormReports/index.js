@@ -100,7 +100,7 @@ const Addformreports = () => {
             if (isEditMode) {
                 try {
                     setLoading(true)
-                    const response = await getRequest(`${MAS_APPLICATION}/getAll/0`)
+                    const response = await getRequest(`${MAS_APPLICATION}/getAll/1`)
 
                     if (response && response.response) {
                         const appOptions = response.response.map((item) => {
@@ -300,7 +300,7 @@ const Addformreports = () => {
                 }
 
             const apiCall = isEditMode ? putRequest : postRequest
-            const endpoint = isEditMode ? `${MAS_APPLICATION}/updateById/${formData.menuId}` : `${MAS_APPLICATION}/create`
+            const endpoint = isEditMode ? `${MAS_APPLICATION}/UpdateById/${formData.menuId}` : `${MAS_APPLICATION}/create`
 
             const response = await apiCall(endpoint, submitData)
 
