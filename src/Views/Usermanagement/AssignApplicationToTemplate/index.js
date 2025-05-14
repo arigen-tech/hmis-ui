@@ -167,7 +167,7 @@ const Assignapplication = () => {
 
         try {
             
-            const childResponse = await getRequest(`${MAS_APPLICATION}/getAllChildren/${selectedParentId}?templateId=${selectedTemplate || ''}`);
+            const childResponse = await getRequest(`${MAS_APPLICATION}/getAllChildrenByParentId/${selectedParentId}?templateId=${selectedTemplate || ''}`);
 
             if (!childResponse?.response) {
                 throw new Error("Failed to fetch child applications");
