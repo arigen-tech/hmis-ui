@@ -41,6 +41,7 @@ import SampleCollectionMaster from './Views/Laboratory/SampleCollectionMaster';
 import UOMMaster from './Views/Laboratory/UOMMaster';
 import InvestigationPricingMaster from './Views/Masters/InvestigationPricing';
 import OpdPreconsultation from './Views/OPD/OpdPreconsultation';
+import InvestigationMaster from './Views/Masters/InvestigationMaster';
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -117,6 +118,7 @@ function App() {
                 <Route path='samplecollectionmaster' element={<SampleCollectionMaster/>} />
                 <Route path="investigationpricing" element={<InvestigationPricingMaster/>} />
                 <Route path="opdpreconsultation" element={<OpdPreconsultation/>} />
+                <Route path="investigationmaster" element={<InvestigationMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
