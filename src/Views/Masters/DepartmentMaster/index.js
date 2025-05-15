@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST,DEPARTMENT,ALL_DEPARTMENT,ALL_DEPARTMENT_TYPE } from "../../../config/apiConfig";
+import { API_HOST, MAS_DEPARTMENT, MAS_DEPARTMENT_TYPE } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
 const DepartmentMaster = () => {
     const [departments, setDepartments] = useState([]);
@@ -11,8 +12,8 @@ const DepartmentMaster = () => {
     const [formData, setFormData] = useState({
         departmentCode: "",
         departmentName: "",
-        departmentType: "", 
-        departmentTypeId: "", 
+        departmentType: "",
+        departmentTypeId: "",
         departmentNo: "",
     });
     const [searchQuery, setSearchQuery] = useState("");
@@ -26,12 +27,12 @@ const DepartmentMaster = () => {
     const [loading, setLoading] = useState(true);
     const itemsPerPage = 5;
 
-   
+
     const DEPARTMENT_CODE_MAX_LENGTH = 8;
     const DEPARTMENT_NAME_MAX_LENGTH = 30;
     const DEPARTMENT_NUMBER_MAX_LENGTH = 8;
 
-    
+
     useEffect(() => {
         fetchDepartments(0);
         fetchDepartmentTypes(1);
@@ -40,9 +41,9 @@ const DepartmentMaster = () => {
     const fetchDepartments = async (flag = 0) => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_HOST}${ALL_DEPARTMENT}/${flag}`);
-            if (response.data && response.data.response) {
-                setDepartments(response.data.response);
+            const response = await getRequest(`${MAS_DEPARTMENT}/getAll/${flag}`);
+            if (response && response.response) {
+                setDepartments(response.response);
             }
         } catch (err) {
             console.error("Error fetching departments:", err);
@@ -54,9 +55,9 @@ const DepartmentMaster = () => {
 
     const fetchDepartmentTypes = async (flag = 1) => {
         try {
-            const response = await axios.get(`${API_HOST}${ALL_DEPARTMENT_TYPE}/${flag}`);
-            if (response.data && response.data.response) {
-                setDepartmentTypes(response.data.response);
+            const response = await getRequest(`${MAS_DEPARTMENT_TYPE}/getAll/${flag}`);
+            if (response && response.response) {
+                setDepartmentTypes(response.response);
             }
         } catch (err) {
             console.error("Error fetching department types:", err);
@@ -119,22 +120,22 @@ const DepartmentMaster = () => {
     const handleInputChange = (e) => {
         const { id, value } = e.target;
         setFormData((prevData) => ({ ...prevData, [id]: value }));
-    
+
         // Ensure values are always strings before calling `.trim()`
         const updatedFormData = {
             ...formData,
             [id]: value,
         };
-    
+
         const isValid =
             (updatedFormData.departmentCode || "").trim() !== "" &&
             (updatedFormData.departmentName || "").trim() !== "" &&
             (updatedFormData.departmentType || "").trim() !== "" &&
             (updatedFormData.departmentNo || "").trim() !== "";
-    
+
         setIsFormValid(isValid);
     };
-    
+
 
     const renderPagination = () => {
         const pageNumbers = [];
@@ -179,7 +180,7 @@ const DepartmentMaster = () => {
             departmentCode: dept.departmentCode,
             departmentName: dept.departmentName,
             departmentType: dept.departmentTypeName,
-            departmentTypeId: dept.departmentTypeId, 
+            departmentTypeId: dept.departmentTypeId,
             departmentNo: dept.departmentNo,
         });
         console.log("dept.departmentTypeId", dept.departmentTypeId);
@@ -194,7 +195,7 @@ const DepartmentMaster = () => {
         try {
             setLoading(true);
 
-            
+
             const isDuplicate = departments.some(
                 (dept) =>
                     dept.id !== (editingDepartment ? editingDepartment.id : null) &&
@@ -213,7 +214,7 @@ const DepartmentMaster = () => {
                 // Update existing department
 
                 console.log("form formdata", formData.departmentTypeId);
-                const response = await axios.put(`${API_HOST}${DEPARTMENT}/edit/${editingDepartment.id}`, {
+                const response = await putRequest(`${MAS_DEPARTMENT}/updateById/${editingDepartment.id}`, {
                     departmentCode: formData.departmentCode,
                     departmentName: formData.departmentName,
                     departmentTypeId: formData.departmentTypeId,
@@ -221,7 +222,7 @@ const DepartmentMaster = () => {
                     status: editingDepartment.status,
                 });
 
-                if (response.data && response.data.response) {
+                if (response && response.response) {
                     setDepartments((prevData) =>
                         prevData.map((dept) =>
                             dept.id === editingDepartment.id ? response.data.response : dept
@@ -231,7 +232,7 @@ const DepartmentMaster = () => {
                 }
             } else {
                 // Add new department
-                const response = await axios.post(`${API_HOST}${DEPARTMENT}/add`, {
+                const response = await postRequest(`${MAS_DEPARTMENT}/create`, {
                     departmentCode: formData.departmentCode,
                     departmentName: formData.departmentName,
                     departmentTypeId: formData.departmentTypeId,
@@ -239,17 +240,17 @@ const DepartmentMaster = () => {
                     status: "y",
                 });
 
-                if (response.data && response.data.response) {
-                    setDepartments([...departments, response.data.response]);
+                if (response && response.response) {
+                    setDepartments([...departments, response.response]);
                     showPopup("New department added successfully!", "success");
                 }
             }
 
-            
+
             setEditingDepartment(null);
             setFormData({ departmentCode: "", departmentName: "", departmentType: "", departmentNo: "" });
             setShowForm(false);
-            fetchDepartments(); 
+            fetchDepartments();
         } catch (err) {
             console.error("Error saving department:", err);
             showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
@@ -277,11 +278,11 @@ const DepartmentMaster = () => {
             try {
                 setLoading(true);
                 const status = confirmDialog.newStatus;
-                const response = await axios.put(
-                    `${API_HOST}${DEPARTMENT}/status/${confirmDialog.categoryId}?status=${status}`
+                const response = await putRequest(
+                    `${MAS_DEPARTMENT}/status/${confirmDialog.categoryId}?status=${status}`
                 );
 
-                if (response.data && response.data.status === 200) {
+                if (response && response.status === 200) {
                     setDepartments((prevData) =>
                         prevData.map((dept) =>
                             dept.id === confirmDialog.categoryId
@@ -353,7 +354,7 @@ const DepartmentMaster = () => {
                                     </div>
                                 )}
                                 {!showForm && (
-                                    <div className="d-flex align-items-center">
+                                    <div className="d-flex flex-wrap align-items-center gap-2">
                                         <button
                                             type="button"
                                             className="btn btn-success me-2"
@@ -378,8 +379,12 @@ const DepartmentMaster = () => {
                                         >
                                             <i className="mdi mdi-plus"></i> Add
                                         </button>
-                                        <button type="button" className="btn btn-success">
-                                            <i className="mdi mdi-file-export"></i> Generate Report
+                                        <button
+                                            type="button"
+                                            className="btn btn-success d-flex align-items-center"
+                                        >
+                                            <i className="mdi mdi-file-export d-sm-inlined-sm-inline ms-1" ></i>
+                                            Generate Report
                                         </button>
                                     </div>
                                 )}
@@ -387,7 +392,7 @@ const DepartmentMaster = () => {
                         </div>
                         <div className="card-body">
                             {loading ? (
-                                 <LoadingScreen />
+                                <LoadingScreen />
                             ) : !showForm ? (
                                 <div className="table-responsive packagelist">
                                     <table className="table table-bordered table-hover align-middle">

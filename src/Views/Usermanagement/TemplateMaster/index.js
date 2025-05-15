@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
-import { API_HOST,ALL_TEMPLATES,TEMPLATES } from "../../../config/apiConfig";
+import { API_HOST,MAS_TEMPLATE } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 
@@ -27,7 +27,7 @@ const Templatemaster = () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await getRequest(`${ALL_TEMPLATES}/${flag}`);
+            const response = await getRequest(`${MAS_TEMPLATE}/getAll/${flag}`);
             
 
             const templateList = response.response || [];
@@ -114,7 +114,7 @@ const Templatemaster = () => {
     
             if (editingTemplate) {
                 // Update existing template
-                const response = await putRequest(`${TEMPLATES}/edit/${editingTemplate.id}`, {
+                const response = await putRequest(`${MAS_TEMPLATE}/updateById/${editingTemplate.id}`, {
                     templateCode: formData.templateCode,
                     templateName: formData.templateName
                 });
@@ -144,7 +144,7 @@ const Templatemaster = () => {
                 }
             } else {
                 // Create new template
-                const response = await postRequest(`${TEMPLATES}/create`, {
+                const response = await postRequest(`${MAS_TEMPLATE}/create`, {
                     templateCode: formData.templateCode,
                     templateName: formData.templateName,
                     status: "y"
@@ -198,7 +198,7 @@ const Templatemaster = () => {
             try {
                 setLoading(true);
                 const response = await putRequest(
-                    `${TEMPLATES}/status/${confirmDialog.applicationId}?status=${confirmDialog.newStatus}`
+                    `${MAS_TEMPLATE}/status/${confirmDialog.applicationId}?status=${confirmDialog.newStatus}`
                 );
 
                 console.log("API Response:", response);
