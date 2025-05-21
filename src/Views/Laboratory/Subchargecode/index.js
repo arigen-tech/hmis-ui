@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
-import { ALL_SUBCHARGE, SUBCHARGE } from "../../../config/apiConfig"
+import { MAS_SUB_CHARGE_CODE, MAS_MAIN_CHARGE_CODE } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
@@ -31,7 +31,7 @@ const SubChargeCode = () => {
   const fetchSubChargeCodes = async (flag = 0) => {
     try {
       setLoading(true)
-      const response = await getRequest(`${ALL_SUBCHARGE}${flag}`)
+      const response = await getRequest(`${MAS_SUB_CHARGE_CODE}/getAll/${flag}`)
 
       console.log("API Response:", response)
 
@@ -86,7 +86,7 @@ const SubChargeCode = () => {
   const fetchMainChargeCodes = async (flag = 1) => {
     try {
       setLoading(true)
-      const response = await getRequest(`/main-charge-code/getAllChargeCode/${flag}`)
+      const response = await getRequest(`${MAS_MAIN_CHARGE_CODE}/getAll/${flag}`)
       if (response && response.data && response.data.response) {
         setMainChargeCodes(response.data.response)
       } else if (response && response.response) {
@@ -143,7 +143,7 @@ const SubChargeCode = () => {
       }
 
       if (editingSubCharge) {
-        const response = await putRequest(`${SUBCHARGE}/update/${editingSubCharge.id}`, {
+        const response = await putRequest(`${MAS_SUB_CHARGE_CODE}/updateById/${editingSubCharge.id}`, {
           subCode: formData.subChargeCode,
           subName: formData.subChargeName,
           mainChargeId: formData.mainChargeCode,
@@ -154,7 +154,7 @@ const SubChargeCode = () => {
           showPopup("Sub charge code updated successfully!", "success")
         }
       } else {
-        const response = await postRequest(`${SUBCHARGE}/add`, {
+        const response = await postRequest(`${MAS_SUB_CHARGE_CODE}/create`, {
           subCode: formData.subChargeCode,
           subName: formData.subChargeName,
           mainChargeId: formData.mainChargeCode,
@@ -198,7 +198,7 @@ const SubChargeCode = () => {
       try {
         setLoading(true)
         const response = await putRequest(
-          `${SUBCHARGE}/status/${confirmDialog.subChargeId}?status=${confirmDialog.newStatus}`,
+          `${MAS_SUB_CHARGE_CODE}/status/${confirmDialog.subChargeId}?status=${confirmDialog.newStatus}`,
           {},
         )
 

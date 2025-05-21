@@ -42,6 +42,7 @@ import UOMMaster from './Views/Laboratory/UOMMaster';
 import InvestigationPricingMaster from './Views/Masters/InvestigationPricing';
 import OpdPreconsultation from './Views/OPD/OpdPreconsultation';
 import InvestigationMaster from './Views/Masters/InvestigationMaster';
+import InvestigationMasterResult from './Views/Masters/InvestigationMaster/investigationMasterResult';
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -70,6 +71,7 @@ function App() {
           <Routes>
             {/* Public Route */}
             <Route path="/" element={<Login />} />
+                <Route path="investigation-multiple-results" element={<InvestigationMasterResult/>} />
 
             {/* Protected Routes */}
             <Route element={<ProtectedRoute />}>
