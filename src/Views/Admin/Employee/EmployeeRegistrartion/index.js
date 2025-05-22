@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import placeholderImage from "../../../../assets/images/placeholder.jpg";
-import { COUNTRYAPI, DISTRICTAPI, STATEAPI, DEPARTMENT, GENDERAPI, ALL_ROLE, IDENTITY_TYPE, API_HOST, EMPLOYMENT_TYPE, EMPLOYEE_TYPE, EMPLOYEE_REGISTRATION } from "../../../../config/apiConfig";
+import { MAS_COUNTRY, MAS_DISTRICT, MAS_STATE, MAS_DEPARTMENT, MAS_GENDER, MAS_ROLES, MAS_IDENTIFICATION_TYPE, API_HOST, MAS_EMPLOYMENT_TYPE, MAS_USER_TYPE, EMPLOYEE_REGISTRATION } from "../../../../config/apiConfig";
 import { getRequest, putRequest, postRequestWithFormData } from "../../../../service/apiService";
 import Popup from "../../../../Components/popup";
 
@@ -86,7 +86,7 @@ const EmployeeRegistration = () => {
     const fetchCountryData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${COUNTRYAPI}/getAllCountries/1`);
+            const data = await getRequest(`${MAS_COUNTRY}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setCountryData(data.response);
             } else {
@@ -103,7 +103,7 @@ const EmployeeRegistration = () => {
     const fetchDepartmentData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${DEPARTMENT}/getAllDepartments/1`);
+            const data = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setDepartmentData(data.response);
             } else {
@@ -120,7 +120,7 @@ const EmployeeRegistration = () => {
     const fetchStateData = async (countryIds) => {
         setLoading(true);
         try {
-            const GET_STATES = `${STATEAPI}/country/${countryIds}`;
+            const GET_STATES = `${MAS_STATE}/getByCountryId/${countryIds}`;
             const data = await getRequest(GET_STATES);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setStateData(data.response);
@@ -138,7 +138,7 @@ const EmployeeRegistration = () => {
     const fetchDistrictData = async (stateIds) => {
         setLoading(true);
         try {
-            const GET_CITIES = `${DISTRICTAPI}/state/${stateIds}`;
+            const GET_CITIES = `${MAS_DISTRICT}/getByState/${stateIds}`;
             const data = await getRequest(GET_CITIES);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setDistrictData(data.response);
@@ -156,7 +156,7 @@ const EmployeeRegistration = () => {
     const fetchGenderData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${GENDERAPI}/getAll/1`);
+            const data = await getRequest(`${MAS_GENDER}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setGenderData(data.response);
             } else {
@@ -173,7 +173,7 @@ const EmployeeRegistration = () => {
     const fetchIdTypeData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${IDENTITY_TYPE}/getAllIdentificationTypes/1`);
+            const data = await getRequest(`${MAS_IDENTIFICATION_TYPE}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setIdTypeData(data.response);
             } else {
@@ -190,7 +190,7 @@ const EmployeeRegistration = () => {
     const fetchEmployeeTypeData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${EMPLOYEE_TYPE}/getAllUserType/1`);
+            const data = await getRequest(`${MAS_USER_TYPE}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setEmployeeTypeData(data.response);
             } else {
@@ -207,7 +207,7 @@ const EmployeeRegistration = () => {
     const fetchEmploymentTypeData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${EMPLOYMENT_TYPE}/getAllEmploymentType/1`);
+            const data = await getRequest(`${MAS_EMPLOYMENT_TYPE}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setEmploymentTypeData(data.response);
             } else {
@@ -224,7 +224,7 @@ const EmployeeRegistration = () => {
     const fetchRoleData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${ALL_ROLE}/1`);
+            const data = await getRequest(`${MAS_ROLES}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setRoleData(data.response);
             } else {
@@ -489,8 +489,44 @@ const EmployeeRegistration = () => {
 
     const handleReset = () => {
         setFormData(initialFormData);
-    };
+        
+        // Reset profile image preview
+        const profileImageInput = document.getElementById('profilePicName');
+        if (profileImageInput) profileImageInput.value = '';
+        
+        // Reset ID document
+        const idDocumentInput = document.getElementById('idDocumentName');
+        if (idDocumentInput) idDocumentInput.value = '';
+        
+        // Reset all file inputs by their class name
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+        fileInputs.forEach(input => {
+            input.value = '';
+        });
 
+        // Reset form data with initial values
+        setFormData({
+            ...initialFormData,
+            profilePicPreview: null,
+            profilePicName: null,
+            idDocumentName: null,
+            qualification: [{ 
+                employeeQualificationId: 1, 
+                institutionName: "", 
+                completionYear: "", 
+                qualificationName: "", 
+                filePath: null 
+            }],
+            document: [{ 
+                employeeDocumentId: 1, 
+                documentName: "", 
+                filePath: null 
+            }]
+        });
+
+        // Reset file related states
+        setProfileImage(null);
+    };
 
     const handleCreate = async () => {
         const formDataToSend = prepareFormData();
@@ -1011,6 +1047,7 @@ const EmployeeRegistration = () => {
                                                         <input
                                                             type="file"
                                                             className="form-control"
+                                                            data-index={index}
                                                             onChange={(e) => handleQualificationChange(index, "filePath", e.target.files[0])}
                                                             accept=".pdf,.jpg,.jpeg,.png"
                                                         />
@@ -1067,9 +1104,11 @@ const EmployeeRegistration = () => {
                                                         <input
                                                             type="file"
                                                             className="form-control"
+                                                            data-index={index}
                                                             onChange={(e) => handleDocumentChange(index, "filePath", e.target.files[0])}
                                                             accept=".pdf,.jpg,.jpeg,.png"
                                                         />
+                                                        
                                                     </td>
                                                     <td>
                                                         <button type="button" className="btn btn-danger" onClick={() => removeDocumentRow(index)}>
@@ -1095,7 +1134,7 @@ const EmployeeRegistration = () => {
                             className="btn btn-primary me-2"
                             disabled={loading}
                         >
-                            {loading ? "Saving..." : "Save"}
+                            {loading ? "Submiting..." : "Submit"}
                         </button>
                         <button
                             onClick={handleCreateWithApprove}
@@ -1103,7 +1142,7 @@ const EmployeeRegistration = () => {
                             className="btn btn-primary"
                             disabled={loading}
                         >
-                            {loading ? "Processing..." : "Save & Approve"}
+                            {loading ? "Processing..." : "Submit & Approve"}
                         </button>
                     </div>
                 </div>
@@ -1112,4 +1151,5 @@ const EmployeeRegistration = () => {
     );
 };
 
-export default EmployeeRegistration;
+
+  export default EmployeeRegistration;

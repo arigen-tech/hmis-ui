@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import {
-    DEPARTMENT,
+    MAS_DEPARTMENT,
     EMPLOYEE_REGISTRATION,
 } from "../../../config/apiConfig";
 import { getRequest, putRequest } from "../../../service/apiService";
@@ -26,15 +26,12 @@ const Approveemployee = () => {
         departmentId: null,
     });
 
-    useEffect(() => {
-        fetchDepartmentData();
-        fetchEmployeeData();
-    }, []);
+
 
     const fetchDepartmentData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${DEPARTMENT}/getAllDepartments/1`);
+            const data = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setDepartmentData(data.response);
             } else {
@@ -50,7 +47,7 @@ const Approveemployee = () => {
     const fetchEmployeeData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${EMPLOYEE_REGISTRATION}/status/S`);
+            const data = await getRequest(`/${EMPLOYEE_REGISTRATION}/status/S`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 const cleanedEmployees = data.response.map((emp) => ({
                     ...emp,
@@ -80,6 +77,11 @@ const Approveemployee = () => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchEmployeeData();
+        fetchDepartmentData();
+    }, []);
 
     const handleDepartmentChange = (employeeId, departmentId) => {
         setSelectedDepartments({

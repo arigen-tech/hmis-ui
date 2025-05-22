@@ -1,180 +1,85 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Popup from "../../../Components/popup"
-import { MAS_SUB_CHARGE_CODE, MAS_MAIN_CHARGE_CODE } from "../../../config/apiConfig"
-import LoadingScreen from "../../../Components/Loading"
-import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
-const SubChargeCode = () => {
-  const [subChargeCodes, setSubChargeCodes] = useState([])
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, subChargeId: null, newStatus: false })
+const UOMMaster = () => {
+  const [uomList, setUomList] = useState([
+    { id: 1, UOMCODE: "-", UOMNAME: "-", status: "y" },
+    { id: 2, UOMCODE: "%", UOMNAME: "%", status: "y" },
+    { id: 3, UOMCODE: "/100 ml", UOMNAME: "/100 ml count", status: "y" },
+    { id: 4, UOMCODE: "cumm", UOMNAME: "cumm", status: "y" },
+    { id: 5, UOMCODE: "HPFF", UOMNAME: "HPFF", status: "y" },
+  ])
+
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, uomId: null, newStatus: false })
   const [formData, setFormData] = useState({
-    subChargeCode: "",
-    subChargeName: "",
-    mainChargeCode: "",
+    uomCode: "",
+    uomName: "",
   })
   const [searchQuery, setSearchQuery] = useState("")
   const [showForm, setShowForm] = useState(false)
   const [isFormValid, setIsFormValid] = useState(false)
-  const [editingSubCharge, setEditingSubCharge] = useState(null)
+  const [editingUOM, setEditingUOM] = useState(null)
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
   const itemsPerPage = 5
-  const [loading, setLoading] = useState(true)
-  const [mainChargeCodes, setMainChargeCodes] = useState([])
 
-  useEffect(() => {
-    fetchSubChargeCodes(0)
-    fetchMainChargeCodes(1)
-  }, [])
-
-  const fetchSubChargeCodes = async (flag = 0) => {
-    try {
-      setLoading(true)
-      const response = await getRequest(`${MAS_SUB_CHARGE_CODE}/getAll/${flag}`)
-
-      console.log("API Response:", response)
-
-      if (response && response.status === 200) {
-        const responseData = response.response || response.data || response
-
-        console.log("Response data to map:", responseData)
-
-        if (Array.isArray(responseData)) {
-          const mappedData = responseData.map((item) => {
-            console.log("Mapping item:", item) // Log each item
-            return {
-              id: item.subId,
-              subChargeCode: item.subCode,
-              subChargeName: item.subName,
-              mainChargeCode: item.mainChargeId ? item.mainChargeId.toString() : "",
-              status: item.status,
-              lastChgBy: item.lastChgBy,
-              lastChgDate: item.lastChgDate,
-              lastChgTime: item.lastChgTime,
-            }
-          })
-          setSubChargeCodes(mappedData)
-        } else if (responseData && responseData.response && Array.isArray(responseData.response)) {
-          const mappedData = responseData.response.map((item) => ({
-            id: item.subId,
-            subChargeCode: item.subCode,
-            subChargeName: item.subName,
-            mainChargeCode: item.mainChargeId,
-            status: item.status,
-            lastChgBy: item.lastChgBy,
-            lastChgDate: item.lastChgDate,
-            lastChgTime: item.lastChgTime,
-          }))
-          setSubChargeCodes(mappedData)
-        } else {
-          console.error("Unexpected response structure:", responseData)
-          showPopup("Failed to parse response data", "error")
-        }
-      } else {
-        console.error("Invalid response:", response)
-        showPopup("Failed to load sub-charge codes", "error")
-      }
-    } catch (err) {
-      console.error("Error fetching sub-charge codes:", err)
-      showPopup(`Failed to load sub-charge codes: ${err.message}`, "error")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchMainChargeCodes = async (flag = 1) => {
-    try {
-      setLoading(true)
-      const response = await getRequest(`${MAS_MAIN_CHARGE_CODE}/getAll/${flag}`)
-      if (response && response.data && response.data.response) {
-        setMainChargeCodes(response.data.response)
-      } else if (response && response.response) {
-        setMainChargeCodes(response.response)
-      }
-    } catch (err) {
-      console.error("Error fetching main charge codes:", err)
-      showPopup("Failed to load main charge codes", "error")
-    } finally {
-      setLoading(false)
-    }
-  }
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
     setCurrentPage(1)
   }
 
-  const filteredSubChargeCodes = (subChargeCodes || []).filter(
+  const filteredUomList = uomList.filter(
     (item) =>
-      item.subChargeCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.subChargeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.mainChargeCode.toLowerCase().includes(searchQuery.toLowerCase()),
+      item.UOMCODE.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.UOMNAME.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
+  const filteredTotalPages = Math.ceil(filteredUomList.length / itemsPerPage)
+
+  const currentItems = filteredUomList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+
   const handleEdit = (item) => {
-    setEditingSubCharge(item)
+    setEditingUOM(item)
     setShowForm(true)
     setFormData({
-      subChargeCode: item.subChargeCode,
-      subChargeName: item.subChargeName,
-      mainChargeCode: item.mainChargeCode,
+      uomCode: item.UOMCODE,
+      uomName: item.UOMNAME,
     })
     setIsFormValid(true)
   }
 
-  const handleSave = async (e) => {
+  const handleSave = (e) => {
     e.preventDefault()
     if (!isFormValid) return
 
-    try {
-      setLoading(true)
-
-      // Check for duplicates
-      const isDuplicate = subChargeCodes.some(
-        (code) =>
-          code.subChargeCode.toLowerCase() === formData.subChargeCode.toLowerCase() &&
-          (!editingSubCharge || code.id !== editingSubCharge.id),
+    if (editingUOM) {
+      setUomList(
+        uomList.map((item) =>
+          item.id === editingUOM.id
+            ? {
+                ...item,
+                UOMCODE: formData.uomCode,
+                UOMNAME: formData.uomName,
+              }
+            : item,
+        ),
       )
-
-      if (isDuplicate) {
-        showPopup("A sub charge code with this code already exists!", "error")
-        setLoading(false)
-        return
+      showPopup("UOM updated successfully!", "success")
+    } else {
+      const newUOM = {
+        id: Date.now(),
+        UOMCODE: formData.uomCode,
+        UOMNAME: formData.uomName,
+        status: "y",
       }
-
-      if (editingSubCharge) {
-        const response = await putRequest(`${MAS_SUB_CHARGE_CODE}/updateById/${editingSubCharge.id}`, {
-          subCode: formData.subChargeCode,
-          subName: formData.subChargeName,
-          mainChargeId: formData.mainChargeCode,
-        })
-
-        if (response && response.status === 200) {
-          fetchSubChargeCodes()
-          showPopup("Sub charge code updated successfully!", "success")
-        }
-      } else {
-        const response = await postRequest(`${MAS_SUB_CHARGE_CODE}/create`, {
-          subCode: formData.subChargeCode,
-          subName: formData.subChargeName,
-          mainChargeId: formData.mainChargeCode,
-        })
-
-        if (response && response.status === 200) {
-          fetchSubChargeCodes()
-          showPopup("New sub charge code added successfully!", "success")
-        }
-      }
-
-      setEditingSubCharge(null)
-      setFormData({ subChargeCode: "", subChargeName: "", mainChargeCode: "" })
-      setShowForm(false)
-    } catch (err) {
-      console.error("Error saving sub-charge code:", err)
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error")
-    } finally {
-      setLoading(false)
+      setUomList([...uomList, newUOM])
+      showPopup("New UOM added successfully!", "success")
     }
+
+    setEditingUOM(null)
+    setShowForm(false)
+    setFormData({ uomCode: "", uomName: "" })
   }
 
   const showPopup = (message, type = "info") => {
@@ -188,54 +93,34 @@ const SubChargeCode = () => {
   }
 
   const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, subChargeId: id, newStatus })
+    setConfirmDialog({ isOpen: true, uomId: id, newStatus })
   }
 
-  const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.subChargeId !== null) {
-      console.log("here2")
-
-      try {
-        setLoading(true)
-        const response = await putRequest(
-          `${MAS_SUB_CHARGE_CODE}/status/${confirmDialog.subChargeId}?status=${confirmDialog.newStatus}`,
-          {},
-        )
-
-        if (response && response.status === 200) {
-          setSubChargeCodes((prevData) =>
-            prevData.map((item) =>
-              item.id === confirmDialog.subChargeId ? { ...item, status: confirmDialog.newStatus } : item,
-            ),
-          )
-          showPopup(
-            `Sub charge code ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success",
-          )
-        }
-      } catch (err) {
-        console.error("Error updating sub-charge code status:", err)
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error")
-      } finally {
-        setLoading(false)
-      }
+  const handleConfirm = (confirmed) => {
+    if (confirmed && confirmDialog.uomId !== null) {
+      setUomList((prevData) =>
+        prevData.map((item) =>
+          item.id === confirmDialog.uomId ? { ...item, status: confirmDialog.newStatus } : item,
+        ),
+      )
     }
-    setConfirmDialog({ isOpen: false, subChargeId: null, newStatus: null })
+    setConfirmDialog({ isOpen: false, uomId: null, newStatus: null })
   }
 
   const handleInputChange = (e) => {
     const { id, value } = e.target
     setFormData((prevData) => ({ ...prevData, [id]: value }))
 
+    // Check if all required fields have values
     const updatedFormData = { ...formData, [id]: value }
     setIsFormValid(
-      !!updatedFormData.subChargeCode && !!updatedFormData.subChargeName && !!updatedFormData.mainChargeCode,
+      !!updatedFormData.uomCode && !!updatedFormData.uomName,
     )
   }
 
   const handlePageNavigation = () => {
     const pageNumber = Number.parseInt(pageInput, 10)
-    if (pageNumber > 0 && pageNumber <= filteredSubChargeCodes.length) {
+    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
       setCurrentPage(pageNumber)
     } else {
       alert("Please enter a valid page number.")
@@ -246,7 +131,7 @@ const SubChargeCode = () => {
     const pageNumbers = []
     const maxVisiblePages = 5
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-    const endPage = Math.min(filteredSubChargeCodes.length, startPage + maxVisiblePages - 1)
+    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1)
 
     if (endPage - startPage < maxVisiblePages - 1) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1)
@@ -261,9 +146,9 @@ const SubChargeCode = () => {
       pageNumbers.push(i)
     }
 
-    if (endPage < filteredSubChargeCodes.length) {
-      if (endPage < filteredSubChargeCodes.length - 1) pageNumbers.push("...")
-      pageNumbers.push(filteredSubChargeCodes.length)
+    if (endPage < filteredTotalPages) {
+      if (endPage < filteredTotalPages - 1) pageNumbers.push("...")
+      pageNumbers.push(filteredTotalPages)
     }
 
     return pageNumbers.map((number, index) => (
@@ -279,17 +164,13 @@ const SubChargeCode = () => {
     ))
   }
 
-  const filteredTotalPages = Math.ceil(filteredSubChargeCodes.length / itemsPerPage)
-
-  const currentItems = filteredSubChargeCodes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-
   return (
     <div className="content-wrapper">
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title p-2">Sub Charge Code</h4>
+              <h4 className="card-title p-2">Unit Of Measurement Master</h4>
 
               <div className="d-flex justify-content-between align-items-center">
                 {!showForm && (
@@ -320,16 +201,13 @@ const SubChargeCode = () => {
               </div>
             </div>
             <div className="card-body">
-              {loading ? (
-                <LoadingScreen />
-              ) : !showForm ? (
+              {!showForm ? (
                 <div className="table-responsive packagelist">
                   <table className="table table-bordered table-hover align-middle">
                     <thead className="table-light">
                       <tr>
-                        <th>Sub Charge Code</th>
-                        <th>Sub Charge Name</th>
-                        <th>Main Charge Code</th>
+                        <th>UOM Code</th>
+                        <th>UOM Name</th>
                         <th>Status</th>
                         <th>Edit</th>
                       </tr>
@@ -337,9 +215,8 @@ const SubChargeCode = () => {
                     <tbody>
                       {currentItems.map((item) => (
                         <tr key={item.id}>
-                          <td>{item.subChargeCode}</td>
-                          <td>{item.subChargeName}</td>
-                          <td>{item.mainChargeCode}</td>
+                          <td>{item.UOMCODE}</td>
+                          <td>{item.UOMNAME}</td>
                           <td>
                             <div className="form-check form-switch">
                               <input
@@ -382,59 +259,31 @@ const SubChargeCode = () => {
                   <div className="row">
                     <div className="form-group col-md-4 mt-3">
                       <label>
-                        Sub Charge Code <span className="text-danger">*</span>
+                        UOM Code <span className="text-danger">*</span>
                       </label>
                       <input
                         type="text"
                         className="form-control"
-                        id="subChargeCode"
-                        placeholder="Sub Charge Code"
+                        id="uomCode"
+                        placeholder="UOM Code"
                         onChange={handleInputChange}
-                        value={formData.subChargeCode}
+                        value={formData.uomCode}
                         required
                       />
                     </div>
                     <div className="form-group col-md-4 mt-3">
                       <label>
-                        Sub Charge Name <span className="text-danger">*</span>
+                        UOM Name <span className="text-danger">*</span>
                       </label>
                       <input
                         type="text"
                         className="form-control"
-                        id="subChargeName"
-                        placeholder="Sub Charge Name"
+                        id="uomName"
+                        placeholder="UOM Name"
                         onChange={handleInputChange}
-                        value={formData.subChargeName}
+                        value={formData.uomName}
                         required
                       />
-                    </div>
-
-                    <div className="form-group col-md-4 mt-3">
-                      <label>
-                        Main Charge Code <span className="text-danger">*</span>
-                      </label>
-                      <select
-                        className="form-control"
-                        id="mainChargeCode"
-                        value={formData.mainChargeCode}
-                        onChange={handleInputChange}
-                        required
-                      >
-                        <option value="" disabled>
-                          Select Main Charge Code
-                        </option>
-                        {mainChargeCodes && mainChargeCodes.length > 0 ? (
-                          mainChargeCodes.map((code) => (
-                            <option key={code.chargecodeId} value={code.chargecodeId}>
-                              {code.chargecodeName}
-                            </option>
-                          ))
-                        ) : (
-                          <option value="" disabled>
-                            No main charge codes available
-                          </option>
-                        )}
-                      </select>
                     </div>
                   </div>
 
@@ -465,7 +314,7 @@ const SubChargeCode = () => {
                         <p>
                           Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
-                            {subChargeCodes.find((item) => item.id === confirmDialog.subChargeId)?.subChargeName}
+                            {uomList.find((item) => item.id === confirmDialog.uomId)?.UOMNAME}
                           </strong>
                           ?
                         </p>
@@ -487,7 +336,7 @@ const SubChargeCode = () => {
                 <nav className="d-flex justify-content-between align-items-center mt-3">
                   <div>
                     <span>
-                      Page {currentPage} of {filteredTotalPages} | Total Records: {filteredSubChargeCodes.length}
+                      Page {currentPage} of {filteredTotalPages} | Total Records: {filteredUomList.length}
                     </span>
                   </div>
                   <ul className="pagination mb-0">
@@ -535,4 +384,4 @@ const SubChargeCode = () => {
   )
 }
 
-export default SubChargeCode
+export default UOMMaster;

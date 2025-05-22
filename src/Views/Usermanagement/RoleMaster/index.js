@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST,ROLE,ALL_ROLE } from "../../../config/apiConfig";
+import { API_HOST,MAS_ROLES } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest,putRequest,getRequest } from "../../../service/apiService";
 
@@ -33,7 +33,7 @@ const Rolemaster = () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await getRequest(`${ALL_ROLE}/${flag}`);
+            const response = await getRequest(`${MAS_ROLES}/getAll/${flag}`);
             console.log("API Response:", response);
     
             if (response && response.response) {
@@ -121,7 +121,7 @@ const Rolemaster = () => {
     
             if (editingRole) {
                 // Update existing role
-                const response = await putRequest(`${ROLE}/update/${editingRole.id}`, {
+                const response = await putRequest(`${MAS_ROLES}/updateById/${editingRole.id}`, {
                     roleCode: formData.roleCode,
                     roleDesc: formData.roleDesc,
                     status: editingRole.isActive,
@@ -151,7 +151,7 @@ const Rolemaster = () => {
                 }
             } else {
                 // Create a new role
-                const response = await postRequest(`${ROLE}/create`, {
+                const response = await postRequest(`${MAS_ROLES}/create`, {
                     roleCode: formData.roleCode,
                     roleDesc: formData.roleDesc,
                     status: "y",
@@ -207,7 +207,7 @@ const Rolemaster = () => {
                 setLoading(true);
                 
                 const response = await putRequest(
-                    `${ROLE}/status/${confirmDialog.roleId}?status=${confirmDialog.newStatus}`
+                    `${MAS_ROLES}/status/${confirmDialog.roleId}?status=${confirmDialog.newStatus}`
                 );
                 
                 if (response && response.status === 200) {
