@@ -49,7 +49,8 @@ const validRoutes = [
   "/investigationpricing",
   "/opdpreconsultation",
   "/investigationmaster",
-  "/investigation-multiple-results"
+  "/investigation-multiple-results",
+  "/Drugmaster",
 ];
 
 const NotAuthorized = () => {
