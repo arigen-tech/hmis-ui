@@ -45,6 +45,7 @@ import InvestigationMaster from './Views/Masters/InvestigationMaster';
 import InvestigationMasterResult from './Views/Masters/InvestigationMaster/investigationMasterResult';
 import Drugmaster from './Views/Stores/DrugMaster';
 import OpeningBalanceEntry from './Views/Dispensary/OpeningBalanceEntry';
+import OpeningBalanceApprovalList from './Views/Dispensary/OpeningBalanceApproval';
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -124,6 +125,7 @@ function App() {
                 <Route path="investigationmaster" element={<InvestigationMaster/>} />
                 <Route path="Drugmaster" element={<Drugmaster/>} />
                 <Route path="OpeningBalanceEntry" element={<OpeningBalanceEntry/>} />
+                <Route path="OpeningBalanceApprovalList" element={<OpeningBalanceApprovalList/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>

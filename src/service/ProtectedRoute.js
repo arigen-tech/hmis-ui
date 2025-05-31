@@ -52,6 +52,7 @@ const validRoutes = [
   "/investigation-multiple-results",
   "/Drugmaster",
   "/OpeningBalanceEntry",
+  "/OpeningBalanceApprovalList",
 ];
 
 const NotAuthorized = () => {
