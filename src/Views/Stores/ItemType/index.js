@@ -1,8 +1,12 @@
 
+// export const MAS_ITEM_TYPE = `${MASTERS}/masItemType`;
+// export const MAS_STORE_GROUP = `${MASTERS}/masStoreGroup`;
+
 
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
-import { ITEM_TYPE, ALL_ITEM_TYPE, ALL_STORE_GROUP } from "../../../config/apiConfig"
+import { ITEM_TYPE, MAS_ITEM_TYPE, MAS_STORE_GROUP } from "../../../config/apiConfig"
+
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
@@ -40,7 +44,7 @@ const ItemTypeManagement = () => {
   const fetchItemTypes = async (flag = 0) => {
     try {
       setLoading(true)
-      const response = await getRequest(`${ALL_ITEM_TYPE}/${flag}`)
+      const response = await getRequest(`${MAS_ITEM_TYPE}/getByAll/${flag}`)
       if (response && response.response) {
         // Map the response to match our component's expected structure
         const mappedItemTypes = response.response.map((item) => ({
@@ -64,7 +68,7 @@ const ItemTypeManagement = () => {
   const fetchStoreGroups = async (flag=1) => {
     try {
       // Based on your error and response, we need to adjust the endpoint
-      const response = await getRequest(`${ALL_STORE_GROUP}/${flag}`)
+      const response = await getRequest(`${MAS_STORE_GROUP}/getAll/${flag}`)
 
       if (response && response.response) {
         const mappedStoreGroups = response.response.map((group) => ({
@@ -166,7 +170,7 @@ const ItemTypeManagement = () => {
       }
 
       if (editingType) {
-        const response = await putRequest(`${ITEM_TYPE}/updateMasItemTypeId/${editingType.itemTypeId}`, requestData)
+        const response = await putRequest(`${MAS_ITEM_TYPE}/updateById/${editingType.itemTypeId}`, requestData)
 
         if (response && response.response) {
           // Map the response to match our component's expected structure
@@ -185,7 +189,7 @@ const ItemTypeManagement = () => {
           showPopup("Item type updated successfully!", "success")
         }
       } else {
-        const response = await postRequest(`${ITEM_TYPE}/addMasItemType`, requestData)
+        const response = await postRequest(`${MAS_ITEM_TYPE}/create`, requestData)
 
         if (response && response.response) {
           // Map the response to match our component's expected structure
@@ -236,7 +240,8 @@ const ItemTypeManagement = () => {
       setLoading(true)
 
       const response = await putRequest(
-        `${ITEM_TYPE}/updateMasItemTypeStatus/${confirmDialog.itemTypeId}/${confirmDialog.newStatus}`,
+
+        `${MAS_ITEM_TYPE}/status/${confirmDialog.itemTypeId}?status=${confirmDialog.newStatus}`,
       )
 
       if (response && response.response) {

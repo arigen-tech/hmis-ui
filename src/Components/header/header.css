@@ -1,3 +1,4 @@
+
 .sidebar-icon-only .navbar {
     left: 70px !important;
 }
@@ -15,6 +16,13 @@
     color: var(--bs-white) !important;
   
   }
+  .logout-link:hover {
+  color: #dc3545 !important; 
+}
+.logout-link:hover i {
+  color: #dc3545 !important;
+}
+
 
 @media only screen and (max-width: 992px) {
     .navbar {

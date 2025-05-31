@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { getRequest, postRequest } from "../../../service/apiService"; 
-import { ALL_ROLE, ALL_TEMPLATES, ROLE_TEMPLATE } from "../../../config/apiConfig"; 
+import { MAS_ROLES, MAS_TEMPLATE, ROLE_TEMPLATE } from "../../../config/apiConfig"; 
 
 const Rolesrights = () => {
     const [currentPage, setCurrentPage] = useState(1);
@@ -27,7 +27,7 @@ const Rolesrights = () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await getRequest(`${ALL_ROLE}/${flag}`);
+            const response = await getRequest(`${MAS_ROLES}/getAll/${flag}`);
             console.log("API Response (Roles):", response);
             
             if (response && response.response) {
@@ -53,7 +53,7 @@ const Rolesrights = () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await getRequest(`${ALL_TEMPLATES}/${flag}`);
+            const response = await getRequest(`${MAS_TEMPLATE}/getAll/${flag}`);
             
             if (response && response.response) {
                 const templateList = response.response || [];

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
-import { ALL_FREQUENCY, FREQUENCY } from "../../../config/apiConfig"
+import {MAS_FREQUENCY } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
@@ -36,7 +36,7 @@ const FrequencyMaster = () => {
   const fetchFrequencyData = async (flag = 0) => {
     try {
       setLoading(true)
-      const response = await getRequest(`${ALL_FREQUENCY}/${flag}`)
+      const response = await getRequest(`${MAS_FREQUENCY}/getAll/${flag}`)
       if (response && response.response) {
         const mappedData = response.response.map((item) => ({
           frequencyId: item.frequencyId,
@@ -114,7 +114,7 @@ const FrequencyMaster = () => {
 
       if (editingFrequency) {
         // Update existing frequency
-        const response = await putRequest(`${FREQUENCY}/update/${editingFrequency.frequencyId}`, {
+        const response = await putRequest(`${MAS_FREQUENCY}/updateById/${editingFrequency.frequencyId}`, {
           feq: Number.parseFloat(formData.frequency),
           frequencyName: formData.frequencyName,
           orderNo: Number.parseInt(formData.orderNo),
@@ -127,7 +127,7 @@ const FrequencyMaster = () => {
         }
       } else {
         // Add new frequency
-        const response = await postRequest(`${FREQUENCY}/add`, {
+        const response = await postRequest(`${MAS_FREQUENCY}/create`, {
           feq: Number.parseFloat(formData.frequency),
           frequencyName: formData.frequencyName,
           orderNo: Number.parseInt(formData.orderNo),
@@ -171,7 +171,7 @@ const FrequencyMaster = () => {
       try {
         setLoading(true)
         const response = await putRequest(
-          `${FREQUENCY}/idUpdate/${confirmDialog.frequencyId}/${confirmDialog.newStatus}`,
+          `${MAS_FREQUENCY}/status/${confirmDialog.frequencyId}/${confirmDialog.newStatus}`,
         )
         if (response && response.response) {
           setFrequencyData((prevData) =>
@@ -249,7 +249,7 @@ const FrequencyMaster = () => {
                       <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                         <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button type="button" className="btn btn-success me-2" onClick={handleRefresh}>
+                      <button type="button" className="btn btn-success me-2 flex-shrink-0" onClick={handleRefresh}>
                         <i className="mdi mdi-refresh"></i> Show All
                       </button>
                       <button type="button" className="btn btn-success me-2" onClick={() => setShowModal(true)}>

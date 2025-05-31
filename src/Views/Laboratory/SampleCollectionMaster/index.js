@@ -1,132 +1,85 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Popup from "../../../Components/popup"
-import LoadingScreen from "../../../Components/Loading"
-import { postRequest, putRequest, getRequest } from "../../../service/apiService"
-import { MAS_MAIN_CHARGE_CODE } from "../../../config/apiConfig"
 
+const SampleCollectionMaster = () => {
+  const [sampleList, setSampleList] = useState([
+    { id: 1, CollectionCode: "7777", CollectionName: "-", status: "y" },
+    { id: 2, CollectionCode: "112", CollectionName: "BHUJO", status: "y" },
+    { id: 3, CollectionCode: "AM", CollectionName: "BLOOD", status: "y" },
+    { id: 4, CollectionCode: "Z", CollectionName: "BLOOD SAMPLE COLLECTION TEST", status: "y" },
+    { id: 5, CollectionCode: "Z", CollectionName: "BLOOD COVID", status: "y" },
+  ])
 
-
-const MainChargeCode = () => {
-  const [mainChargeCodes, setMainChargeCodes] = useState([])
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, mainChargeId: null, newStatus: false })
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, sampleId: null, newStatus: false })
   const [formData, setFormData] = useState({
-    chargecodeCode: "",
-    chargecodeName: "",
+    collectionCode: "",
+    collectionName: "",
   })
   const [searchQuery, setSearchQuery] = useState("")
   const [showForm, setShowForm] = useState(false)
   const [isFormValid, setIsFormValid] = useState(false)
-  const [editingMainCharge, setEditingMainCharge] = useState(null)
+  const [editingSample, setEditingSample] = useState(null)
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
-  const [loading, setLoading] = useState(true)
   const itemsPerPage = 5
-
-  // API endpoints
-  
-
-  useEffect(() => {
-    fetchMainChargeCodeData(0)
-  }, [])
-
-  const fetchMainChargeCodeData = async (flag = 0) => {
-    try {
-      setLoading(true)
-      const response = await getRequest(`${MAS_MAIN_CHARGE_CODE}/getAll/${flag}`)
-      
-      if (response && response.response) {
-        setMainChargeCodes(response.response)
-      }
-    } catch (err) {
-      console.error("Error fetching main charge code data:", err)
-      showPopup("Failed to load main charge code data", "error")
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
     setCurrentPage(1)
   }
-  
-  const filteredMainChargeCodes = Array.isArray(mainChargeCodes) ? mainChargeCodes.filter(
-    (item) =>
-      (item?.chargecodeCode?.toString().toLowerCase().includes(searchQuery.toLowerCase()) || 
-       item?.chargecodeName?.toString().toLowerCase().includes(searchQuery.toLowerCase()))
-  ) : []
-  
-  const filteredTotalPages = Math.ceil(filteredMainChargeCodes.length / itemsPerPage)
 
-  const currentItems = filteredMainChargeCodes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const filteredSampleList = sampleList.filter(
+    (item) =>
+      item.CollectionCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.CollectionName.toLowerCase().includes(searchQuery.toLowerCase()),
+  )
+
+  const filteredTotalPages = Math.ceil(filteredSampleList.length / itemsPerPage)
+
+  const currentItems = filteredSampleList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const handleEdit = (item) => {
-    setEditingMainCharge(item)
+    setEditingSample(item)
     setShowForm(true)
     setFormData({
-      chargecodeCode: item.chargecodeCode,
-      chargecodeName: item.chargecodeName,
+      collectionCode: item.CollectionCode,
+      collectionName: item.CollectionName,
     })
     setIsFormValid(true)
   }
 
-  const handleSave = async (e) => {
+  const handleSave = (e) => {
     e.preventDefault()
     if (!isFormValid) return
 
-    try {
-      setLoading(true)
-
-      // Check for duplicate main charge code
-      const isDuplicate = mainChargeCodes.some(
-        (code) =>
-          code.chargecodeCode === formData.chargecodeCode &&
-          (!editingMainCharge || code.chargecodeId !== editingMainCharge.chargecodeId)
+    if (editingSample) {
+      setSampleList(
+        sampleList.map((item) =>
+          item.id === editingSample.id
+            ? {
+                ...item,
+                CollectionCode: formData.collectionCode,
+                CollectionName: formData.collectionName,
+              }
+            : item,
+        ),
       )
-
-      if (isDuplicate && !editingMainCharge) {
-        showPopup("Main charge code with the same code already exists!", "error")
-        setLoading(false)
-        return
+      showPopup("Sample updated successfully!", "success")
+    } else {
+      const newSample = {
+        id: Date.now(),
+        CollectionCode: formData.collectionCode,
+        CollectionName: formData.collectionName,
+        status: "y",
       }
-
-      if (editingMainCharge) {
-        // Update existing main charge code
-        const response = await putRequest(`${MAS_MAIN_CHARGE_CODE}/updateById/${editingMainCharge.chargecodeId}`, {
-          chargecode_code: formData.chargecodeCode,
-          chargecode_name: formData.chargecodeName,
-          status: editingMainCharge.status,
-        })
-
-        if (response && response.status === 200) {
-          fetchMainChargeCodeData()
-          showPopup("Main charge code updated successfully!", "success")
-        }
-      } else {
-        // Add new main charge code
-        const response = await postRequest(`${MAS_MAIN_CHARGE_CODE}/create`, {
-          chargecode_code: formData.chargecodeCode,
-          chargecode_name: formData.chargecodeName,
-          status: "y",
-        })
-
-        if (response && response.status === 200) {
-          fetchMainChargeCodeData()
-          showPopup("New main charge code added successfully!", "success")
-        }
-      }
-
-      // Reset form and state
-      setEditingMainCharge(null)
-      setFormData({ chargecodeCode: "", chargecodeName: "" })
-      setShowForm(false)
-    } catch (err) {
-      console.error("Error saving main charge code:", err)
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error")
-    } finally {
-      setLoading(false)
+      setSampleList([...sampleList, newSample])
+      showPopup("New sample added successfully!", "success")
     }
+
+    setEditingSample(null)
+    setShowForm(false)
+    setFormData({ collectionCode: "", collectionName: "" })
   }
 
   const showPopup = (message, type = "info") => {
@@ -140,37 +93,18 @@ const MainChargeCode = () => {
   }
 
   const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, mainChargeId: id, newStatus })
+    setConfirmDialog({ isOpen: true, sampleId: id, newStatus })
   }
 
-  const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.mainChargeId !== null) {
-      try {
-        setLoading(true)
-        const response = await putRequest(
-          `${MAS_MAIN_CHARGE_CODE}/status/${confirmDialog.mainChargeId}?status=${confirmDialog.newStatus}`
-        )
-        if (response && response.response) {
-          setMainChargeCodes((prevData) =>
-            prevData.map((item) =>
-              item.chargecodeId === confirmDialog.mainChargeId
-                ? { ...item, status: confirmDialog.newStatus }
-                : item
-            )
-          )
-          showPopup(
-            `Main charge code ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success"
-          )
-        }
-      } catch (err) {
-        console.error("Error updating main charge code status:", err)
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error")
-      } finally {
-        setLoading(false)
-      }
+  const handleConfirm = (confirmed) => {
+    if (confirmed && confirmDialog.sampleId !== null) {
+      setSampleList((prevData) =>
+        prevData.map((item) =>
+          item.id === confirmDialog.sampleId ? { ...item, status: confirmDialog.newStatus } : item,
+        ),
+      )
     }
-    setConfirmDialog({ isOpen: false, mainChargeId: null, newStatus: null })
+    setConfirmDialog({ isOpen: false, sampleId: null, newStatus: null })
   }
 
   const handleInputChange = (e) => {
@@ -179,7 +113,9 @@ const MainChargeCode = () => {
 
     // Check if all required fields have values
     const updatedFormData = { ...formData, [id]: value }
-    setIsFormValid(!!updatedFormData.chargecodeCode && !!updatedFormData.chargecodeName)
+    setIsFormValid(
+      !!updatedFormData.collectionCode && !!updatedFormData.collectionName,
+    )
   }
 
   const handlePageNavigation = () => {
@@ -189,12 +125,6 @@ const MainChargeCode = () => {
     } else {
       alert("Please enter a valid page number.")
     }
-  }
-
-  const handleRefresh = () => {
-    setSearchQuery("")
-    setCurrentPage(1)
-    fetchMainChargeCodeData()
   }
 
   const renderPagination = () => {
@@ -240,7 +170,7 @@ const MainChargeCode = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title p-2">Main Charge Code</h4>
+              <h4 className="card-title p-2">Sample Collection Master</h4>
 
               <div className="d-flex justify-content-between align-items-center">
                 {!showForm && (
@@ -263,9 +193,6 @@ const MainChargeCode = () => {
                     <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                       <i className="mdi mdi-plus"></i> Add
                     </button>
-                    <button type="button" className="btn btn-success me-2" onClick={handleRefresh}>
-                      <i className="mdi mdi-refresh"></i> Show All
-                    </button>
                     <button type="button" className="btn btn-success me-2">
                       <i className="mdi mdi-plus"></i> Generate Report
                     </button>
@@ -274,36 +201,35 @@ const MainChargeCode = () => {
               </div>
             </div>
             <div className="card-body">
-              {loading ? (
-                <LoadingScreen />
-              ) : !showForm ? (
+              {!showForm ? (
                 <div className="table-responsive packagelist">
                   <table className="table table-bordered table-hover align-middle">
                     <thead className="table-light">
                       <tr>
-                        <th>Main Charge Code</th>
-                        <th>Main Charge Name</th>
+                        <th>Collection Code</th>
+                        <th>Collection Name</th>
                         <th>Status</th>
                         <th>Edit</th>
                       </tr>
                     </thead>
                     <tbody>
                       {currentItems.map((item) => (
-                        <tr key={item.chargecodeId}>
-                          <td>{item.chargecodeCode}</td>
-                          <td>{item.chargecodeName}</td>
+                        <tr key={item.id}>
+                          <td>{item.CollectionCode}</td>
+                          <td>{item.CollectionName}</td>
                           <td>
                             <div className="form-check form-switch">
                               <input
                                 className="form-check-input"
                                 type="checkbox"
                                 checked={item.status === "y"}
-                                onChange={() => handleSwitchChange(item.chargecodeId, item.status === "y" ? "n" : "y")}
-                                id={`switch-${item.chargecodeId}`}
+                                onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
+                                id={`switch-${item.id}`}
                               />
                               <label
                                 className="form-check-label px-0"
-                                htmlFor={`switch-${item.chargecodeId}`}
+                                htmlFor={`switch-${item.id}`}
+                                onClick={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
                               >
                                 {item.status === "y" ? "Active" : "Deactivated"}
                               </label>
@@ -333,33 +259,34 @@ const MainChargeCode = () => {
                   <div className="row">
                     <div className="form-group col-md-4 mt-3">
                       <label>
-                        Main Charge Code <span className="text-danger">*</span>
+                        Collection Code <span className="text-danger">*</span>
                       </label>
                       <input
                         type="text"
                         className="form-control"
-                        id="chargecodeCode"
-                        placeholder="Main Charge Code"
+                        id="collectionCode"
+                        placeholder="Collection Code"
                         onChange={handleInputChange}
-                        value={formData.chargecodeCode}
+                        value={formData.collectionCode}
                         required
                       />
                     </div>
                     <div className="form-group col-md-4 mt-3">
                       <label>
-                        Main Charge Name <span className="text-danger">*</span>
+                        Collection Name <span className="text-danger">*</span>
                       </label>
                       <input
                         type="text"
                         className="form-control"
-                        id="chargecodeName"
-                        placeholder="Main Charge Name"
+                        id="collectionName"
+                        placeholder="Collection Name"
                         onChange={handleInputChange}
-                        value={formData.chargecodeName}
+                        value={formData.collectionName}
                         required
                       />
                     </div>
                   </div>
+
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                     <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                       Save
@@ -387,7 +314,7 @@ const MainChargeCode = () => {
                         <p>
                           Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
-                            {mainChargeCodes.find((item) => item.chargecodeId === confirmDialog.mainChargeId)?.chargecodeName}
+                            {sampleList.find((item) => item.id === confirmDialog.sampleId)?.CollectionName}
                           </strong>
                           ?
                         </p>
@@ -409,7 +336,7 @@ const MainChargeCode = () => {
                 <nav className="d-flex justify-content-between align-items-center mt-3">
                   <div>
                     <span>
-                      Page {currentPage} of {filteredTotalPages} | Total Records: {filteredMainChargeCodes.length}
+                      Page {currentPage} of {filteredTotalPages} | Total Records: {filteredSampleList.length}
                     </span>
                   </div>
                   <ul className="pagination mb-0">
@@ -457,4 +384,4 @@ const MainChargeCode = () => {
   )
 }
 
-export default MainChargeCode
+export default SampleCollectionMaster;
