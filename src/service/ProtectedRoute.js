@@ -53,6 +53,7 @@ const validRoutes = [
   "/Drugmaster",
   "/OpeningBalanceEntry",
   "/OpeningBalanceApprovalList",
+  "/OPDServiceMaster",
 ];
 
 const NotAuthorized = () => {
