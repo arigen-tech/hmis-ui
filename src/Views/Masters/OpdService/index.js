@@ -1,7 +1,6 @@
 import { useState } from "react"
 import Popup from "../../../Components/popup"
 
-
 const OPDServiceMaster = () => {
   const [serviceList, setServiceList] = useState([
     {
@@ -10,8 +9,10 @@ const OPDServiceMaster = () => {
       service_name: "OPD Consultation - Ortho",
       base_tariff: 500.0,
       service_category: "consultation",
-      department_id: 201,
-      doctor_id: 101,
+      department: "Orthopedics" ,
+      doctor: "Dr. Smith" ,
+      from_date: "2024-01-01",
+      to_date: "2024-12-31",
       status: "y",
     },
     {
@@ -20,8 +21,10 @@ const OPDServiceMaster = () => {
       service_name: "OPD Consultation - Nephro",
       base_tariff: 600.0,
       service_category: "consultation",
-      department_id: 202,
-      doctor_id: 102,
+      department:  "Nephrology" ,
+      doctor:  "Dr. Johnson" ,
+      from_date: "2024-01-01",
+      to_date: "2024-12-31",
       status: "y",
     },
     {
@@ -30,8 +33,10 @@ const OPDServiceMaster = () => {
       service_name: "OPD Consultation - Cardiology",
       base_tariff: 700.0,
       service_category: "consultation",
-      department_id: 203,
-      doctor_id: 103,
+      department:  "Cardiology" ,
+      doctor: "Dr. Lee" ,
+      from_date: "2024-01-01",
+      to_date: "2024-12-31",
       status: "y",
     },
     {
@@ -40,8 +45,10 @@ const OPDServiceMaster = () => {
       service_name: "OPD Consultation - General",
       base_tariff: 400.0,
       service_category: "diagnostic",
-      department_id: 204,
-      doctor_id: 104,
+      department: "General Medicine" ,
+      doctor: "Dr. Wilson" ,
+      from_date: "2024-01-01",
+      to_date: "2024-12-31",
       status: "n",
     },
     {
@@ -50,8 +57,10 @@ const OPDServiceMaster = () => {
       service_name: "OPD Emergency Consultation",
       base_tariff: 800.0,
       service_category: "emergency",
-      department_id: 205,
-      doctor_id: 105,
+      department:   "Emergency" ,
+      doctor:  "Dr. Brown" ,
+      from_date: "2024-01-01",
+      to_date: "2024-12-31",
       status: "y",
     },
   ])
@@ -72,6 +81,8 @@ const OPDServiceMaster = () => {
     serviceCategory: "",
     departmentId: "",
     doctorId: "",
+    fromDate: "",
+    toDate: "",
   })
   const [searchQuery, setSearchQuery] = useState("")
   const [showForm, setShowForm] = useState(false)
@@ -82,6 +93,26 @@ const OPDServiceMaster = () => {
   const [pageInput, setPageInput] = useState("")
   const itemsPerPage = 5
 
+  const departments = [
+    { id: 201, name: "Orthopedics" },
+    { id: 202, name: "Nephrology" },
+    { id: 203, name: "Cardiology" },
+    { id: 204, name: "General Medicine" },
+    { id: 205, name: "Emergency" },
+    { id: 206, name: "Pediatrics" },
+    { id: 207, name: "Neurology" },
+  ]
+
+  const doctors = [
+    { id: 101, name: "Dr. Smith" },
+    { id: 102, name: "Dr. Johnson" },
+    { id: 103, name: "Dr. Lee" },
+    { id: 104, name: "Dr. Wilson" },
+    { id: 105, name: "Dr. Brown" },
+    { id: 106, name: "Dr. Davis" },
+    { id: 107, name: "Dr. Miller" },
+  ]
+
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
     setCurrentPage(1)
@@ -91,7 +122,9 @@ const OPDServiceMaster = () => {
     (item) =>
       item.service_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.service_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.service_category.toLowerCase().includes(searchQuery.toLowerCase()),
+      item.service_category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.department.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.doctor.name.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
   const filteredTotalPages = Math.ceil(filteredServiceList.length / itemsPerPage)
@@ -106,8 +139,10 @@ const OPDServiceMaster = () => {
       serviceName: item.service_name,
       baseTariff: item.base_tariff.toString(),
       serviceCategory: item.service_category,
-      departmentId: item.department_id.toString(),
-      doctorId: item.doctor_id.toString(),
+      departmentId: item.department.id.toString(),
+      doctorId: item.doctor.id.toString(),
+      fromDate: item.from_date,
+      toDate: item.to_date,
     })
     setIsFormValid(true)
   }
@@ -115,6 +150,9 @@ const OPDServiceMaster = () => {
   const handleSave = (e) => {
     e.preventDefault()
     if (!isFormValid) return
+
+    const selectedDepartment = departments.find((dept) => dept.id === Number.parseInt(formData.departmentId))
+    const selectedDoctor = doctors.find((doc) => doc.id === Number.parseInt(formData.doctorId))
 
     if (editingService) {
       setServiceList(
@@ -126,8 +164,10 @@ const OPDServiceMaster = () => {
                 service_name: formData.serviceName,
                 base_tariff: Number.parseFloat(formData.baseTariff),
                 service_category: formData.serviceCategory,
-                department_id: Number.parseInt(formData.departmentId),
-                doctor_id: Number.parseInt(formData.doctorId),
+                department: selectedDepartment,
+                doctor: selectedDoctor,
+                from_date: formData.fromDate,
+                to_date: formData.toDate,
               }
             : item,
         ),
@@ -140,8 +180,10 @@ const OPDServiceMaster = () => {
         service_name: formData.serviceName,
         base_tariff: Number.parseFloat(formData.baseTariff),
         service_category: formData.serviceCategory,
-        department_id: Number.parseInt(formData.departmentId),
-        doctor_id: Number.parseInt(formData.doctorId),
+        department: selectedDepartment,
+        doctor: selectedDoctor,
+        from_date: formData.fromDate,
+        to_date: formData.toDate,
         status: "y",
       }
       setServiceList([...serviceList, newService])
@@ -157,6 +199,8 @@ const OPDServiceMaster = () => {
       serviceCategory: "",
       departmentId: "",
       doctorId: "",
+      fromDate: "",
+      toDate: "",
     })
   }
 
@@ -196,7 +240,9 @@ const OPDServiceMaster = () => {
         !!updatedFormData.baseTariff &&
         !!updatedFormData.serviceCategory &&
         !!updatedFormData.departmentId &&
-        !!updatedFormData.doctorId,
+        !!updatedFormData.doctorId &&
+        !!updatedFormData.fromDate &&
+        !!updatedFormData.toDate,
     )
   }
 
@@ -211,7 +257,9 @@ const OPDServiceMaster = () => {
         !!updatedFormData.baseTariff &&
         !!updatedFormData.serviceCategory &&
         !!updatedFormData.departmentId &&
-        !!updatedFormData.doctorId,
+        !!updatedFormData.doctorId &&
+        !!updatedFormData.fromDate &&
+        !!updatedFormData.toDate,
     )
   }
 
@@ -303,12 +351,13 @@ const OPDServiceMaster = () => {
                   <table className="table table-bordered table-hover align-middle">
                     <thead className="table-light">
                       <tr>
-                        <th>Service Code</th>
                         <th>Service Name</th>
                         <th>Base Tariff</th>
                         <th>Service Category</th>
-                        <th>Department ID</th>
-                        <th>Doctor ID</th>
+                        <th>Department</th>
+                        <th>Doctor</th>
+                        <th>From Date</th>
+                        <th>To Date</th>
                         <th>Status</th>
                         <th>Edit</th>
                       </tr>
@@ -316,12 +365,13 @@ const OPDServiceMaster = () => {
                     <tbody>
                       {currentItems.map((item) => (
                         <tr key={item.id}>
-                          <td>{item.service_code}</td>
                           <td>{item.service_name}</td>
                           <td>₹{item.base_tariff.toFixed(2)}</td>
                           <td style={{ textTransform: "capitalize" }}>{item.service_category}</td>
-                          <td>{item.department_id}</td>
-                          <td>{item.doctor_id}</td>
+                          <td>{item.department}</td>
+                          <td>{item.doctor}</td>
+                          <td>{new Date(item.from_date).toLocaleDateString()}</td>
+                          <td>{new Date(item.to_date).toLocaleDateString()}</td>
                           <td>
                             <div className="form-check form-switch">
                               <input
@@ -410,7 +460,7 @@ const OPDServiceMaster = () => {
                         Service Category <span className="text-danger">*</span>
                       </label>
                       <select
-                        className="form-control"
+                        className="form-select"
                         id="serviceCategory"
                         onChange={handleSelectChange}
                         value={formData.serviceCategory}
@@ -426,29 +476,65 @@ const OPDServiceMaster = () => {
                     </div>
                     <div className="form-group col-md-4 mt-3">
                       <label>
-                        Department ID <span className="text-danger">*</span>
+                        Department <span className="text-danger">*</span>
+                      </label>
+                      <select
+                        className="form-select"
+                        id="departmentId"
+                        onChange={handleSelectChange}
+                        value={formData.departmentId}
+                        required
+                      >
+                        <option value="">Select Department</option>
+                        {departments.map((department) => (
+                          <option key={department.id} value={department.id}>
+                            {department.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Doctor <span className="text-danger">*</span>
+                      </label>
+                      <select
+                        className="form-select"
+                        id="doctorId"
+                        onChange={handleSelectChange}
+                        value={formData.doctorId}
+                        required
+                      >
+                        <option value="">Select Doctor</option>
+                        {doctors.map((doctor) => (
+                          <option key={doctor.id} value={doctor.id}>
+                            {doctor.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        From Date <span className="text-danger">*</span>
                       </label>
                       <input
-                        type="number"
+                        type="date"
                         className="form-control"
-                        id="departmentId"
-                        placeholder="Department ID"
+                        id="fromDate"
                         onChange={handleInputChange}
-                        value={formData.departmentId}
+                        value={formData.fromDate}
                         required
                       />
                     </div>
                     <div className="form-group col-md-4 mt-3">
                       <label>
-                        Doctor ID <span className="text-danger">*</span>
+                        To Date <span className="text-danger">*</span>
                       </label>
                       <input
-                        type="number"
+                        type="date"
                         className="form-control"
-                        id="doctorId"
-                        placeholder="Doctor ID"
+                        id="toDate"
                         onChange={handleInputChange}
-                        value={formData.doctorId}
+                        value={formData.toDate}
                         required
                       />
                     </div>
@@ -464,7 +550,7 @@ const OPDServiceMaster = () => {
                   </div>
                 </form>
               )}
-                {popupMessage && (
+              {popupMessage && (
                 <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
               )}
               {confirmDialog.isOpen && (
