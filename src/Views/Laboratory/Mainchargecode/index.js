@@ -1,19 +1,17 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
+import LoadingScreen from "../../../Components/Loading"
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import { MAS_MAIN_CHARGE_CODE } from "../../../config/apiConfig"
+
+
 
 const MainChargeCode = () => {
-  const [mainChargeCodes, setMainChargeCodes] = useState([
-    { id: 1, mainChargeCode: "Charge Code 1", mainChargeName: "Charge Code Name 1", status: "y" },
-    { id: 2, mainChargeCode: "Charge Code 2", mainChargeName: "Charge Code Name 2", status: "y" },
-    { id: 3, mainChargeCode: "Charge Code 3", mainChargeName: "Charge Code Name 3", status: "y" },
-    { id: 4, mainChargeCode: "Charge Code 4", mainChargeName: "Charge Code Name 4", status: "y" },
-    { id: 5, mainChargeCode: "Charge Code 5", mainChargeName: "Charge Code Name 5", status: "y" },
-  ])
-
+  const [mainChargeCodes, setMainChargeCodes] = useState([])
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, mainChargeId: null, newStatus: false })
   const [formData, setFormData] = useState({
-    mainChargeCode: "",
-    mainChargeName: "",
+    chargecodeCode: "",
+    chargecodeName: "",
   })
   const [searchQuery, setSearchQuery] = useState("")
   const [showForm, setShowForm] = useState(false)
@@ -22,19 +20,43 @@ const MainChargeCode = () => {
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
-  const itemsPerPage = 3
+  const [loading, setLoading] = useState(true)
+  const itemsPerPage = 5
+
+  // API endpoints
+  
+
+  useEffect(() => {
+    fetchMainChargeCodeData(0)
+  }, [])
+
+  const fetchMainChargeCodeData = async (flag = 0) => {
+    try {
+      setLoading(true)
+      const response = await getRequest(`${MAS_MAIN_CHARGE_CODE}/getAll/${flag}`)
+      
+      if (response && response.response) {
+        setMainChargeCodes(response.response)
+      }
+    } catch (err) {
+      console.error("Error fetching main charge code data:", err)
+      showPopup("Failed to load main charge code data", "error")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
     setCurrentPage(1)
   }
-
-  const filteredMainChargeCodes = mainChargeCodes.filter(
+  
+  const filteredMainChargeCodes = Array.isArray(mainChargeCodes) ? mainChargeCodes.filter(
     (item) =>
-      item.mainChargeCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.mainChargeName.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
-
+      (item?.chargecodeCode?.toString().toLowerCase().includes(searchQuery.toLowerCase()) || 
+       item?.chargecodeName?.toString().toLowerCase().includes(searchQuery.toLowerCase()))
+  ) : []
+  
   const filteredTotalPages = Math.ceil(filteredMainChargeCodes.length / itemsPerPage)
 
   const currentItems = filteredMainChargeCodes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
@@ -43,43 +65,68 @@ const MainChargeCode = () => {
     setEditingMainCharge(item)
     setShowForm(true)
     setFormData({
-      mainChargeCode: item.mainChargeCode,
-      mainChargeName: item.mainChargeName,
+      chargecodeCode: item.chargecodeCode,
+      chargecodeName: item.chargecodeName,
     })
     setIsFormValid(true)
   }
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault()
     if (!isFormValid) return
 
-    if (editingMainCharge) {
-      setMainChargeCodes(
-        mainChargeCodes.map((item) =>
-          item.id === editingMainCharge.id
-            ? {
-                ...item,
-                mainChargeCode: formData.mainChargeCode,
-                mainChargeName: formData.mainChargeName,
-              }
-            : item,
-        ),
-      )
-      showPopup("Main charge code updated successfully!", "success")
-    } else {
-      const newMainCharge = {
-        id: Date.now(),
-        mainChargeCode: formData.mainChargeCode,
-        mainChargeName: formData.mainChargeName,
-        status: "y",
-      }
-      setMainChargeCodes([...mainChargeCodes, newMainCharge])
-      showPopup("New main charge code added successfully!", "success")
-    }
+    try {
+      setLoading(true)
 
-    setEditingMainCharge(null)
-    setShowForm(false)
-    setFormData({ mainChargeCode: "", mainChargeName: "" })
+      // Check for duplicate main charge code
+      const isDuplicate = mainChargeCodes.some(
+        (code) =>
+          code.chargecodeCode === formData.chargecodeCode &&
+          (!editingMainCharge || code.chargecodeId !== editingMainCharge.chargecodeId)
+      )
+
+      if (isDuplicate && !editingMainCharge) {
+        showPopup("Main charge code with the same code already exists!", "error")
+        setLoading(false)
+        return
+      }
+
+      if (editingMainCharge) {
+        // Update existing main charge code
+        const response = await putRequest(`${MAS_MAIN_CHARGE_CODE}/updateById/${editingMainCharge.chargecodeId}`, {
+          chargecode_code: formData.chargecodeCode,
+          chargecode_name: formData.chargecodeName,
+          status: editingMainCharge.status,
+        })
+
+        if (response && response.status === 200) {
+          fetchMainChargeCodeData()
+          showPopup("Main charge code updated successfully!", "success")
+        }
+      } else {
+        // Add new main charge code
+        const response = await postRequest(`${MAS_MAIN_CHARGE_CODE}/create`, {
+          chargecode_code: formData.chargecodeCode,
+          chargecode_name: formData.chargecodeName,
+          status: "y",
+        })
+
+        if (response && response.status === 200) {
+          fetchMainChargeCodeData()
+          showPopup("New main charge code added successfully!", "success")
+        }
+      }
+
+      // Reset form and state
+      setEditingMainCharge(null)
+      setFormData({ chargecodeCode: "", chargecodeName: "" })
+      setShowForm(false)
+    } catch (err) {
+      console.error("Error saving main charge code:", err)
+      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const showPopup = (message, type = "info") => {
@@ -96,13 +143,32 @@ const MainChargeCode = () => {
     setConfirmDialog({ isOpen: true, mainChargeId: id, newStatus })
   }
 
-  const handleConfirm = (confirmed) => {
+  const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.mainChargeId !== null) {
-      setMainChargeCodes((prevData) =>
-        prevData.map((item) =>
-          item.id === confirmDialog.mainChargeId ? { ...item, status: confirmDialog.newStatus } : item,
-        ),
-      )
+      try {
+        setLoading(true)
+        const response = await putRequest(
+          `${MAS_MAIN_CHARGE_CODE}/status/${confirmDialog.mainChargeId}?status=${confirmDialog.newStatus}`
+        )
+        if (response && response.response) {
+          setMainChargeCodes((prevData) =>
+            prevData.map((item) =>
+              item.chargecodeId === confirmDialog.mainChargeId
+                ? { ...item, status: confirmDialog.newStatus }
+                : item
+            )
+          )
+          showPopup(
+            `Main charge code ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            "success"
+          )
+        }
+      } catch (err) {
+        console.error("Error updating main charge code status:", err)
+        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error")
+      } finally {
+        setLoading(false)
+      }
     }
     setConfirmDialog({ isOpen: false, mainChargeId: null, newStatus: null })
   }
@@ -113,7 +179,7 @@ const MainChargeCode = () => {
 
     // Check if all required fields have values
     const updatedFormData = { ...formData, [id]: value }
-    setIsFormValid(!!updatedFormData.mainChargeCode && !!updatedFormData.mainChargeName)
+    setIsFormValid(!!updatedFormData.chargecodeCode && !!updatedFormData.chargecodeName)
   }
 
   const handlePageNavigation = () => {
@@ -123,6 +189,12 @@ const MainChargeCode = () => {
     } else {
       alert("Please enter a valid page number.")
     }
+  }
+
+  const handleRefresh = () => {
+    setSearchQuery("")
+    setCurrentPage(1)
+    fetchMainChargeCodeData()
   }
 
   const renderPagination = () => {
@@ -191,6 +263,9 @@ const MainChargeCode = () => {
                     <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                       <i className="mdi mdi-plus"></i> Add
                     </button>
+                    <button type="button" className="btn btn-success me-2" onClick={handleRefresh}>
+                      <i className="mdi mdi-refresh"></i> Show All
+                    </button>
                     <button type="button" className="btn btn-success me-2">
                       <i className="mdi mdi-plus"></i> Generate Report
                     </button>
@@ -199,7 +274,9 @@ const MainChargeCode = () => {
               </div>
             </div>
             <div className="card-body">
-              {!showForm ? (
+              {loading ? (
+                <LoadingScreen />
+              ) : !showForm ? (
                 <div className="table-responsive packagelist">
                   <table className="table table-bordered table-hover align-middle">
                     <thead className="table-light">
@@ -212,22 +289,21 @@ const MainChargeCode = () => {
                     </thead>
                     <tbody>
                       {currentItems.map((item) => (
-                        <tr key={item.id}>
-                          <td>{item.mainChargeCode}</td>
-                          <td>{item.mainChargeName}</td>
+                        <tr key={item.chargecodeId}>
+                          <td>{item.chargecodeCode}</td>
+                          <td>{item.chargecodeName}</td>
                           <td>
                             <div className="form-check form-switch">
                               <input
                                 className="form-check-input"
                                 type="checkbox"
                                 checked={item.status === "y"}
-                                onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
-                                id={`switch-${item.id}`}
+                                onChange={() => handleSwitchChange(item.chargecodeId, item.status === "y" ? "n" : "y")}
+                                id={`switch-${item.chargecodeId}`}
                               />
                               <label
                                 className="form-check-label px-0"
-                                htmlFor={`switch-${item.id}`}
-                                onClick={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
+                                htmlFor={`switch-${item.chargecodeId}`}
                               >
                                 {item.status === "y" ? "Active" : "Deactivated"}
                               </label>
@@ -262,10 +338,10 @@ const MainChargeCode = () => {
                       <input
                         type="text"
                         className="form-control"
-                        id="mainChargeCode"
+                        id="chargecodeCode"
                         placeholder="Main Charge Code"
                         onChange={handleInputChange}
-                        value={formData.mainChargeCode}
+                        value={formData.chargecodeCode}
                         required
                       />
                     </div>
@@ -276,10 +352,10 @@ const MainChargeCode = () => {
                       <input
                         type="text"
                         className="form-control"
-                        id="mainChargeName"
+                        id="chargecodeName"
                         placeholder="Main Charge Name"
                         onChange={handleInputChange}
-                        value={formData.mainChargeName}
+                        value={formData.chargecodeName}
                         required
                       />
                     </div>
@@ -311,7 +387,7 @@ const MainChargeCode = () => {
                         <p>
                           Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
-                            {mainChargeCodes.find((item) => item.id === confirmDialog.mainChargeId)?.mainChargeName}
+                            {mainChargeCodes.find((item) => item.chargecodeId === confirmDialog.mainChargeId)?.chargecodeName}
                           </strong>
                           ?
                         </p>

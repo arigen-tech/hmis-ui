@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST,DEPARTMENT_TYPE,ALL_DEPARTMENT_TYPE } from "../../../config/apiConfig";
+import { API_HOST,MAS_DEPARTMENT_TYPE } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
 const Departmenttype = () => {
     const [departmentTypes, setDepartmentTypes] = useState([]);
@@ -32,9 +33,9 @@ const Departmenttype = () => {
     const fetchDepartmentTypes = async (flag = 0) => {
         try {
             setLoading(true);
-            const response = await axios.get(`${API_HOST}${ALL_DEPARTMENT_TYPE}/${flag}`);
-            if (response.data && response.data.response) {
-                setDepartmentTypes(response.data.response);
+            const response = await getRequest (`${MAS_DEPARTMENT_TYPE}/getAll/${flag}`);
+            if (response && response.response) {
+                setDepartmentTypes(response.response);
             }
         } catch (err) {
             console.error("Error fetching department types:", err);
@@ -111,30 +112,30 @@ const Departmenttype = () => {
 
             if (editingType) {
                 
-                const response = await axios.put(`${API_HOST}${DEPARTMENT_TYPE}/edit/${editingType.id}`, {
+                const response = await putRequest(`${MAS_DEPARTMENT_TYPE}/updateById/${editingType.id}`, {
                     departmentTypeCode: formData.departmentTypeCode,
                     departmentTypeName: formData.departmentTypeName,
                     status: editingType.status,
                 });
 
-                if (response.data && response.data.response) {
+                if (response && response.response) {
                     setDepartmentTypes((prevData) =>
                         prevData.map((type) =>
-                            type.id === editingType.id ? response.data.response : type
+                            type.id === editingType.id ? response.response : type
                         )
                     );
                     showPopup("Department type updated successfully!", "success");
                 }
             } else {
                 
-                const response = await axios.post(`${API_HOST}${DEPARTMENT_TYPE}/create`, {
+                const response = await postRequest(`${MAS_DEPARTMENT_TYPE}/create`, {
                     departmentTypeCode: formData.departmentTypeCode,
                     departmentTypeName: formData.departmentTypeName,
                     status: "y",
                 });
 
-                if (response.data && response.data.response) {
-                    setDepartmentTypes([...departmentTypes, response.data.response]);
+                if (response && response.response) {
+                    setDepartmentTypes([...departmentTypes, response.response]);
                     showPopup("New department type added successfully!", "success");
                 }
             }
@@ -171,10 +172,10 @@ const Departmenttype = () => {
         if (confirmed && confirmDialog.categoryId !== null) {
             try {
                 setLoading(true);
-                const response = await axios.put(
-                    `${API_HOST}${DEPARTMENT_TYPE}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
+                const response = await putRequest(
+                    `${MAS_DEPARTMENT_TYPE}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
                 );
-                if (response.data && response.data.response) {
+                if (response && response.response) {
                     setDepartmentTypes((prevData) =>
                         prevData.map((type) =>
                             type.id === confirmDialog.categoryId
@@ -244,7 +245,7 @@ const Departmenttype = () => {
                                             </label>
                                         </div>
                                     </div>
-                                    <div className="d-flex align-items-center">
+                                    <div className="d-flex flex-wrap align-items-center gap-2">
                                         <form className="d-inline-block searchform me-4" role="search">
                                             <div className="input-group searchinput">
                                                 <input
@@ -263,8 +264,8 @@ const Departmenttype = () => {
                                         <button type="button" className="btn btn-success me-1" onClick={() => setShowForm(true)}>
                                             <i className="mdi mdi-plus"></i> ADD
                                         </button>
-                                        <button type="button" className="btn btn-success me-2">
-                                            <i className="mdi mdi-plus"></i> Generate Report
+                                        <button type="button" className="btn btn-success me-2 d-flex align-items-center">
+                                            <i className="mdi mdi-plus d-sm-inlined-sm-inline ms-1"></i> Generate Report
                                         </button>
                                     </div>
                                 </div>

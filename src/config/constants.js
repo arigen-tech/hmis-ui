@@ -1,1 +1,1 @@
-export const DEPARTMENT_CODE_OPD=1;
+export const DEPARTMENT_CODE_OPD=5;
