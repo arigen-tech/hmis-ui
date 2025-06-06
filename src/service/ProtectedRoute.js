@@ -55,6 +55,7 @@ const validRoutes = [
   "/OpeningBalanceApprovalList",
   "/OPDServiceMaster",
   "/ServiceCategory",
+  "/ItemSection",
 ];
 
 const NotAuthorized = () => {
