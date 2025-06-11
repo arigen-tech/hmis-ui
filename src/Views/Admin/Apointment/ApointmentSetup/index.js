@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { DEPARTMENT, DOCTOR, SESSION, APPOINTMENT } from "../../../../config/apiConfig";
+import { MAS_DEPARTMENT, DOCTOR, MAS_OPD_SESSION, APPOINTMENT, FILTER_OPD_DEPT } from "../../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../../service/apiService";
 import Popup from "../../../../Components/popup";
 import LoadingScreen from "../../../../Components/Loading";
@@ -21,6 +21,7 @@ const AppointmentSetup = () => {
   const [appointmentData, setAppointmentData] = useState(null);
   const [modifiedFields, setModifiedFields] = useState({});
   const [dataFromDB, setDataFromDB] = useState(false);
+
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -63,10 +64,10 @@ const AppointmentSetup = () => {
   const fetchDepartmentData = async () => {
     setLoading(true);
     try {
-      const data = await getRequest(`${DEPARTMENT}/getAllDepartments/1`);
+      const data = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         const filteredDepartments = data.response.filter(
-          (dept) => dept.departmentTypeName === "OPD"
+          (dept) => dept.departmentTypeName === `${FILTER_OPD_DEPT}`
         );
         setDepartmentData(data.response);
         setFilterDepartment(filteredDepartments);
@@ -102,7 +103,7 @@ const AppointmentSetup = () => {
   const fetchSessionData = async () => {
     setLoading(true);
     try {
-      const data = await getRequest(`${SESSION}/getAllOpdSessions/1`);
+      const data = await getRequest(`${MAS_OPD_SESSION}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setSessionData(data.response);
       } else {

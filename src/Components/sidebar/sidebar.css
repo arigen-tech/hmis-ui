@@ -1,0 +1,36 @@
+.bg-custom {
+  background-color: #ece6e6 !important;
+  opacity: 0.3;
+  animation: skeleton-loading 1.5s infinite ease-in-out;
+}
+
+.skeleton-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.skeleton-text {
+  height: 14px;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0.3;
+  }
+}
+
+
+.arrow {
+  transition: transform 0.3s ease;
+}
+
+.sub-menu.collapse.show ~ .arrow,
+.m-link[aria-expanded="true"] .arrow {
+  transform: rotate(180deg);
+}
