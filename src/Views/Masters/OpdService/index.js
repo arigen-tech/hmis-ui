@@ -1,79 +1,10 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
+import LoadingScreen from "../../../Components/Loading/index";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import { MAS_OPD_SERVICE, MAS_SERVICE_CATEGORY, MAS_DEPARTMENT, FILTER_OPD_DEPT, DOCTOR } from "../../../config/apiConfig";
 
 const OPDServiceMaster = () => {
-  const [serviceList, setServiceList] = useState([
-    {
-      id: 1,
-      service_code: "OPD001",
-      service_name: "OPD Consultation - Ortho",
-      base_tariff: 500.0,
-      service_category: "consultation",
-      department: "Orthopedics" ,
-      doctor: "Dr. Smith" ,
-      from_date: "2024-01-01",
-      to_date: "2024-12-31",
-      status: "y",
-    },
-    {
-      id: 2,
-      service_code: "OPD002",
-      service_name: "OPD Consultation - Nephro",
-      base_tariff: 600.0,
-      service_category: "consultation",
-      department:  "Nephrology" ,
-      doctor:  "Dr. Johnson" ,
-      from_date: "2024-01-01",
-      to_date: "2024-12-31",
-      status: "y",
-    },
-    {
-      id: 3,
-      service_code: "OPD003",
-      service_name: "OPD Consultation - Cardiology",
-      base_tariff: 700.0,
-      service_category: "consultation",
-      department:  "Cardiology" ,
-      doctor: "Dr. Lee" ,
-      from_date: "2024-01-01",
-      to_date: "2024-12-31",
-      status: "y",
-    },
-    {
-      id: 4,
-      service_code: "OPD004",
-      service_name: "OPD Consultation - General",
-      base_tariff: 400.0,
-      service_category: "diagnostic",
-      department: "General Medicine" ,
-      doctor: "Dr. Wilson" ,
-      from_date: "2024-01-01",
-      to_date: "2024-12-31",
-      status: "n",
-    },
-    {
-      id: 5,
-      service_code: "OPD005",
-      service_name: "OPD Emergency Consultation",
-      base_tariff: 800.0,
-      service_category: "emergency",
-      department:   "Emergency" ,
-      doctor:  "Dr. Brown" ,
-      from_date: "2024-01-01",
-      to_date: "2024-12-31",
-      status: "y",
-    },
-  ])
-
-  const serviceCategories = [
-    { value: "consultation", label: "Consultation" },
-    { value: "diagnostic", label: "Diagnostic" },
-    { value: "procedure", label: "Procedure" },
-    { value: "emergency", label: "Emergency" },
-    { value: "follow-up", label: "Follow-up" },
-  ]
-
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, serviceId: null, newStatus: false })
   const [formData, setFormData] = useState({
     serviceCode: "",
     serviceName: "",
@@ -84,7 +15,17 @@ const OPDServiceMaster = () => {
     fromDate: "",
     toDate: "",
   })
+
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, serviceId: null, newStatus: false })
+
   const [searchQuery, setSearchQuery] = useState("")
+  const [serviceOpdData, setServiceOpdData] = useState([])
+  const [serviceCategoryData, setServiceCategoryData] = useState([])
+  const [departmentData, setDepartmentData] = useState([]);
+  const [doctorData, setDoctorData] = useState([]);
+  const [rowDepartmentData, setRowDepartmentData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [currentItem, setCurrentItem] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [isFormValid, setIsFormValid] = useState(false)
   const [editingService, setEditingService] = useState(null)
@@ -92,39 +33,106 @@ const OPDServiceMaster = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
   const itemsPerPage = 5
+  const hospitalId = sessionStorage.getItem("hospitalId");
+  const [process, setProcess] = useState(false);
 
-  const departments = [
-    { id: 201, name: "Orthopedics" },
-    { id: 202, name: "Nephrology" },
-    { id: 203, name: "Cardiology" },
-    { id: 204, name: "General Medicine" },
-    { id: 205, name: "Emergency" },
-    { id: 206, name: "Pediatrics" },
-    { id: 207, name: "Neurology" },
-  ]
 
-  const doctors = [
-    { id: 101, name: "Dr. Smith" },
-    { id: 102, name: "Dr. Johnson" },
-    { id: 103, name: "Dr. Lee" },
-    { id: 104, name: "Dr. Wilson" },
-    { id: 105, name: "Dr. Brown" },
-    { id: 106, name: "Dr. Davis" },
-    { id: 107, name: "Dr. Miller" },
-  ]
+  console.log("form data:", formData);
+
+  useEffect(() => {
+    fetchServiceOpdData();
+  }, []);
+
+  useEffect(() => {
+    if (showForm) {
+      fetchServicecategoryData();
+      fetchDepartmentData();
+      if (formData.departmentId) {
+        fetchDoctorData();
+      }
+    }
+  }, [showForm, formData.departmentId]);
+
+
+  const fetchServiceOpdData = async () => {
+    setLoading(true);
+    try {
+      const data = await getRequest(`${MAS_OPD_SERVICE}/getByHospitalId/${hospitalId}`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setServiceOpdData(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setServiceOpdData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Service Category data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchServicecategoryData = async () => {
+
+    try {
+      const data = await getRequest(`${MAS_SERVICE_CATEGORY}/getAll/1`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setServiceCategoryData(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setServiceCategoryData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Service Category data:", error);
+    }
+  };
+
+  const fetchDepartmentData = async () => {
+
+    try {
+      const data = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        const filteredDepartments = data.response.filter(
+          (dept) => dept.departmentTypeName === `${FILTER_OPD_DEPT}`
+        );
+        setRowDepartmentData(data.response);
+        setDepartmentData(filteredDepartments);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setRowDepartmentData([]);
+        setDepartmentData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Department data:", error);
+    }
+  };
+
+  const fetchDoctorData = async () => {
+    try {
+      const data = await getRequest(`${DOCTOR}/doctorBySpeciality/${formData.departmentId}`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setDoctorData(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setDoctorData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Doctor data:", error);
+    }
+  };
+
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
     setCurrentPage(1)
   }
 
-  const filteredServiceList = serviceList.filter(
+  const filteredServiceList = serviceOpdData.filter(
     (item) =>
-      item.service_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.service_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.service_category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.department.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.doctor.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      item?.serviceCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item?.serviceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item?.serviceCategory?.serviceCatName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item?.departmentId?.departmentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item?.doctorId?.firstName.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
   const filteredTotalPages = Math.ceil(filteredServiceList.length / itemsPerPage)
@@ -135,74 +143,72 @@ const OPDServiceMaster = () => {
     setEditingService(item)
     setShowForm(true)
     setFormData({
-      serviceCode: item.service_code,
-      serviceName: item.service_name,
-      baseTariff: item.base_tariff.toString(),
-      serviceCategory: item.service_category,
-      departmentId: item.department.id.toString(),
-      doctorId: item.doctor.id.toString(),
-      fromDate: item.from_date,
-      toDate: item.to_date,
-    })
+      serviceCode: item.serviceCode,
+      serviceName: item.serviceName,
+      baseTariff: item.baseTariff?.toString() || "",
+      serviceCategory: item.serviceCategory?.id?.toString() || "",
+      departmentId: item.departmentId?.id?.toString() || "",
+      doctorId: item.doctorId?.userId?.toString() || "",
+      fromDate: item.fromDt?.substring(0, 10) || "",
+      toDate: item.toDt?.substring(0, 10) || "",
+    });
     setIsFormValid(true)
   }
 
-  const handleSave = (e) => {
-    e.preventDefault()
-    if (!isFormValid) return
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setProcess(true);
+    if (!isFormValid) return;
 
-    const selectedDepartment = departments.find((dept) => dept.id === Number.parseInt(formData.departmentId))
-    const selectedDoctor = doctors.find((doc) => doc.id === Number.parseInt(formData.doctorId))
+    const payload = {
+      serviceCode: formData.serviceCode,
+      serviceName: formData.serviceName,
+      baseTariff: parseFloat(formData.baseTariff),
+      serviceCategory: parseInt(formData.serviceCategory, 10),
+      departmentId: parseInt(formData.departmentId, 10),
+      doctorId: parseInt(formData.doctorId, 10),
+      hospitalId: parseInt(hospitalId, 10),
+      fromDate: new Date(formData.fromDate).toISOString(),
+      toDate: new Date(formData.toDate).toISOString()
+    };
 
-    if (editingService) {
-      setServiceList(
-        serviceList.map((item) =>
-          item.id === editingService.id
-            ? {
-                ...item,
-                service_code: formData.serviceCode,
-                service_name: formData.serviceName,
-                base_tariff: Number.parseFloat(formData.baseTariff),
-                service_category: formData.serviceCategory,
-                department: selectedDepartment,
-                doctor: selectedDoctor,
-                from_date: formData.fromDate,
-                to_date: formData.toDate,
-              }
-            : item,
-        ),
-      )
-      showPopup("OPD Service updated successfully!", "success")
-    } else {
-      const newService = {
-        id: Date.now(),
-        service_code: formData.serviceCode,
-        service_name: formData.serviceName,
-        base_tariff: Number.parseFloat(formData.baseTariff),
-        service_category: formData.serviceCategory,
-        department: selectedDepartment,
-        doctor: selectedDoctor,
-        from_date: formData.fromDate,
-        to_date: formData.toDate,
-        status: "y",
+
+    try {
+      let response;
+      if (editingService) {
+        response = await putRequest(
+          `${MAS_OPD_SERVICE}/update/${editingService.id}`,
+          payload
+        );
+        showPopup("OPD Service updated successfully!", "success");
+      } else {
+        response = await postRequest(`${MAS_OPD_SERVICE}/save`, payload);
+        showPopup("New OPD Service added successfully!", "success");
       }
-      setServiceList([...serviceList, newService])
-      showPopup("New OPD Service added successfully!", "success")
-    }
 
-    setEditingService(null)
-    setShowForm(false)
-    setFormData({
-      serviceCode: "",
-      serviceName: "",
-      baseTariff: "",
-      serviceCategory: "",
-      departmentId: "",
-      doctorId: "",
-      fromDate: "",
-      toDate: "",
-    })
-  }
+      // Refresh or update local state if needed here
+      await fetchServiceOpdData?.();
+
+      setEditingService(null);
+      setShowForm(false);
+      setFormData({
+        serviceCode: "",
+        serviceName: "",
+        baseTariff: "",
+        serviceCategory: "",
+        departmentId: "",
+        doctorId: "",
+        fromDate: "",
+        toDate: "",
+      });
+    } catch (error) {
+      console.error("Error saving OPD Service:", error);
+      showPopup(error.message || "Failed to save OPD Service", "error");
+    } finally {
+      setProcess(false);
+    }
+  };
+
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -214,20 +220,39 @@ const OPDServiceMaster = () => {
     })
   }
 
-  const handleSwitchChange = (id, newStatus) => {
+  const handleSwitchChange = (id, name, newStatus) => {
+    setCurrentItem(name);
     setConfirmDialog({ isOpen: true, serviceId: id, newStatus })
   }
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed && confirmDialog.serviceId !== null) {
-      setServiceList((prevData) =>
-        prevData.map((item) =>
-          item.id === confirmDialog.serviceId ? { ...item, status: confirmDialog.newStatus } : item,
-        ),
-      )
+    const handleConfirm = async (confirmed) => {
+      if (confirmed && confirmDialog.serviceId !== null) {
+        setProcess(true);
+        try {
+          const response = await putRequest(
+            `${MAS_OPD_SERVICE}/updateStatus/${confirmDialog.serviceId}?status=${confirmDialog.newStatus}`
+          );
+  
+          if (response.status === 200) {
+            showPopup(
+              `Service Category ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
+              "success"
+            );
+            await fetchServiceOpdData();
+          } else {
+            throw new Error(response.message || "Failed to update status");
+          }
+        } catch (error) {
+          console.error("Error updating status:", error);
+          showPopup(error.message || "Error updating status. Please try again.", "error");
+        } finally {
+          setProcess(false);
+        }
+        setConfirmDialog({ isOpen: false, serviceId: null, newStatus: null });
+      } else {
+        setConfirmDialog({ isOpen: false, serviceId: null, newStatus: null });
+      }
     }
-    setConfirmDialog({ isOpen: false, serviceId: null, newStatus: null })
-  }
 
   const handleInputChange = (e) => {
     const { id, value } = e.target
@@ -236,32 +261,39 @@ const OPDServiceMaster = () => {
     const updatedFormData = { ...formData, [id]: value }
     setIsFormValid(
       !!updatedFormData.serviceCode &&
-        !!updatedFormData.serviceName &&
-        !!updatedFormData.baseTariff &&
-        !!updatedFormData.serviceCategory &&
-        !!updatedFormData.departmentId &&
-        !!updatedFormData.doctorId &&
-        !!updatedFormData.fromDate &&
-        !!updatedFormData.toDate,
+      !!updatedFormData.serviceName &&
+      !!updatedFormData.baseTariff &&
+      !!updatedFormData.serviceCategory &&
+      !!updatedFormData.departmentId &&
+      !!updatedFormData.doctorId &&
+      !!updatedFormData.fromDate &&
+      !!updatedFormData.toDate,
     )
   }
 
   const handleSelectChange = (e) => {
-    const { id, value } = e.target
-    setFormData((prevData) => ({ ...prevData, [id]: value }))
+    const { id, value } = e.target;
 
-    const updatedFormData = { ...formData, [id]: value }
+    const parsedValue = ["doctorId", "departmentId", "serviceCategory"].includes(id)
+      ? parseInt(value, 10) || ""
+      : value;
+
+    const updatedFormData = { ...formData, [id]: parsedValue };
+
+    setFormData(updatedFormData);
+
     setIsFormValid(
       !!updatedFormData.serviceCode &&
-        !!updatedFormData.serviceName &&
-        !!updatedFormData.baseTariff &&
-        !!updatedFormData.serviceCategory &&
-        !!updatedFormData.departmentId &&
-        !!updatedFormData.doctorId &&
-        !!updatedFormData.fromDate &&
-        !!updatedFormData.toDate,
-    )
-  }
+      !!updatedFormData.serviceName &&
+      !!updatedFormData.baseTariff &&
+      !!updatedFormData.serviceCategory &&
+      !!updatedFormData.departmentId &&
+      !!updatedFormData.doctorId &&
+      !!updatedFormData.fromDate &&
+      !!updatedFormData.toDate
+    );
+  };
+
 
   const handlePageNavigation = () => {
     const pageNumber = Number.parseInt(pageInput, 10)
@@ -312,6 +344,9 @@ const OPDServiceMaster = () => {
   return (
     <div className="content-wrapper">
       <div className="row">
+        {loading && (
+          <LoadingScreen />
+        )}
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
@@ -365,26 +400,34 @@ const OPDServiceMaster = () => {
                     <tbody>
                       {currentItems.map((item) => (
                         <tr key={item.id}>
-                          <td>{item.service_name}</td>
-                          <td>₹{item.base_tariff.toFixed(2)}</td>
-                          <td style={{ textTransform: "capitalize" }}>{item.service_category}</td>
-                          <td>{item.department}</td>
-                          <td>{item.doctor}</td>
-                          <td>{new Date(item.from_date).toLocaleDateString()}</td>
-                          <td>{new Date(item.to_date).toLocaleDateString()}</td>
+                          <td>{item.serviceName}</td>
+                          <td>
+                            {item.baseTariff !== undefined && item.baseTariff !== null
+                              ? `₹${Number(item.baseTariff).toFixed(2)}`
+                              : '₹0.00'
+                            }
+                          </td>
+                          <td style={{ textTransform: "capitalize" }}>{item.serviceCategory.serviceCatName}</td>
+                          <td>{item.departmentId.departmentName}</td>
+                          <td>
+                            {[item.doctorId?.firstName, item.doctorId?.middleName, item.doctorId?.lastName]
+                              .filter(Boolean)
+                              .join(" ")}
+                          </td>
+                          <td>{new Date(item.fromDt).toLocaleDateString()}</td>
+                          <td>{new Date(item.toDt).toLocaleDateString()}</td>
                           <td>
                             <div className="form-check form-switch">
                               <input
                                 className="form-check-input"
                                 type="checkbox"
                                 checked={item.status === "y"}
-                                onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
+                                onChange={() => handleSwitchChange(item.id, item.serviceName, item.status === "y" ? "n" : "y")}
                                 id={`switch-${item.id}`}
                               />
                               <label
                                 className="form-check-label px-0"
                                 htmlFor={`switch-${item.id}`}
-                                onClick={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
                               >
                                 {item.status === "y" ? "Active" : "Deactivated"}
                               </label>
@@ -467,9 +510,9 @@ const OPDServiceMaster = () => {
                         required
                       >
                         <option value="">Select Service Category</option>
-                        {serviceCategories.map((category) => (
-                          <option key={category.value} value={category.value}>
-                            {category.label}
+                        {serviceCategoryData.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.serviceCatName}
                           </option>
                         ))}
                       </select>
@@ -486,9 +529,9 @@ const OPDServiceMaster = () => {
                         required
                       >
                         <option value="">Select Department</option>
-                        {departments.map((department) => (
+                        {departmentData.map((department) => (
                           <option key={department.id} value={department.id}>
-                            {department.name}
+                            {department.departmentName}
                           </option>
                         ))}
                       </select>
@@ -505,9 +548,9 @@ const OPDServiceMaster = () => {
                         required
                       >
                         <option value="">Select Doctor</option>
-                        {doctors.map((doctor) => (
-                          <option key={doctor.id} value={doctor.id}>
-                            {doctor.name}
+                        {doctorData.map((doctor) => (
+                          <option key={doctor.userId} value={doctor.userId}>
+                            {doctor.firstName} {doctor.middleName} {doctor.lastName}
                           </option>
                         ))}
                       </select>
@@ -541,10 +584,20 @@ const OPDServiceMaster = () => {
                   </div>
 
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                    <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                      Save
+
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
+                      disabled={process || !isFormValid}
+                    >
+                      {editingService ? 'Update' : 'Save'}
                     </button>
-                    <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      onClick={() => setShowForm(false)}
+                      disabled={process}
+                    >
                       Cancel
                     </button>
                   </div>
@@ -567,7 +620,7 @@ const OPDServiceMaster = () => {
                         <p>
                           Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
-                            {serviceList.find((item) => item.id === confirmDialog.serviceId)?.service_name}
+                            {currentItem}
                           </strong>
                           ?
                         </p>

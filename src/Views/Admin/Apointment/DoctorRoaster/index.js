@@ -517,7 +517,7 @@ const DoctorRoaster = () => {
                         <option value="">All Doctors</option>
                         {doctorData.map((doc) => (
                           <option key={doc.userId} value={doc.userId}>
-                            {doc.firstName} {doc.lastName}
+                            {doc.firstName} {doc.middleName} {doc.lastName}
                           </option>
                         ))}
                       </select>

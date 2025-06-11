@@ -38,6 +38,8 @@ export const MAS_EMPLOYMENT_TYPE = `${MASTERS}/employmentType`;
 export const MAIN_CHARGE_CODE = "/main-charge-code";
 export const ALL_MAIN_CHARGE_CODE = "/main-charge-code/getAllChargeCode";
 export const MAS_SERVICE_CATEGORY = `${MASTERS}/masServiceCategory`;
+export const MAS_OPD_SERVICE = `${MASTERS}/masServiceOpd`;
+
 
 export const FILTER_OPD_DEPT=`OPD`;
 
