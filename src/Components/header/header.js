@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import notificationImg from "../../assets/images/xs/avatar1.jpg";
 import ProfileImg from "../../assets/images/profile_av.png";
@@ -11,8 +11,30 @@ const Header = () => {
   const currentUser = localStorage.getItem("username") || sessionStorage.getItem("username");
   const navigate = useNavigate();
   const [imageSrc, setImageSrc] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
 
-console.log("Current User:", currentUserData);
+  const allRoles = currentUserData?.rolesName?.split(",").map(role => role.trim()) || [];
+  const displayedRoles = allRoles.length > 2 ? allRoles.slice(0, 2) : allRoles;
+  const remainingRoles = allRoles.length > 2 ? allRoles.slice(2) : [];
+
+  const toggleDropdown = (e) => {
+    e.preventDefault();
+    setShowDropdown(prev => !prev);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  console.log("Current User:", currentUserData);
 
   useEffect(() => {
     fetchCurrentUserData();
@@ -239,11 +261,55 @@ console.log("Current User:", currentUserData);
                     <div className="h-3 bg-gray-200 rounded w-20 ml-auto"></div>
                   </div>
                 ) : (
-                  <div className="u-info me-2 text-end">
+                  <div className="u-info me-2 text-end position-relative" ref={dropdownRef}>
                     <p className="mb-0 leading-snug">
-                      <span className="font-bold">{fullUserName}</span>
+                      <span className="fw-bold">{fullUserName}</span>
                     </p>
-                    <small><strong>{currentUserData?.rolesName}</strong></small>
+                    <small className="d-inline-block">
+                      <strong>
+                        {displayedRoles.join(", ")}
+                        {remainingRoles.length > 0 && (<>
+                          <span>,</span>
+                          <span
+                            className="rotate-dots"
+                            onClick={toggleDropdown}
+                            title={showDropdown ? "Hide roles" : "View all roles"}
+                            style={{
+                              cursor: "pointer",
+                              marginLeft: "6px",
+                              display: "inline-block",
+                              fontWeight: "bold",
+                              fontSize: "1.1rem",
+                              userSelect: "none",
+                              transform: showDropdown ? "rotate(90deg)" : "rotate(0deg)",
+                              transition: "transform 0.3s ease-in-out, opacity 0.2s ease",
+                              lineHeight: "1",
+                            }}
+                          >
+                            ...
+                          </span>
+
+                        </>
+                        )}
+                      </strong>
+                    </small>
+
+                    {/* Dropdown List of Roles */}
+                    {showDropdown && (
+                      <div
+                        className="dropdown-menu show position-absolute mt-1 p-2 shadow-sm"
+                        style={{ right: 0, zIndex: 1000, minWidth: "200px" }}
+                      >
+                        <div className="small text-muted mb-1">All Roles</div>
+                        <ul className="list-unstyled mb-0">
+                          {allRoles.map((role, index) => (
+                            <li key={index} className="py-1 border-bottom">
+                              {role}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 )}
 

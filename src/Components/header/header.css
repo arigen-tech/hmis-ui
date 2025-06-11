@@ -2,6 +2,11 @@
 .sidebar-icon-only .navbar {
     left: 70px !important;
 }
+.rotate-dots:hover {
+  opacity: 0.7;
+  transform: scale(1.1);
+}
+
  .header-dropdowns .dropdown-menu a, .header-dropdowns .dropdown-menu p {
     color: var(--bs-gray) !important;
 }
