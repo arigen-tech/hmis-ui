@@ -20,7 +20,7 @@ const StoreUnitMaster = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filteredTotalPages, setFilteredTotalPages] = useState(1);
   const [totalFilteredUnits, setTotalFilteredUnits] = useState(0);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(5);
   const [pageInput, setPageInput] = useState(1);
 
   const UNIT_NAME_MAX_LENGTH = 30;

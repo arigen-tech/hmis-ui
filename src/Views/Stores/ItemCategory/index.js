@@ -342,9 +342,8 @@ const ItemCategory = () => {
                                             <label>
                                                 Section <span className="text-danger">*</span>
                                             </label>
-                                            <div className="col-md-4">
                                                 <select
-                                                    className="form-control"
+                                                    className="form-select"
                                                     id="SectionType"
                                                     onChange={handleInputChange}
                                                     value={formData.sectionType}
@@ -357,7 +356,6 @@ const ItemCategory = () => {
                                                     <option value="CONSUMABLES">CONSUMABLES</option>
                                                     <option value="EQUIPMENT">EQUIPMENT</option>
                                                 </select>
-                                            </div>
                                         </div>
                                     </div>
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-2">

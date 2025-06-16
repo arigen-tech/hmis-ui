@@ -420,7 +420,7 @@ const Itemclass = () => {
                                                 Section <span className="text-danger">*</span>
                                             </label>
                                             <select
-                                                className="form-control"
+                                                className="form-select"
                                                 id="section"
                                                 value={formData.Section}
                                                 onChange={handleInputChange}

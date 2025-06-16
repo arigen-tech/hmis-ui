@@ -471,7 +471,7 @@ const ItemTypeManagement = () => {
                       Item Group <span className="text-danger">*</span>
                     </label>
                     <select
-                      className="form-control mt-1"
+                      className="form-select mt-1"
                       id="itemGroup"
                       name="itemGroup"
                       value={formData.itemGroup}
