@@ -1,28 +1,77 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
+import LoadingScreen from "../../../Components/Loading/index";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import { MAS_ITEM_CLASS, MAS_ITEM_SECTION } from "../../../config/apiConfig";
 
 const Itemclass = () => {
-    const [itemClassData, setitemClassData] = useState([
-        { id: 1, ClassCode: "CL1", ClassName: "TABLET", status: "y" },
-        { id: 2, ClassCode: "CL2", ClassName: "CAPSULE", status: "n" },
-        { id: 3, ClassCode: "CL3", ClassName: "INJECTION", status: "y" },
-        { id: 4, ClassCode: "CL4", ClassName: "CREAM", status: "n" },
-        { id: 5, ClassCode: "CL5", ClassName: "OINTMENT", status: "y" },
-    ])
-
+    // const [itemClassData, setitemClassData] = useState([
+    //     { id: 1, ClassCode: "CL1", ClassName: "TABLET", status: "y" },
+    //     { id: 2, ClassCode: "CL2", ClassName: "CAPSULE", status: "n" },
+    //     { id: 3, ClassCode: "CL3", ClassName: "INJECTION", status: "y" },
+    //     { id: 4, ClassCode: "CL4", ClassName: "CREAM", status: "n" },
+    //     { id: 5, ClassCode: "CL5", ClassName: "OINTMENT", status: "y" },
+    // ])
+    const [formData, setFormData] = useState({ ClassCode: "", ClassName: "", Section: "" })
+    const [itemClassData, setItemClassData] = useState([])
+    const [itemSectionData, setItemSectionData] = useState([])
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, ClassId: null, newStatus: false })
-    const [formData, setFormData] = useState({ ClassCode: "", ClassName: "", Section: "DRUGS" })
     const [searchQuery, setSearchQuery] = useState("")
     const [pageInput, setPageInput] = useState("")
     const [currentPage, setCurrentPage] = useState(1)
     const itemsPerPage = 3
     const [showForm, setShowForm] = useState(false)
     const [isFormValid, setIsFormValid] = useState(false)
+    const [loading, setLoading] = useState(false);
+    const [process, setProcess] = useState(false);
     const [showModal, setShowModal] = useState(false)
     const [editingClass, setEditingClass] = useState(null)
+    const [currentItem, setCurrentItem] = useState(null)
+
     const [popupMessage, setPopupMessage] = useState(null)
+
+    console.log("formData", confirmDialog);
+
+    useEffect(() => {
+        fetchItemClassData();
+        fetchItemSectionData();
+    }, []);
+
+    const fetchItemClassData = async () => {
+        setLoading(true);
+        try {
+            const data = await getRequest(`${MAS_ITEM_CLASS}/getAll/0`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setItemClassData(data.response);
+            } else {
+                console.error("Unexpected API response format:", data);
+                setItemClassData([]);
+            }
+        } catch (error) {
+            console.error("Error fetching Service Category data:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchItemSectionData = async () => {
+        setLoading(true);
+        try {
+            const data = await getRequest(`${MAS_ITEM_SECTION}/getAll/1`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setItemSectionData(data.response);
+            } else {
+                setItemSectionData([]);
+                console.error("Unexpected API response format for sections:", data);
+            }
+        } catch (error) {
+            console.error("Error fetching Item Section data:", error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value)
@@ -39,8 +88,8 @@ const Itemclass = () => {
 
     const filtereditemClassData = itemClassData.filter(
         (Class) =>
-            Class.ClassName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            Class.ClassCode.toLowerCase().includes(searchQuery.toLowerCase()),
+            Class.itemClassName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            Class.itemClassCode.toLowerCase().includes(searchQuery.toLowerCase()),
     )
 
     const filteredTotalPages = Math.ceil(filtereditemClassData.length / itemsPerPage)
@@ -92,47 +141,67 @@ const Itemclass = () => {
         ))
     }
 
-    const handleEdit = (Class) => {
-        setEditingClass(Class)
-        setShowForm(true)
+    const handleEdit = (item) => {
+        setEditingClass(item);
+        setShowForm(true);
         setFormData({
-            ClassCode: Class.ClassCode,
-            ClassName: Class.ClassName,
-            Section: "DRUGS", // Default or you can add this to your data model
+            ClassName: item.itemClassName,
+            ClassCode: item.itemClassCode,
+            Section: item.sectionId,
         });
-    }
+        setIsFormValid(true);
+    };
 
 
+    const handleSave = async (e) => {
+        e.preventDefault();
+        if (!isFormValid) return;
 
-    const handleSave = (e) => {
-        e.preventDefault()
+        setProcess(true);
+        try {
+            let response;
+            const payload = {
+                itemClassCode: formData.ClassCode,
+                itemClassName: formData.ClassName,
+                sectionId: formData.Section,
+            };
 
-        if (!formData.ClassCode || !formData.ClassName) {
-            showPopup("Please fill in all required fields", "error")
-            return
-        }
-
-        if (editingClass) {
-            setitemClassData(
-                itemClassData.map((Class) =>
-                    Class.id === editingClass.id ? { ...Class, ClassName: formData.ClassName, ClassCode: formData.ClassCode } : Class,
-                ),
-            )
-        } else {
-            const newClass = {
-                id: itemClassData.length + 1,
-                ClassCode: formData.ClassCode,
-                ClassName: formData.ClassName,
-                status: "y",
+            if (editingClass) {
+                response = await putRequest(`${MAS_ITEM_CLASS}/updateById/${editingClass.itemClassId}`, payload);
+            } else {
+                response = await postRequest(`${MAS_ITEM_CLASS}/create`, payload);
             }
-            setitemClassData([...itemClassData, newClass])
-        }
 
-        setEditingClass(null)
-        setShowForm(false)
-        setFormData({ ClassCode: "", ClassName: "", Section: "DRUGS" })
-        showPopup("Changes saved successfully!", "success")
-    }
+            if (response.status === 200) {
+                showPopup(
+                    editingClass
+                        ? "Item Class updated successfully!"
+                        : "New Item Class added successfully!",
+                    "success"
+                );
+
+                await fetchItemClassData();
+
+                setEditingClass(null);
+                setShowForm(false);
+                setFormData({
+                    serviceCatName: "",
+                    sacCode: "",
+                    gstApplicable: false,
+                });
+            } else {
+                throw new Error(response.message || 'Failed to save item class');
+            }
+        } catch (error) {
+            console.error("Error saving item class:", error);
+            showPopup(error.message || "Error saving item class. Please try again.", "error");
+        } finally {
+            setProcess(false);
+        }
+    };
+
+
+
 
     const showPopup = (message, type = "info") => {
         setPopupMessage({
@@ -144,20 +213,44 @@ const Itemclass = () => {
         })
     }
 
-    const handleSwitchChange = (id, newStatus) => {
-        setConfirmDialog({ isOpen: true, ClassId: id, newStatus })
+
+
+    const handleSwitchChange = (id, name, newStatus) => {
+        setCurrentItem(name);
+        setConfirmDialog({ isOpen: true, ClassId: id, newStatus });
     }
 
-    const handleConfirm = (confirmed) => {
+    const handleConfirm = async (confirmed) => {
         if (confirmed && confirmDialog.ClassId !== null) {
-            setitemClassData((prevData) =>
-                prevData.map((Class) =>
-                    Class.id === confirmDialog.ClassId ? { ...Class, status: confirmDialog.newStatus } : Class,
-                ),
-            )
+            setProcess(true);
+            try {
+                const response = await putRequest(
+                    `${MAS_ITEM_CLASS}/status/${confirmDialog.ClassId}?status=${confirmDialog.newStatus}`
+                );
+
+                if (response.status === 200) {
+                    showPopup(
+                        `Service Category ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
+                        "success"
+                    );
+                    await fetchItemClassData();
+                } else {
+                    throw new Error(response.message || "Failed to update status");
+                }
+            } catch (error) {
+                console.error("Error updating status:", error);
+                showPopup(error.message || "Error updating status. Please try again.", "error");
+            } finally {
+                setProcess(false);
+            }
+            setConfirmDialog({ isOpen: false, ClassId: null, newStatus: null });
+        } else {
+            setConfirmDialog({ isOpen: false, ClassId: null, newStatus: null });
         }
-        setConfirmDialog({ isOpen: false, ClassId: null, newStatus: null })
     }
+
+
+
 
     return (
         <div className="content-wrapper">
@@ -168,20 +261,7 @@ const Itemclass = () => {
                             <h4 className="card-title p-2">Item Class Master</h4>
                             {!showForm && (
                                 <div className="d-flex justify-content-between align-items-center mt-3">
-                                    <div className="d-flex align-items-center">
-                                        <div className="me-3">
-                                            <label>
-                                                <input type="radio" name="searchType" value="code" />
-                                                <span style={{ marginLeft: "5px" }}>Item Class Code</span>
-                                            </label>
-                                        </div>
-                                        <div className="me-3">
-                                            <label>
-                                                <input type="radio" name="searchType" value="description" />
-                                                <span style={{ marginLeft: "5px" }}>Item Class Description</span>
-                                            </label>
-                                        </div>
-                                    </div>
+                                    
                                     <div className="d-flex align-items-center">
                                         <form className="d-inline-block searchform me-4" role="search">
                                             <div className="input-group searchinput">
@@ -214,8 +294,8 @@ const Itemclass = () => {
                                     <table className="table table-bordered table-hover align-middle">
                                         <thead className="table-light">
                                             <tr>
-                                                <th>Item Class Category</th>
-                                                <th>Item Class Description</th>
+                                                <th>Item Class Code</th>
+                                                <th>Item Class Name</th>
                                                 <th>Section</th>
                                                 <th>Status</th>
                                                 <th>Edit</th>
@@ -223,17 +303,17 @@ const Itemclass = () => {
                                         </thead>
                                         <tbody>
                                             {currentItems.map((Class) => (
-                                                <tr key={Class.id}>
-                                                    <td>{Class.ClassCode}</td>
-                                                    <td>{Class.ClassName}</td>
-                                                    <td>DRUGS</td>
+                                                <tr key={Class.itemClassId}>
+                                                    <td>{Class.itemClassCode}</td>
+                                                    <td>{Class.itemClassName}</td>
+                                                    <td>{Class.sectionName}</td>
                                                     <td>
                                                         <div className="form-check form-switch">
                                                             <input
                                                                 className="form-check-input"
                                                                 type="checkbox"
                                                                 checked={Class.status === "y"}
-                                                                onChange={() => handleSwitchChange(Class.id, Class.status === "y" ? "n" : "y")}
+                                                                onChange={() => handleSwitchChange(Class.itemClassId, Class.itemClassName, Class.status === "y" ? "n" : "y")}
                                                                 id={`switch-${Class.id}`}
                                                             />
                                                             <label className="form-check-label px-0" htmlFor={`switch-${Class.id}`}>
@@ -346,17 +426,29 @@ const Itemclass = () => {
                                                 onChange={handleInputChange}
                                                 required
                                             >
-                                                <option value="DRUGS">DRUGS</option>
-                                                <option value="CONSUMABLES">CONSUMABLES</option>
-                                                <option value="EQUIPMENT">EQUIPMENT</option>
+                                                <option value="">Select Item Section</option>
+                                                {itemSectionData.map((sec) => (
+                                                    <option key={sec.sectionId} value={sec.sectionId}>
+                                                        {sec.sectionName}
+                                                    </option>
+                                                ))}
                                             </select>
                                         </div>
                                     </div>
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                                        <button type="submit" className="btn btn-primary me-2">
-                                            Save
+                                        <button
+                                            type="submit"
+                                            className="btn btn-primary me-2"
+                                            disabled={process || !isFormValid}
+                                        >
+                                            {editingClass ? 'Update' : 'Save'}
                                         </button>
-                                        <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
+                                        <button
+                                            type="button"
+                                            className="btn btn-danger"
+                                            onClick={() => setShowForm(false)}
+                                            disabled={process}
+                                        >
                                             Cancel
                                         </button>
                                     </div>
@@ -413,7 +505,7 @@ const Itemclass = () => {
                                                 <p>
                                                     Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
                                                     <strong>
-                                                        {itemClassData.find((Class) => Class.id === confirmDialog.ClassId)?.ClassName}
+                                                        {currentItem}
                                                     </strong>
                                                     ?
                                                 </p>

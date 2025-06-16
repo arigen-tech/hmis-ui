@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
-import { ALL_STORE_UNITS, STORE_UNIT_API } from "../../../config/apiConfig";
+import { MAS_STORE_UNIT } from "../../../config/apiConfig";
 
 const StoreUnitMaster = () => {
   const [storeUnits, setStoreUnits] = useState([]);
@@ -32,7 +32,7 @@ const StoreUnitMaster = () => {
   const fetchStoreUnits = async (flag = 0) => {
     try {
       setLoading(true);
-      const response = await getRequest(`${ALL_STORE_UNITS}/${flag}`);
+      const response = await getRequest(`${MAS_STORE_UNIT}/getAll/${flag}`);
   
       if (response && response.response) {
         const transformedData = response.response.map(unit => ({
@@ -87,7 +87,7 @@ const StoreUnitMaster = () => {
       setLoading(true);
 
       if (editingUnit) {
-        const response = await putRequest(`${STORE_UNIT_API}/update/${editingUnit.id}`, {
+        const response = await putRequest(`${MAS_STORE_UNIT}/update/${editingUnit.id}`, {
           id: editingUnit.id,
           unitName: formData.unitName,
           status: editingUnit.status
@@ -117,7 +117,7 @@ const StoreUnitMaster = () => {
           return;
         }
 
-        const response = await postRequest(`${STORE_UNIT_API}/add`, {
+        const response = await postRequest(`${MAS_STORE_UNIT}/create`, {
           unitName: formData.unitName,
           status: "y"
         });
@@ -177,7 +177,7 @@ const StoreUnitMaster = () => {
         }
 
         const response = await putRequest(
-          `${STORE_UNIT_API}/status/${confirmDialog.unitId}?stat=${confirmDialog.newStatus}`
+          `${MAS_STORE_UNIT}/status/${confirmDialog.unitId}?stat=${confirmDialog.newStatus}`
         );
 
         if (response && response.response) {

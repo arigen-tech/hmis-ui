@@ -39,7 +39,8 @@ export const MAIN_CHARGE_CODE = "/main-charge-code";
 export const ALL_MAIN_CHARGE_CODE = "/main-charge-code/getAllChargeCode";
 export const MAS_SERVICE_CATEGORY = `${MASTERS}/masServiceCategory`;
 export const MAS_OPD_SERVICE = `${MASTERS}/masServiceOpd`;
-
+export const MAS_ITEM_CLASS = `${MASTERS}/masItemClass`;
+export const MAS_ITEM_SECTION = `${MASTERS}/storeSection`;
 
 export const FILTER_OPD_DEPT=`OPD`;
 
