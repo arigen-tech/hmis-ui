@@ -5,13 +5,6 @@ import { getRequest, putRequest, postRequest } from "../../../service/apiService
 import { MAS_ITEM_CLASS, MAS_ITEM_SECTION } from "../../../config/apiConfig";
 
 const Itemclass = () => {
-    // const [itemClassData, setitemClassData] = useState([
-    //     { id: 1, ClassCode: "CL1", ClassName: "TABLET", status: "y" },
-    //     { id: 2, ClassCode: "CL2", ClassName: "CAPSULE", status: "n" },
-    //     { id: 3, ClassCode: "CL3", ClassName: "INJECTION", status: "y" },
-    //     { id: 4, ClassCode: "CL4", ClassName: "CREAM", status: "n" },
-    //     { id: 5, ClassCode: "CL5", ClassName: "OINTMENT", status: "y" },
-    // ])
     const [formData, setFormData] = useState({ ClassCode: "", ClassName: "", Section: "" })
     const [itemClassData, setItemClassData] = useState([])
     const [itemSectionData, setItemSectionData] = useState([])

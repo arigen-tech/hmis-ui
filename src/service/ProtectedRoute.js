@@ -56,6 +56,7 @@ const validRoutes = [
   "/OPDServiceMaster",
   "/ServiceCategory",
   "/ItemSection",
+  "/HSNMaster",
 ];
 
 const NotAuthorized = () => {

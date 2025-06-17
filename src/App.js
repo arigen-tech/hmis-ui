@@ -49,6 +49,7 @@ import OpeningBalanceApprovalList from './Views/Dispensary/OpeningBalanceApprova
 import OPDServiceMaster from './Views/Masters/OpdService';
 import ServiceCategoryMaster from './Views/Masters/ServiceCategory';
 import ItemSection from './Views/Stores/ItemSection';
+import HSNMaster from './Views/Masters/HSNMaster';
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -132,6 +133,7 @@ function App() {
                 <Route path="OPDServiceMaster" element={<OPDServiceMaster/>} />
                 <Route path="ServiceCategory" element={<ServiceCategoryMaster/>} />
                 <Route path="ItemSection" element={<ItemSection/>} />
+                <Route path="HSNMaster" element={<HSNMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
