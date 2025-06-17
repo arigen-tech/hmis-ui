@@ -253,7 +253,7 @@ const Itemclass = () => {
                         <div className="card-header">
                             <h4 className="card-title p-2">Item Class Master</h4>
                             {!showForm && (
-                                <div className="d-flex justify-content-between align-items-center mt-3">
+                                <div className="d-flex justify-content-end align-items-center mt-3">
                                     
                                     <div className="d-flex align-items-center">
                                         <form className="d-inline-block searchform me-4" role="search">
