@@ -254,7 +254,7 @@ const Itemclass = () => {
                             <h4 className="card-title p-2">Item Class Master</h4>
                             {!showForm && (
                                 <div className="d-flex justify-content-end align-items-center mt-3">
-                                    
+
                                     <div className="d-flex align-items-center">
                                         <form className="d-inline-block searchform me-4" role="search">
                                             <div className="input-group searchinput">
@@ -373,7 +373,15 @@ const Itemclass = () => {
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
                                     <div className="d-flex justify-content-end">
-                                        <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                                        <button type="button" className="btn btn-secondary" onClick={() => {
+                                            setShowForm(false);
+                                            setFormData({
+                                                ClassName: "",
+                                                ClassCode: "",
+                                                Section: "",
+                                            });
+                                            setEditingClass(null);
+                                        }}>
                                             <i className="mdi mdi-arrow-left"></i> Back
                                         </button>
                                     </div>
@@ -439,7 +447,15 @@ const Itemclass = () => {
                                         <button
                                             type="button"
                                             className="btn btn-danger"
-                                            onClick={() => setShowForm(false)}
+                                            onClick={() => {
+                                                setShowForm(false);
+                                                setFormData({
+                                                    ClassName: "",
+                                                    ClassCode: "",
+                                                    Section: "",
+                                                });
+                                                setEditingClass(null);
+                                            }}
                                             disabled={process}
                                         >
                                             Cancel
