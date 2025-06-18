@@ -1,8 +1,8 @@
+"use client"
+
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
 
 const InvestigationMaster = () => {
-    const navigate = useNavigate()
     const [investigations, setInvestigations] = useState([
         {
             id: 1,
@@ -119,7 +119,6 @@ const InvestigationMaster = () => {
         status: "n",
     })
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, investigationId: null, newStatus: null })
-    const [addModalOpen, setAddModalOpen] = useState(false)
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value)
@@ -184,19 +183,6 @@ const InvestigationMaster = () => {
         setConfirmDialog({ isOpen: false, investigationId: null, newStatus: null })
     }
 
-    const handleAddClick = () => {
-        navigate('/investigation-multiple-results', { 
-            state: { 
-                investigationName: formData.investigationName,
-                department: formData.department,
-                modality: formData.modality,
-                investigationId: selectedInvestigation?.id,
-                sample: formData.sample,
-                container: formData.container,
-                uom: formData.uom
-            }
-        })
-    }
 
     const filteredInvestigations = investigations.filter(
         (item) =>
@@ -456,18 +442,11 @@ const InvestigationMaster = () => {
                                                             <label className="form-label fw-bold mb-1">
                                                                 Result Type<span className="text-danger">*</span>
                                                             </label>
-                                                            <div className="d-flex">
-                                                                <select className="form-select" name="resultType" value={formData.resultType} onChange={handleInputChange}>
-                                                                    <option value="Multiple">Multiple</option>
-                                                                    <option value="Single">Single</option>
-                                                                    <option value="Range">Range</option>
-                                                                </select>
-                                                                {formData.resultType === "Multiple" && formData.investigationName === "ACID PHOSPHATASE" && (
-                                                                    <button className="btn btn-primary ms-2" onClick={handleAddClick}>
-                                                                        ADD
-                                                                    </button>
-                                                                )}
-                                                            </div>
+                                                            <select className="form-select" name="resultType" value={formData.resultType} onChange={handleInputChange}>
+                                                                <option value="Multiple">Multiple</option>
+                                                                <option value="Single">Single</option>
+                                                                <option value="Range">Range</option>
+                                                            </select>
                                                         </div>
                                                     </div>
                                                     <div className="col-md-4">

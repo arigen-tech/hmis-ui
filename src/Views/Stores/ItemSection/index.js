@@ -1,14 +1,54 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import { MAS_ITEM_SECTION, MAS_ITEM_TYPE } from "../../../config/apiConfig";
+
 
 const ItemSection = () => {
-  const [sections, setSections] = useState([
-    { id: 1, sectionCode: "S1", sectionName: "MEDICAL EQUIPMENTS AND DEVICES", itemType: "undefined", status: "n" },
-    { id: 2, sectionCode: "S2", sectionName: "MEDICAL INSTRUMENTS", itemType: "MEDICAL ASSET", status: "y" },
-    { id: 3, sectionCode: "S3", sectionName: "MEDICAL FURNITURE", itemType: "MEDICAL ASSET", status: "y" },
-    { id: 4, sectionCode: "S4", sectionName: "MEDICAL SPARE PARTS", itemType: "MEDICAL ASSET", status: "y" },
-    { id: 5, sectionCode: "S5", sectionName: "MEDICAL SUNDRY", itemType: "MEDICAL ASSET", status: "y" },
-  ])
+
+  const [itemSectionData, setItemSectionData] = useState([])
+  const [itemTypeData, setItemTypeData] = useState([])
+  const [process, setProcess] = useState(false);
+  const [currentItem, setCurrentItem] = useState(null);
+
+
+  useEffect(() => {
+    fetchItemSection();
+    fetchItemType();
+  }, [])
+
+
+  const fetchItemSection = async () => {
+    try {
+      const data = await getRequest(`${MAS_ITEM_SECTION}/getAll/0`)
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setItemSectionData(data.response)
+      } else {
+        setItemSectionData([])
+      }
+    } catch (error) {
+      console.error("Error fetching Store Section data:", error)
+    } finally {
+    }
+  }
+
+  const fetchItemType = async () => {
+    try {
+      const data = await getRequest(`${MAS_ITEM_TYPE}/getByAll/1`)
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setItemTypeData(data.response)
+      } else {
+        console.error("Unexpected API response format:", data)
+        setItemTypeData([])
+      }
+    } catch (error) {
+      console.error("Error fetching Store Section data:", error)
+    } finally {
+    }
+  }
+
+
+
 
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, sectionId: null, newStatus: false })
   const [formData, setFormData] = useState({
@@ -32,11 +72,8 @@ const ItemSection = () => {
     setCurrentPage(1)
   }
 
-  const handleSearchTypeChange = (e) => {
-    setSearchType(e.target.value)
-  }
 
-  const filteredSections = sections.filter((section) => {
+  const filteredSections = itemSectionData.filter((section) => {
     if (searchType === "code") {
       return section.sectionCode.toLowerCase().includes(searchQuery.toLowerCase())
     } else {
@@ -49,49 +86,68 @@ const ItemSection = () => {
   const currentItems = filteredSections.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const handleEdit = (section) => {
-    setEditingSection(section.id)
+    setEditingSection(section)
     setShowForm(true)
     setFormData({
       sectionCode: section.sectionCode,
       sectionName: section.sectionName,
-      itemType: section.itemType,
+      itemType: section.masItemType,
     })
     setIsFormValid(true)
   }
 
-  const handleSave = (e) => {
-    e.preventDefault()
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
 
-    if (editingSection) {
-      setSections(
-        sections.map((section) =>
-          section.id === editingSection
-            ? {
-                ...section,
-                sectionName: formData.sectionName,
-                sectionCode: formData.sectionCode,
-                itemType: formData.itemType,
-              }
-            : section,
-        ),
-      )
-      showPopup("Section updated successfully!", "success")
-    } else {
-      const newSection = {
-        id: Date.now(),
+    setProcess(true);
+    try {
+      let response;
+      const payload = {
         sectionCode: formData.sectionCode,
         sectionName: formData.sectionName,
-        itemType: formData.itemType,
-        status: "y",
-      }
-      setSections([...sections, newSection])
-      showPopup("New section added successfully!", "success")
-    }
 
-    setEditingSection(null)
-    setShowForm(false)
-    setFormData({ sectionCode: "", sectionName: "", itemType: "" })
-  }
+        masItemType: formData.itemType
+      };
+
+      if (editingSection) {
+        // PUT request for updating
+        response = await putRequest(
+          `${MAS_ITEM_SECTION}/updateById/${editingSection.sectionId}`,  // This is correct
+          payload
+        );
+      } else {
+        // POST request for creating new
+        response = await postRequest(`${MAS_ITEM_SECTION}/create`, payload);
+      }
+
+      if (response.status === 200) {
+        showPopup(
+          editingSection
+            ? "Section updated successfully!"
+            : "New section added successfully!",
+          "success"
+        );
+
+        await fetchItemSection();
+
+        setEditingSection(null);
+        setShowForm(false);
+        setFormData({
+          sectionCode: "",
+          sectionName: "",
+          itemType: ""
+        });
+      } else {
+        throw new Error(response.message || 'Failed to save section');
+      }
+    } catch (error) {
+      console.error("Error saving section:", error);
+      showPopup(error.message || "Error saving section. Please try again.", "error");
+    } finally {
+      setProcess(false);
+    }
+  };
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -103,20 +159,38 @@ const ItemSection = () => {
     })
   }
 
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, sectionId: id, newStatus })
+  const handleSwitchChange = (id, name, newStatus) => {
+    setCurrentItem(name);
+    setConfirmDialog({ isOpen: true, sectionId: id, newStatus });
   }
 
-  const handleConfirm = (confirmed) => {
+  const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.sectionId !== null) {
-      setSections((prevData) =>
-        prevData.map((section) =>
-          section.id === confirmDialog.sectionId ? { ...section, status: confirmDialog.newStatus } : section,
-        ),
-      )
+      setProcess(true);
+      try {
+        const response = await putRequest(
+          `${MAS_ITEM_SECTION}/status/${confirmDialog.sectionId}?status=${confirmDialog.newStatus}`
+
+        );
+
+        if (response.status === 200) {
+          showPopup(
+            `Section ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
+            "success"
+          );
+          await fetchItemSection(); // Refresh the data
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+        showPopup(error.message || "Error updating status. Please try again.", "error");
+      } finally {
+        setProcess(false);
+      }
     }
-    setConfirmDialog({ isOpen: false, sectionId: null, newStatus: null })
-  }
+    setConfirmDialog({ isOpen: false, sectionId: null, newStatus: null });
+  };
 
   const handleInputChange = (e) => {
     const { id, value } = e.target
@@ -190,33 +264,8 @@ const ItemSection = () => {
             <div className="card-header">
               <h4 className="card-title p-2">Item Section Master</h4>
               {!showForm && (
-                <div className="d-flex justify-content-between align-items-spacearound mt-3">
-                  <div className="d-flex align-items-center">
-                    <div className="me-3">
-                      <label>
-                        <input
-                          type="radio"
-                          name="searchType"
-                          value="code"
-                          checked={searchType === "code"}
-                          onChange={handleSearchTypeChange}
-                        />
-                        <span style={{ marginLeft: "5px" }}>Section Code</span>
-                      </label>
-                    </div>
-                    <div className="me-3">
-                      <label>
-                        <input
-                          type="radio"
-                          name="searchType"
-                          value="name"
-                          checked={searchType === "name"}
-                          onChange={handleSearchTypeChange}
-                        />
-                        <span style={{ marginLeft: "5px" }}>Section Name</span>
-                      </label>
-                    </div>
-                  </div>
+                <div className="d-flex justify-content-end align-items-spacearound mt-3">
+
                   <div className="d-flex align-items-center">
                     <form className="d-inline-block searchform me-4" role="search">
                       <div className="input-group searchinput">
@@ -233,7 +282,16 @@ const ItemSection = () => {
                         </span>
                       </div>
                     </form>
-                    <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                    <button type="button" className="btn btn-success me-2" onClick={() => {
+                      setShowForm(true);
+                      setEditingSection(null);  // Reset editing state
+                      setFormData({            // Reset form data
+                        sectionCode: "",
+                        sectionName: "",
+                        itemType: ""
+                      });
+                      setIsFormValid(false);   // Reset validation
+                    }}>
                       <i className="mdi mdi-plus"></i> Add
                     </button>
                     <button type="button" className="btn btn-success me-2">
@@ -258,23 +316,23 @@ const ItemSection = () => {
                     </thead>
                     <tbody>
                       {currentItems.map((section) => (
-                        <tr key={section.id}>
+                        <tr key={section.sectionId}>
                           <td>{section.sectionCode}</td>
                           <td>{section.sectionName}</td>
-                          <td>{section.itemType}</td>
+                          <td>{section.masItemTypeName}</td>
                           <td>
                             <div className="form-check form-switch">
                               <input
                                 className="form-check-input"
                                 type="checkbox"
                                 checked={section.status === "y"}
-                                onChange={() => handleSwitchChange(section.id, section.status === "y" ? "n" : "y")}
-                                id={`switch-${section.id}`}
+                                onChange={() => handleSwitchChange(section.sectionId, section.sectionName, section.status === "y" ? "n" : "y")}
+                                id={`switch-${section.sectionId}`}
                               />
                               <label
                                 className="form-check-label px-0"
-                                htmlFor={`switch-${section.id}`}
-                                onClick={() => handleSwitchChange(section.id, section.status === "y" ? "n" : "y")}
+                                htmlFor={`switch-${section.sectionId}`}
+                                onClick={() => handleSwitchChange(section.sectionId, section.status === "y" ? "n" : "y")}
                               >
                                 {section.status === "y" ? "Active" : "Deactivated"}
                               </label>
@@ -345,9 +403,11 @@ const ItemSection = () => {
                           <option value="" disabled>
                             Select Item Type
                           </option>
-                          <option value="MEDICAL ASSET">MEDICAL ASSET</option>
-                          <option value="CONSUMABLE">CONSUMABLE</option>
-                          <option value="EQUIPMENT">EQUIPMENT</option>
+                          {itemTypeData.map((type) => (
+                            <option key={type.id} value={type.id}>
+                              {type.name}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -356,12 +416,12 @@ const ItemSection = () => {
                     <button type="submit" className="btn btn-primary me-2">
                       {editingSection ? "Update" : "Add"}
                     </button>
-                     <button  className="btn btn-danger me-2"onClick={() => setShowForm(false)}>
+                    <button className="btn btn-danger me-2" onClick={() => setShowForm(false)}>
                       Cancel
                     </button>
 
                   </div>
-                
+
                 </form>
               )}
               {popupMessage && (
@@ -381,7 +441,7 @@ const ItemSection = () => {
                         <p>
                           Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
-                            {sections.find((section) => section.id === confirmDialog.sectionId)?.sectionName}
+                            {currentItem}
                           </strong>
                           ?
                         </p>
