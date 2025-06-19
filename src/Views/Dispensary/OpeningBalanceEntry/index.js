@@ -1,5 +1,3 @@
-"use client"
-
 import { useState } from "react"
 import Popup from "../../../Components/popup"
 
@@ -28,20 +26,11 @@ const OpeningBalanceEntry = () => {
       mrpPerUnit: "",
       totalCost: "",
       brandName: "",
-      medicineSource: "",
       manufacturer: "",
     },
   ])
 
   // Options for dropdowns
-  const medicineSourceOptions = [
-    "Local Purchase",
-    "Central Supply",
-    "Donation",
-    "Emergency Purchase",
-    "Government Supply",
-  ]
-
   const manufacturerOptions = [
     "Cipla Ltd",
     "Sun Pharma",
@@ -125,7 +114,6 @@ const OpeningBalanceEntry = () => {
       mrpPerUnit: "",
       totalCost: "",
       brandName: "",
-      medicineSource: "",
       manufacturer: "",
     }
     setDrugEntries([...drugEntries, newEntry])
@@ -139,13 +127,26 @@ const OpeningBalanceEntry = () => {
   }
 
   const handleSubmit = () => {
-    // Validate required fields
+    // Validate required fields (all except brandName and manufacturer)
     const hasEmptyRequiredFields = drugEntries.some(
-      (entry) => !entry.drugCode || !entry.drugName || !entry.qty || !entry.unitRate,
+      (entry) =>
+        !entry.drugCode ||
+        !entry.drugName ||
+        !entry.unit ||
+        !entry.batchNoSerialNo ||
+        !entry.dom ||
+        !entry.doe ||
+        !entry.qty ||
+        !entry.unitRate ||
+        !entry.unitsPerPack ||
+        !entry.purchaseRatePerUnit ||
+        !entry.gstPercent ||
+        !entry.mrpPerUnit ||
+        !entry.totalCost
     )
 
     if (hasEmptyRequiredFields) {
-      alert("Please fill in all required fields (Drug Code, Drug Name, Qty, Unit Rate)")
+      showPopup("Please fill in all mandatory fields (fields marked with *)", "error")
       return
     }
 
@@ -192,7 +193,6 @@ const OpeningBalanceEntry = () => {
         mrpPerUnit: "",
         totalCost: "",
         brandName: "",
-        medicineSource: "",
         manufacturer: "",
       },
     ])
@@ -259,22 +259,19 @@ const OpeningBalanceEntry = () => {
                       <th className="text-center" style={{ width: "60px", minWidth: "60px" }}>
                         S.No.
                       </th>
-                      <th style={{ width: "120px", minWidth: "120px" }}>Drug Code</th>
-                      <th style={{ width: "200px", minWidth: "200px" }}>Drug Name</th>
-                      <th style={{ width: "80px", minWidth: "80px" }}>Unit</th>
-                      <th style={{ width: "150px", minWidth: "150px" }}>Batch No/ Serial No</th>
-                      <th style={{ width: "120px", minWidth: "120px" }}>DOM</th>
-                      <th style={{ width: "120px", minWidth: "120px" }}>DOE</th>
-                      <th style={{ width: "80px", minWidth: "80px" }}>Qty</th>
-                      <th style={{ width: "100px", minWidth: "100px" }}>Unit Rate</th>
-                      <th style={{ width: "100px", minWidth: "100px" }}>Amount</th>
-                      <th style={{ width: "100px", minWidth: "100px" }}>Units Per Pack</th>
-                      <th style={{ width: "120px", minWidth: "120px" }}>Purchase Rate/Unit</th>
-                      <th style={{ width: "100px", minWidth: "100px" }}>GST Percent</th>
-                      <th style={{ width: "100px", minWidth: "100px" }}>MRP/Unit</th>
-                      <th style={{ width: "100px", minWidth: "100px" }}>Total Cost</th>
+                      <th style={{ width: "120px", minWidth: "120px" }}>Drug Code <span className="text-danger">*</span></th>
+                      <th style={{ width: "200px", minWidth: "200px" }}>Drug Name <span className="text-danger">*</span></th>
+                      <th style={{ width: "80px", minWidth: "80px" }}>Unit <span className="text-danger">*</span></th>
+                      <th style={{ width: "150px", minWidth: "150px" }}>Batch No/ Serial No <span className="text-danger">*</span></th>
+                      <th style={{ width: "120px", minWidth: "120px" }}>DOM <span className="text-danger">*</span></th>
+                      <th style={{ width: "120px", minWidth: "120px" }}>DOE <span className="text-danger">*</span></th>
+                      <th style={{ width: "80px", minWidth: "80px" }}>Qty <span className="text-danger">*</span></th>
+                      <th style={{ width: "100px", minWidth: "100px" }}>Units Per Pack <span className="text-danger">*</span></th>
+                      <th style={{ width: "120px", minWidth: "120px" }}>Purchase Rate/Unit <span className="text-danger">*</span></th>
+                      <th style={{ width: "100px", minWidth: "100px" }}>GST Percent <span className="text-danger">*</span></th>
+                      <th style={{ width: "100px", minWidth: "100px" }}>MRP/Unit <span className="text-danger">*</span></th>
+                      <th style={{ width: "100px", minWidth: "100px" }}>Total Cost <span className="text-danger">*</span></th>
                       <th style={{ width: "150px", minWidth: "150px" }}>Brand Name</th>
-                      <th style={{ width: "150px", minWidth: "150px" }}>Medicine Source</th>
                       <th style={{ width: "150px", minWidth: "150px" }}>Manufacturer</th>
                       <th style={{ width: "60px", minWidth: "60px" }}>Add</th>
                       <th style={{ width: "70px", minWidth: "70px" }}>Delete</th>
@@ -354,27 +351,7 @@ const OpeningBalanceEntry = () => {
                             style={{ minWidth: "70px" }}
                           />
                         </td>
-                        <td>
-                          <input
-                            type="number"
-                            className="form-control form-control-sm"
-                            value={entry.unitRate}
-                            onChange={(e) => handleDrugEntryChange(index, "unitRate", e.target.value)}
-                            placeholder="0.00"
-                            min="0"
-                            step="0.01"
-                            style={{ minWidth: "90px" }}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
-                            value={entry.amount}
-                            readOnly
-                            style={{ backgroundColor: "#f8f9fa", minWidth: "90px" }}
-                          />
-                        </td>
+                      
                         <td>
                           <input
                             type="number"
@@ -451,21 +428,6 @@ const OpeningBalanceEntry = () => {
                         <td>
                           <select
                             className="form-select form-select-sm"
-                            value={entry.medicineSource}
-                            onChange={(e) => handleDrugEntryChange(index, "medicineSource", e.target.value)}
-                            style={{ minWidth: "130px" }}
-                          >
-                            <option value="">Select</option>
-                            {medicineSourceOptions.map((option, idx) => (
-                              <option key={idx} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td>
-                          <select
-                            className="form-select form-select-sm"
                             value={entry.manufacturer}
                             onChange={(e) => handleDrugEntryChange(index, "manufacturer", e.target.value)}
                             style={{ minWidth: "130px" }}
@@ -521,6 +483,9 @@ const OpeningBalanceEntry = () => {
 
               {/* Action Buttons */}
               <div className="d-flex justify-content-end gap-2 mt-4">
+                 <button type="button" className="btn btn-warning">
+                  Save
+                </button>
                 <button type="button" className="btn btn-success" onClick={handleSubmit}>
                   Submit
                 </button>
