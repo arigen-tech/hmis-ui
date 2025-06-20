@@ -285,34 +285,74 @@ const OpeningBalanceEntry = () => {
                             className="form-control form-control-sm"
                             value={entry.drugCode}
                             onChange={(e) => {
-                              handleDrugEntryChange(index, "drugCode", e.target.value);
-                              setActiveDrugCodeDropdown(index);
+                              const value = e.target.value;
+                              handleDrugEntryChange(index, "drugCode", value);
+                              if (value.length > 0) {
+                                setActiveDrugCodeDropdown(index);
+                              } else {
+                                setActiveDrugCodeDropdown(null);
+                              }
                             }}
                             placeholder="Code"
                             style={{ minWidth: "100px" }}
                             autoComplete="off"
                             onFocus={() => setActiveDrugCodeDropdown(index)}
-                            onBlur={() => setTimeout(() => setActiveDrugCodeDropdown(null), 150)}
+                            onBlur={() => {
+                              setTimeout(() => {
+                                if (!dropdownClickedRef.current) {
+                                  setActiveDrugCodeDropdown(null);
+                                }
+                                dropdownClickedRef.current = false;
+                              }, 150);
+                            }}
                           />
-                          {activeDrugCodeDropdown === index && entry.drugCode && (
+                          {activeDrugCodeDropdown === index && (
                             <ul className="list-group position-absolute w-100 mt-1" style={{ zIndex: 1000, maxHeight: 180, overflowY: 'auto' }}>
                               {drugCodeOptions
-                                .filter((opt) => opt.code.toLowerCase().includes(entry.drugCode.toLowerCase()))
+                                .filter((opt) => 
+                                  entry.drugCode === "" || 
+                                  opt.code.toLowerCase().includes(entry.drugCode.toLowerCase()) ||
+                                  opt.name.toLowerCase().includes(entry.drugCode.toLowerCase())
+                                )
                                 .map((opt) => (
                                   <li
                                     key={opt.id}
                                     className="list-group-item list-group-item-action"
-                                    onMouseDown={() => {
-                                      handleDrugEntryChange(index, "drugCode", opt.code);
-                                      handleDrugEntryChange(index, "drugName", opt.name);
+                                    style={{ cursor: 'pointer' }}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      dropdownClickedRef.current = true;
+                                    }}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      
+                                      // Update both drug code and drug name
+                                      const updatedEntries = drugEntries.map((entry, i) => {
+                                        if (i === index) {
+                                          return {
+                                            ...entry,
+                                            drugCode: opt.code,
+                                            drugName: opt.name
+                                          };
+                                        }
+                                        return entry;
+                                      });
+                                      
+                                      setDrugEntries(updatedEntries);
                                       setActiveDrugCodeDropdown(null);
+                                      dropdownClickedRef.current = false;
                                     }}
                                   >
                                     {opt.code} - {opt.name}
                                   </li>
                                 ))}
-                              {drugCodeOptions.filter((opt) => opt.code.toLowerCase().includes(entry.drugCode.toLowerCase())).length === 0 && (
-                                <li className="list-group-item text-muted">No matches</li>
+                              {drugCodeOptions.filter((opt) => 
+                                entry.drugCode === "" || 
+                                opt.code.toLowerCase().includes(entry.drugCode.toLowerCase()) ||
+                                opt.name.toLowerCase().includes(entry.drugCode.toLowerCase())
+                              ).length === 0 && entry.drugCode !== "" && (
+                                <li className="list-group-item text-muted">No matches found</li>
                               )}
                             </ul>
                           )}
