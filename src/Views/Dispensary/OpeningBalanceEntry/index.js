@@ -1,5 +1,13 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import Popup from "../../../Components/popup"
+
+const drugCodeOptions = [
+  { id: 1, code: "PCM001", name: "Paracetamol" },
+  { id: 2, code: "PCM002", name: "Paracetamol 500mg" },
+  { id: 3, code: "IBU001", name: "Ibuprofen" },
+  { id: 4, code: "ASP001", name: "Aspirin" },
+  { id: 5, code: "DOL001", name: "Dolo" },
+];
 
 const OpeningBalanceEntry = () => {
   const [formData, setFormData] = useState({
@@ -127,26 +135,13 @@ const OpeningBalanceEntry = () => {
   }
 
   const handleSubmit = () => {
-    // Validate required fields (all except brandName and manufacturer)
+    // Validate required fields
     const hasEmptyRequiredFields = drugEntries.some(
-      (entry) =>
-        !entry.drugCode ||
-        !entry.drugName ||
-        !entry.unit ||
-        !entry.batchNoSerialNo ||
-        !entry.dom ||
-        !entry.doe ||
-        !entry.qty ||
-        !entry.unitRate ||
-        !entry.unitsPerPack ||
-        !entry.purchaseRatePerUnit ||
-        !entry.gstPercent ||
-        !entry.mrpPerUnit ||
-        !entry.totalCost
+      (entry) => !entry.drugCode || !entry.drugName || !entry.qty || !entry.unitRate,
     )
 
     if (hasEmptyRequiredFields) {
-      showPopup("Please fill in all mandatory fields (fields marked with *)", "error")
+      showPopup("Please fill in all required fields (Drug Code, Drug Name, Qty)", "error")
       return
     }
 
@@ -197,6 +192,9 @@ const OpeningBalanceEntry = () => {
       },
     ])
   }
+
+  const dropdownClickedRef = useRef(false);
+  const [activeDrugCodeDropdown, setActiveDrugCodeDropdown] = useState(null);
 
   return (
     <div className="content-wrapper">
@@ -259,18 +257,18 @@ const OpeningBalanceEntry = () => {
                       <th className="text-center" style={{ width: "60px", minWidth: "60px" }}>
                         S.No.
                       </th>
-                      <th style={{ width: "120px", minWidth: "120px" }}>Drug Code <span className="text-danger">*</span></th>
-                      <th style={{ width: "200px", minWidth: "200px" }}>Drug Name <span className="text-danger">*</span></th>
-                      <th style={{ width: "80px", minWidth: "80px" }}>Unit <span className="text-danger">*</span></th>
-                      <th style={{ width: "150px", minWidth: "150px" }}>Batch No/ Serial No <span className="text-danger">*</span></th>
-                      <th style={{ width: "120px", minWidth: "120px" }}>DOM <span className="text-danger">*</span></th>
-                      <th style={{ width: "120px", minWidth: "120px" }}>DOE <span className="text-danger">*</span></th>
-                      <th style={{ width: "80px", minWidth: "80px" }}>Qty <span className="text-danger">*</span></th>
-                      <th style={{ width: "100px", minWidth: "100px" }}>Units Per Pack <span className="text-danger">*</span></th>
-                      <th style={{ width: "120px", minWidth: "120px" }}>Purchase Rate/Unit <span className="text-danger">*</span></th>
-                      <th style={{ width: "100px", minWidth: "100px" }}>GST Percent <span className="text-danger">*</span></th>
-                      <th style={{ width: "100px", minWidth: "100px" }}>MRP/Unit <span className="text-danger">*</span></th>
-                      <th style={{ width: "100px", minWidth: "100px" }}>Total Cost <span className="text-danger">*</span></th>
+                      <th style={{ width: "120px", minWidth: "120px" }}>Drug Code</th>
+                      <th style={{ width: "200px", minWidth: "200px" }}>Drug Name</th>
+                      <th style={{ width: "80px", minWidth: "80px" }}>Unit</th>
+                      <th style={{ width: "150px", minWidth: "150px" }}>Batch No/ Serial No</th>
+                      <th style={{ width: "120px", minWidth: "120px" }}>DOM</th>
+                      <th style={{ width: "120px", minWidth: "120px" }}>DOE</th>
+                      <th style={{ width: "80px", minWidth: "80px" }}>Qty</th>
+                      <th style={{ width: "100px", minWidth: "100px" }}>Units Per Pack</th>
+                      <th style={{ width: "120px", minWidth: "120px" }}>Purchase Rate/Unit</th>
+                      <th style={{ width: "100px", minWidth: "100px" }}>GST Percent</th>
+                      <th style={{ width: "100px", minWidth: "100px" }}>MRP/Unit</th>
+                      <th style={{ width: "100px", minWidth: "100px" }}>Total Cost</th>
                       <th style={{ width: "150px", minWidth: "150px" }}>Brand Name</th>
                       <th style={{ width: "150px", minWidth: "150px" }}>Manufacturer</th>
                       <th style={{ width: "60px", minWidth: "60px" }}>Add</th>
@@ -281,15 +279,43 @@ const OpeningBalanceEntry = () => {
                     {drugEntries.map((entry, index) => (
                       <tr key={entry.id}>
                         <td className="text-center fw-bold">{index + 1}</td>
-                        <td>
+                        <td style={{ position: "relative" }}>
                           <input
                             type="text"
                             className="form-control form-control-sm"
                             value={entry.drugCode}
-                            onChange={(e) => handleDrugEntryChange(index, "drugCode", e.target.value)}
+                            onChange={(e) => {
+                              handleDrugEntryChange(index, "drugCode", e.target.value);
+                              setActiveDrugCodeDropdown(index);
+                            }}
                             placeholder="Code"
                             style={{ minWidth: "100px" }}
+                            autoComplete="off"
+                            onFocus={() => setActiveDrugCodeDropdown(index)}
+                            onBlur={() => setTimeout(() => setActiveDrugCodeDropdown(null), 150)}
                           />
+                          {activeDrugCodeDropdown === index && entry.drugCode && (
+                            <ul className="list-group position-absolute w-100 mt-1" style={{ zIndex: 1000, maxHeight: 180, overflowY: 'auto' }}>
+                              {drugCodeOptions
+                                .filter((opt) => opt.code.toLowerCase().includes(entry.drugCode.toLowerCase()))
+                                .map((opt) => (
+                                  <li
+                                    key={opt.id}
+                                    className="list-group-item list-group-item-action"
+                                    onMouseDown={() => {
+                                      handleDrugEntryChange(index, "drugCode", opt.code);
+                                      handleDrugEntryChange(index, "drugName", opt.name);
+                                      setActiveDrugCodeDropdown(null);
+                                    }}
+                                  >
+                                    {opt.code} - {opt.name}
+                                  </li>
+                                ))}
+                              {drugCodeOptions.filter((opt) => opt.code.toLowerCase().includes(entry.drugCode.toLowerCase())).length === 0 && (
+                                <li className="list-group-item text-muted">No matches</li>
+                              )}
+                            </ul>
+                          )}
                         </td>
                         <td>
                           <input
@@ -425,6 +451,7 @@ const OpeningBalanceEntry = () => {
                             ))}
                           </select>
                         </td>
+                      
                         <td>
                           <select
                             className="form-select form-select-sm"
