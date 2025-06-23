@@ -141,3 +141,5 @@ export const ALL_SUBCHARGE = `/sub-charge-code/getAllSubCharge/`;
 export const INVESTIGATION_PRICE_DETAILS = `/investigation-price-details`;
 export const ALL_INVESTIGATION = `/DgMasInvestigation/getAll`;
 export const ALL_INVESTIGATION_PRICE_DETAILS = `/investigation-price-details/getAllPriceDetails`;
+export const MAS_INVESTIGATION = `/DgMasInvestigation`;
+export const MAS_PACKAGE_INVESTIGATION = `/investigation-package`;

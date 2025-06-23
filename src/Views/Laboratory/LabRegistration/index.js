@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useRef, useEffect } from "react"
 import placeholderImage from "../../../assets/images/placeholder.jpg"
 import { getRequest } from "../../../service/apiService"
@@ -11,6 +13,8 @@ import {
   MAS_STATE,
   PATIENT_IMAGE_UPLOAD,
   MAS_DISTRICT,
+  MAS_INVESTIGATION,
+  MAS_PACKAGE_INVESTIGATION,
 } from "../../../config/apiConfig"
 
 const LabRegistration = () => {
@@ -32,20 +36,22 @@ const LabRegistration = () => {
   const [districtData, setDistrictData] = useState([])
   const [nokDistrictData, setNokDistrictData] = useState([])
   const [activeRowIndex, setActiveRowIndex] = useState(null)
+  const [investigationItems, setInvestigationItems] = useState([])
+  const [packageItems, setPackageItems] = useState([])
 
   // Sample investigation/package items for dropdown
-  const investigationItems = [
-    { id: 1, name: "Complete Blood Count", price: 500 },
-    { id: 2, name: "Liver Function Test", price: 800 },
-    { id: 3, name: "Thyroid Profile", price: 1200 },
-    { id: 4, name: "Kidney Function Test", price: 900 },
-    { id: 5, name: "Lipid Profile", price: 700 },
-    { id: 6, name: "Blood Glucose", price: 300 },
-    { id: 7, name: "Hemoglobin A1C", price: 650 },
-    { id: 8, name: "Urine Analysis", price: 350 },
-    { id: 9, name: "Chest X-Ray", price: 1000 },
-    { id: 10, name: "ECG", price: 500 }
-  ]
+  // const investigationItems = [
+  //   { id: 1, name: "Complete Blood Count", price: 500 },
+  //   { id: 2, name: "Liver Function Test", price: 800 },
+  //   { id: 3, name: "Thyroid Profile", price: 1200 },
+  //   { id: 4, name: "Kidney Function Test", price: 900 },
+  //   { id: 5, name: "Lipid Profile", price: 700 },
+  //   { id: 6, name: "Blood Glucose", price: 300 },
+  //   { id: 7, name: "Hemoglobin A1C", price: 650 },
+  //   { id: 8, name: "Urine Analysis", price: 350 },
+  //   { id: 9, name: "Chest X-Ray", price: 1000 },
+  //   { id: 10, name: "ECG", price: 500 }
+  // ]
 
   // Form data state
   const [formData, setFormData] = useState({
@@ -227,7 +233,7 @@ const LabRegistration = () => {
     return age
   }
 
-  const handleChange = (e) => {
+  const handleChange = async (e) => {
     const { name, value } = e.target
 
     const updatedFormData = { ...formData, [name]: value }
@@ -284,6 +290,14 @@ const LabRegistration = () => {
       }
     }
 
+    if (name === "gender" && value) {
+      // When gender is selected, fetch the investigation details
+      // Pass the actual selected value (not formData.gender which might not be updated yet)
+      const investigationData = await fetchInvestigationDetails(Number(value))
+      // Update the investigation items state
+      setInvestigationItems(investigationData)
+    }
+
     setErrors((prevErrors) => {
       const newErrors = { ...prevErrors }
       if (error) {
@@ -306,6 +320,11 @@ const LabRegistration = () => {
       ...prev,
       type: type,
     }))
+
+    // If package is selected, fetch package investigation data
+    if (type === "package") {
+      fetchPackageInvestigationDetails(1) // Using flag=1 as default, adjust as needed
+    }
   }
 
   const handleRowChange = (index, field, value) => {
@@ -465,6 +484,67 @@ const LabRegistration = () => {
     }
   }
 
+  async function fetchInvestigationDetails(genderValue) {
+    try {
+      // Find the selected gender from the genderData array
+      const selectedGender = genderData.find((gender) => gender.id === Number(genderValue))
+
+      // Only proceed if we have a valid gender selection
+      if (!selectedGender) {
+        console.error("No gender found with ID:", genderValue)
+        return []
+      }
+
+      // Use the gender code from the selected gender (lowercase for API consistency)
+      const genderApplicable = selectedGender.genderCode.toLowerCase()
+
+      const data = await getRequest(`${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}`)
+
+      if (data.status === 200 && Array.isArray(data.response)) {
+        return data.response
+      } else {
+        console.error("Unexpected API response format:", data)
+        return []
+      }
+    } catch (error) {
+      console.error("Error fetching investigation details:", error)
+      return []
+    }
+  }
+
+  async function fetchPackageInvestigationDetails(flag) {
+    try {
+      const data = await getRequest(`${MAS_PACKAGE_INVESTIGATION}/getAllPackInvestigation/${flag}`)
+
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setPackageItems(data.response)
+        return data.response
+      } else {
+        console.error("Unexpected API response format:", data)
+        return []
+      }
+    } catch (error) {
+      console.error("Error fetching package investigation details:", error)
+      return []
+    }
+  }
+
+  async function fetchPackagePrice(packName) {
+    try {
+      const data = await getRequest(`${MAS_PACKAGE_INVESTIGATION}/pricePack?packName=${packName}`)
+
+      if (data.status === 200 && data.response) {
+        return data.response
+      } else {
+        console.error("Unexpected API response format:", data)
+        return null
+      }
+    } catch (error) {
+      console.error("Error fetching package price:", error)
+      return null
+    }
+  }
+
   const validateForm = () => {
     const requiredFields = ["firstName", "gender", "relation", "dob", "email", "mobileNo"]
 
@@ -568,9 +648,6 @@ const LabRegistration = () => {
 
       console.log("Submitting data:", requestData)
       Swal.fire("Success", "Lab registration submitted successfully!", "success")
-
-      
-      
     }
   }
 
@@ -1271,32 +1348,69 @@ const LabRegistration = () => {
                                 className="list-group position-absolute w-100 mt-1"
                                 style={{
                                   zIndex: 1000,
-                                  maxHeight: '200px',
-                                  overflowY: 'auto',
-                                  backgroundColor: '#fff',
-                                  border: '1px solid #ccc',
+                                  maxHeight: "200px",
+                                  overflowY: "auto",
+                                  backgroundColor: "#fff",
+                                  border: "1px solid #ccc",
                                 }}
                               >
-                                {investigationItems
-                                  .filter(item => 
-                                    item.name.toLowerCase().includes(row.name.toLowerCase()) ||
-                                    item.id.toString().includes(row.name)
-                                  )
-                                  .map((item, i) => (
-                                    <li
-                                      key={i}
-                                      className="list-group-item list-group-item-action"
-                                      style={{ backgroundColor: '#e3e8e6', cursor: 'pointer' }}
-                                      onClick={() => {
-                                        handleRowChange(index, "name", item.name)
-                                        handleRowChange(index, "itemId", item.id)
-                                        handleRowChange(index, "originalAmount", item.price)
-                                        setActiveRowIndex(null)
-                                      }}
-                                    >
-                                      {item.name} - ₹{item.price}
-                                    </li>
-                                  ))}
+                                {formData.type === "investigation"
+                                  ? investigationItems
+                                      .filter((item) =>
+                                        item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
+                                      )
+                                      .map((item, i) => (
+                                        <li
+                                          key={i}
+                                          className="list-group-item list-group-item-action"
+                                          style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
+                                          onClick={() => {
+                                            if (item.price === null || item.price === 0 || item.price === "0") {
+                                              Swal.fire(
+                                                "Warning",
+                                                "Price has not been configured for this Investigation",
+                                                "warning",
+                                              )
+                                            } else {
+                                              handleRowChange(index, "name", item.investigationName)
+                                              handleRowChange(index, "itemId", item.investigationId)
+                                              handleRowChange(index, "originalAmount", item.price)
+                                              setActiveRowIndex(null)
+                                            }
+                                          }}
+                                        >
+                                          {item.investigationName} -{" "}
+                                          {item.price === null ? "Price not configured" : `₹${item.price}`}
+                                        </li>
+                                      ))
+                                  : packageItems
+                                      .filter((item) => item.packName.toLowerCase().includes(row.name.toLowerCase()))
+                                      .map((item, i) => (
+                                        <li
+                                          key={i}
+                                          className="list-group-item list-group-item-action"
+                                          style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
+                                          onClick={async () => {
+                                            // Fetch price details for the selected package
+                                            const priceDetails = await fetchPackagePrice(item.packName)
+
+                                            if (!priceDetails || !priceDetails.actualCost) {
+                                              Swal.fire(
+                                                "Warning",
+                                                "Price has not been configured for this Package",
+                                                "warning",
+                                              )
+                                            } else {
+                                              handleRowChange(index, "name", item.packName)
+                                              handleRowChange(index, "itemId", item.id || priceDetails.packId)
+                                              handleRowChange(index, "originalAmount", priceDetails.actualCost)
+                                              setActiveRowIndex(null)
+                                            }
+                                          }}
+                                        >
+                                          {item.packName}
+                                        </li>
+                                      ))}
                               </ul>
                             )}
                           </div>
