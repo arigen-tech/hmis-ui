@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 
 const OpeningBalanceApproval = () => {
   const [currentView, setCurrentView] = useState("list") // "list" or "detail"
@@ -196,6 +196,39 @@ const OpeningBalanceApproval = () => {
     ))
   }
 
+  const drugCodeOptions = [
+    { id: 1, code: "PCM001", name: "Paracetamol" },
+    { id: 2, code: "PCM002", name: "Paracetamol 500mg" },
+    { id: 3, code: "IBU001", name: "Ibuprofen" },
+    { id: 4, code: "ASP001", name: "Aspirin" },
+    { id: 5, code: "DOL001", name: "Dolo" },
+  ];
+  const manufacturerOptions = [
+    "Cipla Ltd",
+    "Sun Pharma",
+    "Dr. Reddy's",
+    "Lupin Limited",
+    "Aurobindo Pharma",
+    "Torrent Pharma",
+    "Glenmark",
+    "Alkem Labs",
+  ];
+  const brandNameOptions = [
+    "Paracetamol Plus",
+    "Crocin",
+    "Dolo",
+    "Metacin",
+    "Pyrigesic",
+    "Aspirin",
+    "Brufen",
+    "Combiflam",
+    "Saridon",
+    "Disprin",
+  ];
+  const dropdownClickedRef = useRef(false);
+  const [activeDrugCodeDropdown, setActiveDrugCodeDropdown] = useState(null);
+  const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null);
+
   if (currentView === "detail") {
     return (
       <div className="content-wrapper">
@@ -280,9 +313,12 @@ const OpeningBalanceApproval = () => {
                         <th style={{ width: "120px", minWidth: "120px" }}>DOM</th>
                         <th style={{ width: "120px", minWidth: "120px" }}>DOE</th>
                         <th style={{ width: "80px", minWidth: "80px" }}>Qty</th>
-                        <th style={{ width: "100px", minWidth: "100px" }}>Unit Rate</th>
-                        <th style={{ width: "100px", minWidth: "100px" }}>Amount</th>
-                        <th style={{ width: "150px", minWidth: "150px" }}>Medicine Source</th>
+                        <th style={{ width: "100px", minWidth: "100px" }}>Units Per Pack</th>
+                        <th style={{ width: "120px", minWidth: "120px" }}>Purchase Rate/Unit</th>
+                        <th style={{ width: "100px", minWidth: "100px" }}>GST Percent</th>
+                        <th style={{ width: "100px", minWidth: "100px" }}>MRP/Unit</th>
+                        <th style={{ width: "100px", minWidth: "100px" }}>Total Cost</th>
+                        <th style={{ width: "150px", minWidth: "150px" }}>Brand Name</th>
                         <th style={{ width: "150px", minWidth: "150px" }}>Manufacturer</th>
                         <th style={{ width: "60px", minWidth: "60px" }}>Add</th>
                         <th style={{ width: "70px", minWidth: "70px" }}>Delete</th>
@@ -300,23 +336,131 @@ const OpeningBalanceApproval = () => {
                               readOnly
                             />
                           </td>
-                          <td>
+                          <td style={{ position: "relative" }}>
                             <input
                               type="text"
                               className="form-control"
                               value={entry.drugCode}
-                              onChange={(e) => updateEntry(entry.id, "drugCode", e.target.value)}
+                              onChange={(e) => {
+                                updateEntry(entry.id, "drugCode", e.target.value);
+                                if (e.target.value.length > 0) {
+                                  setActiveDrugCodeDropdown(index);
+                                } else {
+                                  setActiveDrugCodeDropdown(null);
+                                }
+                              }}
                               style={{ width: "110px" }}
+                              autoComplete="off"
+                              onFocus={() => setActiveDrugCodeDropdown(index)}
+                              onBlur={() => {
+                                setTimeout(() => {
+                                  if (!dropdownClickedRef.current) setActiveDrugCodeDropdown(null);
+                                  dropdownClickedRef.current = false;
+                                }, 150);
+                              }}
                             />
+                            {activeDrugCodeDropdown === index && (
+                              <ul className="list-group position-absolute w-100 mt-1" style={{ zIndex: 1000, maxHeight: 180, overflowY: 'auto' }}>
+                                {drugCodeOptions
+                                  .filter((opt) =>
+                                    entry.drugCode === "" ||
+                                    opt.code.toLowerCase().includes(entry.drugCode.toLowerCase()) ||
+                                    opt.name.toLowerCase().includes(entry.drugCode.toLowerCase())
+                                  )
+                                  .map((opt) => (
+                                    <li
+                                      key={opt.id}
+                                      className="list-group-item list-group-item-action"
+                                      style={{ cursor: 'pointer' }}
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        dropdownClickedRef.current = true;
+                                      }}
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setDetailEntries(detailEntries.map((row, i) =>
+                                          i === index ? { ...row, drugCode: opt.code, drugName: opt.name } : row
+                                        ));
+                                        setActiveDrugCodeDropdown(null);
+                                        dropdownClickedRef.current = false;
+                                      }}
+                                    >
+                                      {opt.code} - {opt.name}
+                                    </li>
+                                  ))}
+                                {drugCodeOptions.filter((opt) =>
+                                  entry.drugCode === "" ||
+                                  opt.code.toLowerCase().includes(entry.drugCode.toLowerCase()) ||
+                                  opt.name.toLowerCase().includes(entry.drugCode.toLowerCase())
+                                ).length === 0 && entry.drugCode !== "" && (
+                                  <li className="list-group-item text-muted">No matches found</li>
+                                )}
+                              </ul>
+                            )}
                           </td>
-                          <td>
+                          <td style={{ position: "relative" }}>
                             <input
                               type="text"
                               className="form-control"
                               value={entry.drugName}
-                              onChange={(e) => updateEntry(entry.id, "drugName", e.target.value)}
+                              onChange={(e) => {
+                                updateEntry(entry.id, "drugName", e.target.value);
+                                if (e.target.value.length > 0) {
+                                  setActiveDrugNameDropdown(index);
+                                } else {
+                                  setActiveDrugNameDropdown(null);
+                                }
+                              }}
                               style={{ width: "190px" }}
+                              autoComplete="off"
+                              onFocus={() => setActiveDrugNameDropdown(index)}
+                              onBlur={() => {
+                                setTimeout(() => {
+                                  if (!dropdownClickedRef.current) setActiveDrugNameDropdown(null);
+                                  dropdownClickedRef.current = false;
+                                }, 150);
+                              }}
                             />
+                            {activeDrugNameDropdown === index && (
+                              <ul className="list-group position-absolute w-100 mt-1" style={{ zIndex: 1000, maxHeight: 180, overflowY: 'auto' }}>
+                                {drugCodeOptions
+                                  .filter((opt) =>
+                                    entry.drugName === "" ||
+                                    opt.name.toLowerCase().includes(entry.drugName.toLowerCase()) ||
+                                    opt.code.toLowerCase().includes(entry.drugName.toLowerCase())
+                                  )
+                                  .map((opt) => (
+                                    <li
+                                      key={opt.id}
+                                      className="list-group-item list-group-item-action"
+                                      style={{ cursor: 'pointer' }}
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        dropdownClickedRef.current = true;
+                                      }}
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setDetailEntries(detailEntries.map((row, i) =>
+                                          i === index ? { ...row, drugCode: opt.code, drugName: opt.name } : row
+                                        ));
+                                        setActiveDrugNameDropdown(null);
+                                        dropdownClickedRef.current = false;
+                                      }}
+                                    >
+                                      {opt.name} - {opt.code}
+                                    </li>
+                                  ))}
+                                {drugCodeOptions.filter((opt) =>
+                                  entry.drugName === "" ||
+                                  opt.name.toLowerCase().includes(entry.drugName.toLowerCase()) ||
+                                  opt.code.toLowerCase().includes(entry.drugName.toLowerCase())
+                                ).length === 0 && entry.drugName !== "" && (
+                                  <li className="list-group-item text-muted">No matches found</li>
+                                )}
+                              </ul>
+                            )}
                           </td>
                           <td>
                             <input
@@ -369,8 +513,8 @@ const OpeningBalanceApproval = () => {
                             <input
                               type="number"
                               className="form-control"
-                              value={entry.unitRate}
-                              onChange={(e) => updateEntry(entry.id, "unitRate", e.target.value)}
+                              value={entry.unitsPerPack || ""}
+                              onChange={(e) => updateEntry(entry.id, "unitsPerPack", e.target.value)}
                               style={{ width: "90px" }}
                             />
                           </td>
@@ -378,37 +522,66 @@ const OpeningBalanceApproval = () => {
                             <input
                               type="number"
                               className="form-control"
-                              value={entry.amount}
-                              onChange={(e) => updateEntry(entry.id, "amount", e.target.value)}
+                              value={entry.purchaseRatePerUnit || ""}
+                              onChange={(e) => updateEntry(entry.id, "purchaseRatePerUnit", e.target.value)}
+                              style={{ width: "110px" }}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="form-control"
+                              value={entry.gstPercent || ""}
+                              onChange={(e) => updateEntry(entry.id, "gstPercent", e.target.value)}
                               style={{ width: "90px" }}
                             />
                           </td>
                           <td>
-                            <select
+                            <input
+                              type="number"
                               className="form-control"
-                              value={entry.medicineSource}
-                              onChange={(e) => updateEntry(entry.id, "medicineSource", e.target.value)}
-                              style={{ width: "140px" }}
+                              value={entry.mrpPerUnit || ""}
+                              onChange={(e) => updateEntry(entry.id, "mrpPerUnit", e.target.value)}
+                              style={{ width: "90px" }}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={entry.totalCost || ""}
+                              readOnly
+                              style={{ backgroundColor: "#f8f9fa", minWidth: "90px" }}
+                            />
+                          </td>
+                          <td>
+                            <select
+                              className="form-select"
+                              value={entry.brandName || ""}
+                              onChange={(e) => updateEntry(entry.id, "brandName", e.target.value)}
+                              style={{ minWidth: "130px" }}
                             >
-                              <option value="">Select</option>
-                              <option value="Local">Local</option>
-                              <option value="Import">Import</option>
-                              <option value="Donation">Donation</option>
+                              <option value="">Select Brand</option>
+                              {brandNameOptions.map((option, idx) => (
+                                <option key={idx} value={option}>
+                                  {option}
+                                </option>
+                              ))}
                             </select>
                           </td>
                           <td>
                             <select
-                              className="form-control"
-                              value={entry.manufacturer}
+                              className="form-select"
+                              value={entry.manufacturer || ""}
                               onChange={(e) => updateEntry(entry.id, "manufacturer", e.target.value)}
-                              style={{ width: "140px" }}
+                              style={{ minWidth: "130px" }}
                             >
                               <option value="">Select</option>
-                              <option value="ABC Pharma">ABC Pharma</option>
-                              <option value="XYZ Pharmaceuticals">XYZ Pharmaceuticals</option>
-                              <option value="Global Meds Ltd">Global Meds Ltd</option>
-                              <option value="Local Pharma Co">Local Pharma Co</option>
-                              <option value="Health Plus Pharma">Health Plus Pharma</option>
+                              {manufacturerOptions.map((option, idx) => (
+                                <option key={idx} value={option}>
+                                  {option}
+                                </option>
+                              ))}
                             </select>
                           </td>
                           <td>
