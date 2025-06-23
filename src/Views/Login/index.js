@@ -4,7 +4,7 @@ import LoginImg from "../../assets/images/login-img.svg";
 import Cardiogram from "../../assets/images/cardiogram.png";
 import "./login.css";
 import { postRequest, getRequest } from "../../service/apiService";
-import { LOGIN, MAS_DEPARTMENT } from "../../config/apiConfig";
+import { LOGIN, MAS_USER_DEPARTMENT } from "../../config/apiConfig";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -23,13 +23,16 @@ const Login = () => {
 
 
   useEffect(() => {
-    fetchDepartments();
-  }, []);
+    if (formData.username?.trim()) {
+      fetchDepartments();
+    }
+  }, [formData.username]);
+
 
   const fetchDepartments = async (flag = 1) => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_DEPARTMENT}/getAll/${flag}`);
+      const response = await getRequest(`${MAS_USER_DEPARTMENT}/getByUserName/${formData?.username}`);
       if (response && response.response) {
         setDepartments(response.response);
       }
@@ -155,6 +158,24 @@ const Login = () => {
                       <div className="col-12">
                         <div className="mb-1">
                           <label className="form-label" style={{ fontSize: "0.95rem" }}>
+                            Username <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="username"
+                            className="form-control form-control-sm"
+                            style={{ fontSize: "0.95rem", padding: "0.375rem 0.75rem" }}
+                            placeholder="6209150953"
+                            value={formData.username}
+                            onChange={handleInputChange}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="col-12">
+                        <div className="mb-1">
+                          <label className="form-label" style={{ fontSize: "0.95rem" }}>
                             Department <span className="text-danger">*</span>
                           </label>
                           <select
@@ -176,23 +197,6 @@ const Login = () => {
                         </div>
                       </div>
 
-                      <div className="col-12">
-                        <div className="mb-1">
-                          <label className="form-label" style={{ fontSize: "0.95rem" }}>
-                            Username <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            name="username"
-                            className="form-control form-control-sm"
-                            style={{ fontSize: "0.95rem", padding: "0.375rem 0.75rem" }}
-                            placeholder="6209150953"
-                            value={formData.username}
-                            onChange={handleInputChange}
-                            required
-                          />
-                        </div>
-                      </div>
                       <div className="col-12">
                         <div className="mb-1">
                           <label className="form-label" style={{ fontSize: "0.95rem" }}>

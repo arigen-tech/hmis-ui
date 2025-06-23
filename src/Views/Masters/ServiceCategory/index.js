@@ -177,7 +177,11 @@ const ServiceCategoryMaster = () => {
     setFormData((prevData) => ({ ...prevData, [id]: value }))
 
     const updatedFormData = { ...formData, [id]: value }
-    setIsFormValid(!!updatedFormData.serviceCatName && !!updatedFormData.sacCode && !!updatedFormData.gstApplicable)
+    setIsFormValid(
+      !!updatedFormData.serviceCatName &&
+      !!updatedFormData.sacCode &&
+      (updatedFormData.gstApplicable === true || updatedFormData.gstApplicable === false)
+    )
   }
 
   const handleSelectChange = (e) => {
@@ -185,7 +189,11 @@ const ServiceCategoryMaster = () => {
     setFormData((prevData) => ({ ...prevData, [id]: value }))
 
     const updatedFormData = { ...formData, [id]: value }
-    setIsFormValid(!!updatedFormData.serviceCatName && !!updatedFormData.sacCode && !!updatedFormData.gstApplicable)
+    setIsFormValid(
+      !!updatedFormData.serviceCatName &&
+      !!updatedFormData.sacCode &&
+      (updatedFormData.gstApplicable === true || updatedFormData.gstApplicable === false)
+    )
   }
 
   const handlePageNavigation = () => {
@@ -341,7 +349,16 @@ const ServiceCategoryMaster = () => {
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="d-flex justify-content-end">
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                    
+                    <button type="button" className="btn btn-secondary" onClick={() => {
+                      setShowForm(false);
+                      setFormData({
+                        serviceCatName: "",
+                        sacCode: "",
+                        gstApplicable: false,
+                      });
+                      setEditingService(null);
+                    }}>
                       <i className="mdi mdi-arrow-left"></i> Back
                     </button>
                   </div>
@@ -405,10 +422,19 @@ const ServiceCategoryMaster = () => {
                     >
                       {editingService ? 'Update' : 'Save'}
                     </button>
+
                     <button
                       type="button"
                       className="btn btn-danger"
-                      onClick={() => setShowForm(false)}
+                      onClick={() => {
+                        setShowForm(false);
+                        setFormData({
+                          serviceCatName: "",
+                          sacCode: "",
+                          gstApplicable: false,
+                        });
+                        setEditingService(null);
+                      }}
                       disabled={process}
                     >
                       Cancel
