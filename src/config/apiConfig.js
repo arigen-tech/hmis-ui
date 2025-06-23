@@ -42,6 +42,7 @@ export const MAS_OPD_SERVICE = `${MASTERS}/masServiceOpd`;
 export const MAS_ITEM_CLASS = `${MASTERS}/masItemClass`;
 export const MAS_ITEM_SECTION = `${MASTERS}/storeSection`;
 export const MAS_ITEM_CATEGORY = `${MASTERS}/masItemCategory`;
+export const MAS_HSN = `${MASTERS}/masHSN`;
 
 export const FILTER_OPD_DEPT=`OPD`;
 
