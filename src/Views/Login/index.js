@@ -173,29 +173,7 @@ const Login = () => {
                         </div>
                       </div>
 
-                      <div className="col-12">
-                        <div className="mb-1">
-                          <label className="form-label" style={{ fontSize: "0.95rem" }}>
-                            Department <span className="text-danger">*</span>
-                          </label>
-                          <select
-                            className="form-control form-control-sm"
-                            name="departmentId"
-                            value={formData.departmentId}
-                            onChange={handleInputChange}
-                            required
-                            disabled={loading}
-                            style={{ fontSize: "0.95rem", padding: "0.375rem 0.75rem" }}
-                          >
-                            <option value="">Select Department</option>
-                            {departments.map((dept) => (
-                              <option key={dept.id} value={dept.id}>
-                                {dept.departmentName}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
+                     
 
                       <div className="col-12">
                         <div className="mb-1">
@@ -228,9 +206,34 @@ const Login = () => {
                           </div>
                         </div>
                       </div>
+
+
+                       <div className="col-12">
+                        <div className="mb-1">
+                          <label className="form-label" style={{ fontSize: "0.95rem" }}>
+                            Department <span className="text-danger">*</span>
+                          </label>
+                          <select
+                            className="form-control form-control-sm"
+                            name="departmentId"
+                            value={formData.departmentId}
+                            onChange={handleInputChange}
+                            required
+                            disabled={loading}
+                            style={{ fontSize: "0.95rem", padding: "0.375rem 0.75rem" }}
+                          >
+                            <option value="">Select Department</option>
+                            {departments.map((dept) => (
+                              <option key={dept.id} value={dept.id}>
+                                {dept.departmentName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                       <div className="form-label">
-                        <span className="d-flex justify-content-between align-items-center">
-                          Password
+                        <span className="d-flex justify-content-between align-items-right">
+                          
                           <a href="/forgot-password">Forgot Password?</a>
                         </span>
                       </div>
