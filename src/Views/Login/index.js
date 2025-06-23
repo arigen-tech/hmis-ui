@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import LoginImg from "../../assets/images/login-img.svg";
 import Cardiogram from "../../assets/images/cardiogram.png";
 import "./login.css";
-import { postRequest } from "../../service/apiService";
-import { LOGIN } from "../../config/apiConfig";
+import { postRequest, getRequest } from "../../service/apiService";
+import { LOGIN, MAS_DEPARTMENT } from "../../config/apiConfig";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -12,10 +12,34 @@ const Login = () => {
     username: "",
     password: "",
     rememberMe: false,
+    departmentId: "",
   });
 
-  // First, add a new state for password visibility
+  const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+
   const [showPassword, setShowPassword] = useState(false);
+
+
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
+
+  const fetchDepartments = async (flag = 1) => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${MAS_DEPARTMENT}/getAll/${flag}`);
+      if (response && response.response) {
+        setDepartments(response.response);
+      }
+    } catch (err) {
+      console.error("Error fetching departments:", err);
+
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -37,7 +61,8 @@ const Login = () => {
           username,
           roleId,
           jwtTokenExpiry,
-          hospitalId
+          hospitalId,
+          departmentId,
         } = response.response;
 
         const currentTime = Date.now();
@@ -57,6 +82,7 @@ const Login = () => {
           localStorage.setItem("AuthValidation", validTime);
           localStorage.setItem("isTokenValid", isTokenValid);
           localStorage.setItem("hospitalId", hospitalId);
+          localStorage.setItem("departmentId", departmentId);
         } else {
           sessionStorage.setItem("token", jwtToken);
           sessionStorage.setItem("refreshToken", refreshToken);
@@ -65,6 +91,7 @@ const Login = () => {
           sessionStorage.setItem("AuthValidation", validTime);
           sessionStorage.setItem("isTokenValid", isTokenValid);
           sessionStorage.setItem("hospitalId", hospitalId);
+          sessionStorage.setItem("departmentId", departmentId);
         }
 
         // Set up a timeout to auto-mark the token as expired
@@ -120,19 +147,45 @@ const Login = () => {
                 </div>
                 <div className="col-lg-6 d-flex justify-content-center align-items-center border-0 rounded-lg auth-h100">
                   <div className="w-100 p-3 p-md-5 card border-0 bg-theme text-light" style={{ maxWidth: "32rem" }}>
-                    <form className="row g-1 p-3 p-md-4" onSubmit={handleLogin}>
+                    <form className="row g-1 p-2 p-md-3" onSubmit={handleLogin}>
                       <div className="col-12 text-center mb-5">
                         <h1>Sign in</h1>
                       </div>
 
                       <div className="col-12">
-                        <div className="mb-2">
-                          <label className="form-label">Username <span className="text-danger"
-                          >*</span></label>
+                        <div className="mb-1">
+                          <label className="form-label" style={{ fontSize: "0.95rem" }}>
+                            Department <span className="text-danger">*</span>
+                          </label>
+                          <select
+                            className="form-control form-control-sm"
+                            name="departmentId"
+                            value={formData.departmentId}
+                            onChange={handleInputChange}
+                            required
+                            disabled={loading}
+                            style={{ fontSize: "0.95rem", padding: "0.375rem 0.75rem" }}
+                          >
+                            <option value="">Select Department</option>
+                            {departments.map((dept) => (
+                              <option key={dept.id} value={dept.id}>
+                                {dept.departmentName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="col-12">
+                        <div className="mb-1">
+                          <label className="form-label" style={{ fontSize: "0.95rem" }}>
+                            Username <span className="text-danger">*</span>
+                          </label>
                           <input
                             type="text"
                             name="username"
-                            className="form-control form-control-lg"
+                            className="form-control form-control-sm"
+                            style={{ fontSize: "0.95rem", padding: "0.375rem 0.75rem" }}
                             placeholder="6209150953"
                             value={formData.username}
                             onChange={handleInputChange}
@@ -141,14 +194,16 @@ const Login = () => {
                         </div>
                       </div>
                       <div className="col-12">
-                        <div className="mb-2">
-                          <label className="form-label">Password <span className="text-danger"
-                          >*</span></label>
+                        <div className="mb-1">
+                          <label className="form-label" style={{ fontSize: "0.95rem" }}>
+                            Password <span className="text-danger">*</span>
+                          </label>
                           <div className="position-relative">
                             <input
                               type={showPassword ? "text" : "password"}
                               name="password"
-                              className="form-control form-control-lg"
+                              className="form-control form-control-sm"
+                              style={{ fontSize: "0.95rem", padding: "0.375rem 0.75rem" }}
                               placeholder="174620"
                               value={formData.password}
                               onChange={handleInputChange}
@@ -158,7 +213,7 @@ const Login = () => {
                               type="button"
                               className="btn btn-link position-absolute end-0 top-50 translate-middle-y text-decoration-none"
                               onClick={() => setShowPassword(!showPassword)}
-                              style={{ zIndex: 1 }}
+                              style={{ zIndex: 1, fontSize: "1rem", padding: "0.2rem" }}
                             >
                               {showPassword ? (
                                 <i className="bi bi-eye-slash"></i>
@@ -190,8 +245,13 @@ const Login = () => {
                           </label>
                         </div>
                       </div>
-                      <div className="col-12 text-center mt-4">
-                        <button type="submit" className="btn btn-lg btn-block btn-light lift text-uppercase">
+
+                      <div className="col-12 text-center mt-3">
+                        <button
+                          type="submit"
+                          className="btn btn-sm btn-block btn-light lift text-uppercase"
+                          style={{ fontSize: "1rem", padding: "0.4rem 1rem" }}
+                        >
                           SIGN IN
                         </button>
                       </div>
@@ -206,6 +266,7 @@ const Login = () => {
       </div>
     </>
   );
+
 };
 
 export default Login;
