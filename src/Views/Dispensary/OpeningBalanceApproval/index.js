@@ -50,7 +50,6 @@ const OpeningBalanceApproval = () => {
           medicineSource: "Local",
           manufacturer: "ABC Pharma",
         },
-
       ]
     }
     return [
@@ -78,9 +77,9 @@ const OpeningBalanceApproval = () => {
   const totalPages = Math.ceil(approvalData.length / itemsPerPage)
   const currentItems = approvalData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
-  const handleRowClick = (record) => {
-    setSelectedRecord(record)
-    setDetailEntries(getDetailEntriesForRecord(record))
+  const handleEdit = (item) => {
+    setSelectedRecord(item)
+    setDetailEntries(getDetailEntriesForRecord(item))
     setCurrentView("detail")
   }
 
@@ -107,57 +106,14 @@ const OpeningBalanceApproval = () => {
     }
   }
 
-  const addNewEntry = () => {
-    const newEntry = {
-      id: detailEntries.length + 1,
-      sNo: detailEntries.length + 1,
-      drugCode: "",
-      drugName: "",
-      unit: "",
-      batchNo: "",
-      dom: "",
-      doe: "",
-      qty: "",
-      unitRate: "",
-      amount: "",
-      medicineSource: "",
-      manufacturer: "",
-    }
-    setDetailEntries([...detailEntries, newEntry])
-  }
-
-  const deleteEntry = (id) => {
-    setDetailEntries(detailEntries.filter((entry) => entry.id !== id))
-  }
-
-  const updateEntry = (id, field, value) => {
-    setDetailEntries(detailEntries.map((entry) => (entry.id === id ? { ...entry, [field]: value } : entry)))
-  }
+ 
 
   const handleSubmit = () => {
     console.log("Submitting entries:", detailEntries)
     alert("Entries submitted successfully!")
   }
 
-  const handleReset = () => {
-    setDetailEntries([
-      {
-        id: 1,
-        sNo: 1,
-        drugCode: "",
-        drugName: "",
-        unit: "",
-        batchNo: "",
-        dom: "",
-        doe: "",
-        qty: "",
-        unitRate: "",
-        amount: "",
-        medicineSource: "",
-        manufacturer: "",
-      },
-    ])
-  }
+  
 
   const renderPagination = () => {
     const pageNumbers = []
@@ -202,7 +158,7 @@ const OpeningBalanceApproval = () => {
     { id: 3, code: "IBU001", name: "Ibuprofen" },
     { id: 4, code: "ASP001", name: "Aspirin" },
     { id: 5, code: "DOL001", name: "Dolo" },
-  ];
+  ]
   const manufacturerOptions = [
     "Cipla Ltd",
     "Sun Pharma",
@@ -212,7 +168,7 @@ const OpeningBalanceApproval = () => {
     "Torrent Pharma",
     "Glenmark",
     "Alkem Labs",
-  ];
+  ]
   const brandNameOptions = [
     "Paracetamol Plus",
     "Crocin",
@@ -224,10 +180,10 @@ const OpeningBalanceApproval = () => {
     "Combiflam",
     "Saridon",
     "Disprin",
-  ];
-  const dropdownClickedRef = useRef(false);
-  const [activeDrugCodeDropdown, setActiveDrugCodeDropdown] = useState(null);
-  const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null);
+  ]
+  const dropdownClickedRef = useRef(false)
+  const [activeDrugCodeDropdown, setActiveDrugCodeDropdown] = useState(null)
+  const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null)
 
   if (currentView === "detail") {
     return (
@@ -237,9 +193,7 @@ const OpeningBalanceApproval = () => {
             <div className="card form-card">
               {/* Header Section */}
               <div className="card-header d-flex justify-content-between align-items-center">
-                <h4 className="card-title p-2 mb-0">
-                  Entry Details
-                </h4>
+                <h4 className="card-title p-2 mb-0">Entry Details</h4>
                 <button type="button" className="btn btn-secondary" onClick={handleBackToList}>
                   Back to List
                 </button>
@@ -289,12 +243,7 @@ const OpeningBalanceApproval = () => {
                     />
                   </div>
                   <div className="col-md-3 mt-3">
-                    <button
-                      className="btn btn-success">
-                      Download Invoice
-
-                    </button>
-
+                    <button className="btn btn-success">Download Invoice</button>
                   </div>
                 </div>
 
@@ -307,7 +256,7 @@ const OpeningBalanceApproval = () => {
                           S.No.
                         </th>
                         <th style={{ width: "120px", minWidth: "120px" }}>Drug Code</th>
-                        <th style={{ width: "200px", minWidth: "200px" }}>Drug Name</th>
+                        <th style={{ width: "200px", minWidth: "270px" }}>Drug Name</th>
                         <th style={{ width: "80px", minWidth: "80px" }}>Unit</th>
                         <th style={{ width: "150px", minWidth: "150px" }}>Batch No/ Serial No</th>
                         <th style={{ width: "120px", minWidth: "120px" }}>DOM</th>
@@ -320,8 +269,6 @@ const OpeningBalanceApproval = () => {
                         <th style={{ width: "100px", minWidth: "100px" }}>Total Cost</th>
                         <th style={{ width: "150px", minWidth: "150px" }}>Brand Name</th>
                         <th style={{ width: "150px", minWidth: "150px" }}>Manufacturer</th>
-                        <th style={{ width: "60px", minWidth: "60px" }}>Add</th>
-                        <th style={{ width: "70px", minWidth: "70px" }}>Delete</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -332,143 +279,39 @@ const OpeningBalanceApproval = () => {
                               type="text"
                               className="form-control text-center"
                               value={entry.sNo}
-                              style={{ width: "50px" }}
+                              style={{ width: "50px", backgroundColor: "#e9ecef" }}
                               readOnly
+                              disabled
                             />
                           </td>
-                          <td style={{ position: "relative" }}>
+                          <td>
                             <input
                               type="text"
                               className="form-control"
                               value={entry.drugCode}
-                              onChange={(e) => {
-                                updateEntry(entry.id, "drugCode", e.target.value);
-                                if (e.target.value.length > 0) {
-                                  setActiveDrugCodeDropdown(index);
-                                } else {
-                                  setActiveDrugCodeDropdown(null);
-                                }
-                              }}
-                              style={{ width: "110px" }}
-                              autoComplete="off"
-                              onFocus={() => setActiveDrugCodeDropdown(index)}
-                              onBlur={() => {
-                                setTimeout(() => {
-                                  if (!dropdownClickedRef.current) setActiveDrugCodeDropdown(null);
-                                  dropdownClickedRef.current = false;
-                                }, 150);
-                              }}
+                              style={{ width: "110px", backgroundColor: "#e9ecef" }}
+                              readOnly
+                              disabled
                             />
-                            {activeDrugCodeDropdown === index && (
-                              <ul className="list-group position-absolute w-100 mt-1" style={{ zIndex: 1000, maxHeight: 180, overflowY: 'auto' }}>
-                                {drugCodeOptions
-                                  .filter((opt) =>
-                                    entry.drugCode === "" ||
-                                    opt.code.toLowerCase().includes(entry.drugCode.toLowerCase()) ||
-                                    opt.name.toLowerCase().includes(entry.drugCode.toLowerCase())
-                                  )
-                                  .map((opt) => (
-                                    <li
-                                      key={opt.id}
-                                      className="list-group-item list-group-item-action"
-                                      style={{ cursor: 'pointer' }}
-                                      onMouseDown={(e) => {
-                                        e.preventDefault();
-                                        dropdownClickedRef.current = true;
-                                      }}
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setDetailEntries(detailEntries.map((row, i) =>
-                                          i === index ? { ...row, drugCode: opt.code, drugName: opt.name } : row
-                                        ));
-                                        setActiveDrugCodeDropdown(null);
-                                        dropdownClickedRef.current = false;
-                                      }}
-                                    >
-                                      {opt.code} - {opt.name}
-                                    </li>
-                                  ))}
-                                {drugCodeOptions.filter((opt) =>
-                                  entry.drugCode === "" ||
-                                  opt.code.toLowerCase().includes(entry.drugCode.toLowerCase()) ||
-                                  opt.name.toLowerCase().includes(entry.drugCode.toLowerCase())
-                                ).length === 0 && entry.drugCode !== "" && (
-                                  <li className="list-group-item text-muted">No matches found</li>
-                                )}
-                              </ul>
-                            )}
                           </td>
-                          <td style={{ position: "relative" }}>
+                          <td>
                             <input
                               type="text"
                               className="form-control"
                               value={entry.drugName}
-                              onChange={(e) => {
-                                updateEntry(entry.id, "drugName", e.target.value);
-                                if (e.target.value.length > 0) {
-                                  setActiveDrugNameDropdown(index);
-                                } else {
-                                  setActiveDrugNameDropdown(null);
-                                }
-                              }}
-                              style={{ width: "190px" }}
-                              autoComplete="off"
-                              onFocus={() => setActiveDrugNameDropdown(index)}
-                              onBlur={() => {
-                                setTimeout(() => {
-                                  if (!dropdownClickedRef.current) setActiveDrugNameDropdown(null);
-                                  dropdownClickedRef.current = false;
-                                }, 150);
-                              }}
+                              style={{ width: "190px", backgroundColor: "#e9ecef" }}
+                              readOnly
+                              disabled
                             />
-                            {activeDrugNameDropdown === index && (
-                              <ul className="list-group position-absolute w-100 mt-1" style={{ zIndex: 1000, maxHeight: 180, overflowY: 'auto' }}>
-                                {drugCodeOptions
-                                  .filter((opt) =>
-                                    entry.drugName === "" ||
-                                    opt.name.toLowerCase().includes(entry.drugName.toLowerCase()) ||
-                                    opt.code.toLowerCase().includes(entry.drugName.toLowerCase())
-                                  )
-                                  .map((opt) => (
-                                    <li
-                                      key={opt.id}
-                                      className="list-group-item list-group-item-action"
-                                      style={{ cursor: 'pointer' }}
-                                      onMouseDown={(e) => {
-                                        e.preventDefault();
-                                        dropdownClickedRef.current = true;
-                                      }}
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setDetailEntries(detailEntries.map((row, i) =>
-                                          i === index ? { ...row, drugCode: opt.code, drugName: opt.name } : row
-                                        ));
-                                        setActiveDrugNameDropdown(null);
-                                        dropdownClickedRef.current = false;
-                                      }}
-                                    >
-                                      {opt.name} - {opt.code}
-                                    </li>
-                                  ))}
-                                {drugCodeOptions.filter((opt) =>
-                                  entry.drugName === "" ||
-                                  opt.name.toLowerCase().includes(entry.drugName.toLowerCase()) ||
-                                  opt.code.toLowerCase().includes(entry.drugName.toLowerCase())
-                                ).length === 0 && entry.drugName !== "" && (
-                                  <li className="list-group-item text-muted">No matches found</li>
-                                )}
-                              </ul>
-                            )}
                           </td>
                           <td>
                             <input
                               type="text"
                               className="form-control"
                               value={entry.unit}
-                              onChange={(e) => updateEntry(entry.id, "unit", e.target.value)}
-                              style={{ width: "70px" }}
+                              style={{ width: "70px", backgroundColor: "#e9ecef" }}
+                              readOnly
+                              disabled
                             />
                           </td>
                           <td>
@@ -476,8 +319,9 @@ const OpeningBalanceApproval = () => {
                               type="text"
                               className="form-control"
                               value={entry.batchNo}
-                              onChange={(e) => updateEntry(entry.id, "batchNo", e.target.value)}
-                              style={{ width: "140px" }}
+                              style={{ width: "140px", backgroundColor: "#e9ecef" }}
+                              readOnly
+                              disabled
                             />
                           </td>
                           <td>
@@ -486,8 +330,9 @@ const OpeningBalanceApproval = () => {
                               className="form-control"
                               placeholder="DD/MM/YYYY"
                               value={entry.dom}
-                              onChange={(e) => updateEntry(entry.id, "dom", e.target.value)}
-                              style={{ width: "110px" }}
+                              style={{ width: "110px", backgroundColor: "#e9ecef" }}
+                              readOnly
+                              disabled
                             />
                           </td>
                           <td>
@@ -496,8 +341,9 @@ const OpeningBalanceApproval = () => {
                               className="form-control"
                               placeholder="DD/MM/YYYY"
                               value={entry.doe}
-                              onChange={(e) => updateEntry(entry.id, "doe", e.target.value)}
-                              style={{ width: "110px" }}
+                              style={{ width: "110px", backgroundColor: "#e9ecef" }}
+                              readOnly
+                              disabled
                             />
                           </td>
                           <td>
@@ -505,8 +351,9 @@ const OpeningBalanceApproval = () => {
                               type="number"
                               className="form-control"
                               value={entry.qty}
-                              onChange={(e) => updateEntry(entry.id, "qty", e.target.value)}
-                              style={{ width: "70px" }}
+                              style={{ width: "70px", backgroundColor: "#e9ecef" }}
+                              readOnly
+                              disabled
                             />
                           </td>
                           <td>
@@ -514,8 +361,9 @@ const OpeningBalanceApproval = () => {
                               type="number"
                               className="form-control"
                               value={entry.unitsPerPack || ""}
-                              onChange={(e) => updateEntry(entry.id, "unitsPerPack", e.target.value)}
-                              style={{ width: "90px" }}
+                              style={{ width: "90px", backgroundColor: "#e9ecef" }}
+                              readOnly
+                              disabled
                             />
                           </td>
                           <td>
@@ -523,8 +371,9 @@ const OpeningBalanceApproval = () => {
                               type="number"
                               className="form-control"
                               value={entry.purchaseRatePerUnit || ""}
-                              onChange={(e) => updateEntry(entry.id, "purchaseRatePerUnit", e.target.value)}
-                              style={{ width: "110px" }}
+                              style={{ width: "110px", backgroundColor: "#e9ecef" }}
+                              readOnly
+                              disabled
                             />
                           </td>
                           <td>
@@ -532,8 +381,9 @@ const OpeningBalanceApproval = () => {
                               type="number"
                               className="form-control"
                               value={entry.gstPercent || ""}
-                              onChange={(e) => updateEntry(entry.id, "gstPercent", e.target.value)}
-                              style={{ width: "90px" }}
+                              style={{ width: "90px", backgroundColor: "#e9ecef" }}
+                              readOnly
+                              disabled
                             />
                           </td>
                           <td>
@@ -541,8 +391,9 @@ const OpeningBalanceApproval = () => {
                               type="number"
                               className="form-control"
                               value={entry.mrpPerUnit || ""}
-                              onChange={(e) => updateEntry(entry.id, "mrpPerUnit", e.target.value)}
-                              style={{ width: "90px" }}
+                              style={{ width: "90px", backgroundColor: "#e9ecef" }}
+                              readOnly
+                              disabled
                             />
                           </td>
                           <td>
@@ -551,15 +402,16 @@ const OpeningBalanceApproval = () => {
                               className="form-control"
                               value={entry.totalCost || ""}
                               readOnly
-                              style={{ backgroundColor: "#f8f9fa", minWidth: "90px" }}
+                              disabled
+                              style={{ backgroundColor: "#e9ecef", minWidth: "90px" }}
                             />
                           </td>
                           <td>
                             <select
                               className="form-select"
                               value={entry.brandName || ""}
-                              onChange={(e) => updateEntry(entry.id, "brandName", e.target.value)}
-                              style={{ minWidth: "130px" }}
+                              style={{ minWidth: "130px", backgroundColor: "#e9ecef" }}
+                              disabled
                             >
                               <option value="">Select Brand</option>
                               {brandNameOptions.map((option, idx) => (
@@ -573,8 +425,8 @@ const OpeningBalanceApproval = () => {
                             <select
                               className="form-select"
                               value={entry.manufacturer || ""}
-                              onChange={(e) => updateEntry(entry.id, "manufacturer", e.target.value)}
-                              style={{ minWidth: "130px" }}
+                              style={{ minWidth: "130px", backgroundColor: "#e9ecef" }}
+                              disabled
                             >
                               <option value="">Select</option>
                               {manufacturerOptions.map((option, idx) => (
@@ -584,26 +436,7 @@ const OpeningBalanceApproval = () => {
                               ))}
                             </select>
                           </td>
-                          <td>
-                            <button
-                              type="button"
-                              className="btn btn-sm"
-                              style={{ backgroundColor: "#e67e22", color: "white" }}
-                              onClick={addNewEntry}
-                            >
-                              +
-                            </button>
-                          </td>
-                          <td>
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-danger"
-                              onClick={() => deleteEntry(entry.id)}
-                              disabled={detailEntries.length === 1}
-                            >
-                              -
-                            </button>
-                          </td>
+                         
                         </tr>
                       ))}
                     </tbody>
@@ -625,7 +458,7 @@ const OpeningBalanceApproval = () => {
                     <input
                       type="text"
                       className="form-control"
-                      style={{ height: "100px" }}  // Corrected to use an object
+                      style={{ height: "100px" }} // Corrected to use an object
                       placeholder="Enter your remark here"
                       onChange={(e) => console.log(e.target.value)}
                     />
@@ -642,8 +475,8 @@ const OpeningBalanceApproval = () => {
                   >
                     Submit
                   </button>
-                  <button type="button" className="btn btn-danger" onClick={handleReset}>
-                    Reset
+                  <button type="button" className="btn btn-danger" onClick={handleBackToList} >
+                    Cancel
                   </button>
                 </div>
               </div>
@@ -707,17 +540,12 @@ const OpeningBalanceApproval = () => {
                       <th>Department</th>
                       <th>Status</th>
                       <th>Submitted By</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {currentItems.map((item) => (
-                      <tr
-                        key={item.id}
-                        style={{ cursor: "pointer" }}
-                        onClick={() => handleRowClick(item)}
-                        onMouseEnter={(e) => (e.target.closest("tr").style.backgroundColor = "#f8f9fa")}
-                        onMouseLeave={(e) => (e.target.closest("tr").style.backgroundColor = "")}
-                      >
+                      <tr key={item.id}>
                         <td>{item.balanceNo}</td>
                         <td>{item.openingBalanceDate}</td>
                         <td>{item.department}</td>
@@ -733,6 +561,15 @@ const OpeningBalanceApproval = () => {
                           </span>
                         </td>
                         <td>{item.submittedBy}</td>
+                        <td>
+                          <button
+                            className="btn btn-sm btn-success me-2"
+                            onClick={() => handleEdit(item)}
+                            disabled={item.status !== "Pending for Approval"}
+                          >
+                            <i className="fa fa-eye"></i>
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

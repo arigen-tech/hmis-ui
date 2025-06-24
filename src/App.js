@@ -50,6 +50,7 @@ import OPDServiceMaster from './Views/Masters/OpdService';
 import ServiceCategoryMaster from './Views/Masters/ServiceCategory';
 import ItemSection from './Views/Stores/ItemSection';
 import HSNMaster from './Views/Masters/HSNMaster';
+import ViewAndUpdate from './Views/Dispensary/ViewAndUpdate';
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -134,6 +135,7 @@ function App() {
                 <Route path="ServiceCategory" element={<ServiceCategoryMaster/>} />
                 <Route path="ItemSection" element={<ItemSection/>} />
                 <Route path="HSNMaster" element={<HSNMaster/>} />
+                <Route path="view-and-update" element={<ViewAndUpdate/>}/>
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>

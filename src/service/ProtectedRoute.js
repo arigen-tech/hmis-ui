@@ -57,6 +57,7 @@ const validRoutes = [
   "/ServiceCategory",
   "/ItemSection",
   "/HSNMaster",
+  "/view-and-update",
 ];
 
 const NotAuthorized = () => {

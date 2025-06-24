@@ -258,7 +258,7 @@ const OpeningBalanceEntry = () => {
                         S.No.
                       </th>
                       <th style={{ width: "120px", minWidth: "120px" }}>Drug Code</th>
-                      <th style={{ width: "200px", minWidth: "200px" }}>Drug Name</th>
+                      <th style={{ width: "200px", minWidth: "270px" }}>Drug Name</th>
                       <th style={{ width: "80px", minWidth: "80px" }}>Unit</th>
                       <th style={{ width: "150px", minWidth: "150px" }}>Batch No/ Serial No</th>
                       <th style={{ width: "120px", minWidth: "120px" }}>DOM</th>
