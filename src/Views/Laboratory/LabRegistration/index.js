@@ -1,8 +1,8 @@
-"use client"
+
 
 import { useState, useRef, useEffect } from "react"
 import placeholderImage from "../../../assets/images/placeholder.jpg"
-import { getRequest } from "../../../service/apiService"
+import { getRequest, postRequest } from "../../../service/apiService"
 import Swal from "sweetalert2"
 
 import {
@@ -39,21 +39,7 @@ const LabRegistration = () => {
   const [investigationItems, setInvestigationItems] = useState([])
   const [packageItems, setPackageItems] = useState([])
 
-  // Sample investigation/package items for dropdown
-  // const investigationItems = [
-  //   { id: 1, name: "Complete Blood Count", price: 500 },
-  //   { id: 2, name: "Liver Function Test", price: 800 },
-  //   { id: 3, name: "Thyroid Profile", price: 1200 },
-  //   { id: 4, name: "Kidney Function Test", price: 900 },
-  //   { id: 5, name: "Lipid Profile", price: 700 },
-  //   { id: 6, name: "Blood Glucose", price: 300 },
-  //   { id: 7, name: "Hemoglobin A1C", price: 650 },
-  //   { id: 8, name: "Urine Analysis", price: 350 },
-  //   { id: 9, name: "Chest X-Ray", price: 1000 },
-  //   { id: 10, name: "ECG", price: 500 }
-  // ]
 
-  // Form data state
   const [formData, setFormData] = useState({
     // Personal details
     imageurl: undefined,
@@ -96,14 +82,17 @@ const LabRegistration = () => {
     emergencyMobile: undefined,
 
     // Lab specific fields
-    type: "investigation", // Default to investigation
+    type: "investigation",
     rows: [
       {
         id: 1,
         name: "",
         date: "",
         originalAmount: 0,
-      },
+        discountAmount: 0,  // Add this
+        netAmount: 0,
+        type: "investigation"
+      }
     ],
     paymentMode: "",
   })
@@ -328,28 +317,45 @@ const LabRegistration = () => {
   }
 
   const handleRowChange = (index, field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      rows: prev.rows.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
-    }))
-  }
+    setFormData((prev) => {
+      const updatedRows = prev.rows.map((item, i) => {
+        if (i !== index) return item;
 
-  const addRow = (e) => {
-    e.preventDefault()
-    setFormData((prev) => ({
+        const updatedItem = { ...item, [field]: value };
+
+        // Automatically calculate net amount when relevant fields change
+        if (field === 'originalAmount' || field === 'discountAmount') {
+          const original = Number(updatedItem.originalAmount) || 0;
+          const discount = Number(updatedItem.discountAmount) || 0;
+          updatedItem.netAmount = Math.max(0, original - discount).toFixed(2);
+        }
+
+        return updatedItem;
+      });
+
+      return { ...prev, rows: updatedRows };
+    });
+  };
+
+  // In your addRow function:
+  const addRow = (e, type = formData.type) => {
+    e.preventDefault();
+    setFormData(prev => ({
       ...prev,
       rows: [
         ...prev.rows,
         {
-          id: prev.rows.length + 1,
+          id: Date.now(), // Better ID generation
           name: "",
           date: "",
           originalAmount: 0,
-        },
-      ],
-    }))
-  }
-
+          discountAmount: 0,
+          netAmount: 0,
+          type: type
+        }
+      ]
+    }));
+  };
   const removeRow = (index) => {
     setFormData((prev) => ({
       ...prev,
@@ -361,9 +367,9 @@ const LabRegistration = () => {
   const calculateTotalAmount = () => {
     return formData.rows
       .reduce((total, item) => {
-        return total + (Number.parseFloat(item.originalAmount) || 0)
+        return total + (Number.parseFloat(item.netAmount) || 0);
       }, 0)
-      .toFixed(2)
+      .toFixed(2);
   }
 
   async function fetchGenderData() {
@@ -588,68 +594,139 @@ const LabRegistration = () => {
     return valid
   }
 
-  const handleSubmit = () => {
+
+
+  const handleSubmit = async () => {
     if (validateForm()) {
-      // Prepare data for submission
-      const requestData = {
-        patient: {
-          id: 0,
+      try {
+        setLoading(true);
+
+        // Build patient object
+        const patientRequest = {
           uhidNo: "",
-          patientStatus: "",
-          regDate: new Date(Date.now()).toJSON().split(".")[0].split("T")[0],
-          lastChgBy: sessionStorage.getItem("username"),
-          patientHospitalId: Number(sessionStorage.getItem("hospitalId")),
           patientFn: formData.firstName,
-          patientMn: formData.middleName,
-          patientLn: formData.lastName,
+          patientMn: formData.middleName || "",
+          patientLn: formData.lastName || "",
           patientDob: formData.dob,
-          patientAge: formData.age,
+          patientAge: formData.age.toString(),
           patientGenderId: formData.gender,
           patientEmailId: formData.email,
           patientMobileNumber: formData.mobileNo,
-          patientImage: imageURL,
+          patientImage: imageURL || "",
           fileName: "string",
           patientRelationId: formData.relation,
-          patientMaritalStatusId: formData.maritalStatus,
-          patientReligionId: formData.religion,
-          patientAddress1: formData.address1,
-          patientAddress2: formData.address2,
-          patientCity: formData.city,
-          patientPincode: formData.pinCode,
+          patientAddress1: formData.address1 || "",
+          patientAddress2: formData.address2 || "",
+          patientCity: formData.city || "",
+          patientPincode: formData.pinCode || "",
           patientDistrictId: formData.district,
           patientStateId: formData.state,
           patientCountryId: formData.country,
-          pincode: "string",
-          emerFn: formData.emergencyFirstName,
-          emerLn: formData.emergencyLastName,
-          emerRelationId: formData.emergencyRelationId,
-          emerMobile: formData.emergencyMobile,
-          nokFn: formData.nokFirstName,
-          nokLn: formData.nokLastName,
-          nokEmail: formData.nokEmail,
-          nokMobileNumber: formData.nokMobile,
-          nokAddress1: formData.nokAddress1,
-          nokAddress2: formData.nokAddress2,
-          nokCity: formData.nokCity,
+          pincode: formData.pinCode || "",
+          emerFn: formData.emergencyFirstName || "",
+          emerLn: formData.emergencyLastName || "",
+          emerMobile: formData.emergencyMobile || "",
+          nokFn: formData.nokFirstName || "",
+          nokLn: formData.nokLastName || "",
+          nokEmail: formData.nokEmail || "",
+          nokMobileNumber: formData.nokMobile || "",
+          nokAddress1: formData.nokAddress1 || "",
+          nokAddress2: formData.nokAddress2 || "",
+          nokCity: formData.nokCity || "",
           nokDistrictId: formData.nokDistrict,
           nokStateId: formData.nokState,
           nokCountryId: formData.nokCountry,
-          nokPincode: formData.nokPinCode,
-          nokRelationId: formData.nokRelation,
-        },
-        labDetails: {
-          type: formData.type,
-          items: formData.rows,
-          paymentMode: formData.paymentMode,
-          totalAmount: calculateTotalAmount(),
-          registrationDate: new Date(Date.now()).toJSON(),
-        },
-      }
+          nokPincode: formData.nokPinCode || "",
+          patientStatus: "",
+          regDate: new Date().toISOString().split("T")[0],
+          lastChgBy: sessionStorage.getItem("username"),
+          patientHospitalId: Number(sessionStorage.getItem("hospitalId"))
+        };
 
-      console.log("Submitting data:", requestData)
-      Swal.fire("Success", "Lab registration submitted successfully!", "success")
+        // 🔥 Register patient with ONLY 'patient' key
+        const patientResult = await postRequest("/patient/register", {
+          patient: patientRequest
+        });
+
+        const patientId = patientResult?.response?.patient?.id;
+        if (!patientId) {
+          throw new Error(patientResult.message || "Patient registration failed");
+        }
+
+        // Lab data
+        const labData = {
+          patientId: patientId,
+          labInvestigationReq: [],
+          labPackegReqs: []
+        };
+
+        formData.rows.forEach(row => {
+          const common = {
+            itemId: row.itemId,
+            name: row.name,
+            date: row.date || new Date().toISOString().split("T")[0],
+            originalAmount: parseFloat(row.originalAmount) || 0,
+            discountAmount: 0,
+            netAmount: parseFloat(row.originalAmount) || 0,
+            createdBy: sessionStorage.getItem("username"),
+            hospitalId: Number(sessionStorage.getItem("hospitalId"))
+          };
+
+          if (row.type === "investigation") {
+            labData.labInvestigationReq.push({
+              investigationId: common.itemId,
+              investigationName: common.name,
+              investigationDate: common.date,
+              originalAmount: common.originalAmount,
+              discountAmount: common.discountAmount,
+              netAmount: common.netAmount,
+              status: "y",
+              createdBy: common.createdBy,
+              hospitalId: common.hospitalId,
+              genderApplicable: "c",
+              investigationType: "m"
+            });
+          } else {
+            labData.labPackegReqs.push({
+              packId: common.itemId,
+              packName: common.name,
+              packDate: common.date,
+              originalAmount: common.originalAmount,
+              discountAmount: common.discountAmount,
+              netAmount: common.netAmount,
+              status: "y",
+              createdBy: common.createdBy,
+              hospitalId: common.hospitalId,
+              descrp: "",
+              baseCost: common.originalAmount,
+              disc: 0,
+              discPer: 0,
+              actualCost: common.netAmount
+            });
+          }
+        });
+
+        // 🔥 Register lab
+        const labResult = await postRequest("/lab/registration", labData);
+        if (!labResult) {
+          throw new Error("Lab registration failed");
+        }
+
+        Swal.fire({
+          title: "Success!",
+          text: "Patient and Lab registered successfully!",
+          icon: "success"
+        }).then(() => handleReset());
+
+      } catch (error) {
+        Swal.fire("Error!", error.message || "Registration failed", "error");
+      } finally {
+        setLoading(false);
+      }
     }
-  }
+  };
+
+
 
   const handleReset = () => {
     setFormData({
@@ -1356,10 +1433,17 @@ const LabRegistration = () => {
                               >
                                 {formData.type === "investigation"
                                   ? investigationItems
-                                      .filter((item) =>
-                                        item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
-                                      )
-                                      .map((item, i) => (
+                                    .filter((item) =>
+                                      item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
+                                    )
+                                    .map((item, i) => {
+                                      // Calculate discount if available (assuming your investigation items might have discount fields)
+                                      const hasDiscount = item.disc && item.disc > 0;
+                                      const displayPrice = item.price || 0;
+                                      const discountAmount = hasDiscount ? item.disc : 0;
+                                      const finalPrice = hasDiscount ? displayPrice - discountAmount : displayPrice;
+
+                                      return (
                                         <li
                                           key={i}
                                           className="list-group-item list-group-item-action"
@@ -1370,47 +1454,79 @@ const LabRegistration = () => {
                                                 "Warning",
                                                 "Price has not been configured for this Investigation",
                                                 "warning",
-                                              )
+                                              );
                                             } else {
-                                              handleRowChange(index, "name", item.investigationName)
-                                              handleRowChange(index, "itemId", item.investigationId)
-                                              handleRowChange(index, "originalAmount", item.price)
-                                              setActiveRowIndex(null)
+                                              handleRowChange(index, "name", item.investigationName);
+                                              handleRowChange(index, "itemId", item.investigationId);
+                                              // Store both original price and discount amount
+                                              handleRowChange(index, "originalAmount", displayPrice);
+                                              handleRowChange(index, "discountAmount", discountAmount);
+                                              handleRowChange(index, "netAmount", finalPrice);
+                                              setActiveRowIndex(null);
                                             }
                                           }}
                                         >
-                                          {item.investigationName} -{" "}
-                                          {item.price === null ? "Price not configured" : `₹${item.price}`}
+                                          <div>
+                                            <strong>{item.investigationName}</strong>
+                                            <div className="d-flex justify-content-between">
+                                              <span>
+                                                {item.price === null ? "Price not configured" : `₹${finalPrice.toFixed(2)}`}
+                                              </span>
+                                              {hasDiscount && (
+                                                <span className="text-success">
+                                                  (Discount: ₹{discountAmount.toFixed(2)})
+                                                </span>
+                                              )}
+                                            </div>
+                                            {item.investigationType && (
+                                              <small className="text-muted">Type: {item.investigationType}</small>
+                                            )}
+                                          </div>
                                         </li>
-                                      ))
+                                      );
+                                    })
                                   : packageItems
-                                      .filter((item) => item.packName.toLowerCase().includes(row.name.toLowerCase()))
-                                      .map((item, i) => (
-                                        <li
-                                          key={i}
-                                          className="list-group-item list-group-item-action"
-                                          style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                          onClick={async () => {
-                                            // Fetch price details for the selected package
-                                            const priceDetails = await fetchPackagePrice(item.packName)
-
-                                            if (!priceDetails || !priceDetails.actualCost) {
-                                              Swal.fire(
-                                                "Warning",
-                                                "Price has not been configured for this Package",
-                                                "warning",
-                                              )
-                                            } else {
-                                              handleRowChange(index, "name", item.packName)
-                                              handleRowChange(index, "itemId", item.id || priceDetails.packId)
-                                              handleRowChange(index, "originalAmount", priceDetails.actualCost)
-                                              setActiveRowIndex(null)
-                                            }
-                                          }}
-                                        >
-                                          {item.packName}
-                                        </li>
-                                      ))}
+                                    .filter((item) => item.packName.toLowerCase().includes(row.name.toLowerCase()))
+                                    .map((item, i) => (
+                                      <li
+                                        key={i}
+                                        className="list-group-item list-group-item-action"
+                                        style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
+                                        onClick={async () => {
+                                          const priceDetails = await fetchPackagePrice(item.packName);
+                                          if (!priceDetails || !priceDetails.actualCost) {
+                                            Swal.fire(
+                                              "Warning",
+                                              "Price has not been configured for this Package",
+                                              "warning",
+                                            );
+                                          } else {
+                                            handleRowChange(index, "name", item.packName);
+                                            handleRowChange(index, "itemId", item.id || priceDetails.packId);
+                                            handleRowChange(index, "originalAmount", priceDetails.baseCost || priceDetails.actualCost);
+                                            handleRowChange(index, "discountAmount", priceDetails.disc || 0);
+                                            handleRowChange(index, "netAmount", priceDetails.actualCost);
+                                            setActiveRowIndex(null);
+                                          }
+                                        }}
+                                      >
+                                        <div>
+                                          <strong>{item.packName}</strong>
+                                          <div className="d-flex justify-content-between">
+                                            <span>₹{item.actualCost.toFixed(2)}</span>
+                                            {/* {item.disc > 0 && (
+                                              <span className="text-success">
+                                                (Discount: ₹{item.disc.toFixed(2)})
+                                              </span>
+                                            )} */}
+                                          </div>
+                                          {/* {item.category && (
+                                            <small className="text-muted">Category: {item.category}</small>
+                                          )} */}
+                                        </div>
+                                      </li>
+                                    ))
+                                }
                               </ul>
                             )}
                           </div>
@@ -1486,8 +1602,21 @@ const LabRegistration = () => {
               <div className="card-body">
                 <div className="row g-3">
                   <div className="mt-4">
-                    <button type="button" className="btn btn-primary me-2" onClick={handleSubmit}>
-                      Registration
+                    <button
+                      type="button"
+                      className="btn btn-primary me-2"
+                      onClick={handleSubmit}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                          <span className="visually-hidden">Loading...</span>
+                          Processing...
+                        </>
+                      ) : (
+                        'Registration'
+                      )}
                     </button>
                     <button type="button" className="btn btn-secondary" onClick={handleReset}>
                       Reset

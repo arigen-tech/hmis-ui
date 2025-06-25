@@ -1,6 +1,6 @@
 // export const API_HOST = 'https://103.133.215.182:8445';
 export const API_HOST = 'http://localhost:8080';
-// export const API_HOST = 'http://192.168.35.20:8080';
+// export const API_HOST = 'http://192.168.1.12:8080';
 
 
 
@@ -148,3 +148,4 @@ export const ALL_INVESTIGATION = `/DgMasInvestigation/getAll`;
 export const ALL_INVESTIGATION_PRICE_DETAILS = `/investigation-price-details/getAllPriceDetails`;
 export const MAS_INVESTIGATION = `/DgMasInvestigation`;
 export const MAS_PACKAGE_INVESTIGATION = `/investigation-package`;
+export const LAB_REGISTRATION = `/lab/registration`;
