@@ -1,8 +1,7 @@
-
-
 import { useState, useRef, useEffect } from "react"
 import placeholderImage from "../../../assets/images/placeholder.jpg"
 import { getRequest, postRequest } from "../../../service/apiService"
+import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2"
 
 import {
@@ -38,7 +37,7 @@ const LabRegistration = () => {
   const [activeRowIndex, setActiveRowIndex] = useState(null)
   const [investigationItems, setInvestigationItems] = useState([])
   const [packageItems, setPackageItems] = useState([])
-
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     // Personal details
@@ -102,6 +101,8 @@ const LabRegistration = () => {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   let stream = null
+
+  const [checkedRows, setCheckedRows] = useState([true]);
 
   const startCamera = async () => {
     try {
@@ -273,6 +274,18 @@ const LabRegistration = () => {
       }
     }
 
+    if (name === "nokPinCode") {
+      if (!/^\d{6}$/.test(value)) {
+        error = "Pin Code must be exactly 6 digits."
+      }
+    }
+
+    if (name === "nokMobile") {
+      if (!/^\d{10}$/.test(value)) {
+        error = "Mobile number must be exactly 10 digits."
+      }
+    }
+
     if (name === "age") {
       if (value !== "" && (isNaN(value) || Number(value) < 0)) {
         error = "Age can not be negative."
@@ -345,7 +358,7 @@ const LabRegistration = () => {
       rows: [
         ...prev.rows,
         {
-          id: Date.now(), // Better ID generation
+          id: Date.now(),
           name: "",
           date: "",
           originalAmount: 0,
@@ -355,12 +368,15 @@ const LabRegistration = () => {
         }
       ]
     }));
+    setCheckedRows(prev => [...prev, true]); // default checked for new row
   };
+
   const removeRow = (index) => {
     setFormData((prev) => ({
       ...prev,
       rows: prev.rows.filter((_, i) => i !== index),
-    }))
+    }));
+    setCheckedRows(prev => prev.filter((_, i) => i !== index));
   }
 
   // Calculate total amount based on selected type
@@ -579,6 +595,12 @@ const LabRegistration = () => {
       valid = false
     }
 
+    // Add NOK Pin Code validation
+    if (formData.nokPinCode && !/^\d{6}$/.test(formData.nokPinCode)) {
+      newErrors.nokPinCode = "Pin Code must be exactly 6 digits."
+      valid = false
+    }
+
     // Validate lab-specific fields
     if (formData.rows.length === 0) {
       newErrors.rows = `At least one ${formData.type} is required.`
@@ -593,8 +615,6 @@ const LabRegistration = () => {
     setErrors(newErrors)
     return valid
   }
-
-
 
   const handleSubmit = async () => {
     if (validateForm()) {
@@ -725,8 +745,6 @@ const LabRegistration = () => {
       }
     }
   };
-
-
 
   const handleReset = () => {
     setFormData({
@@ -863,7 +881,13 @@ const LabRegistration = () => {
                             className={`form-control ${errors.mobileNo ? "is-invalid" : ""}`}
                             name="mobileNo"
                             value={formData.mobileNo || ""}
-                            onChange={handleChange}
+                            maxLength={10}
+                            onChange={e => {
+                              // Only allow digits, ignore input if non-digit is typed
+                              if (/^\d*$/.test(e.target.value)) {
+                                handleChange(e);
+                              }
+                            }}
                             placeholder="Enter Mobile Number"
                           />
                           {errors.mobileNo && <div className="invalid-feedback">{errors.mobileNo}</div>}
@@ -1110,7 +1134,13 @@ const LabRegistration = () => {
                         className={`form-control ${errors.pinCode ? "is-invalid" : ""}`}
                         name="pinCode"
                         value={formData.pinCode || ""}
-                        onChange={handleChange}
+                        maxLength={6}
+                        onChange={e => {
+                          // Only allow digits, ignore input if non-digit is typed
+                          if (/^\d*$/.test(e.target.value)) {
+                            handleChange(e);
+                          }
+                        }}
                         placeholder="Enter Pin Code"
                       />
                       {errors.pinCode && <div className="invalid-feedback">{errors.pinCode}</div>}
@@ -1180,12 +1210,18 @@ const LabRegistration = () => {
                       <label className="form-label">Mobile No.</label>
                       <input
                         type="text"
-                        className="form-control"
+                        className={`form-control ${errors.nokMobile ? "is-invalid" : ""}`}
                         placeholder="Enter Mobile Number"
                         name="nokMobile"
                         value={formData.nokMobile || ""}
-                        onChange={handleChange}
+                        onChange={e => {
+                          // Only allow digits, ignore input if non-digit is typed
+                          if (/^\d*$/.test(e.target.value)) {
+                            handleChange(e);
+                          }
+                        }}
                       />
+                      {errors.nokMobile && <div className="invalid-feedback">{errors.nokMobile}</div>}
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Address 1</label>
@@ -1280,12 +1316,19 @@ const LabRegistration = () => {
                       <label className="form-label">Pin Code</label>
                       <input
                         type="text"
-                        className="form-control"
-                        placeholder="Enter Pin Code"
+                        className={`form-control ${errors.nokPinCode ? "is-invalid" : ""}`}
                         name="nokPinCode"
                         value={formData.nokPinCode || ""}
-                        onChange={handleChange}
+                        maxLength={6}
+                        onChange={e => {
+                          // Only allow digits, ignore input if non-digit is typed
+                          if (/^\d*$/.test(e.target.value)) {
+                            handleChange(e);
+                          }
+                        }}
+                        placeholder="Enter Pin Code"
                       />
+                      {errors.nokPinCode && <div className="invalid-feedback">{errors.nokPinCode}</div>}
                     </div>
                   </div>
                 </form>
@@ -1550,14 +1593,34 @@ const LabRegistration = () => {
                           />
                         </td>
                         <td>
-                          <button
-                            type="button"
-                            className="btn btn-danger"
-                            onClick={() => removeRow(index)}
-                            disabled={formData.rows.length === 1}
-                          >
-                            <i className="icofont-close"></i>
-                          </button>
+                          <div className="d-flex align-item-center gap-2">
+
+
+                            <div className="form-check form-check-muted m-0">
+                              <label className="form-check-label">
+                                <input
+                                  type="checkbox"
+                                  style={{ width: '30px', height: '35px', border: '2px solid black' }}
+                                  className="form-check-input"
+                                  checked={checkedRows[index] || false}
+                                  onChange={e => {
+                                    const updated = [...checkedRows];
+                                    updated[index] = e.target.checked;
+                                    setCheckedRows(updated);
+                                  }}
+                                />
+                              </label>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn-danger"
+                              onClick={() => removeRow(index)}
+                              disabled={formData.rows.length === 1}
+                            >
+                              <i className="icofont-close"></i>
+                            </button>
+                          </div>
+
                         </td>
                       </tr>
                     ))}
@@ -1572,24 +1635,24 @@ const LabRegistration = () => {
                     </tr>
                   </tfoot>
                 </table>
-                <button type="button" className="btn btn-success" onClick={addRow}>
-                  Add {formData.type === "investigation" ? "Investigation" : "Package"} +
-                </button>
-                <div className="col-md-4 mt-2">
-                  <label className="form-label">Payment Mode</label>
-                  <select
-                    className={`form-select ${errors.paymentMode ? "is-invalid" : ""}`}
-                    value={formData.paymentMode}
-                    name="paymentMode"
-                    onChange={(e) => setFormData((prev) => ({ ...prev, paymentMode: e.target.value }))}
-                  >
-                    <option value="">Select Mode</option>
-                    <option value="cash">Cash</option>
-                    <option value="online">Online</option>
-                    <option value="pending">Set as payment pending</option>
-                  </select>
-                  {errors.paymentMode && <div className="invalid-feedback">{errors.paymentMode}</div>}
+                <div className="d-flex justify-content-between align-items-center">
+                  <button type="button" className="btn btn-success" onClick={addRow}>
+                    Add {formData.type === "investigation" ? "Investigation" : "Package"} +
+                  </button>
+
+                  <div className="d-flex">
+                    <input
+                      type="text"
+                      className="form-control me-2"
+                      placeholder="Enter Coupon Code"
+                      style={{ width: "200px" }}
+                    />
+                    <button type="button" className="btn btn-primary">
+                      <i className="icofont-ticket me-1"></i> Apply Coupon
+                    </button>
+                  </div>
                 </div>
+
               </div>
             </div>
           </div>
@@ -1605,18 +1668,10 @@ const LabRegistration = () => {
                     <button
                       type="button"
                       className="btn btn-primary me-2"
-                      onClick={handleSubmit}
+                      onClick={() => navigate("/payment", { state: { amount: calculateTotalAmount() } })}
                       disabled={loading}
                     >
-                      {loading ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                          <span className="visually-hidden">Loading...</span>
-                          Processing...
-                        </>
-                      ) : (
-                        'Registration'
-                      )}
+                      <i className="fa fa-credit-card me-1"></i> Pay Now
                     </button>
                     <button type="button" className="btn btn-secondary" onClick={handleReset}>
                       Reset
@@ -1633,3 +1688,18 @@ const LabRegistration = () => {
 }
 
 export default LabRegistration
+{/* <div className="col-md-4 mt-2">
+                  <label className="form-label">Payment Mode</label>
+                  <select
+                    className={`form-select ${errors.paymentMode ? "is-invalid" : ""}`}
+                    value={formData.paymentMode}
+                    name="paymentMode"
+                    onChange={(e) => setFormData((prev) => ({ ...prev, paymentMode: e.target.value }))}
+                  >
+                    <option value="">Select Mode</option>
+                    <option value="cash">Cash</option>
+                    <option value="online">Online</option>
+                    <option value="pending">Set as payment pending</option>
+                  </select>
+                  {errors.paymentMode && <div className="invalid-feedback">{errors.paymentMode}</div>}
+                </div> */}
