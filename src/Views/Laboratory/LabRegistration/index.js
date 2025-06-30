@@ -382,6 +382,7 @@ const LabRegistration = () => {
   // Calculate total amount based on selected type
   const calculateTotalAmount = () => {
     return formData.rows
+      .filter((_, index) => checkedRows[index]) // Only include checked rows
       .reduce((total, item) => {
         return total + (Number.parseFloat(item.netAmount) || 0);
       }, 0)
@@ -616,181 +617,198 @@ const LabRegistration = () => {
     return valid
   }
 
- const handleSubmit = async (shouldNavigateToPayment = false) => {
-  console.log("handleSubmit called with shouldNavigateToPayment:", shouldNavigateToPayment);
-  
-  // Skip validation for payment flow, or use minimal validation
-  const isFormValid = shouldNavigateToPayment ? true : validateForm();
-  console.log("Form validation result:", isFormValid);
-  
-  if (isFormValid) {
-    console.log("Form validation passed, proceeding with registration...");
-    try {
-      setLoading(true);
+  const handleSubmit = async (shouldNavigateToPayment = false) => {
+    console.log("handleSubmit called with shouldNavigateToPayment:", shouldNavigateToPayment);
 
-      // Build patient object
-      const patientRequest = {
-        uhidNo: "",
-        patientFn: formData.firstName,
-        patientMn: formData.middleName || "",
-        patientLn: formData.lastName || "",
-        patientDob: formData.dob,
-        patientAge: formData.age.toString(),
-        patientGenderId: formData.gender,
-        patientEmailId: formData.email,
-        patientMobileNumber: formData.mobileNo,
-        patientImage: imageURL || "",
-        fileName: "string",
-        patientRelationId: formData.relation,
-        patientAddress1: formData.address1 || "",
-        patientAddress2: formData.address2 || "",
-        patientCity: formData.city || "",
-        patientPincode: formData.pinCode || "",
-        patientDistrictId: formData.district,
-        patientStateId: formData.state,
-        patientCountryId: formData.country,
-        pincode: formData.pinCode || "",
-        emerFn: formData.emergencyFirstName || "",
-        emerLn: formData.emergencyLastName || "",
-        emerMobile: formData.emergencyMobile || "",
-        nokFn: formData.nokFirstName || "",
-        nokLn: formData.nokLastName || "",
-        nokEmail: formData.nokEmail || "",
-        nokMobileNumber: formData.nokMobile || "",
-        nokAddress1: formData.nokAddress1 || "",
-        nokAddress2: formData.nokAddress2 || "",
-        nokCity: formData.nokCity || "",
-        nokDistrictId: formData.nokDistrict,
-        nokStateId: formData.nokState,
-        nokCountryId: formData.nokCountry,
-        nokPincode: formData.nokPinCode || "",
-        patientStatus: "",
-        regDate: new Date().toISOString().split("T")[0],
-        lastChgBy: sessionStorage.getItem("username"),
-        patientHospitalId: Number(sessionStorage.getItem("hospitalId"))
-      };
+    const isFormValid = shouldNavigateToPayment ? true : validateForm();
+    console.log("Form validation result:", isFormValid);
 
-      // Register patient
-      const patientResult = await postRequest("/patient/register", {
-        patient: patientRequest
-      });
+    if (isFormValid) {
+      console.log("Form validation passed, proceeding with registration...");
+      try {
+        setLoading(true);
 
-      const patientId = patientResult?.response?.patient?.id;
-      if (!patientId) {
-        throw new Error(patientResult.message || "Patient registration failed");
-      }
-
-      // Calculate totals
-      const totalAmount = formData.rows.reduce((total, item) => {
-        return total + (parseFloat(item.originalAmount) || 0);
-      }, 0);
-
-      const totalDiscountAmount = formData.rows.reduce((total, item) => {
-        return total + (parseFloat(item.discountAmount) || 0);
-      }, 0);
-
-      // Lab data with calculated totals
-      const labData = {
-        patientId: patientId,
-        totalAmount: Math.round(totalAmount * 100), // Convert to cents/paise if needed
-        discountAmount: Math.round(totalDiscountAmount * 100), // Convert to cents/paise if needed
-        labInvestigationReq: [],
-        labPackegReqs: []
-      };
-
-      formData.rows.forEach(row => {
-        const common = {
-          itemId: row.itemId,
-          name: row.name,
-          date: row.date || new Date().toISOString().split("T")[0],
-          originalAmount: parseFloat(row.originalAmount) || 0,
-          discountAmount: parseFloat(row.discountAmount) || 0,
-          netAmount: parseFloat(row.netAmount) || parseFloat(row.originalAmount) || 0,
-          createdBy: sessionStorage.getItem("username"),
-          hospitalId: Number(sessionStorage.getItem("hospitalId"))
+        // Build patient object (unchanged)
+        const patientRequest = {
+          uhidNo: "",
+          patientFn: formData.firstName,
+          patientMn: formData.middleName || "",
+          patientLn: formData.lastName || "",
+          patientDob: formData.dob,
+          patientAge: formData.age.toString(),
+          patientGenderId: formData.gender,
+          patientEmailId: formData.email,
+          patientMobileNumber: formData.mobileNo,
+          patientImage: imageURL || "",
+          fileName: "string",
+          patientRelationId: formData.relation,
+          patientAddress1: formData.address1 || "",
+          patientAddress2: formData.address2 || "",
+          patientCity: formData.city || "",
+          patientPincode: formData.pinCode || "",
+          patientDistrictId: formData.district,
+          patientStateId: formData.state,
+          patientCountryId: formData.country,
+          pincode: formData.pinCode || "",
+          emerFn: formData.emergencyFirstName || "",
+          emerLn: formData.emergencyLastName || "",
+          emerMobile: formData.emergencyMobile || "",
+          nokFn: formData.nokFirstName || "",
+          nokLn: formData.nokLastName || "",
+          nokEmail: formData.nokEmail || "",
+          nokMobileNumber: formData.nokMobile || "",
+          nokAddress1: formData.nokAddress1 || "",
+          nokAddress2: formData.nokAddress2 || "",
+          nokCity: formData.nokCity || "",
+          nokDistrictId: formData.nokDistrict,
+          nokStateId: formData.nokState,
+          nokCountryId: formData.nokCountry,
+          nokPincode: formData.nokPinCode || "",
+          patientStatus: "",
+          regDate: new Date().toISOString().split("T")[0],
+          lastChgBy: sessionStorage.getItem("username"),
+          patientHospitalId: Number(sessionStorage.getItem("hospitalId"))
         };
 
-        if (row.type === "investigation") {
-          labData.labInvestigationReq.push({
-            investigationId: common.itemId,
-            investigationName: common.name,
-            appointmentDate: common.date,
-            originalAmount: common.originalAmount,
-            discountAmount: common.discountAmount,
-            netAmount: common.netAmount,
-            status: "y",
-            createdBy: common.createdBy,
-            hospitalId: common.hospitalId,
-            genderApplicable: "c",
-            investigationType: "m"
-          });
-        } else {
-          labData.labPackegReqs.push({
-            packId: common.itemId,
-            packName: common.name,
-            packDate: common.date,
-            originalAmount: common.originalAmount,
-            discountAmount: common.discountAmount,
-            netAmount: common.netAmount,
-            status: "y",
-            createdBy: common.createdBy,
-            hospitalId: common.hospitalId,
-            descrp: "",
-            baseCost: common.originalAmount,
-            disc: common.discountAmount,
-            discPer: common.discountAmount > 0 ? (common.discountAmount / common.originalAmount) * 100 : 0,
-            actualCost: common.netAmount
-          });
+        // Register patient
+        const patientResult = await postRequest("/patient/register", {
+          patient: patientRequest
+        });
+
+        const patientId = patientResult?.response?.patient?.id;
+        if (!patientId) {
+          throw new Error(patientResult.message || "Patient registration failed");
         }
-      });
 
-      // Register lab
-      const labResult = await postRequest("/lab/registration", labData);
-      if (!labResult) {
-        throw new Error("Lab registration failed");
-      }
+        // Calculate totals ONLY for checked items
+        let totalAmount = 0;
+        let totalDiscountAmount = 0;
 
-      console.log("Lab data saved successfully, shouldNavigateToPayment:", shouldNavigateToPayment);
+        // Lab data
+        const labData = {
+          patientId: patientId,
+          totalAmount: 0,
+          discountAmount: 0,
+          labInvestigationReq: [],
+          labPackegReqs: []
+        };
 
-      if (shouldNavigateToPayment) {
-        // Show success popup first, then navigate to payment page after OK is clicked
-        console.log("Showing success popup before navigation");
-        Swal.fire({
-          title: "Success!",
-          text: "Patient and Lab registered successfully! You will now be redirected to the payment page.",
-          icon: "success",
-          confirmButtonText: "OK, Proceed to Payment"
-        }).then((result) => {
-          if (result.isConfirmed) {
-            console.log("User clicked OK, now navigating to payment page");
-            navigate("/payment", { 
-              state: { 
-                amount: calculateTotalAmount(),
-                patientId: patientId,
-                labData: labResult
-              } 
+        formData.rows.forEach((row, index) => {
+          const isChecked = checkedRows[index];
+          const common = {
+            itemId: row.itemId,
+            name: row.name,
+            date: row.date || new Date().toISOString().split("T")[0],
+            originalAmount: parseFloat(row.originalAmount) || 0,
+            discountAmount: parseFloat(row.discountAmount) || 0,
+            netAmount: parseFloat(row.netAmount) || parseFloat(row.originalAmount) || 0,
+            createdBy: sessionStorage.getItem("username"),
+            hospitalId: Number(sessionStorage.getItem("hospitalId")),
+            checkStatus: isChecked
+          };
+
+          if (row.type === "investigation") {
+            labData.labInvestigationReq.push({
+              investigationId: common.itemId,
+              investigationName: common.name,
+              appointmentDate: common.date,
+              originalAmount: common.originalAmount,
+              discountAmount: common.discountAmount,
+              netAmount: common.netAmount,
+              status: "y",
+              createdBy: common.createdBy,
+              hospitalId: common.hospitalId,
+              genderApplicable: "c",
+              investigationType: "m",
+              checkStatus: common.checkStatus
+            });
+          } else {
+            labData.labPackegReqs.push({
+              packegId: common.itemId,
+              packName: common.name,
+              packDate: common.date,
+              originalAmount: common.originalAmount,
+              discountAmount: common.discountAmount,
+              netAmount: common.netAmount,
+              status: "y",
+              createdBy: common.createdBy,
+              hospitalId: common.hospitalId,
+              descrp: "",
+              baseCost: common.originalAmount,
+              disc: common.discountAmount,
+              discPer: common.discountAmount > 0 ? (common.discountAmount / common.originalAmount) * 100 : 0,
+              actualCost: common.netAmount,
+              checkStatus: common.checkStatus
             });
           }
-        });
-      } else {
-        // Show success message and reset form (original behavior)
-        console.log("Showing success message");
-        Swal.fire({
-          title: "Success!",
-          text: "Patient and Lab registered successfully!",
-          icon: "success"
-        }).then(() => handleReset());
-      }
 
-    } catch (error) {
-      Swal.fire("Error!", error.message || "Registration failed", "error");
-    } finally {
-      setLoading(false);
+          // Only add to totals if checked
+          if (isChecked) {
+            totalAmount += common.originalAmount;
+            totalDiscountAmount += common.discountAmount;
+          }
+        });
+
+        // IMPORTANT: Keep original amounts for payment
+        const finalPaymentAmount = totalAmount - totalDiscountAmount;
+
+        console.log("=== AMOUNT CALCULATION ===");
+        console.log("Total Amount:", totalAmount);
+        console.log("Discount Amount:", totalDiscountAmount);
+        console.log("Final Payment Amount:", finalPaymentAmount);
+        console.log("========================");
+
+        // Store amounts as normal decimal values (no multiplication by 100)
+        labData.totalAmount = totalAmount;
+        labData.discountAmount = totalDiscountAmount;
+
+        // Register lab
+        const labResult = await postRequest("/lab/registration", labData);
+        if (!labResult) {
+          throw new Error("Lab registration failed");
+        }
+
+        console.log("Lab data saved successfully, shouldNavigateToPayment:", shouldNavigateToPayment);
+
+        if (shouldNavigateToPayment) {
+          console.log("Showing success popup before navigation");
+          Swal.fire({
+            title: "Success!",
+            text: "Patient and Lab registered successfully! You will now be redirected to the payment page.",
+            icon: "success",
+            confirmButtonText: "OK, Proceed to Payment"
+          }).then((result) => {
+            if (result.isConfirmed) {
+              console.log("User clicked OK, now navigating to payment page");
+              console.log("Passing payment amount:", finalPaymentAmount);
+
+              navigate("/payment", {
+                state: {
+                  amount: finalPaymentAmount, // THIS IS THE CORRECT AMOUNT - NOT MULTIPLIED BY 100
+                  patientId: patientId,
+                  labData: labResult
+                }
+              });
+            }
+          });
+        } else {
+          console.log("Showing success message");
+          Swal.fire({
+            title: "Success!",
+            text: "Patient and Lab registered successfully!",
+            icon: "success"
+          }).then(() => handleReset());
+        }
+
+      } catch (error) {
+        Swal.fire("Error!", error.message || "Registration failed", "error");
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      console.log("Form validation failed - not proceeding with registration");
     }
-  } else {
-    console.log("Form validation failed - not proceeding with registration");
-  }
-};
+  };
 
   const handleReset = () => {
     setFormData({
