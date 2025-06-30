@@ -286,6 +286,12 @@ const LabRegistration = () => {
       }
     }
 
+    if (name === "emergencyMobile") {
+      if (!/^\d{10}$/.test(value)) {
+        error = "Mobile number must be exactly 10 digits."
+      }
+    }
+
     if (name === "age") {
       if (value !== "" && (isNaN(value) || Number(value) < 0)) {
         error = "Age can not be negative."
@@ -801,7 +807,7 @@ const LabRegistration = () => {
         }
 
       } catch (error) {
-        Swal.fire("Error!", error.message || "Registration failed", "error");
+        Swal.fire("Error!",  "Registration failed", "error");
       } finally {
         setLoading(false);
       }
@@ -809,6 +815,8 @@ const LabRegistration = () => {
       console.log("Form validation failed - not proceeding with registration");
     }
   };
+
+  const isMobileNoMissing = !formData.mobileNo || formData.mobileNo.trim() === "";
 
   const handleReset = () => {
     setFormData({
@@ -868,6 +876,9 @@ const LabRegistration = () => {
     setImage(placeholderImage)
     setImageURL("")
   }
+
+  // Calculate if any date or name field is missing in the rows
+  const isAnyDateOrNameMissing = formData.rows.some(row => !row.date || row.date.trim() === "" || !row.name || row.name.trim() === "");
 
   return (
     <div className="body d-flex py-3">
@@ -1437,12 +1448,20 @@ const LabRegistration = () => {
                       <label className="form-label">Mobile No.</label>
                       <input
                         type="text"
-                        className="form-control"
+                        className={`form-control ${errors.emergencyMobile ? "is-invalid" : ""}`}
                         placeholder="Enter Mobile Number"
                         name="emergencyMobile"
                         value={formData.emergencyMobile || ""}
-                        onChange={handleChange}
+                        maxLength={10}
+
+                        onChange={e => {
+                          // Only allow digits, ignore input if non-digit is typed
+                          if (/^\d*$/.test(e.target.value)) {
+                            handleChange(e);
+                          }
+                        }}
                       />
+                      {errors.emergencyMobile && <div className="invalid-feedback">{errors.emergencyMobile}</div>}
                     </div>
                   </div>
                 </form>
@@ -1505,137 +1524,142 @@ const LabRegistration = () => {
                     {formData.rows.map((row, index) => (
                       <tr key={index}>
                         <td>
-                          <div className="dropdown-search-container position-relative">
+                          <div className="d-flex align-items-center gap-2">
                             <input
-                              type="text"
-                              className="form-control"
-                              value={row.name}
-                              autoComplete="off"
-                              placeholder={formData.type === "investigation" ? "Investigation Name" : "Package Name"}
-                              onChange={(e) => {
-                                handleRowChange(index, "name", e.target.value)
-                                if (e.target.value.trim() !== "") {
-                                  setActiveRowIndex(index)
-                                } else {
-                                  setActiveRowIndex(null)
-                                }
+                              type="checkbox"
+                              style={{ width: '20px', height: '20px', border: '2px solid black' }}
+                              className="form-check-input"
+                              checked={checkedRows[index] || false}
+                              onChange={e => {
+                                const updated = [...checkedRows];
+                                updated[index] = e.target.checked;
+                                setCheckedRows(updated);
                               }}
-                              onFocus={() => {
-                                if (row.name.trim() !== "") {
-                                  setActiveRowIndex(index)
-                                }
-                              }}
-                              onBlur={() => setTimeout(() => setActiveRowIndex(null), 200)}
                             />
-                            {activeRowIndex === index && row.name.trim() !== "" && (
-                              <ul
-                                className="list-group position-absolute w-100 mt-1"
-                                style={{
-                                  zIndex: 1000,
-                                  maxHeight: "200px",
-                                  overflowY: "auto",
-                                  backgroundColor: "#fff",
-                                  border: "1px solid #ccc",
+                            <div className="dropdown-search-container position-relative flex-grow-1">
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={row.name}
+                                autoComplete="off"
+                                placeholder={formData.type === "investigation" ? "Investigation Name" : "Package Name"}
+                                onChange={(e) => {
+                                  handleRowChange(index, "name", e.target.value)
+                                  if (e.target.value.trim() !== "") {
+                                    setActiveRowIndex(index)
+                                  } else {
+                                    setActiveRowIndex(null)
+                                  }
                                 }}
-                              >
-                                {formData.type === "investigation"
-                                  ? investigationItems
-                                    .filter((item) =>
-                                      item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
-                                    )
-                                    .map((item, i) => {
-                                      // Calculate discount if available (assuming your investigation items might have discount fields)
-                                      const hasDiscount = item.disc && item.disc > 0;
-                                      const displayPrice = item.price || 0;
-                                      const discountAmount = hasDiscount ? item.disc : 0;
-                                      const finalPrice = hasDiscount ? displayPrice - discountAmount : displayPrice;
+                                onFocus={() => {
+                                  if (row.name.trim() !== "") {
+                                    setActiveRowIndex(index)
+                                  }
+                                }}
+                                onBlur={() => setTimeout(() => setActiveRowIndex(null), 200)}
+                              />
+                              {activeRowIndex === index && row.name.trim() !== "" && (
+                                <ul
+                                  className="list-group position-absolute w-100 mt-1"
+                                  style={{
+                                    zIndex: 1000,
+                                    maxHeight: "200px",
+                                    overflowY: "auto",
+                                    backgroundColor: "#fff",
+                                    border: "1px solid #ccc",
+                                  }}
+                                >
+                                  {formData.type === "investigation"
+                                    ? investigationItems
+                                      .filter((item) =>
+                                        item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
+                                      )
+                                      .map((item, i) => {
+                                        // Calculate discount if available (assuming your investigation items might have discount fields)
+                                        const hasDiscount = item.disc && item.disc > 0;
+                                        const displayPrice = item.price || 0;
+                                        const discountAmount = hasDiscount ? item.disc : 0;
+                                        const finalPrice = hasDiscount ? displayPrice - discountAmount : displayPrice;
 
-                                      return (
+                                        return (
+                                          <li
+                                            key={i}
+                                            className="list-group-item list-group-item-action"
+                                            style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
+                                            onClick={() => {
+                                              if (item.price === null || item.price === 0 || item.price === "0") {
+                                                Swal.fire(
+                                                  "Warning",
+                                                  "Price has not been configured for this Investigation",
+                                                  "warning",
+                                                );
+                                              } else {
+                                                handleRowChange(index, "name", item.investigationName);
+                                                handleRowChange(index, "itemId", item.investigationId);
+                                                // Store both original price and discount amount
+                                                handleRowChange(index, "originalAmount", displayPrice);
+                                                handleRowChange(index, "discountAmount", discountAmount);
+                                                handleRowChange(index, "netAmount", finalPrice);
+                                                setActiveRowIndex(null);
+                                              }
+                                            }}
+                                          >
+                                            <div>
+                                              <strong>{item.investigationName}</strong>
+                                              <div className="d-flex justify-content-between">
+                                                <span>
+                                                  {item.price === null ? "Price not configured" : `₹${finalPrice.toFixed(2)}`}
+                                                </span>
+                                                {hasDiscount && (
+                                                  <span className="text-success">
+                                                    (Discount: ₹{discountAmount.toFixed(2)})
+                                                  </span>
+                                                )}
+                                              </div>
+                                              {item.investigationType && (
+                                                <small className="text-muted">Type: {item.investigationType}</small>
+                                              )}
+                                            </div>
+                                          </li>
+                                        );
+                                      })
+                                    : packageItems
+                                      .filter((item) => item.packName.toLowerCase().includes(row.name.toLowerCase()))
+                                      .map((item, i) => (
                                         <li
                                           key={i}
                                           className="list-group-item list-group-item-action"
                                           style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                          onClick={() => {
-                                            if (item.price === null || item.price === 0 || item.price === "0") {
+                                          onClick={async () => {
+                                            const priceDetails = await fetchPackagePrice(item.packName);
+                                            if (!priceDetails || !priceDetails.actualCost) {
                                               Swal.fire(
                                                 "Warning",
-                                                "Price has not been configured for this Investigation",
+                                                "Price has not been configured for this Package",
                                                 "warning",
                                               );
                                             } else {
-                                              handleRowChange(index, "name", item.investigationName);
-                                              handleRowChange(index, "itemId", item.investigationId);
-                                              // Store both original price and discount amount
-                                              handleRowChange(index, "originalAmount", displayPrice);
-                                              handleRowChange(index, "discountAmount", discountAmount);
-                                              handleRowChange(index, "netAmount", finalPrice);
+                                              handleRowChange(index, "name", item.packName);
+                                              handleRowChange(index, "itemId", item.id || priceDetails.packId);
+                                              handleRowChange(index, "originalAmount", priceDetails.baseCost || priceDetails.actualCost);
+                                              handleRowChange(index, "discountAmount", priceDetails.disc || 0);
+                                              handleRowChange(index, "netAmount", priceDetails.actualCost);
                                               setActiveRowIndex(null);
                                             }
                                           }}
                                         >
                                           <div>
-                                            <strong>{item.investigationName}</strong>
+                                            <strong>{item.packName}</strong>
                                             <div className="d-flex justify-content-between">
-                                              <span>
-                                                {item.price === null ? "Price not configured" : `₹${finalPrice.toFixed(2)}`}
-                                              </span>
-                                              {hasDiscount && (
-                                                <span className="text-success">
-                                                  (Discount: ₹{discountAmount.toFixed(2)})
-                                                </span>
-                                              )}
+                                              <span>₹{item.actualCost.toFixed(2)}</span>
                                             </div>
-                                            {item.investigationType && (
-                                              <small className="text-muted">Type: {item.investigationType}</small>
-                                            )}
                                           </div>
                                         </li>
-                                      );
-                                    })
-                                  : packageItems
-                                    .filter((item) => item.packName.toLowerCase().includes(row.name.toLowerCase()))
-                                    .map((item, i) => (
-                                      <li
-                                        key={i}
-                                        className="list-group-item list-group-item-action"
-                                        style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                        onClick={async () => {
-                                          const priceDetails = await fetchPackagePrice(item.packName);
-                                          if (!priceDetails || !priceDetails.actualCost) {
-                                            Swal.fire(
-                                              "Warning",
-                                              "Price has not been configured for this Package",
-                                              "warning",
-                                            );
-                                          } else {
-                                            handleRowChange(index, "name", item.packName);
-                                            handleRowChange(index, "itemId", item.id || priceDetails.packId);
-                                            handleRowChange(index, "originalAmount", priceDetails.baseCost || priceDetails.actualCost);
-                                            handleRowChange(index, "discountAmount", priceDetails.disc || 0);
-                                            handleRowChange(index, "netAmount", priceDetails.actualCost);
-                                            setActiveRowIndex(null);
-                                          }
-                                        }}
-                                      >
-                                        <div>
-                                          <strong>{item.packName}</strong>
-                                          <div className="d-flex justify-content-between">
-                                            <span>₹{item.actualCost.toFixed(2)}</span>
-                                            {/* {item.disc > 0 && (
-                                              <span className="text-success">
-                                                (Discount: ₹{item.disc.toFixed(2)})
-                                              </span>
-                                            )} */}
-                                          </div>
-                                          {/* {item.category && (
-                                            <small className="text-muted">Category: {item.category}</small>
-                                          )} */}
-                                        </div>
-                                      </li>
-                                    ))
-                                }
-                              </ul>
-                            )}
+                                      ))
+                                  }
+                                </ul>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td>
@@ -1661,19 +1685,7 @@ const LabRegistration = () => {
 
 
                             <div className="form-check form-check-muted m-0">
-                              <label className="form-check-label">
-                                <input
-                                  type="checkbox"
-                                  style={{ width: '30px', height: '35px', border: '2px solid black' }}
-                                  className="form-check-input"
-                                  checked={checkedRows[index] || false}
-                                  onChange={e => {
-                                    const updated = [...checkedRows];
-                                    updated[index] = e.target.checked;
-                                    setCheckedRows(updated);
-                                  }}
-                                />
-                              </label>
+                             
                             </div>
                             <button
                               type="button"
@@ -1740,7 +1752,7 @@ const LabRegistration = () => {
                           console.error("Error in payment flow:", error);
                         }
                       }}
-                      disabled={loading}
+                      disabled={loading || isAnyDateOrNameMissing|| isMobileNoMissing}
                     >
                       <i className="fa fa-credit-card me-1"></i>
                       {loading ? "Processing..." : "Pay Now"}

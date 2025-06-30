@@ -52,6 +52,7 @@ import ItemSection from './Views/Stores/ItemSection';
 import HSNMaster from './Views/Masters/HSNMaster';
 import ViewAndUpdate from './Views/Dispensary/ViewAndUpdate';
 import PaymentPage from './Views/Payment/payment';
+import LabPaymentSuccess from './Views/Payment/LabPaymentSuccess';
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -81,6 +82,7 @@ function App() {
             <Route path="/" element={<Login />} />
                 <Route path="investigation-multiple-results" element={<InvestigationMasterResult/>} />
                 <Route path="payment" element={<PaymentPage />} />
+                <Route path="lab-payment-success" element={<LabPaymentSuccess/>} />
 
 
             {/* Protected Routes */}

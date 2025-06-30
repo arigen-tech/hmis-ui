@@ -59,6 +59,7 @@ const validRoutes = [
   "/HSNMaster",
   "/view-and-update",
   "/payment",
+  "/lab-payment-success",
 ];
 
 const NotAuthorized = () => {

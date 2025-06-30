@@ -6,11 +6,17 @@ const PaymentPage = () => {
   const navigate = useNavigate();
   // You can get payment data from location.state if passed
   const { amount = 0 } = location.state || {};
+  const [paymentMethod, setPaymentMethod] = React.useState("card");
 
   const handlePayment = () => {
     // Simulate payment success
     alert("Payment successful!");
-    navigate("/labregistration"); // Go back or to a success page
+    navigate("/lab-payment-success", {
+      state: {
+        amount,      // the amount paid
+       }
+    }); // Go back or to a success page
+
   };
 
   return (
@@ -26,17 +32,22 @@ const PaymentPage = () => {
           </div>
           <div className="mb-3">
             <label className="form-label">Payment Method</label>
-            <select className="form-select">
+            <select className="form-select"
+            value={paymentMethod}
+            onChange={e => setPaymentMethod(e.target.value)}
+          >
               <option value="card">Credit/Debit Card</option>
               <option value="upi">UPI</option>
               <option value="netbanking">Net Banking</option>
               <option value="cash">Cash at Counter</option>
             </select>
           </div>
-          <div className="mb-3">
-            <label className="form-label">Card/UPI/Account Details</label>
-            <input className="form-control" placeholder="Enter details..." />
-          </div>
+          {paymentMethod !== "cash" && (
+  <div className="mb-3">
+    <label className="form-label">Card/UPI/Account Details</label>
+    <input className="form-control" placeholder="Enter details..." />
+  </div>
+)}
           <button className="btn btn-success w-100" onClick={handlePayment}>
             <i className="fa fa-credit-card me-2"></i> Pay Now
           </button>
