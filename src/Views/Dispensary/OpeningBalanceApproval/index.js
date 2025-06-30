@@ -1,75 +1,53 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
+import Popup from "../../../Components/popup"
+import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS } from "../../../config/apiConfig";
+import { getRequest, putRequest } from "../../../service/apiService"
+
 
 const OpeningBalanceApproval = () => {
   const [currentView, setCurrentView] = useState("list") // "list" or "detail"
   const [selectedRecord, setSelectedRecord] = useState(null)
+  const [loading, setLoading] = useState(true);
+  const [approvalData, setApprovalData] = useState([]);
+  const [action, setAction] = useState("");
+  const [remark, setRemark] = useState("");
 
-  const [approvalData, setApprovalData] = useState([
-    {
-      id: 1,
-      balanceNo: "0000043025",
-      balanceEntryNumber: "93847942700023",
-      openingBalanceDate: "29/05/2025",
-      department: "DISPENSARY",
-      status: "Pending for Approval",
-      submittedBy: "sumit",
-    },
 
-    {
-      id: 2,
-      balanceNo: "0000043027",
-      balanceEntryNumber: "93847942700025",
-      openingBalanceDate: "27/05/2025",
-      department: "ICU",
-      status: "Pending for Approval",
-      submittedBy: "Rakesh",
-    },
-  ])
+
+  const fetchDrugCodeOptions = async () => {
+    try {
+      setLoading(true);
+      const status = "p";
+      const response = await getRequest(`${OPEN_BALANCE}/list/${status}`);
+
+      if (response && Array.isArray(response)) {
+
+        setApprovalData(response);
+        console.log("Transformed approval data:", response);
+      }
+    } catch (err) {
+      console.error("Error fetching drug options:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  useEffect(() => {
+    fetchDrugCodeOptions();
+  }, []);
+
+  useEffect(() => {
+    console.log("approvalData updated:", approvalData);
+  }, [approvalData]);
+
 
   const [fromDate, setFromDate] = useState("29/05/2025")
   const [toDate, setToDate] = useState("29/05/2025")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
 
-  // Detail form state with dummy data based on selected record
-  const getDetailEntriesForRecord = (record) => {
-    if (record?.status === "Pending for Approval") {
-      return [
-        {
-          id: 1,
-          sNo: 1,
-          drugCode: "MED001",
-          drugName: "Paracetamol 500mg",
-          unit: "TAB",
-          batchNo: "PCM2024001",
-          dom: "15/01/2024",
-          doe: "15/01/2026",
-          qty: "100",
-          unitRate: "2.50",
-          amount: "250.00",
-          medicineSource: "Local",
-          manufacturer: "ABC Pharma",
-        },
-      ]
-    }
-    return [
-      {
-        id: 1,
-        sNo: 1,
-        drugCode: "",
-        drugName: "",
-        unit: "",
-        batchNo: "",
-        dom: "",
-        doe: "",
-        qty: "",
-        unitRate: "",
-        amount: "",
-        medicineSource: "",
-        manufacturer: "",
-      },
-    ]
-  }
+
 
   const [detailEntries, setDetailEntries] = useState([])
 
@@ -79,7 +57,7 @@ const OpeningBalanceApproval = () => {
 
   const handleEdit = (item) => {
     setSelectedRecord(item)
-    setDetailEntries(getDetailEntriesForRecord(item))
+    setDetailEntries(item.openingBalanceDtResponseList)
     setCurrentView("detail")
   }
 
@@ -106,14 +84,29 @@ const OpeningBalanceApproval = () => {
     }
   }
 
- 
+  const handleSubmit = async () => {
+    console.log("Submitting id:", selectedRecord.balanceMId);
+    alert("Entries submitted successfully!");
 
-  const handleSubmit = () => {
-    console.log("Submitting entries:", detailEntries)
-    alert("Entries submitted successfully!")
-  }
+    const payload = {
+      remark: remark || "",
+      status: action || "",
+    };
 
-  
+    try {
+      const response = await putRequest(`${OPEN_BALANCE}/Approved/${selectedRecord.balanceMId}`, payload);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setCurrentView("list");
+      setSelectedRecord(null);
+      setDetailEntries([]);
+      fetchDrugCodeOptions();
+    }
+  };
+
+
+
 
   const renderPagination = () => {
     const pageNumbers = []
@@ -152,38 +145,7 @@ const OpeningBalanceApproval = () => {
     ))
   }
 
-  const drugCodeOptions = [
-    { id: 1, code: "PCM001", name: "Paracetamol" },
-    { id: 2, code: "PCM002", name: "Paracetamol 500mg" },
-    { id: 3, code: "IBU001", name: "Ibuprofen" },
-    { id: 4, code: "ASP001", name: "Aspirin" },
-    { id: 5, code: "DOL001", name: "Dolo" },
-  ]
-  const manufacturerOptions = [
-    "Cipla Ltd",
-    "Sun Pharma",
-    "Dr. Reddy's",
-    "Lupin Limited",
-    "Aurobindo Pharma",
-    "Torrent Pharma",
-    "Glenmark",
-    "Alkem Labs",
-  ]
-  const brandNameOptions = [
-    "Paracetamol Plus",
-    "Crocin",
-    "Dolo",
-    "Metacin",
-    "Pyrigesic",
-    "Aspirin",
-    "Brufen",
-    "Combiflam",
-    "Saridon",
-    "Disprin",
-  ]
-  const dropdownClickedRef = useRef(false)
-  const [activeDrugCodeDropdown, setActiveDrugCodeDropdown] = useState(null)
-  const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null)
+
 
   if (currentView === "detail") {
     return (
@@ -207,7 +169,12 @@ const OpeningBalanceApproval = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={selectedRecord?.openingBalanceDate || ""}
+                      value={
+                        selectedRecord?.enteredDt
+                          ? new Date(selectedRecord.enteredDt).toLocaleDateString("en-GB")
+                          : ""
+                      }
+
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -217,7 +184,7 @@ const OpeningBalanceApproval = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={selectedRecord?.balanceEntryNumber || ""}
+                      value={selectedRecord?.balanceNo || ""}
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -227,7 +194,7 @@ const OpeningBalanceApproval = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={selectedRecord?.submittedBy || ""}
+                      value={selectedRecord?.enteredBy || ""}
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -237,7 +204,7 @@ const OpeningBalanceApproval = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={selectedRecord?.department || ""}
+                      value={selectedRecord?.departmentName || ""}
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -273,12 +240,12 @@ const OpeningBalanceApproval = () => {
                     </thead>
                     <tbody>
                       {detailEntries.map((entry, index) => (
-                        <tr key={entry.id}>
+                        <tr key={entry.balanceMId}>
                           <td className="text-center">
                             <input
                               type="text"
                               className="form-control text-center"
-                              value={entry.sNo}
+                              value={index + 1}
                               style={{ width: "50px", backgroundColor: "#e9ecef" }}
                               readOnly
                               disabled
@@ -288,7 +255,7 @@ const OpeningBalanceApproval = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={entry.drugCode}
+                              value={entry.itemCode}
                               style={{ width: "110px", backgroundColor: "#e9ecef" }}
                               readOnly
                               disabled
@@ -298,7 +265,7 @@ const OpeningBalanceApproval = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={entry.drugName}
+                              value={entry.itemName}
                               style={{ width: "190px", backgroundColor: "#e9ecef" }}
                               readOnly
                               disabled
@@ -308,7 +275,7 @@ const OpeningBalanceApproval = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={entry.unit}
+                              value={entry.itemUnit}
                               style={{ width: "70px", backgroundColor: "#e9ecef" }}
                               readOnly
                               disabled
@@ -329,7 +296,7 @@ const OpeningBalanceApproval = () => {
                               type="text"
                               className="form-control"
                               placeholder="DD/MM/YYYY"
-                              value={entry.dom}
+                              value={entry.manufactureDate}
                               style={{ width: "110px", backgroundColor: "#e9ecef" }}
                               readOnly
                               disabled
@@ -340,7 +307,7 @@ const OpeningBalanceApproval = () => {
                               type="text"
                               className="form-control"
                               placeholder="DD/MM/YYYY"
-                              value={entry.doe}
+                              value={entry.expiryDate}
                               style={{ width: "110px", backgroundColor: "#e9ecef" }}
                               readOnly
                               disabled
@@ -400,43 +367,34 @@ const OpeningBalanceApproval = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={entry.totalCost || ""}
+                              value={entry.totalPurchaseCost || ""}
                               readOnly
                               disabled
                               style={{ backgroundColor: "#e9ecef", minWidth: "90px" }}
                             />
                           </td>
                           <td>
-                            <select
-                              className="form-select"
-                              value={entry.brandName || ""}
-                              style={{ minWidth: "130px", backgroundColor: "#e9ecef" }}
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={entry.manufacturerName || ""}
+                              style={{ minWidth: "190px", backgroundColor: "#e9ecef" }}
+                              readOnly
                               disabled
-                            >
-                              <option value="">Select Brand</option>
-                              {brandNameOptions.map((option, idx) => (
-                                <option key={idx} value={option}>
-                                  {option}
-                                </option>
-                              ))}
-                            </select>
+                            />
+
                           </td>
                           <td>
-                            <select
-                              className="form-select"
-                              value={entry.manufacturer || ""}
-                              style={{ minWidth: "130px", backgroundColor: "#e9ecef" }}
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={entry.brandName || ""}
+                              style={{ minWidth: "190px", backgroundColor: "#e9ecef" }}
+                              readOnly
                               disabled
-                            >
-                              <option value="">Select</option>
-                              {manufacturerOptions.map((option, idx) => (
-                                <option key={idx} value={option}>
-                                  {option}
-                                </option>
-                              ))}
-                            </select>
+                            />
                           </td>
-                         
+
                         </tr>
                       ))}
                     </tbody>
@@ -446,11 +404,14 @@ const OpeningBalanceApproval = () => {
                 <div className="row mb-3 mt-3">
                   <div className="col-md-4">
                     <label className="form-label fw-bold mb-1">Action</label>
-                    <select className="form-select" onChange={(e) => console.log(e.target.value)}>
+                    <select
+                      className="form-select"
+                      value={action}
+                      onChange={(e) => setAction(e.target.value)}
+                    >
                       <option value="">Select Action</option>
-                      <option value="Approve">Approve</option>
-                      <option value="Reject">Reject</option>
-                      <option value="Review">Review</option>
+                      <option value="a">Approve</option>
+                      <option value="r">Reject</option>
                     </select>
                   </div>
                   <div className="col-md-4">
@@ -458,9 +419,10 @@ const OpeningBalanceApproval = () => {
                     <input
                       type="text"
                       className="form-control"
-                      style={{ height: "100px" }} // Corrected to use an object
+                      style={{ height: "100px" }}
                       placeholder="Enter your remark here"
-                      onChange={(e) => console.log(e.target.value)}
+                      value={remark}
+                      onChange={(e) => setRemark(e.target.value)}
                     />
                   </div>
                 </div>
@@ -473,7 +435,7 @@ const OpeningBalanceApproval = () => {
                     style={{ backgroundColor: "#e67e22", color: "white" }}
                     onClick={handleSubmit}
                   >
-                    Submit
+                    Approve
                   </button>
                   <button type="button" className="btn btn-danger" onClick={handleBackToList} >
                     Cancel
@@ -545,33 +507,39 @@ const OpeningBalanceApproval = () => {
                   </thead>
                   <tbody>
                     {currentItems.map((item) => (
-                      <tr key={item.id}>
+                      <tr key={item.balanceMId}>
                         <td>{item.balanceNo}</td>
-                        <td>{item.openingBalanceDate}</td>
-                        <td>{item.department}</td>
+                        <td>{new Date(item.enteredDt).toLocaleDateString("en-GB")}</td>
+                        <td>{item.departmentName}</td>
                         <td>
                           <span
                             className="badge"
                             style={{
-                              backgroundColor: item.status === "Pending for Approval" ? "#ffc107" : "#28a745",
-                              color: item.status === "Pending for Approval" ? "#000" : "#fff",
+                              backgroundColor: item.status === "p" ? "#ffc107" : item.status === "a" ? "#28a745" : "#6c757d",
+                              color: item.status === "p" ? "#000" : "#fff",
                             }}
                           >
-                            {item.status}
+                            {item.status === "p"
+                              ? "Pending for Approval"
+                              : item.status === "a"
+                                ? "Approved"
+                                : item.status}
                           </span>
                         </td>
-                        <td>{item.submittedBy}</td>
+                        <td>{item.enteredBy}</td>
                         <td>
                           <button
                             className="btn btn-sm btn-success me-2"
                             onClick={() => handleEdit(item)}
-                            disabled={item.status !== "Pending for Approval"}
+                            disabled={item.status !== "p"}
                           >
                             <i className="fa fa-eye"></i>
                           </button>
                         </td>
                       </tr>
                     ))}
+
+
                   </tbody>
                 </table>
               </div>
