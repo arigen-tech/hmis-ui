@@ -45,7 +45,9 @@ export const MAS_ITEM_CATEGORY = `${MASTERS}/masItemCategory`;
 export const MAS_DRUG_MAS = `${MASTERS}/masStoreItem`;
 export const MAS_HSN = `${MASTERS}/masHSN`;
 
-
+export const MAS_BRAND = `${MASTERS}/masBrand`;
+export const MAS_MANUFACTURE = `${MASTERS}/masManufacturer`;
+export const OPEN_BALANCE = "/openingBalanceEntry";
 
 
 export const FILTER_OPD_DEPT=`OPD`;

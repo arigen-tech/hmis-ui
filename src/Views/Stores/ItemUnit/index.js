@@ -87,7 +87,7 @@ const StoreUnitMaster = () => {
       setLoading(true);
 
       if (editingUnit) {
-        const response = await putRequest(`${MAS_STORE_UNIT}/update/${editingUnit.id}`, {
+        const response = await putRequest(`${MAS_STORE_UNIT}/updateById/${editingUnit.id}`, {
           id: editingUnit.id,
           unitName: formData.unitName,
           status: editingUnit.status
