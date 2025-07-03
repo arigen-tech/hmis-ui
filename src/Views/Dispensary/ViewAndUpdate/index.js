@@ -14,7 +14,7 @@ const OpeningBalanceApproval = () => {
   const crUser = localStorage.getItem("username") || sessionStorage.getItem("username");
   const [currentLogUser, setCurrentLogUser] = useState(null);
 
-const getCurrentDateTime = () => new Date().toISOString();
+  const getCurrentDateTime = () => new Date().toISOString();
 
   const [formData, setFormData] = useState({
     balanceEntryDate: getCurrentDateTime(),
@@ -218,51 +218,51 @@ const getCurrentDateTime = () => new Date().toISOString();
 
   console.log("currentLogUser:", currentLogUser);
 
-const formatToDate = (dateStr) => {
-  const date = new Date(dateStr);
-  return isNaN(date.getTime()) ? null : date.toISOString().split("T")[0];
-};
-
-const handleUpdate = async () => {
-  const requestPayload = {
-    id: selectedRecord.balanceMId,
-    departmentId: selectedRecord.departmentId,
-    enteredBy: formData.enteredBy,
-    enteredDt: new Date(formData.balanceEntryDate).toISOString(), 
-    storeBalanceDtList: detailEntries.map(entry => ({
-      balanceId: entry.balanceTId ?? null,
-      itemId: entry.itemId ?? entry.id ?? null,
-      batchNo: entry.batchNo ?? "",
-      manufactureDate: formatToDate(entry.manufactureDate ?? entry.dom),
-      expiryDate: formatToDate(entry.expiryDate ?? entry.doe),
-      unitsPerPack: entry.unitsPerPack ? parseInt(entry.unitsPerPack) : null,
-      purchaseRatePerUnit: entry.purchaseRatePerUnit ? parseFloat(entry.purchaseRatePerUnit) : null,
-      gstPercent: entry.gstPercent ? parseFloat(entry.gstPercent) : null,
-      mrpPerUnit: entry.mrpPerUnit ? parseFloat(entry.mrpPerUnit) : null,
-      qty: entry.qty ? parseInt(entry.qty) : null,
-      totalPurchaseCost: entry.totalPurchaseCost
-        ? parseFloat(entry.totalPurchaseCost)
-        : entry.totalCost
-        ? parseFloat(entry.totalCost)
-        : null,
-      brandId: entry.brandId ? parseInt(entry.brandId) : null,
-      manufacturerId: entry.manufacturerId ? parseInt(entry.manufacturerId) : null,
-    })),
+  const formatToDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? null : date.toISOString().split("T")[0];
   };
 
-  try {
-    const response = await putRequest(
-      `${OPEN_BALANCE}/updateById/${selectedRecord.balanceMId}`,
-      requestPayload
-    );
-    console.log("Payload to submit:", requestPayload);
-    alert("Entries updated successfully!");
-  } catch (error) {
-    console.error("Error submitting data:", error);
-    alert("Failed to update entries!");
-  }
-};
+  const handleUpdate = async (status) => {
+    const requestPayload = {
+      id: selectedRecord.balanceMId,
+      departmentId: selectedRecord.departmentId,
+      enteredBy: formData.enteredBy,
+      enteredDt: new Date(formData.balanceEntryDate).toISOString(),
+      status: status,
+      storeBalanceDtList: detailEntries.map(entry => ({
+        balanceId: entry.balanceTId ?? null,
+        itemId: entry.itemId ?? entry.id ?? null,
+        batchNo: entry.batchNo ?? "",
+        manufactureDate: formatToDate(entry.manufactureDate ?? entry.dom),
+        expiryDate: formatToDate(entry.expiryDate ?? entry.doe),
+        unitsPerPack: entry.unitsPerPack ? parseInt(entry.unitsPerPack) : null,
+        purchaseRatePerUnit: entry.purchaseRatePerUnit ? parseFloat(entry.purchaseRatePerUnit) : null,
+        gstPercent: entry.gstPercent ? parseFloat(entry.gstPercent) : null,
+        mrpPerUnit: entry.mrpPerUnit ? parseFloat(entry.mrpPerUnit) : null,
+        qty: entry.qty ? parseInt(entry.qty) : null,
+        totalPurchaseCost: entry.totalPurchaseCost
+          ? parseFloat(entry.totalPurchaseCost)
+          : entry.totalCost
+            ? parseFloat(entry.totalCost)
+            : null,
+        brandId: entry.brandId ? parseInt(entry.brandId) : null,
+        manufacturerId: entry.manufacturerId ? parseInt(entry.manufacturerId) : null,
+      })),
+    };
 
+    try {
+      const response = await putRequest(
+        `${OPEN_BALANCE}/updateById/${selectedRecord.balanceMId}`,
+        requestPayload
+      );
+      console.log("Payload to submit:", requestPayload);
+      alert(status === "p" ? "Entries submitted successfully!" : "Entries updated successfully!");
+    } catch (error) {
+      console.error("Error submitting data:", error);
+      alert("Failed to update entries!");
+    }
+  };
 
 
   console.log("Detail Entries:", detailEntries)
@@ -778,10 +778,21 @@ const handleUpdate = async () => {
                     type="button"
                     className="btn me-2"
                     style={{ backgroundColor: "#e67e22", color: "white" }}
-                    onClick={handleUpdate}
+                    onClick={() => handleUpdate("s")}
                   >
                     Update
                   </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-success me-2"
+                    onClick={() => handleUpdate("p")}
+                  >
+                    Submit
+                  </button>
+
+
+
                   <button type="button" className="btn btn-danger" onClick={handleReset}>
                     Reset
                   </button>
