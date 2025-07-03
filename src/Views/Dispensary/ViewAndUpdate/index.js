@@ -1,87 +1,145 @@
-"use client"
-
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
+import Popup from "../../../Components/popup"
+import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS } from "../../../config/apiConfig";
+import { getRequest, putRequest } from "../../../service/apiService"
 
 const OpeningBalanceApproval = () => {
   const [currentView, setCurrentView] = useState("list") // "list" or "detail"
   const [selectedRecord, setSelectedRecord] = useState(null)
-  const [approvalData, setApprovalData] = useState([
-    {
-      id: 1,
-      balanceNo: "0000043025",
-      balanceEntryNumber: "93847942700023",
-      openingBalanceDate: "29/05/2025",
-      department: "DISPENSARY",
-      status: "Saved",
-      submittedBy: "sumit",
-    },
-    {
-      id: 2,
-      balanceNo: "0000043027",
-      balanceEntryNumber: "93847942700025",
-      openingBalanceDate: "27/05/2025",
-      department: "ICU",
-      status: "Approved",
-      submittedBy: "Rakesh",
-    },
-  ])
+  const [loading, setLoading] = useState(false)
+  const [approvalData, setApprovalData] = useState([])
+  const [brandOptions, setBrandOptions] = useState([])
+  const [manufacturerOptions, setManufacturerOptions] = useState([])
+  const [drugCodeOptions, setDrugCodeOptions] = useState([])
+  const crUser = localStorage.getItem("username") || sessionStorage.getItem("username");
+  const [currentLogUser, setCurrentLogUser] = useState(null);
+
+  const getCurrentDateTime = () => new Date().toISOString();
+
+  const [formData, setFormData] = useState({
+    balanceEntryDate: getCurrentDateTime(),
+    enteredBy: "",
+    department: "",
+  });
+
+
+
+
+
+
+
+  const fetchOpenBalance = async () => {
+    try {
+      setLoading(true);
+      const status = "p,s,a";
+      const response = await getRequest(`${OPEN_BALANCE}/list/${status}`);
+
+      if (response && Array.isArray(response)) {
+
+        setApprovalData(response);
+        console.log("Transformed approval data:", response);
+      }
+    } catch (err) {
+      console.error("Error fetching drug options:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const fetchBrand = async () => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${MAS_BRAND}/getAll/1`);
+      if (response && response.response) {
+        setBrandOptions(response.response);
+      }
+    } catch (err) {
+      console.error("Error fetching brand:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchManufacturer = async () => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${MAS_MANUFACTURE}/getAll/1`);
+      if (response && response.response) {
+        setManufacturerOptions(response.response);
+      }
+    } catch (err) {
+      console.error("Error fetching manufacturer:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fatchDrugCodeOptions = async () => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${MAS_DRUG_MAS}/getAll2/1`);
+      if (response && response.response) {
+        setDrugCodeOptions(response.response);
+      }
+    } catch (err) {
+      console.error("Error fetching drug options:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCurrentUser = async () => {
+    try {
+      setLoading(true);
+
+      const response = await getRequest(`/authController/getUsersForProfile/${crUser}`);
+
+
+      if (response && response.response) {
+        const { firstName = "", middleName = "", lastName = "" } = response.response;
+        const fullName = [firstName, middleName, lastName].filter(Boolean).join(" ");
+        setFormData((prev) => ({
+          ...prev,
+          enteredBy: fullName,
+        }));
+        setCurrentLogUser(response);
+
+      }
+    } catch (err) {
+      console.error("Error fetching current user:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOpenBalance();
+    fatchDrugCodeOptions();
+    fetchBrand();
+    fetchManufacturer();
+    fetchCurrentUser();
+  }, []);
+
+
+
 
   const [fromDate, setFromDate] = useState("29/05/2025")
   const [toDate, setToDate] = useState("29/05/2025")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
-
-  // Detail form state with dummy data based on selected record
-  const getDetailEntriesForRecord = (record) => {
-    if (record?.status === "Pending for Approval") {
-      return [
-        {
-          id: 1,
-          sNo: 1,
-          drugCode: "MED001",
-          drugName: "Paracetamol 500mg",
-          unit: "TAB",
-          batchNo: "PCM2024001",
-          dom: "15/01/2024",
-          doe: "15/01/2026",
-          qty: "100",
-          unitRate: "2.50",
-          amount: "250.00",
-          medicineSource: "Local",
-          manufacturer: "ABC Pharma",
-        },
-      ]
-    }
-
-    return [
-      {
-        id: 1,
-        sNo: 1,
-        drugCode: "",
-        drugName: "",
-        unit: "",
-        batchNo: "",
-        dom: "",
-        doe: "",
-        qty: "",
-        unitRate: "",
-        amount: "",
-        medicineSource: "",
-        manufacturer: "",
-      },
-    ]
-  }
-
   const [detailEntries, setDetailEntries] = useState([])
-
+  const statusOrder = { s: 1, p: 2, r: 3, a: 4 };
   const itemsPerPage = 10
   const totalPages = Math.ceil(approvalData.length / itemsPerPage)
-  const currentItems = approvalData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const currentItems = [...approvalData]
+    .sort((a, b) => (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99))
+    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleEditClick = (record, e) => {
-    e.stopPropagation() // Prevent row click if there was one
+    e.stopPropagation()
     setSelectedRecord(record)
-    setDetailEntries(getDetailEntriesForRecord(record))
+    setDetailEntries(record.openingBalanceDtResponseList)
     setCurrentView("detail")
   }
 
@@ -112,8 +170,8 @@ const OpeningBalanceApproval = () => {
     const newEntry = {
       id: detailEntries.length + 1,
       sNo: detailEntries.length + 1,
-      drugCode: "",
-      drugName: "",
+      itemCode: "",
+      itemName: "",
       unit: "",
       batchNo: "",
       dom: "",
@@ -130,15 +188,84 @@ const OpeningBalanceApproval = () => {
   const deleteEntry = (id) => {
     setDetailEntries(detailEntries.filter((entry) => entry.id !== id))
   }
-
   const updateEntry = (id, field, value) => {
-    setDetailEntries(detailEntries.map((entry) => (entry.id === id ? { ...entry, [field]: value } : entry)))
-  }
+    const updatedEntries = detailEntries.map((entry) => {
+      if (entry.id === id) {
+        if (entry[field] === value) return entry;
 
-  const handleUpdate = () => {
-    console.log("Updating entries:", detailEntries)
-    alert("Entries updated successfully!")
-  }
+        const updatedEntry = { ...entry, [field]: value };
+
+        const dom = field === "dom" ? value : entry.dom;
+        const doe = field === "doe" ? value : entry.doe;
+        if (dom && doe && new Date(dom) > new Date(doe)) {
+          alert("Date of Manufacturing (DOM) cannot be later than Date of Expiry (DOE).");
+          return entry;
+        }
+
+        const qty = parseFloat(field === "qty" ? value : entry.qty) || 0;
+        const rate = parseFloat(field === "purchaseRatePerUnit" ? value : entry.purchaseRatePerUnit) || 0;
+        if (field === "qty" || field === "purchaseRatePerUnit") {
+          updatedEntry.totalCost = (qty * rate).toFixed(2);
+        }
+
+        return updatedEntry;
+      }
+      return entry;
+    });
+
+    setDetailEntries(updatedEntries);
+  };
+
+  console.log("currentLogUser:", currentLogUser);
+
+  const formatToDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? null : date.toISOString().split("T")[0];
+  };
+
+  const handleUpdate = async (status) => {
+    const requestPayload = {
+      id: selectedRecord.balanceMId,
+      departmentId: selectedRecord.departmentId,
+      enteredBy: formData.enteredBy,
+      enteredDt: new Date(formData.balanceEntryDate).toISOString(),
+      status: status,
+      storeBalanceDtList: detailEntries.map(entry => ({
+        balanceId: entry.balanceTId ?? null,
+        itemId: entry.itemId ?? entry.id ?? null,
+        batchNo: entry.batchNo ?? "",
+        manufactureDate: formatToDate(entry.manufactureDate ?? entry.dom),
+        expiryDate: formatToDate(entry.expiryDate ?? entry.doe),
+        unitsPerPack: entry.unitsPerPack ? parseInt(entry.unitsPerPack) : null,
+        purchaseRatePerUnit: entry.purchaseRatePerUnit ? parseFloat(entry.purchaseRatePerUnit) : null,
+        gstPercent: entry.gstPercent ? parseFloat(entry.gstPercent) : null,
+        mrpPerUnit: entry.mrpPerUnit ? parseFloat(entry.mrpPerUnit) : null,
+        qty: entry.qty ? parseInt(entry.qty) : null,
+        totalPurchaseCost: entry.totalPurchaseCost
+          ? parseFloat(entry.totalPurchaseCost)
+          : entry.totalCost
+            ? parseFloat(entry.totalCost)
+            : null,
+        brandId: entry.brandId ? parseInt(entry.brandId) : null,
+        manufacturerId: entry.manufacturerId ? parseInt(entry.manufacturerId) : null,
+      })),
+    };
+
+    try {
+      const response = await putRequest(
+        `${OPEN_BALANCE}/updateById/${selectedRecord.balanceMId}`,
+        requestPayload
+      );
+      console.log("Payload to submit:", requestPayload);
+      alert(status === "p" ? "Entries submitted successfully!" : "Entries updated successfully!");
+    } catch (error) {
+      console.error("Error submitting data:", error);
+      alert("Failed to update entries!");
+    }
+  };
+
+
+  console.log("Detail Entries:", detailEntries)
 
   const handleReset = () => {
     setDetailEntries([
@@ -197,37 +324,7 @@ const OpeningBalanceApproval = () => {
     ))
   }
 
-  const drugCodeOptions = [
-    { id: 1, code: "PCM001", name: "Paracetamol" },
-    { id: 2, code: "PCM002", name: "Paracetamol 500mg" },
-    { id: 3, code: "IBU001", name: "Ibuprofen" },
-    { id: 4, code: "ASP001", name: "Aspirin" },
-    { id: 5, code: "DOL001", name: "Dolo" },
-  ]
 
-  const manufacturerOptions = [
-    "Cipla Ltd",
-    "Sun Pharma",
-    "Dr. Reddy's",
-    "Lupin Limited",
-    "Aurobindo Pharma",
-    "Torrent Pharma",
-    "Glenmark",
-    "Alkem Labs",
-  ]
-
-  const brandNameOptions = [
-    "Paracetamol Plus",
-    "Crocin",
-    "Dolo",
-    "Metacin",
-    "Pyrigesic",
-    "Aspirin",
-    "Brufen",
-    "Combiflam",
-    "Saridon",
-    "Disprin",
-  ]
 
   const dropdownClickedRef = useRef(false)
   const [activeDrugCodeDropdown, setActiveDrugCodeDropdown] = useState(null)
@@ -255,7 +352,11 @@ const OpeningBalanceApproval = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={selectedRecord?.openingBalanceDate || ""}
+                      value={
+                        selectedRecord?.enteredDt
+                          ? new Date(selectedRecord.enteredDt).toLocaleDateString("en-GB")
+                          : ""
+                      }
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -265,7 +366,7 @@ const OpeningBalanceApproval = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={selectedRecord?.balanceEntryNumber || ""}
+                      value={selectedRecord?.balanceNo || ""}
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -275,7 +376,7 @@ const OpeningBalanceApproval = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={selectedRecord?.submittedBy || ""}
+                      value={selectedRecord?.enteredBy || ""}
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -285,7 +386,7 @@ const OpeningBalanceApproval = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={selectedRecord?.department || ""}
+                      value={selectedRecord?.departmentName || ""}
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -328,7 +429,7 @@ const OpeningBalanceApproval = () => {
                             <input
                               type="text"
                               className="form-control text-center"
-                              value={entry.sNo}
+                              value={index + 1}
                               style={{ width: "50px" }}
                               readOnly
                             />
@@ -337,13 +438,13 @@ const OpeningBalanceApproval = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={entry.drugCode}
+                              value={entry.itemCode}
                               onChange={(e) => {
-                                updateEntry(entry.id, "drugCode", e.target.value)
+                                updateEntry(entry.id, "itemCode", e.target.value);
                                 if (e.target.value.length > 0) {
-                                  setActiveDrugCodeDropdown(index)
+                                  setActiveDrugCodeDropdown(index);
                                 } else {
-                                  setActiveDrugCodeDropdown(null)
+                                  setActiveDrugCodeDropdown(null);
                                 }
                               }}
                               style={{ width: "110px" }}
@@ -351,9 +452,9 @@ const OpeningBalanceApproval = () => {
                               onFocus={() => setActiveDrugCodeDropdown(index)}
                               onBlur={() => {
                                 setTimeout(() => {
-                                  if (!dropdownClickedRef.current) setActiveDrugCodeDropdown(null)
-                                  dropdownClickedRef.current = false
-                                }, 150)
+                                  if (!dropdownClickedRef.current) setActiveDrugCodeDropdown(null);
+                                  dropdownClickedRef.current = false;
+                                }, 150);
                               }}
                             />
                             {activeDrugCodeDropdown === index && (
@@ -362,59 +463,79 @@ const OpeningBalanceApproval = () => {
                                 style={{ zIndex: 1000, maxHeight: 180, overflowY: "auto" }}
                               >
                                 {drugCodeOptions
-                                  .filter(
-                                    (opt) =>
-                                      entry.drugCode === "" ||
-                                      opt.code.toLowerCase().includes(entry.drugCode.toLowerCase()) ||
-                                      opt.name.toLowerCase().includes(entry.drugCode.toLowerCase()),
-                                  )
+                                  .filter((opt) => {
+                                    const search = entry.itemCode?.toLowerCase() || "";
+                                    return (
+                                      (opt.code && opt.code.toLowerCase().includes(search)) ||
+                                      (opt.name && opt.name.toLowerCase().includes(search)) ||
+                                      (opt.unit && opt.unit.toLowerCase().includes(search)) ||
+                                      (opt.hsnCode && opt.hsnCode.toLowerCase().includes(search))
+                                    );
+                                  })
                                   .map((opt) => (
                                     <li
                                       key={opt.id}
                                       className="list-group-item list-group-item-action"
                                       style={{ cursor: "pointer" }}
                                       onMouseDown={(e) => {
-                                        e.preventDefault()
-                                        dropdownClickedRef.current = true
+                                        e.preventDefault();
+                                        dropdownClickedRef.current = true;
                                       }}
                                       onClick={(e) => {
-                                        e.preventDefault()
-                                        e.stopPropagation()
+                                        e.preventDefault();
+                                        e.stopPropagation();
                                         setDetailEntries(
                                           detailEntries.map((row, i) =>
-                                            i === index ? { ...row, drugCode: opt.code, drugName: opt.name } : row,
-                                          ),
-                                        )
-                                        setActiveDrugCodeDropdown(null)
-                                        dropdownClickedRef.current = false
+                                            i === index
+                                              ? {
+                                                ...row,
+                                                itemCode: opt.code,
+                                                itemName: opt.name,
+                                                unit: opt.unit,
+                                                itemId: opt.id,
+                                                gstPercent: opt.hsnGstPercentage,
+                                              }
+                                              : row
+                                          )
+                                        );
+                                        setActiveDrugCodeDropdown(null);
+                                        dropdownClickedRef.current = false;
                                       }}
+
                                     >
                                       {opt.code} - {opt.name}
                                     </li>
                                   ))}
-                                {drugCodeOptions.filter(
-                                  (opt) =>
-                                    entry.drugCode === "" ||
-                                    opt.code.toLowerCase().includes(entry.drugCode.toLowerCase()) ||
-                                    opt.name.toLowerCase().includes(entry.drugCode.toLowerCase()),
-                                ).length === 0 &&
-                                  entry.drugCode !== "" && (
+                                {
+                                  // No match case
+                                  drugCodeOptions.filter((opt) => {
+                                    const search = entry.itemCode?.toLowerCase() || "";
+                                    return (
+                                      (opt.code && opt.code.toLowerCase().includes(search)) ||
+                                      (opt.name && opt.name.toLowerCase().includes(search)) ||
+                                      (opt.unit && opt.unit.toLowerCase().includes(search)) ||
+                                      (opt.hsnCode && opt.hsnCode.toLowerCase().includes(search))
+                                    );
+                                  }).length === 0 &&
+                                  entry.itemCode && (
                                     <li className="list-group-item text-muted">No matches found</li>
-                                  )}
+                                  )
+                                }
                               </ul>
                             )}
                           </td>
+
                           <td style={{ position: "relative" }}>
                             <input
                               type="text"
                               className="form-control"
-                              value={entry.drugName}
+                              value={entry.itemName}
                               onChange={(e) => {
-                                updateEntry(entry.id, "drugName", e.target.value)
+                                updateEntry(entry.id, "drugName", e.target.value);
                                 if (e.target.value.length > 0) {
-                                  setActiveDrugNameDropdown(index)
+                                  setActiveDrugNameDropdown(index);
                                 } else {
-                                  setActiveDrugNameDropdown(null)
+                                  setActiveDrugNameDropdown(null);
                                 }
                               }}
                               style={{ width: "190px" }}
@@ -422,9 +543,9 @@ const OpeningBalanceApproval = () => {
                               onFocus={() => setActiveDrugNameDropdown(index)}
                               onBlur={() => {
                                 setTimeout(() => {
-                                  if (!dropdownClickedRef.current) setActiveDrugNameDropdown(null)
-                                  dropdownClickedRef.current = false
-                                }, 150)
+                                  if (!dropdownClickedRef.current) setActiveDrugNameDropdown(null);
+                                  dropdownClickedRef.current = false;
+                                }, 150);
                               }}
                             />
                             {activeDrugNameDropdown === index && (
@@ -433,56 +554,78 @@ const OpeningBalanceApproval = () => {
                                 style={{ zIndex: 1000, maxHeight: 180, overflowY: "auto" }}
                               >
                                 {drugCodeOptions
-                                  .filter(
-                                    (opt) =>
-                                      entry.drugName === "" ||
-                                      opt.name.toLowerCase().includes(entry.drugName.toLowerCase()) ||
-                                      opt.code.toLowerCase().includes(entry.drugName.toLowerCase()),
-                                  )
+                                  .filter((opt) => {
+                                    const search = entry.itemName?.toLowerCase() || "";
+                                    return (
+                                      (opt.name && opt.name.toLowerCase().includes(search)) ||
+                                      (opt.code && opt.code.toLowerCase().includes(search)) ||
+                                      (opt.unit && opt.unit.toLowerCase().includes(search)) ||
+                                      (opt.hsnCode && opt.hsnCode.toLowerCase().includes(search))
+                                    );
+                                  })
                                   .map((opt) => (
                                     <li
                                       key={opt.id}
                                       className="list-group-item list-group-item-action"
                                       style={{ cursor: "pointer" }}
                                       onMouseDown={(e) => {
-                                        e.preventDefault()
-                                        dropdownClickedRef.current = true
+                                        e.preventDefault();
+                                        dropdownClickedRef.current = true;
                                       }}
                                       onClick={(e) => {
-                                        e.preventDefault()
-                                        e.stopPropagation()
+                                        e.preventDefault();
+                                        e.stopPropagation();
                                         setDetailEntries(
                                           detailEntries.map((row, i) =>
-                                            i === index ? { ...row, drugCode: opt.code, drugName: opt.name } : row,
-                                          ),
-                                        )
-                                        setActiveDrugNameDropdown(null)
-                                        dropdownClickedRef.current = false
+                                            i === index
+                                              ? {
+                                                ...row,
+                                                drugCode: opt.code,
+                                                drugName: opt.name,
+                                                unit: opt.unit,
+                                                itemId: opt.id,
+                                                itemUnit: opt.unit,               // match your input field
+                                                gstPercent: opt.hsnGstPercentage,
+                                              }
+                                              : row
+                                          )
+                                        );
+                                        setActiveDrugCodeDropdown(null);
+                                        dropdownClickedRef.current = false;
                                       }}
+
                                     >
                                       {opt.name} - {opt.code}
                                     </li>
                                   ))}
-                                {drugCodeOptions.filter(
-                                  (opt) =>
-                                    entry.drugName === "" ||
-                                    opt.name.toLowerCase().includes(entry.drugName.toLowerCase()) ||
-                                    opt.code.toLowerCase().includes(entry.drugName.toLowerCase()),
-                                ).length === 0 &&
-                                  entry.drugName !== "" && (
+                                {
+                                  // No match case
+                                  drugCodeOptions.filter((opt) => {
+                                    const search = entry.itemName?.toLowerCase() || "";
+                                    return (
+                                      (opt.name && opt.name.toLowerCase().includes(search)) ||
+                                      (opt.code && opt.code.toLowerCase().includes(search)) ||
+                                      (opt.unit && opt.unit.toLowerCase().includes(search)) ||
+                                      (opt.hsnCode && opt.hsnCode.toLowerCase().includes(search))
+                                    );
+                                  }).length === 0 &&
+                                  entry.itemName && (
                                     <li className="list-group-item text-muted">No matches found</li>
-                                  )}
+                                  )
+                                }
                               </ul>
                             )}
                           </td>
+
                           <td>
                             <input
                               type="text"
                               className="form-control"
-                              value={entry.unit}
+                              value={entry.unit || entry.itemUnit || ""}
                               onChange={(e) => updateEntry(entry.id, "unit", e.target.value)}
                               style={{ width: "70px" }}
                             />
+
                           </td>
                           <td>
                             <input
@@ -495,23 +638,25 @@ const OpeningBalanceApproval = () => {
                           </td>
                           <td>
                             <input
-                              type="text"
-                              className="form-control"
-                              placeholder="DD/MM/YYYY"
-                              value={entry.dom}
+                              type="date"
+                              className="form-control form-control-sm"
+                              value={entry.dom || entry.manufactureDate}
+                              max={entry.doe ? new Date(new Date(entry.doe).getTime() - 86400000).toISOString().split("T")[0] : undefined}
                               onChange={(e) => updateEntry(entry.id, "dom", e.target.value)}
-                              style={{ width: "110px" }}
+                              style={{ minWidth: "120px" }}
                             />
+
                           </td>
                           <td>
                             <input
-                              type="text"
-                              className="form-control"
-                              placeholder="DD/MM/YYYY"
-                              value={entry.doe}
+                              type="date"
+                              className="form-control form-control-sm"
+                              value={entry.doe || entry.expiryDate}
+                              min={entry.dom ? new Date(new Date(entry.dom).getTime() + 86400000).toISOString().split("T")[0] : undefined}
                               onChange={(e) => updateEntry(entry.id, "doe", e.target.value)}
-                              style={{ width: "110px" }}
+                              style={{ minWidth: "120px" }}
                             />
+
                           </td>
                           <td>
                             <input
@@ -548,6 +693,7 @@ const OpeningBalanceApproval = () => {
                               onChange={(e) => updateEntry(entry.id, "gstPercent", e.target.value)}
                               style={{ width: "90px" }}
                             />
+
                           </td>
                           <td>
                             <input
@@ -562,40 +708,43 @@ const OpeningBalanceApproval = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={entry.totalCost || ""}
+                              value={entry.totalCost || entry.totalPurchaseCost || ""}
                               readOnly
                               style={{ backgroundColor: "#f8f9fa", minWidth: "90px" }}
                             />
+
                           </td>
                           <td>
                             <select
                               className="form-select"
-                              value={entry.brandName || ""}
-                              onChange={(e) => updateEntry(entry.id, "brandName", e.target.value)}
+                              value={entry.brandId || ""}
+                              onChange={(e) => updateEntry(entry.id, "brandId", e.target.value)}
                               style={{ minWidth: "130px" }}
                             >
                               <option value="">Select Brand</option>
-                              {brandNameOptions.map((option, idx) => (
-                                <option key={idx} value={option}>
-                                  {option}
+                              {brandOptions.map((option) => (
+                                <option key={option.brandId} value={option.brandId}>
+                                  {option.brandName}
                                 </option>
                               ))}
                             </select>
+
                           </td>
                           <td>
                             <select
                               className="form-select"
-                              value={entry.manufacturer || ""}
-                              onChange={(e) => updateEntry(entry.id, "manufacturer", e.target.value)}
+                              value={entry.manufacturerId || ""}
+                              onChange={(e) => updateEntry(entry.id, "manufacturerId", e.target.value)}
                               style={{ minWidth: "130px" }}
                             >
                               <option value="">Select</option>
-                              {manufacturerOptions.map((option, idx) => (
-                                <option key={idx} value={option}>
-                                  {option}
+                              {manufacturerOptions.map((option) => (
+                                <option key={option.manufacturerId} value={option.manufacturerId}>
+                                  {option.manufacturerName}
                                 </option>
                               ))}
                             </select>
+
                           </td>
                           <td>
                             <button
@@ -629,10 +778,21 @@ const OpeningBalanceApproval = () => {
                     type="button"
                     className="btn me-2"
                     style={{ backgroundColor: "#e67e22", color: "white" }}
-                    onClick={handleUpdate}
+                    onClick={() => handleUpdate("s")}
                   >
                     Update
                   </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-success me-2"
+                    onClick={() => handleUpdate("p")}
+                  >
+                    Submit
+                  </button>
+
+
+
                   <button type="button" className="btn btn-danger" onClick={handleReset}>
                     Reset
                   </button>
@@ -705,20 +865,36 @@ const OpeningBalanceApproval = () => {
                     {currentItems.map((item) => (
                       <tr key={item.id}>
                         <td>{item.balanceNo}</td>
-                        <td>{item.openingBalanceDate}</td>
-                        <td>{item.department}</td>
+                        <td>{new Date(item.enteredDt).toLocaleDateString("en-GB")}</td>
+                        <td>{item.departmentName}</td>
                         <td>
                           <span
                             className="badge"
                             style={{
-                              backgroundColor: item.status === "Pending for Approval" ? "#ffc107" : "#28a745",
-                              color: item.status === "Pending for Approval" ? "#000" : "#fff",
+                              backgroundColor:
+                                item.status === "p"
+                                  ? "#ffc107"
+                                  : item.status === "a"
+                                    ? "#28a745"
+                                    : item.status === "r"
+                                      ? "#dc3545"
+                                      : "#6c757d",
+                              color: item.status === "p" ? "#000" : "#fff",
                             }}
                           >
-                            {item.status}
+                            {item.status === "s"
+                              ? "Saved"
+                              : item.status === "p"
+                                ? "Waiting for Approval"
+                                : item.status === "a"
+                                  ? "Approved"
+                                  : item.status === "r"
+                                    ? "Rejected"
+                                    : item.status}
                           </span>
                         </td>
-                        <td>{item.submittedBy}</td>
+
+                        <td>{item.enteredBy}</td>
                         <td className="text-center">
                           <button
                             type="button"
