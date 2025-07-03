@@ -14,7 +14,7 @@ const OpeningBalanceApproval = () => {
 
 
 
-  const fetchDrugCodeOptions = async () => {
+  const fetchOpenBalance = async () => {
     try {
       setLoading(true);
       const status = "p";
@@ -34,7 +34,7 @@ const OpeningBalanceApproval = () => {
 
 
   useEffect(() => {
-    fetchDrugCodeOptions();
+    fetchOpenBalance();
   }, []);
 
   useEffect(() => {
@@ -101,7 +101,7 @@ const OpeningBalanceApproval = () => {
       setCurrentView("list");
       setSelectedRecord(null);
       setDetailEntries([]);
-      fetchDrugCodeOptions();
+      fetchOpenBalance();
     }
   };
 
@@ -435,7 +435,9 @@ const OpeningBalanceApproval = () => {
                     style={{ backgroundColor: "#e67e22", color: "white" }}
                     onClick={handleSubmit}
                   >
-                    Approve
+
+                    {action === "a" ? "Approve" : action === "r" ? "Reject" : "Submit"}
+
                   </button>
                   <button type="button" className="btn btn-danger" onClick={handleBackToList} >
                     Cancel
