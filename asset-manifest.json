@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/hmis-ui/static/css/main.649b245e.css",
-    "main.js": "/hmis-ui/static/js/main.70194db1.js",
+    "main.js": "/hmis-ui/static/js/main.632f0d6d.js",
     "static/css/920.80448e51.chunk.css": "/hmis-ui/static/css/920.80448e51.chunk.css",
     "static/js/920.4c7b107c.chunk.js": "/hmis-ui/static/js/920.4c7b107c.chunk.js",
     "static/css/793.31d6cfe0.chunk.css": "/hmis-ui/static/css/793.31d6cfe0.chunk.css",
@@ -21,7 +21,7 @@
     "static/media/ambulanceimage.jpg": "/hmis-ui/static/media/ambulanceimage.ff86134df321af9f9e73.jpg",
     "index.html": "/hmis-ui/index.html",
     "main.649b245e.css.map": "/hmis-ui/static/css/main.649b245e.css.map",
-    "main.70194db1.js.map": "/hmis-ui/static/js/main.70194db1.js.map",
+    "main.632f0d6d.js.map": "/hmis-ui/static/js/main.632f0d6d.js.map",
     "920.80448e51.chunk.css.map": "/hmis-ui/static/css/920.80448e51.chunk.css.map",
     "920.4c7b107c.chunk.js.map": "/hmis-ui/static/js/920.4c7b107c.chunk.js.map",
     "793.335a6621.chunk.js.map": "/hmis-ui/static/js/793.335a6621.chunk.js.map",
@@ -37,6 +37,6 @@
   },
   "entrypoints": [
     "static/css/main.649b245e.css",
-    "static/js/main.70194db1.js"
+    "static/js/main.632f0d6d.js"
   ]
 }
