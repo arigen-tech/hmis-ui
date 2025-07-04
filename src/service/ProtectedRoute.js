@@ -60,6 +60,8 @@ const validRoutes = [
   "/view-and-update",
   "/payment",
   "/lab-payment-success",
+  "/PackageMaster",
+  "/PackageInvestigationMaster",
 ];
 
 const NotAuthorized = () => {

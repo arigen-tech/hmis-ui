@@ -53,6 +53,8 @@ import HSNMaster from './Views/Masters/HSNMaster';
 import ViewAndUpdate from './Views/Dispensary/ViewAndUpdate';
 import PaymentPage from './Views/Payment/payment';
 import LabPaymentSuccess from './Views/Payment/LabPaymentSuccess';
+import PackageMaster from './Views/Masters/PackageMaster';
+import PackageInvestigationMaster from './Views/Masters/PackageInvestigationMaster';
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -141,6 +143,8 @@ function App() {
                 <Route path="ItemSection" element={<ItemSection/>} />
                 <Route path="HSNMaster" element={<HSNMaster/>} />
                 <Route path="view-and-update" element={<ViewAndUpdate/>}/>
+                <Route path="PackageMaster" element={<PackageMaster/>} />
+                <Route path="PackageInvestigationMaster" element={<PackageInvestigationMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
