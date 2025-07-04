@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS } from "../../../config/apiConfig";
 import { getRequest, putRequest } from "../../../service/apiService"
+import ReactDOM from 'react-dom';
 
 const OpeningBalanceApproval = () => {
   const [currentView, setCurrentView] = useState("list") // "list" or "detail"
@@ -13,6 +14,9 @@ const OpeningBalanceApproval = () => {
   const [drugCodeOptions, setDrugCodeOptions] = useState([])
   const crUser = localStorage.getItem("username") || sessionStorage.getItem("username");
   const [currentLogUser, setCurrentLogUser] = useState(null);
+  const deptId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
+  const [currentDept, setCurrentDept] = useState(null);
+
 
   const getCurrentDateTime = () => new Date().toISOString();
 
@@ -31,7 +35,7 @@ const OpeningBalanceApproval = () => {
   const fetchOpenBalance = async () => {
     try {
       setLoading(true);
-      const status = "p,s,a";
+      const status = "p,s,a,r";
       const response = await getRequest(`${OPEN_BALANCE}/list/${status}`);
 
       if (response && Array.isArray(response)) {
@@ -113,23 +117,42 @@ const OpeningBalanceApproval = () => {
     }
   };
 
+  const fetchDepartment = async () => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${MAS_DEPARTMENT}/getById/${deptId}`);
+      if (response && response.response) {
+        setFormData((prev) => ({
+          ...prev,
+          department: deptId,
+        }));
+        setCurrentDept(response?.response?.departmentName);
+      }
+    } catch (err) {
+      console.error("Error fetching department:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchOpenBalance();
     fatchDrugCodeOptions();
     fetchBrand();
     fetchManufacturer();
     fetchCurrentUser();
+    fetchDepartment();
   }, []);
 
 
 
-
+  const [popupMessage, setPopupMessage] = useState(null)
   const [fromDate, setFromDate] = useState("29/05/2025")
   const [toDate, setToDate] = useState("29/05/2025")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
   const [detailEntries, setDetailEntries] = useState([])
-  const statusOrder = { s: 1, p: 2, r: 3, a: 4 };
+  const statusOrder = { s: 1, p: 3, r: 2, a: 4 };
   const itemsPerPage = 10
   const totalPages = Math.ceil(approvalData.length / itemsPerPage)
   const currentItems = [...approvalData]
@@ -137,10 +160,15 @@ const OpeningBalanceApproval = () => {
     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleEditClick = (record, e) => {
-    e.stopPropagation()
-    setSelectedRecord(record)
-    setDetailEntries(record.openingBalanceDtResponseList)
-    setCurrentView("detail")
+    e.stopPropagation();
+    setSelectedRecord(record);
+    // Assign unique id to each entry if not present
+    const entriesWithId = (record.openingBalanceDtResponseList || []).map((entry, idx) => ({
+      ...entry,
+      id: entry.id || entry.balanceTId || `row-${idx + 1}`,
+    }));
+    setDetailEntries(entriesWithId);
+    setCurrentView("detail");
   }
 
   const handleBackToList = () => {
@@ -167,8 +195,9 @@ const OpeningBalanceApproval = () => {
   }
 
   const addNewEntry = () => {
+    const newId = Date.now() + Math.random(); // unique id
     const newEntry = {
-      id: detailEntries.length + 1,
+      id: newId,
       sNo: detailEntries.length + 1,
       itemCode: "",
       itemName: "",
@@ -181,8 +210,8 @@ const OpeningBalanceApproval = () => {
       amount: "",
       medicineSource: "",
       manufacturer: "",
-    }
-    setDetailEntries([...detailEntries, newEntry])
+    };
+    setDetailEntries([...detailEntries, newEntry]);
   }
 
   const deleteEntry = (id) => {
@@ -203,8 +232,8 @@ const OpeningBalanceApproval = () => {
         }
 
         const qty = parseFloat(field === "qty" ? value : entry.qty) || 0;
-        const rate = parseFloat(field === "purchaseRatePerUnit" ? value : entry.purchaseRatePerUnit) || 0;
-        if (field === "qty" || field === "purchaseRatePerUnit") {
+        const rate = parseFloat(field === "mrpPerUnit" ? value : entry.mrpPerUnit) || 0;
+        if (field === "qty" || field === "mrpPerUnit") {
           updatedEntry.totalCost = (qty * rate).toFixed(2);
         }
 
@@ -223,10 +252,46 @@ const OpeningBalanceApproval = () => {
     return isNaN(date.getTime()) ? null : date.toISOString().split("T")[0];
   };
 
+
+  const hasDuplicateDetailEntries = (entries) => {
+    const seen = new Map();
+    for (const entry of entries) {
+      const key = `${entry.batchNo}|${entry.dom || entry.manufactureDate}|${entry.doe || entry.expiryDate}`;
+      if (seen.has(key)) {
+        const prev = seen.get(key);
+        if (
+          (prev.balanceId && entry.balanceId && prev.balanceId !== entry.balanceId) ||
+          (!prev.balanceId || !entry.balanceId)
+        ) {
+          return true;
+        }
+      } else {
+        seen.set(key, entry);
+      }
+    }
+    return false;
+  };
+
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null)
+      },
+    })
+  }
+
+
   const handleUpdate = async (status) => {
+    if (hasDuplicateDetailEntries(detailEntries)) {
+      showPopup("Duplicate entry found for Batch No/Serial No, DOM, and DOE.", "warning");
+      return;
+    }
+
     const requestPayload = {
       id: selectedRecord.balanceMId,
-      departmentId: selectedRecord.departmentId,
+      departmentId: formData.department,
       enteredBy: formData.enteredBy,
       enteredDt: new Date(formData.balanceEntryDate).toISOString(),
       status: status,
@@ -257,10 +322,10 @@ const OpeningBalanceApproval = () => {
         requestPayload
       );
       console.log("Payload to submit:", requestPayload);
-      alert(status === "p" ? "Entries submitted successfully!" : "Entries updated successfully!");
+      showPopup(status === "p" ? "Entries submitted successfully!" : "Entries updated successfully!", "success");
     } catch (error) {
       console.error("Error submitting data:", error);
-      alert("Failed to update entries!");
+      showPopup("Failed to update entries!", "error");
     }
   };
 
@@ -343,6 +408,9 @@ const OpeningBalanceApproval = () => {
                   Back to List
                 </button>
               </div>
+              {popupMessage && (
+                <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
+              )}
 
               <div className="card-body">
                 {/* Entry Details Header */}
@@ -418,8 +486,12 @@ const OpeningBalanceApproval = () => {
                         <th style={{ width: "100px", minWidth: "100px" }}>Total Cost</th>
                         <th style={{ width: "150px", minWidth: "150px" }}>Brand Name</th>
                         <th style={{ width: "150px", minWidth: "150px" }}>Manufacturer</th>
-                        <th style={{ width: "60px", minWidth: "60px" }}>Add</th>
-                        <th style={{ width: "70px", minWidth: "70px" }}>Delete</th>
+                        {(selectedRecord?.status === "s" || selectedRecord?.status === "r") && (
+                          <>
+                            <th style={{ width: "60px", minWidth: "60px" }}>Add</th>
+                            <th style={{ width: "70px", minWidth: "70px" }}>Delete</th>
+                          </>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -434,6 +506,8 @@ const OpeningBalanceApproval = () => {
                               readOnly
                             />
                           </td>
+
+                          {/* Drug Code Column with Fixed Dropdown */}
                           <td style={{ position: "relative" }}>
                             <input
                               type="text"
@@ -456,59 +530,69 @@ const OpeningBalanceApproval = () => {
                                   dropdownClickedRef.current = false;
                                 }, 150);
                               }}
+                              readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
-                            {activeDrugCodeDropdown === index && (
-                              <ul
-                                className="list-group position-absolute w-100 mt-1"
-                                style={{ zIndex: 1000, maxHeight: 180, overflowY: "auto" }}
-                              >
-                                {drugCodeOptions
-                                  .filter((opt) => {
-                                    const search = entry.itemCode?.toLowerCase() || "";
-                                    return (
-                                      (opt.code && opt.code.toLowerCase().includes(search)) ||
-                                      (opt.name && opt.name.toLowerCase().includes(search)) ||
-                                      (opt.unit && opt.unit.toLowerCase().includes(search)) ||
-                                      (opt.hsnCode && opt.hsnCode.toLowerCase().includes(search))
-                                    );
-                                  })
-                                  .map((opt) => (
-                                    <li
-                                      key={opt.id}
-                                      className="list-group-item list-group-item-action"
-                                      style={{ cursor: "pointer" }}
-                                      onMouseDown={(e) => {
-                                        e.preventDefault();
-                                        dropdownClickedRef.current = true;
-                                      }}
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setDetailEntries(
-                                          detailEntries.map((row, i) =>
-                                            i === index
-                                              ? {
-                                                ...row,
-                                                itemCode: opt.code,
-                                                itemName: opt.name,
-                                                unit: opt.unit,
-                                                itemId: opt.id,
-                                                gstPercent: opt.hsnGstPercentage,
-                                              }
-                                              : row
-                                          )
-                                        );
-                                        setActiveDrugCodeDropdown(null);
-                                        dropdownClickedRef.current = false;
-                                      }}
-
-                                    >
-                                      {opt.code} - {opt.name}
-                                    </li>
-                                  ))}
-                                {
-                                  // No match case
-                                  drugCodeOptions.filter((opt) => {
+                            {(activeDrugCodeDropdown === index &&
+                              (selectedRecord?.status === "s" || selectedRecord?.status === "r")) && (
+                                <ul
+                                  className="list-group position-fixed"
+                                  style={{
+                                    zIndex: 9999,
+                                    maxHeight: 180,
+                                    overflowY: "auto",
+                                    width: "200px",
+                                    top: `${document.querySelector(`input[value="${entry.itemCode}"]`)?.getBoundingClientRect().bottom + window.scrollY}px`,
+                                    left: `${document.querySelector(`input[value="${entry.itemCode}"]`)?.getBoundingClientRect().left + window.scrollX}px`,
+                                    backgroundColor: "white",
+                                    border: "1px solid #dee2e6",
+                                    borderRadius: "0.375rem",
+                                    boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)"
+                                  }}
+                                >
+                                  {drugCodeOptions
+                                    .filter((opt) => {
+                                      const search = entry.itemCode?.toLowerCase() || "";
+                                      return (
+                                        (opt.code && opt.code.toLowerCase().includes(search)) ||
+                                        (opt.name && opt.name.toLowerCase().includes(search)) ||
+                                        (opt.unit && opt.unit.toLowerCase().includes(search)) ||
+                                        (opt.hsnCode && opt.hsnCode.toLowerCase().includes(search))
+                                      );
+                                    })
+                                    .map((opt) => (
+                                      <li
+                                        key={opt.id}
+                                        className="list-group-item list-group-item-action"
+                                        style={{ cursor: "pointer" }}
+                                        onMouseDown={(e) => {
+                                          e.preventDefault();
+                                          dropdownClickedRef.current = true;
+                                        }}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          setDetailEntries(
+                                            detailEntries.map((row, i) =>
+                                              i === index
+                                                ? {
+                                                  ...row,
+                                                  itemCode: opt.code,
+                                                  itemName: opt.name,
+                                                  unit: opt.unit,
+                                                  itemId: opt.id,
+                                                  gstPercent: opt.hsnGstPercentage,
+                                                }
+                                                : row
+                                            )
+                                          );
+                                          setActiveDrugCodeDropdown(null);
+                                          dropdownClickedRef.current = false;
+                                        }}
+                                      >
+                                        {opt.code} - {opt.name}
+                                      </li>
+                                    ))}
+                                  {drugCodeOptions.filter((opt) => {
                                     const search = entry.itemCode?.toLowerCase() || "";
                                     return (
                                       (opt.code && opt.code.toLowerCase().includes(search)) ||
@@ -517,14 +601,14 @@ const OpeningBalanceApproval = () => {
                                       (opt.hsnCode && opt.hsnCode.toLowerCase().includes(search))
                                     );
                                   }).length === 0 &&
-                                  entry.itemCode && (
-                                    <li className="list-group-item text-muted">No matches found</li>
-                                  )
-                                }
-                              </ul>
-                            )}
+                                    entry.itemCode && (
+                                      <li className="list-group-item text-muted">No matches found</li>
+                                    )}
+                                </ul>
+                              )}
                           </td>
 
+                          {/* Drug Name Column with Portal-based Dropdown */}
                           <td style={{ position: "relative" }}>
                             <input
                               type="text"
@@ -547,60 +631,72 @@ const OpeningBalanceApproval = () => {
                                   dropdownClickedRef.current = false;
                                 }, 150);
                               }}
+                              readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
-                            {activeDrugNameDropdown === index && (
-                              <ul
-                                className="list-group position-absolute w-100 mt-1"
-                                style={{ zIndex: 1000, maxHeight: 180, overflowY: "auto" }}
-                              >
-                                {drugCodeOptions
-                                  .filter((opt) => {
-                                    const search = entry.itemName?.toLowerCase() || "";
-                                    return (
-                                      (opt.name && opt.name.toLowerCase().includes(search)) ||
-                                      (opt.code && opt.code.toLowerCase().includes(search)) ||
-                                      (opt.unit && opt.unit.toLowerCase().includes(search)) ||
-                                      (opt.hsnCode && opt.hsnCode.toLowerCase().includes(search))
-                                    );
-                                  })
-                                  .map((opt) => (
-                                    <li
-                                      key={opt.id}
-                                      className="list-group-item list-group-item-action"
-                                      style={{ cursor: "pointer" }}
-                                      onMouseDown={(e) => {
-                                        e.preventDefault();
-                                        dropdownClickedRef.current = true;
-                                      }}
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setDetailEntries(
-                                          detailEntries.map((row, i) =>
-                                            i === index
-                                              ? {
-                                                ...row,
-                                                drugCode: opt.code,
-                                                drugName: opt.name,
-                                                unit: opt.unit,
-                                                itemId: opt.id,
-                                                itemUnit: opt.unit,               // match your input field
-                                                gstPercent: opt.hsnGstPercentage,
-                                              }
-                                              : row
-                                          )
-                                        );
-                                        setActiveDrugCodeDropdown(null);
-                                        dropdownClickedRef.current = false;
-                                      }}
-
-                                    >
-                                      {opt.name} - {opt.code}
-                                    </li>
-                                  ))}
-                                {
-                                  // No match case
-                                  drugCodeOptions.filter((opt) => {
+                            {/* Using React Portal for better dropdown positioning */}
+                            {(activeDrugNameDropdown === index &&
+                              (selectedRecord?.status === "s" || selectedRecord?.status === "r")) &&
+                              ReactDOM.createPortal(
+                                <ul
+                                  className="list-group position-fixed"
+                                  style={{
+                                    zIndex: 9999,
+                                    maxHeight: 180,
+                                    overflowY: "auto",
+                                    width: "250px",
+                                    top: `${document.querySelector(`input[value="${entry.itemName}"]`)?.getBoundingClientRect().bottom + window.scrollY}px`,
+                                    left: `${document.querySelector(`input[value="${entry.itemName}"]`)?.getBoundingClientRect().left + window.scrollX}px`,
+                                    backgroundColor: "white",
+                                    border: "1px solid #dee2e6",
+                                    borderRadius: "0.375rem",
+                                    boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)"
+                                  }}
+                                >
+                                  {drugCodeOptions
+                                    .filter((opt) => {
+                                      const search = entry.itemName?.toLowerCase() || "";
+                                      return (
+                                        (opt.name && opt.name.toLowerCase().includes(search)) ||
+                                        (opt.code && opt.code.toLowerCase().includes(search)) ||
+                                        (opt.unit && opt.unit.toLowerCase().includes(search)) ||
+                                        (opt.hsnCode && opt.hsnCode.toLowerCase().includes(search))
+                                      );
+                                    })
+                                    .map((opt) => (
+                                      <li
+                                        key={opt.id}
+                                        className="list-group-item list-group-item-action"
+                                        style={{ cursor: "pointer" }}
+                                        onMouseDown={(e) => {
+                                          e.preventDefault();
+                                          dropdownClickedRef.current = true;
+                                        }}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          setDetailEntries(
+                                            detailEntries.map((row, i) =>
+                                              i === index
+                                                ? {
+                                                  ...row,
+                                                  drugCode: opt.code,
+                                                  drugName: opt.name,
+                                                  unit: opt.unit,
+                                                  itemId: opt.id,
+                                                  itemUnit: opt.unit,
+                                                  gstPercent: opt.hsnGstPercentage,
+                                                }
+                                                : row
+                                            )
+                                          );
+                                          setActiveDrugCodeDropdown(null);
+                                          dropdownClickedRef.current = false;
+                                        }}
+                                      >
+                                        {opt.name}
+                                      </li>
+                                    ))}
+                                  {drugCodeOptions.filter((opt) => {
                                     const search = entry.itemName?.toLowerCase() || "";
                                     return (
                                       (opt.name && opt.name.toLowerCase().includes(search)) ||
@@ -609,14 +705,15 @@ const OpeningBalanceApproval = () => {
                                       (opt.hsnCode && opt.hsnCode.toLowerCase().includes(search))
                                     );
                                   }).length === 0 &&
-                                  entry.itemName && (
-                                    <li className="list-group-item text-muted">No matches found</li>
-                                  )
-                                }
-                              </ul>
-                            )}
+                                    entry.itemName && (
+                                      <li className="list-group-item text-muted">No matches found</li>
+                                    )}
+                                </ul>,
+                                document.body // Render dropdown in document body
+                              )}
                           </td>
 
+                          {/* Rest of your table cells remain the same */}
                           <td>
                             <input
                               type="text"
@@ -624,6 +721,7 @@ const OpeningBalanceApproval = () => {
                               value={entry.unit || entry.itemUnit || ""}
                               onChange={(e) => updateEntry(entry.id, "unit", e.target.value)}
                               style={{ width: "70px" }}
+                              readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
 
                           </td>
@@ -634,6 +732,7 @@ const OpeningBalanceApproval = () => {
                               value={entry.batchNo}
                               onChange={(e) => updateEntry(entry.id, "batchNo", e.target.value)}
                               style={{ width: "140px" }}
+                              readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
                           </td>
                           <td>
@@ -644,6 +743,7 @@ const OpeningBalanceApproval = () => {
                               max={entry.doe ? new Date(new Date(entry.doe).getTime() - 86400000).toISOString().split("T")[0] : undefined}
                               onChange={(e) => updateEntry(entry.id, "dom", e.target.value)}
                               style={{ minWidth: "120px" }}
+                              readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
 
                           </td>
@@ -655,6 +755,7 @@ const OpeningBalanceApproval = () => {
                               min={entry.dom ? new Date(new Date(entry.dom).getTime() + 86400000).toISOString().split("T")[0] : undefined}
                               onChange={(e) => updateEntry(entry.id, "doe", e.target.value)}
                               style={{ minWidth: "120px" }}
+                              readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
 
                           </td>
@@ -665,6 +766,7 @@ const OpeningBalanceApproval = () => {
                               value={entry.qty}
                               onChange={(e) => updateEntry(entry.id, "qty", e.target.value)}
                               style={{ width: "70px" }}
+                              readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
                           </td>
                           <td>
@@ -674,6 +776,7 @@ const OpeningBalanceApproval = () => {
                               value={entry.unitsPerPack || ""}
                               onChange={(e) => updateEntry(entry.id, "unitsPerPack", e.target.value)}
                               style={{ width: "90px" }}
+                              readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
                           </td>
                           <td>
@@ -683,6 +786,7 @@ const OpeningBalanceApproval = () => {
                               value={entry.purchaseRatePerUnit || ""}
                               onChange={(e) => updateEntry(entry.id, "purchaseRatePerUnit", e.target.value)}
                               style={{ width: "110px" }}
+                              readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
                           </td>
                           <td>
@@ -692,6 +796,7 @@ const OpeningBalanceApproval = () => {
                               value={entry.gstPercent || ""}
                               onChange={(e) => updateEntry(entry.id, "gstPercent", e.target.value)}
                               style={{ width: "90px" }}
+                              readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
 
                           </td>
@@ -702,6 +807,7 @@ const OpeningBalanceApproval = () => {
                               value={entry.mrpPerUnit || ""}
                               onChange={(e) => updateEntry(entry.id, "mrpPerUnit", e.target.value)}
                               style={{ width: "90px" }}
+                              readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
                           </td>
                           <td>
@@ -711,6 +817,7 @@ const OpeningBalanceApproval = () => {
                               value={entry.totalCost || entry.totalPurchaseCost || ""}
                               readOnly
                               style={{ backgroundColor: "#f8f9fa", minWidth: "90px" }}
+
                             />
 
                           </td>
@@ -720,6 +827,7 @@ const OpeningBalanceApproval = () => {
                               value={entry.brandId || ""}
                               onChange={(e) => updateEntry(entry.id, "brandId", e.target.value)}
                               style={{ minWidth: "130px" }}
+                              disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             >
                               <option value="">Select Brand</option>
                               {brandOptions.map((option) => (
@@ -730,12 +838,14 @@ const OpeningBalanceApproval = () => {
                             </select>
 
                           </td>
+
                           <td>
                             <select
                               className="form-select"
                               value={entry.manufacturerId || ""}
                               onChange={(e) => updateEntry(entry.id, "manufacturerId", e.target.value)}
                               style={{ minWidth: "130px" }}
+                              disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             >
                               <option value="">Select</option>
                               {manufacturerOptions.map((option) => (
@@ -744,59 +854,69 @@ const OpeningBalanceApproval = () => {
                                 </option>
                               ))}
                             </select>
+                          </td>
 
-                          </td>
-                          <td>
-                            <button
-                              type="button"
-                              className="btn btn-sm"
-                              style={{ backgroundColor: "#e67e22", color: "white" }}
-                              onClick={addNewEntry}
-                            >
-                              +
-                            </button>
-                          </td>
-                          <td>
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-danger"
-                              onClick={() => deleteEntry(entry.id)}
-                              disabled={detailEntries.length === 1}
-                            >
-                              -
-                            </button>
-                          </td>
+                          {(selectedRecord?.status === "s" || selectedRecord?.status === "r") && (
+                            <>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm"
+                                  style={{ backgroundColor: "#e67e22", color: "white" }}
+                                  onClick={addNewEntry}
+                                >
+                                  +
+                                </button>
+                              </td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-danger"
+                                  onClick={() => deleteEntry(entry.id)}
+                                  disabled={detailEntries.length === 1}
+                                >
+                                  -
+                                </button>
+                              </td>
+                            </>
+                          )}
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
 
+
+
                 {/* Action Buttons */}
-                <div className="d-flex justify-content-end mt-4">
-                  <button
-                    type="button"
-                    className="btn me-2"
-                    style={{ backgroundColor: "#e67e22", color: "white" }}
-                    onClick={() => handleUpdate("s")}
-                  >
-                    Update
-                  </button>
+                {(selectedRecord?.status === "s" || selectedRecord?.status === "r") && (
 
-                  <button
-                    type="button"
-                    className="btn btn-success me-2"
-                    onClick={() => handleUpdate("p")}
-                  >
-                    Submit
-                  </button>
+                  <div className="d-flex justify-content-end mt-4">
+                    <button
+                      type="button"
+                      className="btn me-2"
+                      style={{ backgroundColor: "#e67e22", color: "white" }}
+                      onClick={() => handleUpdate("s")}
+                    >
+                      Update
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-success me-2"
+                      onClick={() => handleUpdate("p")}
+                    >
+                      Submit
+                    </button>
 
 
 
-                  <button type="button" className="btn btn-danger" onClick={handleReset}>
-                    Reset
-                  </button>
-                </div>
+                    <button type="button" className="btn btn-danger" onClick={handleReset}>
+                      Reset
+                    </button>
+                  </div>
+
+                )}
               </div>
             </div>
           </div>
@@ -900,10 +1020,17 @@ const OpeningBalanceApproval = () => {
                             type="button"
                             className="btn btn-sm btn-primary"
                             onClick={(e) => handleEditClick(item, e)}
-                            title="Edit Entry"
+                            title={item.status === "s" || item.status === "r" ? "Edit Entry" : "View Entry"}
                           >
-                            <i className="fa fa-pencil"></i>
+                            <i
+                              className={
+                                item.status === "s" || item.status === "r"
+                                  ? "fa fa-pencil"
+                                  : "fa fa-eye"
+                              }
+                            ></i>
                           </button>
+
                         </td>
                       </tr>
                     ))}
@@ -962,5 +1089,7 @@ const OpeningBalanceApproval = () => {
     </div>
   )
 }
+
+
 
 export default OpeningBalanceApproval
