@@ -1,4 +1,4 @@
-"use client"
+
 
 import { useState, useRef, useEffect } from "react"
 import placeholderImage from "../../../assets/images/placeholder.jpg"
@@ -14,10 +14,10 @@ import {
   PATIENT_IMAGE_UPLOAD,
   MAS_DISTRICT,
   MAS_INVESTIGATION,
-  MAS_PACKAGE_INVESTIGATION,
-  MAS_SERVICE_CATEGORY
+  INVESTIGATION_PACKAGE_Mapping,
+  MAS_SERVICE_CATEGORY,
+  MAS_PACKAGE_INVESTIGATION
 } from "../../../config/apiConfig"
-
 
 const LabRegistration = () => {
   useEffect(() => {
@@ -42,6 +42,7 @@ const LabRegistration = () => {
   const [investigationItems, setInvestigationItems] = useState([])
   const [packageItems, setPackageItems] = useState([])
   const navigate = useNavigate()
+
   const [gstConfig, setGstConfig] = useState({
     gstApplicable: true,
     gstPercent: 0, // default fallback
@@ -108,11 +109,15 @@ const LabRegistration = () => {
 
   const [checkedRows, setCheckedRows] = useState([true])
 
-  // Enhanced payment calculation function
+  // Enhanced payment calculation function - FIXED
   const calculatePaymentBreakdown = () => {
-    const checkedItems = formData.rows.filter((_, index) => checkedRows[index])
+    console.log("=== CALCULATING PAYMENT BREAKDOWN ===")
+    console.log("Current GST Config:", gstConfig)
 
-    const totalAmount = checkedItems.reduce((total, item) => {
+    const checkedItems = formData.rows.filter((_, index) => checkedRows[index])
+    console.log("Checked Items:", checkedItems)
+
+    const totalOriginalAmount = checkedItems.reduce((total, item) => {
       return total + (Number.parseFloat(item.originalAmount) || 0)
     }, 0)
 
@@ -120,23 +125,46 @@ const LabRegistration = () => {
       return total + (Number.parseFloat(item.discountAmount) || 0)
     }, 0)
 
-    const baseAmountAfterDiscount = totalAmount - totalDiscountAmount
+    const totalNetAmount = totalOriginalAmount - totalDiscountAmount
 
-    // Use GST configuration from backend instead of hardcoded value
-    const gstPercent = gstConfig.gstPercent
-    const taxAmount = gstConfig.gstApplicable ? (baseAmountAfterDiscount * gstPercent) / 100 : 0
-    const finalPaymentAmount = baseAmountAfterDiscount + taxAmount
+    // Fix: Calculate GST on each item's net amount individually, then sum up
+    // This matches the backend logic exactly
+    const totalGstAmount = checkedItems.reduce((total, item) => {
+      const itemOriginalAmount = Number.parseFloat(item.originalAmount) || 0
+      const itemDiscountAmount = Number.parseFloat(item.discountAmount) || 0
+      const itemNetAmount = itemOriginalAmount - itemDiscountAmount
 
-    return {
-      totalAmount: totalAmount.toFixed(2),
+      // Calculate GST on this item's net amount (after discount)
+      const itemGstAmount = gstConfig.gstApplicable ? (itemNetAmount * gstConfig.gstPercent) / 100 : 0
+      console.log(
+        `Item GST Calculation - Original: ${itemOriginalAmount}, Discount: ${itemDiscountAmount}, Net: ${itemNetAmount}, GST%: ${gstConfig.gstPercent}, GST Amount: ${itemGstAmount}`,
+      )
+      return total + itemGstAmount
+    }, 0)
+
+    const finalAmount = totalNetAmount + totalGstAmount
+
+    const breakdown = {
+      // Properties expected by your UI component
+      totalOriginalAmount: totalOriginalAmount.toFixed(2),
       totalDiscountAmount: totalDiscountAmount.toFixed(2),
-      baseAmountAfterDiscount: baseAmountAfterDiscount.toFixed(2),
-      taxAmount: taxAmount.toFixed(2),
-      finalPaymentAmount: finalPaymentAmount.toFixed(2),
-      gstPercent,
+      totalNetAmount: totalNetAmount.toFixed(2),
+      totalGstAmount: totalGstAmount.toFixed(2),
+      finalAmount: finalAmount.toFixed(2),
+      gstPercent: gstConfig.gstPercent,
       gstApplicable: gstConfig.gstApplicable,
       itemCount: checkedItems.length,
+      // Legacy properties (if needed elsewhere in your code)
+      totalAmount: totalOriginalAmount.toFixed(2),
+      baseAmountAfterDiscount: totalNetAmount.toFixed(2),
+      taxAmount: totalGstAmount.toFixed(2),
+      finalPaymentAmount: finalAmount.toFixed(2),
     }
+
+    console.log("Final Payment Breakdown:", breakdown)
+    console.log("=== END PAYMENT BREAKDOWN ===")
+
+    return breakdown
   }
 
   const startCamera = async () => {
@@ -339,6 +367,7 @@ const LabRegistration = () => {
     setFormData((prev) => {
       const updatedRows = prev.rows.map((item, i) => {
         if (i !== index) return item
+
         const updatedItem = { ...item, [field]: value }
 
         if (field === "originalAmount" || field === "discountAmount") {
@@ -514,8 +543,10 @@ const LabRegistration = () => {
         console.error("No gender found with ID:", genderValue)
         return []
       }
+
       const genderApplicable = selectedGender.genderCode.toLowerCase()
       const data = await getRequest(`${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}`)
+
       if (data.status === 200 && Array.isArray(data.response)) {
         return data.response
       } else {
@@ -530,7 +561,7 @@ const LabRegistration = () => {
 
   async function fetchPackageInvestigationDetails(flag) {
     try {
-      const data = await getRequest(`${MAS_PACKAGE_INVESTIGATION}/getAllPackInvestigation/${flag}`)
+      const data = await getRequest(`${INVESTIGATION_PACKAGE_Mapping}/getAllPackageMap/${flag}`)
       if (data.status === 200 && Array.isArray(data.response)) {
         setPackageItems(data.response)
         return data.response
@@ -560,45 +591,47 @@ const LabRegistration = () => {
   }
 
   async function fetchGstConfiguration() {
-  try {
-    const data = await getRequest(`${MAS_SERVICE_CATEGORY}/masServiceCategory/getAll/1`)
-    
-    if (data?.status === 200 && Array.isArray(data.response)) {
-      // Get the first service category or find by specific criteria
-      const serviceCategory = data.response[0] // or add your specific filtering logic
-      
-      if (serviceCategory) {
-        setGstConfig({
-          gstApplicable: serviceCategory.gstApplicable,
-          gstPercent: serviceCategory.gstPercent,
-        })
-        
-        console.log("GST Configuration loaded:", {
-          gstApplicable: serviceCategory.gstApplicable,
-          gstPercent: serviceCategory.gstPercent,
-        })
+    try {
+      console.log("=== FETCHING GST CONFIGURATION ===");
+
+      const data = await getRequest(`${MAS_SERVICE_CATEGORY}/getGstConfig/1`);
+
+      console.log("GST API Response:", JSON.stringify(data, null, 2));
+
+      if (
+        data &&
+        data.status === 200 &&
+        data.response &&
+        typeof data.response.gstApplicable !== "undefined"
+      ) {
+        const gstConfiguration = {
+          gstApplicable: !!data.response.gstApplicable,
+          gstPercent: Number(data.response.gstPercent) || 0,
+        };
+
+        console.log("Setting GST Configuration:", gstConfiguration);
+        setGstConfig(gstConfiguration);
       } else {
-        console.warn("Service category not found")
+        console.warn("Invalid API response:", data);
         setGstConfig({
           gstApplicable: false,
           gstPercent: 0,
-        })
+        });
       }
-    } else {
-      console.warn("Invalid API response")
+    } catch (error) {
+      console.error("Error fetching GST configuration:", error);
       setGstConfig({
         gstApplicable: false,
         gstPercent: 0,
-      })
+      });
     }
-  } catch (error) {
-    console.error("Error fetching GST configuration:", error)
-    setGstConfig({
-      gstApplicable: false,
-      gstPercent: 0,
-    })
   }
-}
+
+
+  // Add this useEffect after the existing useEffect
+  useEffect(() => {
+    console.log("GST Config changed:", gstConfig)
+  }, [gstConfig])
 
   const validateForm = () => {
     const requiredFields = ["firstName", "gender", "relation", "dob", "email", "mobileNo"]
@@ -704,21 +737,23 @@ const LabRegistration = () => {
         })
 
         const patientId = patientResult?.response?.patient?.id
-
         if (!patientId) {
           throw new Error(patientResult.message || "Patient registration failed")
         }
 
         // Validate that at least one item is checked
         const hasCheckedItems = formData.rows.some((row, index) => checkedRows && checkedRows[index] === true)
-
         if (!hasCheckedItems) {
           throw new Error("Please select at least one investigation or package to proceed.")
         }
 
-        // Calculate payment amount from checked items
-        let totalAmount = 0
-        let totalDiscountAmount = 0
+        // Calculate payment amount from checked items using the fixed calculation
+        const paymentBreakdown = calculatePaymentBreakdown()
+        const totalOriginalAmount = Number.parseFloat(paymentBreakdown.totalOriginalAmount)
+        const totalDiscountAmount = Number.parseFloat(paymentBreakdown.totalDiscountAmount)
+        const totalNetAmount = Number.parseFloat(paymentBreakdown.totalNetAmount)
+        const totalGstAmount = Number.parseFloat(paymentBreakdown.totalGstAmount)
+        const totalFinalAmount = Number.parseFloat(paymentBreakdown.finalAmount)
 
         // Build lab data
         const labData = {
@@ -732,15 +767,10 @@ const LabRegistration = () => {
           const isChecked = checkedRows && checkedRows[index] === true
           console.log(`Processing item at index ${index}: ${row.name}, Type: ${row.type}, Checked: ${isChecked}`)
 
+          // Get amounts from row data
           const originalAmount = Number.parseFloat(row.originalAmount) || 0
           const discountAmount = Number.parseFloat(row.discountAmount) || 0
           const netAmount = Number.parseFloat(row.netAmount) || originalAmount
-
-          // Add to payment totals ONLY if checked
-          if (isChecked) {
-            totalAmount += originalAmount
-            totalDiscountAmount += discountAmount
-          }
 
           if (row.type === "investigation") {
             labData.labInvestigationReq.push({
@@ -783,17 +813,14 @@ const LabRegistration = () => {
           }
         })
 
-        // Calculate final payment amount
-        const baseAmountAfterDiscount = totalAmount - totalDiscountAmount
-        const gstPercent = gstConfig.gstPercent
-        const taxAmount = gstConfig.gstApplicable ? (baseAmountAfterDiscount * gstPercent) / 100 : 0
-        const finalPaymentAmount = baseAmountAfterDiscount + taxAmount
+        // Use the final amount directly from calculation
+        const finalPaymentAmount = totalFinalAmount
 
         console.log("=== PAYMENT CALCULATION ===")
-        console.log("Total Amount:", totalAmount)
+        console.log("Total Original Amount:", totalOriginalAmount)
         console.log("Total Discount:", totalDiscountAmount)
-        console.log("Amount After Discount:", baseAmountAfterDiscount)
-        console.log("Tax Amount:", taxAmount)
+        console.log("Total Net Amount:", totalNetAmount)
+        console.log("Total GST Amount:", totalGstAmount)
         console.log("Final Payment Amount:", finalPaymentAmount)
         console.log("========================")
 
@@ -849,9 +876,10 @@ const LabRegistration = () => {
                     packages: labData.labPackegReqs.filter((p) => p.checkStatus),
                   },
                   paymentBreakdown: {
-                    totalAmount: totalAmount,
-                    discountAmount: totalDiscountAmount,
-                    taxAmount: taxAmount,
+                    totalOriginalAmount: totalOriginalAmount,
+                    totalDiscountAmount: totalDiscountAmount,
+                    totalNetAmount: totalNetAmount,
+                    totalGstAmount: totalGstAmount,
                     finalAmount: finalPaymentAmount,
                   },
                 },
@@ -1611,7 +1639,6 @@ const LabRegistration = () => {
                                 }}
                                 onBlur={() => setTimeout(() => setActiveRowIndex(null), 200)}
                               />
-
                               {activeRowIndex === index && row.name.trim() !== "" && (
                                 <ul
                                   className="list-group position-absolute w-100 mt-1"
@@ -1625,95 +1652,95 @@ const LabRegistration = () => {
                                 >
                                   {formData.type === "investigation"
                                     ? investigationItems
-                                        .filter((item) =>
-                                          item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
-                                        )
-                                        .map((item, i) => {
-                                          const hasDiscount = item.disc && item.disc > 0
-                                          const displayPrice = item.price || 0
-                                          const discountAmount = hasDiscount ? item.disc : 0
-                                          const finalPrice = hasDiscount ? displayPrice - discountAmount : displayPrice
+                                      .filter((item) =>
+                                        item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
+                                      )
+                                      .map((item, i) => {
+                                        const hasDiscount = item.disc && item.disc > 0
+                                        const displayPrice = item.price || 0
+                                        const discountAmount = hasDiscount ? item.disc : 0
+                                        const finalPrice = hasDiscount ? displayPrice - discountAmount : displayPrice
 
-                                          return (
-                                            <li
-                                              key={i}
-                                              className="list-group-item list-group-item-action"
-                                              style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                              onClick={() => {
-                                                if (item.price === null || item.price === 0 || item.price === "0") {
-                                                  Swal.fire(
-                                                    "Warning",
-                                                    "Price has not been configured for this Investigation",
-                                                    "warning",
-                                                  )
-                                                } else {
-                                                  handleRowChange(index, "name", item.investigationName)
-                                                  handleRowChange(index, "itemId", item.investigationId)
-                                                  handleRowChange(index, "originalAmount", displayPrice)
-                                                  handleRowChange(index, "discountAmount", discountAmount)
-                                                  handleRowChange(index, "netAmount", finalPrice)
-                                                  setActiveRowIndex(null)
-                                                }
-                                              }}
-                                            >
-                                              <div>
-                                                <strong>{item.investigationName}</strong>
-                                                <div className="d-flex justify-content-between">
-                                                  <span>
-                                                    {item.price === null
-                                                      ? "Price not configured"
-                                                      : `₹${finalPrice.toFixed(2)}`}
-                                                  </span>
-                                                  {hasDiscount && (
-                                                    <span className="text-success">
-                                                      (Discount: ₹{discountAmount.toFixed(2)})
-                                                    </span>
-                                                  )}
-                                                </div>
-                                                {item.investigationType && (
-                                                  <small className="text-muted">Type: {item.investigationType}</small>
-                                                )}
-                                              </div>
-                                            </li>
-                                          )
-                                        })
-                                    : packageItems
-                                        .filter((item) => item.packName.toLowerCase().includes(row.name.toLowerCase()))
-                                        .map((item, i) => (
+                                        return (
                                           <li
                                             key={i}
                                             className="list-group-item list-group-item-action"
                                             style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                            onClick={async () => {
-                                              const priceDetails = await fetchPackagePrice(item.packName)
-                                              if (!priceDetails || !priceDetails.actualCost) {
+                                            onClick={() => {
+                                              if (item.price === null || item.price === 0 || item.price === "0") {
                                                 Swal.fire(
                                                   "Warning",
-                                                  "Price has not been configured for this Package",
+                                                  "Price has not been configured for this Investigation",
                                                   "warning",
                                                 )
                                               } else {
-                                                handleRowChange(index, "name", item.packName)
-                                                handleRowChange(index, "itemId", item.id || priceDetails.packId)
-                                                handleRowChange(
-                                                  index,
-                                                  "originalAmount",
-                                                  priceDetails.baseCost || priceDetails.actualCost,
-                                                )
-                                                handleRowChange(index, "discountAmount", priceDetails.disc || 0)
-                                                handleRowChange(index, "netAmount", priceDetails.actualCost)
+                                                handleRowChange(index, "name", item.investigationName)
+                                                handleRowChange(index, "itemId", item.investigationId)
+                                                handleRowChange(index, "originalAmount", displayPrice)
+                                                handleRowChange(index, "discountAmount", discountAmount)
+                                                handleRowChange(index, "netAmount", finalPrice)
                                                 setActiveRowIndex(null)
                                               }
                                             }}
                                           >
                                             <div>
-                                              <strong>{item.packName}</strong>
+                                              <strong>{item.investigationName}</strong>
                                               <div className="d-flex justify-content-between">
-                                                <span>₹{item.actualCost.toFixed(2)}</span>
+                                                <span>
+                                                  {item.price === null
+                                                    ? "Price not configured"
+                                                    : `₹${finalPrice.toFixed(2)}`}
+                                                </span>
+                                                {hasDiscount && (
+                                                  <span className="text-success">
+                                                    (Discount: ₹{discountAmount.toFixed(2)})
+                                                  </span>
+                                                )}
                                               </div>
+                                              {item.investigationType && (
+                                                <small className="text-muted">Type: {item.investigationType}</small>
+                                              )}
                                             </div>
                                           </li>
-                                        ))}
+                                        )
+                                      })
+                                    : packageItems
+                                      .filter((item) => item.packName.toLowerCase().includes(row.name.toLowerCase()))
+                                      .map((item, i) => (
+                                        <li
+                                          key={i}
+                                          className="list-group-item list-group-item-action"
+                                          style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
+                                          onClick={async () => {
+                                            const priceDetails = await fetchPackagePrice(item.packName)
+                                            if (!priceDetails || !priceDetails.actualCost) {
+                                              Swal.fire(
+                                                "Warning",
+                                                "Price has not been configured for this Package",
+                                                "warning",
+                                              )
+                                            } else {
+                                              handleRowChange(index, "name", item.packName)
+                                              handleRowChange(index, "itemId", item.id || priceDetails.packId)
+                                              handleRowChange(
+                                                index,
+                                                "originalAmount",
+                                                priceDetails.baseCost || priceDetails.actualCost,
+                                              )
+                                              handleRowChange(index, "discountAmount", priceDetails.disc || 0)
+                                              handleRowChange(index, "netAmount", priceDetails.actualCost)
+                                              setActiveRowIndex(null)
+                                            }
+                                          }}
+                                        >
+                                          <div>
+                                            <strong>{item.packName}</strong>
+                                            <div className="d-flex justify-content-between">
+                                              <span>₹{item.actualCost.toFixed(2)}</span>
+                                            </div>
+                                          </div>
+                                        </li>
+                                      ))}
                                 </ul>
                               )}
                             </div>
@@ -1772,7 +1799,6 @@ const LabRegistration = () => {
                   <button type="button" className="btn btn-success" onClick={addRow}>
                     Add {formData.type === "investigation" ? "Investigation" : "Package"} +
                   </button>
-
                   <div className="d-flex">
                     <input
                       type="text"
@@ -1780,9 +1806,10 @@ const LabRegistration = () => {
                       placeholder="Enter Coupon Code"
                       style={{ width: "200px" }}
                     />
-                    <button type="button" className="btn btn-primary">
+                    <button type="button" className="btn btn-primary me-2">
                       <i className="icofont-ticket me-1"></i> Apply Coupon
                     </button>
+
                   </div>
                 </div>
               </div>
@@ -1816,7 +1843,7 @@ const LabRegistration = () => {
               <div className="card-body text-white">
                 {/* Summary Cards Grid */}
                 <div className="row g-3 mb-4">
-                  {/* Total Amount Card */}
+                  {/* Total Original Amount Card */}
                   <div className="col-md-3">
                     <div
                       className="card h-100"
@@ -1827,7 +1854,7 @@ const LabRegistration = () => {
                           <i className="fa fa-receipt fa-2x text-white" style={{ opacity: 0.8 }}></i>
                         </div>
                         <h6 className="card-title text-white mb-1">Total Amount</h6>
-                        <h4 className="text-white fw-bold">₹{paymentBreakdown.totalAmount}</h4>
+                        <h4 className="text-white fw-bold">₹{paymentBreakdown.totalOriginalAmount}</h4>
                       </div>
                     </div>
                   </div>
@@ -1860,7 +1887,7 @@ const LabRegistration = () => {
                             <i className="fa fa-file-invoice fa-2x text-warning"></i>
                           </div>
                           <h6 className="card-title text-white mb-1">Tax ({paymentBreakdown.gstPercent}% GST)</h6>
-                          <h4 className="text-warning fw-bold">₹{paymentBreakdown.taxAmount}</h4>
+                          <h4 className="text-warning fw-bold">₹{paymentBreakdown.totalGstAmount}</h4>
                         </div>
                       </div>
                     </div>
@@ -1881,7 +1908,7 @@ const LabRegistration = () => {
                           <i className="fa fa-credit-card fa-2x text-white"></i>
                         </div>
                         <h6 className="card-title text-white mb-1">Final Amount</h6>
-                        <h4 className="text-white fw-bold">₹{paymentBreakdown.finalPaymentAmount}</h4>
+                        <h4 className="text-white fw-bold">₹{paymentBreakdown.finalAmount}</h4>
                       </div>
                     </div>
                   </div>
@@ -1898,31 +1925,27 @@ const LabRegistration = () => {
                       <div className="col-md-8">
                         <div className="d-flex justify-content-between py-2 border-bottom">
                           <span className="text-muted">Subtotal ({paymentBreakdown.itemCount} items)</span>
-                          <span className="fw-medium text-dark">₹{paymentBreakdown.totalAmount}</span>
+                          <span className="fw-medium text-dark">₹{paymentBreakdown.totalOriginalAmount}</span>
                         </div>
-
                         {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
                           <div className="d-flex justify-content-between py-2 border-bottom">
                             <span className="text-success">Discount Applied</span>
                             <span className="fw-medium text-success">-₹{paymentBreakdown.totalDiscountAmount}</span>
                           </div>
                         )}
-
                         <div className="d-flex justify-content-between py-2 border-bottom">
                           <span className="text-muted">Amount after Discount</span>
-                          <span className="fw-medium text-dark">₹{paymentBreakdown.baseAmountAfterDiscount}</span>
+                          <span className="fw-medium text-dark">₹{paymentBreakdown.totalNetAmount}</span>
                         </div>
-
                         {paymentBreakdown.gstApplicable && (
                           <div className="d-flex justify-content-between py-2 border-bottom">
                             <span className="text-muted">GST ({paymentBreakdown.gstPercent}%)</span>
-                            <span className="fw-medium text-warning">+₹{paymentBreakdown.taxAmount}</span>
+                            <span className="fw-medium text-warning">+₹{paymentBreakdown.totalGstAmount}</span>
                           </div>
                         )}
-
                         <div className="d-flex justify-content-between py-3 border-top">
                           <span className="h5 fw-bold text-dark">Total Payable</span>
-                          <span className="h4 fw-bold text-primary">₹{paymentBreakdown.finalPaymentAmount}</span>
+                          <span className="h4 fw-bold text-primary">₹{paymentBreakdown.finalAmount}</span>
                         </div>
                       </div>
                       <div className="col-md-4">
@@ -1967,7 +1990,7 @@ const LabRegistration = () => {
                       disabled={loading || isAnyDateOrNameMissing || isMobileNoMissing}
                     >
                       <i className="fa fa-credit-card me-1"></i>
-                      {loading ? "Processing..." : `Pay Now - ₹${paymentBreakdown.finalPaymentAmount}`}
+                      {loading ? "Processing..." : `Pay Now - ₹${paymentBreakdown.finalAmount}`}
                     </button>
                     <button type="button" className="btn btn-secondary" onClick={handleReset}>
                       Reset
