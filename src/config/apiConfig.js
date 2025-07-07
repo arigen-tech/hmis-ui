@@ -152,3 +152,4 @@ export const MAS_INVESTIGATION = `/DgMasInvestigation`;
 export const MAS_PACKAGE_INVESTIGATION = `/investigation-package`;
 export const LAB_REGISTRATION = `/lab/registration`;
 export const INVESTIGATION_PACKAGE_Mapping = `/package-investigation-mapping`;
+export const INVESTIGATION_PACKAGE_API = `/investigation-package`;
