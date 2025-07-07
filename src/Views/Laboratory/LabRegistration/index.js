@@ -963,6 +963,17 @@ const LabRegistration = () => {
     (row) => !row.date || row.date.trim() === "" || !row.name || row.name.trim() === "",
   )
 
+  const isLastRowComplete = () => {
+    if (formData.rows.length === 0) return false;
+    const lastRow = formData.rows[formData.rows.length - 1];
+    return (
+      lastRow.name && lastRow.name.trim() !== "" &&
+      lastRow.date && lastRow.date.trim() !== "" &&
+      lastRow.originalAmount !== undefined && lastRow.originalAmount !== "" && !isNaN(lastRow.originalAmount) &&
+      lastRow.discountAmount !== undefined && lastRow.discountAmount !== "" && !isNaN(lastRow.discountAmount)
+    );
+  };
+
   // Get payment breakdown for display
   const paymentBreakdown = calculatePaymentBreakdown()
 
@@ -1796,7 +1807,7 @@ const LabRegistration = () => {
                 </table>
 
                 <div className="d-flex justify-content-between align-items-center">
-                  <button type="button" className="btn btn-success" onClick={addRow}>
+                  <button type="button" className="btn btn-success" onClick={addRow} disabled={!isLastRowComplete()}>
                     Add {formData.type === "investigation" ? "Investigation" : "Package"} +
                   </button>
                   <div className="d-flex">
