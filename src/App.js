@@ -55,6 +55,9 @@ import PaymentPage from './Views/Payment/payment';
 import LabPaymentSuccess from './Views/Payment/LabPaymentSuccess';
 import PackageMaster from './Views/Masters/PackageMaster';
 import PackageInvestigationMaster from './Views/Masters/PackageInvestigationMaster';
+import PendingForBilling from './Views/Laboratory/PendingForBilling';
+import OPDBillingDetails from './Views/Laboratory/OPDBillingDetails';
+import LabBillingDetails from './Views/Laboratory/LabBillingDetails';
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -145,6 +148,9 @@ function App() {
                 <Route path="view-and-update" element={<ViewAndUpdate/>}/>
                 <Route path="PackageMaster" element={<PackageMaster/>} />
                 <Route path="PackageInvestigationMaster" element={<PackageInvestigationMaster/>} />
+                <Route path="PendingForBilling" element={<PendingForBilling />} />
+                <Route path="OPDBillingDetails" element={<OPDBillingDetails />} />
+                <Route path="LabBillingDetails" element={<LabBillingDetails/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
