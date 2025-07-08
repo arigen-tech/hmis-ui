@@ -19,7 +19,7 @@ const LabPaymentSuccess = () => {
       <div className="container-xxl">
         <div className="row align-items-center">
           <div className="border-0 mb-4">
-            <div className="card-header py-3 no-bg bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
+            <div className="card-header py-3 no-bg bg-transparent d-flex align-items-center px-0 justify-content-center border-bottom flex-wrap">
               <h3 className="fw-bold mb-0">Payment Success</h3>
             </div>
           </div>
@@ -52,7 +52,7 @@ const LabPaymentSuccess = () => {
                         <strong>Transaction ID:</strong> {labData?.id || "N/A"}
                       </p>
                       <p className="mb-0">
-                        <strong>Patient ID:</strong> {patientId || "N/A"}
+                        <strong>Patient ID:</strong> {patientId || "Rakesh Kumar"}
                       </p>
                     </div>
                   </div>
@@ -67,7 +67,7 @@ const LabPaymentSuccess = () => {
                     Download Receipt
                   </button>
                   <button
-                    className="btn btn-outline-secondary d-flex align-items-center gap-2"
+                    className="btn btn-secondary d-flex align-items-center gap-2"
                     onClick={handleBackToRegistration}
                   >
                     Back to Lab Registration

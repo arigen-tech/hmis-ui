@@ -1,5 +1,8 @@
 import React from "react";
+import { useState, useEffect } from "react"
 import { useLocation, useNavigate } from "react-router-dom";
+import Popup from "../../../Components/popup"
+
 
 const PaymentPage = () => {
   const location = useLocation();
@@ -7,16 +10,31 @@ const PaymentPage = () => {
   // You can get payment data from location.state if passed
   const { amount = 0 } = location.state || {};
   const [paymentMethod, setPaymentMethod] = React.useState("card");
+  const [popupMessage, setPopupMessage] = useState(null)
+
+  // const showPopup = (message, type = "info") => {
+  //   setPopupMessage({
+  //     message,
+  //     type,
+  //     onClose: () => {
+  //       setPopupMessage(null)
+  //     },
+  //   })
+  // }
+
 
   const handlePayment = () => {
     // Simulate payment success
-    alert("Payment successful!");
-    navigate("/lab-payment-success", {
-      state: {
-        amount,      // the amount paid
-       }
-    }); // Go back or to a success page
-
+    setPopupMessage({
+      message: "Payment successful!",
+      type: "success",
+      onClose: () => {
+        setPopupMessage(null);
+        navigate("/lab-payment-success", {
+          state: { amount },
+        });
+      },
+    });
   };
 
   return (
@@ -33,9 +51,9 @@ const PaymentPage = () => {
           <div className="mb-3">
             <label className="form-label">Payment Method</label>
             <select className="form-select"
-            value={paymentMethod}
-            onChange={e => setPaymentMethod(e.target.value)}
-          >
+              value={paymentMethod}
+              onChange={e => setPaymentMethod(e.target.value)}
+            >
               <option value="card">Credit/Debit Card</option>
               <option value="upi">UPI</option>
               <option value="netbanking">Net Banking</option>
@@ -43,11 +61,14 @@ const PaymentPage = () => {
             </select>
           </div>
           {paymentMethod !== "cash" && (
-  <div className="mb-3">
-    <label className="form-label">Card/UPI/Account Details</label>
-    <input className="form-control" placeholder="Enter details..." />
-  </div>
-)}
+            <div className="mb-3">
+              <label className="form-label">Card/UPI/Account Details</label>
+              <input className="form-control" placeholder="Enter details..." />
+            </div>
+          )}
+           {popupMessage && (
+                <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
+              )}
           <button className="btn btn-success w-100" onClick={handlePayment}>
             <i className="fa fa-credit-card me-2"></i> Pay Now
           </button>

@@ -967,7 +967,7 @@ const LabRegistration = () => {
                       <div className="row g-3">
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="firstName">
-                            First Name *
+                            First Name <span className="text-danger">*</span>
                           </label>
                           <input
                             type="text"
@@ -1030,7 +1030,7 @@ const LabRegistration = () => {
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="gender">
-                            Gender *
+                            Gender <span className="text-danger">*</span>
                           </label>
                           <select
                             className={`form-select ${errors.gender ? "is-invalid" : ""}`}
@@ -1050,7 +1050,7 @@ const LabRegistration = () => {
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="relation">
-                            Relation *
+                            Relation <span className="text-danger">*</span>
                           </label>
                           <select
                             className={`form-select ${errors.relation ? "is-invalid" : ""}`}
@@ -1070,7 +1070,7 @@ const LabRegistration = () => {
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="dob">
-                            DOB *
+                            DOB <span className="text-danger">*</span>
                           </label>
                           <input
                             type="date"
@@ -1101,7 +1101,7 @@ const LabRegistration = () => {
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="email">
-                            Email *
+                            Email <span className="text-danger">*</span>
                           </label>
                           <input
                             type="email"
