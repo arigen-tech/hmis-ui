@@ -683,7 +683,7 @@ const LabBillingDetails = () => {
 
                 <div className="form-group col-md-12 d-flex justify-content-end mt-4">
                   <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                    Save Changes
+                    Pay Now
                   </button>
                   <button type="button" className="btn btn-danger" onClick={handleBack}>
                     Cancel
