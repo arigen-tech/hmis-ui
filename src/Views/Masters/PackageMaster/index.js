@@ -1,4 +1,4 @@
-"use client"
+
 
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
@@ -391,7 +391,7 @@ const PackageMaster = () => {
                         <th>Actual Cost</th>
                         <th>From Date</th>
                         <th>To Date</th>
-                        <th>Discount Flag</th>
+                        {/* <th>Discount Flag</th> */}
                         <th>Status</th>
                         <th>Edit</th>
                       </tr>
@@ -409,7 +409,7 @@ const PackageMaster = () => {
                             <td>₹{pkg.actualCost.toFixed(2)}</td>
                             <td>{pkg.fromDt}</td>
                             <td>{pkg.toDt || "NULL"}</td>
-                            <td style={{ textTransform: "uppercase" }}>{pkg.discFlag}</td>
+                            {/* <td style={{ textTransform: "uppercase" }}>{pkg.discFlag}</td> */}
                             <td>
                               <div className="form-check form-switch">
                                 <input
