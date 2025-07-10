@@ -3,20 +3,25 @@ import Popup from "../../../Components/popup"
 import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS } from "../../../config/apiConfig";
 import { getRequest, putRequest } from "../../../service/apiService"
 import ReactDOM from 'react-dom';
+import LoadingScreen from "../../../Components/Loading";
+
 
 const OpeningBalanceApproval = () => {
   const [currentView, setCurrentView] = useState("list") // "list" or "detail"
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [loadingScr, setLoadingScr] = useState(false)
   const [approvalData, setApprovalData] = useState([])
   const [brandOptions, setBrandOptions] = useState([])
+  const [dtRecord, setDtRecord] = useState([])
   const [manufacturerOptions, setManufacturerOptions] = useState([])
   const [drugCodeOptions, setDrugCodeOptions] = useState([])
   const crUser = localStorage.getItem("username") || sessionStorage.getItem("username");
   const [currentLogUser, setCurrentLogUser] = useState(null);
   const deptId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
   const [currentDept, setCurrentDept] = useState(null);
-
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   const getCurrentDateTime = () => new Date().toISOString();
 
@@ -34,7 +39,7 @@ const OpeningBalanceApproval = () => {
 
   const fetchOpenBalance = async () => {
     try {
-      setLoading(true);
+      setLoadingScr(true);
       const status = "p,s,a,r";
       const response = await getRequest(`${OPEN_BALANCE}/list/${status}`);
 
@@ -46,7 +51,7 @@ const OpeningBalanceApproval = () => {
     } catch (err) {
       console.error("Error fetching drug options:", err);
     } finally {
-      setLoading(false);
+      setLoadingScr(false);
     }
   };
 
@@ -147,15 +152,30 @@ const OpeningBalanceApproval = () => {
 
 
   const [popupMessage, setPopupMessage] = useState(null)
-  const [fromDate, setFromDate] = useState("29/05/2025")
-  const [toDate, setToDate] = useState("29/05/2025")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
   const [detailEntries, setDetailEntries] = useState([])
   const statusOrder = { s: 1, p: 3, r: 2, a: 4 };
   const itemsPerPage = 10
-  const totalPages = Math.ceil(approvalData.length / itemsPerPage)
-  const currentItems = [...approvalData]
+  // Helper to format date to yyyy-mm-dd
+  const formatDate = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "";
+    return d.toISOString().split("T")[0];
+  };
+
+  // Filtered data based on date range
+  const filteredApprovalData = approvalData.filter((item) => {
+    if (!fromDate || !toDate) return true;
+    const itemDate = formatDate(item.enteredDt);
+    const from = formatDate(fromDate);
+    const to = formatDate(toDate);
+    return itemDate >= from && itemDate <= to;
+  });
+
+  const totalPages = Math.ceil(filteredApprovalData.length / itemsPerPage)
+  const currentItems = [...filteredApprovalData]
     .sort((a, b) => (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99))
     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -176,13 +196,10 @@ const OpeningBalanceApproval = () => {
     setSelectedRecord(null)
   }
 
-  const handleSearch = () => {
-    console.log("Searching from", fromDate, "to", toDate)
-  }
-
   const handleShowAll = () => {
-    setFromDate("")
-    setToDate("")
+    setFromDate("");
+    setToDate("");
+    setCurrentPage(1);
   }
 
   const handlePageNavigation = () => {
@@ -215,8 +232,16 @@ const OpeningBalanceApproval = () => {
   }
 
   const deleteEntry = (id) => {
-    setDetailEntries(detailEntries.filter((entry) => entry.id !== id))
-  }
+    setDetailEntries(detailEntries.filter((entry) => entry.id !== id));
+    setDtRecord((prev) => {
+      const updated = [...prev, id];
+      return updated;
+    });
+  };
+
+  console.log("deleteEntry :", dtRecord)
+
+
   const updateEntry = (id, field, value) => {
     const updatedEntries = detailEntries.map((entry) => {
       if (entry.id === id) {
@@ -289,31 +314,30 @@ const OpeningBalanceApproval = () => {
       return;
     }
 
+    const storeBalanceDtList = detailEntries.map(entry => ({
+      balanceId: entry.balanceTId ?? null,
+      itemId: entry.itemId ?? entry.id ?? null,
+      batchNo: entry.batchNo ?? "",
+      manufactureDate: formatToDate(entry.dom ?? entry.manufactureDate),
+      expiryDate: formatToDate(entry.doe ?? entry.expiryDate),
+      unitsPerPack: parseNumber(entry.unitsPerPack),
+      purchaseRatePerUnit: parseNumber(entry.purchaseRatePerUnit),
+      gstPercent: parseNumber(entry.gstPercent),
+      mrpPerUnit: parseNumber(entry.mrpPerUnit),
+      qty: parseNumber(entry.qty),
+      totalPurchaseCost: parseFloat(entry.totalPurchaseCost ?? entry.totalCost ?? 0),
+      brandId: parseNumber(entry.brandId),
+      manufacturerId: parseNumber(entry.manufacturerId),
+    }));
+
     const requestPayload = {
       id: selectedRecord.balanceMId,
       departmentId: formData.department,
       enteredBy: formData.enteredBy,
       enteredDt: new Date(formData.balanceEntryDate).toISOString(),
       status: status,
-      storeBalanceDtList: detailEntries.map(entry => ({
-        balanceId: entry.balanceTId ?? null,
-        itemId: entry.itemId ?? entry.id ?? null,
-        batchNo: entry.batchNo ?? "",
-        manufactureDate: formatToDate(entry.manufactureDate ?? entry.dom),
-        expiryDate: formatToDate(entry.expiryDate ?? entry.doe),
-        unitsPerPack: entry.unitsPerPack ? parseInt(entry.unitsPerPack) : null,
-        purchaseRatePerUnit: entry.purchaseRatePerUnit ? parseFloat(entry.purchaseRatePerUnit) : null,
-        gstPercent: entry.gstPercent ? parseFloat(entry.gstPercent) : null,
-        mrpPerUnit: entry.mrpPerUnit ? parseFloat(entry.mrpPerUnit) : null,
-        qty: entry.qty ? parseInt(entry.qty) : null,
-        totalPurchaseCost: entry.totalPurchaseCost
-          ? parseFloat(entry.totalPurchaseCost)
-          : entry.totalCost
-            ? parseFloat(entry.totalCost)
-            : null,
-        brandId: entry.brandId ? parseInt(entry.brandId) : null,
-        manufacturerId: entry.manufacturerId ? parseInt(entry.manufacturerId) : null,
-      })),
+      deletedDt: Array.isArray(dtRecord) && dtRecord.length > 0 ? dtRecord : null,
+      storeBalanceDtList,
     };
 
     try {
@@ -321,16 +345,30 @@ const OpeningBalanceApproval = () => {
         `${OPEN_BALANCE}/updateById/${selectedRecord.balanceMId}`,
         requestPayload
       );
+
       console.log("Payload to submit:", requestPayload);
-      showPopup(status === "p" ? "Entries submitted successfully!" : "Entries updated successfully!", "success");
+
+      showPopup(
+        status === "p" ? "Entries submitted successfully!" : "Entries updated successfully!",
+        "success"
+      );
+
+      await fetchOpenBalance();
+      setSelectedRecord(null);
+      setDetailEntries([]);
+      setDtRecord([]);
+      setCurrentView("list");
+
     } catch (error) {
       console.error("Error submitting data:", error);
       showPopup("Failed to update entries!", "error");
     }
   };
 
+  const parseNumber = (value) => (value ? parseFloat(value) : null);
 
-  console.log("Detail Entries:", detailEntries)
+
+
 
   const handleReset = () => {
     setDetailEntries([
@@ -411,6 +449,9 @@ const OpeningBalanceApproval = () => {
               {popupMessage && (
                 <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
               )}
+
+              {loadingScr && <LoadingScreen />}
+
 
               <div className="card-body">
                 {/* Entry Details Header */}
@@ -814,7 +855,7 @@ const OpeningBalanceApproval = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={entry.totalCost || entry.totalPurchaseCost || ""}
+                              value={entry.totalCost || entry.totalMrpValue || ""}
                               readOnly
                               style={{ backgroundColor: "#f8f9fa", minWidth: "90px" }}
 
@@ -844,7 +885,7 @@ const OpeningBalanceApproval = () => {
                               className="form-select"
                               value={entry.manufacturerId || ""}
                               onChange={(e) => updateEntry(entry.id, "manufacturerId", e.target.value)}
-                              style={{ minWidth: "130px" }}
+                              style={{ minWidth: "170px" }}
                               disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             >
                               <option value="">Select</option>
@@ -944,7 +985,11 @@ const OpeningBalanceApproval = () => {
                     type="date"
                     className="form-control"
                     value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
+                    onChange={(e) => {
+                      setFromDate(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    max={toDate || undefined}
                   />
                 </div>
                 <div className="col-md-3">
@@ -953,14 +998,14 @@ const OpeningBalanceApproval = () => {
                     type="date"
                     className="form-control"
                     value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
+                    onChange={(e) => {
+                      setToDate(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    min={fromDate || undefined}
                   />
                 </div>
-                <div className="col-md-3 d-flex align-items-end">
-                  <button type="button" className="btn me-2 btn-success" onClick={handleSearch}>
-                    Search
-                  </button>
-                </div>
+                <div className="col-md-3 d-flex align-items-end"></div>
                 <div className="col-md-3 d-flex justify-content-end align-items-end">
                   <button type="button" className="btn btn-success" onClick={handleShowAll}>
                     Show All

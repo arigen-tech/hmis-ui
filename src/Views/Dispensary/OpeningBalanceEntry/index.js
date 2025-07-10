@@ -418,6 +418,7 @@ const OpeningBalanceEntry = () => {
 
       if (response?.status === 200 || response?.success) {
         showPopup("Opening Balance Submit successfully!", "success");
+        handleReset();
       } else {
         showPopup("Failed to Submit data. Please try again.", "error");
       }

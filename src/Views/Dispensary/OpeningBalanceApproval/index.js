@@ -11,6 +11,7 @@ const OpeningBalanceApproval = () => {
   const [approvalData, setApprovalData] = useState([]);
   const [action, setAction] = useState("");
   const [remark, setRemark] = useState("");
+  const [popupMessage, setPopupMessage] = useState(null)
 
 
 
@@ -42,8 +43,8 @@ const OpeningBalanceApproval = () => {
   }, [approvalData]);
 
 
-  const [fromDate, setFromDate] = useState("29/05/2025")
-  const [toDate, setToDate] = useState("29/05/2025")
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
 
@@ -51,9 +52,26 @@ const OpeningBalanceApproval = () => {
 
   const [detailEntries, setDetailEntries] = useState([])
 
-  const itemsPerPage = 10
-  const totalPages = Math.ceil(approvalData.length / itemsPerPage)
-  const currentItems = approvalData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  // Helper to format date to yyyy-mm-dd
+  const formatDate = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "";
+    return d.toISOString().split("T")[0];
+  };
+
+  // Filtered data based on date range (only when both dates are present)
+  const filteredApprovalData = approvalData.filter((item) => {
+    if (!fromDate || !toDate) return true;
+    const itemDate = formatDate(item.enteredDt);
+    const from = formatDate(fromDate);
+    const to = formatDate(toDate);
+    return itemDate >= from && itemDate <= to;
+  });
+
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(filteredApprovalData.length / itemsPerPage);
+  const currentItems = filteredApprovalData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const handleEdit = (item) => {
     setSelectedRecord(item)
@@ -71,8 +89,9 @@ const OpeningBalanceApproval = () => {
   }
 
   const handleShowAll = () => {
-    setFromDate("")
-    setToDate("")
+    setFromDate("");
+    setToDate("");
+    setCurrentPage(1);
   }
 
   const handlePageNavigation = () => {
@@ -84,9 +103,18 @@ const OpeningBalanceApproval = () => {
     }
   }
 
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null)
+      },
+    })
+  }
+
   const handleSubmit = async () => {
     console.log("Submitting id:", selectedRecord.balanceMId);
-    alert("Entries submitted successfully!");
 
     const payload = {
       remark: remark || "",
@@ -95,15 +123,23 @@ const OpeningBalanceApproval = () => {
 
     try {
       const response = await putRequest(`${OPEN_BALANCE}/Approved/${selectedRecord.balanceMId}`, payload);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
       setCurrentView("list");
       setSelectedRecord(null);
+      showPopup(
+        `${payload.status === "a" ? "Approved" : "Rejected"} successfully!`,
+        "success"
+      );
+      await fetchOpenBalance();
+      setSelectedRecord(null);
       setDetailEntries([]);
-      fetchOpenBalance();
+      setCurrentView("list");
+
+
+    } catch (error) {
+      console.error("Error fetching data:", error);
     }
   };
+
 
 
 
@@ -470,7 +506,11 @@ const OpeningBalanceApproval = () => {
                     type="date"
                     className="form-control"
                     value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
+                    onChange={(e) => {
+                      setFromDate(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    max={toDate || undefined}
                   />
                 </div>
                 <div className="col-md-3">
@@ -479,14 +519,14 @@ const OpeningBalanceApproval = () => {
                     type="date"
                     className="form-control"
                     value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
+                    onChange={(e) => {
+                      setToDate(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    min={fromDate || undefined}
                   />
                 </div>
-                <div className="col-md-3 d-flex align-items-end">
-                  <button type="button" className="btn me-2 btn-success" onClick={handleSearch}>
-                    Search
-                  </button>
-                </div>
+                <div className="col-md-3 d-flex align-items-end"></div>
                 <div className="col-md-3 d-flex justify-content-end align-items-end">
                   <button type="button" className="btn btn-success" onClick={handleShowAll}>
                     Show All
@@ -540,8 +580,6 @@ const OpeningBalanceApproval = () => {
                         </td>
                       </tr>
                     ))}
-
-
                   </tbody>
                 </table>
               </div>
@@ -550,7 +588,7 @@ const OpeningBalanceApproval = () => {
               <nav className="d-flex justify-content-between align-items-center mt-2">
                 <div>
                   <span>
-                    Page {currentPage} of {totalPages} | Total Records: {approvalData.length}
+                    Page {currentPage} of {totalPages} | Total Records: {filteredApprovalData.length}
                   </span>
                 </div>
                 <ul className="pagination mb-0">
