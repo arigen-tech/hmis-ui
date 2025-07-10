@@ -58,6 +58,9 @@ import PackageInvestigationMaster from './Views/Masters/PackageInvestigationMast
 import PendingForBilling from './Views/Laboratory/PendingForBilling';
 import OPDBillingDetails from './Views/Laboratory/OPDBillingDetails';
 import LabBillingDetails from './Views/Laboratory/LabBillingDetails';
+import StockStatusReport from './Views/Dispensary/StockStatusReport';
+import OpdWaitingList from './Views/OPD/OpdWaitingList';
+import UpdateLabRegistration from './Views/Laboratory/UpdateLabRegistration';
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -151,6 +154,9 @@ function App() {
                 <Route path="PendingForBilling" element={<PendingForBilling />} />
                 <Route path="OPDBillingDetails" element={<OPDBillingDetails />} />
                 <Route path="LabBillingDetails" element={<LabBillingDetails/>} />
+                <Route path="StockStatusReport" element={<StockStatusReport/>} />
+                <Route path="OPDWaitingList" element={<OpdWaitingList />} />
+                <Route path="UpdateLabRegistration" element={<UpdateLabRegistration/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>

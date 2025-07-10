@@ -65,6 +65,9 @@ const validRoutes = [
   "/PendingForBilling",
   "/OPDBillingDetails",
   "/LabBillingDetails",
+  "/StockStatusReport",
+  "/OPDWaitingList",
+  "/UpdateLabRegistration"
 ];
 
 const NotAuthorized = () => {
