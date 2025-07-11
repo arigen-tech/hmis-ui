@@ -1,87 +1,59 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
+import './StockStatusReport.css';
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import { MAS_ITEM_SECTION, MAS_ITEM_CLASS, OPEN_BALANCE } from "../../../config/apiConfig";
+import LoadingScreen from "../../../Components/Loading";
+
 
 const StockStatusReport = () => {
-  const [stockList, setStockList] = useState([
-    {
-      id: 1,
-      drug_code: "D492",
-      drug_name: "ORAL SUSPENSION 200 MG + 40 MG/5 ML",
-      au: "BOTTLE",
-      batch_no: "NOB23005ED",
-      dom: "01/10/2023",
-      doe: "02/10/2025",
-      stock_qty: 12,
-      medicine_source: "DGMSY",
-      manufacturer: "Alkem",
-    },
-    {
-      id: 2,
-      drug_code: "D4",
-      drug_name: "ACETYL SALICYLIC ACID (ASA) TABLET (ENTERIC COATED) 325 MG",
-      au: "No.",
-      batch_no: "04008214",
-      dom: "14/09/2021",
-      doe: "11/09/2025",
-      stock_qty: 5,
-      medicine_source: "DGMSY",
-      manufacturer: "KNOLL HEALTHCARE PVT LTD",
-    },
-    {
-      id: 3,
-      drug_code: "D3",
-      drug_name: "Acetyl salicylic acid (Aspirin) - 150 Tab. IP",
-      au: "No.",
-      batch_no: "04009820",
-      dom: "01/08/2023",
-      doe: "31/07/2025",
-      stock_qty: 8640,
-      medicine_source: "DGMSY",
-      manufacturer: "Abott",
-    },
-    {
-      id: 4,
-      drug_code: "D2",
-      drug_name: "Acetyl salicylic acid (Aspirin) - 75 Tab. IP",
-      au: "No.",
-      batch_no: "04009820",
-      dom: "01/08/2023",
-      doe: "31/07/2025",
-      stock_qty: 6462,
-      medicine_source: "DGMSY",
-      manufacturer: "Abott",
-    },
-    {
-      id: 5,
-      drug_code: "D5",
-      drug_name: "Active Charcoal Powder",
-      au: "No.",
-      batch_no: "ACT2023001",
-      dom: "15/03/2023",
-      doe: "14/03/2026",
-      stock_qty: 103,
-      medicine_source: "DGMSY",
-      manufacturer: "Pharma Corp",
-    },
-    {
-      id: 6,
-      drug_code: "D13",
-      drug_name: "Albendazole Suspension IP 200 mg / 5ml",
-      au: "BOTTLE",
-      batch_no: "ALB2023005",
-      dom: "20/05/2023",
-      doe: "19/05/2026",
-      stock_qty: 9597,
-      medicine_source: "DGMSY",
-      manufacturer: "Sun Pharma",
-    },
-  ])
+  const [sections, setSections] = useState([])
+  const [classes, setClasses] = useState([])
+  const [stocks, setStocks] = useState([])
+  const [loading, setLoading] = useState(true)
+
+
+  useEffect(() => {
+    fetchItemSection();
+  }, []);
+
+  const fetchItemSection = async () => {
+    try {
+      const data = await getRequest(`${MAS_ITEM_SECTION}/getAll/1`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setSections(data.response);
+        await fetchItemClassData();
+      } else {
+        setSections([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Store Section data:", error);
+    }
+  };
+
+  const fetchItemClassData = async (sectionId) => {
+    try {
+      const data = await getRequest(`${MAS_ITEM_CLASS}/getAllBySectionId/${sectionId}`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setClasses(data.response);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setClasses([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Service Category data:", error);
+    }
+  };
+
+
+
+
 
   const [filters, setFilters] = useState({
     class: "All",
     section: "All",
-    drugCode: "",
-    drugName: "",
+    itemCode: "",
+    itemName: "",
   })
 
   const [reportType, setReportType] = useState("summary")
@@ -91,36 +63,47 @@ const StockStatusReport = () => {
   const [pageInput, setPageInput] = useState("")
   const itemsPerPage = 5
   const [reportGenerated, setReportGenerated] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
 
-  const handleFilterChange = (e) => {
-    const { id, value } = e.target
-    setFilters((prevFilters) => ({ ...prevFilters, [id]: value }))
-    setCurrentPage(1)
+const handleFilterChange = (e) => {
+  const { id, value } = e.target;
+
+  setFilters((prevFilters) => ({
+    ...prevFilters,
+    [id]: value,
+    ...(id === "section" ? { class: "All" } : {}),
+  }));
+
+  setCurrentPage(1);
+
+  if (id === "section") {
+    fetchItemClassData(value); 
   }
+};
+
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
     setCurrentPage(1)
   }
 
-  const filteredStockList = stockList.filter((item) => {
-    const matchesSearch =
-      item.drug_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.drug_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.manufacturer.toLowerCase().includes(searchQuery.toLowerCase())
+  // Filter function for both stocks and stockDt
+  const filterItems = (items) => {
+    return items.filter((item) => {
+      const matchesSection =
+        filters.section === "All" || item.sectionId === Number(filters.section);
+      const matchesItemCode =
+        !filters.itemCode || item.itemCode.toLowerCase().includes(filters.itemCode.toLowerCase());
+      const matchesItemName =
+        !filters.itemName || item.itemName.toLowerCase().includes(filters.itemName.toLowerCase());
+      const matchesClass =
+        filters.class === "All" || item.classId === Number(filters.class);
 
-    const matchesDrugCode =
-      filters.drugCode === "" || item.drug_code.toLowerCase().includes(filters.drugCode.toLowerCase())
+      return matchesSection && matchesItemCode && matchesItemName && matchesClass;
+    });
+  };
 
-    const matchesDrugName =
-      filters.drugName === "" || item.drug_name.toLowerCase().includes(filters.drugName.toLowerCase())
-
-    // For now, class and section filters are just placeholders (no effect on data)
-    const matchesClass = filters.class === "All" // or add logic if you have class info in data
-    const matchesSection = filters.section === "All" // or add logic if you have section info in data
-
-    return matchesSearch && matchesDrugCode && matchesDrugName && matchesClass && matchesSection
-  })
+  const filteredStockList = filterItems(stocks);
 
   const filteredTotalPages = Math.ceil(filteredStockList.length / itemsPerPage)
   const currentItems = filteredStockList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
@@ -135,13 +118,37 @@ const StockStatusReport = () => {
     })
   }
 
-  const handleGenerateReport = () => {
-    setReportGenerated(true);
-    showPopup("Report generated successfully!", "success")
-  }
+const handleGenerateReport = () => {
+  setLoading(true); 
+
+  const fetchStoreReportData = async () => {
+    try {
+      const data = await getRequest(`${OPEN_BALANCE}/getAllStock/${reportType}`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setStocks(data.response);
+        showPopup("Report generated successfully!", "success");
+        setReportGenerated(true);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setStocks([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Store Report data:", error);
+    } finally {
+      setLoading(false); 
+    }
+  };
+
+  fetchStoreReportData(); 
+};
+
 
   const handlePrintReport = () => {
-    window.print()
+    setIsPrinting(true);
+    setTimeout(() => {
+      window.print();
+      setIsPrinting(false);
+    }, 100);
   }
 
   const handlePageNavigation = () => {
@@ -200,35 +207,53 @@ const StockStatusReport = () => {
                 Stock Status Report
               </h4>
             </div>
+            {/* {loading && <LoadingScreen />} */}
             <div className="card-body">
               {/* Filters Section */}
               <div className="row mb-4">
+
                 <div className="col-md-2">
-                  <label className="form-label">Class</label>
-                  <select className="form-select" id="class" value={filters.class} onChange={handleFilterChange}>
+                  <label className="form-label">Section</label>
+                  <select
+                    className="form-select"
+                    id="section"
+                    value={filters.section}
+                    onChange={handleFilterChange}
+                  >
                     <option value="All">All</option>
-                    <option value="Class A">Class A</option>
-                    <option value="Class B">Class B</option>
-                    <option value="Class C">Class C</option>
+                    {sections.map((sec) => (
+                      <option key={sec.sectionId} value={sec.sectionId}>
+                        {sec.sectionName}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="col-md-2">
-                  <label className="form-label">Section</label>
-                  <select className="form-select" id="section" value={filters.section} onChange={handleFilterChange}>
+                  <label className="form-label">Class</label>
+                  <select
+                    className="form-select"
+                    id="class"
+                    value={filters.class}
+                    onChange={handleFilterChange}
+                    disabled={filters.section === "All"}
+                  > 
                     <option value="All">All</option>
-                    <option value="Section 1">Section 1</option>
-                    <option value="Section 2">Section 2</option>
-                    <option value="Section 3">Section 3</option>
+                    {classes.map((cls) => (
+                      <option key={cls.itemClassId} value={cls.itemClassId}>
+                        {cls.itemClassName}
+                      </option>
+                    ))}
                   </select>
+
                 </div>
                 <div className="col-md-3">
                   <label className="form-label">Drug Code</label>
                   <input
                     type="text"
                     className="form-control"
-                    id="drugCode"
+                    id="itemCode"
                     placeholder="Enter Drug Code"
-                    value={filters.drugCode}
+                    value={filters.itemCode}
                     onChange={handleFilterChange}
                   />
                 </div>
@@ -237,9 +262,9 @@ const StockStatusReport = () => {
                   <input
                     type="text"
                     className="form-control"
-                    id="drugName"
+                    id="itemName"
                     placeholder="Enter Drug Name"
-                    value={filters.drugName}
+                    value={filters.itemName}
                     onChange={handleFilterChange}
                   />
                 </div>
@@ -270,15 +295,15 @@ const StockStatusReport = () => {
                       className="form-check-input"
                       type="radio"
                       name="reportType"
-                      id="detail"
-                      value="detail"
-                      checked={reportType === "detail"}
+                      id="details"
+                      value="details"
+                      checked={reportType === "details"}
                       onChange={(e) => {
                         setReportType(e.target.value);
                         setReportGenerated(false); // Reset report on type change
                       }}
                     />
-                    <label className="form-check-label" htmlFor="detail">
+                    <label className="form-check-label" htmlFor="details">
                       Detail
                     </label>
                   </div>
@@ -287,7 +312,7 @@ const StockStatusReport = () => {
                   <button
                     type="button"
                     className="btn btn-success me-2"
-                   
+
                     onClick={handleGenerateReport}
                   >
                     Generate Report
@@ -317,13 +342,13 @@ const StockStatusReport = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {currentItems.map((item, index) => (
-                          <tr key={item.id}>
-                            <td>{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                            <td>{item.drug_code}</td>
-                            <td>{item.drug_name}</td>
-                            <td>{item.au}</td>
-                            <td>{item.stock_qty}</td>
+                        {(isPrinting ? filteredStockList : currentItems).map((item, index) => (
+                          <tr key={item.stockId}>
+                            <td>{(isPrinting ? index + 1 : (currentPage - 1) * itemsPerPage + index + 1)}</td>
+                            <td>{item.itemCode}</td>
+                            <td>{item.itemName}</td>
+                            <td>{item.unitAu}</td>
+                            <td>{item.openingQty}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -345,18 +370,18 @@ const StockStatusReport = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {currentItems.map((item, index) => (
-                          <tr key={item.id}>
-                            <td>{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                            <td>{item.drug_code}</td>
-                            <td>{item.drug_name}</td>
-                            <td>{item.au}</td>
-                            <td>{item.batch_no}</td>
+                        {(isPrinting ? filteredStockList : currentItems).map((item, index) => (
+                          <tr key={item.stockId}>
+                            <td>{(isPrinting ? index + 1 : (currentPage - 1) * itemsPerPage + index + 1)}</td>
+                            <td>{item.itemCode}</td>
+                            <td>{item.itemName}</td>
+                            <td>{item.unitAu}</td>
+                            <td>{item.batchNo}</td>
                             <td>{item.dom}</td>
                             <td>{item.doe}</td>
-                            <td>{item.stock_qty}</td>
-                            <td>{item.medicine_source}</td>
-                            <td>{item.manufacturer}</td>
+                            <td>{item.openingQty}</td>
+                            <td>{item.medicineSource}</td>
+                            <td>{item.manufacturerName}</td>
                           </tr>
                         ))}
                       </tbody>
