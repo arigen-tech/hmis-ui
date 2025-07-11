@@ -244,7 +244,7 @@ const UpdateLabRegistration = () => {
     setImage(placeholderImage)
   }
 
-  const handleEdit = (patient) => {
+  const handleBook = (patient) => {
     // Fixed: Properly merge patient data with lab form structure
     setPatientDetailForm({
       ...patient,
@@ -262,7 +262,7 @@ const UpdateLabRegistration = () => {
         },
       ],
     })
-    console.log("Patient selected:", patient)
+    console.log("Patient selected for booking:", patient)
     setShowPatientDetails(true)
   }
 
@@ -426,7 +426,7 @@ const UpdateLabRegistration = () => {
         }
 
         // Mock lab data submission
-        console.log("Lab data would be submitted:", {
+        console.log("Lab booking data would be submitted:", {
           patientId: patientDetailForm.id,
           labInvestigationReq: patientDetailForm.rows.map((row, index) => ({
             id: row.itemId,
@@ -438,11 +438,15 @@ const UpdateLabRegistration = () => {
           })),
         })
 
-        await Swal.fire("Lab Registration Updated", "Lab registration has been successfully updated!", "success")
+        await Swal.fire(
+          "Lab Booking Confirmed",
+          "Lab booking has been successfully confirmed for follow-up patient!",
+          "success",
+        )
         setShowPatientDetails(false)
       } catch (error) {
         console.error("Error:", error)
-        Swal.fire("Error!", error.message || "Update failed", "error")
+        Swal.fire("Error!", error.message || "Booking failed", "error")
       }
     }
   }
@@ -472,7 +476,7 @@ const UpdateLabRegistration = () => {
         <div className="row align-items-center">
           <div className="border-0 mb-4">
             <div className="card-header py-3 no-bg bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
-              <h3 className="fw-bold mb-0">Update Lab Registration</h3>
+              <h3 className="fw-bold mb-0">Lab Booking - Follow up Patient</h3>
             </div>
           </div>
         </div>
@@ -532,7 +536,7 @@ const UpdateLabRegistration = () => {
                     </div>
                   </div>
 
-                  <div className="mt-3 mb-2">
+                  <div className="mt-3 mb-3">
                     <button type="button" className="btn btn-primary me-2" onClick={handleSearch}>
                       Search
                     </button>
@@ -568,12 +572,12 @@ const UpdateLabRegistration = () => {
                             <td>
                               <button
                                 type="button"
-                                className="btn btn-primary btn-sm"
-                                onClick={() => handleEdit(patient)}
+                                className="btn btn-success btn-sm"
+                                onClick={() => handleBook(patient)}
                               >
-                                Edit
+                                Book
                                 <span className="ms-2">
-                                  <i className="icofont-edit"></i>
+                                  <i className="icofont-calendar"></i>
                                 </span>
                               </button>
                             </td>
@@ -1532,7 +1536,7 @@ const UpdateLabRegistration = () => {
                     <div className="row g-3">
                       <div className="mt-4">
                         <button type="button" onClick={handleSubmit} className="btn btn-primary me-2">
-                          Update Lab Registration
+                          Confirm Lab Booking
                         </button>
                         <button type="reset" className="btn btn-secondary">
                           Reset
