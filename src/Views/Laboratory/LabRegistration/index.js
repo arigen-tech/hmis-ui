@@ -737,7 +737,6 @@ const LabRegistration = () => {
       return;
     }
 
-
     if (isFormValid) {
       console.log("Form validation passed, proceeding with registration...");
       try {
@@ -801,18 +800,19 @@ const LabRegistration = () => {
         const paymentBreakdown = calculatePaymentBreakdown();
         const totalFinalAmount = parseFloat(paymentBreakdown.finalAmount);
 
-        // ✅ Build final lab request
+        // ✅ Build final lab request - SEND ALL ITEMS (both checked and unchecked)
         const labData = {
           patientId: patientId,
           labInvestigationReq: [],
         };
 
+        // Send ALL rows with their respective check status
         formData.rows.forEach((row, index) => {
-          if (checkedRows[index]) {
+          if (row.itemId) { // Only include rows that have valid itemId
             labData.labInvestigationReq.push({
               id: row.itemId,
               appointmentDate: row.date || new Date().toISOString().split("T")[0],
-              checkStatus: true,
+              checkStatus: checkedRows[index] || false, // Send actual check status
               actualAmount: parseFloat(row.originalAmount) || 0,
               discountedAmount: parseFloat(row.discountAmount) || 0,
               type: row.type === "investigation" ? "i" : "p",
@@ -843,8 +843,9 @@ const LabRegistration = () => {
                 patientId,
                 labData: labResult,
                 selectedItems: {
-                  investigations: labData.labInvestigationReq.filter((i) => i.type === "i"),
-                  packages: labData.labInvestigationReq.filter((i) => i.type === "p"),
+                  // Only send checked items to payment page
+                  investigations: labData.labInvestigationReq.filter((i) => i.type === "i" && i.checkStatus),
+                  packages: labData.labInvestigationReq.filter((i) => i.type === "p" && i.checkStatus),
                 },
                 paymentBreakdown,
               },
@@ -1007,7 +1008,7 @@ const LabRegistration = () => {
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="mobileNo">
-                            Mobile No.
+                            Mobile No.<span className="text-danger">*</span>
                           </label>
                           <input
                             type="text"
