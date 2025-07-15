@@ -63,6 +63,7 @@ import OpdWaitingList from './Views/OPD/OpdWaitingList';
 import UpdateLabRegistration from './Views/Laboratory/UpdateLabRegistration';
 import UpdateUnitRate from './Views/Dispensary/UpdateUnitRate';
 import DrugExpiry from './Views/Stores/DrugExpiryReport';
+import PendingSampleCollection from './Views/Laboratory/PendingForSampleCollection';
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -161,6 +162,7 @@ function App() {
                 <Route path="UpdateLabRegistration" element={<UpdateLabRegistration/>} />
                 <Route path="UpdateUnitRate" element={<UpdateUnitRate/>} />
                 <Route path="DrugExpiry" element={<DrugExpiry />} />
+                <Route path="PendingSampleCollection" element={<PendingSampleCollection/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>

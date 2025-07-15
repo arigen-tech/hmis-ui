@@ -70,6 +70,7 @@ const validRoutes = [
   "/UpdateLabRegistration",
   "/UpdateUnitRate",
   "/DrugExpiry",
+  "/PendingSampleCollection",
 ];
 
 const NotAuthorized = () => {
