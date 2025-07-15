@@ -260,14 +260,27 @@ const LabRegistration = () => {
   }
 
   function calculateAgeFromDOB(dob) {
-    const birthDate = new Date(dob)
-    const today = new Date()
-    let age = today.getFullYear() - birthDate.getFullYear()
-    const m = today.getMonth() - birthDate.getMonth()
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--
+    const birthDate = new Date(dob);
+    const today = new Date();
+
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+    let days = today.getDate() - birthDate.getDate();
+
+    // Adjust if the day difference is negative
+    if (days < 0) {
+      months--;
+      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+      days += prevMonth.getDate();
     }
-    return age
+
+    // Adjust if the month difference is negative
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    return `${years}Y ${months}M ${days}D`;
   }
 
   const handleChange = async (e) => {
@@ -1087,7 +1100,7 @@ const LabRegistration = () => {
                             Age
                           </label>
                           <input
-                            type="number"
+                            type="text" // <<== NOT number!
                             id="age"
                             name="age"
                             className={`form-control ${errors.age ? "is-invalid" : ""}`}
@@ -1095,6 +1108,7 @@ const LabRegistration = () => {
                             onChange={handleChange}
                             placeholder="Enter Age"
                           />
+
                           {errors.age && <div className="invalid-feedback">{errors.age}</div>}
                         </div>
                         <div className="col-md-4">

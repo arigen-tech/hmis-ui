@@ -1,6 +1,6 @@
-import React, {useState, useRef, useEffect} from "react";
+import React, { useState, useRef, useEffect } from "react";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
-import {getRequest, postRequest} from "../../../service/apiService";
+import { getRequest, postRequest } from "../../../service/apiService";
 import Swal from "sweetalert2";
 
 import {
@@ -11,7 +11,7 @@ import {
   DISTRICT_BY_STATE, DOCTOR_BY_SPECIALITY, PATIENT_IMAGE_UPLOAD,
   STATE_BY_COUNTRY, GET_DOCTOR_SESSION, PATIENT_REGISTRATION, GET_SESSION, HOSPITAL
 } from "../../../config/apiConfig";
-import {DEPARTMENT_CODE_OPD} from "../../../config/constants";
+import { DEPARTMENT_CODE_OPD } from "../../../config/constants";
 import axios from "axios";
 const PatientRegistration = () => {
   useEffect(() => {
@@ -25,28 +25,28 @@ const PatientRegistration = () => {
   }, []);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [genderData,setGenderData]=useState([]);
-  const [imageURL,setImageURL]=useState("");
-  const [relationData,setRelationData]=useState([]);
-  const [countryData,setCountryData]=useState([]);
-  const [stateData,setStateData]=useState([]);
-  const [nokStateData,setNokStateData]=useState([]);
-  const [districtData,setDistrictData]=useState([]);
-  const [nokDistrictData,setNokDistrictData]=useState([]);
-  const [departmentData,setDepartmentData]=useState([]);
-  const [doctorData,setDoctorData]=useState([]);
-  const [session,setSession]=useState([]);
+  const [genderData, setGenderData] = useState([]);
+  const [imageURL, setImageURL] = useState("");
+  const [relationData, setRelationData] = useState([]);
+  const [countryData, setCountryData] = useState([]);
+  const [stateData, setStateData] = useState([]);
+  const [nokStateData, setNokStateData] = useState([]);
+  const [districtData, setDistrictData] = useState([]);
+  const [nokDistrictData, setNokDistrictData] = useState([]);
+  const [departmentData, setDepartmentData] = useState([]);
+  const [doctorData, setDoctorData] = useState([]);
+  const [session, setSession] = useState([]);
   const [formData, setFormData] = useState({
-    imageurl:undefined,
+    imageurl: undefined,
     firstName: undefined,
-      middleName: undefined,
-      lastName: undefined,
-      mobileNo: undefined,
-      gender: undefined,
-      relation: undefined,
-      dob: undefined,
-      age: undefined,
-      email: undefined,
+    middleName: undefined,
+    lastName: undefined,
+    mobileNo: undefined,
+    gender: undefined,
+    relation: undefined,
+    dob: undefined,
+    age: undefined,
+    email: undefined,
     address1: undefined,
     address2: undefined,
     country: undefined,
@@ -87,7 +87,7 @@ const PatientRegistration = () => {
     emergencyRelationId: undefined,
     nokRelation: undefined,
     idealWeight: undefined,
-    varation:undefined,
+    varation: undefined,
     department: undefined,
     selDoctorId: undefined,
     selSession: undefined
@@ -117,7 +117,7 @@ const PatientRegistration = () => {
     try {
       const data = await getRequest(`${HOSPITAL}/${sessionStorage.getItem('hospitalId')}`);
       if (data.status === 200) {
-        if(data.response.preConsultationAvailable=='y'||data.response.preConsultationAvailable=='Y'){
+        if (data.response.preConsultationAvailable == 'y' || data.response.preConsultationAvailable == 'Y') {
           setPreConsultationFlag(true);
         }
       } else {
@@ -135,15 +135,15 @@ const PatientRegistration = () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      
+
       // Set canvas dimensions to match video stream
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-  
+
       const context = canvas.getContext("2d");
       context.drawImage(video, 0, 0, canvas.width, canvas.height)
       const imageData = canvas.toDataURL("image/png");
-  
+
       setImage(imageData);
       stopCamera();
       debugger;
@@ -151,7 +151,7 @@ const PatientRegistration = () => {
 
     }
   };
-  
+
 
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
@@ -224,31 +224,31 @@ const PatientRegistration = () => {
     // Default to today's month and day
     return new Date(birthYear, today.getMonth(), today.getDate()).toISOString().split('T')[0];
   }
-  function checkBMI(a,b)  {
+  function checkBMI(a, b) {
     debugger;
-    if(a === '' || b == ''){
-      return ;
+    if (a === '' || b == '') {
+      return;
     }
-    var c=b/100;
-    var d=c*c;
-    var sub = a/d;
-    return(parseFloat(Math.round(sub * 100) / 100).toFixed(2));
+    var c = b / 100;
+    var d = c * c;
+    var sub = a / d;
+    return (parseFloat(Math.round(sub * 100) / 100).toFixed(2));
   }
   const handleChange = (e) => {
 
     const { name, value } = e.target;
 
     const updatedFormData = { ...formData, [name]: value };
-    if(name=='dob'){
-      updatedFormData.age=calculateAgeFromDOB(value);
+    if (name == 'dob') {
+      updatedFormData.age = calculateAgeFromDOB(value);
     }
-    else if(name == 'age'){
-      updatedFormData.dob=calculateDOBFromAge(value)
+    else if (name == 'age') {
+      updatedFormData.dob = calculateDOBFromAge(value)
     }
-    else if(name == 'weight'&&formData.height!=undefined){
-      updatedFormData.bmi=checkBMI(value,formData.height);
-    }else if(name == 'height'&&formData.weight!=undefined){
-      updatedFormData.bmi=checkBMI(formData.weight,value);
+    else if (name == 'weight' && formData.height != undefined) {
+      updatedFormData.bmi = checkBMI(value, formData.height);
+    } else if (name == 'height' && formData.weight != undefined) {
+      updatedFormData.bmi = checkBMI(formData.weight, value);
     }
 
 
@@ -312,7 +312,7 @@ const PatientRegistration = () => {
     ];
 
     if (numericFields.includes(name)) {
-      if (value!= undefined && (value !== "" && (isNaN(value) || Number(value) < 0))) {
+      if (value != undefined && (value !== "" && (isNaN(value) || Number(value) < 0))) {
         error = `${name.charAt(0).toUpperCase() + name.slice(1)} must be a non-negative number.`;
       }
     }
@@ -353,7 +353,7 @@ const PatientRegistration = () => {
 
 
   };
-async function fetchRelationData() {
+  async function fetchRelationData() {
     setLoading(true);
 
     try {
@@ -435,9 +435,9 @@ async function fetchRelationData() {
   }
 
   async function fetchNokStates(value) {
-  try{
+    try {
 
-    const data = await getRequest(`${STATE_BY_COUNTRY}${value}`);
+      const data = await getRequest(`${STATE_BY_COUNTRY}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokStateData(data.response);
       } else {
@@ -445,7 +445,7 @@ async function fetchRelationData() {
         setNokStateData([]);
       }
     } catch (error) {
-        console.error("Error fetching Department data:", error);
+      console.error("Error fetching Department data:", error);
     } finally {
       setLoading(false);
     }
@@ -466,12 +466,12 @@ async function fetchRelationData() {
       setLoading(false);
     }
   }
-async function fetchDepartment() {
+  async function fetchDepartment() {
     try {
       const data = await getRequest(`${ALL_DEPARTMENT}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         const filteredDepartments = data.response.filter(
-            (dept) => dept.departmentTypeId === DEPARTMENT_CODE_OPD
+          (dept) => dept.departmentTypeId === DEPARTMENT_CODE_OPD
         );
         setDepartmentData(filteredDepartments);
       } else {
@@ -531,7 +531,7 @@ async function fetchDepartment() {
 
     numericFields.forEach((field) => {
       const value = formData[field];
-      if (value!=undefined && value !== "" && (isNaN(value) || Number(value) < 0)) {
+      if (value != undefined && value !== "" && (isNaN(value) || Number(value) < 0)) {
         debugger;
         newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} must be a non-negative number.`;
         valid = false;
@@ -548,125 +548,126 @@ async function fetchDepartment() {
 
   const sendPatientData = async () => {
     if (validateForm()) {
-    const requestData = {
-      patient: {
-        id: 0,
-        uhidNo:"",
-        patientStatus:"",
-        regDate:new Date(Date.now()).toJSON().split('.')[0].split('T')[0],
-        lastChgBy:sessionStorage.getItem('username'),
-        patientHospitalId:Number(sessionStorage.getItem('hospitalId')),
-        patientFn: formData.firstName,
-        patientMn: formData.middleName,
-        patientLn: formData.lastName,
-        patientDob: formData.dob,
-        patientAge: formData.age,
-        patientGenderId: formData.gender,
-        patientEmailId: formData.email,
-        patientMobileNumber: formData.mobileNo,
-        patientImage: imageURL,
-        fileName: "string",
-        patientRelationId: formData.relation,
-        patientMaritalStatusId: formData.maritalStatus,
-        patientReligionId: formData.religion,
-        patientAddress1: formData.address1,
-        patientAddress2: formData.address2,
-        patientCity: formData.city,
-        patientPincode: formData.pinCode,
-        patientDistrictId: formData.district,
-        patientStateId: formData.district,
-        patientCountryId: formData.country,
-        pincode: "string",
-        emerFn: formData.emergencyFirstName,
-        emerLn: formData.emergencyLastName,
-        emerRelationId: formData.emergencyRelationId,
-        emerMobile: formData.emergencyMobile,
-        nokFn: formData.nokFirstName,
-        nokLn: formData.nokLastName,
-        nokEmail: formData.nokEmail,
-        nokMobileNumber: formData.nokMobile,
-        nokAddress1: formData.nokAddress1,
-        nokAddress2: formData.nokAddress2,
-        nokCity: formData.nokCity,
-        nokDistrictId: formData.nokDistrict,
-        nokStateId: formData.nokState,
-        nokCountryId: formData.nokCountry,
-        nokPincode: formData.nokPinCode,
-        nokRelationId: formData.nokRelation
-      },
-      opdPatientDetail: {
-        height: formData.height,
-        idealWeight: formData.idealWeight,
-        weight: formData.weight,
-        pulse: formData.pulse,
-        temperature: formData.temperature,
-        opdDate: formData.appointmentDate,
-        rr: formData.rr,
-        bmi: formData.bmi,
-        spo2: formData.spo2,
-        varation: formData.varation,
-        bpSystolic: formData.systolicBP,
-        bpDiastolic: formData.diastolicBP,
-        icdDiag: "string",
-        workingDiag: "string",
-        followUpFlag: "string",
-        followUpDays: 0,
-        pastMedicalHistory: "string",
-        presentComplaints: "string",
-        familyHistory: "string",
-        treatmentAdvice: "string",
-        sosFlag: "string",
-        recmmdMedAdvice: "string",
-        medicineFlag: "s",
-        labFlag: "s",
-        radioFlag: "s",
-        referralFlag: "s",
-        mlcFlag: "s",
-        policeStation: "string",
-        policeName: "string",
-        patientId: 0,
-        visitId: 0,
-        departmentId: 0,
-        hospitalId: 0,
-        doctorId: 0,
-        lastChgBy: "string"
-      },
-      visit: {
-        id: 0,
-        tokenNo: 0,
-        visitStatus: "string",
-        // visitDate: new Date(Date.now()).toJSON().split('.')[0],
-        visitDate: new Date(Date.now()).toJSON(),
-        departmentId: Number(formData.speciality),
-        doctorId: Number(formData.selDoctorId),
-        doctorName: "",
-        hospitalId: sessionStorage.getItem('hospitalId'),
-        sessionId: Number(formData.selSession),
-        billingStatus: "string",
-        priority:0,
-        patientId: 0,
-        iniDoctorId: 0,
-      },
-    };
-    debugger;
-    if(isNaN(requestData.visit.doctorId))
-      requestData.visit=null;
-    // requestData.opdPatientDetail=null;
-    console.log(new Date(Date.now()).toJSON())
-
-    try {
+      const requestData = {
+        patient: {
+          id: 0,
+          uhidNo: "",
+          patientStatus: "",
+          regDate: new Date(Date.now()).toJSON().split('.')[0].split('T')[0],
+          lastChgBy: sessionStorage.getItem('username'),
+          patientHospitalId: Number(sessionStorage.getItem('hospitalId')),
+          patientFn: formData.firstName,
+          patientMn: formData.middleName,
+          patientLn: formData.lastName,
+          patientDob: formData.dob,
+          patientAge: formData.age,
+          patientGenderId: formData.gender,
+          patientEmailId: formData.email,
+          patientMobileNumber: formData.mobileNo,
+          patientImage: imageURL,
+          fileName: "string",
+          patientRelationId: formData.relation,
+          patientMaritalStatusId: formData.maritalStatus,
+          patientReligionId: formData.religion,
+          patientAddress1: formData.address1,
+          patientAddress2: formData.address2,
+          patientCity: formData.city,
+          patientPincode: formData.pinCode,
+          patientDistrictId: formData.district,
+          patientStateId: formData.district,
+          patientCountryId: formData.country,
+          pincode: "string",
+          emerFn: formData.emergencyFirstName,
+          emerLn: formData.emergencyLastName,
+          emerRelationId: formData.emergencyRelationId,
+          emerMobile: formData.emergencyMobile,
+          nokFn: formData.nokFirstName,
+          nokLn: formData.nokLastName,
+          nokEmail: formData.nokEmail,
+          nokMobileNumber: formData.nokMobile,
+          nokAddress1: formData.nokAddress1,
+          nokAddress2: formData.nokAddress2,
+          nokCity: formData.nokCity,
+          nokDistrictId: formData.nokDistrict,
+          nokStateId: formData.nokState,
+          nokCountryId: formData.nokCountry,
+          nokPincode: formData.nokPinCode,
+          nokRelationId: formData.nokRelation
+        },
+        opdPatientDetail: {
+          height: formData.height,
+          idealWeight: formData.idealWeight,
+          weight: formData.weight,
+          pulse: formData.pulse,
+          temperature: formData.temperature,
+          opdDate: formData.appointmentDate,
+          rr: formData.rr,
+          bmi: formData.bmi,
+          spo2: formData.spo2,
+          varation: formData.varation,
+          bpSystolic: formData.systolicBP,
+          bpDiastolic: formData.diastolicBP,
+          icdDiag: "string",
+          workingDiag: "string",
+          followUpFlag: "string",
+          followUpDays: 0,
+          pastMedicalHistory: "string",
+          presentComplaints: "string",
+          familyHistory: "string",
+          treatmentAdvice: "string",
+          sosFlag: "string",
+          recmmdMedAdvice: "string",
+          medicineFlag: "s",
+          labFlag: "s",
+          radioFlag: "s",
+          referralFlag: "s",
+          mlcFlag: "s",
+          policeStation: "string",
+          policeName: "string",
+          patientId: 0,
+          visitId: 0,
+          departmentId: 0,
+          hospitalId: 0,
+          doctorId: 0,
+          lastChgBy: "string"
+        },
+        visit: {
+          id: 0,
+          tokenNo: 0,
+          visitStatus: "string",
+          // visitDate: new Date(Date.now()).toJSON().split('.')[0],
+          visitDate: new Date(Date.now()).toJSON(),
+          departmentId: Number(formData.speciality),
+          doctorId: Number(formData.selDoctorId),
+          doctorName: "",
+          hospitalId: sessionStorage.getItem('hospitalId'),
+          sessionId: Number(formData.selSession),
+          billingStatus: "string",
+          priority: 0,
+          patientId: 0,
+          iniDoctorId: 0,
+        },
+      };
       debugger;
-      const data = await postRequest(`${PATIENT_REGISTRATION}`,requestData);
-      if (data.status === 200 && Array.isArray(data.response)) {
-        Swal.fire("Patient Registration Successful")
-      } else {
-        console.error("Unexpected API response format:", data);
-        setDoctorData([]);
+      if (isNaN(requestData.visit.doctorId))
+        requestData.visit = null;
+      // requestData.opdPatientDetail=null;
+      console.log(new Date(Date.now()).toJSON())
+
+      try {
+        debugger;
+        const data = await postRequest(`${PATIENT_REGISTRATION}`, requestData);
+        if (data.status === 200 && Array.isArray(data.response)) {
+          Swal.fire("Patient Registration Successful")
+        } else {
+          console.error("Unexpected API response format:", data);
+          setDoctorData([]);
+        }
+      } catch (error) {
+        console.error("Error:", error);
       }
-    } catch (error) {
-      console.error("Error:", error);
     }
-  }};
+  };
 
 
 
@@ -689,27 +690,27 @@ async function fetchDepartment() {
   async function fetchSession(doc) {
 
     console.log(doc.target.value);
-    if(formData.speciality!=''&&doc){
+    if (formData.speciality != '' && doc) {
       console.log(doc);
       let timestamp = Date.now();
       let value = new Date(timestamp).toJSON().split('.')[0].split('T')[0];
       console.log(value);
       const data = await getRequest(`${GET_DOCTOR_SESSION}deptId=${formData.speciality}&doctorId=${doc.target.value}&rosterDate=${value}`);
-      if(data.status==200){
+      if (data.status == 200) {
         console.log(data.response[0].rosterVal);
-        let sessionVal=[{key:0,value:''},{key:1,value: ''}];
-        if(data.response[0].rosterVal=="YY"){
-          sessionVal=[{key:0,value:'Morning'},{key:1,value: 'Evening'}]
+        let sessionVal = [{ key: 0, value: '' }, { key: 1, value: '' }];
+        if (data.response[0].rosterVal == "YY") {
+          sessionVal = [{ key: 0, value: 'Morning' }, { key: 1, value: 'Evening' }]
         }
-        else if (data.response[0].rosterVal=="NY"){
-          sessionVal=[{key:0,value: 'Evening'}]
+        else if (data.response[0].rosterVal == "NY") {
+          sessionVal = [{ key: 0, value: 'Evening' }]
         }
-        else if (data.response[0].rosterVal=="YN"){
-          sessionVal=[{key:0,value: 'Morning'}]
+        else if (data.response[0].rosterVal == "YN") {
+          sessionVal = [{ key: 0, value: 'Morning' }]
         }
         // setSession(sessionVal);
       }
-      else{
+      else {
         Swal.fire(data.message);
       }
 
@@ -722,16 +723,29 @@ async function fetchDepartment() {
     const birthDate = new Date(dob);
     const today = new Date();
 
-    let age = today.getFullYear() - birthDate.getFullYear();
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+    let days = today.getDate() - birthDate.getDate();
 
-    // Adjust if birth date hasn't occurred yet this year
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
+    // Adjust if the day difference is negative
+    if (days < 0) {
+      months--;
+      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+      days += prevMonth.getDate();
     }
 
-    return age;
+    // Adjust if the month difference is negative
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    return `${years}Y ${months}M ${days}D`;
   }
+
+
+
+
 
 
   return (
@@ -744,7 +758,7 @@ async function fetchDepartment() {
             </div>
           </div>
         </div>
-        
+
         {/* Patient Personal Details */}
         <div className="row mb-3">
           <div className="col-sm-12">
@@ -760,36 +774,36 @@ async function fetchDepartment() {
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="firstName">First Name *</label>
                           <input type="text" className={`form-control ${errors.firstName ? 'is-invalid' : ''}`}
-                                 id="firstName" name="firstName" value={formData.firstName} onChange={handleChange}
-                                 placeholder="Enter First Name"/>
+                            id="firstName" name="firstName" value={formData.firstName} onChange={handleChange}
+                            placeholder="Enter First Name" />
                           {errors.firstName && <div className="invalid-feedback">{errors.firstName}</div>}
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="middleName">Middle Name</label>
                           <input type="text" id="middleName" value={formData.middleName} name="middleName"
-                                 onChange={handleChange} className="form-control" placeholder="Enter Middle Name"/>
+                            onChange={handleChange} className="form-control" placeholder="Enter Middle Name" />
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="lastName">Last Name</label>
                           <input type="text" id="lastName" value={formData.lastName} name="lastName"
-                                 onChange={handleChange} className="form-control" placeholder="Enter Last Name"/>
+                            onChange={handleChange} className="form-control" placeholder="Enter Last Name" />
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="mobileNo">Mobile No.</label>
                           <input type="text" id="mobileNo"
-                                 className={`form-control ${errors.mobileNo ? 'is-invalid' : ''}`} name="mobileNo"
-                                 value={formData.mobileNo} onChange={handleChange} placeholder="Enter Mobile Number"/>
+                            className={`form-control ${errors.mobileNo ? 'is-invalid' : ''}`} name="mobileNo"
+                            value={formData.mobileNo} onChange={handleChange} placeholder="Enter Mobile Number" />
                           {errors.mobileNo && <div className="invalid-feedback">{errors.mobileNo}</div>}
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="gender">Gender *</label>
                           <select className={`form-select ${errors.gender ? 'is-invalid' : ''}`} id="gender"
-                                  name="gender" value={formData.gender} onChange={handleChange}>
+                            name="gender" value={formData.gender} onChange={handleChange}>
                             <option value="">Select</option>
                             {genderData.map((gender) => (
-                                <option key={gender.id} value={gender.id}>
-                                  {gender.genderName}
-                                </option>
+                              <option key={gender.id} value={gender.id}>
+                                {gender.genderName}
+                              </option>
                             ))}
                           </select>
                           {errors.gender && <div className="invalid-feedback">{errors.gender}</div>}
@@ -797,12 +811,12 @@ async function fetchDepartment() {
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="relation">Relation *</label>
                           <select className={`form-select ${errors.relation ? 'is-invalid' : ''}`} id="relation"
-                                  name="relation" value={formData.relation} onChange={handleChange}>
+                            name="relation" value={formData.relation} onChange={handleChange}>
                             <option value="">Select</option>
                             {relationData.map((relation) => (
-                                <option key={relation.id} value={relation.id}>
-                                  {relation.relationName}
-                                </option>
+                              <option key={relation.id} value={relation.id}>
+                                {relation.relationName}
+                              </option>
                             ))}
                           </select>
                           {errors.relation && <div className="invalid-feedback">{errors.relation}</div>}
@@ -810,23 +824,30 @@ async function fetchDepartment() {
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="dob">DOB *</label>
                           <input type="date" id="dob" name="dob"
-                                 className={`form-control ${errors.dob ? 'is-invalid' : ''}`} value={formData.dob}
-                                 max={new Date().toISOString().split("T")[0]} onChange={handleChange}
-                                 placeholder="Select Date of Birth"/>
+                            className={`form-control ${errors.dob ? 'is-invalid' : ''}`} value={formData.dob}
+                            max={new Date().toISOString().split("T")[0]} onChange={handleChange}
+                            placeholder="Select Date of Birth" />
                           {errors.dob && <div className="invalid-feedback">{errors.dob}</div>}
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="age">Age</label>
-                          <input type="number" id="age" name="age"
-                                 className={`form-control ${errors.age ? 'is-invalid' : ''}`} value={formData.age}
-                                 onChange={handleChange} placeholder="Enter Age"/>
+                          <input
+                            type="text" // <<== NOT number!
+                            id="age"
+                            name="age"
+                            className={`form-control ${errors.age ? "is-invalid" : ""}`}
+                            value={formData.age || ""}
+                            onChange={handleChange}
+                            placeholder="Enter Age"
+                          />
+
                           {errors.age && <div className="invalid-feedback">{errors.age}</div>}
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="email">Email *</label>
                           <input type="email" id="email" name="email"
-                                 className={`form-control ${errors.email ? 'is-invalid' : ''}`} value={formData.email}
-                                 onChange={handleChange} placeholder="Enter Email Address"/>
+                            className={`form-control ${errors.email ? 'is-invalid' : ''}`} value={formData.email}
+                            onChange={handleChange} placeholder="Enter Email Address" />
                           {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                         </div>
                       </div>
@@ -836,22 +857,22 @@ async function fetchDepartment() {
                       <div className="text-center">
                         <div className="card p-3 shadow">
                           {isCameraOn ? (
-                              <video ref={videoRef} autoPlay className="d-block mx-auto"
-                                     style={{width: "100%", height: "150px"}}></video>
+                            <video ref={videoRef} autoPlay className="d-block mx-auto"
+                              style={{ width: "100%", height: "150px" }}></video>
                           ) : (
-                              <img src={image || "/default-profile.png"} alt="Profile" className="img-fluid border"
-                                   style={{width: "100%", height: "150px"}}/>
+                            <img src={image || "/default-profile.png"} alt="Profile" className="img-fluid border"
+                              style={{ width: "100%", height: "150px" }} />
                           )}
-                          <canvas ref={canvasRef} width="300" height="150" style={{display: "none"}}></canvas>
+                          <canvas ref={canvasRef} width="300" height="150" style={{ display: "none" }}></canvas>
                           <div className="mt-2">
                             <button type="button" className="btn btn-primary me-2 mb-2" onClick={startCamera}
-                                    disabled={isCameraOn}>
+                              disabled={isCameraOn}>
                               Start Camera
                             </button>
                             {isCameraOn && (
-                                <button type="button" className="btn btn-success me-2 mb-2" onClick={capturePhoto}>
-                                  Take Photo
-                                </button>
+                              <button type="button" className="btn btn-success me-2 mb-2" onClick={capturePhoto}>
+                                Take Photo
+                              </button>
                             )}
                             <button type="button" className="btn btn-danger mb-2" onClick={clearPhoto}>
                               Clear Photo
@@ -880,12 +901,12 @@ async function fetchDepartment() {
                     <div className="col-md-4">
                       <label className="form-label">Address 1</label>
                       <input type="text" className="form-control" name="address1" value={formData.address1}
-                             onChange={handleChange} placeholder="Enter Address 1"/>
+                        onChange={handleChange} placeholder="Enter Address 1" />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Address 2</label>
                       <input type="text" className="form-control" name="address2" value={formData.address2}
-                             onChange={handleChange} placeholder="Enter Address 2"/>
+                        onChange={handleChange} placeholder="Enter Address 2" />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Country</label>
@@ -895,9 +916,9 @@ async function fetchDepartment() {
                       }}>
                         <option value="">Select Country</option>
                         {countryData.map((country) => (
-                            <option key={country.id} value={country.id}>
-                              {country.countryName}
-                            </option>))}
+                          <option key={country.id} value={country.id}>
+                            {country.countryName}
+                          </option>))}
                       </select>
                     </div>
                     <div className="col-md-4">
@@ -908,9 +929,9 @@ async function fetchDepartment() {
                       }}>
                         <option value="">Select State</option>
                         {stateData.map((state) => (
-                            <option key={state.id} value={state.id}>
-                              {state.stateName}
-                            </option>))}
+                          <option key={state.id} value={state.id}>
+                            {state.stateName}
+                          </option>))}
                       </select>
                     </div>
                     <div className="col-md-4">
@@ -920,22 +941,22 @@ async function fetchDepartment() {
                       }}>
                         <option value="">Select District</option>
                         {districtData.map((district) => (
-                            <option key={district.id} value={district.id}>
-                              {district.districtName}
-                            </option>))}
+                          <option key={district.id} value={district.id}>
+                            {district.districtName}
+                          </option>))}
                       </select>
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">City</label>
                       <input type="text" className="form-control" name="city" value={formData.city}
-                             onChange={handleChange} placeholder="Enter City"/>
+                        onChange={handleChange} placeholder="Enter City" />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Pin Code</label>
                       <input type="text" className={`form-control ${errors.pinCode ? 'is-invalid' : ''}`} name="pinCode" value={formData.pinCode}
-                             onChange={handleChange} placeholder="Enter Pin Code"/>
+                        onChange={handleChange} placeholder="Enter Pin Code" />
                       {errors.pinCode && (
-                          <div className="invalid-feedback">{errors.pinCode}</div>
+                        <div className="invalid-feedback">{errors.pinCode}</div>
                       )}</div>
                   </div>
                 </form>
@@ -957,92 +978,93 @@ async function fetchDepartment() {
                     <div className="col-md-4">
                       <label className="form-label">First Name</label>
                       <input type="text" className="form-control" placeholder="Enter First Name" name="nokFirstName"
-                             value={formData.nokFirstName}
-                             onChange={handleChange}/>
+                        value={formData.nokFirstName}
+                        onChange={handleChange} />
 
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Middle Name</label>
                       <input type="text" className="form-control" placeholder="Enter Middle Name" name="nokMiddleName"
-                             value={formData.nokMiddleName}
-                             onChange={handleChange}/>
+                        value={formData.nokMiddleName}
+                        onChange={handleChange} />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Last Name</label>
                       <input type="text" className="form-control" placeholder="Enter Last Name" name="nokLastName"
-                             value={formData.nokLastName}
-                             onChange={handleChange}/>
+                        value={formData.nokLastName}
+                        onChange={handleChange} />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Email</label>
-                      <input type="email" className="form-control" placeholder="Enter Email"  name="nokEmail"
-                             value={formData.nokEmail}
-                             onChange={handleChange} />
+                      <input type="email" className="form-control" placeholder="Enter Email" name="nokEmail"
+                        value={formData.nokEmail}
+                        onChange={handleChange} />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Mobile No.</label>
                       <input type="text" className="form-control" placeholder="Enter Mobile Number" name="nokMobile"
-                             value={formData.nokMobile}
-                             onChange={handleChange}/>
+                        value={formData.nokMobile}
+                        onChange={handleChange} />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Address 1</label>
                       <input type="text" className="form-control" placeholder="Enter Address 1" name="nokAddress1" value={formData.nokAddress1}
-                             onChange={handleChange} />
+                        onChange={handleChange} />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Address 2</label>
                       <input type="text" className="form-control" placeholder="Enter Address 2" name="nokAddress2" value={formData.nokAddress2}
-                             onChange={handleChange}/>
+                        onChange={handleChange} />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Country</label>
                       <select className="form-select" name="nokCountry" value={formData.nokCountry}
-                              onChange={(e) => {
-                                handleAddChange(e);
-                                fetchNokStates(e.target.value);
-                              }}>
+                        onChange={(e) => {
+                          handleAddChange(e);
+                          fetchNokStates(e.target.value);
+                        }}>
                         <option value="">Select Country</option>
                         {countryData.map((country) => (
-                            <option key={country.id} value={country.id}>
-                              {country.countryName}
-                            </option>))}
+                          <option key={country.id} value={country.id}>
+                            {country.countryName}
+                          </option>))}
                       </select>
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">State</label>
                       <select className="form-select" name="nokState" value={formData.nokState}
-                              onChange={(e) => {
-                                handleAddChange(e);
-                                fetchNokDistrict(e.target.value);
-                              }}>>
+                        onChange={(e) => {
+                          handleAddChange(e);
+                          fetchNokDistrict(e.target.value);
+                        }}>>
                         <option value="">Select State</option>
                         {nokStateData.map((state) => (
-                            <option key={state.id} value={state.id}>
-                              {state.stateName}
-                            </option>))}
+                          <option key={state.id} value={state.id}>
+                            {state.stateName}
+                          </option>))}
                       </select>
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">District</label>
                       <select className="form-select" name="nokDistrict" value={formData.nokDistrict} onChange={(e) => {
-                        handleAddChange(e)}}>
+                        handleAddChange(e)
+                      }}>
                         <option value="">Select District</option>
                         {nokDistrictData.map((district) => (
-                            <option key={district.id} value={district.id}>
-                              {district.districtName}
-                            </option>))}
+                          <option key={district.id} value={district.id}>
+                            {district.districtName}
+                          </option>))}
                       </select>
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">City</label>
                       <input type="text" className="form-control" placeholder="Enter City" name="nokCity" value={formData.nokCity}
-                             onChange={handleChange}/>
+                        onChange={handleChange} />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Pin Code</label>
                       <input type="text" className="form-control" placeholder="Enter Pin Code" name="nokPinCode" value={formData.nokPinCode}
-                             onChange={handleChange}/>
+                        onChange={handleChange} />
                     </div>
                   </div>
                 </form>
@@ -1063,15 +1085,15 @@ async function fetchDepartment() {
                   <div className="row g-3">
                     <div className="col-md-4">
                       <label className="form-label">First Name</label>
-                      <input type="text" className="form-control" placeholder="Enter First Name" name="emergencyFirstName"  value={formData.emergencyFirstName} onChange={handleChange}/>
+                      <input type="text" className="form-control" placeholder="Enter First Name" name="emergencyFirstName" value={formData.emergencyFirstName} onChange={handleChange} />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Last Name</label>
-                      <input type="text" className="form-control" placeholder="Enter Last Name" name="emergencyLastName"  value={formData.emergencyLastName} onChange={handleChange}/>
+                      <input type="text" className="form-control" placeholder="Enter Last Name" name="emergencyLastName" value={formData.emergencyLastName} onChange={handleChange} />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Mobile No.</label>
-                      <input type="text" className="form-control" placeholder="Enter Mobile Number" name="emergencyMobile"  value={formData.emergencyMobile} onChange={handleChange}/>
+                      <input type="text" className="form-control" placeholder="Enter Mobile Number" name="emergencyMobile" value={formData.emergencyMobile} onChange={handleChange} />
                     </div>
                   </div>
                 </form>
@@ -1095,10 +1117,10 @@ async function fetchDepartment() {
                       <div className="col-md-4 d-flex">
                         <label className="form-label me-2">Height<span className="text-danger">*</span></label>
                         <input type="number" className={`form-control ${errors.height ? 'is-invalid' : ''}`} min={0}
-                               placeholder="Height" name="height" value={formData.height} onChange={handleChange}/>
+                          placeholder="Height" name="height" value={formData.height} onChange={handleChange} />
                         <span className="input-group-text">cm</span>
                         {errors.height && (
-                            <div className="invalid-feedback d-block">{errors.height}</div>
+                          <div className="invalid-feedback d-block">{errors.height}</div>
                         )}
                       </div>
 
@@ -1106,10 +1128,10 @@ async function fetchDepartment() {
                       <div className="col-md-4 d-flex">
                         <label className="form-label me-2">Weight<span className="text-danger">*</span></label>
                         <input type="number" min={0} className={`form-control ${errors.weight ? 'is-invalid' : ''}`}
-                               placeholder="Weight" name="weight" value={formData.weight} onChange={handleChange}/>
+                          placeholder="Weight" name="weight" value={formData.weight} onChange={handleChange} />
                         <span className="input-group-text">kg</span>
                         {errors.weight && (
-                            <div className="invalid-feedback d-block">{errors.weight}</div>
+                          <div className="invalid-feedback d-block">{errors.weight}</div>
                         )}
                       </div>
 
@@ -1117,12 +1139,12 @@ async function fetchDepartment() {
                       <div className="col-md-4 d-flex">
                         <label className="form-label me-2">Temperature<span className="text-danger">*</span></label>
                         <input type="number" min={0}
-                               className={`form-control ${errors.temperature ? 'is-invalid' : ''}`}
-                               placeholder="Temperature" name="temperature" value={formData.temperature}
-                               onChange={handleChange}/>
+                          className={`form-control ${errors.temperature ? 'is-invalid' : ''}`}
+                          placeholder="Temperature" name="temperature" value={formData.temperature}
+                          onChange={handleChange} />
                         <span className="input-group-text">°F</span>
                         {errors.temperature && (
-                            <div className="invalid-feedback d-block">{errors.temperature}</div>
+                          <div className="invalid-feedback d-block">{errors.temperature}</div>
                         )}
                       </div>
 
@@ -1130,19 +1152,19 @@ async function fetchDepartment() {
                       <div className="col-md-4 d-flex">
                         <label className="form-label me-2">BP<span className="text-danger">*</span></label>
                         <input type="number" min={0} className={`form-control ${errors.systolicBP ? 'is-invalid' : ''}`}
-                               placeholder="Systolic" name="systolicBP" value={formData.systolicBP}
-                               onChange={handleChange}/>
+                          placeholder="Systolic" name="systolicBP" value={formData.systolicBP}
+                          onChange={handleChange} />
                         <span className="input-group-text">/</span>
                         {errors.systolicBP && (
-                            <div className="invalid-feedback d-block">{errors.systolicBP}</div>
+                          <div className="invalid-feedback d-block">{errors.systolicBP}</div>
                         )}
                         <input type="number" min={0}
-                               className={`form-control ${errors.diastolicBP ? 'is-invalid' : ''}`}
-                               placeholder="Diastolic" name="diastolicBP" value={formData.diastolicBP}
-                               onChange={handleChange}/>
+                          className={`form-control ${errors.diastolicBP ? 'is-invalid' : ''}`}
+                          placeholder="Diastolic" name="diastolicBP" value={formData.diastolicBP}
+                          onChange={handleChange} />
                         <span className="input-group-text">mmHg</span>
                         {errors.diastolicBP && (
-                            <div className="invalid-feedback d-block">{errors.diastolicBP}</div>
+                          <div className="invalid-feedback d-block">{errors.diastolicBP}</div>
                         )}
                       </div>
 
@@ -1150,10 +1172,10 @@ async function fetchDepartment() {
                       <div className="col-md-4 d-flex">
                         <label className="form-label me-2">Pulse<span className="text-danger">*</span></label>
                         <input type="number" min={0} className={`form-control ${errors.pulse ? 'is-invalid' : ''}`}
-                               placeholder="Pulse" name="pulse" value={formData.pulse} onChange={handleChange}/>
+                          placeholder="Pulse" name="pulse" value={formData.pulse} onChange={handleChange} />
                         <span className="input-group-text">/min</span>
                         {errors.pulse && (
-                            <div className="invalid-feedback d-block">{errors.pulse}</div>
+                          <div className="invalid-feedback d-block">{errors.pulse}</div>
                         )}
                       </div>
 
@@ -1161,10 +1183,10 @@ async function fetchDepartment() {
                       <div className="col-md-4 d-flex">
                         <label className="form-label me-2">BMI</label>
                         <input type="number" min={0} className={`form-control ${errors.bmi ? 'is-invalid' : ''}`}
-                               placeholder="BMI" name="bmi" value={formData.bmi} onChange={handleChange}/>
+                          placeholder="BMI" name="bmi" value={formData.bmi} onChange={handleChange} />
                         <span className="input-group-text">kg/m²</span>
                         {errors.bmi && (
-                            <div className="invalid-feedback d-block">{errors.bmi}</div>
+                          <div className="invalid-feedback d-block">{errors.bmi}</div>
                         )}
                       </div>
 
@@ -1172,10 +1194,10 @@ async function fetchDepartment() {
                       <div className="col-md-4 d-flex">
                         <label className="form-label me-2">RR</label>
                         <input type="number" min={0} className={`form-control ${errors.rr ? 'is-invalid' : ''}`}
-                               placeholder="RR" name="rr" value={formData.rr} onChange={handleChange}/>
+                          placeholder="RR" name="rr" value={formData.rr} onChange={handleChange} />
                         <span className="input-group-text">/min</span>
                         {errors.rr && (
-                            <div className="invalid-feedback d-block">{errors.rr}</div>
+                          <div className="invalid-feedback d-block">{errors.rr}</div>
                         )}
                       </div>
 
@@ -1183,10 +1205,10 @@ async function fetchDepartment() {
                       <div className="col-md-4 d-flex">
                         <label className="form-label me-2">SpO2</label>
                         <input type="number" min={0} className={`form-control ${errors.spo2 ? 'is-invalid' : ''}`}
-                               placeholder="SpO2" name="spo2" value={formData.spo2} onChange={handleChange}/>
+                          placeholder="SpO2" name="spo2" value={formData.spo2} onChange={handleChange} />
                         <span className="input-group-text">%</span>
                         {errors.height && (
-                            <div className="invalid-feedback d-block">{errors.spo2}</div>
+                          <div className="invalid-feedback d-block">{errors.spo2}</div>
                         )}
                       </div>
                     </div>
@@ -1212,15 +1234,15 @@ async function fetchDepartment() {
                     <div className="col-md-4">
                       <label className="form-label">Speciality</label>
                       <select className="form-select" name="speciality" value={formData.speciality}
-                              onChange={(e) => {
-                                handleAddChange(e);
-                                fetchDoctor(e.target.value);
-                              }}>
+                        onChange={(e) => {
+                          handleAddChange(e);
+                          fetchDoctor(e.target.value);
+                        }}>
                         <option value="">Select Speciality</option>
                         {departmentData.map((department) => (
-                            <option key={department.id} value={department.id}>
-                              {department.departmentName}
-                            </option>))}
+                          <option key={department.id} value={department.id}>
+                            {department.departmentName}
+                          </option>))}
                       </select>
                     </div>
                     <div className="col-md-4">
@@ -1232,9 +1254,9 @@ async function fetchDepartment() {
                       >
                         <option value="">Select Doctor</option>
                         {doctorData.map((doctor) => (
-                            <option key={doctor.id} value={doctor.userId}>
-                              {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""} ${doctor.lastName ? doctor.lastName : ""}`}
-                            </option>))}
+                          <option key={doctor.id} value={doctor.userId}>
+                            {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""} ${doctor.lastName ? doctor.lastName : ""}`}
+                          </option>))}
                         {/* Add dynamic options here */}
                       </select>
                     </div>
@@ -1256,9 +1278,9 @@ async function fetchDepartment() {
                       >
                         <option value="">Select Session</option>
                         {session.map((ses) => (
-                            <option key={ses.id} value={ses.id}>
-                              {ses.sessionName}
-                            </option>))}
+                          <option key={ses.id} value={ses.id}>
+                            {ses.sessionName}
+                          </option>))}
                         {/* Add dynamic options here */}
                       </select>
                       {/*<select className="form-select">*/}
@@ -1281,7 +1303,7 @@ async function fetchDepartment() {
                 <div className="row g-3">
                   <div className="mt-4">
                     <button type="submit" className="btn btn-primary me-2"
-                            onClick={sendRegistrationRequest}>Registration
+                      onClick={sendRegistrationRequest}>Registration
                     </button>
                     <button type="reset" className="btn btn-secondary">Reset</button>
                   </div>
