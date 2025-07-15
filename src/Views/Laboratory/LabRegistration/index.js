@@ -401,6 +401,11 @@ const LabRegistration = () => {
 
   const addRow = (e, type = formData.type) => {
     e.preventDefault()
+    const lastRow = formData.rows[formData.rows.length - 1]
+    if (!lastRow.name || lastRow.name.trim() === "" || !lastRow.date || lastRow.date.trim() === "" || lastRow.originalAmount === undefined || lastRow.originalAmount === "" || isNaN(lastRow.originalAmount) || lastRow.discountAmount === undefined || lastRow.discountAmount === "" || isNaN(lastRow.discountAmount)) {
+      Swal.fire("Missing Fields", "Please fill all required fields (Name, Date, Original Amount, Discount Amount) before adding another row.", "warning")
+      return
+    }
     setFormData((prev) => ({
       ...prev,
       rows: [
@@ -939,19 +944,22 @@ const LabRegistration = () => {
     (row) => !row.date || row.date.trim() === "" || !row.name || row.name.trim() === "",
   )
 
-  const isLastRowComplete = () => {
-    if (formData.rows.length === 0) return false;
-    const lastRow = formData.rows[formData.rows.length - 1];
-    return (
-      lastRow.name && lastRow.name.trim() !== "" &&
-      lastRow.date && lastRow.date.trim() !== "" &&
-      lastRow.originalAmount !== undefined && lastRow.originalAmount !== "" && !isNaN(lastRow.originalAmount) &&
-      lastRow.discountAmount !== undefined && lastRow.discountAmount !== "" && !isNaN(lastRow.discountAmount)
-    );
-  };
 
   // Get payment breakdown for display
   const paymentBreakdown = calculatePaymentBreakdown()
+
+  const getMissingMandatoryFields = () => {
+    const missing = []
+    if (!formData.mobileNo || formData.mobileNo.trim() === "") {
+      missing.push("Mobile Number")
+    }
+    formData.rows.forEach((row, idx) => {
+      if (!row.name || row.name.trim() === "") missing.push(`Row ${idx + 1}: Name`)
+      if (!row.date || row.date.trim() === "") missing.push(`Row ${idx + 1}: Date`)
+      if (row.originalAmount === undefined || row.originalAmount === "" || isNaN(row.originalAmount)) missing.push(`Row ${idx + 1}: Original Amount`)
+    })
+    return missing
+  }
 
   return (
     <div className="body d-flex py-3">
@@ -1581,9 +1589,9 @@ const LabRegistration = () => {
                 <table className="table table-bordered">
                   <thead>
                     <tr>
-                      <th>{formData.type === "investigation" ? "Investigation Name" : "Package Name"}</th>
-                      <th>Date</th>
-                      <th>Original Amount</th>
+                      <th>{formData.type === "investigation" ? "Investigation Name" : "Package Name"} <span className="text-danger">*</span></th>
+                      <th>Date  <span className="text-danger">*</span></th>
+                      <th>Original Amount  <span className="text-danger">*</span></th>
                       <th>Discount Amount</th>
                       <th>Net Amount</th>
                       <th>Action</th>
@@ -1784,7 +1792,7 @@ const LabRegistration = () => {
                 </table>
 
                 <div className="d-flex justify-content-between align-items-center">
-                  <button type="button" className="btn btn-success" onClick={addRow} disabled={!isLastRowComplete()}>
+                  <button type="button" className="btn btn-success" onClick={addRow}>
                     Add {formData.type === "investigation" ? "Investigation" : "Package"} +
                   </button>
                   <div className="d-flex">
@@ -1968,6 +1976,16 @@ const LabRegistration = () => {
                       type="button"
                       className="btn btn-primary me-2"
                       onClick={async () => {
+                        const missingFields = getMissingMandatoryFields()
+                        if (loading) return
+                        if (missingFields.length > 0) {
+                          Swal.fire(
+                            "Missing Mandatory Fields",
+                            "Please fill all mandatory fields before proceeding.",
+                            "warning"
+                          )
+                          return
+                        }
                         try {
                           console.log("Pay Now button clicked")
                           await handleSubmit(true)
@@ -1975,7 +1993,6 @@ const LabRegistration = () => {
                           console.error("Error in payment flow:", error)
                         }
                       }}
-                      disabled={loading || isAnyDateOrNameMissing || isMobileNoMissing}
                     >
                       <i className="fa fa-credit-card me-1"></i>
                       {loading ? "Processing..." : `Pay Now - ₹${paymentBreakdown.finalAmount}`}
