@@ -18,6 +18,8 @@ import {
   MAS_SERVICE_CATEGORY,
   MAS_PACKAGE_INVESTIGATION
 } from "../../../config/apiConfig"
+import LoadingScreen from "../../../Components/Loading" 
+
 
 const LabRegistration = () => {
   useEffect(() => {
@@ -228,6 +230,7 @@ const LabRegistration = () => {
   }
 
   const uploadImage = async (base64Image) => {
+    setLoading(true);
     try {
       const blob = await fetch(base64Image).then((res) => res.blob())
       const formData1 = new FormData()
@@ -250,6 +253,8 @@ const LabRegistration = () => {
     } catch (error) {
       console.error("Upload error:", error)
       Swal.fire("Error!", "Something went wrong!", "error")
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -558,6 +563,7 @@ const LabRegistration = () => {
   }
 
   async function fetchInvestigationDetails(genderValue) {
+    setLoading(true);
     try {
       const selectedGender = genderData.find((gender) => gender.id === Number(genderValue))
       if (!selectedGender) {
@@ -577,10 +583,13 @@ const LabRegistration = () => {
     } catch (error) {
       console.error("Error fetching investigation details:", error)
       return []
+    } finally {
+      setLoading(false);
     }
   }
 
   async function fetchPackageInvestigationDetails(flag) {
+    setLoading(true);
     try {
       const data = await getRequest(`${INVESTIGATION_PACKAGE_Mapping}/getAllPackageMap/${flag}`)
       if (data.status === 200 && Array.isArray(data.response)) {
@@ -593,10 +602,13 @@ const LabRegistration = () => {
     } catch (error) {
       console.error("Error fetching package investigation details:", error)
       return []
+    } finally {
+      setLoading(false);
     }
   }
 
   async function fetchPackagePrice(packName) {
+    setLoading(true);
     try {
       const data = await getRequest(`${MAS_PACKAGE_INVESTIGATION}/pricePack?packName=${packName}`)
       if (data.status === 200 && data.response) {
@@ -608,10 +620,13 @@ const LabRegistration = () => {
     } catch (error) {
       console.error("Error fetching package price:", error)
       return null
+    } finally {
+      setLoading(false);
     }
   }
 
   async function fetchGstConfiguration() {
+    setLoading(true);
     try {
       console.log("=== FETCHING GST CONFIGURATION ===");
 
@@ -645,6 +660,8 @@ const LabRegistration = () => {
         gstApplicable: false,
         gstPercent: 0,
       });
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -959,6 +976,10 @@ const LabRegistration = () => {
       if (row.originalAmount === undefined || row.originalAmount === "" || isNaN(row.originalAmount)) missing.push(`Row ${idx + 1}: Original Amount`)
     })
     return missing
+  }
+
+  if (loading) {
+    return <LoadingScreen />;
   }
 
   return (
