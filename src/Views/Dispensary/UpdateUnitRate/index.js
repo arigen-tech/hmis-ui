@@ -1,100 +1,130 @@
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
+import { getRequest, putRequest } from "../../../service/apiService";
+import { OPEN_BALANCE, MAS_DRUG_MAS } from "../../../config/apiConfig";
 
 const UpdateUnitRate = () => {
-  const [drugList, setDrugList] = useState([
-    {
-      id: 1,
-      drug_name: "ORAL SUSPENSION 200 MG + 40 MG/5 ML",
-      au: "BOTTLE",
-      batch: "NOB23005ED",
-      expiry_date: "02/10/2025",
-      available_stock: 12,
-      previous_unit_rate: 114.0,
-      updated_unit_rate: 114.0,
-    },
-    {
-      id: 2,
-      drug_name: "ACETYL SALICYLIC ACID (ASA) TABLET (ENTERIC COATED) 325 MG",
-      au: "No.",
-      batch: "04008214",
-      expiry_date: "11/09/2025",
-      available_stock: 5,
-      previous_unit_rate: 15.0,
-      updated_unit_rate: 15.0,
-    },
-    {
-      id: 3,
-      drug_name: "Acetyl salicylic acid (Aspirin) - 150 Tab. IP",
-      au: "No.",
-      batch: "04010774",
-      expiry_date: "31/08/2026",
-      available_stock: 350,
-      previous_unit_rate: 11.0,
-      updated_unit_rate: 11.0,
-    },
-    {
-      id: 4,
-      drug_name: "Acetyl salicylic acid (Aspirin) - 150 Tab. IP",
-      au: "No.",
-      batch: "04010774",
-      expiry_date: "31/08/2026",
-      available_stock: 200,
-      previous_unit_rate: 11.0,
-      updated_unit_rate: 11.0,
-    },
-    {
-      id: 5,
-      drug_name: "Acetyl salicylic acid (Aspirin) - 150 Tab. IP",
-      au: "No.",
-      batch: "04010774",
-      expiry_date: "31/08/2026",
-      available_stock: 350,
-      previous_unit_rate: 11.0,
-      updated_unit_rate: 11.0,
-    },
-    {
-      id: 6,
-      drug_name: "Acetyl salicylic acid (Aspirin) - 150 Tab. IP",
-      au: "No.",
-      batch: "04010320",
-      expiry_date: "28/02/2026",
-      available_stock: 250,
-      previous_unit_rate: 0.8,
-      updated_unit_rate: 0.8,
-    },
-    {
-      id: 7,
-      drug_name: "Acetyl salicylic acid (Aspirin) - 150 Tab. IP",
-      au: "No.",
-      batch: "10197",
-      expiry_date: "31/12/2025",
-      available_stock: 42,
-      previous_unit_rate: 0.8,
-      updated_unit_rate: 0.8,
-    },
-    {
-      id: 8,
-      drug_name: "Acetyl salicylic acid (Aspirin) - 150 Tab. IP",
-      au: "No.",
-      batch: "04010692",
-      expiry_date: "31/07/2026",
-      available_stock: 126,
-      previous_unit_rate: 1.1,
-      updated_unit_rate: 1.1,
-    },
-  ])
+  // const [drugList, setDrugList] = useState([
+  //   {
+  //     id: 1,
+  //     drug_name: "ORAL SUSPENSION 200 MG + 40 MG/5 ML",
+  //     au: "BOTTLE",
+  //     batch: "NOB23005ED",
+  //     expiry_date: "02/10/2025",
+  //     available_stock: 12,
+  //     previous_unit_rate: 114.0,
+  //     updated_unit_rate: 114.0,
+  //   },
+  //   {
+  //     id: 2,
+  //     drug_name: "ACETYL SALICYLIC ACID (ASA) TABLET (ENTERIC COATED) 325 MG",
+  //     au: "No.",
+  //     batch: "04008214",
+  //     expiry_date: "11/09/2025",
+  //     available_stock: 5,
+  //     previous_unit_rate: 15.0,
+  //     updated_unit_rate: 15.0,
+  //   },
+  //   {
+  //     id: 3,
+  //     drug_name: "Acetyl salicylic acid (Aspirin) - 150 Tab. IP",
+  //     au: "No.",
+  //     batch: "04010774",
+  //     expiry_date: "31/08/2026",
+  //     available_stock: 350,
+  //     previous_unit_rate: 11.0,
+  //     updated_unit_rate: 11.0,
+  //   },
+  //   {
+  //     id: 4,
+  //     drug_name: "Acetyl salicylic acid (Aspirin) - 150 Tab. IP",
+  //     au: "No.",
+  //     batch: "04010774",
+  //     expiry_date: "31/08/2026",
+  //     available_stock: 200,
+  //     previous_unit_rate: 11.0,
+  //     updated_unit_rate: 11.0,
+  //   },
+  //   {
+  //     id: 5,
+  //     drug_name: "Acetyl salicylic acid (Aspirin) - 150 Tab. IP",
+  //     au: "No.",
+  //     batch: "04010774",
+  //     expiry_date: "31/08/2026",
+  //     available_stock: 350,
+  //     previous_unit_rate: 11.0,
+  //     updated_unit_rate: 11.0,
+  //   },
+  //   {
+  //     id: 6,
+  //     drug_name: "Acetyl salicylic acid (Aspirin) - 150 Tab. IP",
+  //     au: "No.",
+  //     batch: "04010320",
+  //     expiry_date: "28/02/2026",
+  //     available_stock: 250,
+  //     previous_unit_rate: 0.8,
+  //     updated_unit_rate: 0.8,
+  //   },
+  //   {
+  //     id: 7,
+  //     drug_name: "Acetyl salicylic acid (Aspirin) - 150 Tab. IP",
+  //     au: "No.",
+  //     batch: "10197",
+  //     expiry_date: "31/12/2025",
+  //     available_stock: 42,
+  //     previous_unit_rate: 0.8,
+  //     updated_unit_rate: 0.8,
+  //   },
+  //   {
+  //     id: 8,
+  //     drug_name: "Acetyl salicylic acid (Aspirin) - 150 Tab. IP",
+  //     au: "No.",
+  //     batch: "04010692",
+  //     expiry_date: "31/07/2026",
+  //     available_stock: 126,
+  //     previous_unit_rate: 1.1,
+  //     updated_unit_rate: 1.1,
+  //   },
+  // ])
 
+  const [drugList, setDrugList] = useState([])
+  const [loading, setLoading] = useState(false)
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
   const itemsPerPage = 10
 
   const [searchParams, setSearchParams] = useState({
-    drugCode: "",
     drugName: "",
+    drugCode: "",
   })
   const [filteredDrugList, setFilteredDrugList] = useState(drugList)
+  const [changedRates, setChangedRates] = useState([]); // Add this line
+
+  useEffect(() => {
+    fetchStoreReportData()
+  }, [])
+
+  const fetchStoreReportData = async () => {
+    setLoading(true)
+    const reportType = "details"
+    try {
+      const data = await getRequest(`${OPEN_BALANCE}/getAllStock/${reportType}`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        const withOriginal = data.response.map(item => ({
+          ...item,
+          originalMrpPerUnit: item.mrpPerUnit
+        }));
+        setDrugList(withOriginal);
+      } else {
+        setDrugList([]);
+      }
+    } catch (error) {
+      setDrugList([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChangeSearch = (e) => {
     const { name, value } = e.target
@@ -103,21 +133,38 @@ const UpdateUnitRate = () => {
 
   const handleSearch = () => {
     let filtered = drugList
-    if (searchParams.drugCode.trim() !== "") {
-      filtered = filtered.filter((item) =>
-        item.batch.toLowerCase().includes(searchParams.drugCode.trim().toLowerCase())
-      )
-    }
     if (searchParams.drugName.trim() !== "") {
       filtered = filtered.filter((item) =>
-        item.drug_name.toLowerCase().includes(searchParams.drugName.trim().toLowerCase())
+        item.itemName?.toLowerCase().includes(searchParams.drugName.trim().toLowerCase())
       )
     }
+
+    if (searchParams.drugCode.trim() !== "") {
+      filtered = filtered.filter((item) =>
+        item.itemCode?.toLowerCase().includes(searchParams.drugCode.trim().toLowerCase())
+      )
+    }
+
     setFilteredDrugList(filtered)
     setCurrentPage(1)
   }
 
-  
+  // Add this useEffect for dynamic search
+  useEffect(() => {
+    let filtered = drugList;
+    if (searchParams.drugName.trim() !== "") {
+      filtered = filtered.filter((item) =>
+        item.itemName?.toLowerCase().includes(searchParams.drugName.trim().toLowerCase())
+      );
+    }
+    if (searchParams.drugCode.trim() !== "") {
+      filtered = filtered.filter((item) =>
+        item.itemCode?.toLowerCase().includes(searchParams.drugCode.trim().toLowerCase())
+      );
+    }
+    setFilteredDrugList(filtered);
+    setCurrentPage(1);
+  }, [searchParams, drugList]);
 
   // Keep filteredDrugList in sync if drugList changes
   useEffect(() => {
@@ -137,15 +184,40 @@ const UpdateUnitRate = () => {
     })
   }
 
-  const handleUnitRateChange = (id, newRate) => {
-    setDrugList(
-      drugList.map((item) => (item.id === id ? { ...item, updated_unit_rate: Number.parseFloat(newRate) || 0 } : item)),
-    )
+  const handleUnitRateChange = (stockId, newRate) => {
+    setChangedRates(prev => {
+      const filtered = prev.filter(entry => entry.stockId !== stockId);
+      // If input is blank, remove from changedRates
+      if (newRate === "") return filtered;
+      return [...filtered, { stockId, mrpValue: Number.parseFloat(newRate) || 0 }];
+    });
   }
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    showPopup("Unit rates updated successfully!", "success")
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (changedRates.length === 0) {
+      showPopup("No changes to submit.", "info");
+      return;
+    }
+    setLoading(true);
+    try {
+      // Use putRequest instead of fetch
+      const response = await putRequest(
+        `${OPEN_BALANCE}/updateByMrp`,
+        changedRates
+      );
+      if (response.status === 200) {
+        showPopup("Unit rates updated successfully!", "success");
+        setChangedRates([]); // Clear changes after successful update
+        await fetchStoreReportData(); 
+      } else {
+        showPopup("Failed to update unit rates.", "danger");
+      }
+    } catch (error) {
+      showPopup("Error updating unit rates.", "danger");
+    } finally {
+      setLoading(false);
+    }
   }
 
   const handlePageNavigation = () => {
@@ -204,7 +276,7 @@ const UpdateUnitRate = () => {
             </div>
             <div className="card-body">
               {/* Search Form */}
-              <form className="mb-3" onSubmit={e => { e.preventDefault(); handleSearch(); }}>
+              <form className="mb-3">
                 <div className="row g-3 align-items-end">
                   <div className="col-md-3">
                     <label className="form-label">Drug Code</label>
@@ -228,12 +300,6 @@ const UpdateUnitRate = () => {
                       onChange={handleChangeSearch}
                     />
                   </div>
-                  <div className="col-md-3 d-flex gap-2">
-                    <button type="button" className="btn btn-primary me-2" onClick={handleSearch}>
-                      Search
-                    </button>
-                    
-                  </div>
                 </div>
               </form>
               {/* End Search Form */}
@@ -252,32 +318,36 @@ const UpdateUnitRate = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {currentItems.map((item) => (
-                        <tr key={item.id}>
-                          <td>{item.drug_name}</td>
-                          <td>{item.au}</td>
-                          <td>{item.batch}</td>
-                          <td>{item.expiry_date}</td>
-                          <td>{item.available_stock}</td>
-                          <td>{item.previous_unit_rate.toFixed(2)}</td>
-                          <td>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="form-control"
-                              value={item.updated_unit_rate}
-                              onChange={(e) => handleUnitRateChange(item.id, e.target.value)}
-                            />
-                          </td>
-                        </tr>
-                      ))}
+                      {currentItems.map((item) => {
+                        // Find changed value if exists
+                        const changed = changedRates.find(rate => rate.stockId === item.stockId);
+                        return (
+                          <tr key={item.stockId}>
+                            <td>{item.itemName}</td>
+                            <td>{item.unitAu}</td>
+                            <td>{item.batchNo}</td>
+                            <td>{new Date(item.doe).toLocaleDateString('en-GB')}</td>
+                            <td>{item.openingQty}</td>
+                            <td>{(item.originalMrpPerUnit ?? item.mrpPerUnit).toFixed(2)}</td>
+                            <td>
+                              <input
+                                type="number"
+                                step="0.01"
+                                className="form-control"
+                                value={changed ? changed.mrpValue : ""}
+                                onChange={e => handleUnitRateChange(item.stockId, e.target.value)}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                   <div className="d-flex justify-content-end mt-3">
-                  <button type="submit" className="btn btn-success">
-                    Submit
-                  </button>
-                </div>
+                    <button type="submit" className="btn btn-success">
+                      Submit
+                    </button>
+                  </div>
                 </div>
 
                 <nav className="d-flex justify-content-between align-items-center mt-3">
@@ -325,7 +395,7 @@ const UpdateUnitRate = () => {
                   </div>
                 </nav>
 
-                
+
               </form>
 
               {popupMessage && (
