@@ -1,96 +1,61 @@
 import { useState, useRef, useEffect } from "react"
 import Popup from "../../../Components/popup"
+import LoadingScreen from "../../../Components/Loading/index";
+import { getRequest } from "../../../service/apiService";
+import { OPEN_BALANCE, MAS_DRUG_MAS } from "../../../config/apiConfig";
+
 
 const DrugExpiry = () => {
-  const [drugExpiryList, setDrugExpiryList] = useState([
-    {
-      id: 1,
-      drug_code: "DRG001",
-      drug_name: "Paracetamol 500mg",
-      batch_no: "BATCH001",
-      closing_stock: 150,
-      expiry_date: "2025-12-31",
-      au: "Strip",
-      mmu: "Ambikapur-MMU01",
-      from_date: "2024-01-01",
-      to_date: "2025-12-31",
-    },
-    {
-      id: 2,
-      drug_code: "DRG002",
-      drug_name: "Amoxicillin 250mg",
-      batch_no: "BATCH002",
-      closing_stock: 75,
-      expiry_date: "2025-08-15",
-      au: "Capsule",
-      mmu: "Ambikapur-MMU02",
-      from_date: "2024-01-01",
-      to_date: "2025-12-31",
-    },
-    {
-      id: 3,
-      drug_code: "DRG003",
-      drug_name: "Aspirin 75mg",
-      batch_no: "BATCH003",
-      closing_stock: 200,
-      expiry_date: "2025-06-30",
-      au: "Tablet",
-      mmu: "Ambikapur-MMU01",
-      from_date: "2024-01-01",
-      to_date: "2025-12-31",
-    },
-    {
-      id: 4,
-      drug_code: "DRG004",
-      drug_name: "Ibuprofen 400mg",
-      batch_no: "BATCH004",
-      closing_stock: 90,
-      expiry_date: "2025-09-20",
-      au: "Tablet",
-      mmu: "Ambikapur-MMU02",
-      from_date: "2024-01-01",
-      to_date: "2025-12-31",
-    },
-    {
-      id: 5,
-      drug_code: "DRG005",
-      drug_name: "Cough Syrup 100ml",
-      batch_no: "BATCH005",
-      closing_stock: 45,
-      expiry_date: "2025-07-10",
-      au: "Bottle",
-      mmu: "Ambikapur-MMU01",
-      from_date: "2024-01-01",
-      to_date: "2025-12-31",
-    },
-  ])
-
-  const drugMasterList = [
-    { code: "DRG001", name: "Paracetamol 500mg" },
-    { code: "DRG002", name: "Amoxicillin 250mg" },
-    { code: "DRG003", name: "Aspirin 75mg" },
-    { code: "DRG004", name: "Ibuprofen 400mg" },
-    { code: "DRG005", name: "Cough Syrup 100ml" },
-    { code: "DRG006", name: "Vitamin D3 1000IU" },
-    { code: "DRG007", name: "Omeprazole 20mg" },
-    { code: "DRG008", name: "Metformin 500mg" },
-  ]
-
   const [searchFormData, setSearchFormData] = useState({
     drugCode: "",
     drugName: "",
     fromDate: "",
     toDate: "",
-  })
+  });
+
+  const [drugCodeQuery, setDrugCodeQuery] = useState("");
+  const [drugNameQuery, setDrugNameQuery] = useState("");
+  const [filteredDrugList, setFilteredDrugList] = useState([]);
+  const [showCodeDropdown, setShowCodeDropdown] = useState(false);
+  const [showNameDropdown, setShowNameDropdown] = useState(false);
+
+
+  console.log("searchFormData", searchFormData)
 
   const [filteredResults, setFilteredResults] = useState([])
+  const [filtered, setFiltered] = useState([])
+
   const [showResults, setShowResults] = useState(false)
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
   const [showDrugDropdown, setShowDrugDropdown] = useState(false)
-  const [drugSearchQuery, setDrugSearchQuery] = useState("")
   const drugDropdownRef = useRef(null)
+  const [drugCodeOptions, setDrugCodeOptions] = useState([]);
+  const [loading, setLoading] = useState(false)
+
+  console.log("filteredResults", filteredResults)
+
+
+  const fatchDrugCodeOptions = async () => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${MAS_DRUG_MAS}/getAll2/1`);
+      if (response && response.response) {
+        setDrugCodeOptions(response.response);
+      }
+    } catch (err) {
+      console.error("Error fetching drug options:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fatchDrugCodeOptions();
+  }, []);
+
+
 
   useEffect(() => {
     if (!showDrugDropdown) return;
@@ -105,11 +70,6 @@ const DrugExpiry = () => {
 
   const itemsPerPage = 5
 
-  const filteredDrugList = drugMasterList.filter(
-    (drug) =>
-      drug.code.toLowerCase().includes(drugSearchQuery.toLowerCase()) ||
-      drug.name.toLowerCase().includes(drugSearchQuery.toLowerCase()),
-  )
 
   const handleSearchInputChange = (e) => {
     const { id, value } = e.target
@@ -117,62 +77,109 @@ const DrugExpiry = () => {
   }
 
   const handleDrugCodeSearch = (e) => {
-    const value = e.target.value
-    setDrugSearchQuery(value)
-    setSearchFormData((prevData) => ({ ...prevData, drugCode: value }))
-    setShowDrugDropdown(true)
+    const query = e.target.value;
+    setDrugCodeQuery(query);
+    setShowCodeDropdown(true);
 
-    // Auto-populate drug name if exact match found
-    const exactMatch = drugMasterList.find((drug) => drug.code.toLowerCase() === value.toLowerCase())
-    if (exactMatch) {
-      setSearchFormData((prevData) => ({ ...prevData, drugName: exactMatch.name }))
-    }
-  }
+    const filtered = drugCodeOptions.filter((drug) =>
+      drug.code.toLowerCase().includes(query.toLowerCase())
+    );
+    setFilteredDrugList(filtered);
+  };
+
+  const handleDrugNameSearch = (e) => {
+    const query = e.target.value;
+    setDrugNameQuery(query);
+    setShowNameDropdown(true);
+
+    const filtered = drugCodeOptions.filter((drug) =>
+      drug.name.toLowerCase().includes(query.toLowerCase())
+    );
+    setFilteredDrugList(filtered);
+  };
 
   const handleDrugSelection = (drug) => {
-    setSearchFormData((prevData) => ({
-      ...prevData,
-      drugCode: drug.code,
-      drugName: drug.name,
-    }))
-    setDrugSearchQuery(drug.code)
-    setShowDrugDropdown(false)
-  }
+    setSearchFormData({
+      ...searchFormData,
+      drugCode: drug.id,
+      drugName: drug.id,
+    });
+    setDrugCodeQuery(drug.code);
+    setDrugNameQuery(drug.name);
+    setShowCodeDropdown(false);
+    setShowNameDropdown(false);
+  };
 
-  const handleSearch = (e) => {
-    e.preventDefault()
 
-    // Validate mandatory fields
-    if (!searchFormData.drugCode || !searchFormData.fromDate || !searchFormData.toDate) {
+
+  const handleSearchSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!searchFormData.fromDate || !searchFormData.toDate) {
       showPopup("Please fill all mandatory fields (Drug Code, From Date, To Date)", "error")
       return
     }
 
-    // Filter results based on search criteria
-    const results = drugExpiryList.filter((item) => {
-      const matchesDrugCode =
-        !searchFormData.drugCode || item.drug_code.toLowerCase().includes(searchFormData.drugCode.toLowerCase())
-      const matchesDrugName =
-        !searchFormData.drugName || item.drug_name.toLowerCase().includes(searchFormData.drugName.toLowerCase())
-
-      const itemFromDate = new Date(item.from_date)
-      const itemToDate = new Date(item.to_date)
-      const searchFromDate = new Date(searchFormData.fromDate)
-      const searchToDate = new Date(searchFormData.toDate)
-
-      const matchesDateRange = itemFromDate <= searchToDate && itemToDate >= searchFromDate
-
-      return matchesDrugCode && matchesDrugName && matchesDateRange
-    })
-
-    setFilteredResults(results)
-    setShowResults(true)
-    setCurrentPage(1)
-
-    if (results.length === 0) {
-      showPopup("No records found matching the search criteria", "info")
+    if (searchFormData.fromDate && searchFormData.toDate) {
+      await fetchBatchStock();
+    } else {
+      console.warn("Please select both fromDate and toDate");
     }
+  };
+
+
+const fetchBatchStock = async () => {
+  try {
+    const { fromDate, toDate, drugCode } = searchFormData;
+
+    const drugCodeStr = (drugCode ?? "").toString().trim();
+
+    const itemId = drugCodeStr || "0";
+
+    let url = `${OPEN_BALANCE}/stocks/${fromDate}/${toDate}/${itemId}`;
+    
+    if (drugCodeStr) {
+      url += `?itemId=${encodeURIComponent(drugCodeStr)}`;
+    }
+
+    const data = await getRequest(url);
+    if (data.status === 200 && Array.isArray(data.response)) {
+      setFiltered(data.response);
+      setFilteredResults(data.response);
+      setShowResults(true);
+      setCurrentPage(1);
+    } else {
+      setFiltered([]);
+      setFilteredResults([]);
+      setShowResults(true);
+    }
+  } catch (error) {
+   setFiltered([]);
+    setFilteredResults([]);
+    setShowResults(true); // <-- ensure this is set
+    console.error("Error fetching Store Item data:", error);
   }
+};
+
+
+  const handleReset = () => {
+    setSearchFormData({
+      drugCode: "",
+      drugName: "",
+      fromDate: "",
+      toDate: ""
+    });
+
+    setDrugCodeQuery("");
+    setDrugNameQuery("");
+    setFilteredResults([]);
+    setShowCodeDropdown(false);
+    setShowNameDropdown(false);
+    setShowResults(false);
+  };
+
+
+
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -246,7 +253,7 @@ const DrugExpiry = () => {
               <h4 className="card-title p-2 mb-0">Drug Expiry</h4>
             </div>
             <div className="card-body">
-              <form className="forms row" onSubmit={handleSearch}>
+              <form className="forms row" >
                 <div className="row">
                   <div className="form-group col-md-4 mt-3">
                     <label>
@@ -258,6 +265,7 @@ const DrugExpiry = () => {
                       id="fromDate"
                       onChange={handleSearchInputChange}
                       value={searchFormData.fromDate}
+                      max={searchFormData.toDate || new Date().toISOString().split("T")[0]}
                       required
                     />
                   </div>
@@ -271,10 +279,11 @@ const DrugExpiry = () => {
                       id="toDate"
                       onChange={handleSearchInputChange}
                       value={searchFormData.toDate}
+                      min={searchFormData.fromDate}
                       required
                     />
                   </div>
-                  <div className="form-group col-md-4 mt-3 position-relative" ref={drugDropdownRef}>
+                  <div className="form-group col-md-4 mt-3 position-relative">
                     <label>
                       Drug Code <span className="text-danger">*</span>
                     </label>
@@ -284,12 +293,14 @@ const DrugExpiry = () => {
                       id="drugCode"
                       placeholder="Search Drug Code"
                       onChange={handleDrugCodeSearch}
-                      value={drugSearchQuery}
-                      onFocus={() => setShowDrugDropdown(true)}
-                      required
+                      value={drugCodeQuery}
+                      onFocus={() => setShowCodeDropdown(true)}
                     />
-                    {showDrugDropdown && drugSearchQuery && filteredDrugList.length > 0 && (
-                      <ul className="list-group position-absolute w-100 mt-1" style={{ zIndex: 1050, maxHeight: "250px", overflowY: "auto" }}>
+                    {showCodeDropdown && drugCodeQuery && filteredDrugList.length > 0 && (
+                      <ul
+                        className="list-group position-absolute w-100 mt-1"
+                        style={{ zIndex: 1050, maxHeight: "250px", overflowY: "auto" }}
+                      >
                         {filteredDrugList.map((drug) => (
                           <li
                             key={drug.code}
@@ -303,23 +314,52 @@ const DrugExpiry = () => {
                       </ul>
                     )}
                   </div>
-                  <div className="form-group col-md-4 mt-3">
+
+                  <div className="form-group col-md-4 mt-3 position-relative">
                     <label>Drug Name</label>
                     <input
                       type="text"
                       className="form-control"
                       id="drugName"
-                      placeholder="Drug Name"
-                      onChange={handleSearchInputChange}
-                      value={searchFormData.drugName}
+                      placeholder="Search Drug Name"
+                      onChange={handleDrugNameSearch}
+                      value={drugNameQuery}
+                      onFocus={() => setShowNameDropdown(true)}
                     />
+                    {showNameDropdown && drugNameQuery && filteredDrugList.length > 0 && (
+                      <ul
+                        className="list-group position-absolute w-100 mt-1"
+                        style={{ zIndex: 1050, maxHeight: "250px", overflowY: "auto" }}
+                      >
+                        {filteredDrugList.map((drug) => (
+                          <li
+                            key={drug.code}
+                            className="list-group-item list-group-item-action"
+                            onClick={() => handleDrugSelection(drug)}
+                            style={{ cursor: "pointer" }}
+                          >
+                            <strong>{drug.code}</strong> - {drug.name}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
+
                   <div className="form-group col-md-4 mt-3 d-flex align-items-end">
                     <button
                       type="submit"
                       className="btn btn-primary me-2"
+                      onClick={handleSearchSubmit}
                     >
                       Search
+                    </button>
+
+                    <button
+                      type="button" // <-- Change to button
+                      className="btn btn-primary me-2"
+                      onClick={handleReset} // <-- Use onClick
+                    >
+                      Reset
                     </button>
                   </div>
                 </div>
@@ -327,34 +367,7 @@ const DrugExpiry = () => {
 
               {showResults && (
                 <>
-                  {filteredResults.length === 0 ? (
-                    <div className="mt-4">
-                      <div className="alert alert-success" role="alert">
-                        <strong>No Record Found</strong>
-                      </div>
-                      <div className="table-responsive">
-                        <table className="table table-bordered table-hover align-middle">
-                          <thead >
-                            <tr>
-                              <th>Drug Code</th>
-                              <th>Drug Name</th>
-                              <th>A/U</th>
-                              <th>Batch No.</th>
-                              <th>Closing Stock</th>
-                              <th>Expiry Date</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td colSpan="6" className="text-center text-muted">
-                                No Record Found
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ) : (
+                  {filteredResults.length > 0 ? (
                     <div className="mt-4">
                       <div className="table-responsive">
                         <table className="table table-bordered table-hover align-middle">
@@ -370,13 +383,13 @@ const DrugExpiry = () => {
                           </thead>
                           <tbody>
                             {currentItems.map((item) => (
-                              <tr key={item.id}>
-                                <td>{item.drug_code}</td>
-                                <td>{item.drug_name}</td>
-                                <td>{item.au}</td>
-                                <td>{item.batch_no}</td>
-                                <td>{item.closing_stock}</td>
-                                <td>{new Date(item.expiry_date).toLocaleDateString()}</td>
+                              <tr key={item.stockId}>
+                                <td>{item.itemCode}</td>
+                                <td>{item.itemName}</td>
+                                <td>{item.unitAu}</td>
+                                <td>{item.batchNo}</td>
+                                <td>{item.closingQty}</td>
+                                <td>{new Date(item.doe).toLocaleDateString('en-GB')}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -430,6 +443,10 @@ const DrugExpiry = () => {
                         </nav>
                       )}
                     </div>
+                  ) : (
+                    <div className="mt-4 text-center text-danger">
+                      No records found.
+                    </div>
                   )}
 
                   <div className="d-flex justify-content-end mt-3">
@@ -437,7 +454,7 @@ const DrugExpiry = () => {
                       type="button"
                       className="btn btn-primary "
                       onClick={handlePrint}
-                      
+
                     >
                       Print
                     </button>
