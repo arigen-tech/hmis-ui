@@ -1,44 +1,11 @@
-"use client"
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import ReactDOM from "react-dom"
+import { OPEN_BALANCE, MAS_DRUG_MAS } from "../../../config/apiConfig";
+import { getRequest, postRequest } from "../../../service/apiService"
 
-const drugCodeOptions = [
-  { id: 1, code: "D382", name: "OMEPRAZOLE CAPSULE 20 MG[148]" },
-  { id: 2, code: "PCM001", name: "Paracetamol 500mg" },
-  { id: 3, code: "IBU001", name: "Ibuprofen 400mg" },
-  { id: 4, code: "ASP001", name: "Aspirin 75mg" },
-  { id: 5, code: "DOL001", name: "Dolo 650mg" },
-  { id: 6, code: "AMX001", name: "Amoxicillin 250mg" },
-  { id: 7, code: "CIP001", name: "Ciprofloxacin 500mg" },
-  { id: 8, code: "MET001", name: "Metformin 500mg" },
-]
-
-const batchOptions = {
-  D382: [
-    { batch: "SP2436", computedStock: 151 },
-    { batch: "SP2437", computedStock: 89 },
-    { batch: "SP2438", computedStock: 203 },
-  ],
-  PCM001: [
-    { batch: "PCM001A", computedStock: 75 },
-    { batch: "PCM001B", computedStock: 120 },
-  ],
-  IBU001: [
-    { batch: "IBU001X", computedStock: 45 },
-    { batch: "IBU001Y", computedStock: 67 },
-  ],
-  ASP001: [
-    { batch: "ASP001M", computedStock: 234 },
-    { batch: "ASP001N", computedStock: 156 },
-  ],
-  DOL001: [
-    { batch: "DOL001P", computedStock: 98 },
-    { batch: "DOL001Q", computedStock: 134 },
-  ],
-}
 
 const PhysicalStockAdjustment = () => {
-  const [reasonForStockTaking, setReasonForStockTaking] = useState("")
+  const [reasonForTraking, setReasonForStockTaking] = useState("")
   const [stockEntries, setStockEntries] = useState([
     {
       id: 1,
@@ -51,23 +18,56 @@ const PhysicalStockAdjustment = () => {
       surplus: "",
       deficient: "",
       remarks: "",
+      stockId: "",
+      itemId: "",
     },
   ])
+  console.log("Initial Stock Entries:", stockEntries)
   const [popupMessage, setPopupMessage] = useState(null)
   const dropdownClickedRef = useRef(false)
   const [activeDrugCodeDropdown, setActiveDrugCodeDropdown] = useState(null)
   const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null)
+  const [drugCodeOptions, setDrugCodeOptions] = useState([])
+  const [batchData, setBatchData] = useState([])
 
   // Create refs for input elements
   const drugCodeInputRefs = useRef({})
   const drugNameInputRefs = useRef({})
+
+
+  const fatchDrugCodeOptions = async () => {
+    try {
+      const response = await getRequest(`${MAS_DRUG_MAS}/getAll2/1`);
+      if (response && response.response) {
+        setDrugCodeOptions(response.response);
+      }
+    } catch (err) {
+      console.error("Error fetching drug options:", err);
+    } finally {
+    }
+  };
+
+  useEffect(() => {
+    fatchDrugCodeOptions();
+  }, []);
+
+  const fatchBatchStockData = async (itemid) => {
+    try {
+      const response = await getRequest(`${OPEN_BALANCE}/getStockByItemId/${itemid}`);
+      if (response && response.response) {
+        setBatchData(response.response);
+      }
+    } catch (err) {
+      console.error("Error fetching drug options:", err);
+    } finally {
+    }
+  };
 
   const handleStockEntryChange = (index, field, value) => {
     const updatedEntries = stockEntries.map((entry, i) => {
       if (i === index) {
         const updatedEntry = { ...entry, [field]: value }
 
-        // Calculate surplus/deficient when physical stock changes
         if (field === "physicalStock" && entry.computedStock) {
           const computed = Number.parseFloat(entry.computedStock) || 0
           const physical = Number.parseFloat(value) || 0
@@ -84,29 +84,34 @@ const PhysicalStockAdjustment = () => {
           }
         }
 
-        // When batch is selected, populate computed stock
-        if (field === "batchNo" && entry.drugCode && batchOptions[entry.drugCode]) {
-          const selectedBatch = batchOptions[entry.drugCode].find((batch) => batch.batch === value)
+        if (field === "batchNo" && entry.drugCode && batchData.length > 0) {
+          const selectedBatch = batchData.find(
+            (batch) => batch.batchNo === value && batch.itemCode === entry.drugCode
+          );
+
           if (selectedBatch) {
-            updatedEntry.computedStock = selectedBatch.computedStock.toString()
-            // Recalculate surplus/deficient if physical stock exists
+            updatedEntry.computedStock = selectedBatch.openingQty.toString();
+            updatedEntry.doe = selectedBatch.doe;
+            updatedEntry.stockId = selectedBatch.stockId;
+
             if (entry.physicalStock) {
-              const computed = selectedBatch.computedStock
-              const physical = Number.parseFloat(entry.physicalStock) || 0
-              const difference = physical - computed
+              const computed = Number.parseFloat(selectedBatch.openingQty) || 0;
+              const physical = Number.parseFloat(entry.physicalStock) || 0;
+              const difference = physical - computed;
               if (difference > 0) {
-                updatedEntry.surplus = difference.toString()
-                updatedEntry.deficient = ""
+                updatedEntry.surplus = difference.toString();
+                updatedEntry.deficient = "";
               } else if (difference < 0) {
-                updatedEntry.deficient = Math.abs(difference).toString()
-                updatedEntry.surplus = ""
+                updatedEntry.deficient = Math.abs(difference).toString();
+                updatedEntry.surplus = "";
               } else {
-                updatedEntry.surplus = ""
-                updatedEntry.deficient = ""
+                updatedEntry.surplus = "";
+                updatedEntry.deficient = "";
               }
             }
           }
         }
+
 
         return updatedEntry
       }
@@ -138,29 +143,57 @@ const PhysicalStockAdjustment = () => {
     }
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const hasEmptyRequiredFields = stockEntries.some(
-      (entry) => !entry.drugCode || !entry.drugName || !entry.physicalStock,
-    )
+      (entry) => !entry.drugCode || !entry.drugName || !entry.physicalStock
+    );
 
     if (hasEmptyRequiredFields) {
-      showPopup("Please fill in all required fields (Drug Code, Drug Name, Physical Stock)", "error")
-      return
+      showPopup("Please fill in all required fields (Drug Code, Drug Name, Physical Stock)", "error");
+      return;
     }
 
-    if (!reasonForStockTaking.trim()) {
-      showPopup("Please provide a reason for stock taking", "error")
-      return
+    if (!reasonForTraking.trim()) {
+      showPopup("Please provide a reason for stock taking", "error");
+      return;
     }
 
-    const submissionData = {
-      reasonForStockTaking,
-      stockEntries: stockEntries.filter((entry) => entry.drugCode || entry.drugName),
-    }
+    const payload = {
+      id: "",
+      reasonForTraking: reasonForTraking.trim(),
+      stockEntries: stockEntries
+        .filter((entry) => entry.drugCode || entry.drugName)
+        .map((entry) => ({
+          id: entry.id,
+          drugCode: entry.drugCode,
+          drugName: entry.drugName,
+          batchNo: entry.batchNo,
+          doe: entry.doe,
+          computedStock: entry.computedStock,
+          storeStockService: entry.physicalStock,
+          stockSurplus: entry.surplus,
+          stockDeficient: entry.deficient,
+          remarks: entry.remarks,
+          stockId: entry.stockId,
+          itemId: entry.itemId,
+          trakingMId: "",
+        })),
+    };
 
-    console.log("Submitting:", submissionData)
-    showPopup("Stock adjustment submitted successfully!", "success")
-  }
+    try {
+      const response = await postRequest(`${OPEN_BALANCE}/createPhysicalStock`, payload);
+      if (response && response.response) {
+        showPopup("Stock adjustment submitted successfully!", "success");
+        handleReset();
+      } else {
+        showPopup("Failed to submit stock adjustment. Please try again.", "error");
+      }
+    } catch (error) {
+      console.error("Error submitting stock adjustment:", error);
+      showPopup("Error submitting stock adjustment. Please try again.", "error");
+    }
+  };
+
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -186,6 +219,8 @@ const PhysicalStockAdjustment = () => {
         surplus: "",
         deficient: "",
         remarks: "",
+        stockId: "",
+        itemId: "",
       },
     ])
   }
@@ -239,12 +274,17 @@ const PhysicalStockAdjustment = () => {
                             className="form-control form-control-sm"
                             value={entry.drugCode}
                             onChange={(e) => {
-                              const value = e.target.value
-                              handleStockEntryChange(index, "drugCode", value)
+                              const value = e.target.value;
+                              handleStockEntryChange(index, "drugCode", value);
                               if (value.length > 0) {
-                                setActiveDrugCodeDropdown(index)
+                                setActiveDrugCodeDropdown(index);
+                                // Find the drug option by code and fetch batch data
+                                const selectedDrug = drugCodeOptions.find(opt => opt.code === value);
+                                if (selectedDrug) {
+                                  fatchBatchStockData(selectedDrug.id);
+                                }
                               } else {
-                                setActiveDrugCodeDropdown(null)
+                                setActiveDrugCodeDropdown(null);
                               }
                             }}
                             placeholder="Code"
@@ -303,6 +343,7 @@ const PhysicalStockAdjustment = () => {
                                             drugName: opt.name,
                                             batchNo: "",
                                             computedStock: "",
+                                            itemId: opt.id,
                                           }
                                         }
                                         return entry
@@ -310,6 +351,8 @@ const PhysicalStockAdjustment = () => {
                                       setStockEntries(updatedEntries)
                                       setActiveDrugCodeDropdown(null)
                                       dropdownClickedRef.current = false
+                                      // Fetch batch data for selected drug
+                                      fatchBatchStockData(opt.id);
                                     }}
                                   >
                                     {opt.code} - {opt.name}
@@ -335,12 +378,17 @@ const PhysicalStockAdjustment = () => {
                             className="form-control form-control-sm"
                             value={entry.drugName}
                             onChange={(e) => {
-                              const value = e.target.value
-                              handleStockEntryChange(index, "drugName", value)
+                              const value = e.target.value;
+                              handleStockEntryChange(index, "drugName", value);
                               if (value.length > 0) {
-                                setActiveDrugNameDropdown(index)
+                                setActiveDrugNameDropdown(index);
+                                // Find the drug option by name and fetch batch data
+                                const selectedDrug = drugCodeOptions.find(opt => opt.name === value);
+                                if (selectedDrug) {
+                                  fatchBatchStockData(selectedDrug.id);
+                                }
                               } else {
-                                setActiveDrugNameDropdown(null)
+                                setActiveDrugNameDropdown(null);
                               }
                             }}
                             placeholder="Drug Name"
@@ -356,7 +404,6 @@ const PhysicalStockAdjustment = () => {
                               }, 150)
                             }}
                           />
-                          {/* Using React Portal for better dropdown positioning */}
                           {activeDrugNameDropdown === index &&
                             ReactDOM.createPortal(
                               <ul
@@ -401,6 +448,8 @@ const PhysicalStockAdjustment = () => {
                                               drugName: opt.name,
                                               batchNo: "",
                                               computedStock: "",
+                                              itemId: opt.id,
+
                                             }
                                           }
                                           return entry
@@ -408,6 +457,7 @@ const PhysicalStockAdjustment = () => {
                                         setStockEntries(updatedEntries)
                                         setActiveDrugNameDropdown(null)
                                         dropdownClickedRef.current = false
+                                        fatchBatchStockData(opt.id);
                                       }}
                                     >
                                       {opt.name}
@@ -423,7 +473,7 @@ const PhysicalStockAdjustment = () => {
                                     <li className="list-group-item text-muted">No matches found</li>
                                   )}
                               </ul>,
-                              document.body, // Render dropdown in document body
+                              document.body,
                             )}
                         </td>
 
@@ -438,14 +488,16 @@ const PhysicalStockAdjustment = () => {
                           >
                             <option value="">Select Batch</option>
                             {entry.drugCode &&
-                              batchOptions[entry.drugCode] &&
-                              batchOptions[entry.drugCode].map((batch, idx) => (
-                                <option key={idx} value={batch.batch}>
-                                  {batch.batch}
-                                </option>
-                              ))}
+                              batchData
+                                .filter((batch) => batch.itemCode === entry.drugCode)
+                                .map((batch, idx) => (
+                                  <option key={idx} value={batch.batchNo}>
+                                    {batch.batchNo}
+                                  </option>
+                                ))}
                           </select>
                         </td>
+
 
                         <td>
                           <input
@@ -454,6 +506,7 @@ const PhysicalStockAdjustment = () => {
                             value={entry.doe}
                             onChange={(e) => handleStockEntryChange(index, "doe", e.target.value)}
                             style={{ minWidth: "120px" }}
+                            readOnly
                           />
                         </td>
 
@@ -560,7 +613,7 @@ const PhysicalStockAdjustment = () => {
                   <textarea
                     className="form-control"
                     rows="3"
-                    value={reasonForStockTaking}
+                    value={reasonForTraking}
                     onChange={(e) => setReasonForStockTaking(e.target.value)}
                     placeholder="Enter reason for stock taking..."
                   />
