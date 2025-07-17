@@ -10,10 +10,17 @@ const PaymentPage = () => {
   const location = useLocation()
   const navigate = useNavigate()
 
-  // Get all the data passed from lab registration
-  const { amount = 0, patientId, labData, selectedItems, paymentBreakdown } = location.state || {}
+  // Get all the data passed from lab registration or billing details
+  const {
+    amount = 0,
+    patientId,
+    labData,
+    selectedItems,
+    paymentBreakdown,
+    billingHeaderId, // Direct billing header ID
+  } = location.state || {}
 
-  const [paymentMethod, setPaymentMethod] = useState("card")
+  const [paymentMethod, setPaymentMethod] = useState("cash")
   const [paymentDetails, setPaymentDetails] = useState("")
   const [paymentReferenceNo, setPaymentReferenceNo] = useState("")
   const [loading, setLoading] = useState(false)
@@ -26,42 +33,79 @@ const PaymentPage = () => {
       const random = Math.floor(Math.random() * 1000)
       return `PAY${timestamp}${random}`
     }
-
     setPaymentReferenceNo(generateReferenceNo())
   }, [])
 
-  // Extract bill header ID from lab data - CORRECTED with the right key name
+  // Enhanced function to get bill header ID - try multiple sources
   const getBillHeaderId = () => {
-    console.log("=== EXTRACTING BILL HEADER ID ===")
+    console.log("=== GETTING BILL HEADER ID ===")
+    console.log("Direct billingHeaderId:", billingHeaderId)
+    console.log("Lab Data:", labData)
+    console.log("Location State:", location.state)
 
-    // Based on your debug output, the correct path is labData.response.billinghdId
-    const billHeaderId = labData?.response?.billinghdId
-
-    if (billHeaderId !== undefined && billHeaderId !== null) {
-      console.log("Found billinghdId:", billHeaderId)
-      return billHeaderId
+    // Try direct billing header ID first
+    if (billingHeaderId !== undefined && billingHeaderId !== null) {
+      console.log("Using direct billingHeaderId:", billingHeaderId)
+      return billingHeaderId
     }
 
-    // Fallback to other possible paths just in case
+    // Try from lab data response
+    if (labData?.response?.billinghdId !== undefined && labData?.response?.billinghdId !== null) {
+      console.log("Using labData.response.billinghdId:", labData.response.billinghdId)
+      return labData.response.billinghdId
+    }
+
+    if (labData?.response?.billHeaderId !== undefined && labData?.response?.billHeaderId !== null) {
+      console.log("Using labData.response.billHeaderId:", labData.response.billHeaderId)
+      return labData.response.billHeaderId
+    }
+
+    // Try other possible paths
     const possiblePaths = [
-      labData?.response?.billHeaderId,
       labData?.response?.billHdId,
       labData?.response?.billId,
       labData?.response?.id,
       labData?.billHeaderId,
       labData?.billHdId,
-      labData?.billinghdId, // Add this as fallback
+      labData?.billinghdId,
     ]
 
     for (const path of possiblePaths) {
       if (path !== undefined && path !== null) {
-        console.log("Found billHeaderId in fallback:", path)
+        console.log("Using fallback path:", path)
         return path
       }
     }
 
-    console.error("billHeaderId not found in any expected location")
+    console.log("No bill header ID found!")
     return null
+  }
+
+  // Prepare investigation and package status list for the payment request
+  const prepareInvestigationAndPackageStatus = () => {
+    const statusList = []
+
+    // Add selected investigations
+    if (selectedItems?.investigations) {
+      selectedItems.investigations.forEach((investigation) => {
+        statusList.push({
+          id: investigation.id,
+          type: "i", // 'i' for investigation
+        })
+      })
+    }
+
+    // Add selected packages
+    if (selectedItems?.packages) {
+      selectedItems.packages.forEach((pkg) => {
+        statusList.push({
+          id: pkg.id,
+          type: "p", // 'p' for package
+        })
+      })
+    }
+
+    return statusList
   }
 
   const handlePayment = async () => {
@@ -75,35 +119,33 @@ const PaymentPage = () => {
       }
 
       const billHeaderId = getBillHeaderId()
+      console.log("Final Bill Header ID for payment:", billHeaderId)
 
       if (!billHeaderId) {
         Swal.fire({
           title: "Error!",
-          text: "Bill Header ID not found. Cannot proceed with payment.",
+          text: "Bill Header ID not found. Cannot proceed with payment. Please go back and try again.",
           icon: "error",
           confirmButtonText: "Go Back",
+        }).then(() => {
+          navigate(-1) // Go back to previous page
         })
         return
       }
 
-      // Prepare payment update request
+      // Prepare payment update request according to backend requirements
       const paymentUpdateRequest = {
-        billHeaderId: Number(billHeaderId), // Convert to number as expected by backend
+        billHeaderId: Number(billHeaderId),
         amount: Number.parseFloat(amount),
         mode: paymentMethod,
         paymentReferenceNo: paymentReferenceNo,
+        investigationandPackegBillStatus: prepareInvestigationAndPackageStatus(),
       }
 
-      console.log("=== PAYMENT REQUEST ===")
       console.log("Payment Update Request:", paymentUpdateRequest)
-      console.log("======================")
 
       // Call the payment status update API
       const response = await postRequest("/lab/updatepaymentstatus", paymentUpdateRequest)
-
-      console.log("=== PAYMENT API RESPONSE ===")
-      console.log("Payment API Response:", response)
-      console.log("============================")
 
       if (response && response.status === 200) {
         // Payment successful
@@ -168,6 +210,8 @@ const PaymentPage = () => {
               </h4>
             </div>
             <div className="card-body">
+              
+
               {/* Payment Summary */}
               <div className="mb-4 p-3 bg-light rounded">
                 <h6 className="fw-bold mb-2">Payment Summary</h6>
@@ -186,8 +230,6 @@ const PaymentPage = () => {
                   </div>
                 )}
               </div>
-
-              
 
               {/* Payment Method Selection */}
               <div className="mb-3">
@@ -229,14 +271,6 @@ const PaymentPage = () => {
                 </div>
               )}
 
-              {/* Cash Payment Note */}
-              {/* {paymentMethod === "cash" && (
-                <div className="alert alert-info">
-                  <i className="fa fa-info-circle me-2"></i>
-                  Please pay the amount at the reception counter.
-                </div>
-              )} */}
-
               {/* Action Buttons */}
               <div className="d-grid gap-2">
                 <button
@@ -256,29 +290,19 @@ const PaymentPage = () => {
                     </>
                   )}
                 </button>
-
                 <button className="btn btn-outline-secondary" onClick={handleCancel} disabled={loading}>
                   <i className="fa fa-times me-2"></i>
                   Cancel Payment
                 </button>
               </div>
 
-              {/* Debug Info (remove in production) */}
-              {/* {process.env.NODE_ENV === "development" && (
-                <div className="mt-4 p-2 bg-light rounded">
-                  <small className="text-muted">
-                    <strong>Debug Info:</strong>
-                    <br />
-                    Bill Header ID: {currentBillHeaderId || "NOT FOUND"}
-                    <br />
-                    Patient ID: {patientId}
-                    <br />
-                    Amount: {amount}
-                    <br />
-                    <strong>Correct Path:</strong> labData.response.billinghdId = {labData?.response?.billinghdId}
-                  </small>
+              {/* Show error if no bill header ID */}
+              {!currentBillHeaderId && (
+                <div className="alert alert-danger mt-3">
+                  <i className="fa fa-exclamation-triangle me-2"></i>
+                  <strong>Error:</strong> Billing information is missing. Please go back and try again.
                 </div>
-              )} */}
+              )}
             </div>
           </div>
         </div>

@@ -1,97 +1,56 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import LoadingScreen from "../../../Components/Loading"
+import { getRequest } from "../../../service/apiService"
+import { LAB } from "../../../config/apiConfig"
 
 const PendingForBilling = () => {
   const navigate = useNavigate()
-
-  const [patientList, setPatientList] = useState([
-    {
-      id: 1,
-      patientName: "Rahul Sharma",
-      mobileNo: "9876543210",
-      age: 35,
-      sex: "Male",
-      relation: "Self",
-      billingType: "OPD",
-      consultedDoctor: "Dr. A. Verma",
-      department: "General Medicine",
-      amount: 500,
-      billingStatus: "Pending",
-      patientId: "P123456",
-      address: "Delhi, India",
-      visitDate: "2025-07-03",
-      visitType: "New",
-      visitId: "V789654",
-      room: "Room 101",
-      opdSession: "Morning (9-1 PM)",
-      tariffPlan: "General Tariff",
-      basePrice: 500,
-      discount: 10,
-      netAmount: 450,
-      gst: 81,
-      totalAmount: 531,
-      status: "y",
-    },
-    {
-      id: 2,
-      patientName: "Anita Gupta",
-      mobileNo: "9123456789",
-      age: 28,
-      sex: "Female",
-      relation: "Wife",
-      billingType: "Lab",
-      consultedDoctor: "Dr. P. Nair",
-      department: "Pathology",
-      amount: 1200,
-      billingStatus: "Pending",
-      patientId: "P123457",
-      address: "Mumbai, India",
-      visitDate: "2025-07-03",
-      visitType: "Follow-up",
-      visitId: "V789655",
-      room: "Lab 201",
-      opdSession: "Evening (2-6 PM)",
-      tariffPlan: "Premium Tariff",
-      basePrice: 1200,
-      discount: 5,
-      netAmount: 1140,
-      gst: 205,
-      totalAmount: 1345,
-      status: "y",
-    },
-    {
-      id: 3,
-      patientName: "Suresh Kumar",
-      mobileNo: "9090909090",
-      age: 45,
-      sex: "Male",
-      relation: "Father",
-      billingType: "OPD",
-      consultedDoctor: "Dr. R. Mehta",
-      department: "Cardiology",
-      amount: 800,
-      billingStatus: "Pending",
-      patientId: "P123458",
-      address: "Bangalore, India",
-      visitDate: "2025-07-03",
-      visitType: "New",
-      visitId: "V789656",
-      room: "Room 301",
-      opdSession: "Morning (9-1 PM)",
-      tariffPlan: "General Tariff",
-      basePrice: 800,
-      discount: 15,
-      netAmount: 680,
-      gst: 122,
-      totalAmount: 802,
-      status: "y",
-    },
-  ])
-
+  const [patientList, setPatientList] = useState([])
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
   const itemsPerPage = 5
+
+  const fetchPendingBilling = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      const response = await getRequest(`${LAB}/pending`)
+
+      if (response && response.response) {
+        const mappedData = response.response.map((item) => ({
+          id: item.billinghdid, // Use billinghdid as the unique identifier
+          patientId: item.patientid, // Store patientid separately
+          patientName: item.patientName || "N/A",
+          mobileNo: item.mobileNo || "N/A",
+          age: item.age || "N/A",
+          sex: item.sex || "N/A",
+          relation: item.relation || "N/A",
+          billingType: item.billingType || "N/A",
+          consultedDoctor: item.consultedDoctor || "N/A",
+          department: item.department || "N/A",
+          amount: item.amount || 0,
+          billingStatus: item.billingStatus === "p" ? "Pending" : "Pending",
+          fullData: item, // Store the complete record including details array
+        }))
+
+        setPatientList(mappedData)
+      }
+    } catch (error) {
+      console.error("Error fetching pending billing data:", error)
+      setError(error.message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchPendingBilling()
+  }, [])
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
@@ -109,18 +68,51 @@ const PendingForBilling = () => {
   const filteredTotalPages = Math.ceil(filteredPatientList.length / itemsPerPage)
   const currentItems = filteredPatientList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
-  const handlePendingClick = (patientId) => {
-    // Navigate to OPD Billing Details page with patient ID
-    navigate(`/OPDBillingDetails?patientId=${patientId}`)
+  const handlePendingClick = (patientData) => {
+    const getNavigationRoute = (billingType) => {
+      switch (billingType.toLowerCase()) {
+        case "laboratory services":
+        case "lab":
+          return "/LabBillingDetails"
+        case "opd":
+        case "opd services":
+          return "/OPDBillingDetails"
+        case "ipd":
+        case "ipd services":
+          return "/IPDBillingDetails"
+        case "pharmacy":
+        case "pharmacy services":
+          return "/PharmacyBillingDetails"
+        case "radiology":
+        case "radiology services":
+          return "/RadiologyBillingDetails"
+        default:
+          return "/LabBillingDetails"
+      }
+    }
+
+    const route = getNavigationRoute(patientData.billingType)
+
+    // Use the detailed data that's already available from the initial API call
+    navigate(route, {
+      state: {
+        billingData: patientData.fullData, // Pass the complete record with details
+      },
+    })
   }
 
   const handlePageNavigation = () => {
     const pageNumber = Number.parseInt(pageInput, 10)
     if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
       setCurrentPage(pageNumber)
+      setPageInput("")
     } else {
       alert("Please enter a valid page number.")
     }
+  }
+
+  const handleRefresh = () => {
+    fetchPendingBilling()
   }
 
   const renderPagination = () => {
@@ -160,6 +152,10 @@ const PendingForBilling = () => {
     ))
   }
 
+  if (isLoading) {
+    return <LoadingScreen />
+  }
+
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -186,99 +182,125 @@ const PendingForBilling = () => {
                 <button type="button" className="btn btn-success me-2">
                   <i className="mdi mdi-plus"></i> Generate Report
                 </button>
+                <button type="button" className="btn btn-primary me-2" onClick={handleRefresh} title="Refresh Data">
+                  <i className="mdi mdi-refresh"></i> Refresh
+                </button>
               </div>
             </div>
             <div className="card-body">
-              <div className="table-responsive packagelist">
-                <table className="table table-bordered table-hover align-middle">
-                  <thead className="table-light">
-                    <tr>
-                      <th>Patient Name</th>
-                      <th>Mobile No.</th>
-                      <th>Age</th>
-                      <th>Sex</th>
-                      <th>Relation</th>
-                      <th>Billing Type</th>
-                      <th>Consulted Doctor</th>
-                      <th>Department</th>
-                      <th>Amount</th>
-                      <th>Billing Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentItems.map((item) => (
-                      <tr key={item.id}>
-                        <td>{item.patientName}</td>
-                        <td>{item.mobileNo}</td>
-                        <td>{item.age}</td>
-                        <td>{item.sex}</td>
-                        <td>{item.relation}</td>
-                        <td>{item.billingType}</td>
-                        <td>{item.consultedDoctor}</td>
-                        <td>{item.department}</td>
-                        <td>₹{item.amount}</td>
-                        <td>
-                          <button
-                            className="btn btn-warning btn-sm"
-                            onClick={() => handlePendingClick(item.id)}
-                            style={{
-                              cursor: "pointer",
-                              border: "none",
-                              background: "transparent",
-                              color: "#ff6b35",
-                              textDecoration: "underline",
-                            }}
-                          >
-                            {item.billingStatus}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <nav className="d-flex justify-content-between align-items-center mt-3">
-                <div>
-                  <span>
-                    Page {currentPage} of {filteredTotalPages} | Total Records: {filteredPatientList.length}
-                  </span>
-                </div>
-                <ul className="pagination mb-0">
-                  <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                    >
-                      &laquo; Previous
-                    </button>
-                  </li>
-                  {renderPagination()}
-                  <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === filteredTotalPages}
-                    >
-                      Next &raquo;
-                    </button>
-                  </li>
-                </ul>
-                <div className="d-flex align-items-center">
-                  <input
-                    type="number"
-                    min="1"
-                    max={filteredTotalPages}
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                    placeholder="Go to page"
-                    className="form-control me-2"
-                  />
-                  <button className="btn btn-primary" onClick={handlePageNavigation}>
-                    Go
+              {error && (
+                <div className="alert alert-danger" role="alert">
+                  <strong>Error:</strong> {error}
+                  <button type="button" className="btn btn-sm btn-outline-danger ms-2" onClick={handleRefresh}>
+                    Retry
                   </button>
                 </div>
-              </nav>
+              )}
+
+              {!error && filteredPatientList.length === 0 && (
+                <div className="alert alert-info" role="alert">
+                  <i className="mdi mdi-information"></i> No pending billing records found.
+                </div>
+              )}
+
+              {filteredPatientList.length > 0 && (
+                <div className="table-responsive packagelist">
+                  <table className="table table-bordered table-hover align-middle">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Patient Name</th>
+                        <th>Mobile No.</th>
+                        <th>Age</th>
+                        <th>Sex</th>
+                        <th>Relation</th>
+                        <th>Billing Type</th>
+                        <th>Consulted Doctor</th>
+                        <th>Department</th>
+                        <th>Amount</th>
+                        <th>Billing Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentItems.map((item) => (
+                        <tr key={item.id}>
+                          <td>{item.patientName}</td>
+                          <td>{item.mobileNo}</td>
+                          <td>{item.age}</td>
+                          <td>{item.sex}</td>
+                          <td>{item.relation}</td>
+                          <td>
+                            <span className="badge bg-info">{item.billingType}</span>
+                          </td>
+                          <td>{item.consultedDoctor}</td>
+                          <td>{item.department}</td>
+                          <td>₹{typeof item.amount === "number" ? item.amount.toFixed(2) : item.amount}</td>
+                          <td>
+                            <button
+                              className="btn btn-warning btn-sm"
+                              onClick={() => handlePendingClick(item)}
+                              style={{
+                                cursor: "pointer",
+                                border: "none",
+                                background: "transparent",
+                                color: "#ff6b35",
+                                textDecoration: "underline",
+                              }}
+                            >
+                              {item.billingStatus}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {filteredPatientList.length > 0 && (
+                <nav className="d-flex justify-content-between align-items-center mt-3">
+                  <div>
+                    <span>
+                      Page {currentPage} of {filteredTotalPages} | Total Records: {filteredPatientList.length}
+                    </span>
+                  </div>
+                  <ul className="pagination mb-0">
+                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                      <button
+                        className="page-link"
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        &laquo; Previous
+                      </button>
+                    </li>
+                    {renderPagination()}
+                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                      <button
+                        className="page-link"
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        disabled={currentPage === filteredTotalPages}
+                      >
+                        Next &raquo;
+                      </button>
+                    </li>
+                  </ul>
+                  <div className="d-flex align-items-center">
+                    <input
+                      type="number"
+                      min="1"
+                      max={filteredTotalPages}
+                      value={pageInput}
+                      onChange={(e) => setPageInput(e.target.value)}
+                      placeholder="Go to page"
+                      className="form-control me-2"
+                      style={{ width: "120px" }}
+                    />
+                    <button className="btn btn-primary" onClick={handlePageNavigation}>
+                      Go
+                    </button>
+                  </div>
+                </nav>
+              )}
             </div>
           </div>
         </div>
