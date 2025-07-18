@@ -72,6 +72,7 @@ const validRoutes = [
   "/DrugExpiry",
   "/PendingSampleCollection",
   "/PhysicalStockAdjustment",
+  "/PhysicalStockAdjustmentViewUpdate",
 ];
 
 const NotAuthorized = () => {
