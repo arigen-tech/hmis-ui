@@ -1,0 +1,863 @@
+import { useState, useRef } from "react"
+import ReactDOM from "react-dom"
+
+const drugCodeOptions = [
+  { id: 1, code: "D382", name: "OMEPRAZOLE CAPSULE 20 MG[148]" },
+  { id: 2, code: "PCM001", name: "Paracetamol 500mg" },
+  { id: 3, code: "IBU001", name: "Ibuprofen 400mg" },
+  { id: 4, code: "ASP001", name: "Aspirin 75mg" },
+  { id: 5, code: "DOL001", name: "Dolo 650mg" },
+  { id: 6, code: "AMX001", name: "Amoxicillin 250mg" },
+  { id: 7, code: "CIP001", name: "Ciprofloxacin 500mg" },
+  { id: 8, code: "MET001", name: "Metformin 500mg" },
+]
+
+const batchOptions = {
+  D382: [
+    { batch: "SP2436", computedStock: 151 },
+    { batch: "SP2437", computedStock: 89 },
+    { batch: "SP2438", computedStock: 203 },
+  ],
+  PCM001: [
+    { batch: "PCM001A", computedStock: 75 },
+    { batch: "PCM001B", computedStock: 120 },
+  ],
+  IBU001: [
+    { batch: "IBU001X", computedStock: 45 },
+    { batch: "IBU001Y", computedStock: 67 },
+  ],
+  ASP001: [
+    { batch: "ASP001M", computedStock: 234 },
+    { batch: "ASP001N", computedStock: 156 },
+  ],
+  DOL001: [
+    { batch: "DOL001P", computedStock: 98 },
+    { batch: "DOL001Q", computedStock: 134 },
+  ],
+}
+
+const PhysicalStockAdjustmentViewUpdate = () => {
+  const [currentView, setCurrentView] = useState("list") // "list" or "detail"
+  const [selectedRecord, setSelectedRecord] = useState(null)
+
+  // List view data
+  const [adjustmentData, setAdjustmentData] = useState([
+    {
+      id: 1,
+      stockTakingNo: "001-2025",
+      stockTakingDate: "17/07/2025",
+      department: "DISPENSARY",
+      status: "Saved",
+      submittedBy: "Nodal Officer",
+    },
+    {
+      id: 2,
+      stockTakingNo: "002-2025",
+      stockTakingDate: "16/07/2025",
+      department: "ICU",
+      status: "Approved",
+      submittedBy: "Admin_User",
+    },
+  ])
+
+  const [fromDate, setFromDate] = useState("2025-07-17")
+  const [toDate, setToDate] = useState("2025-07-17")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageInput, setPageInput] = useState("")
+
+  // Detail view data
+  const [reasonForStockTaking, setReasonForStockTaking] = useState("")
+  const [stockEntries, setStockEntries] = useState([
+    {
+      id: 1,
+      drugCode: "",
+      drugName: "",
+      batchNo: "",
+      doe: "",
+      computedStock: "",
+      physicalStock: "",
+      surplus: "",
+      deficient: "",
+      remarks: "",
+    },
+  ])
+
+  const [popupMessage, setPopupMessage] = useState(null)
+  const dropdownClickedRef = useRef(false)
+  const [activeDrugCodeDropdown, setActiveDrugCodeDropdown] = useState(null)
+  const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null)
+  const drugCodeInputRefs = useRef({})
+  const drugNameInputRefs = useRef({})
+
+  const itemsPerPage = 10
+  const totalPages = Math.ceil(adjustmentData.length / itemsPerPage)
+  const currentItems = adjustmentData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+
+  const handleEditClick = (record, e) => {
+    e.stopPropagation()
+    setSelectedRecord(record)
+    // Load existing data if available
+    if (record.status === "Saved") {
+      setStockEntries([
+        {
+          id: 1,
+          drugCode: "D382",
+          drugName: "OMEPRAZOLE CAPSULE 20 MG[148]",
+          batchNo: "SP2436",
+          doe: "2025-12-31",
+          computedStock: "151",
+          physicalStock: "145",
+          surplus: "",
+          deficient: "6",
+          remarks: "Stock discrepancy found",
+        },
+      ])
+      setReasonForStockTaking("Monthly stock verification")
+    }
+    setCurrentView("detail")
+  }
+
+  const handleBackToList = () => {
+    setCurrentView("list")
+    setSelectedRecord(null)
+  }
+
+  const handleSearch = () => {
+    console.log("Searching from", fromDate, "to", toDate)
+  }
+
+  const handleShowAll = () => {
+    setFromDate("")
+    setToDate("")
+  }
+
+  const handlePageNavigation = () => {
+    const pageNumber = Number.parseInt(pageInput, 10)
+    if (pageNumber > 0 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber)
+    } else {
+      alert("Please enter a valid page number.")
+    }
+  }
+
+  const handleStockEntryChange = (index, field, value) => {
+    const updatedEntries = stockEntries.map((entry, i) => {
+      if (i === index) {
+        const updatedEntry = { ...entry, [field]: value }
+
+        if (field === "physicalStock" && entry.computedStock) {
+          const computed = Number.parseFloat(entry.computedStock) || 0
+          const physical = Number.parseFloat(value) || 0
+          const difference = physical - computed
+          if (difference > 0) {
+            updatedEntry.surplus = difference.toString()
+            updatedEntry.deficient = ""
+          } else if (difference < 0) {
+            updatedEntry.deficient = Math.abs(difference).toString()
+            updatedEntry.surplus = ""
+          } else {
+            updatedEntry.surplus = ""
+            updatedEntry.deficient = ""
+          }
+        }
+
+        if (field === "batchNo" && entry.drugCode && batchOptions[entry.drugCode]) {
+          const selectedBatch = batchOptions[entry.drugCode].find((batch) => batch.batch === value)
+          if (selectedBatch) {
+            updatedEntry.computedStock = selectedBatch.computedStock.toString()
+            if (entry.physicalStock) {
+              const computed = selectedBatch.computedStock
+              const physical = Number.parseFloat(entry.physicalStock) || 0
+              const difference = physical - computed
+              if (difference > 0) {
+                updatedEntry.surplus = difference.toString()
+                updatedEntry.deficient = ""
+              } else if (difference < 0) {
+                updatedEntry.deficient = Math.abs(difference).toString()
+                updatedEntry.surplus = ""
+              } else {
+                updatedEntry.surplus = ""
+                updatedEntry.deficient = ""
+              }
+            }
+          }
+        }
+        return updatedEntry
+      }
+      return entry
+    })
+    setStockEntries(updatedEntries)
+  }
+
+  const addNewRow = () => {
+    const newEntry = {
+      id: Date.now(),
+      drugCode: "",
+      drugName: "",
+      batchNo: "",
+      doe: "",
+      computedStock: "",
+      physicalStock: "",
+      surplus: "",
+      deficient: "",
+      remarks: "",
+    }
+    setStockEntries([...stockEntries, newEntry])
+  }
+
+  const removeRow = (index) => {
+    if (stockEntries.length > 1) {
+      const filteredEntries = stockEntries.filter((_, i) => i !== index)
+      setStockEntries(filteredEntries)
+    }
+  }
+
+  const handleSubmit = () => {
+    const hasEmptyRequiredFields = stockEntries.some(
+      (entry) => !entry.drugCode || !entry.drugName || !entry.physicalStock,
+    )
+    if (hasEmptyRequiredFields) {
+      showPopup("Please fill in all required fields (Drug Code, Drug Name, Physical Stock)", "error")
+      return
+    }
+    if (!reasonForStockTaking.trim()) {
+      showPopup("Please provide a reason for stock taking", "error")
+      return
+    }
+    showPopup("Stock adjustment updated successfully!", "success")
+  }
+
+  const handleReset = () => {
+    setReasonForStockTaking("")
+    setStockEntries([
+      {
+        id: 1,
+        drugCode: "",
+        drugName: "",
+        batchNo: "",
+        doe: "",
+        computedStock: "",
+        physicalStock: "",
+        surplus: "",
+        deficient: "",
+        remarks: "",
+      },
+    ])
+  }
+
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null)
+      },
+    })
+  }
+
+  const renderPagination = () => {
+    const pageNumbers = []
+    const maxVisiblePages = 5
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1)
+
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1)
+    }
+
+    if (startPage > 1) {
+      pageNumbers.push(1)
+      if (startPage > 2) pageNumbers.push("...")
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i)
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) pageNumbers.push("...")
+      pageNumbers.push(totalPages)
+    }
+
+    return pageNumbers.map((number, index) => (
+      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
+        {typeof number === "number" ? (
+          <button className="page-link" onClick={() => setCurrentPage(number)}>
+            {number}
+          </button>
+        ) : (
+          <span className="page-link disabled">{number}</span>
+        )}
+      </li>
+    ))
+  }
+
+  if (currentView === "detail") {
+    return (
+      <div className="content-wrapper">
+        <div className="row">
+          <div className="col-12 grid-margin stretch-card">
+            <div className="card form-card">
+              <div className="card-header d-flex justify-content-between align-items-center">
+                <h4 className="card-title p-2 mb-0">View And Edit Physical Stock Taking/Stock Adjustment</h4>
+                <button type="button" className="btn btn-secondary" onClick={handleBackToList}>
+                  Back to List
+                </button>
+              </div>
+              <div className="card-body">
+                {/* Entry Details Header */}
+                <div className="row mb-4">
+                  <div className="col-md-3">
+                    <label className="form-label fw-bold">Stock Taking Date</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={selectedRecord?.stockTakingDate || ""}
+                      style={{ backgroundColor: "#e9ecef" }}
+                      readOnly
+                    />
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label fw-bold">Stock Taking Number</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={selectedRecord?.stockTakingNo || ""}
+                      style={{ backgroundColor: "#e9ecef" }}
+                      readOnly
+                    />
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label fw-bold">Entered By</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={selectedRecord?.submittedBy || ""}
+                      style={{ backgroundColor: "#e9ecef" }}
+                      readOnly
+                    />
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label fw-bold">Department</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={selectedRecord?.department || ""}
+                      style={{ backgroundColor: "#e9ecef" }}
+                      readOnly
+                    />
+                  </div>
+                </div>
+
+                {/* Stock Entry Table */}
+                <div
+                  className="table-responsive"
+                  style={{
+                    overflowX: "auto",
+                    maxWidth: "100%",
+                    overflowY: "visible",
+                  }}
+                >
+                  <table className="table table-bordered table-hover align-middle" style={{ minWidth: "1800px" }}>
+                    <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
+                      <tr>
+                        <th className="text-center" style={{ width: "60px", minWidth: "60px" }}>
+                          S.No.
+                        </th>
+                        <th style={{ width: "120px", minWidth: "120px" }}>Drug Code</th>
+                        <th style={{ width: "300px", minWidth: "300px" }}>Drug Name</th>
+                        <th style={{ width: "120px", minWidth: "120px" }}>Batch No.</th>
+                        <th style={{ width: "120px", minWidth: "120px" }}>DOE</th>
+                        <th style={{ width: "120px", minWidth: "120px" }}>Computed Stock</th>
+                        <th style={{ width: "120px", minWidth: "120px" }}>Physical Stock</th>
+                        <th style={{ width: "100px", minWidth: "100px" }}>Surplus</th>
+                        <th style={{ width: "100px", minWidth: "100px" }}>Deficient</th>
+                        <th style={{ width: "150px", minWidth: "150px" }}>Remarks</th>
+                        <th style={{ width: "60px", minWidth: "60px" }}>Add</th>
+                        <th style={{ width: "70px", minWidth: "70px" }}>Delete</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stockEntries.map((entry, index) => (
+                        <tr key={entry.id}>
+                          <td className="text-center fw-bold">{index + 1}</td>
+                          <td style={{ position: "relative" }}>
+                            <input
+                              ref={(el) => (drugCodeInputRefs.current[index] = el)}
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={entry.drugCode}
+                              onChange={(e) => {
+                                const value = e.target.value
+                                handleStockEntryChange(index, "drugCode", value)
+                                if (value.length > 0) {
+                                  setActiveDrugCodeDropdown(index)
+                                } else {
+                                  setActiveDrugCodeDropdown(null)
+                                }
+                              }}
+                              placeholder="Code"
+                              style={{ minWidth: "100px" }}
+                              autoComplete="off"
+                              onFocus={() => setActiveDrugCodeDropdown(index)}
+                              onBlur={() => {
+                                setTimeout(() => {
+                                  if (!dropdownClickedRef.current) {
+                                    setActiveDrugCodeDropdown(null)
+                                  }
+                                  dropdownClickedRef.current = false
+                                }, 150)
+                              }}
+                            />
+                            {activeDrugCodeDropdown === index && (
+                              <ul
+                                className="list-group position-fixed"
+                                style={{
+                                  zIndex: 9999,
+                                  maxHeight: 180,
+                                  overflowY: "auto",
+                                  width: "200px",
+                                  top: `${drugCodeInputRefs.current[index]?.getBoundingClientRect().bottom + window.scrollY}px`,
+                                  left: `${drugCodeInputRefs.current[index]?.getBoundingClientRect().left + window.scrollX}px`,
+                                  backgroundColor: "white",
+                                  border: "1px solid #dee2e6",
+                                  borderRadius: "0.375rem",
+                                  boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
+                                }}
+                              >
+                                {drugCodeOptions
+                                  .filter(
+                                    (opt) =>
+                                      entry.drugCode === "" ||
+                                      opt.code.toLowerCase().includes(entry.drugCode.toLowerCase()) ||
+                                      opt.name.toLowerCase().includes(entry.drugCode.toLowerCase()),
+                                  )
+                                  .map((opt) => (
+                                    <li
+                                      key={opt.id}
+                                      className="list-group-item list-group-item-action"
+                                      style={{ cursor: "pointer" }}
+                                      onMouseDown={(e) => {
+                                        e.preventDefault()
+                                        dropdownClickedRef.current = true
+                                      }}
+                                      onClick={(e) => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        const updatedEntries = stockEntries.map((entry, i) => {
+                                          if (i === index) {
+                                            return {
+                                              ...entry,
+                                              drugCode: opt.code,
+                                              drugName: opt.name,
+                                              batchNo: "",
+                                              computedStock: "",
+                                            }
+                                          }
+                                          return entry
+                                        })
+                                        setStockEntries(updatedEntries)
+                                        setActiveDrugCodeDropdown(null)
+                                        dropdownClickedRef.current = false
+                                      }}
+                                    >
+                                      {opt.code} - {opt.name}
+                                    </li>
+                                  ))}
+                                {drugCodeOptions.filter(
+                                  (opt) =>
+                                    entry.drugCode === "" ||
+                                    opt.code.toLowerCase().includes(entry.drugCode.toLowerCase()) ||
+                                    opt.name.toLowerCase().includes(entry.drugCode.toLowerCase()),
+                                ).length === 0 &&
+                                  entry.drugCode !== "" && (
+                                    <li className="list-group-item text-muted">No matches found</li>
+                                  )}
+                              </ul>
+                            )}
+                          </td>
+                          <td style={{ position: "relative" }}>
+                            <input
+                              ref={(el) => (drugNameInputRefs.current[index] = el)}
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={entry.drugName}
+                              onChange={(e) => {
+                                const value = e.target.value
+                                handleStockEntryChange(index, "drugName", value)
+                                if (value.length > 0) {
+                                  setActiveDrugNameDropdown(index)
+                                } else {
+                                  setActiveDrugNameDropdown(null)
+                                }
+                              }}
+                              placeholder="Drug Name"
+                              style={{ minWidth: "280px" }}
+                              autoComplete="off"
+                              onFocus={() => setActiveDrugNameDropdown(index)}
+                              onBlur={() => {
+                                setTimeout(() => {
+                                  if (!dropdownClickedRef.current) {
+                                    setActiveDrugNameDropdown(null)
+                                  }
+                                  dropdownClickedRef.current = false
+                                }, 150)
+                              }}
+                            />
+                            {activeDrugNameDropdown === index &&
+                              ReactDOM.createPortal(
+                                <ul
+                                  className="list-group position-fixed"
+                                  style={{
+                                    zIndex: 9999,
+                                    maxHeight: 180,
+                                    overflowY: "auto",
+                                    width: "280px",
+                                    top: `${drugNameInputRefs.current[index]?.getBoundingClientRect().bottom + window.scrollY}px`,
+                                    left: `${drugNameInputRefs.current[index]?.getBoundingClientRect().left + window.scrollX}px`,
+                                    backgroundColor: "white",
+                                    border: "1px solid #dee2e6",
+                                    borderRadius: "0.375rem",
+                                    boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
+                                  }}
+                                >
+                                  {drugCodeOptions
+                                    .filter(
+                                      (opt) =>
+                                        entry.drugName === "" ||
+                                        opt.name.toLowerCase().includes(entry.drugName.toLowerCase()) ||
+                                        opt.code.toLowerCase().includes(entry.drugName.toLowerCase()),
+                                    )
+                                    .map((opt) => (
+                                      <li
+                                        key={opt.id}
+                                        className="list-group-item list-group-item-action"
+                                        style={{ cursor: "pointer" }}
+                                        onMouseDown={(e) => {
+                                          e.preventDefault()
+                                          dropdownClickedRef.current = true
+                                        }}
+                                        onClick={(e) => {
+                                          e.preventDefault()
+                                          e.stopPropagation()
+                                          const updatedEntries = stockEntries.map((entry, i) => {
+                                            if (i === index) {
+                                              return {
+                                                ...entry,
+                                                drugCode: opt.code,
+                                                drugName: opt.name,
+                                                batchNo: "",
+                                                computedStock: "",
+                                              }
+                                            }
+                                            return entry
+                                          })
+                                          setStockEntries(updatedEntries)
+                                          setActiveDrugNameDropdown(null)
+                                          dropdownClickedRef.current = false
+                                        }}
+                                      >
+                                        {opt.name}
+                                      </li>
+                                    ))}
+                                  {drugCodeOptions.filter(
+                                    (opt) =>
+                                      entry.drugName === "" ||
+                                      opt.name.toLowerCase().includes(entry.drugName.toLowerCase()) ||
+                                      opt.code.toLowerCase().includes(entry.drugName.toLowerCase()),
+                                  ).length === 0 &&
+                                    entry.drugName !== "" && (
+                                      <li className="list-group-item text-muted">No matches found</li>
+                                    )}
+                                </ul>,
+                                document.body,
+                              )}
+                          </td>
+                          <td>
+                            <select
+                              className="form-select form-select-sm"
+                              value={entry.batchNo}
+                              onChange={(e) => handleStockEntryChange(index, "batchNo", e.target.value)}
+                              style={{ minWidth: "110px" }}
+                              disabled={!entry.drugCode}
+                            >
+                              <option value="">Select Batch</option>
+                              {entry.drugCode &&
+                                batchOptions[entry.drugCode] &&
+                                batchOptions[entry.drugCode].map((batch, idx) => (
+                                  <option key={idx} value={batch.batch}>
+                                    {batch.batch}
+                                  </option>
+                                ))}
+                            </select>
+                          </td>
+                          <td>
+                            <input
+                              type="date"
+                              className="form-control form-control-sm"
+                              value={entry.doe}
+                              onChange={(e) => handleStockEntryChange(index, "doe", e.target.value)}
+                              style={{ minWidth: "120px" }}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={entry.computedStock}
+                              readOnly
+                              style={{ backgroundColor: "#f8f9fa", minWidth: "110px" }}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="form-control form-control-sm"
+                              value={entry.physicalStock}
+                              onChange={(e) => handleStockEntryChange(index, "physicalStock", e.target.value)}
+                              placeholder="0"
+                              min="0"
+                              step="1"
+                              style={{ minWidth: "110px" }}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={entry.surplus}
+                              readOnly
+                              style={{ backgroundColor: "#f8f9fa", minWidth: "90px" }}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={entry.deficient}
+                              readOnly
+                              style={{ backgroundColor: "#f8f9fa", minWidth: "90px" }}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={entry.remarks}
+                              onChange={(e) => handleStockEntryChange(index, "remarks", e.target.value)}
+                              placeholder="Remarks"
+                              style={{ minWidth: "130px" }}
+                            />
+                          </td>
+                          <td className="text-center">
+                            <button
+                              type="button"
+                              className="btn"
+                              onClick={addNewRow}
+                              style={{
+                                backgroundColor: "#d2691e",
+                                color: "white",
+                                border: "none",
+                                width: "35px",
+                                height: "35px",
+                              }}
+                              title="Add Row"
+                            >
+                              +
+                            </button>
+                          </td>
+                          <td className="text-center">
+                            <button
+                              type="button"
+                              className="btn btn-danger btn-sm"
+                              onClick={() => removeRow(index)}
+                              disabled={stockEntries.length === 1}
+                              title="Delete Row"
+                              style={{
+                                width: "35px",
+                                height: "35px",
+                              }}
+                            >
+                              -
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+               
+
+                <div className="d-flex justify-content-end gap-2 mt-4">
+                  <button type="button" className="btn btn-primary" onClick={handleSubmit}>
+                    Update
+                  </button>
+                  <button type="button" className="btn btn-danger" onClick={handleReset}>
+                    Reset
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="content-wrapper">
+      <div className="row">
+        <div className="col-12 grid-margin stretch-card">
+          <div className="card form-card">
+            {/* Header Section */}
+            <div className="card-header" >
+              <h4 className="card-title p-2 mb-0">Physical Stock Taking/Stock Adjustment View & Update</h4>
+            </div>
+            <div className="card-body">
+              {/* Date Filter Section */}
+              <div className="row mb-4">
+                <div className="col-md-2">
+                  <label className="form-label fw-bold">From Date</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                  />
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label fw-bold">To Date</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                  />
+                </div>
+                <div className="col-md-2 d-flex align-items-end">
+                  <button
+                    type="button"
+                    className="btn btn-primary me-2"
+                    onClick={handleSearch}
+                  >
+                    Search
+                  </button>
+                </div>
+                <div className="col-md-6 d-flex justify-content-end align-items-end">
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleShowAll}
+                  >
+                    Show All
+                  </button>
+                </div>
+              </div>
+
+              {/* Results Summary */}
+            
+
+              {/* Table Section */}
+              <div className="table-responsive">
+                <table className="table table-bordered table-hover align-middle">
+                  <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
+                    <tr>
+                      <th>Stock Taking No.</th>
+                      <th>Stock Taking Date</th>
+                      <th>Department</th>
+                      <th>Status</th>
+                      <th>Submitted By</th>
+                      <th className="text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentItems.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.stockTakingNo}</td>
+                        <td>{item.stockTakingDate}</td>
+                        <td>{item.department}</td>
+                        <td>
+                          <span
+                            className="badge"
+                            style={{
+                              backgroundColor:
+                                item.status === "Pending for Approval"
+                                  ? "#ffc107"
+                                  : item.status === "Saved"
+                                    ? "#17a2b8"
+                                    : "#28a745",
+                              color: item.status === "Pending for Approval" ? "#000" : "#fff",
+                            }}
+                          >
+                            {item.status}
+                          </span>
+                        </td>
+                        <td>{item.submittedBy}</td>
+                        <td className="text-center">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary"
+                            onClick={(e) => handleEditClick(item, e)}
+                            title="Edit Entry"
+                          >
+                            <i className="fa fa-pencil"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <nav className="d-flex justify-content-between align-items-center mt-2">
+                <div>
+                  <span>
+                    Page {currentPage} of {totalPages} | Total Records: {adjustmentData.length}
+                  </span>
+                </div>
+                <ul className="pagination mb-0">
+                  <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                    <button
+                      className="page-link"
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      &laquo; Previous
+                    </button>
+                  </li>
+                  {renderPagination()}
+                  <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                    <button
+                      className="page-link"
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next &raquo;
+                    </button>
+                  </li>
+                </ul>
+                <div className="d-flex align-items-center">
+                  <input
+                    type="number"
+                    min="1"
+                    max={totalPages}
+                    value={pageInput}
+                    onChange={(e) => setPageInput(e.target.value)}
+                    placeholder="Go to page"
+                    className="form-control me-2"
+                    style={{ width: "120px" }}
+                  />
+                  <button className="btn btn-primary" onClick={handlePageNavigation}>
+                    Go
+                  </button>
+                </div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default PhysicalStockAdjustmentViewUpdate
