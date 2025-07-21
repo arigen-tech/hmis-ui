@@ -4,6 +4,7 @@ import { OPEN_BALANCE, MAS_DRUG_MAS } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService"
 
 
+
 const PhysicalStockAdjustment = () => {
   const [reasonForTraking, setReasonForStockTaking] = useState("")
   const [stockEntries, setStockEntries] = useState([
@@ -29,6 +30,8 @@ const PhysicalStockAdjustment = () => {
   const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null)
   const [drugCodeOptions, setDrugCodeOptions] = useState([])
   const [batchData, setBatchData] = useState([])
+    const [processing, setProcessing] = useState(false);
+  
 
   // Create refs for input elements
   const drugCodeInputRefs = useRef({})
@@ -143,7 +146,63 @@ const PhysicalStockAdjustment = () => {
     }
   }
 
-  const handleSubmit = async () => {
+
+  //   const handleSave = async () => {
+  //   const hasEmptyRequiredFields = stockEntries.some(
+  //     (entry) => !entry.drugCode || !entry.drugName || !entry.physicalStock
+  //   );
+
+  //   if (hasEmptyRequiredFields) {
+  //     showPopup("Please fill in all required fields (Drug Code, Drug Name, Physical Stock)", "error");
+  //     return;
+  //   }
+
+  //   if (!reasonForTraking.trim()) {
+  //     showPopup("Please provide a reason for stock taking", "error");
+  //     return;
+  //   }
+
+  //   const payload = {
+  //     id: "",
+  //     reasonForTraking: reasonForTraking.trim(),
+  //     stockEntries: stockEntries
+  //       .filter((entry) => entry.drugCode || entry.drugName)
+  //       .map((entry) => ({
+  //         id: entry.id,
+  //         drugCode: entry.drugCode,
+  //         drugName: entry.drugName,
+  //         batchNo: entry.batchNo,
+  //         doe: entry.doe,
+  //         computedStock: entry.computedStock,
+  //         storeStockService: entry.physicalStock,
+  //         stockSurplus: entry.surplus,
+  //         stockDeficient: entry.deficient,
+  //         remarks: entry.remarks,
+  //         stockId: entry.stockId,
+  //         itemId: entry.itemId,
+  //         trakingMId: "",
+  //       })),
+  //   };
+
+  //   try {
+  //     setProcessing(true);
+
+  //     const response = await postRequest(`${OPEN_BALANCE}/createPhysicalStock`, payload);
+  //     if (response && response.response) {
+  //       showPopup("Stock adjustment submitted successfully!", "success");
+  //       handleReset();
+  //     } else {
+  //       showPopup("Failed to submit stock adjustment. Please try again.", "error");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error submitting stock adjustment:", error);
+  //     showPopup("Error submitting stock adjustment. Please try again.", "error");
+  //   }finally {
+  //     setProcessing(false);
+  //   }
+  // };
+
+  const handleSubmit = async (status) => {
     const hasEmptyRequiredFields = stockEntries.some(
       (entry) => !entry.drugCode || !entry.drugName || !entry.physicalStock
     );
@@ -161,7 +220,8 @@ const PhysicalStockAdjustment = () => {
     const payload = {
       id: "",
       reasonForTraking: reasonForTraking.trim(),
-      stockEntries: stockEntries
+      stockEntries: stockEntries,
+      status: status
         .filter((entry) => entry.drugCode || entry.drugName)
         .map((entry) => ({
           id: entry.id,
@@ -181,6 +241,8 @@ const PhysicalStockAdjustment = () => {
     };
 
     try {
+      setProcessing(true);
+
       const response = await postRequest(`${OPEN_BALANCE}/createPhysicalStock`, payload);
       if (response && response.response) {
         showPopup("Stock adjustment submitted successfully!", "success");
@@ -191,6 +253,8 @@ const PhysicalStockAdjustment = () => {
     } catch (error) {
       console.error("Error submitting stock adjustment:", error);
       showPopup("Error submitting stock adjustment. Please try again.", "error");
+    }finally {
+      setProcessing(false);
     }
   };
 
@@ -630,7 +694,15 @@ const PhysicalStockAdjustment = () => {
 
               {/* Action Buttons */}
               <div className="d-flex justify-content-end gap-2 mt-4">
-                <button type="button" className="btn btn-primary" onClick={handleSubmit}>
+                <button
+                  type="button"
+                  className="btn btn-warning"
+                  disabled={processing}
+                  onClick={() => handleSubmit("s")}
+                >
+                  Save
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => handleSubmit("p")} disabled={processing}>
                   Submit
                 </button>
                 <button type="button" className="btn btn-danger" onClick={handleReset}>
