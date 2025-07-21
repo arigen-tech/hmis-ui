@@ -81,12 +81,12 @@ const LabPaymentSuccess = () => {
                   <h5 className="mb-3">Payment Details</h5>
                   <div className="row justify-content-center">
                     <div className="col-sm-6">
-                      <p className="mb-2">
+                      {/* <p className="mb-2">
                         <strong>Bill No:</strong> {billNo || "N/A"}
-                      </p>
-                      <p className="mb-2">
+                      </p> */}
+                      {/* <p className="mb-2">
                         <strong>Payment Status:</strong> {paymentStatus || "N/A"}
-                      </p>
+                      </p> */}
                       <p className="mb-2">
                         <strong>Amount Paid:</strong> ₹{amount.toFixed(2)}
                       </p>
