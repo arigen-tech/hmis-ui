@@ -18,7 +18,7 @@ import {
   MAS_SERVICE_CATEGORY,
   MAS_PACKAGE_INVESTIGATION
 } from "../../../config/apiConfig"
-import LoadingScreen from "../../../Components/Loading" 
+import LoadingScreen from "../../../Components/Loading"
 
 
 const LabRegistration = () => {
@@ -377,12 +377,14 @@ const LabRegistration = () => {
   const handleTypeChange = (type) => {
     setFormData((prev) => ({
       ...prev,
-      type: type,
+      type: type
     }))
     if (type === "package") {
       fetchPackageInvestigationDetails(1)
     }
   }
+
+
 
   const handleRowChange = (index, field, value) => {
     setFormData((prev) => {
@@ -404,12 +406,12 @@ const LabRegistration = () => {
     })
   }
 
-  const addRow = (e, type = formData.type) => {
-    e.preventDefault()
-    const lastRow = formData.rows[formData.rows.length - 1]
-    if (!lastRow.name || lastRow.name.trim() === "" || !lastRow.date || lastRow.date.trim() === "" || lastRow.originalAmount === undefined || lastRow.originalAmount === "" || isNaN(lastRow.originalAmount) || lastRow.discountAmount === undefined || lastRow.discountAmount === "" || isNaN(lastRow.discountAmount)) {
-      Swal.fire("Missing Fields", "Please fill all required fields (Name, Date, Original Amount, Discount Amount) before adding another row.", "warning")
-      return
+  const addRow = (e, type) => {
+    e.preventDefault();
+    const lastRow = formData.rows[formData.rows.length - 1];
+    if (!lastRow.name || !lastRow.date) {
+      Swal.fire("Missing Fields", "Please fill all required fields.", "warning");
+      return;
     }
     setFormData((prev) => ({
       ...prev,
@@ -422,12 +424,14 @@ const LabRegistration = () => {
           originalAmount: 0,
           discountAmount: 0,
           netAmount: 0,
-          type: type,
-        },
-      ],
-    }))
-    setCheckedRows((prev) => [...prev, true])
-  }
+          type: type // ✅ captures fresh type from button click
+        }
+      ]
+    }));
+    setCheckedRows((prev) => [...prev, true]);
+  };
+
+
 
   const removeRow = (index) => {
     setFormData((prev) => ({
@@ -589,7 +593,7 @@ const LabRegistration = () => {
   }
 
   async function fetchPackageInvestigationDetails(flag) {
-    setLoading(true);
+    // setLoading(true);
     try {
       const data = await getRequest(`${INVESTIGATION_PACKAGE_Mapping}/getAllPackageMap/${flag}`)
       if (data.status === 200 && Array.isArray(data.response)) {
@@ -603,12 +607,12 @@ const LabRegistration = () => {
       console.error("Error fetching package investigation details:", error)
       return []
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
   }
 
   async function fetchPackagePrice(packName) {
-    setLoading(true);
+    // setLoading(true);
     try {
       const data = await getRequest(`${MAS_PACKAGE_INVESTIGATION}/pricePack?packName=${packName}`)
       if (data.status === 200 && data.response) {
@@ -621,7 +625,7 @@ const LabRegistration = () => {
       console.error("Error fetching package price:", error)
       return null
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
   }
 
@@ -1688,15 +1692,16 @@ const LabRegistration = () => {
                                                 Swal.fire(
                                                   "Warning",
                                                   "Price has not been configured for this Investigation",
-                                                  "warning",
-                                                )
+                                                  "warning"
+                                                );
                                               } else {
-                                                handleRowChange(index, "name", item.investigationName)
-                                                handleRowChange(index, "itemId", item.investigationId)
-                                                handleRowChange(index, "originalAmount", displayPrice)
-                                                handleRowChange(index, "discountAmount", discountAmount)
-                                                handleRowChange(index, "netAmount", finalPrice)
-                                                setActiveRowIndex(null)
+                                                handleRowChange(index, "name", item.investigationName);
+                                                handleRowChange(index, "itemId", item.investigationId);
+                                                handleRowChange(index, "originalAmount", displayPrice);
+                                                handleRowChange(index, "discountAmount", discountAmount);
+                                                handleRowChange(index, "netAmount", finalPrice);
+                                                handleRowChange(index, "type", formData.type); // ✅ FORCE type from radio!
+                                                setActiveRowIndex(null);
                                               }
                                             }}
                                           >
@@ -1715,7 +1720,9 @@ const LabRegistration = () => {
                                                 )}
                                               </div>
                                               {item.investigationType && (
-                                                <small className="text-muted">Type: {item.investigationType}</small>
+                                                <small className="text-muted">
+                                                  Type: {item.investigationType}
+                                                </small>
                                               )}
                                             </div>
                                           </li>
@@ -1729,24 +1736,25 @@ const LabRegistration = () => {
                                           className="list-group-item list-group-item-action"
                                           style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
                                           onClick={async () => {
-                                            const priceDetails = await fetchPackagePrice(item.packName)
+                                            const priceDetails = await fetchPackagePrice(item.packName);
                                             if (!priceDetails || !priceDetails.actualCost) {
                                               Swal.fire(
                                                 "Warning",
                                                 "Price has not been configured for this Package",
-                                                "warning",
-                                              )
+                                                "warning"
+                                              );
                                             } else {
-                                              handleRowChange(index, "name", item.packName)
-                                              handleRowChange(index, "itemId", item.id || priceDetails.packId)
+                                              handleRowChange(index, "name", item.packName);
+                                              handleRowChange(index, "itemId", item.id || priceDetails.packId);
                                               handleRowChange(
                                                 index,
                                                 "originalAmount",
-                                                priceDetails.baseCost || priceDetails.actualCost,
-                                              )
-                                              handleRowChange(index, "discountAmount", priceDetails.disc || 0)
-                                              handleRowChange(index, "netAmount", priceDetails.actualCost)
-                                              setActiveRowIndex(null)
+                                                priceDetails.baseCost || priceDetails.actualCost
+                                              );
+                                              handleRowChange(index, "discountAmount", priceDetails.disc || 0);
+                                              handleRowChange(index, "netAmount", priceDetails.actualCost);
+                                              handleRowChange(index, "type", formData.type); // ✅ FORCE type from radio!
+                                              setActiveRowIndex(null);
                                             }
                                           }}
                                         >
@@ -1813,9 +1821,10 @@ const LabRegistration = () => {
                 </table>
 
                 <div className="d-flex justify-content-between align-items-center">
-                  <button type="button" className="btn btn-success" onClick={addRow}>
+                  <button type="button" className="btn btn-success" onClick={(e) => addRow(e, formData.type)}>
                     Add {formData.type === "investigation" ? "Investigation" : "Package"} +
                   </button>
+
                   <div className="d-flex">
                     <input
                       type="text"

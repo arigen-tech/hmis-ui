@@ -48,6 +48,7 @@ export const MAS_HSN = `${MASTERS}/masHSN`;
 export const MAS_BRAND = `${MASTERS}/masBrand`;
 export const MAS_MANUFACTURE = `${MASTERS}/masManufacturer`;
 export const OPEN_BALANCE = "/openingBalanceEntry";
+export const ALL_REPORTS = `${API_HOST}/report`;
 
 
 export const FILTER_OPD_DEPT=`OPD`;

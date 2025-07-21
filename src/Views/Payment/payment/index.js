@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { postRequest } from "../../../service/apiService"
@@ -110,16 +108,15 @@ const PaymentPage = () => {
 
   const handlePayment = async () => {
     try {
-      setLoading(true)
+      setLoading(true);
 
-      // Validate required fields
       if (paymentMethod !== "cash" && !paymentDetails.trim()) {
-        Swal.fire("Error!", "Please enter payment details", "error")
-        return
+        Swal.fire("Error!", "Please enter payment details", "error");
+        return;
       }
 
-      const billHeaderId = getBillHeaderId()
-      console.log("Final Bill Header ID for payment:", billHeaderId)
+      const billHeaderId = getBillHeaderId();
+      console.log("Final Bill Header ID for payment:", billHeaderId);
 
       if (!billHeaderId) {
         Swal.fire({
@@ -128,56 +125,77 @@ const PaymentPage = () => {
           icon: "error",
           confirmButtonText: "Go Back",
         }).then(() => {
-          navigate(-1) // Go back to previous page
-        })
-        return
+          navigate(-1);
+        });
+        return;
       }
 
-      // Prepare payment update request according to backend requirements
       const paymentUpdateRequest = {
         billHeaderId: Number(billHeaderId),
         amount: Number.parseFloat(amount),
         mode: paymentMethod,
         paymentReferenceNo: paymentReferenceNo,
         investigationandPackegBillStatus: prepareInvestigationAndPackageStatus(),
-      }
+      };
 
-      console.log("Payment Update Request:", paymentUpdateRequest)
+      console.log("Payment Update Request:", paymentUpdateRequest);
 
-      // Call the payment status update API
-      const response = await postRequest("/lab/updatepaymentstatus", paymentUpdateRequest)
+      const response = await postRequest("/lab/updatepaymentstatus", paymentUpdateRequest);
 
-      if (response && response.status === 200) {
-        // Payment successful
-        setPopupMessage({
-          message: "Payment successful!",
-          type: "success",
-          onClose: () => {
-            setPopupMessage(null)
-            navigate("/lab-payment-success", {
-              state: {
-                amount,
-                paymentReferenceNo,
-                paymentMethod,
-                patientId,
-                billHeaderId,
-                paymentResponse: response,
-              },
-            })
-          },
-        })
+      console.log("Payment API Response:", response);
+
+      // ✅ Check based on your actual API response structure
+      if (response && response.status === 200 && response.message === "success") {
+        const billNo = response?.response?.billNo;
+        const msg = response?.response?.msg;
+        const paymentStatus = response?.response?.paymentStatus;
+
+        console.log("Extracted billNo:", billNo);
+        console.log("Extracted msg:", msg);
+        console.log("Extracted paymentStatus:", paymentStatus);
+
+        // ✅ Success condition based on your API: status 200, message "success", and billNo exists
+        if (billNo && msg === "Success") {
+          setPopupMessage({
+            message: "Payment successful!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              navigate("/lab-payment-success", {
+                state: {
+                  amount,
+                  paymentReferenceNo,
+                  paymentMethod,
+                  patientId,
+                  billNo,
+                  paymentStatus,
+                  paymentResponse: response,
+                },
+              });
+            },
+          });
+        } else {
+          const errorMessage = msg || "Payment processing failed";
+          Swal.fire("Payment Failed!", errorMessage, "error");
+        }
       } else {
-        // Payment failed
-        const errorMessage = response?.message || response?.response?.message || "Payment processing failed"
-        Swal.fire("Payment Failed!", errorMessage, "error")
+        const errorMessage =
+          response?.response?.msg ||
+          response?.message ||
+          "Payment processing failed";
+        Swal.fire("Payment Failed!", errorMessage, "error");
       }
     } catch (error) {
-      console.error("Payment error:", error)
-      Swal.fire("Error!", error.message || "Something went wrong during payment processing", "error")
+      console.error("Payment error:", error);
+      Swal.fire(
+        "Error!",
+        error.message || "Something went wrong during payment processing",
+        "error"
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleCancel = () => {
     Swal.fire({
@@ -210,8 +228,6 @@ const PaymentPage = () => {
               </h4>
             </div>
             <div className="card-body">
-              
-
               {/* Payment Summary */}
               <div className="mb-4 p-3 bg-light rounded">
                 <h6 className="fw-bold mb-2">Payment Summary</h6>
@@ -223,12 +239,6 @@ const PaymentPage = () => {
                   <span>Reference No:</span>
                   <span className="text-muted">{paymentReferenceNo}</span>
                 </div>
-                {currentBillHeaderId && (
-                  <div className="d-flex justify-content-between mt-1">
-                    <span>Bill ID:</span>
-                    <span className="text-muted">{currentBillHeaderId}</span>
-                  </div>
-                )}
               </div>
 
               {/* Payment Method Selection */}
