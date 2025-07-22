@@ -2,100 +2,101 @@
 
 import { useState, useRef, useEffect } from "react"
 import placeholderImage from "../../../assets/images/placeholder.jpg"
+import { getRequest, postRequest } from "../../../service/apiService"
+import { useNavigate } from "react-router-dom"
 import Swal from "sweetalert2"
+import {
+  API_HOST,
+  MAS_COUNTRY,
+  MAS_GENDER,
+  MAS_RELATION,
+  MAS_STATE,
+  PATIENT_IMAGE_UPLOAD,
+  MAS_DISTRICT,
+  MAS_INVESTIGATION,
+  INVESTIGATION_PACKAGE_Mapping,
+  MAS_SERVICE_CATEGORY,
+  MAS_PACKAGE_INVESTIGATION,
+} from "../../../config/apiConfig"
+import LoadingScreen from "../../../Components/Loading"
 
 const UpdateLabRegistration = () => {
   useEffect(() => {
-    // Mock data initialization
-    setGenderData([
-      { id: 1, genderName: "Male", genderCode: "M" },
-      { id: 2, genderName: "Female", genderCode: "F" },
-      { id: 3, genderName: "Other", genderCode: "O" },
-    ])
-    setRelationData([
-      { id: 1, relationName: "Self" },
-      { id: 2, relationName: "Father" },
-      { id: 3, relationName: "Mother" },
-      { id: 4, relationName: "Spouse" },
-    ])
-    setCountryData([
-      { id: 1, countryName: "India" },
-      { id: 2, countryName: "USA" },
-    ])
-    setStateData([
-      { id: 1, stateName: "Maharashtra" },
-      { id: 2, stateName: "Karnataka" },
-    ])
-    setDistrictData([
-      { id: 1, districtName: "Mumbai" },
-      { id: 2, districtName: "Pune" },
-    ])
-    setNokStateData([
-      { id: 1, stateName: "Maharashtra" },
-      { id: 2, stateName: "Karnataka" },
-    ])
-    setNokDistrictData([
-      { id: 1, districtName: "Mumbai" },
-      { id: 2, districtName: "Pune" },
-    ])
-    setInvestigationItems([
-      { id: 1, investigationName: "Blood Test", investigationId: 1, price: 500, disc: 50, investigationType: "Blood" },
-      { id: 2, investigationName: "X-Ray", investigationId: 2, price: 800, disc: 0, investigationType: "Radiology" },
-      {
-        id: 3,
-        investigationName: "MRI Scan",
-        investigationId: 3,
-        price: 5000,
-        disc: 500,
-        investigationType: "Radiology",
-      },
-    ])
-    setPackageItems([
-      { id: 1, packName: "Health Checkup Basic", actualCost: 2000 },
-      { id: 2, packName: "Health Checkup Premium", actualCost: 5000 },
-      { id: 3, packName: "Cardiac Package", actualCost: 3500 },
-    ])
-    setGstConfig({ gstApplicable: true, gstPercent: 18 })
+    // Fetching initial data
+    fetchGenderData()
+    fetchRelationData()
+    fetchCountryData()
+    fetchGstConfiguration()
   }, [])
 
   const [errors, setErrors] = useState({})
-  const [imageURL, setImageURL] = useState("")
   const [loading, setLoading] = useState(false)
   const [genderData, setGenderData] = useState([])
+  const [imageURL, setImageURL] = useState("")
   const [relationData, setRelationData] = useState([])
   const [countryData, setCountryData] = useState([])
   const [stateData, setStateData] = useState([])
   const [nokStateData, setNokStateData] = useState([])
   const [districtData, setDistrictData] = useState([])
   const [nokDistrictData, setNokDistrictData] = useState([])
-  const [showPatientDetails, setShowPatientDetails] = useState(false)
-  const [image, setImage] = useState(placeholderImage)
-  const [isCameraOn, setIsCameraOn] = useState(false)
-  const videoRef = useRef(null)
-  const canvasRef = useRef(null)
   const [activeRowIndex, setActiveRowIndex] = useState(null)
   const [investigationItems, setInvestigationItems] = useState([])
   const [packageItems, setPackageItems] = useState([])
-  const [checkedRows, setCheckedRows] = useState([true])
-
+  const [isDuplicatePatient, setIsDuplicatePatient] = useState(false)
+  const [showPatientDetails, setShowPatientDetails] = useState(false)
+  const navigate = useNavigate()
   const [gstConfig, setGstConfig] = useState({
     gstApplicable: true,
-    gstPercent: 0,
+    gstPercent: 0, // default fallback
   })
 
-  let stream = null
-  const [patients, setPatients] = useState([])
-
-  const [formData, setFormData] = useState({
+  // Search form data
+  const [searchFormData, setSearchFormData] = useState({
     mobileNo: "",
     patientName: "",
     uhidNo: "",
     appointmentDate: "",
   })
 
-  const [patientDetailForm, setPatientDetailForm] = useState({
-    patientGender: "",
-    patientRelation: "",
+  // Main form data - exact same structure as LabRegistration
+  const [formData, setFormData] = useState({
+    // Personal details
+    imageurl: undefined,
+    firstName: undefined,
+    middleName: undefined,
+    lastName: undefined,
+    mobileNo: undefined,
+    gender: undefined,
+    relation: undefined,
+    dob: undefined,
+    age: undefined,
+    email: undefined,
+    // Patient address
+    address1: undefined,
+    address2: undefined,
+    country: undefined,
+    state: undefined,
+    district: undefined,
+    city: undefined,
+    pinCode: undefined,
+    // NOK details
+    nokFirstName: undefined,
+    nokMiddleName: undefined,
+    nokLastName: undefined,
+    nokEmail: undefined,
+    nokMobile: undefined,
+    nokAddress1: undefined,
+    nokAddress2: undefined,
+    nokCountry: undefined,
+    nokState: undefined,
+    nokDistrict: undefined,
+    nokCity: undefined,
+    nokPinCode: undefined,
+    // Emergency contact
+    emergencyFirstName: undefined,
+    emergencyLastName: undefined,
+    emergencyMobile: undefined,
+    // Lab specific fields
     type: "investigation",
     rows: [
       {
@@ -108,71 +109,63 @@ const UpdateLabRegistration = () => {
         type: "investigation",
       },
     ],
+    paymentMode: "",
   })
 
-  const handleChangeSearch = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
-  }
+  const [image, setImage] = useState(placeholderImage)
+  const [isCameraOn, setIsCameraOn] = useState(false)
+  const videoRef = useRef(null)
+  const canvasRef = useRef(null)
+  let stream = null
+  const [checkedRows, setCheckedRows] = useState([true])
+  const [patients, setPatients] = useState([])
 
-  function calculateDOBFromAge(age) {
-    const today = new Date()
-    const birthYear = today.getFullYear() - age
-    return new Date(birthYear, today.getMonth(), today.getDate()).toISOString().split("T")[0]
-  }
-
-  function calculateAgeFromDOB(dob) {
-    const birthDate = new Date(dob)
-    const today = new Date()
-    let age = today.getFullYear() - birthDate.getFullYear()
-    const m = today.getMonth() - birthDate.getMonth()
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--
+  // Enhanced payment calculation function - SAME AS LAB REGISTRATION
+  const calculatePaymentBreakdown = () => {
+    console.log("=== CALCULATING PAYMENT BREAKDOWN ===")
+    console.log("Current GST Config:", gstConfig)
+    const checkedItems = formData.rows.filter((_, index) => checkedRows[index])
+    console.log("Checked Items:", checkedItems)
+    const totalOriginalAmount = checkedItems.reduce((total, item) => {
+      return total + (Number.parseFloat(item.originalAmount) || 0)
+    }, 0)
+    const totalDiscountAmount = checkedItems.reduce((total, item) => {
+      return total + (Number.parseFloat(item.discountAmount) || 0)
+    }, 0)
+    const totalNetAmount = totalOriginalAmount - totalDiscountAmount
+    // Fix: Calculate GST on each item's net amount individually, then sum up
+    // This matches the backend logic exactly
+    const totalGstAmount = checkedItems.reduce((total, item) => {
+      const itemOriginalAmount = Number.parseFloat(item.originalAmount) || 0
+      const itemDiscountAmount = Number.parseFloat(item.discountAmount) || 0
+      const itemNetAmount = itemOriginalAmount - itemDiscountAmount
+      // Calculate GST on this item's net amount (after discount)
+      const itemGstAmount = gstConfig.gstApplicable ? (itemNetAmount * gstConfig.gstPercent) / 100 : 0
+      console.log(
+        `Item GST Calculation - Original: ${itemOriginalAmount}, Discount: ${itemDiscountAmount}, Net: ${itemNetAmount}, GST%: ${gstConfig.gstPercent}, GST Amount: ${itemGstAmount}`,
+      )
+      return total + itemGstAmount
+    }, 0)
+    const finalAmount = totalNetAmount + totalGstAmount
+    const breakdown = {
+      // Properties expected by your UI component
+      totalOriginalAmount: totalOriginalAmount.toFixed(2),
+      totalDiscountAmount: totalDiscountAmount.toFixed(2),
+      totalNetAmount: totalNetAmount.toFixed(2),
+      totalGstAmount: totalGstAmount.toFixed(2),
+      finalAmount: finalAmount.toFixed(2),
+      gstPercent: gstConfig.gstPercent,
+      gstApplicable: gstConfig.gstApplicable,
+      itemCount: checkedItems.length,
+      // Legacy properties (if needed elsewhere in your code)
+      totalAmount: totalOriginalAmount.toFixed(2),
+      baseAmountAfterDiscount: totalNetAmount.toFixed(2),
+      taxAmount: totalGstAmount.toFixed(2),
+      finalPaymentAmount: finalAmount.toFixed(2),
     }
-    return age
-  }
-
-  const handleChange = (e) => {
-    if (e.target.name == "patientAge") {
-      patientDetailForm.patientDob = calculateDOBFromAge(e.target.value)
-    } else if (e.target.name == "patientDob") {
-      patientDetailForm.patientAge = calculateAgeFromDOB(e.target.value)
-    }
-    setPatientDetailForm({
-      ...patientDetailForm,
-      [e.target.name]: e.target.value,
-    })
-  }
-
-  const handleSearch = async () => {
-    // Mock search results
-    const mockPatients = [
-      {
-        id: 1,
-        patientFn: "John",
-        patientMn: "M",
-        patientLn: "Doe",
-        patientMobileNumber: "9876543210",
-        uhidNo: "UH001",
-        patientAge: 30,
-        patientGender: { genderName: "Male" },
-        patientEmailId: "john@example.com",
-      },
-      {
-        id: 2,
-        patientFn: "Jane",
-        patientMn: "",
-        patientLn: "Smith",
-        patientMobileNumber: "9876543211",
-        uhidNo: "UH002",
-        patientAge: 25,
-        patientGender: { genderName: "Female" },
-        patientEmailId: "jane@example.com",
-      },
-    ]
-    setPatients(mockPatients)
+    console.log("Final Payment Breakdown:", breakdown)
+    console.log("=== END PAYMENT BREAKDOWN ===")
+    return breakdown
   }
 
   const startCamera = async () => {
@@ -204,6 +197,17 @@ const UpdateLabRegistration = () => {
     }
   }
 
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      videoRef.current.srcObject.getTracks().forEach((track) => track.stop())
+      setIsCameraOn(false)
+    }
+  }
+
+  const clearPhoto = () => {
+    setImage(placeholderImage)
+  }
+
   const confirmUpload = (imageData) => {
     Swal.fire({
       title: "Confirm Upload",
@@ -222,32 +226,556 @@ const UpdateLabRegistration = () => {
   }
 
   const uploadImage = async (base64Image) => {
+    setLoading(true)
     try {
-      // Mock upload success
-      setImageURL("mock-image-url.jpg")
-      console.log("Mock image upload successful")
-      Swal.fire("Success!", "Image uploaded successfully!", "success")
+      const blob = await fetch(base64Image).then((res) => res.blob())
+      const formData1 = new FormData()
+      formData1.append("file", blob, "photo.png")
+      const response = await fetch(`${API_HOST}${PATIENT_IMAGE_UPLOAD}`, {
+        method: "POST",
+        body: formData1,
+      })
+      const data = await response.json()
+      if (response.status === 200 && data.response) {
+        const extractedPath = data.response
+        setImageURL(extractedPath)
+        console.log("Uploaded Image URL:", extractedPath)
+        Swal.fire("Success!", "Image uploaded successfully!", "success")
+      } else {
+        Swal.fire("Error!", "Failed to upload image!", "error")
+      }
     } catch (error) {
       console.error("Upload error:", error)
       Swal.fire("Error!", "Something went wrong!", "error")
+    } finally {
+      setLoading(false)
     }
   }
 
-  const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      videoRef.current.srcObject.getTracks().forEach((track) => track.stop())
-      setIsCameraOn(false)
+  function calculateDOBFromAge(age) {
+    const today = new Date()
+    const birthYear = today.getFullYear() - age
+    return new Date(birthYear, today.getMonth(), today.getDate()).toISOString().split("T")[0]
+  }
+
+  function calculateAgeFromDOB(dob) {
+    const birthDate = new Date(dob)
+    const today = new Date()
+    let years = today.getFullYear() - birthDate.getFullYear()
+    let months = today.getMonth() - birthDate.getMonth()
+    let days = today.getDate() - birthDate.getDate()
+    // Adjust if the day difference is negative
+    if (days < 0) {
+      months--
+      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0)
+      days += prevMonth.getDate()
+    }
+    // Adjust if the month difference is negative
+    if (months < 0) {
+      years--
+      months += 12
+    }
+    return `${years}Y ${months}M ${days}D`
+  }
+
+  const handleSearchChange = (e) => {
+    setSearchFormData({
+      ...searchFormData,
+      [e.target.name]: e.target.value,
+    })
+  }
+
+  const handleChange = async (e) => {
+    const { name, value } = e.target
+    const updatedFormData = { ...formData, [name]: value }
+    if (name === "dob") {
+      updatedFormData.age = calculateAgeFromDOB(value)
+    } else if (name === "age") {
+      updatedFormData.dob = calculateDOBFromAge(value)
+    }
+    setFormData(updatedFormData)
+    let error = ""
+    if (name === "firstName" && !value.trim()) {
+      error = "First Name is required."
+    }
+    if (name === "gender" && !value) {
+      error = "Gender is required."
+    }
+    if (name === "relation" && !value) {
+      error = "Relation is required."
+    }
+    if (name === "dob" && !value) {
+      error = "Date of Birth is required."
+    }
+    if (name === "email") {
+      if (!value.trim()) {
+        error = "Email is required."
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        error = "Invalid email format."
+      }
+    }
+    if (name === "mobileNo") {
+      if (!value.trim()) {
+        error = "Mobile number is required."
+      } else if (!/^\d{10}$/.test(value)) {
+        error = "Mobile number must be exactly 10 digits."
+      }
+    }
+    if (name === "pinCode") {
+      if (!/^\d{6}$/.test(value)) {
+        error = "Pin Code must be exactly 6 digits."
+      }
+    }
+    if (name === "nokPinCode") {
+      if (!/^\d{6}$/.test(value)) {
+        error = "Pin Code must be exactly 6 digits."
+      }
+    }
+    if (name === "nokMobile") {
+      if (!/^\d{10}$/.test(value)) {
+        error = "Mobile number must be exactly 10 digits."
+      }
+    }
+    if (name === "emergencyMobile") {
+      if (!/^\d{10}$/.test(value)) {
+        error = "Mobile number must be exactly 10 digits."
+      }
+    }
+    if (name === "age") {
+      if (value !== "" && (isNaN(value) || Number(value) < 0)) {
+        error = "Age can not be negative."
+      }
+    }
+    if (name === "gender" && value) {
+      const investigationData = await fetchInvestigationDetails(Number(value))
+      setInvestigationItems(investigationData)
+    }
+    setErrors((prevErrors) => {
+      const newErrors = { ...prevErrors }
+      if (error) {
+        newErrors[name] = error
+      } else {
+        delete newErrors[name]
+      }
+      return newErrors
+    })
+  }
+
+  const handleAddChange = (e) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleTypeChange = (type) => {
+    setFormData((prev) => ({
+      ...prev,
+      type: type,
+    }))
+    if (type === "package") {
+      fetchPackageInvestigationDetails(1)
     }
   }
 
-  const clearPhoto = () => {
-    setImage(placeholderImage)
+  const handleRowChange = (index, field, value) => {
+    setFormData((prev) => {
+      const updatedRows = prev.rows.map((item, i) => {
+        if (i !== index) return item
+        const updatedItem = { ...item, [field]: value }
+        if (field === "originalAmount" || field === "discountAmount") {
+          const original = Number(updatedItem.originalAmount) || 0
+          const discount = Number(updatedItem.discountAmount) || 0
+          updatedItem.netAmount = Math.max(0, original - discount).toFixed(2)
+        }
+        return updatedItem
+      })
+      return { ...prev, rows: updatedRows }
+    })
+  }
+
+  const addRow = (e, type) => {
+    e.preventDefault()
+    const lastRow = formData.rows[formData.rows.length - 1]
+    if (!lastRow.name || !lastRow.date) {
+      Swal.fire("Missing Fields", "Please fill all required fields.", "warning")
+      return
+    }
+    setFormData((prev) => ({
+      ...prev,
+      rows: [
+        ...prev.rows,
+        {
+          id: Date.now(),
+          name: "",
+          date: "",
+          originalAmount: 0,
+          discountAmount: 0,
+          netAmount: 0,
+          type: type, // ✅ captures fresh type from button click
+        },
+      ],
+    }))
+    setCheckedRows((prev) => [...prev, true])
+  }
+
+  const removeRow = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      rows: prev.rows.filter((_, i) => i !== index),
+    }))
+    setCheckedRows((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const calculateTotalAmount = () => {
+    return formData.rows
+      .filter((_, index) => checkedRows[index])
+      .reduce((total, item) => {
+        return total + (Number.parseFloat(item.netAmount) || 0)
+      }, 0)
+      .toFixed(2)
+  }
+
+  // All your existing fetch functions - SAME AS LAB REGISTRATION
+  async function fetchGenderData() {
+    setLoading(true)
+    try {
+      const data = await getRequest(`${MAS_GENDER}/getAll/1`)
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setGenderData(data.response)
+      } else {
+        console.error("Unexpected API response format:", data)
+        setGenderData([])
+      }
+    } catch (error) {
+      console.error("Error fetching gender data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function fetchRelationData() {
+    setLoading(true)
+    try {
+      const data = await getRequest(`${MAS_RELATION}/getAll/1`)
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setRelationData(data.response)
+      } else {
+        console.error("Unexpected API response format:", data)
+        setRelationData([])
+      }
+    } catch (error) {
+      console.error("Error fetching relation data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function fetchCountryData() {
+    setLoading(true)
+    try {
+      const data = await getRequest(`${MAS_COUNTRY}/getAll/1`)
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setCountryData(data.response)
+      } else {
+        console.error("Unexpected API response format:", data)
+        setCountryData([])
+      }
+    } catch (error) {
+      console.error("Error fetching country data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function fetchStates(value) {
+    try {
+      const data = await getRequest(`${MAS_STATE}/getByCountryId/${value}`)
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setStateData(data.response)
+      } else {
+        console.error("Unexpected API response format:", data)
+        setStateData([])
+      }
+    } catch (error) {
+      console.error("Error fetching state data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function fetchDistrict(value) {
+    try {
+      const data = await getRequest(`${MAS_DISTRICT}/getByState/${value}`)
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setDistrictData(data.response)
+      } else {
+        console.error("Unexpected API response format:", data)
+        setDistrictData([])
+      }
+    } catch (error) {
+      console.error("Error fetching district data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function fetchNokStates(value) {
+    try {
+      const data = await getRequest(`${MAS_STATE}/getByCountryId/${value}`)
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setNokStateData(data.response)
+      } else {
+        console.error("Unexpected API response format:", data)
+        setNokStateData([])
+      }
+    } catch (error) {
+      console.error("Error fetching NOK state data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function fetchNokDistrict(value) {
+    try {
+      const data = await getRequest(`${MAS_DISTRICT}/getByState/${value}`)
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setNokDistrictData(data.response)
+      } else {
+        console.error("Unexpected API response format:", data)
+        setNokDistrictData([])
+      }
+    } catch (error) {
+      console.error("Error fetching NOK district data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function fetchInvestigationDetails(genderValue) {
+    setLoading(true)
+    try {
+      const selectedGender = genderData.find((gender) => gender.id === Number(genderValue))
+      if (!selectedGender) {
+        console.error("No gender found with ID:", genderValue)
+        return []
+      }
+      const genderApplicable = selectedGender.genderCode.toLowerCase()
+      const data = await getRequest(`${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}`)
+      if (data.status === 200 && Array.isArray(data.response)) {
+        return data.response
+      } else {
+        console.error("Unexpected API response format:", data)
+        return []
+      }
+    } catch (error) {
+      console.error("Error fetching investigation details:", error)
+      return []
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function fetchPackageInvestigationDetails(flag) {
+    // setLoading(true);
+    try {
+      const data = await getRequest(`${INVESTIGATION_PACKAGE_Mapping}/getAllPackageMap/${flag}`)
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setPackageItems(data.response)
+        return data.response
+      } else {
+        console.error("Unexpected API response format:", data)
+        return []
+      }
+    } catch (error) {
+      console.error("Error fetching package investigation details:", error)
+      return []
+    } finally {
+      // setLoading(false);
+    }
+  }
+
+  async function fetchPackagePrice(packName) {
+    // setLoading(true);
+    try {
+      const data = await getRequest(`${MAS_PACKAGE_INVESTIGATION}/pricePack?packName=${packName}`)
+      if (data.status === 200 && data.response) {
+        return data.response
+      } else {
+        console.error("Unexpected API response format:", data)
+        return null
+      }
+    } catch (error) {
+      console.error("Error fetching package price:", error)
+      return null
+    } finally {
+      // setLoading(false);
+    }
+  }
+
+  async function fetchGstConfiguration() {
+    setLoading(true)
+    try {
+      console.log("=== FETCHING GST CONFIGURATION ===")
+      const data = await getRequest(`${MAS_SERVICE_CATEGORY}/getGstConfig/1`)
+      console.log("GST API Response:", JSON.stringify(data, null, 2))
+      if (data && data.status === 200 && data.response && typeof data.response.gstApplicable !== "undefined") {
+        const gstConfiguration = {
+          gstApplicable: !!data.response.gstApplicable,
+          gstPercent: Number(data.response.gstPercent) || 0,
+        }
+        console.log("Setting GST Configuration:", gstConfiguration)
+        setGstConfig(gstConfiguration)
+      } else {
+        console.warn("Invalid API response:", data)
+        setGstConfig({
+          gstApplicable: false,
+          gstPercent: 0,
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching GST configuration:", error)
+      setGstConfig({
+        gstApplicable: false,
+        gstPercent: 0,
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function checkDuplicatePatient(firstName, dob, gender, mobile, relation) {
+    const params = new URLSearchParams({
+      firstName,
+      dob,
+      gender,
+      mobile,
+      relation,
+    }).toString()
+    const result = await getRequest(`/patient/check-duplicate?${params}`)
+    return result === true
+  }
+
+  useEffect(() => {
+    const { firstName, dob, gender, mobileNo, relation } = formData
+    if (firstName && dob && gender && mobileNo && relation) {
+      const timer = setTimeout(async () => {
+        try {
+          const isDuplicate = await checkDuplicatePatient(firstName, dob, gender, mobileNo, relation)
+          if (isDuplicate) {
+            Swal.fire("Duplicate Found!", "A patient with these details already exists.", "warning")
+            setIsDuplicatePatient(true)
+          } else {
+            setIsDuplicatePatient(false)
+          }
+        } catch (err) {
+          console.error("Duplicate check failed:", err)
+        }
+      }, 800)
+      return () => clearTimeout(timer)
+    } else {
+      // If any field is cleared, reset duplicate flag
+      setIsDuplicatePatient(false)
+    }
+  }, [formData.firstName, formData.dob, formData.gender, formData.mobileNo, formData.relation])
+
+  // Add this useEffect after the existing useEffect
+  useEffect(() => {
+    console.log("GST Config changed:", gstConfig)
+  }, [gstConfig])
+
+  const handleSearch = async () => {
+    // Mock search results - replace with actual API call
+    const mockPatients = [
+      {
+        id: 1,
+        firstName: "John",
+        middleName: "M",
+        lastName: "Doe",
+        mobileNo: "9876543210",
+        uhidNo: "UH001",
+        age: "30Y 0M 0D",
+        gender: 1,
+        email: "john@example.com",
+        relation: 1,
+        dob: "1994-01-01",
+        address1: "123 Main St",
+        address2: "Apt 4B",
+        country: 1,
+        state: 1,
+        district: 1,
+        city: "Mumbai",
+        pinCode: "400001",
+        nokFirstName: "Jane",
+        nokLastName: "Doe",
+        nokEmail: "jane@example.com",
+        nokMobile: "9876543211",
+        nokAddress1: "456 Oak St",
+        nokCountry: 1,
+        nokState: 1,
+        nokDistrict: 1,
+        nokCity: "Mumbai",
+        nokPinCode: "400002",
+        emergencyFirstName: "Emergency",
+        emergencyLastName: "Contact",
+        emergencyMobile: "9876543212",
+      },
+      {
+        id: 2,
+        firstName: "Jane",
+        middleName: "",
+        lastName: "Smith",
+        mobileNo: "9876543211",
+        uhidNo: "UH002",
+        age: "25Y 6M 15D",
+        gender: 2,
+        email: "jane@example.com",
+        relation: 1,
+        dob: "1998-07-15",
+        address1: "789 Pine St",
+        country: 1,
+        state: 2,
+        district: 2,
+        city: "Pune",
+        pinCode: "411001",
+      },
+    ]
+    setPatients(mockPatients)
   }
 
   const handleBook = (patient) => {
-    // Fixed: Properly merge patient data with lab form structure
-    setPatientDetailForm({
-      ...patient,
+    // Map patient data to formData structure - EXACT SAME AS LAB REGISTRATION
+    setFormData({
+      ...formData,
+      firstName: patient.firstName,
+      middleName: patient.middleName,
+      lastName: patient.lastName,
+      mobileNo: patient.mobileNo,
+      gender: patient.gender,
+      relation: patient.relation,
+      dob: patient.dob,
+      age: patient.age,
+      email: patient.email,
+      address1: patient.address1,
+      address2: patient.address2,
+      country: patient.country,
+      state: patient.state,
+      district: patient.district,
+      city: patient.city,
+      pinCode: patient.pinCode,
+      nokFirstName: patient.nokFirstName,
+      nokMiddleName: patient.nokMiddleName,
+      nokLastName: patient.nokLastName,
+      nokEmail: patient.nokEmail,
+      nokMobile: patient.nokMobile,
+      nokAddress1: patient.nokAddress1,
+      nokAddress2: patient.nokAddress2,
+      nokCountry: patient.nokCountry,
+      nokState: patient.nokState,
+      nokDistrict: patient.nokDistrict,
+      nokCity: patient.nokCity,
+      nokPinCode: patient.nokPinCode,
+      emergencyFirstName: patient.emergencyFirstName,
+      emergencyLastName: patient.emergencyLastName,
+      emergencyMobile: patient.emergencyMobile,
       // Preserve lab-specific fields
       type: "investigation",
       rows: [
@@ -266,209 +794,262 @@ const UpdateLabRegistration = () => {
     setShowPatientDetails(true)
   }
 
-  const handleAddChange = (e) => {
-    const { name, value } = e.target
-    setPatientDetailForm((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleTypeChange = (type) => {
-    setPatientDetailForm((prev) => ({
-      ...prev,
-      type: type,
-    }))
-  }
-
-  const handleRowChange = (index, field, value) => {
-    setPatientDetailForm((prev) => {
-      const updatedRows = prev.rows.map((item, i) => {
-        if (i !== index) return item
-        const updatedItem = { ...item, [field]: value }
-        if (field === "originalAmount" || field === "discountAmount") {
-          const original = Number(updatedItem.originalAmount) || 0
-          const discount = Number(updatedItem.discountAmount) || 0
-          updatedItem.netAmount = Math.max(0, original - discount).toFixed(2)
-        }
-        return updatedItem
-      })
-      return { ...prev, rows: updatedRows }
-    })
-  }
-
-  const addRow = (e, type = patientDetailForm.type) => {
-    e.preventDefault()
-    setPatientDetailForm((prev) => ({
-      ...prev,
-      rows: [
-        ...prev.rows,
-        {
-          id: Date.now(),
-          name: "",
-          date: "",
-          originalAmount: 0,
-          discountAmount: 0,
-          netAmount: 0,
-          type: type,
-        },
-      ],
-    }))
-    setCheckedRows((prev) => [...prev, true])
-  }
-
-  const removeRow = (index) => {
-    setPatientDetailForm((prev) => ({
-      ...prev,
-      rows: prev.rows.filter((_, i) => i !== index),
-    }))
-    setCheckedRows((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const calculatePaymentBreakdown = () => {
-    // Fixed: Add safety check for rows
-    if (!patientDetailForm.rows || !Array.isArray(patientDetailForm.rows)) {
-      return {
-        totalOriginalAmount: "0.00",
-        totalDiscountAmount: "0.00",
-        totalNetAmount: "0.00",
-        totalGstAmount: "0.00",
-        finalAmount: "0.00",
-        gstPercent: gstConfig.gstPercent,
-        gstApplicable: gstConfig.gstApplicable,
-        itemCount: 0,
-      }
-    }
-
-    const checkedItems = patientDetailForm.rows.filter((_, index) => checkedRows[index])
-    const totalOriginalAmount = checkedItems.reduce((total, item) => {
-      return total + (Number.parseFloat(item.originalAmount) || 0)
-    }, 0)
-    const totalDiscountAmount = checkedItems.reduce((total, item) => {
-      return total + (Number.parseFloat(item.discountAmount) || 0)
-    }, 0)
-    const totalNetAmount = totalOriginalAmount - totalDiscountAmount
-    const totalGstAmount = checkedItems.reduce((total, item) => {
-      const itemOriginalAmount = Number.parseFloat(item.originalAmount) || 0
-      const itemDiscountAmount = Number.parseFloat(item.discountAmount) || 0
-      const itemNetAmount = itemOriginalAmount - itemDiscountAmount
-      const itemGstAmount = gstConfig.gstApplicable ? (itemNetAmount * gstConfig.gstPercent) / 100 : 0
-      return total + itemGstAmount
-    }, 0)
-    const finalAmount = totalNetAmount + totalGstAmount
-
-    return {
-      totalOriginalAmount: totalOriginalAmount.toFixed(2),
-      totalDiscountAmount: totalDiscountAmount.toFixed(2),
-      totalNetAmount: totalNetAmount.toFixed(2),
-      totalGstAmount: totalGstAmount.toFixed(2),
-      finalAmount: finalAmount.toFixed(2),
-      gstPercent: gstConfig.gstPercent,
-      gstApplicable: gstConfig.gstApplicable,
-      itemCount: checkedItems.length,
-    }
-  }
-
   const validateForm = () => {
-    const requiredFields = [
-      "patientFn",
-      "patientGender",
-      "patientRelation",
-      "patientDob",
-      "patientEmailId",
-      "patientMobileNumber",
-    ]
+    const requiredFields = ["firstName", "gender", "relation", "dob", "email", "mobileNo"]
     let valid = true
     const newErrors = {}
-
     requiredFields.forEach((field) => {
-      if (!patientDetailForm[field] || patientDetailForm[field].toString().trim() === "") {
+      if (!formData[field] || formData[field].toString().trim() === "") {
         newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} is required.`
         valid = false
       }
     })
-
-    if (patientDetailForm.patientEmailId && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patientDetailForm.patientEmailId)) {
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "Invalid email format."
       valid = false
     }
-
-    if (patientDetailForm.patientMobileNumber && !/^\d{10}$/.test(patientDetailForm.patientMobileNumber)) {
+    if (formData.mobileNo && !/^\d{10}$/.test(formData.mobileNo)) {
       newErrors.mobileNo = "Mobile number must be exactly 10 digits."
       valid = false
     }
-
-    if (patientDetailForm.patientPincode && !/^\d{6}$/.test(patientDetailForm.patientPincode)) {
+    if (formData.pinCode && !/^\d{6}$/.test(formData.pinCode)) {
       newErrors.pinCode = "Pin Code must be exactly 6 digits."
       valid = false
     }
-
+    if (formData.nokPinCode && !/^\d{6}$/.test(formData.nokPinCode)) {
+      newErrors.nokPinCode = "Pin Code must be exactly 6 digits."
+      valid = false
+    }
+    if (formData.rows.length === 0) {
+      newErrors.rows = `At least one ${formData.type} is required.`
+      valid = false
+    }
     setErrors(newErrors)
     return valid
   }
 
-  function handleSubmit() {
-    console.log("Form Data:", patientDetailForm)
-    if (imageURL != "") {
-      patientDetailForm.patientImage = imageURL
+  const handleSubmit = async (shouldNavigateToPayment = false) => {
+    console.log("handleSubmit called with shouldNavigateToPayment:", shouldNavigateToPayment)
+    const isFormValid = shouldNavigateToPayment ? true : validateForm()
+    console.log("Form validation result:", isFormValid)
+    if (isDuplicatePatient) {
+      Swal.fire(
+        "Duplicate Found!",
+        "A patient with these details already exists. Please check your details.",
+        "warning",
+      )
+      return
     }
-    sendLabData()
-  }
-
-  const sendLabData = async () => {
-    if (validateForm()) {
+    if (isFormValid) {
+      console.log("Form validation passed, proceeding with registration...")
       try {
-        // Fixed: Add safety check for rows
-        if (!patientDetailForm.rows || !Array.isArray(patientDetailForm.rows)) {
-          throw new Error("No investigation or package data found.")
+        setLoading(true)
+        // ✅ Build patient object - SAME AS LAB REGISTRATION
+        const patientRequest = {
+          uhidNo: "",
+          patientFn: formData.firstName,
+          patientMn: formData.middleName || "",
+          patientLn: formData.lastName || "",
+          patientDob: formData.dob,
+          patientAge: formData.age?.toString(),
+          patientGenderId: formData.gender,
+          patientEmailId: formData.email,
+          patientMobileNumber: formData.mobileNo,
+          patientImage: imageURL || "",
+          fileName: "string",
+          patientRelationId: formData.relation,
+          patientAddress1: formData.address1 || "",
+          patientAddress2: formData.address2 || "",
+          patientCity: formData.city || "",
+          patientPincode: formData.pinCode || "",
+          patientDistrictId: formData.district,
+          patientStateId: formData.state,
+          patientCountryId: formData.country,
+          emerFn: formData.emergencyFirstName || "",
+          emerLn: formData.emergencyLastName || "",
+          emerMobile: formData.emergencyMobile || "",
+          nokFn: formData.nokFirstName || "",
+          nokLn: formData.nokLastName || "",
+          nokEmail: formData.nokEmail || "",
+          nokMobileNumber: formData.nokMobile || "",
+          nokAddress1: formData.nokAddress1 || "",
+          nokAddress2: formData.nokAddress2 || "",
+          nokCity: formData.nokCity || "",
+          nokDistrictId: formData.nokDistrict,
+          nokStateId: formData.nokState,
+          nokCountryId: formData.nokCountry,
+          nokPincode: formData.nokPinCode || "",
+          patientStatus: "",
+          regDate: new Date().toISOString().split("T")[0],
+          lastChgBy: sessionStorage.getItem("username"),
+          patientHospitalId: Number(sessionStorage.getItem("hospitalId")),
         }
-
-        const hasCheckedItems = patientDetailForm.rows.some((row, index) => checkedRows && checkedRows[index] === true)
-        if (!hasCheckedItems) {
-          throw new Error("Please select at least one investigation or package to proceed.")
+        // ✅ Register patient - FOR UPDATE, WE SKIP PATIENT REGISTRATION
+        // const patientResult = await postRequest("/patient/register", { patient: patientRequest });
+        // const patientId = patientResult?.response?.patient?.id;
+        const patientId = formData.id // Use existing patient ID
+        if (!patientId) throw new Error("Patient ID not found")
+        // ✅ Validate checked rows
+        const hasCheckedItems = formData.rows.some((row, index) => checkedRows[index])
+        if (!hasCheckedItems) throw new Error("Please select at least one investigation or package.")
+        // ✅ Check for any invalid rows with no itemId
+        const invalidRow = formData.rows.find((row, index) => checkedRows[index] && !row.itemId)
+        if (invalidRow)
+          throw new Error("One or more selected rows have no valid investigation/package. Please select from dropdown.")
+        // ✅ Calculate payment breakdown
+        const paymentBreakdown = calculatePaymentBreakdown()
+        const totalFinalAmount = Number.parseFloat(paymentBreakdown.finalAmount)
+        // ✅ Build final lab request - SEND ALL ITEMS (both checked and unchecked)
+        const labData = {
+          patientId: patientId,
+          labInvestigationReq: [],
         }
-
-        // Mock lab data submission
-        console.log("Lab booking data would be submitted:", {
-          patientId: patientDetailForm.id,
-          labInvestigationReq: patientDetailForm.rows.map((row, index) => ({
-            id: row.itemId,
-            appointmentDate: row.date || new Date().toISOString().split("T")[0],
-            checkStatus: checkedRows && checkedRows[index] === true,
-            actualAmount: Number.parseFloat(row.originalAmount) || 0,
-            discountedAmount: Number.parseFloat(row.discountAmount) || 0,
-            type: row.type === "investigation" ? "i" : "p",
-          })),
+        // Send ALL rows with their respective check status
+        formData.rows.forEach((row, index) => {
+          if (row.itemId) {
+            // Only include rows that have valid itemId
+            labData.labInvestigationReq.push({
+              id: row.itemId,
+              appointmentDate: row.date || new Date().toISOString().split("T")[0],
+              checkStatus: checkedRows[index] || false, // Send actual check status
+              actualAmount: Number.parseFloat(row.originalAmount) || 0,
+              discountedAmount: Number.parseFloat(row.discountAmount) || 0,
+              type: row.type === "investigation" ? "i" : "p",
+            })
+          }
         })
-
-        await Swal.fire(
-          "Lab Booking Confirmed",
-          "Lab booking has been successfully confirmed for follow-up patient!",
-          "success",
-        )
-        setShowPatientDetails(false)
+        console.log("FINAL LAB DATA:", labData)
+        // ✅ Call backend
+        const labResult = await postRequest("/lab/registration", labData)
+        if (!labResult || labResult.status !== 200) {
+          throw new Error(labResult?.message || "Lab registration failed.")
+        }
+        console.log("Lab registration successful:", labResult)
+        if (shouldNavigateToPayment) {
+          Swal.fire({
+            title: "Success!",
+            text: "Lab booking registered successfully! Redirecting to payment.",
+            icon: "success",
+            confirmButtonText: "OK, Proceed",
+          }).then(() => {
+            navigate("/payment", {
+              state: {
+                amount: totalFinalAmount,
+                patientId,
+                labData: labResult,
+                selectedItems: {
+                  // Only send checked items to payment page
+                  investigations: labData.labInvestigationReq.filter((i) => i.type === "i" && i.checkStatus),
+                  packages: labData.labInvestigationReq.filter((i) => i.type === "p" && i.checkStatus),
+                },
+                paymentBreakdown,
+              },
+            })
+          })
+        } else {
+          Swal.fire("Success!", "Lab booking registered successfully!", "success").then(() => {
+            setShowPatientDetails(false)
+            handleReset()
+          })
+        }
       } catch (error) {
-        console.error("Error:", error)
-        Swal.fire("Error!", error.message || "Booking failed", "error")
+        console.error("Registration error:", error)
+        Swal.fire("Error!", error.message || "Registration failed", "error")
+      } finally {
+        setLoading(false)
       }
     }
   }
 
-  const isLastRowComplete = () => {
-    if (!patientDetailForm.rows || patientDetailForm.rows.length === 0) return false
-    const lastRow = patientDetailForm.rows[patientDetailForm.rows.length - 1]
-    return (
-      lastRow.name &&
-      lastRow.name.trim() !== "" &&
-      lastRow.date &&
-      lastRow.date.trim() !== "" &&
-      lastRow.originalAmount !== undefined &&
-      lastRow.originalAmount !== "" &&
-      !isNaN(lastRow.originalAmount) &&
-      lastRow.discountAmount !== undefined &&
-      lastRow.discountAmount !== "" &&
-      !isNaN(lastRow.discountAmount)
-    )
+  const isMobileNoMissing = !formData.mobileNo || formData.mobileNo.trim() === ""
+
+  const handleReset = () => {
+    setFormData({
+      // Personal details
+      imageurl: undefined,
+      firstName: undefined,
+      middleName: undefined,
+      lastName: undefined,
+      mobileNo: undefined,
+      gender: undefined,
+      relation: undefined,
+      dob: undefined,
+      age: undefined,
+      email: undefined,
+      // Patient address
+      address1: undefined,
+      address2: undefined,
+      country: undefined,
+      state: undefined,
+      district: undefined,
+      city: undefined,
+      pinCode: undefined,
+      // NOK details
+      nokFirstName: undefined,
+      nokMiddleName: undefined,
+      nokLastName: undefined,
+      nokEmail: undefined,
+      nokMobile: undefined,
+      nokAddress1: undefined,
+      nokAddress2: undefined,
+      nokCountry: undefined,
+      nokState: undefined,
+      nokDistrict: undefined,
+      nokCity: undefined,
+      nokPinCode: undefined,
+      // Emergency contact
+      emergencyFirstName: undefined,
+      emergencyLastName: undefined,
+      emergencyMobile: undefined,
+      // Lab specific fields
+      type: "investigation",
+      rows: [
+        {
+          id: 1,
+          name: "",
+          date: "",
+          originalAmount: 0,
+        },
+      ],
+      paymentMode: "",
+    })
+    setErrors({})
+    setImage(placeholderImage)
+    setImageURL("")
+    setShowPatientDetails(false)
+    setPatients([])
+    setSearchFormData({
+      mobileNo: "",
+      patientName: "",
+      uhidNo: "",
+      appointmentDate: "",
+    })
   }
 
+  const isAnyDateOrNameMissing = formData.rows.some(
+    (row) => !row.date || row.date.trim() === "" || !row.name || row.name.trim() === "",
+  )
+
+  // Get payment breakdown for display
   const paymentBreakdown = calculatePaymentBreakdown()
+
+  const getMissingMandatoryFields = () => {
+    const missing = []
+    if (!formData.mobileNo || formData.mobileNo.trim() === "") {
+      missing.push("Mobile Number")
+    }
+    formData.rows.forEach((row, idx) => {
+      if (!row.name || row.name.trim() === "") missing.push(`Row ${idx + 1}: Name`)
+      if (!row.date || row.date.trim() === "") missing.push(`Row ${idx + 1}: Date`)
+      if (row.originalAmount === undefined || row.originalAmount === "" || isNaN(row.originalAmount))
+        missing.push(`Row ${idx + 1}: Original Amount`)
+    })
+    return missing
+  }
+
+  if (loading) {
+    return <LoadingScreen />
+  }
 
   return (
     <div className="body d-flex py-3">
@@ -498,8 +1079,8 @@ const UpdateLabRegistration = () => {
                         className="form-control"
                         placeholder="Enter Mobile No."
                         name="mobileNo"
-                        value={formData.mobileNo}
-                        onChange={handleChangeSearch}
+                        value={searchFormData.mobileNo}
+                        onChange={handleSearchChange}
                       />
                     </div>
                     <div className="col-md-3">
@@ -509,8 +1090,8 @@ const UpdateLabRegistration = () => {
                         className="form-control"
                         placeholder="Enter Patient Name"
                         name="patientName"
-                        value={formData.patientName}
-                        onChange={handleChangeSearch}
+                        value={searchFormData.patientName}
+                        onChange={handleSearchChange}
                       />
                     </div>
                     <div className="col-md-3">
@@ -520,8 +1101,8 @@ const UpdateLabRegistration = () => {
                         className="form-control"
                         placeholder="Enter UHID No."
                         name="uhidNo"
-                        value={formData.uhidNo}
-                        onChange={handleChangeSearch}
+                        value={searchFormData.uhidNo}
+                        onChange={handleSearchChange}
                       />
                     </div>
                     <div className="col-md-3">
@@ -530,62 +1111,62 @@ const UpdateLabRegistration = () => {
                         type="date"
                         className="form-control"
                         name="appointmentDate"
-                        value={formData.appointmentDate}
-                        onChange={handleChangeSearch}
+                        value={searchFormData.appointmentDate}
+                        onChange={handleSearchChange}
                       />
                     </div>
                   </div>
-
                   <div className="mt-3 mb-3">
                     <button type="button" className="btn btn-primary me-2" onClick={handleSearch}>
                       Search
                     </button>
-                    <button type="reset" className="btn btn-secondary">
+                    <button type="button" className="btn btn-secondary" onClick={handleReset}>
                       Reset
                     </button>
                   </div>
-
-                  <div className="col-md-12">
-                    <table className="table table-bordered">
-                      <thead className="table-secondary">
-                        <tr>
-                          <th>Patient Name</th>
-                          <th>Mobile No.</th>
-                          <th>UHID No.</th>
-                          <th>Age</th>
-                          <th>Gender</th>
-                          <th>Email</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {patients.map((patient, index) => (
-                          <tr key={index}>
-                            <td>
-                              {`${patient.patientFn || ""} ${patient.patientMn || ""} ${patient.patientLn || ""}`.trim()}
-                            </td>
-                            <td>{patient.patientMobileNumber || ""}</td>
-                            <td>{patient.uhidNo}</td>
-                            <td>{patient.patientAge || ""}</td>
-                            <td>{patient.patientGender.genderName}</td>
-                            <td>{patient.patientEmailId}</td>
-                            <td>
-                              <button
-                                type="button"
-                                className="btn btn-success btn-sm"
-                                onClick={() => handleBook(patient)}
-                              >
-                                Book
-                                <span className="ms-2">
-                                  <i className="icofont-calendar"></i>
-                                </span>
-                              </button>
-                            </td>
+                  {patients.length > 0 && (
+                    <div className="col-md-12">
+                      <table className="table table-bordered">
+                        <thead className="table-secondary">
+                          <tr>
+                            <th>Patient Name</th>
+                            <th>Mobile No.</th>
+                            <th>UHID No.</th>
+                            <th>Age</th>
+                            <th>Gender</th>
+                            <th>Email</th>
+                            <th>Action</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {patients.map((patient, index) => (
+                            <tr key={index}>
+                              <td>
+                                {`${patient.firstName || ""} ${patient.middleName || ""} ${patient.lastName || ""}`.trim()}
+                              </td>
+                              <td>{patient.mobileNo || ""}</td>
+                              <td>{patient.uhidNo}</td>
+                              <td>{patient.age || ""}</td>
+                              <td>{genderData.find((g) => g.id === patient.gender)?.genderName || ""}</td>
+                              <td>{patient.email}</td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="btn btn-success btn-sm"
+                                  onClick={() => handleBook(patient)}
+                                >
+                                  Book
+                                  <span className="ms-2">
+                                    <i className="icofont-calendar"></i>
+                                  </span>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </form>
               </div>
             </div>
@@ -594,7 +1175,7 @@ const UpdateLabRegistration = () => {
 
         {showPatientDetails && (
           <>
-            {/* Patient Personal Details */}
+            {/* Patient Personal Details - EXACT SAME AS LAB REGISTRATION */}
             <div className="row mb-3">
               <div className="col-sm-12">
                 <div className="card shadow mb-3">
@@ -607,64 +1188,82 @@ const UpdateLabRegistration = () => {
                         <div className="col-md-9">
                           <div className="row g-3">
                             <div className="col-md-4">
-                              <label className="form-label">First Name *</label>
+                              <label className="form-label" htmlFor="firstName">
+                                First Name <span className="text-danger">*</span>
+                              </label>
                               <input
                                 type="text"
-                                name="patientFn"
+                                className={`form-control ${errors.firstName ? "is-invalid" : ""}`}
+                                id="firstName"
+                                name="firstName"
+                                value={formData.firstName || ""}
                                 onChange={handleChange}
-                                className="form-control"
                                 placeholder="Enter First Name"
-                                required
-                                value={patientDetailForm.patientFn || ""}
                               />
+                              {errors.firstName && <div className="invalid-feedback">{errors.firstName}</div>}
                             </div>
                             <div className="col-md-4">
-                              <label className="form-label">Middle Name</label>
+                              <label className="form-label" htmlFor="middleName">
+                                Middle Name
+                              </label>
                               <input
                                 type="text"
-                                name="patientMn"
+                                id="middleName"
+                                value={formData.middleName || ""}
+                                name="middleName"
                                 onChange={handleChange}
                                 className="form-control"
                                 placeholder="Enter Middle Name"
-                                value={patientDetailForm.patientMn || ""}
                               />
                             </div>
                             <div className="col-md-4">
-                              <label className="form-label">Last Name</label>
+                              <label className="form-label" htmlFor="lastName">
+                                Last Name
+                              </label>
                               <input
                                 type="text"
-                                name="patientLn"
+                                id="lastName"
+                                value={formData.lastName || ""}
+                                name="lastName"
                                 onChange={handleChange}
                                 className="form-control"
                                 placeholder="Enter Last Name"
-                                value={patientDetailForm.patientLn || ""}
                               />
                             </div>
                             <div className="col-md-4">
-                              <label className="form-label">Mobile No.</label>
+                              <label className="form-label" htmlFor="mobileNo">
+                                Mobile No.<span className="text-danger">*</span>
+                              </label>
                               <input
                                 type="text"
-                                name="patientMobileNumber"
-                                className="form-control"
+                                id="mobileNo"
+                                className={`form-control ${errors.mobileNo ? "is-invalid" : ""}`}
+                                name="mobileNo"
+                                value={formData.mobileNo || ""}
+                                maxLength={10}
+                                onChange={(e) => {
+                                  if (/^\d*$/.test(e.target.value)) {
+                                    handleChange(e)
+                                  }
+                                }}
                                 placeholder="Enter Mobile Number"
-                                value={patientDetailForm.patientMobileNumber || ""}
-                                onChange={handleChange}
                               />
+                              {errors.mobileNo && <div className="invalid-feedback">{errors.mobileNo}</div>}
                             </div>
                             <div className="col-md-4">
                               <label className="form-label" htmlFor="gender">
-                                Gender *
+                                Gender <span className="text-danger">*</span>
                               </label>
                               <select
                                 className={`form-select ${errors.gender ? "is-invalid" : ""}`}
                                 id="gender"
-                                name="patientGender"
-                                value={patientDetailForm.patientGender}
+                                name="gender"
+                                value={formData.gender || ""}
                                 onChange={handleChange}
                               >
                                 <option value="">Select</option>
                                 {genderData.map((gender) => (
-                                  <option key={gender.id} value={gender}>
+                                  <option key={gender.id} value={gender.id}>
                                     {gender.genderName}
                                   </option>
                                 ))}
@@ -673,18 +1272,18 @@ const UpdateLabRegistration = () => {
                             </div>
                             <div className="col-md-4">
                               <label className="form-label" htmlFor="relation">
-                                Relation *
+                                Relation <span className="text-danger">*</span>
                               </label>
                               <select
                                 className={`form-select ${errors.relation ? "is-invalid" : ""}`}
                                 id="relation"
-                                name="patientRelation"
-                                value={patientDetailForm.patientRelation}
+                                name="relation"
+                                value={formData.relation || ""}
                                 onChange={handleChange}
                               >
                                 <option value="">Select</option>
                                 {relationData.map((relation) => (
-                                  <option key={relation.id} value={relation}>
+                                  <option key={relation.id} value={relation.id}>
                                     {relation.relationName}
                                   </option>
                                 ))}
@@ -692,39 +1291,50 @@ const UpdateLabRegistration = () => {
                               {errors.relation && <div className="invalid-feedback">{errors.relation}</div>}
                             </div>
                             <div className="col-md-4">
-                              <label className="form-label">DOB *</label>
+                              <label className="form-label" htmlFor="dob">
+                                DOB <span className="text-danger">*</span>
+                              </label>
                               <input
                                 type="date"
-                                name="patientDob"
-                                className="form-control"
+                                id="dob"
+                                name="dob"
+                                className={`form-control ${errors.dob ? "is-invalid" : ""}`}
+                                value={formData.dob || ""}
+                                max={new Date().toISOString().split("T")[0]}
+                                onChange={handleChange}
                                 placeholder="Select Date of Birth"
-                                required
-                                value={patientDetailForm.patientDob || ""}
-                                onChange={handleChange}
                               />
+                              {errors.dob && <div className="invalid-feedback">{errors.dob}</div>}
                             </div>
                             <div className="col-md-4">
-                              <label className="form-label">Age</label>
+                              <label className="form-label" htmlFor="age">
+                                Age
+                              </label>
                               <input
-                                type="number"
-                                className="form-control"
-                                placeholder="Enter Age"
-                                name="patientAge"
-                                value={patientDetailForm.patientAge || ""}
+                                type="text"
+                                id="age"
+                                name="age"
+                                className={`form-control ${errors.age ? "is-invalid" : ""}`}
+                                value={formData.age || ""}
                                 onChange={handleChange}
+                                placeholder="Enter Age"
                               />
+                              {errors.age && <div className="invalid-feedback">{errors.age}</div>}
                             </div>
                             <div className="col-md-4">
-                              <label className="form-label">Email *</label>
+                              <label className="form-label" htmlFor="email">
+                                Email <span className="text-danger">*</span>
+                              </label>
                               <input
                                 type="email"
-                                className="form-control"
-                                placeholder="Enter Email Address"
-                                name="patientEmailId"
-                                value={patientDetailForm.patientEmailId || ""}
+                                id="email"
+                                name="email"
+                                className={`form-control ${errors.email ? "is-invalid" : ""}`}
+                                value={formData.email || ""}
                                 onChange={handleChange}
-                                required
+                                placeholder="Enter Email Address"
                               />
+                              {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                             </div>
                           </div>
                         </div>
@@ -775,7 +1385,7 @@ const UpdateLabRegistration = () => {
               </div>
             </div>
 
-            {/* Patient Address */}
+            {/* Patient address - EXACT SAME AS LAB REGISTRATION */}
             <div className="row mb-3">
               <div className="col-sm-12">
                 <div className="card shadow mb-3">
@@ -790,10 +1400,10 @@ const UpdateLabRegistration = () => {
                           <input
                             type="text"
                             className="form-control"
-                            value={patientDetailForm.patientAddress1 || ""}
-                            name="patientAddress1"
-                            placeholder="Enter Address 1"
+                            name="address1"
+                            value={formData.address1 || ""}
                             onChange={handleChange}
+                            placeholder="Enter Address 1"
                           />
                         </div>
                         <div className="col-md-4">
@@ -801,28 +1411,26 @@ const UpdateLabRegistration = () => {
                           <input
                             type="text"
                             className="form-control"
-                            placeholder="Enter Address 2"
-                            name="patientAddress2"
-                            value={patientDetailForm.patientAddress2 || ""}
+                            name="address2"
+                            value={formData.address2 || ""}
                             onChange={handleChange}
+                            placeholder="Enter Address 2"
                           />
                         </div>
                         <div className="col-md-4">
                           <label className="form-label">Country</label>
                           <select
                             className="form-select"
-                            name="patientCountry"
-                            value={
-                              patientDetailForm.patientCountry ? JSON.stringify(patientDetailForm.patientCountry) : ""
-                            }
+                            name="country"
+                            value={formData.country || ""}
                             onChange={(e) => {
-                              const selectedCountry = JSON.parse(e.target.value)
-                              handleAddChange({ target: { name: "patientCountry", value: selectedCountry } })
+                              handleAddChange(e)
+                              fetchStates(e.target.value)
                             }}
                           >
                             <option value="">Select Country</option>
                             {countryData.map((country) => (
-                              <option key={country.id} value={JSON.stringify(country)}>
+                              <option key={country.id} value={country.id}>
                                 {country.countryName}
                               </option>
                             ))}
@@ -832,13 +1440,11 @@ const UpdateLabRegistration = () => {
                           <label className="form-label">State</label>
                           <select
                             className="form-select"
-                            name="patientState"
-                            value={patientDetailForm.patientState ? patientDetailForm.patientState.id : ""}
+                            name="state"
+                            value={formData.state || ""}
                             onChange={(e) => {
-                              const selectedState = stateData.find(
-                                (state) => state.id === Number.parseInt(e.target.value, 10),
-                              )
-                              handleAddChange({ target: { name: "patientState", value: selectedState } })
+                              handleAddChange(e)
+                              fetchDistrict(e.target.value)
                             }}
                           >
                             <option value="">Select State</option>
@@ -853,14 +1459,10 @@ const UpdateLabRegistration = () => {
                           <label className="form-label">District</label>
                           <select
                             className="form-select"
-                            name="patientDistrict"
-                            value={patientDetailForm.patientDistrict ? patientDetailForm.patientDistrict.id : ""}
+                            name="district"
+                            value={formData.district || ""}
                             onChange={(e) => {
-                              const selectedDistrictId = Number.parseInt(e.target.value, 10)
-                              const selectedDistrict = districtData.find(
-                                (district) => district.id === selectedDistrictId,
-                              )
-                              handleAddChange({ target: { name: "patientDistrict", value: selectedDistrict } })
+                              handleAddChange(e)
                             }}
                           >
                             <option value="">Select District</option>
@@ -876,8 +1478,8 @@ const UpdateLabRegistration = () => {
                           <input
                             type="text"
                             className="form-control"
-                            name="patientCity"
-                            value={patientDetailForm.patientCity || ""}
+                            name="city"
+                            value={formData.city || ""}
                             onChange={handleChange}
                             placeholder="Enter City"
                           />
@@ -886,12 +1488,18 @@ const UpdateLabRegistration = () => {
                           <label className="form-label">Pin Code</label>
                           <input
                             type="text"
-                            className="form-control"
+                            className={`form-control ${errors.pinCode ? "is-invalid" : ""}`}
+                            name="pinCode"
+                            value={formData.pinCode || ""}
+                            maxLength={6}
+                            onChange={(e) => {
+                              if (/^\d*$/.test(e.target.value)) {
+                                handleChange(e)
+                              }
+                            }}
                             placeholder="Enter Pin Code"
-                            name="patientPincode"
-                            onChange={handleChange}
-                            value={patientDetailForm.patientPincode || ""}
                           />
+                          {errors.pinCode && <div className="invalid-feedback">{errors.pinCode}</div>}
                         </div>
                       </div>
                     </form>
@@ -900,7 +1508,7 @@ const UpdateLabRegistration = () => {
               </div>
             </div>
 
-            {/* NOK Details */}
+            {/* NOK Details - EXACT SAME AS LAB REGISTRATION */}
             <div className="row mb-3">
               <div className="col-sm-12">
                 <div className="card shadow mb-3">
@@ -915,10 +1523,10 @@ const UpdateLabRegistration = () => {
                           <input
                             type="text"
                             className="form-control"
-                            onChange={handleChange}
-                            name="nokFn"
-                            value={patientDetailForm.nokFn || ""}
                             placeholder="Enter First Name"
+                            name="nokFirstName"
+                            value={formData.nokFirstName || ""}
+                            onChange={handleChange}
                           />
                         </div>
                         <div className="col-md-4">
@@ -926,10 +1534,10 @@ const UpdateLabRegistration = () => {
                           <input
                             type="text"
                             className="form-control"
-                            onChange={handleChange}
-                            name="nokMn"
                             placeholder="Enter Middle Name"
-                            value={patientDetailForm.nokMn || ""}
+                            name="nokMiddleName"
+                            value={formData.nokMiddleName || ""}
+                            onChange={handleChange}
                           />
                         </div>
                         <div className="col-md-4">
@@ -937,10 +1545,10 @@ const UpdateLabRegistration = () => {
                           <input
                             type="text"
                             className="form-control"
-                            onChange={handleChange}
-                            name="nokLn"
                             placeholder="Enter Last Name"
-                            value={patientDetailForm.nokLn || ""}
+                            name="nokLastName"
+                            value={formData.nokLastName || ""}
+                            onChange={handleChange}
                           />
                         </div>
                         <div className="col-md-4">
@@ -948,32 +1556,37 @@ const UpdateLabRegistration = () => {
                           <input
                             type="email"
                             className="form-control"
-                            onChange={handleChange}
-                            name="nokEmail"
                             placeholder="Enter Email"
-                            value={patientDetailForm.nokEmail || ""}
+                            name="nokEmail"
+                            value={formData.nokEmail || ""}
+                            onChange={handleChange}
                           />
                         </div>
                         <div className="col-md-4">
                           <label className="form-label">Mobile No.</label>
                           <input
                             type="text"
-                            className="form-control"
-                            onChange={handleChange}
-                            name="nokMobileNumber"
+                            className={`form-control ${errors.nokMobile ? "is-invalid" : ""}`}
                             placeholder="Enter Mobile Number"
-                            value={patientDetailForm.nokMobileNumber || ""}
+                            name="nokMobile"
+                            value={formData.nokMobile || ""}
+                            onChange={(e) => {
+                              if (/^\d*$/.test(e.target.value)) {
+                                handleChange(e)
+                              }
+                            }}
                           />
+                          {errors.nokMobile && <div className="invalid-feedback">{errors.nokMobile}</div>}
                         </div>
                         <div className="col-md-4">
                           <label className="form-label">Address 1</label>
                           <input
                             type="text"
                             className="form-control"
-                            onChange={handleChange}
-                            name="nokAddress1"
                             placeholder="Enter Address 1"
-                            value={patientDetailForm.nokAddress1 || ""}
+                            name="nokAddress1"
+                            value={formData.nokAddress1 || ""}
+                            onChange={handleChange}
                           />
                         </div>
                         <div className="col-md-4">
@@ -981,10 +1594,10 @@ const UpdateLabRegistration = () => {
                           <input
                             type="text"
                             className="form-control"
-                            onChange={handleChange}
-                            name="nokAddress2"
                             placeholder="Enter Address 2"
-                            value={patientDetailForm.nokAddress2 || ""}
+                            name="nokAddress2"
+                            value={formData.nokAddress2 || ""}
+                            onChange={handleChange}
                           />
                         </div>
                         <div className="col-md-4">
@@ -992,15 +1605,15 @@ const UpdateLabRegistration = () => {
                           <select
                             className="form-select"
                             name="nokCountry"
-                            value={patientDetailForm.nokCountry ? JSON.stringify(patientDetailForm.nokCountry) : ""}
+                            value={formData.nokCountry || ""}
                             onChange={(e) => {
-                              const selectedCountry = JSON.parse(e.target.value)
-                              handleAddChange({ target: { name: "nokCountry", value: selectedCountry } })
+                              handleAddChange(e)
+                              fetchNokStates(e.target.value)
                             }}
                           >
                             <option value="">Select Country</option>
                             {countryData.map((country) => (
-                              <option key={country.id} value={JSON.stringify(country)}>
+                              <option key={country.id} value={country.id}>
                                 {country.countryName}
                               </option>
                             ))}
@@ -1011,11 +1624,10 @@ const UpdateLabRegistration = () => {
                           <select
                             className="form-select"
                             name="nokState"
-                            value={patientDetailForm.nokState ? patientDetailForm.nokState.id : ""}
+                            value={formData.nokState || ""}
                             onChange={(e) => {
-                              const selectedStateId = Number.parseInt(e.target.value, 10)
-                              const selectedState = nokStateData.find((state) => state.id === selectedStateId)
-                              handleAddChange({ target: { name: "nokState", value: selectedState } })
+                              handleAddChange(e)
+                              fetchNokDistrict(e.target.value)
                             }}
                           >
                             <option value="">Select State</option>
@@ -1031,13 +1643,9 @@ const UpdateLabRegistration = () => {
                           <select
                             className="form-select"
                             name="nokDistrict"
-                            value={patientDetailForm.nokDistrict ? patientDetailForm.nokDistrict.id : ""}
+                            value={formData.nokDistrict || ""}
                             onChange={(e) => {
-                              const selectedDistrictId = Number.parseInt(e.target.value, 10)
-                              const selectedDistrict = nokDistrictData.find(
-                                (district) => district.id === selectedDistrictId,
-                              )
-                              handleAddChange({ target: { name: "nokDistrict", value: selectedDistrict } })
+                              handleAddChange(e)
                             }}
                           >
                             <option value="">Select District</option>
@@ -1054,21 +1662,27 @@ const UpdateLabRegistration = () => {
                             type="text"
                             className="form-control"
                             placeholder="Enter City"
-                            onChange={handleChange}
                             name="nokCity"
-                            value={patientDetailForm.nokCity || ""}
+                            value={formData.nokCity || ""}
+                            onChange={handleChange}
                           />
                         </div>
                         <div className="col-md-4">
                           <label className="form-label">Pin Code</label>
                           <input
                             type="text"
-                            className="form-control"
+                            className={`form-control ${errors.nokPinCode ? "is-invalid" : ""}`}
+                            name="nokPinCode"
+                            value={formData.nokPinCode || ""}
+                            maxLength={6}
+                            onChange={(e) => {
+                              if (/^\d*$/.test(e.target.value)) {
+                                handleChange(e)
+                              }
+                            }}
                             placeholder="Enter Pin Code"
-                            onChange={handleChange}
-                            name="nokPincode"
-                            value={patientDetailForm.nokPincode || ""}
                           />
+                          {errors.nokPinCode && <div className="invalid-feedback">{errors.nokPinCode}</div>}
                         </div>
                       </div>
                     </form>
@@ -1077,7 +1691,7 @@ const UpdateLabRegistration = () => {
               </div>
             </div>
 
-            {/* Emergency Contact Details Section */}
+            {/* Emergency Contact Details Section - EXACT SAME AS LAB REGISTRATION */}
             <div className="row mb-3">
               <div className="col-sm-12">
                 <div className="card shadow mb-3">
@@ -1093,9 +1707,9 @@ const UpdateLabRegistration = () => {
                             type="text"
                             className="form-control"
                             placeholder="Enter First Name"
+                            name="emergencyFirstName"
+                            value={formData.emergencyFirstName || ""}
                             onChange={handleChange}
-                            name="emerFn"
-                            value={patientDetailForm.emerFn || ""}
                           />
                         </div>
                         <div className="col-md-4">
@@ -1104,21 +1718,27 @@ const UpdateLabRegistration = () => {
                             type="text"
                             className="form-control"
                             placeholder="Enter Last Name"
+                            name="emergencyLastName"
+                            value={formData.emergencyLastName || ""}
                             onChange={handleChange}
-                            name="emerLn"
-                            value={patientDetailForm.emerLn || ""}
                           />
                         </div>
                         <div className="col-md-4">
                           <label className="form-label">Mobile No.</label>
                           <input
                             type="text"
-                            className="form-control"
+                            className={`form-control ${errors.emergencyMobile ? "is-invalid" : ""}`}
                             placeholder="Enter Mobile Number"
-                            onChange={handleChange}
-                            name="emerMobile"
-                            value={patientDetailForm.emerMobile || ""}
+                            name="emergencyMobile"
+                            value={formData.emergencyMobile || ""}
+                            maxLength={10}
+                            onChange={(e) => {
+                              if (/^\d*$/.test(e.target.value)) {
+                                handleChange(e)
+                              }
+                            }}
                           />
+                          {errors.emergencyMobile && <div className="invalid-feedback">{errors.emergencyMobile}</div>}
                         </div>
                       </div>
                     </form>
@@ -1127,13 +1747,13 @@ const UpdateLabRegistration = () => {
               </div>
             </div>
 
-            {/* Lab Investigation/Package Details */}
+            {/* Lab Investigation/Package Details - EXACT SAME AS LAB REGISTRATION */}
             <div className="row mb-3">
               <div className="col-sm-12">
                 <div className="card shadow mb-3">
                   <div className="card-header bg-light border-bottom-1 py-3">
                     <h6 className="fw-bold mb-0">
-                      {patientDetailForm.type === "investigation" ? "Investigation Details" : "Package Details"}
+                      {formData.type === "investigation" ? "Investigation Details" : "Package Details"}
                     </h6>
                   </div>
                   <div className="card-body">
@@ -1145,7 +1765,7 @@ const UpdateLabRegistration = () => {
                           name="type"
                           id="investigation"
                           value="investigation"
-                          checked={patientDetailForm.type === "investigation"}
+                          checked={formData.type === "investigation"}
                           onChange={() => handleTypeChange("investigation")}
                         />
                         <label className="form-check-label" htmlFor="investigation">
@@ -1159,7 +1779,7 @@ const UpdateLabRegistration = () => {
                           name="type"
                           id="package"
                           value="package"
-                          checked={patientDetailForm.type === "package"}
+                          checked={formData.type === "package"}
                           onChange={() => handleTypeChange("package")}
                         />
                         <label className="form-check-label" htmlFor="package">
@@ -1170,223 +1790,245 @@ const UpdateLabRegistration = () => {
                     <table className="table table-bordered">
                       <thead>
                         <tr>
-                          <th>{patientDetailForm.type === "investigation" ? "Investigation Name" : "Package Name"}</th>
-                          <th>Date</th>
-                          <th>Original Amount</th>
+                          <th>
+                            {formData.type === "investigation" ? "Investigation Name" : "Package Name"}{" "}
+                            <span className="text-danger">*</span>
+                          </th>
+                          <th>
+                            Date <span className="text-danger">*</span>
+                          </th>
+                          <th>
+                            Original Amount <span className="text-danger">*</span>
+                          </th>
                           <th>Discount Amount</th>
                           <th>Net Amount</th>
                           <th>Action</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {patientDetailForm.rows &&
-                          patientDetailForm.rows.map((row, index) => (
-                            <tr key={index}>
-                              <td>
-                                <div className="d-flex align-items-center gap-2">
+                        {formData.rows.map((row, index) => (
+                          <tr key={index}>
+                            <td>
+                              <div className="d-flex align-items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  style={{ width: "20px", height: "20px", border: "2px solid black" }}
+                                  className="form-check-input"
+                                  checked={checkedRows[index] || false}
+                                  onChange={(e) => {
+                                    const updated = [...checkedRows]
+                                    updated[index] = e.target.checked
+                                    setCheckedRows(updated)
+                                  }}
+                                />
+                                <div className="dropdown-search-container position-relative flex-grow-1">
                                   <input
-                                    type="checkbox"
-                                    style={{ width: "20px", height: "20px", border: "2px solid black" }}
-                                    className="form-check-input"
-                                    checked={checkedRows[index] || false}
+                                    type="text"
+                                    className="form-control"
+                                    value={row.name}
+                                    autoComplete="off"
+                                    placeholder={
+                                      formData.type === "investigation" ? "Investigation Name" : "Package Name"
+                                    }
                                     onChange={(e) => {
-                                      const updated = [...checkedRows]
-                                      updated[index] = e.target.checked
-                                      setCheckedRows(updated)
-                                    }}
-                                  />
-                                  <div className="dropdown-search-container position-relative flex-grow-1">
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      value={row.name}
-                                      autoComplete="off"
-                                      placeholder={
-                                        patientDetailForm.type === "investigation"
-                                          ? "Investigation Name"
-                                          : "Package Name"
+                                      handleRowChange(index, "name", e.target.value)
+                                      if (e.target.value.trim() !== "") {
+                                        setActiveRowIndex(index)
+                                      } else {
+                                        setActiveRowIndex(null)
                                       }
-                                      onChange={(e) => {
-                                        handleRowChange(index, "name", e.target.value)
-                                        if (e.target.value.trim() !== "") {
-                                          setActiveRowIndex(index)
-                                        } else {
-                                          setActiveRowIndex(null)
-                                        }
+                                    }}
+                                    onFocus={() => {
+                                      if (row.name.trim() !== "") {
+                                        setActiveRowIndex(index)
+                                      }
+                                    }}
+                                    onBlur={() => setTimeout(() => setActiveRowIndex(null), 200)}
+                                  />
+                                  {activeRowIndex === index && row.name.trim() !== "" && (
+                                    <ul
+                                      className="list-group position-absolute w-100 mt-1"
+                                      style={{
+                                        zIndex: 1000,
+                                        maxHeight: "200px",
+                                        overflowY: "auto",
+                                        backgroundColor: "#fff",
+                                        border: "1px solid #ccc",
                                       }}
-                                      onFocus={() => {
-                                        if (row.name.trim() !== "") {
-                                          setActiveRowIndex(index)
-                                        }
-                                      }}
-                                      onBlur={() => setTimeout(() => setActiveRowIndex(null), 200)}
-                                    />
-                                    {activeRowIndex === index && row.name.trim() !== "" && (
-                                      <ul
-                                        className="list-group position-absolute w-100 mt-1"
-                                        style={{
-                                          zIndex: 1000,
-                                          maxHeight: "200px",
-                                          overflowY: "auto",
-                                          backgroundColor: "#fff",
-                                          border: "1px solid #ccc",
-                                        }}
-                                      >
-                                        {patientDetailForm.type === "investigation"
-                                          ? investigationItems
-                                              .filter((item) =>
-                                                item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
-                                              )
-                                              .map((item, i) => {
-                                                const hasDiscount = item.disc && item.disc > 0
-                                                const displayPrice = item.price || 0
-                                                const discountAmount = hasDiscount ? item.disc : 0
-                                                const finalPrice = hasDiscount
-                                                  ? displayPrice - discountAmount
-                                                  : displayPrice
-                                                return (
-                                                  <li
-                                                    key={i}
-                                                    className="list-group-item list-group-item-action"
-                                                    style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                                    onClick={() => {
-                                                      if (
-                                                        item.price === null ||
-                                                        item.price === 0 ||
-                                                        item.price === "0"
-                                                      ) {
-                                                        Swal.fire(
-                                                          "Warning",
-                                                          "Price has not been configured for this Investigation",
-                                                          "warning",
-                                                        )
-                                                      } else {
-                                                        handleRowChange(index, "name", item.investigationName)
-                                                        handleRowChange(index, "itemId", item.investigationId)
-                                                        handleRowChange(index, "originalAmount", displayPrice)
-                                                        handleRowChange(index, "discountAmount", discountAmount)
-                                                        handleRowChange(index, "netAmount", finalPrice)
-                                                        setActiveRowIndex(null)
-                                                      }
-                                                    }}
-                                                  >
-                                                    <div>
-                                                      <strong>{item.investigationName}</strong>
-                                                      <div className="d-flex justify-content-between">
-                                                        <span>
-                                                          {item.price === null
-                                                            ? "Price not configured"
-                                                            : `₹${finalPrice.toFixed(2)}`}
-                                                        </span>
-                                                        {hasDiscount && (
-                                                          <span className="text-success">
-                                                            (Discount: ₹{discountAmount.toFixed(2)})
-                                                          </span>
-                                                        )}
-                                                      </div>
-                                                      {item.investigationType && (
-                                                        <small className="text-muted">
-                                                          Type: {item.investigationType}
-                                                        </small>
-                                                      )}
-                                                    </div>
-                                                  </li>
-                                                )
-                                              })
-                                          : packageItems
-                                              .filter((item) =>
-                                                item.packName.toLowerCase().includes(row.name.toLowerCase()),
-                                              )
-                                              .map((item, i) => (
+                                    >
+                                      {formData.type === "investigation"
+                                        ? investigationItems
+                                            .filter((item) =>
+                                              item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
+                                            )
+                                            .map((item, i) => {
+                                              const hasDiscount = item.disc && item.disc > 0
+                                              const displayPrice = item.price || 0
+                                              const discountAmount = hasDiscount ? item.disc : 0
+                                              const finalPrice = hasDiscount
+                                                ? displayPrice - discountAmount
+                                                : displayPrice
+                                              return (
                                                 <li
                                                   key={i}
                                                   className="list-group-item list-group-item-action"
                                                   style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
                                                   onClick={() => {
-                                                    handleRowChange(index, "name", item.packName)
-                                                    handleRowChange(index, "itemId", item.id)
-                                                    handleRowChange(index, "originalAmount", item.actualCost)
-                                                    handleRowChange(index, "discountAmount", 0)
-                                                    handleRowChange(index, "netAmount", item.actualCost)
-                                                    setActiveRowIndex(null)
+                                                    if (item.price === null || item.price === 0 || item.price === "0") {
+                                                      Swal.fire(
+                                                        "Warning",
+                                                        "Price has not been configured for this Investigation",
+                                                        "warning",
+                                                      )
+                                                    } else {
+                                                      handleRowChange(index, "name", item.investigationName)
+                                                      handleRowChange(index, "itemId", item.investigationId)
+                                                      handleRowChange(index, "originalAmount", displayPrice)
+                                                      handleRowChange(index, "discountAmount", discountAmount)
+                                                      handleRowChange(index, "netAmount", finalPrice)
+                                                      handleRowChange(index, "type", formData.type) // ✅ FORCE type from radio!
+                                                      setActiveRowIndex(null)
+                                                    }
                                                   }}
                                                 >
                                                   <div>
-                                                    <strong>{item.packName}</strong>
+                                                    <strong>{item.investigationName}</strong>
                                                     <div className="d-flex justify-content-between">
-                                                      <span>₹{item.actualCost.toFixed(2)}</span>
+                                                      <span>
+                                                        {item.price === null
+                                                          ? "Price not configured"
+                                                          : `₹${finalPrice.toFixed(2)}`}
+                                                      </span>
+                                                      {hasDiscount && (
+                                                        <span className="text-success">
+                                                          (Discount: ₹{discountAmount.toFixed(2)})
+                                                        </span>
+                                                      )}
                                                     </div>
+                                                    {item.investigationType && (
+                                                      <small className="text-muted">
+                                                        Type: {item.investigationType}
+                                                      </small>
+                                                    )}
                                                   </div>
                                                 </li>
-                                              ))}
-                                      </ul>
-                                    )}
-                                  </div>
+                                              )
+                                            })
+                                        : packageItems
+                                            .filter((item) =>
+                                              item.packName.toLowerCase().includes(row.name.toLowerCase()),
+                                            )
+                                            .map((item, i) => (
+                                              <li
+                                                key={i}
+                                                className="list-group-item list-group-item-action"
+                                                style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
+                                                onClick={async () => {
+                                                  const priceDetails = await fetchPackagePrice(item.packName)
+                                                  if (!priceDetails || !priceDetails.actualCost) {
+                                                    Swal.fire(
+                                                      "Warning",
+                                                      "Price has not been configured for this Package",
+                                                      "warning",
+                                                    )
+                                                  } else {
+                                                    handleRowChange(index, "name", item.packName)
+                                                    handleRowChange(index, "itemId", item.id || priceDetails.packId)
+                                                    handleRowChange(
+                                                      index,
+                                                      "originalAmount",
+                                                      priceDetails.baseCost || priceDetails.actualCost,
+                                                    )
+                                                    handleRowChange(index, "discountAmount", priceDetails.disc || 0)
+                                                    handleRowChange(index, "netAmount", priceDetails.actualCost)
+                                                    handleRowChange(index, "type", formData.type) // ✅ FORCE type from radio!
+                                                    setActiveRowIndex(null)
+                                                  }
+                                                }}
+                                              >
+                                                <div>
+                                                  <strong>{item.packName}</strong>
+                                                  <div className="d-flex justify-content-between">
+                                                    <span>₹{item.actualCost.toFixed(2)}</span>
+                                                  </div>
+                                                </div>
+                                              </li>
+                                            ))}
+                                    </ul>
+                                  )}
                                 </div>
-                              </td>
-                              <td>
-                                <input
-                                  type="date"
-                                  className="form-control"
-                                  value={row.date}
-                                  onChange={(e) => handleRowChange(index, "date", e.target.value)}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="number"
-                                  className="form-control"
-                                  value={row.originalAmount}
-                                  onChange={(e) => handleRowChange(index, "originalAmount", e.target.value)}
-                                  min="0"
-                                  step="0.01"
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="number"
-                                  className="form-control"
-                                  value={row.discountAmount}
-                                  onChange={(e) => handleRowChange(index, "discountAmount", e.target.value)}
-                                  min="0"
-                                  step="0.01"
-                                />
-                              </td>
-                              <td>
-                                <div className="font-weight-bold text-success">₹{row.netAmount || "0.00"}</div>
-                              </td>
-                              <td>
-                                <div className="d-flex align-item-center gap-2">
-                                  <button
-                                    type="button"
-                                    className="btn btn-danger"
-                                    onClick={() => removeRow(index)}
-                                    disabled={patientDetailForm.rows.length === 1}
-                                  >
-                                    <i className="icofont-close"></i>
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
+                              </div>
+                            </td>
+                            <td>
+                              <input
+                                type="date"
+                                className="form-control"
+                                value={row.date}
+                                onChange={(e) => handleRowChange(index, "date", e.target.value)}
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={row.originalAmount}
+                                onChange={(e) => handleRowChange(index, "originalAmount", e.target.value)}
+                                min="0"
+                                step="0.01"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={row.discountAmount}
+                                onChange={(e) => handleRowChange(index, "discountAmount", e.target.value)}
+                                min="0"
+                                step="0.01"
+                              />
+                            </td>
+                            <td>
+                              <div className="font-weight-bold text-success">₹{row.netAmount || "0.00"}</div>
+                            </td>
+                            <td>
+                              <div className="d-flex align-item-center gap-2">
+                                <div className="form-check form-check-muted m-0"></div>
+                                <button
+                                  type="button"
+                                  className="btn btn-danger"
+                                  onClick={() => removeRow(index)}
+                                  disabled={formData.rows.length === 1}
+                                >
+                                  <i className="icofont-close"></i>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                     <div className="d-flex justify-content-between align-items-center">
-                      <button
-                        type="button"
-                        className="btn btn-success"
-                        onClick={addRow}
-                        disabled={!isLastRowComplete()}
-                      >
-                        Add {patientDetailForm.type === "investigation" ? "Investigation" : "Package"} +
+                      <button type="button" className="btn btn-success" onClick={(e) => addRow(e, formData.type)}>
+                        Add {formData.type === "investigation" ? "Investigation" : "Package"} +
                       </button>
+                      <div className="d-flex">
+                        <input
+                          type="text"
+                          className="form-control me-2"
+                          placeholder="Enter Coupon Code"
+                          style={{ width: "200px" }}
+                        />
+                        <button type="button" className="btn btn-primary me-2">
+                          <i className="icofont-ticket me-1"></i> Apply Coupon
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Payment Summary Section */}
+            {/* Enhanced Payment Summary Section - EXACT SAME AS LAB REGISTRATION */}
             <div className="row mb-3">
               <div className="col-sm-12">
                 <div
@@ -1410,7 +2052,9 @@ const UpdateLabRegistration = () => {
                     </div>
                   </div>
                   <div className="card-body text-white">
+                    {/* Summary Cards Grid */}
                     <div className="row g-3 mb-4">
+                      {/* Total Original Amount Card */}
                       <div className="col-md-3">
                         <div
                           className="card h-100"
@@ -1425,6 +2069,7 @@ const UpdateLabRegistration = () => {
                           </div>
                         </div>
                       </div>
+                      {/* Discount Card */}
                       <div className="col-md-3">
                         <div
                           className="card h-100"
@@ -1439,6 +2084,7 @@ const UpdateLabRegistration = () => {
                           </div>
                         </div>
                       </div>
+                      {/* Tax Card - only show if GST is applicable */}
                       {paymentBreakdown.gstApplicable && (
                         <div className="col-md-3">
                           <div
@@ -1455,6 +2101,7 @@ const UpdateLabRegistration = () => {
                           </div>
                         </div>
                       )}
+                      {/* Final Amount Card */}
                       <div className="col-md-3">
                         <div
                           className="card h-100"
@@ -1474,6 +2121,7 @@ const UpdateLabRegistration = () => {
                         </div>
                       </div>
                     </div>
+                    {/* Detailed Breakdown */}
                     <div className="card" style={{ background: "rgba(255,255,255,0.95)", border: "none" }}>
                       <div className="card-body">
                         <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
@@ -1535,10 +2183,35 @@ const UpdateLabRegistration = () => {
                   <div className="card-body">
                     <div className="row g-3">
                       <div className="mt-4">
-                        <button type="button" onClick={handleSubmit} className="btn btn-primary me-2">
+                        <button
+                          type="button"
+                          className="btn btn-primary me-2"
+                          onClick={async () => {
+                            const missingFields = getMissingMandatoryFields()
+                            if (loading) return
+                            if (missingFields.length > 0) {
+                              Swal.fire(
+                                "Missing Mandatory Fields",
+                                "Please fill all mandatory fields before proceeding.",
+                                "warning",
+                              )
+                              return
+                            }
+                            try {
+                              console.log("Pay Now button clicked")
+                              await handleSubmit(true)
+                            } catch (error) {
+                              console.error("Error in payment flow:", error)
+                            }
+                          }}
+                        >
+                          <i className="fa fa-credit-card me-1"></i>
+                          {loading ? "Processing..." : `Pay Now - ₹${paymentBreakdown.finalAmount}`}
+                        </button>
+                        <button type="button" className="btn btn-secondary me-2" onClick={() => handleSubmit(false)}>
                           Confirm Lab Booking
                         </button>
-                        <button type="reset" className="btn btn-secondary">
+                        <button type="button" className="btn btn-outline-secondary" onClick={handleReset}>
                           Reset
                         </button>
                       </div>
