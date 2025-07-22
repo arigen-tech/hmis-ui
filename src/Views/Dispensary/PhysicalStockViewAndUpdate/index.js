@@ -1,26 +1,19 @@
-import { useState, useRef, useEffect } from "react"
-import ReactDOM from "react-dom"
+import { useState, useRef, useEffect } from "react";
+import ReactDOM from "react-dom";
 import { OPEN_BALANCE, MAS_DRUG_MAS } from "../../../config/apiConfig";
-import { getRequest, putRequest } from "../../../service/apiService"
-
+import { getRequest, putRequest } from "../../../service/apiService";
 
 const PhysicalStockAdjustmentViewUpdate = () => {
-  const [currentView, setCurrentView] = useState("list")
+  const [currentView, setCurrentView] = useState("list");
   const [processing, setProcessing] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState(null)
-  const [drugCodeOptions, setDrugCodeOptions] = useState([])
-  const [batchData, setBatchData] = useState([])
-  const [dtRecord, setDtRecord] = useState([])
-  const [detailEntries, setDetailEntries] = useState([])
-
-  const [physicalStockData, setPhysicalStockData] = useState([])
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [drugCodeOptions, setDrugCodeOptions] = useState([]);
+  const [batchData, setBatchData] = useState([]);
+  const [dtRecord, setDtRecord] = useState([]);
+  const [detailEntries, setDetailEntries] = useState([]);
+  const [physicalStockData, setPhysicalStockData] = useState([]);
   const [filteredPhysicalStockData, setFilteredPhysicalStockData] = useState([]);
-
-  useEffect(() => {
-    setFilteredPhysicalStockData(physicalStockData);
-  }, [physicalStockData]);
-
-  const [reasonForStockTaking, setReasonForStockTaking] = useState("")
+  const [reasonForStockTaking, setReasonForStockTaking] = useState("");
   const [stockEntries, setStockEntries] = useState([
     {
       id: 1,
@@ -33,18 +26,19 @@ const PhysicalStockAdjustmentViewUpdate = () => {
       surplus: "",
       deficient: "",
       remarks: "",
+      batchData: [],
     },
-  ])
-
-  // console.log("PhysicalStockAdjustmentViewUpdate rendered", physicalStockData)
-
-  const [popupMessage, setPopupMessage] = useState(null)
-  const dropdownClickedRef = useRef(false)
-  const [activeDrugCodeDropdown, setActiveDrugCodeDropdown] = useState(null)
-  const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null)
-  const drugCodeInputRefs = useRef({})
-  const drugNameInputRefs = useRef({})
-
+  ]);
+  const [popupMessage, setPopupMessage] = useState(null);
+  const dropdownClickedRef = useRef(false);
+  const [activeDrugCodeDropdown, setActiveDrugCodeDropdown] = useState(null);
+  const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null);
+  const drugCodeInputRefs = useRef({});
+  const drugNameInputRefs = useRef({});
+  const [fromDate, setFromDate] = useState("2025-07-17");
+  const [toDate, setToDate] = useState("2025-07-17");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageInput, setPageInput] = useState("");
 
   const fatchDrugCodeOptions = async () => {
     try {
@@ -54,7 +48,6 @@ const PhysicalStockAdjustmentViewUpdate = () => {
       }
     } catch (err) {
       console.error("Error fetching drug options:", err);
-    } finally {
     }
   };
 
@@ -67,7 +60,6 @@ const PhysicalStockAdjustmentViewUpdate = () => {
       }
     } catch (err) {
       console.error("Error fetching drug options:", err);
-    } finally {
     }
   };
 
@@ -96,116 +88,102 @@ const PhysicalStockAdjustmentViewUpdate = () => {
     setCurrentPage(1);
   };
 
-  const fatchBatchStockData = async (itemid) => {
+  const fetchBatchStockData = async (itemid, index) => {
     try {
       const response = await getRequest(`${OPEN_BALANCE}/getStockByItemId/${itemid}`);
       if (response && response.response) {
+        const updatedEntries = [...stockEntries];
+        updatedEntries[index].batchData = response.response;
+        setStockEntries(updatedEntries);
         setBatchData(response.response);
+
+        console.log("Batch data fetched successfully:", updatedEntries);
       }
     } catch (err) {
-      console.error("Error fetching drug options:", err);
-    } finally {
+      console.error("Error fetching batch data:", err);
     }
   };
 
-  const handleStockEntryChange = (index, field, value) => {
-    const updatedEntries = stockEntries.map((entry, i) => {
-      if (i === index) {
-        const updatedEntry = { ...entry, [field]: value }
+  const handleStockEntryChange = async (index, field, value) => {
+    let updatedEntries = [...stockEntries];
 
-        if (field === "physicalStock" && entry.computedStock) {
-          const computed = Number.parseFloat(entry.computedStock) || 0
-          const physical = Number.parseFloat(value) || 0
-          const difference = physical - computed
-          if (difference > 0) {
-            updatedEntry.surplus = difference.toString()
-            updatedEntry.deficient = ""
-          } else if (difference < 0) {
-            updatedEntry.deficient = Math.abs(difference).toString()
-            updatedEntry.surplus = ""
-          } else {
-            updatedEntry.surplus = ""
-            updatedEntry.deficient = ""
-          }
-        }
-
-        if (field === "batchNo" && entry.drugCode && batchData.length > 0) {
-          const selectedBatch = batchData.find(
-            (batch) => batch.batchNo === value && batch.itemCode === entry.drugCode
-          );
-
-          if (selectedBatch) {
-            updatedEntry.computedStock = selectedBatch.openingQty.toString();
-            updatedEntry.doe = selectedBatch.doe;
-            updatedEntry.stockId = selectedBatch.stockId;
-
-            if (entry.physicalStock) {
-              const computed = Number.parseFloat(selectedBatch.openingQty) || 0;
-              const physical = Number.parseFloat(entry.physicalStock) || 0;
-              const difference = physical - computed;
-              if (difference > 0) {
-                updatedEntry.surplus = difference.toString();
-                updatedEntry.deficient = "";
-              } else if (difference < 0) {
-                updatedEntry.deficient = Math.abs(difference).toString();
-                updatedEntry.surplus = "";
-              } else {
-                updatedEntry.surplus = "";
-                updatedEntry.deficient = "";
-              }
-            }
-          }
-        }
-
-
-        return updatedEntry
+    if (field === "drugCode") {
+      const selectedDrug = drugCodeOptions.find(opt => opt.code === value);
+      updatedEntries[index] = {
+        ...updatedEntries[index],
+        drugCode: value,
+        drugName: selectedDrug ? selectedDrug.name : "",
+        batchNo: "",
+        computedStock: "",
+        doe: "",
+        surplus: "",
+        deficient: "",
+        remarks: "",
+        batchData: [],
+      };
+      if (selectedDrug) {
+        await fetchBatchStockData(selectedDrug.id, index);
       }
-      return entry
-    })
-    setStockEntries(updatedEntries)
-  }
+    } else if (field === "drugName") {
+      const selectedDrug = drugCodeOptions.find(opt => opt.name === value);
+      updatedEntries[index] = {
+        ...updatedEntries[index],
+        drugName: value,
+        drugCode: selectedDrug ? selectedDrug.code : "",
+        batchNo: "",
+        computedStock: "",
+        doe: "",
+        surplus: "",
+        deficient: "",
+        remarks: "",
+        batchData: [],
+      };
+      if (selectedDrug) {
+        await fetchBatchStockData(selectedDrug.id, index);
+      }
+    } else if (field === "batchNo") {
+      updatedEntries[index] = {
+        ...updatedEntries[index],
+        batchNo: value,
+      };
+      const selectedBatch = updatedEntries[index].batchData?.find(
+        batch => batch.batchNo === value
+      );
+      if (selectedBatch) {
+        updatedEntries[index].computedStock = selectedBatch.openingQty.toString();
+        updatedEntries[index].doe = selectedBatch.doe;
+        updatedEntries[index].stockId = selectedBatch.stockId;
+      }
+    } else {
+      updatedEntries[index] = {
+        ...updatedEntries[index],
+        [field]: value,
+      };
+    }
 
+    // Surplus/Deficient calculation
+    if (field === "physicalStock" && updatedEntries[index].computedStock) {
+      const computed = Number.parseFloat(updatedEntries[index].computedStock) || 0;
+      const physical = Number.parseFloat(value) || 0;
+      const difference = physical - computed;
+      if (difference > 0) {
+        updatedEntries[index].surplus = difference.toString();
+        updatedEntries[index].deficient = "";
+      } else if (difference < 0) {
+        updatedEntries[index].deficient = Math.abs(difference).toString();
+        updatedEntries[index].surplus = "";
+      } else {
+        updatedEntries[index].surplus = "";
+        updatedEntries[index].deficient = "";
+      }
+    }
 
-
-
-
-
-
-  const [fromDate, setFromDate] = useState("2025-07-17")
-  const [toDate, setToDate] = useState("2025-07-17")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
-
-  // Detail view data
-
-
-
-  const itemsPerPage = 10
-  const currentItems = filteredPhysicalStockData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const totalPages = Math.ceil(filteredPhysicalStockData.length / itemsPerPage)
+    setStockEntries(updatedEntries);
+  };
   const handleEditClick = async (record, e) => {
     e.stopPropagation();
     setSelectedRecord(record);
     if (!record || !Array.isArray(record.storeStockTakingTResponseList)) return;
-
-    // Get unique itemIds from the record
-    const uniqueItemIds = [
-      ...new Set(record.storeStockTakingTResponseList.map((entry) => entry.itemId)),
-    ];
-
-    // Fetch batch data for all unique itemIds and merge
-    let allBatchData = [];
-    for (const itemId of uniqueItemIds) {
-      try {
-        const response = await getRequest(`${OPEN_BALANCE}/getStockByItemId/${itemId}`);
-        if (response && response.response) {
-          allBatchData = [...allBatchData, ...response.response];
-        }
-      } catch (err) {
-        console.error("Error fetching batch data for itemId:", itemId, err);
-      }
-    }
-    setBatchData(allBatchData);
 
     const entries = record.storeStockTakingTResponseList.map((entry) => ({
       id: entry.takingTId,
@@ -220,39 +198,53 @@ const PhysicalStockAdjustmentViewUpdate = () => {
       drugCode: entry.itemCode,
       stockId: entry.stockId,
       itemId: entry.itemId,
+      batchData: [], // Initialize with empty batchData
     }));
 
-    setStockEntries(entries);
+    // Fetch batch data for each entry individually
+    const entriesWithBatchData = await Promise.all(entries.map(async (entry) => {
+      try {
+        const response = await getRequest(`${OPEN_BALANCE}/getStockByItemId/${entry.itemId}`);
+        if (response && response.response) {
+          return {
+            ...entry,
+            batchData: response.response,
+          };
+        }
+      } catch (err) {
+        console.error("Error fetching batch data for itemId:", entry.itemId, err);
+      }
+      return entry;
+    }));
+
+    setStockEntries(entriesWithBatchData);
     setReasonForStockTaking(record.reason);
     const entriesWithId = (record.openingBalanceDtResponseList || []).map((entry, idx) => ({
       ...entry,
       id: entry.id || entry.balanceTId || `row-${idx + 1}`,
     }));
     setDetailEntries(entriesWithId);
-
     setCurrentView("detail");
-  }
+  };
 
   const handleBackToList = () => {
-    setCurrentView("list")
-    setSelectedRecord(null)
-  }
-
+    setCurrentView("list");
+    setSelectedRecord(null);
+  };
 
   const handleShowAll = () => {
-    setFromDate("")
-    setToDate("")
-  }
+    setFromDate("");
+    setToDate("");
+  };
 
   const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10)
+    const pageNumber = Number.parseInt(pageInput, 10);
     if (pageNumber > 0 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber)
+      setCurrentPage(pageNumber);
     } else {
-      alert("Please enter a valid page number.")
+      alert("Please enter a valid page number.");
     }
-  }
-
+  };
 
   const addNewRow = () => {
     const newEntry = {
@@ -266,29 +258,25 @@ const PhysicalStockAdjustmentViewUpdate = () => {
       surplus: "",
       deficient: "",
       remarks: "",
-    }
-    setStockEntries([...stockEntries, newEntry])
-  }
+      batchData: [],
+    };
+    setStockEntries([...stockEntries, newEntry]);
+  };
 
   const removeRow = (index) => {
     if (stockEntries.length > 1) {
       const entryToRemove = stockEntries[index];
-      // If the entry has an id (existing record), add to dtRecord
       if (entryToRemove.id) {
         setDtRecord((prev) => [...prev, entryToRemove.id]);
       }
-      // Remove from stockEntries
       const filteredEntries = stockEntries.filter((_, i) => i !== index);
       setStockEntries(filteredEntries);
     }
-  }
+  };
 
   const deleteEntry = (id) => {
     setDetailEntries(detailEntries.filter((entry) => entry.id !== id));
-    setDtRecord((prev) => {
-      const updated = [...prev, id];
-      return updated;
-    });
+    setDtRecord((prev) => [...prev, id]);
   };
 
   const handleSubmit = async (status) => {
@@ -342,13 +330,11 @@ const PhysicalStockAdjustmentViewUpdate = () => {
       showPopup("Error submitting stock adjustment. Please try again.", "error");
     } finally {
       setProcessing(false);
-      console.log("Submitting stock adjustment:", payload);
     }
   };
 
-
   const handleReset = () => {
-    setReasonForStockTaking("")
+    setReasonForStockTaking("");
     setStockEntries([
       {
         id: 1,
@@ -361,42 +347,50 @@ const PhysicalStockAdjustmentViewUpdate = () => {
         surplus: "",
         deficient: "",
         remarks: "",
+        batchData: [],
       },
-    ])
-  }
+    ]);
+  };
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null)
+        setPopupMessage(null);
       },
-    })
-  }
+    });
+  };
+
+  const itemsPerPage = 10;
+  const currentItems = filteredPhysicalStockData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+  const totalPages = Math.ceil(filteredPhysicalStockData.length / itemsPerPage);
 
   const renderPagination = () => {
-    const pageNumbers = []
-    const maxVisiblePages = 5
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1)
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
     if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1)
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
 
     if (startPage > 1) {
-      pageNumbers.push(1)
-      if (startPage > 2) pageNumbers.push("...")
+      pageNumbers.push(1);
+      if (startPage > 2) pageNumbers.push("...");
     }
 
     for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i)
+      pageNumbers.push(i);
     }
 
     if (endPage < totalPages) {
-      if (endPage < totalPages - 1) pageNumbers.push("...")
-      pageNumbers.push(totalPages)
+      if (endPage < totalPages - 1) pageNumbers.push("...");
+      pageNumbers.push(totalPages);
     }
 
     return pageNumbers.map((number, index) => (
@@ -409,22 +403,20 @@ const PhysicalStockAdjustmentViewUpdate = () => {
           <span className="page-link disabled">{number}</span>
         )}
       </li>
-    ))
-  }
+    ));
+  };
 
-  // Helper to map status codes
   const statusMap = {
     s: "Saved",
     p: "Pending for Approval",
     r: "Rejected",
     a: "Approved",
-  }
+  };
 
-  // Helper to format date
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
     return dateStr.split("T")[0];
-  }
+  };
 
   if (currentView === "detail") {
     return (
@@ -439,7 +431,6 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                 </button>
               </div>
               <div className="card-body">
-                {/* Entry Details Header */}
                 <div className="row mb-4">
                   <div className="col-md-3">
                     <label className="form-label fw-bold">Stock Taking Date</label>
@@ -487,21 +478,11 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                   </div>
                 </div>
 
-                {/* Stock Entry Table */}
-                <div
-                  className="table-responsive"
-                  style={{
-                    overflowX: "auto",
-                    maxWidth: "100%",
-                    overflowY: "visible",
-                  }}
-                >
+                <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
                   <table className="table table-bordered table-hover align-middle" style={{ minWidth: "1800px" }}>
                     <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
                       <tr>
-                        <th className="text-center" style={{ width: "60px", minWidth: "60px" }}>
-                          S.No.
-                        </th>
+                        <th className="text-center" style={{ width: "60px", minWidth: "60px" }}>S.No.</th>
                         <th style={{ width: "120px", minWidth: "120px" }}>Drug Code</th>
                         <th style={{ width: "300px", minWidth: "300px" }}>Drug Name</th>
                         <th style={{ width: "120px", minWidth: "120px" }}>Batch No.</th>
@@ -521,8 +502,9 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                     </thead>
                     <tbody>
                       {stockEntries.map((entry, index) => (
-                        <tr key={entry.id}>
+                        <tr key={entry.id || index}>
                           <td className="text-center fw-bold">{index + 1}</td>
+
                           <td style={{ position: "relative" }}>
                             <input
                               ref={(el) => (drugCodeInputRefs.current[index] = el)}
@@ -534,10 +516,6 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                                 handleStockEntryChange(index, "drugCode", value);
                                 if (value.length > 0) {
                                   setActiveDrugCodeDropdown(index);
-                                  const selectedDrug = drugCodeOptions.find(opt => opt.code === value);
-                                  if (selectedDrug) {
-                                    fatchBatchStockData(selectedDrug.id);
-                                  }
                                 } else {
                                   setActiveDrugCodeDropdown(null);
                                 }
@@ -549,10 +527,10 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                               onBlur={() => {
                                 setTimeout(() => {
                                   if (!dropdownClickedRef.current) {
-                                    setActiveDrugCodeDropdown(null)
+                                    setActiveDrugCodeDropdown(null);
                                   }
-                                  dropdownClickedRef.current = false
-                                }, 150)
+                                  dropdownClickedRef.current = false;
+                                }, 150);
                               }}
                               readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
@@ -587,30 +565,15 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                                         className="list-group-item list-group-item-action"
                                         style={{ cursor: "pointer" }}
                                         onMouseDown={(e) => {
-                                          e.preventDefault()
-                                          dropdownClickedRef.current = true
+                                          e.preventDefault();
+                                          dropdownClickedRef.current = true;
                                         }}
                                         onClick={(e) => {
-                                          e.preventDefault()
-                                          e.stopPropagation()
-                                          const updatedEntries = stockEntries.map((entry, i) => {
-                                            if (i === index) {
-                                              return {
-                                                ...entry,
-                                                drugCode: opt.code,
-                                                drugName: opt.name,
-                                                batchNo: "",
-                                                computedStock: "",
-                                                itemId: opt.id,
-                                              }
-                                            }
-                                            return entry
-                                          })
-                                          setStockEntries(updatedEntries)
-                                          setActiveDrugCodeDropdown(null)
-                                          dropdownClickedRef.current = false
-                                          // Fetch batch data for selected drug
-                                          fatchBatchStockData(opt.id);
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleStockEntryChange(index, "drugCode", opt.code);
+                                          setActiveDrugCodeDropdown(null);
+                                          dropdownClickedRef.current = false;
                                         }}
                                       >
                                         {opt.code} - {opt.name}
@@ -625,7 +588,8 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                                     entry.drugCode !== "" && (
                                       <li className="list-group-item text-muted">No matches found</li>
                                     )}
-                                </ul>
+                                </ul>,
+                                document.body
                               )}
                           </td>
 
@@ -640,11 +604,6 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                                 handleStockEntryChange(index, "drugName", value);
                                 if (value.length > 0) {
                                   setActiveDrugNameDropdown(index);
-                                  // Find the drug option by name and fetch batch data
-                                  const selectedDrug = drugCodeOptions.find(opt => opt.name === value);
-                                  if (selectedDrug) {
-                                    fatchBatchStockData(selectedDrug.id);
-                                  }
                                 } else {
                                   setActiveDrugNameDropdown(null);
                                 }
@@ -656,10 +615,10 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                               onBlur={() => {
                                 setTimeout(() => {
                                   if (!dropdownClickedRef.current) {
-                                    setActiveDrugNameDropdown(null)
+                                    setActiveDrugNameDropdown(null);
                                   }
-                                  dropdownClickedRef.current = false
-                                }, 150)
+                                  dropdownClickedRef.current = false;
+                                }, 150);
                               }}
                               readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
@@ -694,30 +653,15 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                                         className="list-group-item list-group-item-action"
                                         style={{ cursor: "pointer" }}
                                         onMouseDown={(e) => {
-                                          e.preventDefault()
-                                          dropdownClickedRef.current = true
+                                          e.preventDefault();
+                                          dropdownClickedRef.current = true;
                                         }}
                                         onClick={(e) => {
-                                          e.preventDefault()
-                                          e.stopPropagation()
-                                          const updatedEntries = stockEntries.map((entry, i) => {
-                                            if (i === index) {
-                                              return {
-                                                ...entry,
-                                                drugCode: opt.code,
-                                                drugName: opt.name,
-                                                batchNo: "",
-                                                computedStock: "",
-                                                itemId: opt.id,
-
-                                              }
-                                            }
-                                            return entry
-                                          })
-                                          setStockEntries(updatedEntries)
-                                          setActiveDrugNameDropdown(null)
-                                          dropdownClickedRef.current = false
-                                          fatchBatchStockData(opt.id);
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleStockEntryChange(index, "drugName", opt.name);
+                                          setActiveDrugNameDropdown(null);
+                                          dropdownClickedRef.current = false;
                                         }}
                                       >
                                         {opt.name}
@@ -737,7 +681,6 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                               )}
                           </td>
 
-                          {/* Batch No Dropdown */}
                           <td>
                             <select
                               className="form-select form-select-sm"
@@ -750,18 +693,13 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                               }
                             >
                               <option value="">Select Batch</option>
-                              {entry.drugCode &&
-                                batchData
-                                  .filter((batch) => batch.itemCode === entry.drugCode)
-                                  .map((batch, idx) => (
-                                    <option key={idx} value={batch.batchNo}>
-                                      {batch.batchNo}
-                                    </option>
-                                  ))}
+                              {entry.batchData?.map((batch, idx) => (
+                                <option key={idx} value={batch.batchNo}>
+                                  {batch.batchNo}
+                                </option>
+                              ))}
                             </select>
-
                           </td>
-
 
                           <td>
                             <input
@@ -883,8 +821,6 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                   </div>
                 </div>
 
-
-
                 <div className="d-flex justify-content-end gap-2 mt-4">
                   <button type="button" className="btn btn-primary" onClick={() => handleSubmit("s")} disabled={processing}>
                     Update
@@ -901,7 +837,7 @@ const PhysicalStockAdjustmentViewUpdate = () => {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -909,12 +845,10 @@ const PhysicalStockAdjustmentViewUpdate = () => {
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            {/* Header Section */}
-            <div className="card-header" >
+            <div className="card-header">
               <h4 className="card-title p-2 mb-0">Physical Stock Taking/Stock Adjustment View & Update</h4>
             </div>
             <div className="card-body">
-              {/* Date Filter Section */}
               <div className="row mb-4">
                 <div className="col-md-2">
                   <label className="form-label fw-bold">From Date</label>
@@ -954,10 +888,6 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                 </div>
               </div>
 
-              {/* Results Summary */}
-
-
-              {/* Table Section */}
               <div className="table-responsive">
                 <table className="table table-bordered table-hover align-middle">
                   <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
@@ -1015,7 +945,6 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                                 }
                               ></i>
                             </button>
-
                           </td>
                         </tr>
                       ))
@@ -1071,7 +1000,7 @@ const PhysicalStockAdjustmentViewUpdate = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default PhysicalStockAdjustmentViewUpdate
+export default PhysicalStockAdjustmentViewUpdate;
