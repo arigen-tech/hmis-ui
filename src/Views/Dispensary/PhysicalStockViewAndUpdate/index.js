@@ -693,7 +693,7 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                               }
                             >
                               <option value="">Select Batch</option>
-                              {stockEntries.batchData?.map((batch, idx) => (
+                              {entry.batchData?.map((batch, idx) => (
                                 <option key={idx} value={batch.batchNo}>
                                   {batch.batchNo}
                                 </option>
