@@ -1,0 +1,686 @@
+import { useState } from "react"
+
+const PendingForSampleCollection = () => {
+  const [samples, setSamples] = useState([
+    {
+      id: 1,
+      reqDate: "23/07/2025",
+      reqTime: "08:11",
+      reqNo: "215337",
+      patientName: "SAROJAMMA S YADAV",
+      relation: "Mother",
+      name: "DEEPU N",
+      age: "71 Years",
+      gender: "Female",
+      mobile: "9876543210",
+      department: "GENERAL MEDICINE",
+      doctorName: "Sandeep",
+      priority: "Priority-1",
+      investigations: [
+        {
+          id: 1,
+          siNo: 1,
+          investigation: "HBV DNA PCR",
+          sample: "SERUM",
+          container: "Sterile Bottle/Red",
+          collected: true,
+          empanelled: false,
+          remarks: "",
+          appointment: false,
+        },
+        {
+          id: 2,
+          siNo: 2,
+          investigation: "Urine-Routine",
+          sample: "URINE",
+          container: "Urine Container",
+          collected: true,
+          empanelled: false,
+          remarks: "",
+          appointment: false,
+        },
+        {
+          id: 3,
+          siNo: 3,
+          investigation: "Hb A1C",
+          sample: "Whole Blood",
+          container: "EDTA collection tube",
+          collected: true,
+          empanelled: false,
+          remarks: "",
+          appointment: false,
+        },
+      ],
+      clinicalNotes: "",
+      acceptedBy: "Sandeep",
+    },
+    {
+      id: 2,
+      reqDate: "23/07/2025",
+      reqTime: "09:15",
+      reqNo: "215338",
+      patientName: "RAJESH KUMAR",
+      relation: "Self",
+      name: "RAJESH KUMAR",
+      age: "45 Years",
+      gender: "Male",
+      mobile: "9876543211",
+      department: "CARDIOLOGY",
+      doctorName: "Dr. Sharma",
+      priority: "Priority-2",
+      investigations: [
+        {
+          id: 1,
+          siNo: 1,
+          investigation: "Lipid Profile",
+          sample: "SERUM",
+          container: "Sterile Bottle/Red",
+          collected: false,
+          empanelled: false,
+          remarks: "",
+          appointment: false,
+        },
+      ],
+      clinicalNotes: "",
+      acceptedBy: "Dr. Sharma",
+    },
+    {
+      id: 3,
+      reqDate: "23/07/2025",
+      reqTime: "10:30",
+      reqNo: "215339",
+      patientName: "PRIYA SINGH",
+      relation: "Wife",
+      name: "AMIT SINGH",
+      age: "32 Years",
+      gender: "Female",
+      mobile: "9876543212",
+      department: "GYNECOLOGY",
+      doctorName: "Dr. Patel",
+      priority: "Priority-3",
+      investigations: [
+        {
+          id: 1,
+          siNo: 1,
+          investigation: "CBC",
+          sample: "WHOLE BLOOD",
+          container: "EDTA Tube",
+          collected: false,
+          empanelled: false,
+          remarks: "",
+          appointment: false,
+        },
+      ],
+      clinicalNotes: "",
+      acceptedBy: "Dr. Patel",
+    },
+  ])
+
+  const [searchQuery, setSearchQuery] = useState("")
+  const [mobileQuery, setMobileQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageInput, setPageInput] = useState("")
+  const [selectedSample, setSelectedSample] = useState(null)
+  const [showDetailView, setShowDetailView] = useState(false)
+
+  const itemsPerPage = 10
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value)
+    setCurrentPage(1)
+  }
+
+  const handleMobileSearchChange = (e) => {
+    setMobileQuery(e.target.value)
+    setCurrentPage(1)
+  }
+
+  const handleRowClick = (sample) => {
+    setSelectedSample(sample)
+    setShowDetailView(true)
+  }
+
+  const handleBackToList = () => {
+    setShowDetailView(false)
+    setSelectedSample(null)
+  }
+
+  const handleInvestigationChange = (investigationId, field, value) => {
+    if (selectedSample) {
+      const updatedInvestigations = selectedSample.investigations.map((inv) =>
+        inv.id === investigationId ? { ...inv, [field]: value } : inv,
+      )
+      setSelectedSample({ ...selectedSample, investigations: updatedInvestigations })
+    }
+  }
+
+  const handleSubmit = () => {
+    if (selectedSample) {
+      const updatedSamples = samples.map((sample) => (sample.id === selectedSample.id ? selectedSample : sample))
+      setSamples(updatedSamples)
+      alert("Sample collection data saved successfully!")
+    }
+  }
+
+  const handleReset = () => {
+    if (selectedSample) {
+      const originalSample = samples.find((s) => s.id === selectedSample.id)
+      setSelectedSample({ ...originalSample })
+    }
+  }
+
+  const filteredSamples = samples.filter(
+    (item) =>
+      item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.doctorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.mobile.includes(mobileQuery),
+  )
+
+  const filteredTotalPages = Math.ceil(filteredSamples.length / itemsPerPage)
+  const currentItems = filteredSamples.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+
+  const handlePageNavigation = () => {
+    const pageNumber = Number.parseInt(pageInput, 10)
+    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
+      setCurrentPage(pageNumber)
+    } else {
+      alert("Please enter a valid page number.")
+    }
+  }
+
+  const renderPagination = () => {
+    const pageNumbers = []
+    const maxVisiblePages = 5
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
+    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1)
+
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1)
+    }
+
+    if (startPage > 1) {
+      pageNumbers.push(1)
+      if (startPage > 2) pageNumbers.push("...")
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i)
+    }
+
+    if (endPage < filteredTotalPages) {
+      if (endPage < filteredTotalPages - 1) pageNumbers.push("...")
+      pageNumbers.push(filteredTotalPages)
+    }
+
+    return pageNumbers.map((number, index) => (
+      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
+        {typeof number === "number" ? (
+          <button className="page-link" onClick={() => setCurrentPage(number)}>
+            {number}
+          </button>
+        ) : (
+          <span className="page-link disabled">{number}</span>
+        )}
+      </li>
+    ))
+  }
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case "Priority-1":
+        return "bg-danger text-white"
+      case "Priority-2":
+        return "bg-warning text-dark"
+      case "Priority-3":
+        return "bg-success text-white"
+      default:
+        return "bg-secondary text-white"
+    }
+  }
+
+  if (showDetailView && selectedSample) {
+    return (
+      <div className="content-wrapper">
+        <div className="row">
+          <div className="col-12 grid-margin stretch-card">
+            <div className="card form-card">
+              <div className="card-header">
+                <div className="d-flex justify-content-between align-items-center">
+                  <h4 className="card-title p-2">SAMPLE COLLECTION</h4>
+                  <button className="btn btn-secondary" onClick={handleBackToList}>
+                    <i className="mdi mdi-arrow-left"></i> Back to List
+                  </button>
+                </div>
+              </div>
+              <div className="card-body">
+                {/* Sample Collection Header */}
+                <div className="row mb-4">
+                  <div className="col-md-3">
+                    <label className="form-label fw-bold">Req Date</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={selectedSample.reqDate}
+                      onChange={(e) => setSelectedSample({ ...selectedSample, reqDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label fw-bold">Req Time</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={selectedSample.reqTime}
+                      onChange={(e) => setSelectedSample({ ...selectedSample, reqTime: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label fw-bold">Req No.</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={selectedSample.reqNo}
+                      onChange={(e) => setSelectedSample({ ...selectedSample, reqNo: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label fw-bold">Department</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={selectedSample.department}
+                      onChange={(e) => setSelectedSample({ ...selectedSample, department: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* Patient Details */}
+                <div className="card mb-4">
+                  <div className="card-header">
+                    <h5 className="mb-0">PATIENT DETAILS</h5>
+                  </div>
+                  <div className="card-body">
+                    <div className="row">
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">Patient Name</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={selectedSample.patientName}
+                          onChange={(e) => setSelectedSample({ ...selectedSample, patientName: e.target.value })}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">Relation</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={selectedSample.relation}
+                          onChange={(e) => setSelectedSample({ ...selectedSample, relation: e.target.value })}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">Mobile No.</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={selectedSample.mobile}
+                          onChange={(e) => setSelectedSample({ ...selectedSample, mobile: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="row mt-3">
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">Name</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={selectedSample.name}
+                          onChange={(e) => setSelectedSample({ ...selectedSample, name: e.target.value })}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">Age</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={selectedSample.age}
+                          onChange={(e) => setSelectedSample({ ...selectedSample, age: e.target.value })}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">Gender</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={selectedSample.gender}
+                          onChange={(e) => setSelectedSample({ ...selectedSample, gender: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sample Details */}
+                <div className="card mb-4">
+                  <div className="card-header">
+                    <h5 className="mb-0">SAMPLE DETAILS</h5>
+                  </div>
+                  <div className="card-body">
+                    <div className="row">
+                      <div className="col-md-3">
+                        <label className="form-label fw-bold">Date</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={selectedSample.reqDate}
+                          onChange={(e) => setSelectedSample({ ...selectedSample, reqDate: e.target.value })}
+                        />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-bold">Time</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={selectedSample.reqTime}
+                          onChange={(e) => setSelectedSample({ ...selectedSample, reqTime: e.target.value })}
+                        />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-bold">
+                          Accepted By <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={selectedSample.acceptedBy}
+                          onChange={(e) => setSelectedSample({ ...selectedSample, acceptedBy: e.target.value })}
+                        />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-bold">Diagnostic No.</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={selectedSample.reqNo}
+                          onChange={(e) => setSelectedSample({ ...selectedSample, reqNo: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="row mt-3">
+                      <div className="col-12">
+                        <label className="form-label fw-bold">Clinical Notes</label>
+                        <textarea
+                          className="form-control"
+                          rows="3"
+                          value={selectedSample.clinicalNotes}
+                          onChange={(e) => setSelectedSample({ ...selectedSample, clinicalNotes: e.target.value })}
+                        ></textarea>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Investigations Table */}
+                <div className="table-responsive">
+                  <table className="table table-bordered table-hover">
+                    <thead className="table-light">
+                      <tr>
+                        <th>SI No.</th>
+                        <th>Investigation</th>
+                        <th>Sample</th>
+                        <th>Container</th>
+                        <th>Collected</th>
+                        <th>Empanelled</th>
+                        <th>Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedSample.investigations.map((investigation) => (
+                        <tr key={investigation.id}>
+                          <td>{investigation.siNo}</td>
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={investigation.investigation}
+                              onChange={(e) =>
+                                handleInvestigationChange(investigation.id, "investigation", e.target.value)
+                              }
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={investigation.sample}
+                              onChange={(e) => handleInvestigationChange(investigation.id, "sample", e.target.value)}
+                            />
+                          </td>
+                          <td>
+                            <select
+                              className="form-select"
+                              value={investigation.container}
+                              onChange={(e) => handleInvestigationChange(investigation.id, "container", e.target.value)}
+                            >
+                              <option value="Sterile Bottle/Red">Sterile Bottle/Red</option>
+                              <option value="Urine Container">Urine Container</option>
+                              <option value="EDTA collection tube">EDTA collection tube</option>
+                              <option value="EDTA Tube">EDTA Tube</option>
+                            </select>
+                          </td>
+                          <td>
+                            <div className="form-check">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                checked={investigation.collected}
+                                onChange={(e) =>
+                                  handleInvestigationChange(investigation.id, "collected", e.target.checked)
+                                }
+                              />
+                            </div>
+                          </td>
+                          <td>
+                            <div className="form-check">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                checked={investigation.empanelled}
+                                onChange={(e) =>
+                                  handleInvestigationChange(investigation.id, "empanelled", e.target.checked)
+                                }
+                              />
+                            </div>
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={investigation.remarks}
+                              onChange={(e) => handleInvestigationChange(investigation.id, "remarks", e.target.value)}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="text-center mt-4">
+                  <button className="btn btn-primary me-3" onClick={handleSubmit}>
+                    <i className="mdi mdi-content-save"></i> SUBMIT
+                  </button>
+                  <button className="btn btn-secondary" onClick={handleReset}>
+                    <i className="mdi mdi-refresh"></i> RESET
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="content-wrapper">
+      <div className="row">
+        <div className="col-12 grid-margin stretch-card">
+          <div className="card form-card">
+            <div className="card-header">
+              <h4 className="card-title p-2">PENDING FOR SAMPLE COLLECTION</h4>
+            </div>
+            <div className="card-body">
+              {/* Patient Search Section */}
+              <div className="card mb-3">
+                <div className="card-header py-3 bg-light border-bottom-1">
+                  <h6 className="mb-0 fw-bold">PATIENT SEARCH</h6>
+                </div>
+                <div className="card-body">
+                  <form>
+                    <div className="row g-4 align-items-end">
+                      <div className="col-md-4">
+                        <label className="form-label">Patient Name</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Enter patient name"
+                          value={searchQuery}
+                          onChange={handleSearchChange}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Mobile No.</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Enter mobile number"
+                          value={mobileQuery}
+                          onChange={handleMobileSearchChange}
+                        />
+                      </div>
+                      <div className="col-md-4 d-flex">
+                        <button type="button" className="btn btn-primary me-2">
+                          <i className="fa fa-search"></i> Search
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => {
+                            setSearchQuery("")
+                            setMobileQuery("")
+                          }}
+                        >
+                          <i className="mdi mdi-refresh"></i> Reset
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              {/* Priority Legend */}
+              <div className="d-flex mb-3">
+                <span className="badge bg-danger me-2">Priority-1</span>
+                <span className="badge bg-warning text-dark me-2">Priority-2</span>
+                <span className="badge bg-success">Priority-3</span>
+              </div>
+
+              <div className="table-responsive packagelist">
+                <table className="table table-bordered table-hover align-middle">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Req Date</th>
+                      <th>Patient Name</th>
+                      <th>Relation</th>
+                      <th>Name</th>
+                      <th>Age</th>
+                      <th>Gender</th>
+                      <th>Mobile No.</th>
+                      <th>Department</th>
+                      <th>Doctor Name</th>
+                      <th>Priority</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentItems.map((item) => (
+                      <tr
+                        key={item.id}
+                        onClick={() => handleRowClick(item)}
+                        style={{ cursor: "pointer" }}
+                        className="table-row-hover"
+                      >
+                        <td>{item.reqDate}</td>
+                        <td>{item.patientName}</td>
+                        <td>{item.relation}</td>
+                        <td>{item.name}</td>
+                        <td>{item.age}</td>
+                        <td>{item.gender}</td>
+                        <td>{item.mobile}</td>
+                        <td>{item.department}</td>
+                        <td>{item.doctorName}</td>
+                        <td>
+                          <span className={`badge ${getPriorityColor(item.priority)}`}>{item.priority}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              <nav className="d-flex justify-content-between align-items-center mt-3">
+                <div>
+                  <span>
+                    Page {currentPage} of {filteredTotalPages} | Total Records: {filteredSamples.length}
+                  </span>
+                </div>
+                <ul className="pagination mb-0">
+                  <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                    <button
+                      className="page-link"
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      &laquo; Previous
+                    </button>
+                  </li>
+                  {renderPagination()}
+                  <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                    <button
+                      className="page-link"
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === filteredTotalPages}
+                    >
+                      Next &raquo;
+                    </button>
+                  </li>
+                </ul>
+                <div className="d-flex align-items-center">
+                  <input
+                    type="number"
+                    min="1"
+                    max={filteredTotalPages}
+                    value={pageInput}
+                    onChange={(e) => setPageInput(e.target.value)}
+                    placeholder="Go to page"
+                    className="form-control me-2"
+                    style={{ width: "120px" }}
+                  />
+                  <button className="btn btn-primary" onClick={handlePageNavigation}>
+                    GO
+                  </button>
+                </div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default PendingForSampleCollection

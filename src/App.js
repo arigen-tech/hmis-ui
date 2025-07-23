@@ -67,6 +67,8 @@ import PendingSampleCollection from './Views/Laboratory/PendingForSampleCollecti
 import PhysicalStockAdjustment from './Views/Dispensary/PhysicalStockAdjustment';
 import PhysicalStockAdjustmentViewUpdate from './Views/Dispensary/PhysicalStockViewAndUpdate';
 import PhysicalStockAdjustmentApproval from './Views/Dispensary/PhysicalStockApproval';
+import SampleValidation from './Views/Laboratory/SampleValidation';
+import PendingForSampleCollection from './Views/Laboratory/PendingForSampleCollect';
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -169,6 +171,8 @@ function App() {
                 <Route path="PhysicalStockAdjustment" element={<PhysicalStockAdjustment/>} />
                 <Route path="PhysicalStockAdjustmentViewUpdate" element={<PhysicalStockAdjustmentViewUpdate/>}/>
                 <Route path="PhysicalStockAdjustmentApproval" element={<PhysicalStockAdjustmentApproval/>} />
+                <Route path="SampleValidation" element={<SampleValidation/>} />
+                <Route path="PendingForSampleCollection" element={<PendingForSampleCollection/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
