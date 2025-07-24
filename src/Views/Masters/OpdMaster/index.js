@@ -33,7 +33,7 @@ const OpdSessionMaster = () => {
   const fetchOpdSessionData = async (flag = 0) => {
     try {
       setLoading(true)
-      const response = await getRequest(`${MAS_OPD_SESSION}/getAll${flag}`)
+      const response = await getRequest(`${MAS_OPD_SESSION}/getAll/${flag}`)
       if (response && response.response) {
         setOpdSessionData(response.response)
       }

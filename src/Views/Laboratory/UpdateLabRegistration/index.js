@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useRef, useEffect } from "react"
 import placeholderImage from "../../../assets/images/placeholder.jpg"
 import { getRequest, postRequest } from "../../../service/apiService"
@@ -13,6 +11,7 @@ import {
   MAS_STATE,
   PATIENT_IMAGE_UPLOAD,
   MAS_DISTRICT,
+  PATIENT_SEARCH,
   MAS_INVESTIGATION,
   INVESTIGATION_PACKAGE_Mapping,
   MAS_SERVICE_CATEGORY,
@@ -47,7 +46,7 @@ const UpdateLabRegistration = () => {
   const navigate = useNavigate()
   const [gstConfig, setGstConfig] = useState({
     gstApplicable: true,
-    gstPercent: 0, // default fallback
+    gstPercent: 0,
   })
 
   // Search form data
@@ -58,9 +57,9 @@ const UpdateLabRegistration = () => {
     appointmentDate: "",
   })
 
-  // Main form data - exact same structure as LabRegistration
+  // Main form data
   const [formData, setFormData] = useState({
-    // Personal details
+    id: null,
     imageurl: undefined,
     firstName: undefined,
     middleName: undefined,
@@ -71,7 +70,6 @@ const UpdateLabRegistration = () => {
     dob: undefined,
     age: undefined,
     email: undefined,
-    // Patient address
     address1: undefined,
     address2: undefined,
     country: undefined,
@@ -79,7 +77,6 @@ const UpdateLabRegistration = () => {
     district: undefined,
     city: undefined,
     pinCode: undefined,
-    // NOK details
     nokFirstName: undefined,
     nokMiddleName: undefined,
     nokLastName: undefined,
@@ -92,11 +89,9 @@ const UpdateLabRegistration = () => {
     nokDistrict: undefined,
     nokCity: undefined,
     nokPinCode: undefined,
-    // Emergency contact
     emergencyFirstName: undefined,
     emergencyLastName: undefined,
     emergencyMobile: undefined,
-    // Lab specific fields
     type: "investigation",
     rows: [
       {
@@ -120,12 +115,8 @@ const UpdateLabRegistration = () => {
   const [checkedRows, setCheckedRows] = useState([true])
   const [patients, setPatients] = useState([])
 
-  // Enhanced payment calculation function - SAME AS LAB REGISTRATION
   const calculatePaymentBreakdown = () => {
-    console.log("=== CALCULATING PAYMENT BREAKDOWN ===")
-    console.log("Current GST Config:", gstConfig)
     const checkedItems = formData.rows.filter((_, index) => checkedRows[index])
-    console.log("Checked Items:", checkedItems)
     const totalOriginalAmount = checkedItems.reduce((total, item) => {
       return total + (Number.parseFloat(item.originalAmount) || 0)
     }, 0)
@@ -133,22 +124,15 @@ const UpdateLabRegistration = () => {
       return total + (Number.parseFloat(item.discountAmount) || 0)
     }, 0)
     const totalNetAmount = totalOriginalAmount - totalDiscountAmount
-    // Fix: Calculate GST on each item's net amount individually, then sum up
-    // This matches the backend logic exactly
     const totalGstAmount = checkedItems.reduce((total, item) => {
       const itemOriginalAmount = Number.parseFloat(item.originalAmount) || 0
       const itemDiscountAmount = Number.parseFloat(item.discountAmount) || 0
       const itemNetAmount = itemOriginalAmount - itemDiscountAmount
-      // Calculate GST on this item's net amount (after discount)
       const itemGstAmount = gstConfig.gstApplicable ? (itemNetAmount * gstConfig.gstPercent) / 100 : 0
-      console.log(
-        `Item GST Calculation - Original: ${itemOriginalAmount}, Discount: ${itemDiscountAmount}, Net: ${itemNetAmount}, GST%: ${gstConfig.gstPercent}, GST Amount: ${itemGstAmount}`,
-      )
       return total + itemGstAmount
     }, 0)
     const finalAmount = totalNetAmount + totalGstAmount
     const breakdown = {
-      // Properties expected by your UI component
       totalOriginalAmount: totalOriginalAmount.toFixed(2),
       totalDiscountAmount: totalDiscountAmount.toFixed(2),
       totalNetAmount: totalNetAmount.toFixed(2),
@@ -157,14 +141,11 @@ const UpdateLabRegistration = () => {
       gstPercent: gstConfig.gstPercent,
       gstApplicable: gstConfig.gstApplicable,
       itemCount: checkedItems.length,
-      // Legacy properties (if needed elsewhere in your code)
       totalAmount: totalOriginalAmount.toFixed(2),
       baseAmountAfterDiscount: totalNetAmount.toFixed(2),
       taxAmount: totalGstAmount.toFixed(2),
       finalPaymentAmount: finalAmount.toFixed(2),
     }
-    console.log("Final Payment Breakdown:", breakdown)
-    console.log("=== END PAYMENT BREAKDOWN ===")
     return breakdown
   }
 
@@ -239,7 +220,6 @@ const UpdateLabRegistration = () => {
       if (response.status === 200 && data.response) {
         const extractedPath = data.response
         setImageURL(extractedPath)
-        console.log("Uploaded Image URL:", extractedPath)
         Swal.fire("Success!", "Image uploaded successfully!", "success")
       } else {
         Swal.fire("Error!", "Failed to upload image!", "error")
@@ -264,13 +244,11 @@ const UpdateLabRegistration = () => {
     let years = today.getFullYear() - birthDate.getFullYear()
     let months = today.getMonth() - birthDate.getMonth()
     let days = today.getDate() - birthDate.getDate()
-    // Adjust if the day difference is negative
     if (days < 0) {
       months--
       const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0)
       days += prevMonth.getDate()
     }
-    // Adjust if the month difference is negative
     if (months < 0) {
       years--
       months += 12
@@ -410,7 +388,7 @@ const UpdateLabRegistration = () => {
           originalAmount: 0,
           discountAmount: 0,
           netAmount: 0,
-          type: type, // ✅ captures fresh type from button click
+          type: type,
         },
       ],
     }))
@@ -434,7 +412,6 @@ const UpdateLabRegistration = () => {
       .toFixed(2)
   }
 
-  // All your existing fetch functions - SAME AS LAB REGISTRATION
   async function fetchGenderData() {
     setLoading(true)
     try {
@@ -575,7 +552,6 @@ const UpdateLabRegistration = () => {
   }
 
   async function fetchPackageInvestigationDetails(flag) {
-    // setLoading(true);
     try {
       const data = await getRequest(`${INVESTIGATION_PACKAGE_Mapping}/getAllPackageMap/${flag}`)
       if (data.status === 200 && Array.isArray(data.response)) {
@@ -589,12 +565,10 @@ const UpdateLabRegistration = () => {
       console.error("Error fetching package investigation details:", error)
       return []
     } finally {
-      // setLoading(false);
     }
   }
 
   async function fetchPackagePrice(packName) {
-    // setLoading(true);
     try {
       const data = await getRequest(`${MAS_PACKAGE_INVESTIGATION}/pricePack?packName=${packName}`)
       if (data.status === 200 && data.response) {
@@ -607,25 +581,20 @@ const UpdateLabRegistration = () => {
       console.error("Error fetching package price:", error)
       return null
     } finally {
-      // setLoading(false);
     }
   }
 
   async function fetchGstConfiguration() {
     setLoading(true)
     try {
-      console.log("=== FETCHING GST CONFIGURATION ===")
       const data = await getRequest(`${MAS_SERVICE_CATEGORY}/getGstConfig/1`)
-      console.log("GST API Response:", JSON.stringify(data, null, 2))
       if (data && data.status === 200 && data.response && typeof data.response.gstApplicable !== "undefined") {
         const gstConfiguration = {
           gstApplicable: !!data.response.gstApplicable,
           gstPercent: Number(data.response.gstPercent) || 0,
         }
-        console.log("Setting GST Configuration:", gstConfiguration)
         setGstConfig(gstConfiguration)
       } else {
-        console.warn("Invalid API response:", data)
         setGstConfig({
           gstApplicable: false,
           gstPercent: 0,
@@ -642,155 +611,144 @@ const UpdateLabRegistration = () => {
     }
   }
 
-  async function checkDuplicatePatient(firstName, dob, gender, mobile, relation) {
-    const params = new URLSearchParams({
-      firstName,
-      dob,
-      gender,
-      mobile,
-      relation,
-    }).toString()
-    const result = await getRequest(`/patient/check-duplicate?${params}`)
-    return result === true
-  }
+  // async function checkDuplicatePatient(firstName, dob, gender, mobile, relation) {
+  //   const params = new URLSearchParams({
+  //     firstName,
+  //     dob,
+  //     gender,
+  //     mobile,
+  //     relation,
+  //   }).toString()
+  //   const result = await getRequest(`/patient/check-duplicate?${params}`)
+  //   return result === true
+  // }
 
-  useEffect(() => {
-    const { firstName, dob, gender, mobileNo, relation } = formData
-    if (firstName && dob && gender && mobileNo && relation) {
-      const timer = setTimeout(async () => {
-        try {
-          const isDuplicate = await checkDuplicatePatient(firstName, dob, gender, mobileNo, relation)
-          if (isDuplicate) {
-            Swal.fire("Duplicate Found!", "A patient with these details already exists.", "warning")
-            setIsDuplicatePatient(true)
-          } else {
-            setIsDuplicatePatient(false)
-          }
-        } catch (err) {
-          console.error("Duplicate check failed:", err)
-        }
-      }, 800)
-      return () => clearTimeout(timer)
-    } else {
-      // If any field is cleared, reset duplicate flag
-      setIsDuplicatePatient(false)
-    }
-  }, [formData.firstName, formData.dob, formData.gender, formData.mobileNo, formData.relation])
-
-  // Add this useEffect after the existing useEffect
-  useEffect(() => {
-    console.log("GST Config changed:", gstConfig)
-  }, [gstConfig])
+  // useEffect(() => {
+  //   const { firstName, dob, gender, mobileNo, relation } = formData
+  //   if (firstName && dob && gender && mobileNo && relation) {
+  //     const timer = setTimeout(async () => {
+  //       try {
+  //         const isDuplicate = await checkDuplicatePatient(firstName, dob, gender, mobileNo, relation)
+  //         if (isDuplicate) {
+  //           Swal.fire("Duplicate Found!", "A patient with these details already exists.", "warning")
+  //           setIsDuplicatePatient(true)
+  //         } else {
+  //           setIsDuplicatePatient(false)
+  //         }
+  //       } catch (err) {
+  //         console.error("Duplicate check failed:", err)
+  //       }
+  //     }, 800)
+  //     return () => clearTimeout(timer)
+  //   } else {
+  //     setIsDuplicatePatient(false)
+  //   }
+  // }, [formData.firstName, formData.dob, formData.gender, formData.mobileNo, formData.relation])
 
   const handleSearch = async () => {
-    // Mock search results - replace with actual API call
-    const mockPatients = [
-      {
-        id: 1,
-        firstName: "John",
-        middleName: "M",
-        lastName: "Doe",
-        mobileNo: "9876543210",
-        uhidNo: "UH001",
-        age: "30Y 0M 0D",
-        gender: 1,
-        email: "john@example.com",
-        relation: 1,
-        dob: "1994-01-01",
-        address1: "123 Main St",
-        address2: "Apt 4B",
-        country: 1,
-        state: 1,
-        district: 1,
-        city: "Mumbai",
-        pinCode: "400001",
-        nokFirstName: "Jane",
-        nokLastName: "Doe",
-        nokEmail: "jane@example.com",
-        nokMobile: "9876543211",
-        nokAddress1: "456 Oak St",
-        nokCountry: 1,
-        nokState: 1,
-        nokDistrict: 1,
-        nokCity: "Mumbai",
-        nokPinCode: "400002",
-        emergencyFirstName: "Emergency",
-        emergencyLastName: "Contact",
-        emergencyMobile: "9876543212",
-      },
-      {
-        id: 2,
-        firstName: "Jane",
-        middleName: "",
-        lastName: "Smith",
-        mobileNo: "9876543211",
-        uhidNo: "UH002",
-        age: "25Y 6M 15D",
-        gender: 2,
-        email: "jane@example.com",
-        relation: 1,
-        dob: "1998-07-15",
-        address1: "789 Pine St",
-        country: 1,
-        state: 2,
-        district: 2,
-        city: "Pune",
-        pinCode: "411001",
-      },
-    ]
-    setPatients(mockPatients)
+  setLoading(true);
+  try {
+    const requestBody = {
+      mobileNo: searchFormData.mobileNo?.trim() || null,
+      patientName: searchFormData.patientName?.trim() || null,
+      uhidNo: searchFormData.uhidNo?.trim() || null,
+      appointmentDate: searchFormData.appointmentDate
+        ? new Date(searchFormData.appointmentDate).toISOString().split("T")[0]
+        : null,
+    };
+
+    // Remove empty string values and replace with null
+    Object.keys(requestBody).forEach(key => {
+      if (requestBody[key] === "" || requestBody[key] === undefined) {
+        requestBody[key] = null;
+      }
+    });
+
+    console.log("Search request:", requestBody); // Debug log
+
+    const data = await postRequest(PATIENT_SEARCH, requestBody);
+
+    if (Array.isArray(data.response)) {
+      setPatients(data.response);
+    } else {
+      setPatients([]);
+      Swal.fire("Info", "No patients found matching your criteria", "info");
+    }
+  } catch (error) {
+    console.error("Search error:", error);
+    Swal.fire("Error", "Failed to search patients", "error");
+  } finally {
+    setLoading(false);
   }
+};
+
+
 
   const handleBook = (patient) => {
-    // Map patient data to formData structure - EXACT SAME AS LAB REGISTRATION
-    setFormData({
-      ...formData,
-      firstName: patient.firstName,
-      middleName: patient.middleName,
-      lastName: patient.lastName,
-      mobileNo: patient.mobileNo,
-      gender: patient.gender,
-      relation: patient.relation,
-      dob: patient.dob,
-      age: patient.age,
-      email: patient.email,
-      address1: patient.address1,
-      address2: patient.address2,
-      country: patient.country,
-      state: patient.state,
-      district: patient.district,
-      city: patient.city,
-      pinCode: patient.pinCode,
-      nokFirstName: patient.nokFirstName,
-      nokMiddleName: patient.nokMiddleName,
-      nokLastName: patient.nokLastName,
-      nokEmail: patient.nokEmail,
-      nokMobile: patient.nokMobile,
-      nokAddress1: patient.nokAddress1,
-      nokAddress2: patient.nokAddress2,
-      nokCountry: patient.nokCountry,
-      nokState: patient.nokState,
-      nokDistrict: patient.nokDistrict,
-      nokCity: patient.nokCity,
-      nokPinCode: patient.nokPinCode,
-      emergencyFirstName: patient.emergencyFirstName,
-      emergencyLastName: patient.emergencyLastName,
-      emergencyMobile: patient.emergencyMobile,
-      // Preserve lab-specific fields
+    const mappedData = {
+      id: patient.id,
+      imageurl: patient.patientImage || undefined,
+      firstName: patient.patientFn || undefined,
+      middleName: patient.patientMn || undefined,
+      lastName: patient.patientLn || undefined,
+      mobileNo: patient.patientMobileNumber || undefined,
+      gender: patient.patientGender?.id || undefined,
+      relation: patient.patientRelation?.id || undefined,
+      dob: patient.patientDob || undefined,
+      age: patient.patientAge || undefined,
+      email: patient.patientEmailId || undefined,
+      address1: patient.patientAddress1 || undefined,
+      address2: patient.patientAddress2 || undefined,
+      country: patient.patientCountry?.id || undefined,
+      state: patient.patientState?.id || undefined,
+      district: patient.patientDistrict?.id || undefined,
+      city: patient.patientCity || undefined,
+      pinCode: patient.patientPincode || undefined,
+      nokFirstName: patient.nokFn || undefined,
+      nokMiddleName: undefined,
+      nokLastName: patient.nokLn || undefined,
+      nokEmail: patient.nokEmail || undefined,
+      nokMobile: patient.nokMobileNumber || undefined,
+      nokAddress1: patient.nokAddress1 || undefined,
+      nokAddress2: patient.nokAddress2 || undefined,
+      nokCountry: patient.nokCountry?.id || undefined,
+      nokState: patient.nokState?.id || undefined,
+      nokDistrict: patient.nokDistrict?.id || undefined,
+      nokCity: patient.nokCity || undefined,
+      nokPinCode: patient.nokPincode || undefined,
+      emergencyFirstName: patient.emerFn || undefined,
+      emergencyLastName: patient.emerLn || undefined,
+      emergencyMobile: patient.emerMobile || undefined,
       type: "investigation",
-      rows: [
-        {
-          id: 1,
-          name: "",
-          date: "",
-          originalAmount: 0,
-          discountAmount: 0,
-          netAmount: 0,
-          type: "investigation",
-        },
-      ],
+      rows: formData.rows,
+      paymentMode: formData.paymentMode,
+    }
+
+    setFormData(mappedData)
+
+    if (mappedData.country) {
+      fetchStates(mappedData.country).then(() => {
+        if (mappedData.state) {
+          fetchDistrict(mappedData.state)
+        }
+      })
+    }
+
+    if (mappedData.nokCountry) {
+      fetchNokStates(mappedData.nokCountry).then(() => {
+        if (mappedData.nokState) {
+          fetchNokDistrict(mappedData.nokState)
+        }
+      })
+    }
+
+
+    if (mappedData.gender) {
+    fetchInvestigationDetails(mappedData.gender).then((data) => {
+      setInvestigationItems(data)
     })
-    console.log("Patient selected for booking:", patient)
+  }
+
     setShowPatientDetails(true)
   }
 
@@ -829,9 +787,7 @@ const UpdateLabRegistration = () => {
   }
 
   const handleSubmit = async (shouldNavigateToPayment = false) => {
-    console.log("handleSubmit called with shouldNavigateToPayment:", shouldNavigateToPayment)
     const isFormValid = shouldNavigateToPayment ? true : validateForm()
-    console.log("Form validation result:", isFormValid)
     if (isDuplicatePatient) {
       Swal.fire(
         "Duplicate Found!",
@@ -841,90 +797,44 @@ const UpdateLabRegistration = () => {
       return
     }
     if (isFormValid) {
-      console.log("Form validation passed, proceeding with registration...")
       try {
         setLoading(true)
-        // ✅ Build patient object - SAME AS LAB REGISTRATION
-        const patientRequest = {
-          uhidNo: "",
-          patientFn: formData.firstName,
-          patientMn: formData.middleName || "",
-          patientLn: formData.lastName || "",
-          patientDob: formData.dob,
-          patientAge: formData.age?.toString(),
-          patientGenderId: formData.gender,
-          patientEmailId: formData.email,
-          patientMobileNumber: formData.mobileNo,
-          patientImage: imageURL || "",
-          fileName: "string",
-          patientRelationId: formData.relation,
-          patientAddress1: formData.address1 || "",
-          patientAddress2: formData.address2 || "",
-          patientCity: formData.city || "",
-          patientPincode: formData.pinCode || "",
-          patientDistrictId: formData.district,
-          patientStateId: formData.state,
-          patientCountryId: formData.country,
-          emerFn: formData.emergencyFirstName || "",
-          emerLn: formData.emergencyLastName || "",
-          emerMobile: formData.emergencyMobile || "",
-          nokFn: formData.nokFirstName || "",
-          nokLn: formData.nokLastName || "",
-          nokEmail: formData.nokEmail || "",
-          nokMobileNumber: formData.nokMobile || "",
-          nokAddress1: formData.nokAddress1 || "",
-          nokAddress2: formData.nokAddress2 || "",
-          nokCity: formData.nokCity || "",
-          nokDistrictId: formData.nokDistrict,
-          nokStateId: formData.nokState,
-          nokCountryId: formData.nokCountry,
-          nokPincode: formData.nokPinCode || "",
-          patientStatus: "",
-          regDate: new Date().toISOString().split("T")[0],
-          lastChgBy: sessionStorage.getItem("username"),
-          patientHospitalId: Number(sessionStorage.getItem("hospitalId")),
-        }
-        // ✅ Register patient - FOR UPDATE, WE SKIP PATIENT REGISTRATION
-        // const patientResult = await postRequest("/patient/register", { patient: patientRequest });
-        // const patientId = patientResult?.response?.patient?.id;
-        const patientId = formData.id // Use existing patient ID
+        const patientId = formData.id
         if (!patientId) throw new Error("Patient ID not found")
-        // ✅ Validate checked rows
+
         const hasCheckedItems = formData.rows.some((row, index) => checkedRows[index])
         if (!hasCheckedItems) throw new Error("Please select at least one investigation or package.")
-        // ✅ Check for any invalid rows with no itemId
+
         const invalidRow = formData.rows.find((row, index) => checkedRows[index] && !row.itemId)
         if (invalidRow)
           throw new Error("One or more selected rows have no valid investigation/package. Please select from dropdown.")
-        // ✅ Calculate payment breakdown
+
         const paymentBreakdown = calculatePaymentBreakdown()
         const totalFinalAmount = Number.parseFloat(paymentBreakdown.finalAmount)
-        // ✅ Build final lab request - SEND ALL ITEMS (both checked and unchecked)
+
         const labData = {
           patientId: patientId,
           labInvestigationReq: [],
         }
-        // Send ALL rows with their respective check status
+
         formData.rows.forEach((row, index) => {
           if (row.itemId) {
-            // Only include rows that have valid itemId
             labData.labInvestigationReq.push({
               id: row.itemId,
               appointmentDate: row.date || new Date().toISOString().split("T")[0],
-              checkStatus: checkedRows[index] || false, // Send actual check status
+              checkStatus: checkedRows[index] || false,
               actualAmount: Number.parseFloat(row.originalAmount) || 0,
               discountedAmount: Number.parseFloat(row.discountAmount) || 0,
               type: row.type === "investigation" ? "i" : "p",
             })
           }
         })
-        console.log("FINAL LAB DATA:", labData)
-        // ✅ Call backend
+
         const labResult = await postRequest("/lab/registration", labData)
         if (!labResult || labResult.status !== 200) {
           throw new Error(labResult?.message || "Lab registration failed.")
         }
-        console.log("Lab registration successful:", labResult)
+
         if (shouldNavigateToPayment) {
           Swal.fire({
             title: "Success!",
@@ -938,7 +848,6 @@ const UpdateLabRegistration = () => {
                 patientId,
                 labData: labResult,
                 selectedItems: {
-                  // Only send checked items to payment page
                   investigations: labData.labInvestigationReq.filter((i) => i.type === "i" && i.checkStatus),
                   packages: labData.labInvestigationReq.filter((i) => i.type === "p" && i.checkStatus),
                 },
@@ -965,7 +874,7 @@ const UpdateLabRegistration = () => {
 
   const handleReset = () => {
     setFormData({
-      // Personal details
+      id: null,
       imageurl: undefined,
       firstName: undefined,
       middleName: undefined,
@@ -976,7 +885,6 @@ const UpdateLabRegistration = () => {
       dob: undefined,
       age: undefined,
       email: undefined,
-      // Patient address
       address1: undefined,
       address2: undefined,
       country: undefined,
@@ -984,7 +892,6 @@ const UpdateLabRegistration = () => {
       district: undefined,
       city: undefined,
       pinCode: undefined,
-      // NOK details
       nokFirstName: undefined,
       nokMiddleName: undefined,
       nokLastName: undefined,
@@ -997,11 +904,9 @@ const UpdateLabRegistration = () => {
       nokDistrict: undefined,
       nokCity: undefined,
       nokPinCode: undefined,
-      // Emergency contact
       emergencyFirstName: undefined,
       emergencyLastName: undefined,
       emergencyMobile: undefined,
-      // Lab specific fields
       type: "investigation",
       rows: [
         {
@@ -1009,6 +914,9 @@ const UpdateLabRegistration = () => {
           name: "",
           date: "",
           originalAmount: 0,
+          discountAmount: 0,
+          netAmount: 0,
+          type: "investigation",
         },
       ],
       paymentMode: "",
@@ -1030,7 +938,6 @@ const UpdateLabRegistration = () => {
     (row) => !row.date || row.date.trim() === "" || !row.name || row.name.trim() === "",
   )
 
-  // Get payment breakdown for display
   const paymentBreakdown = calculatePaymentBreakdown()
 
   const getMissingMandatoryFields = () => {
@@ -1105,7 +1012,7 @@ const UpdateLabRegistration = () => {
                         onChange={handleSearchChange}
                       />
                     </div>
-                    <div className="col-md-3">
+                    {/* <div className="col-md-3">
                       <label className="form-label">Date</label>
                       <input
                         type="date"
@@ -1114,11 +1021,16 @@ const UpdateLabRegistration = () => {
                         value={searchFormData.appointmentDate}
                         onChange={handleSearchChange}
                       />
-                    </div>
+                    </div> */}
                   </div>
                   <div className="mt-3 mb-3">
-                    <button type="button" className="btn btn-primary me-2" onClick={handleSearch}>
-                      Search
+                    <button
+                      type="button"
+                      className="btn btn-primary me-2"
+                      onClick={handleSearch}
+                      disabled={loading}
+                    >
+                      {loading ? 'Searching...' : 'Search'}
                     </button>
                     <button type="button" className="btn btn-secondary" onClick={handleReset}>
                       Reset
@@ -1142,13 +1054,14 @@ const UpdateLabRegistration = () => {
                           {patients.map((patient, index) => (
                             <tr key={index}>
                               <td>
-                                {`${patient.firstName || ""} ${patient.middleName || ""} ${patient.lastName || ""}`.trim()}
+                                {`${patient.patientFn || ""} ${patient.patientMn || ""} ${patient.patientLn || ""}`.trim()}
                               </td>
-                              <td>{patient.mobileNo || ""}</td>
-                              <td>{patient.uhidNo}</td>
-                              <td>{patient.age || ""}</td>
-                              <td>{genderData.find((g) => g.id === patient.gender)?.genderName || ""}</td>
-                              <td>{patient.email}</td>
+
+                              <td>{patient.patientMobileNumber || ""}</td>
+                              <td>{patient.uhidNo || ""}</td>
+                              <td>{patient.patientAge || ""}</td>
+                              <td>{patient.patientGender?.genderName || ""}</td>
+                              <td>{patient.patientEmailId || ""}</td>
                               <td>
                                 <button
                                   type="button"
@@ -1175,7 +1088,7 @@ const UpdateLabRegistration = () => {
 
         {showPatientDetails && (
           <>
-            {/* Patient Personal Details - EXACT SAME AS LAB REGISTRATION */}
+            {/* Patient Personal Details */}
             <div className="row mb-3">
               <div className="col-sm-12">
                 <div className="card shadow mb-3">
@@ -1385,7 +1298,7 @@ const UpdateLabRegistration = () => {
               </div>
             </div>
 
-            {/* Patient address - EXACT SAME AS LAB REGISTRATION */}
+            {/* Patient address */}
             <div className="row mb-3">
               <div className="col-sm-12">
                 <div className="card shadow mb-3">
@@ -1508,7 +1421,7 @@ const UpdateLabRegistration = () => {
               </div>
             </div>
 
-            {/* NOK Details - EXACT SAME AS LAB REGISTRATION */}
+            {/* NOK Details */}
             <div className="row mb-3">
               <div className="col-sm-12">
                 <div className="card shadow mb-3">
@@ -1691,7 +1604,7 @@ const UpdateLabRegistration = () => {
               </div>
             </div>
 
-            {/* Emergency Contact Details Section - EXACT SAME AS LAB REGISTRATION */}
+            {/* Emergency Contact Details Section */}
             <div className="row mb-3">
               <div className="col-sm-12">
                 <div className="card shadow mb-3">
@@ -1747,7 +1660,7 @@ const UpdateLabRegistration = () => {
               </div>
             </div>
 
-            {/* Lab Investigation/Package Details - EXACT SAME AS LAB REGISTRATION */}
+            {/* Lab Investigation/Package Details */}
             <div className="row mb-3">
               <div className="col-sm-12">
                 <div className="card shadow mb-3">
@@ -1858,102 +1771,102 @@ const UpdateLabRegistration = () => {
                                     >
                                       {formData.type === "investigation"
                                         ? investigationItems
-                                            .filter((item) =>
-                                              item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
-                                            )
-                                            .map((item, i) => {
-                                              const hasDiscount = item.disc && item.disc > 0
-                                              const displayPrice = item.price || 0
-                                              const discountAmount = hasDiscount ? item.disc : 0
-                                              const finalPrice = hasDiscount
-                                                ? displayPrice - discountAmount
-                                                : displayPrice
-                                              return (
-                                                <li
-                                                  key={i}
-                                                  className="list-group-item list-group-item-action"
-                                                  style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                                  onClick={() => {
-                                                    if (item.price === null || item.price === 0 || item.price === "0") {
-                                                      Swal.fire(
-                                                        "Warning",
-                                                        "Price has not been configured for this Investigation",
-                                                        "warning",
-                                                      )
-                                                    } else {
-                                                      handleRowChange(index, "name", item.investigationName)
-                                                      handleRowChange(index, "itemId", item.investigationId)
-                                                      handleRowChange(index, "originalAmount", displayPrice)
-                                                      handleRowChange(index, "discountAmount", discountAmount)
-                                                      handleRowChange(index, "netAmount", finalPrice)
-                                                      handleRowChange(index, "type", formData.type) // ✅ FORCE type from radio!
-                                                      setActiveRowIndex(null)
-                                                    }
-                                                  }}
-                                                >
-                                                  <div>
-                                                    <strong>{item.investigationName}</strong>
-                                                    <div className="d-flex justify-content-between">
-                                                      <span>
-                                                        {item.price === null
-                                                          ? "Price not configured"
-                                                          : `₹${finalPrice.toFixed(2)}`}
-                                                      </span>
-                                                      {hasDiscount && (
-                                                        <span className="text-success">
-                                                          (Discount: ₹{discountAmount.toFixed(2)})
-                                                        </span>
-                                                      )}
-                                                    </div>
-                                                    {item.investigationType && (
-                                                      <small className="text-muted">
-                                                        Type: {item.investigationType}
-                                                      </small>
-                                                    )}
-                                                  </div>
-                                                </li>
-                                              )
-                                            })
-                                        : packageItems
-                                            .filter((item) =>
-                                              item.packName.toLowerCase().includes(row.name.toLowerCase()),
-                                            )
-                                            .map((item, i) => (
+                                          .filter((item) =>
+                                            item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
+                                          )
+                                          .map((item, i) => {
+                                            const hasDiscount = item.disc && item.disc > 0
+                                            const displayPrice = item.price || 0
+                                            const discountAmount = hasDiscount ? item.disc : 0
+                                            const finalPrice = hasDiscount
+                                              ? displayPrice - discountAmount
+                                              : displayPrice
+                                            return (
                                               <li
                                                 key={i}
                                                 className="list-group-item list-group-item-action"
                                                 style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                                onClick={async () => {
-                                                  const priceDetails = await fetchPackagePrice(item.packName)
-                                                  if (!priceDetails || !priceDetails.actualCost) {
+                                                onClick={() => {
+                                                  if (item.price === null || item.price === 0 || item.price === "0") {
                                                     Swal.fire(
                                                       "Warning",
-                                                      "Price has not been configured for this Package",
+                                                      "Price has not been configured for this Investigation",
                                                       "warning",
                                                     )
                                                   } else {
-                                                    handleRowChange(index, "name", item.packName)
-                                                    handleRowChange(index, "itemId", item.id || priceDetails.packId)
-                                                    handleRowChange(
-                                                      index,
-                                                      "originalAmount",
-                                                      priceDetails.baseCost || priceDetails.actualCost,
-                                                    )
-                                                    handleRowChange(index, "discountAmount", priceDetails.disc || 0)
-                                                    handleRowChange(index, "netAmount", priceDetails.actualCost)
-                                                    handleRowChange(index, "type", formData.type) // ✅ FORCE type from radio!
+                                                    handleRowChange(index, "name", item.investigationName)
+                                                    handleRowChange(index, "itemId", item.investigationId)
+                                                    handleRowChange(index, "originalAmount", displayPrice)
+                                                    handleRowChange(index, "discountAmount", discountAmount)
+                                                    handleRowChange(index, "netAmount", finalPrice)
+                                                    handleRowChange(index, "type", formData.type)
                                                     setActiveRowIndex(null)
                                                   }
                                                 }}
                                               >
                                                 <div>
-                                                  <strong>{item.packName}</strong>
+                                                  <strong>{item.investigationName}</strong>
                                                   <div className="d-flex justify-content-between">
-                                                    <span>₹{item.actualCost.toFixed(2)}</span>
+                                                    <span>
+                                                      {item.price === null
+                                                        ? "Price not configured"
+                                                        : `₹${finalPrice.toFixed(2)}`}
+                                                    </span>
+                                                    {hasDiscount && (
+                                                      <span className="text-success">
+                                                        (Discount: ₹{discountAmount.toFixed(2)})
+                                                      </span>
+                                                    )}
                                                   </div>
+                                                  {item.investigationType && (
+                                                    <small className="text-muted">
+                                                      Type: {item.investigationType}
+                                                    </small>
+                                                  )}
                                                 </div>
                                               </li>
-                                            ))}
+                                            )
+                                          })
+                                        : packageItems
+                                          .filter((item) =>
+                                            item.packName.toLowerCase().includes(row.name.toLowerCase()),
+                                          )
+                                          .map((item, i) => (
+                                            <li
+                                              key={i}
+                                              className="list-group-item list-group-item-action"
+                                              style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
+                                              onClick={async () => {
+                                                const priceDetails = await fetchPackagePrice(item.packName)
+                                                if (!priceDetails || !priceDetails.actualCost) {
+                                                  Swal.fire(
+                                                    "Warning",
+                                                    "Price has not been configured for this Package",
+                                                    "warning",
+                                                  )
+                                                } else {
+                                                  handleRowChange(index, "name", item.packName)
+                                                  handleRowChange(index, "itemId", item.id || priceDetails.packId)
+                                                  handleRowChange(
+                                                    index,
+                                                    "originalAmount",
+                                                    priceDetails.baseCost || priceDetails.actualCost,
+                                                  )
+                                                  handleRowChange(index, "discountAmount", priceDetails.disc || 0)
+                                                  handleRowChange(index, "netAmount", priceDetails.actualCost)
+                                                  handleRowChange(index, "type", formData.type)
+                                                  setActiveRowIndex(null)
+                                                }
+                                              }}
+                                            >
+                                              <div>
+                                                <strong>{item.packName}</strong>
+                                                <div className="d-flex justify-content-between">
+                                                  <span>₹{item.actualCost.toFixed(2)}</span>
+                                                </div>
+                                              </div>
+                                            </li>
+                                          ))}
                                     </ul>
                                   )}
                                 </div>
@@ -2028,7 +1941,7 @@ const UpdateLabRegistration = () => {
               </div>
             </div>
 
-            {/* Enhanced Payment Summary Section - EXACT SAME AS LAB REGISTRATION */}
+            {/* Enhanced Payment Summary Section */}
             <div className="row mb-3">
               <div className="col-sm-12">
                 <div
@@ -2052,9 +1965,7 @@ const UpdateLabRegistration = () => {
                     </div>
                   </div>
                   <div className="card-body text-white">
-                    {/* Summary Cards Grid */}
                     <div className="row g-3 mb-4">
-                      {/* Total Original Amount Card */}
                       <div className="col-md-3">
                         <div
                           className="card h-100"
@@ -2069,7 +1980,6 @@ const UpdateLabRegistration = () => {
                           </div>
                         </div>
                       </div>
-                      {/* Discount Card */}
                       <div className="col-md-3">
                         <div
                           className="card h-100"
@@ -2084,7 +1994,6 @@ const UpdateLabRegistration = () => {
                           </div>
                         </div>
                       </div>
-                      {/* Tax Card - only show if GST is applicable */}
                       {paymentBreakdown.gstApplicable && (
                         <div className="col-md-3">
                           <div
@@ -2101,7 +2010,6 @@ const UpdateLabRegistration = () => {
                           </div>
                         </div>
                       )}
-                      {/* Final Amount Card */}
                       <div className="col-md-3">
                         <div
                           className="card h-100"
@@ -2121,7 +2029,6 @@ const UpdateLabRegistration = () => {
                         </div>
                       </div>
                     </div>
-                    {/* Detailed Breakdown */}
                     <div className="card" style={{ background: "rgba(255,255,255,0.95)", border: "none" }}>
                       <div className="card-body">
                         <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
@@ -2178,52 +2085,61 @@ const UpdateLabRegistration = () => {
 
             {/* Submit and Reset Buttons */}
             <div className="row mb-3">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-body">
-                    <div className="row g-3">
-                      <div className="mt-4">
-                        <button
-                          type="button"
-                          className="btn btn-primary me-2"
-                          onClick={async () => {
-                            const missingFields = getMissingMandatoryFields()
-                            if (loading) return
-                            if (missingFields.length > 0) {
-                              Swal.fire(
-                                "Missing Mandatory Fields",
-                                "Please fill all mandatory fields before proceeding.",
-                                "warning",
-                              )
-                              return
-                            }
-                            try {
-                              console.log("Pay Now button clicked")
-                              await handleSubmit(true)
-                            } catch (error) {
-                              console.error("Error in payment flow:", error)
-                            }
-                          }}
-                        >
-                          <i className="fa fa-credit-card me-1"></i>
-                          {loading ? "Processing..." : `Pay Now - ₹${paymentBreakdown.finalAmount}`}
-                        </button>
-                        <button type="button" className="btn btn-secondary me-2" onClick={() => handleSubmit(false)}>
-                          Confirm Lab Booking
-                        </button>
-                        <button type="button" className="btn btn-outline-secondary" onClick={handleReset}>
-                          Reset
-                        </button>
-                      </div>
+              <div className="col-sm-12"></div>
+              <div className="card shadow mb-3">
+                <div className="card-body">
+                  <div className="row g-3">
+                    <div className="mt-4">
+                      <button
+                        type="button"
+                        className="btn btn-primary me-2"
+                        onClick={async () => {
+                          const missingFields = getMissingMandatoryFields()
+                          if (loading) return
+                          if (missingFields.length > 0) {
+                            Swal.fire(
+                              "Missing Mandatory Fields",
+                              "Please fill all mandatory fields before proceeding.",
+                              "warning"
+                            )
+                            return
+                          }
+                          try {
+                            await handleSubmit(true)
+                          } catch (error) {
+                            console.error("Error in payment flow:", error)
+                          }
+                        }}
+                      >
+                        <i className="fa fa-credit-card me-1"></i>
+                        {loading ? "Processing..." : `Pay Now - ₹${paymentBreakdown.finalAmount}`}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary me-2"
+                        onClick={() => handleSubmit(false)}
+                        disabled={loading}
+                      >
+                        {loading ? "Processing..." : "Confirm Lab Booking"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary"
+                        onClick={handleReset}
+                        disabled={loading}
+                      >
+                        Reset
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+
           </>
         )}
       </div>
-    </div>
+    </div >
   )
 }
 
