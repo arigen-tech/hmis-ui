@@ -13,7 +13,6 @@ const SampleValidation = () => {
       gender: "Male",
       modality: "BIO-CHEMISTRY",
       doctor_name: "Sandeep",
-      status: "y",
       order_date: "17/07/2025",
       order_time: "09:48",
       department: "GENERAL MEDICINE",
@@ -94,7 +93,6 @@ const SampleValidation = () => {
       gender: "Male",
       modality: "MOLECULAR BIOLOGY",
       doctor_name: "Dr. Priya",
-      status: "y",
       order_date: "17/07/2025",
       order_time: "10:15",
       department: "CARDIOLOGY",
@@ -130,7 +128,6 @@ const SampleValidation = () => {
       gender: "Male",
       modality: "Clinical Pathology",
       doctor_name: "Dr. Anil",
-      status: "y",
       order_date: "18/07/2025",
       order_time: "09:15",
       department: "GENERAL MEDICINE",
@@ -158,7 +155,6 @@ const SampleValidation = () => {
     },
   ])
 
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, sampleId: null, newStatus: false })
   const [searchData, setSearchData] = useState({
     barCodeSearch: "",
     patientName: "",
@@ -197,6 +193,7 @@ const SampleValidation = () => {
   }
 
   const handleSubmit = () => {
+    setShowDetailView(false)
     if (selectedSample) {
       const updatedSamples = sampleList.map((sample) => (sample.id === selectedSample.id ? selectedSample : sample))
       setSampleList(updatedSamples)
@@ -236,22 +233,6 @@ const SampleValidation = () => {
         setPopupMessage(null)
       },
     })
-  }
-
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, sampleId: id, newStatus })
-  }
-
-  const handleConfirm = (confirmed) => {
-    if (confirmed && confirmDialog.sampleId !== null) {
-      setSampleList((prevData) =>
-        prevData.map((item) =>
-          item.id === confirmDialog.sampleId ? { ...item, status: confirmDialog.newStatus } : item,
-        ),
-      )
-      showPopup(`Sample status updated to ${confirmDialog.newStatus === "y" ? "Active" : "Deactivated"}!`, "success")
-    }
-    setConfirmDialog({ isOpen: false, sampleId: null, newStatus: null })
   }
 
   const handlePageNavigation = () => {
@@ -480,6 +461,8 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.diag_no}
+                                style={{border: '2px solid black' }}
+
                               onChange={(e) => handleInvestigationChange(investigation.id, "diag_no", e.target.value)}
                             />
                           </td>
@@ -488,6 +471,8 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.test_code}
+                                style={{border: '2px solid black' }}
+
                               onChange={(e) => handleInvestigationChange(investigation.id, "test_code", e.target.value)}
                             />
                           </td>
@@ -496,6 +481,8 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.test_name}
+                                style={{border: '2px solid black' }}
+
                               onChange={(e) => handleInvestigationChange(investigation.id, "test_name", e.target.value)}
                             />
                           </td>
@@ -504,6 +491,8 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.sample}
+                                style={{border: '2px solid black' }}
+
                               onChange={(e) => handleInvestigationChange(investigation.id, "sample", e.target.value)}
                             />
                           </td>
@@ -512,6 +501,8 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.quantity}
+                                style={{border: '2px solid black' }}
+
                               onChange={(e) => handleInvestigationChange(investigation.id, "quantity", e.target.value)}
                             />
                           </td>
@@ -520,6 +511,8 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.empanelled_lab}
+                                style={{border: '2px solid black' }}
+
                               onChange={(e) =>
                                 handleInvestigationChange(investigation.id, "empanelled_lab", e.target.value)
                               }
@@ -530,6 +523,8 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.date_time}
+                                style={{border: '2px solid black' }}
+
                               onChange={(e) => handleInvestigationChange(investigation.id, "date_time", e.target.value)}
                             />
                           </td>
@@ -539,6 +534,8 @@ const SampleValidation = () => {
                                 className="form-check-input"
                                 type="checkbox"
                                 checked={investigation.accepted}
+                                style={{ width: '20px', height: '20px', border: '2px solid black' }}
+
                                 onChange={(e) =>
                                   handleInvestigationChange(investigation.id, "accepted", e.target.checked)
                                 }
@@ -551,6 +548,8 @@ const SampleValidation = () => {
                                 className="form-check-input"
                                 type="checkbox"
                                 checked={investigation.rejected}
+                                style={{ width: '20px', height: '20px', border: '2px solid black' }}
+
                                 onChange={(e) =>
                                   handleInvestigationChange(investigation.id, "rejected", e.target.checked)
                                 }
@@ -562,6 +561,10 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.reason}
+                                style={{border: '2px solid black' }}
+
+
+                              
                               onChange={(e) => handleInvestigationChange(investigation.id, "reason", e.target.value)}
                             />
                           </td>
@@ -570,6 +573,8 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.additional_remarks}
+                                style={{border: '2px solid black' }}
+
                               onChange={(e) =>
                                 handleInvestigationChange(investigation.id, "additional_remarks", e.target.value)
                               }
@@ -690,7 +695,6 @@ const SampleValidation = () => {
                       <th>Gender</th>
                       <th>Modality</th>
                       <th>Doctor Name</th>
-                      <th>Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -709,57 +713,11 @@ const SampleValidation = () => {
                         <td>{item.gender}</td>
                         <td>{item.modality}</td>
                         <td>{item.doctor_name}</td>
-                        <td>
-                          <div className="form-check form-switch">
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              checked={item.status === "y"}
-                              onChange={(e) => {
-                                e.stopPropagation()
-                                handleSwitchChange(item.id, item.status === "y" ? "n" : "y")
-                              }}
-                              id={`switch-${item.id}`}
-                            />
-                            <label className="form-check-label px-0" htmlFor={`switch-${item.id}`}>
-                              {item.status === "y" ? "Active" : "Deactivated"}
-                            </label>
-                          </div>
-                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-
-              {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog">
-                  <div className="modal-dialog" role="document">
-                    <div className="modal-content">
-                      <div className="modal-header">
-                        <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="close" onClick={() => handleConfirm(false)}>
-                          <span>&times;</span>
-                        </button>
-                      </div>
-                      <div className="modal-body">
-                        <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                          <strong>{sampleList.find((item) => item.id === confirmDialog.sampleId)?.order_no}</strong>?
-                        </p>
-                      </div>
-                      <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
-                          No
-                        </button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
-                          Yes
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {popupMessage && (
                 <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
