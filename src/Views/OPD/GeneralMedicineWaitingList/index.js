@@ -29,6 +29,7 @@ const GeneralMedicineWaitingList = () => {
   const [pageInput, setPageInput] = useState("")
   const [showDetailView, setShowDetailView] = useState(false)
   const [selectedPatient, setSelectedPatient] = useState(null)
+  const [investigationType, setInvestigationType] = useState("lab")
   const [expandedSections, setExpandedSections] = useState({
     clinicalHistory: false,
     vitalDetail: false,
@@ -644,8 +645,8 @@ const GeneralMedicineWaitingList = () => {
                       <div className="row mb-3">
                         <div className="col-12">
                           <div className="form-check">
-                            <input className="form-check-input" type="radio" name="investigationType" id="lab" defaultChecked />
-                            <label className="form-check-label text-primary fw-bold" htmlFor="lab">
+                            <input className="form-check-input" type="radio" name="investigationType" id="lab" checked={investigationType === "lab"} onChange={() => setInvestigationType("lab")} />
+                            <label className="form-check-label " htmlFor="lab">
                               Lab
                             </label>
                           </div>
@@ -654,11 +655,7 @@ const GeneralMedicineWaitingList = () => {
 
                       {/* Show Recommended Investigation Link */}
                       <div className="row mb-3">
-                        <div className="col-12">
-                          <a href="#" className="text-primary text-decoration-underline">
-                            Show Recommended Investigation
-                          </a>
-                        </div>
+                       
                       </div>
 
                       {/* Investigation Table */}
@@ -685,8 +682,8 @@ const GeneralMedicineWaitingList = () => {
                                 </td>
                                 <td className="text-center">
                                   <button
-                                    className="btn btn-sm text-white"
-                                    style={{ backgroundColor: "#ff6b35" }}
+                                    className="btn btn-sm btn-success"
+
                                     onClick={handleAddInvestigationItem}
                                   >
                                     +
@@ -812,7 +809,7 @@ const GeneralMedicineWaitingList = () => {
                             <td>
                               <input
                                 type="text"
-                                className="form-control border-0"
+                                className="form-control border-black"
                                 value={item}
                                 onChange={(e) => handleInvestigationItemChange(index, e.target.value)}
                                 placeholder="Enter investigation"
@@ -860,12 +857,12 @@ const GeneralMedicineWaitingList = () => {
 
         {/* Update Template Modal */}
         {showUpdateTemplateModal && (
-          <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div className="modal d-block" >
             <div className="modal-dialog">
               <div className="modal-content">
-                <div className="modal-header text-white" style={{ backgroundColor: "#ff6b35" }}>
+                <div className="modal-header" >
                   <h5 className="modal-title">Update Investigation Template</h5>
-                  <button type="button" className="btn-close btn-close-white" onClick={handleCloseModal}></button>
+                  <button type="button" className="btn-close btn" onClick={handleCloseModal}></button>
                 </div>
                 <div className="modal-body">
                   <div className="row">
