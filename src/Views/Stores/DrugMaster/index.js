@@ -43,7 +43,8 @@ const DrugMaster = () => {
     const [currentPage, setCurrentPage] = useState(1)
     const [pageInput, setPageInput] = useState("")
     const [loading, setLoading] = useState(false);
-
+  const departmentId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
+  const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
 
 
     const itemsPerPage = 5
@@ -94,11 +95,12 @@ const DrugMaster = () => {
         }
     }, [formData.section]);
 
+    console.log("hos' dep", hospitalId, departmentId);
 
     const fetchDrugMasterData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${MAS_DRUG_MAS}/getAll/0`);
+            const data = await getRequest(`${MAS_DRUG_MAS}/getAll/0/${hospitalId}/${departmentId}`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setDrugs(data.response);
             } else {

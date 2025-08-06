@@ -100,7 +100,8 @@ const UpdateUnitRate = () => {
   })
   const [filteredDrugList, setFilteredDrugList] = useState(drugList)
   const [changedRates, setChangedRates] = useState([]); // Add this line
-
+  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
+  const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
   useEffect(() => {
     fetchStoreReportData()
   }, [])
@@ -109,7 +110,7 @@ const UpdateUnitRate = () => {
     setLoading(true)
     const reportType = "details"
     try {
-      const data = await getRequest(`${OPEN_BALANCE}/getAllStock/${reportType}`);
+      const data = await getRequest(`${OPEN_BALANCE}/getAllStock/${reportType}/${hospitalId}/${departmentId}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         const withOriginal = data.response.map(item => ({
           ...item,

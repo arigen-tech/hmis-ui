@@ -18,7 +18,8 @@ const OpeningBalanceEntry = () => {
   const [currentLogUser, setCurrentLogUser] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [drugCodeOptions, setDrugCodeOptions] = useState([]);
-
+  const departmentId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
+  const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
 
 
 
@@ -109,7 +110,7 @@ const OpeningBalanceEntry = () => {
   const fatchDrugCodeOptions = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAll2/1`);
+      const response = await getRequest(`${MAS_DRUG_MAS}/getAll2/1/${hospitalId}/${departmentId}`);
       if (response && response.response) {
         setDrugCodeOptions(response.response);
       }

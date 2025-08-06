@@ -2,15 +2,19 @@ import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import './StockStatusReport.css';
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { MAS_ITEM_SECTION, MAS_ITEM_CLASS, OPEN_BALANCE } from "../../../config/apiConfig";
+import {API_HOST, ALL_REPORTS, MAS_ITEM_SECTION, MAS_ITEM_CLASS, OPEN_BALANCE } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
-
+import paths from "../../../assets/images/logoPath.jpeg";
+import axios from "axios";
 
 const StockStatusReport = () => {
   const [sections, setSections] = useState([])
   const [classes, setClasses] = useState([])
   const [stocks, setStocks] = useState([])
   const [loading, setLoading] = useState(true)
+  const departmentId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
+  const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
+  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
 
 
   useEffect(() => {
@@ -123,7 +127,7 @@ const handleGenerateReport = () => {
 
   const fetchStoreReportData = async () => {
     try {
-      const data = await getRequest(`${OPEN_BALANCE}/getAllStock/${reportType}`);
+      const data = await getRequest(`${OPEN_BALANCE}/getAllStock/${reportType}/${hospitalId}/${departmentId}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setStocks(data.response);
         showPopup("Report generated successfully!", "success");
@@ -142,7 +146,37 @@ const handleGenerateReport = () => {
   fetchStoreReportData(); 
 };
 
+const [isLoading, setIsLoading] = useState(false);
 
+const handlePrint = async () => {
+    try {
+        setIsLoading(true);
+        
+        // Use server-relative path (image must be in src/main/resources/static/images/)
+        // const path = "images/logoPath.jpeg";
+        const path = "D:\\Dheeraj_Codes\\Fronted\\Website_Desktop\\ReactJs\\crruntProjects\\hmis-ui\\src\\assets\\images\\logoPath.jpeg";
+
+        
+        const url = `${ALL_REPORTS}/stockReportSummary?hospitalId=${hospitalId}&departmentId=${departmentId}&path=${encodeURIComponent(path)}`;
+        
+        const response = await axios.get(url, {
+            responseType: 'blob',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const file = new Blob([response.data], { type: 'application/pdf' });
+        const fileURL = URL.createObjectURL(file);
+        window.open(fileURL);
+        
+    } catch (error) {
+        console.error("Error generating report:", error);
+        alert("Failed to generate report. Please try again.");
+    } finally {
+        setIsLoading(false);
+    }
+}
   const handlePrintReport = () => {
     setIsPrinting(true);
     setTimeout(() => {
@@ -316,6 +350,14 @@ const handleGenerateReport = () => {
                     onClick={handleGenerateReport}
                   >
                     Generate Report
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-success me-2"
+
+                    onClick={handlePrint}
+                  >
+                    print Report
                   </button>
                   <button
                     type="button"

@@ -35,7 +35,8 @@ const DrugExpiry = () => {
   const [loading, setLoading] = useState(false)
 
   console.log("filteredResults", filteredResults)
-
+  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
+  const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
 
   const fatchDrugCodeOptions = async () => {
     try {
@@ -136,7 +137,7 @@ const fetchBatchStock = async () => {
 
     const itemId = drugCodeStr || "0";
 
-    let url = `${OPEN_BALANCE}/stocks/${fromDate}/${toDate}/${itemId}`;
+    let url = `${OPEN_BALANCE}/stocks/${fromDate}/${toDate}/${itemId}/${hospitalId}/${departmentId}`;
     
     if (drugCodeStr) {
       url += `?itemId=${encodeURIComponent(drugCodeStr)}`;

@@ -12,14 +12,15 @@ const OpeningBalanceApproval = () => {
   const [action, setAction] = useState("");
   const [remark, setRemark] = useState("");
   const [popupMessage, setPopupMessage] = useState(null)
-
+  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
+  const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
 
 
   const fetchOpenBalance = async () => {
     try {
       setLoading(true);
       const status = "p";
-      const response = await getRequest(`${OPEN_BALANCE}/list/${status}`);
+      const response = await getRequest(`${OPEN_BALANCE}/list/${status}/${hospitalId}/${departmentId}`);
 
       if (response && Array.isArray(response)) {
 

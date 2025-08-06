@@ -22,7 +22,8 @@ const OpeningBalanceApproval = () => {
   const [currentDept, setCurrentDept] = useState(null);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-
+  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
+  const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
   const getCurrentDateTime = () => new Date().toISOString();
 
   const [formData, setFormData] = useState({
@@ -41,7 +42,7 @@ const OpeningBalanceApproval = () => {
     try {
       setLoadingScr(true);
       const status = "p,s,a,r";
-      const response = await getRequest(`${OPEN_BALANCE}/list/${status}`);
+      const response = await getRequest(`${OPEN_BALANCE}/list/${status}/${hospitalId}/${departmentId}`);
 
       if (response && Array.isArray(response)) {
 

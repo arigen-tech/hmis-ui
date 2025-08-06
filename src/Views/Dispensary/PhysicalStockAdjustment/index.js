@@ -36,7 +36,8 @@ const PhysicalStockAdjustment = () => {
   // Create refs for input elements
   const drugCodeInputRefs = useRef({})
   const drugNameInputRefs = useRef({})
-
+  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
+  const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
 
   const fatchDrugCodeOptions = async () => {
     try {
@@ -56,7 +57,7 @@ const PhysicalStockAdjustment = () => {
 
   const fatchBatchStockData = async (itemid) => {
     try {
-      const response = await getRequest(`${OPEN_BALANCE}/getStockByItemId/${itemid}`);
+      const response = await getRequest(`${OPEN_BALANCE}/getStockByItemId/${itemid}/${hospitalId}/${departmentId}`);
       if (response && response.response) {
         setBatchData(response.response);
       }

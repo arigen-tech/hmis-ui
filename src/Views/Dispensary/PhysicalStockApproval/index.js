@@ -17,7 +17,8 @@ const PhysicalStockAdjustmentApproval = () => {
   const [toDate, setToDate] = useState("2025-07-17")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
-
+  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
+  const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
 
 
   const [detailEntries, setDetailEntries] = useState([])
@@ -42,7 +43,7 @@ const PhysicalStockAdjustmentApproval = () => {
   const fatchPhysicalStock = async () => {
     try {
       const status = "p";
-      const response = await getRequest(`${OPEN_BALANCE}/listPhysical/${status}`);
+      const response = await getRequest(`${OPEN_BALANCE}/listPhysical/${status}/${hospitalId}/${departmentId}`);
       if (response) {
         setPhysicalStockData(response);
       }

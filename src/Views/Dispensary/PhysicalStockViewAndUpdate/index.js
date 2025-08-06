@@ -39,6 +39,8 @@ const PhysicalStockAdjustmentViewUpdate = () => {
   const [toDate, setToDate] = useState("2025-07-17");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("");
+  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
+  const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
 
   const fatchDrugCodeOptions = async () => {
     try {
@@ -54,7 +56,7 @@ const PhysicalStockAdjustmentViewUpdate = () => {
   const fatchPhysicalStock = async () => {
     try {
       const status = "s,p,r,a";
-      const response = await getRequest(`${OPEN_BALANCE}/listPhysical/${status}`);
+      const response = await getRequest(`${OPEN_BALANCE}/listPhysical/${status}/${hospitalId}/${departmentId}`);
       if (response) {
         setPhysicalStockData(response);
       }
@@ -90,7 +92,7 @@ const PhysicalStockAdjustmentViewUpdate = () => {
 
   const fetchBatchStockData = async (itemid, index) => {
     try {
-      const response = await getRequest(`${OPEN_BALANCE}/getStockByItemId/${itemid}`);
+      const response = await getRequest(`${OPEN_BALANCE}/getStockByItemId/${itemid}/${hospitalId}/${departmentId}`);
       if (response && response.response) {
         const updatedEntries = [...stockEntries];
         updatedEntries[index].batchData = response.response;
@@ -204,7 +206,7 @@ const PhysicalStockAdjustmentViewUpdate = () => {
     // Fetch batch data for each entry individually
     const entriesWithBatchData = await Promise.all(entries.map(async (entry) => {
       try {
-        const response = await getRequest(`${OPEN_BALANCE}/getStockByItemId/${entry.itemId}`);
+        const response = await getRequest(`${OPEN_BALANCE}/getStockByItemId/${entry.itemId}/${hospitalId}/${departmentId}`);
         if (response && response.response) {
           return {
             ...entry,
