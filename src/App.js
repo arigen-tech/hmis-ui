@@ -72,6 +72,7 @@ import PendingForSampleCollection from './Views/Laboratory/PendingForSampleColle
 import PendingForResultEntry from './Views/Laboratory/PendingForResultEntry';
 import PhysicalStockTakingRegister from './Views/Dispensary/PhysicalStockRegister';
 import OpeningBalanceRegister from './Views/Dispensary/OpeningBalanceRegister';
+import GeneralMedicineWaitingList from './Views/OPD/GeneralMedicineWaitingList';
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -179,6 +180,7 @@ function App() {
                 <Route path="PendingForResultEntry" element={<PendingForResultEntry/>} />
                 <Route path="PhysicalStockTakingRegister" element={<PhysicalStockTakingRegister/>} />
                 <Route path="OpeningBalanceRegister" element={<OpeningBalanceRegister/>} />
+                <Route path="GeneralMedicineWaitingList" element={<GeneralMedicineWaitingList/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
