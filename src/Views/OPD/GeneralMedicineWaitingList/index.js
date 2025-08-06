@@ -30,6 +30,7 @@ const GeneralMedicineWaitingList = () => {
   const [showDetailView, setShowDetailView] = useState(false)
   const [selectedPatient, setSelectedPatient] = useState(null)
   const [investigationType, setInvestigationType] = useState("lab")
+
   const [expandedSections, setExpandedSections] = useState({
     clinicalHistory: false,
     vitalDetail: false,
@@ -43,6 +44,7 @@ const GeneralMedicineWaitingList = () => {
   })
 
   const [selectedHistoryType, setSelectedHistoryType] = useState("")
+
   const [formData, setFormData] = useState({
     height: "",
     weight: "",
@@ -67,7 +69,16 @@ const GeneralMedicineWaitingList = () => {
   const [templateName, setTemplateName] = useState("")
   const [investigationItems, setInvestigationItems] = useState([""])
   const [updateTemplateSelection, setUpdateTemplateSelection] = useState("Select..")
-  const [templateType, setTemplateType] = useState("");
+  const [templateType, setTemplateType] = useState("")
+
+  // Diagnosis state
+  const [diagnosisItems, setDiagnosisItems] = useState([
+    {
+      diagnosis: "",
+      communicableDisease: false,
+      infectiousDisease: false,
+    }
+  ])
 
   // Available templates
   const [templates, setTemplates] = useState([
@@ -228,6 +239,25 @@ const GeneralMedicineWaitingList = () => {
     setUpdateTemplateSelection("Select..")
   }
 
+  const handleAddDiagnosisItem = () => {
+    setDiagnosisItems([...diagnosisItems, {
+      diagnosis: "",
+      communicableDisease: false,
+      infectiousDisease: false,
+    }])
+  }
+
+  const handleRemoveDiagnosisItem = (index) => {
+    const newItems = diagnosisItems.filter((_, i) => i !== index)
+    setDiagnosisItems(newItems)
+  }
+
+  const handleDiagnosisChange = (index, field, value) => {
+    const newItems = [...diagnosisItems]
+    newItems[index] = { ...newItems[index], [field]: value }
+    setDiagnosisItems(newItems)
+  }
+
   const filteredList = waitingList.filter((item) => {
     const matchesEmployee = searchFilters.employeeNo === "" || item.employeeNo.includes(searchFilters.employeeNo)
     const matchesPatient =
@@ -319,7 +349,9 @@ const GeneralMedicineWaitingList = () => {
                     onClick={() => toggleSection("clinicalHistory")}
                   >
                     <h6 className="mb-0 fw-bold">Clinical History</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.clinicalHistory ? "−" : "+"}</span>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.clinicalHistory ? "−" : "+"}
+                    </span>
                   </div>
                   {expandedSections.clinicalHistory && (
                     <div className="card-body">
@@ -327,36 +359,31 @@ const GeneralMedicineWaitingList = () => {
                         <div className="col-md-3">
                           <div className="d-flex flex-column gap-2">
                             <button
-                              className={`btn btn-sm ${selectedHistoryType === "previous-visits" ? "btn-primary" : "btn-outline-primary"
-                                }`}
+                              className={`btn btn-sm ${selectedHistoryType === "previous-visits" ? "btn-primary" : "btn-outline-primary"}`}
                               onClick={() => handleHistoryTypeClick("previous-visits")}
                             >
                               Previous Visits
                             </button>
                             <button
-                              className={`btn btn-sm ${selectedHistoryType === "previous-vitals" ? "btn-primary" : "btn-outline-primary"
-                                }`}
+                              className={`btn btn-sm ${selectedHistoryType === "previous-vitals" ? "btn-primary" : "btn-outline-primary"}`}
                               onClick={() => handleHistoryTypeClick("previous-vitals")}
                             >
                               Previous Vitals
                             </button>
                             <button
-                              className={`btn btn-sm ${selectedHistoryType === "previous-lab" ? "btn-primary" : "btn-outline-primary"
-                                }`}
+                              className={`btn btn-sm ${selectedHistoryType === "previous-lab" ? "btn-primary" : "btn-outline-primary"}`}
                               onClick={() => handleHistoryTypeClick("previous-lab")}
                             >
                               Previous Lab Investigation
                             </button>
                             <button
-                              className={`btn btn-sm ${selectedHistoryType === "previous-ecg" ? "btn-primary" : "btn-outline-primary"
-                                }`}
+                              className={`btn btn-sm ${selectedHistoryType === "previous-ecg" ? "btn-primary" : "btn-outline-primary"}`}
                               onClick={() => handleHistoryTypeClick("previous-ecg")}
                             >
                               Previous ECG Investigation
                             </button>
                             <button
-                              className={`btn btn-sm ${selectedHistoryType === "audit-history" ? "btn-primary" : "btn-outline-primary"
-                                }`}
+                              className={`btn btn-sm ${selectedHistoryType === "audit-history" ? "btn-primary" : "btn-outline-primary"}`}
                               onClick={() => handleHistoryTypeClick("audit-history")}
                             >
                               Audit History
@@ -406,7 +433,9 @@ const GeneralMedicineWaitingList = () => {
                     onClick={() => toggleSection("vitalDetail")}
                   >
                     <h6 className="mb-0 fw-bold">Vital Detail</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.vitalDetail ? "−" : "+"}</span>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.vitalDetail ? "−" : "+"}
+                    </span>
                   </div>
                   {expandedSections.vitalDetail && (
                     <div className="card-body">
@@ -591,11 +620,79 @@ const GeneralMedicineWaitingList = () => {
                     onClick={() => toggleSection("diagnosis")}
                   >
                     <h6 className="mb-0 fw-bold">Diagnosis</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.diagnosis ? "−" : "+"}</span>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.diagnosis ? "−" : "+"}
+                    </span>
                   </div>
                   {expandedSections.diagnosis && (
                     <div className="card-body">
-                      <p>Content for diagnosis section will be implemented here.</p>
+
+
+                      {/* Diagnosis Table */}
+                      <div className="table-responsive">
+                        <table className="table table-bordered">
+                          <thead >
+                            <tr>
+                              <th className="col-md-6">
+                                Diagnosis<span className="text-danger">*</span>
+                              </th>
+                              <th className="col-md-2 text-center">Communicable</th>
+                              <th className="col-md-2 text-center">Infectious</th>
+                              <th className="col-md-1 text-center">Add</th>
+                              <th className="col-md-1 text-center">Delete</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {diagnosisItems.map((item, index) => (
+                              <tr key={index}>
+                                <td>
+                                  <input
+                                    type="text"
+                                    className="form-control border-black"
+                                    value={item.diagnosis}
+                                    onChange={(e) => handleDiagnosisChange(index, "diagnosis", e.target.value)}
+                                    placeholder="Enter diagnosis"
+                                  />
+                                </td>
+                                <td className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    className="form-check-input"
+                                    checked={item.communicableDisease}
+                                    onChange={(e) => handleDiagnosisChange(index, "communicableDisease", e.target.checked)}
+                                  />
+                                </td>
+                                <td className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    className="form-check-input"
+                                    checked={item.infectiousDisease}
+                                    onChange={(e) => handleDiagnosisChange(index, "infectiousDisease", e.target.checked)}
+                                  />
+                                </td>
+                                <td className="text-center">
+                                  <button
+                                    className="btn btn-sm btn-success"
+                                    onClick={handleAddDiagnosisItem}
+                                  >
+                                    +
+                                  </button>
+                                </td>
+                                <td className="text-center">
+                                  <button
+                                    className="btn btn-sm text-white"
+                                    style={{ backgroundColor: "#dc3545" }}
+                                    onClick={() => handleRemoveDiagnosisItem(index)}
+                                    disabled={diagnosisItems.length === 1}
+                                  >
+                                    −
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -608,7 +705,9 @@ const GeneralMedicineWaitingList = () => {
                     onClick={() => toggleSection("investigation")}
                   >
                     <h6 className="mb-0 fw-bold">Investigation</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.investigation ? "−" : "+"}</span>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.investigation ? "−" : "+"}
+                    </span>
                   </div>
                   {expandedSections.investigation && (
                     <div className="card-body">
@@ -654,9 +753,7 @@ const GeneralMedicineWaitingList = () => {
                       </div>
 
                       {/* Show Recommended Investigation Link */}
-                      <div className="row mb-3">
-                       
-                      </div>
+                      <div className="row mb-3"></div>
 
                       {/* Investigation Table */}
                       <div className="table-responsive">
@@ -674,7 +771,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td>
                                   <input
                                     type="text"
-                                    className="form-control border-0"
+                                    className="form-control border-black"
                                     value={item}
                                     onChange={(e) => handleInvestigationItemChange(index, e.target.value)}
                                     placeholder="Enter investigation"
@@ -683,7 +780,6 @@ const GeneralMedicineWaitingList = () => {
                                 <td className="text-center">
                                   <button
                                     className="btn btn-sm btn-success"
-
                                     onClick={handleAddInvestigationItem}
                                   >
                                     +
@@ -719,7 +815,9 @@ const GeneralMedicineWaitingList = () => {
                       <h6 className="mb-0 fw-bold">
                         {section.charAt(0).toUpperCase() + section.slice(1).replace(/([A-Z])/g, " $1")}
                       </h6>
-                      <span style={{ fontSize: "18px" }}>{expandedSections[section] ? "−" : "+"}</span>
+                      <span style={{ fontSize: "18px" }}>
+                        {expandedSections[section] ? "−" : "+"}
+                      </span>
                     </div>
                     {expandedSections[section] && (
                       <div className="card-body">
@@ -760,7 +858,8 @@ const GeneralMedicineWaitingList = () => {
                   <div className="row mb-3">
                     <div className="col-md-3">
                       <label className="form-label fw-bold">
-                        Template Name<span className="text-danger">*</span>
+                        Template Name
+                        <span className="text-danger">*</span>
                       </label>
                     </div>
                     <div className="col-md-9">
@@ -826,7 +925,6 @@ const GeneralMedicineWaitingList = () => {
                             <td className="text-center">
                               <button
                                 className="btn btn-sm btn-danger"
-
                                 onClick={() => handleRemoveInvestigationItem(index)}
                                 disabled={investigationItems.length === 1}
                               >
@@ -996,7 +1094,9 @@ const GeneralMedicineWaitingList = () => {
                     {currentItems.map((item) => (
                       <tr key={item.id} onClick={() => handleRowClick(item)} style={{ cursor: "pointer" }}>
                         <td>
-                          <span className={`badge ${getPriorityColor(item.priority)}`}>{item.tokenNo}</span>
+                          <span className={`badge ${getPriorityColor(item.priority)}`}>
+                            {item.tokenNo}
+                          </span>
                         </td>
                         <td>{item.employeeNo}</td>
                         <td>{item.patientName}</td>
