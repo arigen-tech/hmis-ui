@@ -30,8 +30,8 @@ const PhysicalStockAdjustment = () => {
   const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null)
   const [drugCodeOptions, setDrugCodeOptions] = useState([])
   const [batchData, setBatchData] = useState([])
-    const [processing, setProcessing] = useState(false);
-  
+  const [processing, setProcessing] = useState(false);
+
 
   // Create refs for input elements
   const drugCodeInputRefs = useRef({})
@@ -203,7 +203,7 @@ const PhysicalStockAdjustment = () => {
   //   }
   // };
 
-  const handleSubmit = async (status) => {
+  const handleSubmit = async (submitStatus) => {
     const hasEmptyRequiredFields = stockEntries.some(
       (entry) => !entry.drugCode || !entry.drugName || !entry.physicalStock
     );
@@ -221,8 +221,7 @@ const PhysicalStockAdjustment = () => {
     const payload = {
       id: "",
       reasonForTraking: reasonForTraking.trim(),
-      stockEntries: stockEntries,
-      status: status
+      stockEntries: stockEntries
         .filter((entry) => entry.drugCode || entry.drugName)
         .map((entry) => ({
           id: entry.id,
@@ -239,7 +238,9 @@ const PhysicalStockAdjustment = () => {
           itemId: entry.itemId,
           trakingMId: "",
         })),
+      status: submitStatus,
     };
+
 
     try {
       setProcessing(true);
@@ -254,7 +255,7 @@ const PhysicalStockAdjustment = () => {
     } catch (error) {
       console.error("Error submitting stock adjustment:", error);
       showPopup("Error submitting stock adjustment. Please try again.", "error");
-    }finally {
+    } finally {
       setProcessing(false);
     }
   };
