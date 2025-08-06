@@ -657,7 +657,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td className="text-center">
                                   <input
                                     type="checkbox"
-                                    className="form-check-input"
+                                    className="form-check-input border-black"
                                     checked={item.communicableDisease}
                                     onChange={(e) => handleDiagnosisChange(index, "communicableDisease", e.target.checked)}
                                   />
@@ -665,7 +665,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td className="text-center">
                                   <input
                                     type="checkbox"
-                                    className="form-check-input"
+                                    className="form-check-input border-black"
                                     checked={item.infectiousDisease}
                                     onChange={(e) => handleDiagnosisChange(index, "infectiousDisease", e.target.checked)}
                                   />
