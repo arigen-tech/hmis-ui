@@ -110,7 +110,7 @@ const OpeningBalanceEntry = () => {
   const fatchDrugCodeOptions = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAll2/1/${hospitalId}/${departmentId}`);
+      const response = await getRequest(`${MAS_DRUG_MAS}/getAll2/1`);
       if (response && response.response) {
         setDrugCodeOptions(response.response);
       }
