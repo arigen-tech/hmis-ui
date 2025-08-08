@@ -182,9 +182,9 @@ const StockStatusReport = () => {
 
 
 
-      const summaryUrl = `${ALL_REPORTS}/stockReportSummary?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${currentItemId}`;
+      const summaryUrl = `${ALL_REPORTS}/stockReportSummary?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${currentItemId || 0}`;
 
-      const detailsUrl = `${ALL_REPORTS}/stockReportDetail?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${currentItemId}`;
+      const detailsUrl = `${ALL_REPORTS}/stockReportDetail?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${currentItemId || 0}`;
 
       const url = reportType === "summary" ? summaryUrl : detailsUrl;
 
@@ -534,16 +534,25 @@ const StockStatusReport = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {(isPrinting ? filteredStockList : currentItems).map((item, index) => (
-                          <tr key={item.stockId}>
-                            <td>{(isPrinting ? index + 1 : (currentPage - 1) * itemsPerPage + index + 1)}</td>
-                            <td>{item.itemCode}</td>
-                            <td>{item.itemName}</td>
-                            <td>{item.unitAu}</td>
-                            <td>{item.closingQty}</td>
+                        {(isPrinting ? filteredStockList : currentItems).length > 0 ? (
+                          (isPrinting ? filteredStockList : currentItems).map((item, index) => (
+                            <tr key={item.stockId}>
+                              <td>{isPrinting ? index + 1 : (currentPage - 1) * itemsPerPage + index + 1}</td>
+                              <td>{item.itemCode}</td>
+                              <td>{item.itemName}</td>
+                              <td>{item.unitAu}</td>
+                              <td>{item.closingQty}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="5" className="text-center text-gray-500 py-4">
+                              No records found
+                            </td>
                           </tr>
-                        ))}
+                        )}
                       </tbody>
+
                     </table>
                   ) : (
                     <table className="table table-bordered table-hover align-middle">
@@ -562,21 +571,30 @@ const StockStatusReport = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {(isPrinting ? filteredStockList : currentItems).map((item, index) => (
-                          <tr key={item.stockId}>
-                            <td>{(isPrinting ? index + 1 : (currentPage - 1) * itemsPerPage + index + 1)}</td>
-                            <td>{item.itemCode}</td>
-                            <td>{item.itemName}</td>
-                            <td>{item.unitAu}</td>
-                            <td>{item.batchNo}</td>
-                            <td>{item.dom}</td>
-                            <td>{item.doe}</td>
-                            <td>{item.closingQty}</td>
-                            <td>{item.medicineSource}</td>
-                            <td>{item.manufacturerName}</td>
+                        {(isPrinting ? filteredStockList : currentItems)?.length > 0 ? (
+                          (isPrinting ? filteredStockList : currentItems).map((item, index) => (
+                            <tr key={item.stockId}>
+                              <td>{isPrinting ? index + 1 : (currentPage - 1) * itemsPerPage + index + 1}</td>
+                              <td>{item.itemCode}</td>
+                              <td>{item.itemName}</td>
+                              <td>{item.unitAu}</td>
+                              <td>{item.batchNo}</td>
+                              <td>{item.dom}</td>
+                              <td>{item.doe}</td>
+                              <td>{item.closingQty}</td>
+                              <td>{item.medicineSource}</td>
+                              <td>{item.manufacturerName}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="10" className="text-center text-gray-500 py-4">
+                              No records found
+                            </td>
                           </tr>
-                        ))}
+                        )}
                       </tbody>
+
                     </table>
                   )}
                 </div>
