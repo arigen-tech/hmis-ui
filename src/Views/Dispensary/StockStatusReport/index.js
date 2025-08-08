@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Popup from "../../../Components/popup"
 import './StockStatusReport.css';
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import {API_HOST, ALL_REPORTS, MAS_ITEM_SECTION, MAS_ITEM_CLASS, OPEN_BALANCE } from "../../../config/apiConfig";
+import { MAS_DRUG_MAS, ALL_REPORTS, MAS_ITEM_SECTION, MAS_ITEM_CLASS, OPEN_BALANCE } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import paths from "../../../assets/images/logoPath.jpeg";
 import axios from "axios";
@@ -15,6 +15,12 @@ const StockStatusReport = () => {
   const departmentId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
   const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
   const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+  const [currentItemId, setCurrentItemId] = useState(null);
+  const [drugCodeOptions, setDrugCodeOptions] = useState([]);
+  const [activeDrugCodeDropdown, setActiveDrugCodeDropdown] = useState(null);
+  const dropdownClickedRef = useRef(false);
+  const [activeCodeDropdown, setActiveCodeDropdown] = useState(null);
+  const [activeNameDropdown, setActiveNameDropdown] = useState(null);
 
 
   useEffect(() => {
@@ -68,23 +74,26 @@ const StockStatusReport = () => {
   const itemsPerPage = 5
   const [reportGenerated, setReportGenerated] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const drugCodeInputRefs = useRef({})
+  const drugNameInputRefs = useRef({})
 
-const handleFilterChange = (e) => {
-  const { id, value } = e.target;
+  const handleFilterChange = (e) => {
+    const { id, value } = e.target;
 
-  setFilters((prevFilters) => ({
-    ...prevFilters,
-    [id]: value,
-    ...(id === "section" ? { class: "All" } : {}),
-  }));
+    setFilters((prevFilters) => ({
+      ...prevFilters,
+      [id]: value,
+      ...(id === "section" ? { class: "All" } : {}),
+    }));
 
-  setCurrentPage(1);
+    setCurrentPage(1);
 
-  if (id === "section") {
-    fetchItemClassData(value); 
-  }
-};
+    if (id === "section") {
+      fetchItemClassData(value);
+    }
+  };
 
+  console.log("reporttype", reportType)
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
@@ -122,67 +131,80 @@ const handleFilterChange = (e) => {
     })
   }
 
-const handleGenerateReport = () => {
-  setLoading(true); 
+  const handleGenerateReport = () => {
+    setLoading(true);
 
-  const fetchStoreReportData = async () => {
-    try {
-      const data = await getRequest(`${OPEN_BALANCE}/getAllStock/${reportType}/${hospitalId}/${departmentId}`);
-      if (data.status === 200 && Array.isArray(data.response)) {
-        setStocks(data.response);
-        showPopup("Report generated successfully!", "success");
-        setReportGenerated(true);
-      } else {
-        console.error("Unexpected API response format:", data);
-        setStocks([]);
+    const fetchStoreReportData = async () => {
+      try {
+        const data = await getRequest(`${OPEN_BALANCE}/getAllStock/${reportType}/${hospitalId}/${departmentId}`);
+        if (data.status === 200 && Array.isArray(data.response)) {
+          setStocks(data.response);
+          showPopup("Report generated successfully!", "success");
+          setReportGenerated(true);
+        } else {
+          console.error("Unexpected API response format:", data);
+          setStocks([]);
+        }
+      } catch (error) {
+        console.error("Error fetching Store Report data:", error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching Store Report data:", error);
+    };
+
+    fetchStoreReportData();
+  };
+
+  const fatchDrugCodeOptions = async () => {
+    try {
+      const response = await getRequest(`${MAS_DRUG_MAS}/getAll2/1`);
+      if (response && response.response) {
+        setDrugCodeOptions(response.response);
+      }
+    } catch (err) {
+      console.error("Error fetching drug options:", err);
     } finally {
-      setLoading(false); 
     }
   };
 
-  fetchStoreReportData(); 
-};
+  useEffect(() => {
+    fatchDrugCodeOptions();
+  }, []);
 
-const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-const handlePrint = async () => {
+  const handlePrint = async () => {
     try {
-        setIsLoading(true);
-        
-        // Use server-relative path (image must be in src/main/resources/static/images/)
-        // const path = "images/logoPath.jpeg";
-        const path = "D:\\Dheeraj_Codes\\Fronted\\Website_Desktop\\ReactJs\\crruntProjects\\hmis-ui\\src\\assets\\images\\logoPath.jpeg";
+      setIsLoading(true);
 
-        
-        const url = `${ALL_REPORTS}/stockReportSummary?hospitalId=${hospitalId}&departmentId=${departmentId}&path=${encodeURIComponent(path)}`;
-        
-        const response = await axios.get(url, {
-            responseType: 'blob',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+      const sectionId = filters.section !== "All" ? filters.section : 0;
+      const classId = filters.class !== "All" ? filters.class : 0;
 
-        const file = new Blob([response.data], { type: 'application/pdf' });
-        const fileURL = URL.createObjectURL(file);
-        window.open(fileURL);
-        
+
+
+      const summaryUrl = `${ALL_REPORTS}/stockReportSummary?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemCode=${currentItemId}`;
+
+      const detailsUrl = `${ALL_REPORTS}/stockReportDetail?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemCode=${currentItemId}`;
+
+      const url = reportType === "summary" ? summaryUrl : detailsUrl;
+
+      const response = await axios.get(url, {
+        responseType: 'blob',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const file = new Blob([response.data], { type: 'application/pdf' });
+      const fileURL = URL.createObjectURL(file);
+      window.open(fileURL);
+
     } catch (error) {
-        console.error("Error generating report:", error);
-        alert("Failed to generate report. Please try again.");
+      console.error("Error generating report:", error);
+      alert("Failed to generate report. Please try again.");
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-}
-  const handlePrintReport = () => {
-    setIsPrinting(true);
-    setTimeout(() => {
-      window.print();
-      setIsPrinting(false);
-    }, 100);
   }
 
   const handlePageNavigation = () => {
@@ -246,7 +268,7 @@ const handlePrint = async () => {
               {/* Filters Section */}
               <div className="row mb-4">
 
-                <div className="col-md-2">
+                <div className="col-md-7">
                   <label className="form-label">Section</label>
                   <select
                     className="form-select"
@@ -262,7 +284,7 @@ const handlePrint = async () => {
                     ))}
                   </select>
                 </div>
-                <div className="col-md-2">
+                <div className="col-md-5 mb-2">
                   <label className="form-label">Class</label>
                   <select
                     className="form-select"
@@ -270,7 +292,7 @@ const handlePrint = async () => {
                     value={filters.class}
                     onChange={handleFilterChange}
                     disabled={filters.section === "All"}
-                  > 
+                  >
                     <option value="All">All</option>
                     {classes.map((cls) => (
                       <option key={cls.itemClassId} value={cls.itemClassId}>
@@ -280,28 +302,161 @@ const handlePrint = async () => {
                   </select>
 
                 </div>
-                <div className="col-md-3">
+                <div className="col-md-4">
                   <label className="form-label">Drug Code</label>
                   <input
+                    ref={(el) => (drugCodeInputRefs.current[0] = el)}
                     type="text"
                     className="form-control"
-                    id="itemCode"
-                    placeholder="Enter Drug Code"
                     value={filters.itemCode}
-                    onChange={handleFilterChange}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFilters((prev) => ({
+                        ...prev,
+                        itemCode: value,
+                        itemName: "", // Clear name
+                      }));
+                      setActiveCodeDropdown(0);
+                    }}
+                    placeholder="Enter Drug Code"
+                    autoComplete="off"
+                    onFocus={() => setActiveCodeDropdown(0)}
+                    onBlur={() => {
+                      setTimeout(() => {
+                        if (!dropdownClickedRef.current) {
+                          setActiveCodeDropdown(null);
+                        }
+                        dropdownClickedRef.current = false;
+                      }, 150);
+                    }}
                   />
                 </div>
-                <div className="col-md-4">
+
+                <div className="col-md-8">
                   <label className="form-label">Drug Name</label>
                   <input
+                    ref={(el) => (drugNameInputRefs.current[0] = el)}
                     type="text"
                     className="form-control"
-                    id="itemName"
-                    placeholder="Enter Drug Name"
                     value={filters.itemName}
-                    onChange={handleFilterChange}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFilters((prev) => ({
+                        ...prev,
+                        itemName: value,
+                        itemCode: "", // Clear code
+                      }));
+                      setActiveNameDropdown(0);
+                    }}
+                    placeholder="Enter Drug Name"
+                    autoComplete="off"
+                    onFocus={() => setActiveNameDropdown(0)}
+                    onBlur={() => {
+                      setTimeout(() => {
+                        if (!dropdownClickedRef.current) {
+                          setActiveNameDropdown(null);
+                        }
+                        dropdownClickedRef.current = false;
+                      }, 150);
+                    }}
                   />
                 </div>
+
+                {activeCodeDropdown === 0 && (
+                  <ul
+                    className="list-group position-fixed"
+                    style={{
+                      zIndex: 9999,
+                      maxHeight: 180,
+                      overflowY: "auto",
+                      width: "250px",
+                      top: `${drugCodeInputRefs.current[0]?.getBoundingClientRect().bottom + window.scrollY}px`,
+                      left: `${drugCodeInputRefs.current[0]?.getBoundingClientRect().left + window.scrollX}px`,
+                      backgroundColor: "white",
+                      border: "1px solid #dee2e6",
+                      borderRadius: "0.375rem",
+                      boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
+                    }}
+                  >
+                    {drugCodeOptions
+                      .filter((opt) =>
+                        opt.code.toLowerCase().includes(filters.itemCode.toLowerCase())
+                      )
+                      .map((opt) => (
+                        <li
+                          key={opt.id}
+                          className="list-group-item list-group-item-action"
+                          style={{ cursor: "pointer" }}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            dropdownClickedRef.current = true;
+                          }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setFilters((prev) => ({
+                              ...prev,
+                              itemCode: opt.code,
+                              itemName: opt.name,
+                            }));
+                            setCurrentItemId(opt.id);
+                            setActiveCodeDropdown(null);
+                            dropdownClickedRef.current = false;
+                          }}
+                        >
+                          {opt.code} - {opt.name}
+                        </li>
+                      ))}
+                  </ul>
+                )}
+
+                {activeNameDropdown === 0 && (
+                  <ul
+                    className="list-group position-fixed"
+                    style={{
+                      zIndex: 9999,
+                      maxHeight: 180,
+                      overflowY: "auto",
+                      width: "400px",
+                      top: `${drugNameInputRefs.current[0]?.getBoundingClientRect().bottom + window.scrollY}px`,
+                      left: `${drugNameInputRefs.current[0]?.getBoundingClientRect().left + window.scrollX}px`,
+                      backgroundColor: "white",
+                      border: "1px solid #dee2e6",
+                      borderRadius: "0.375rem",
+                      boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
+                    }}
+                  >
+                    {drugCodeOptions
+                      .filter((opt) =>
+                        opt.name.toLowerCase().includes(filters.itemName.toLowerCase())
+                      )
+                      .map((opt) => (
+                        <li
+                          key={opt.id}
+                          className="list-group-item list-group-item-action"
+                          style={{ cursor: "pointer" }}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            dropdownClickedRef.current = true;
+                          }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setFilters((prev) => ({
+                              ...prev,
+                              itemCode: opt.code,
+                              itemName: opt.name,
+                            }));
+                            setCurrentItemId(opt.id);
+                            setActiveNameDropdown(null);
+                            dropdownClickedRef.current = false;
+                          }}
+                        >
+                          {opt.name} ({opt.code})
+                        </li>
+                      ))}
+                  </ul>
+                )}
+
+
               </div>
 
               {/* Report Type Selection */}
@@ -354,18 +509,13 @@ const handlePrint = async () => {
                   <button
                     type="button"
                     className="btn btn-success me-2"
-
                     onClick={handlePrint}
-                  >
-                    print Report
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-success"
-                    onClick={handlePrintReport}
+                    disabled={stocks.length === 0}
                   >
                     Print Report
                   </button>
+
+
                 </div>
               </div>
 
