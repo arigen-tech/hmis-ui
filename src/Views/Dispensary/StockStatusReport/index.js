@@ -540,7 +540,7 @@ const StockStatusReport = () => {
                             <td>{item.itemCode}</td>
                             <td>{item.itemName}</td>
                             <td>{item.unitAu}</td>
-                            <td>{item.openingQty}</td>
+                            <td>{item.closingQty}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -571,7 +571,7 @@ const StockStatusReport = () => {
                             <td>{item.batchNo}</td>
                             <td>{item.dom}</td>
                             <td>{item.doe}</td>
-                            <td>{item.openingQty}</td>
+                            <td>{item.closingQty}</td>
                             <td>{item.medicineSource}</td>
                             <td>{item.manufacturerName}</td>
                           </tr>
