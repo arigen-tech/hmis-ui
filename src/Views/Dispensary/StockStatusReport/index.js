@@ -182,9 +182,9 @@ const StockStatusReport = () => {
 
 
 
-      const summaryUrl = `${ALL_REPORTS}/stockReportSummary?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemCode=${currentItemId}`;
+      const summaryUrl = `${ALL_REPORTS}/stockReportSummary?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${currentItemId}`;
 
-      const detailsUrl = `${ALL_REPORTS}/stockReportDetail?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemCode=${currentItemId}`;
+      const detailsUrl = `${ALL_REPORTS}/stockReportDetail?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${currentItemId}`;
 
       const url = reportType === "summary" ? summaryUrl : detailsUrl;
 
