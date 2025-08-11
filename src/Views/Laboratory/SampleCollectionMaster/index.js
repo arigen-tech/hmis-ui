@@ -1,16 +1,12 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
+import LoadingScreen from "../../../Components/Loading"
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import { DG_MAS_COLLECTION } from "../../../config/apiConfig"
 
 const SampleCollectionMaster = () => {
-  const [sampleList, setSampleList] = useState([
-    { id: 1, CollectionCode: "7777", CollectionName: "-", status: "y" },
-    { id: 2, CollectionCode: "112", CollectionName: "BHUJO", status: "y" },
-    { id: 3, CollectionCode: "AM", CollectionName: "BLOOD", status: "y" },
-    { id: 4, CollectionCode: "Z", CollectionName: "BLOOD SAMPLE COLLECTION TEST", status: "y" },
-    { id: 5, CollectionCode: "Z", CollectionName: "BLOOD COVID", status: "y" },
-  ])
-
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, sampleId: null, newStatus: false })
+  const [sampleCollections, setSampleCollections] = useState([])
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, collectionId: null, newStatus: false })
   const [formData, setFormData] = useState({
     collectionCode: "",
     collectionName: "",
@@ -18,68 +14,114 @@ const SampleCollectionMaster = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [showForm, setShowForm] = useState(false)
   const [isFormValid, setIsFormValid] = useState(false)
-  const [editingSample, setEditingSample] = useState(null)
+  const [editingCollection, setEditingCollection] = useState(null)
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
+  const [loading, setLoading] = useState(true)
   const itemsPerPage = 5
+
+  useEffect(() => {
+    fetchSampleCollectionData(0)
+  }, [])
+
+  const fetchSampleCollectionData = async (flag = 0) => {
+    try {
+      setLoading(true)
+      const response = await getRequest(`${DG_MAS_COLLECTION}/getAll/${flag}`)
+      
+      if (response && response.response) {
+        setSampleCollections(response.response)
+      }
+    } catch (err) {
+      console.error("Error fetching sample collection data:", err)
+      showPopup("Failed to load sample collection data", "error")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
     setCurrentPage(1)
   }
-
-  const filteredSampleList = sampleList.filter(
+  
+  const filteredSampleCollections = Array.isArray(sampleCollections) ? sampleCollections.filter(
     (item) =>
-      item.CollectionCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.CollectionName.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+      (item?.collectionCode?.toString().toLowerCase().includes(searchQuery.toLowerCase()) || 
+       item?.collectionName?.toString().toLowerCase().includes(searchQuery.toLowerCase()))
+  ) : []
+  
+  const filteredTotalPages = Math.ceil(filteredSampleCollections.length / itemsPerPage)
 
-  const filteredTotalPages = Math.ceil(filteredSampleList.length / itemsPerPage)
-
-  const currentItems = filteredSampleList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const currentItems = filteredSampleCollections.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const handleEdit = (item) => {
-    setEditingSample(item)
+    setEditingCollection(item)
     setShowForm(true)
     setFormData({
-      collectionCode: item.CollectionCode,
-      collectionName: item.CollectionName,
+      collectionCode: item.collectionCode,
+      collectionName: item.collectionName,
     })
     setIsFormValid(true)
   }
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault()
     if (!isFormValid) return
 
-    if (editingSample) {
-      setSampleList(
-        sampleList.map((item) =>
-          item.id === editingSample.id
-            ? {
-                ...item,
-                CollectionCode: formData.collectionCode,
-                CollectionName: formData.collectionName,
-              }
-            : item,
-        ),
-      )
-      showPopup("Sample updated successfully!", "success")
-    } else {
-      const newSample = {
-        id: Date.now(),
-        CollectionCode: formData.collectionCode,
-        CollectionName: formData.collectionName,
-        status: "y",
-      }
-      setSampleList([...sampleList, newSample])
-      showPopup("New sample added successfully!", "success")
-    }
+    try {
+      setLoading(true)
 
-    setEditingSample(null)
-    setShowForm(false)
-    setFormData({ collectionCode: "", collectionName: "" })
+      // Check for duplicate collection code
+      const isDuplicate = sampleCollections.some(
+        (code) =>
+          code.collectionCode === formData.collectionCode &&
+          (!editingCollection || code.collectionId !== editingCollection.collectionId)
+      )
+
+      if (isDuplicate && !editingCollection) {
+        showPopup("Sample collection with the same code already exists!", "error")
+        setLoading(false)
+        return
+      }
+
+      if (editingCollection) {
+        // Update existing sample collection
+        const response = await putRequest(`${DG_MAS_COLLECTION}/update/${editingCollection.collectionId}`, {
+          collectionCode: formData.collectionCode,
+          collectionName: formData.collectionName,
+          status: editingCollection.status,
+        })
+
+        if (response && response.status === 200) {
+          fetchSampleCollectionData()
+          showPopup("Sample collection updated successfully!", "success")
+        }
+      } else {
+        // Add new sample collection
+        const response = await postRequest(`${DG_MAS_COLLECTION}/create`, {
+          collectionCode: formData.collectionCode,
+          collectionName: formData.collectionName,
+          status: "y",
+        })
+
+        if (response && response.status === 200) {
+          fetchSampleCollectionData()
+          showPopup("New sample collection added successfully!", "success")
+        }
+      }
+
+      // Reset form and state
+      setEditingCollection(null)
+      setFormData({ collectionCode: "", collectionName: "" })
+      setShowForm(false)
+    } catch (err) {
+      console.error("Error saving sample collection:", err)
+      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const showPopup = (message, type = "info") => {
@@ -93,18 +135,37 @@ const SampleCollectionMaster = () => {
   }
 
   const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, sampleId: id, newStatus })
+    setConfirmDialog({ isOpen: true, collectionId: id, newStatus })
   }
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed && confirmDialog.sampleId !== null) {
-      setSampleList((prevData) =>
-        prevData.map((item) =>
-          item.id === confirmDialog.sampleId ? { ...item, status: confirmDialog.newStatus } : item,
-        ),
-      )
+  const handleConfirm = async (confirmed) => {
+    if (confirmed && confirmDialog.collectionId !== null) {
+      try {
+        setLoading(true)
+        const response = await putRequest(
+          `${DG_MAS_COLLECTION}/status/${confirmDialog.collectionId}?status=${confirmDialog.newStatus}`
+        )
+        if (response && response.response) {
+          setSampleCollections((prevData) =>
+            prevData.map((item) =>
+              item.collectionId === confirmDialog.collectionId
+                ? { ...item, status: confirmDialog.newStatus }
+                : item
+            )
+          )
+          showPopup(
+            `Sample collection ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            "success"
+          )
+        }
+      } catch (err) {
+        console.error("Error updating sample collection status:", err)
+        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error")
+      } finally {
+        setLoading(false)
+      }
     }
-    setConfirmDialog({ isOpen: false, sampleId: null, newStatus: null })
+    setConfirmDialog({ isOpen: false, collectionId: null, newStatus: null })
   }
 
   const handleInputChange = (e) => {
@@ -113,9 +174,7 @@ const SampleCollectionMaster = () => {
 
     // Check if all required fields have values
     const updatedFormData = { ...formData, [id]: value }
-    setIsFormValid(
-      !!updatedFormData.collectionCode && !!updatedFormData.collectionName,
-    )
+    setIsFormValid(!!updatedFormData.collectionCode && !!updatedFormData.collectionName)
   }
 
   const handlePageNavigation = () => {
@@ -125,6 +184,12 @@ const SampleCollectionMaster = () => {
     } else {
       alert("Please enter a valid page number.")
     }
+  }
+
+  const handleRefresh = () => {
+    setSearchQuery("")
+    setCurrentPage(1)
+    fetchSampleCollectionData()
   }
 
   const renderPagination = () => {
@@ -193,6 +258,9 @@ const SampleCollectionMaster = () => {
                     <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                       <i className="mdi mdi-plus"></i> Add
                     </button>
+                    <button type="button" className="btn btn-success me-2" onClick={handleRefresh}>
+                      <i className="mdi mdi-refresh"></i> Show All
+                    </button>
                     <button type="button" className="btn btn-success me-2">
                       <i className="mdi mdi-plus"></i> Generate Report
                     </button>
@@ -201,7 +269,9 @@ const SampleCollectionMaster = () => {
               </div>
             </div>
             <div className="card-body">
-              {!showForm ? (
+              {loading ? (
+                <LoadingScreen />
+              ) : !showForm ? (
                 <div className="table-responsive packagelist">
                   <table className="table table-bordered table-hover align-middle">
                     <thead className="table-light">
@@ -214,22 +284,21 @@ const SampleCollectionMaster = () => {
                     </thead>
                     <tbody>
                       {currentItems.map((item) => (
-                        <tr key={item.id}>
-                          <td>{item.CollectionCode}</td>
-                          <td>{item.CollectionName}</td>
+                        <tr key={item.collectionId}>
+                          <td>{item.collectionCode}</td>
+                          <td>{item.collectionName}</td>
                           <td>
                             <div className="form-check form-switch">
                               <input
                                 className="form-check-input"
                                 type="checkbox"
                                 checked={item.status === "y"}
-                                onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
-                                id={`switch-${item.id}`}
+                                onChange={() => handleSwitchChange(item.collectionId, item.status === "y" ? "n" : "y")}
+                                id={`switch-${item.collectionId}`}
                               />
                               <label
                                 className="form-check-label px-0"
-                                htmlFor={`switch-${item.id}`}
-                                onClick={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
+                                htmlFor={`switch-${item.collectionId}`}
                               >
                                 {item.status === "y" ? "Active" : "Deactivated"}
                               </label>
@@ -268,6 +337,7 @@ const SampleCollectionMaster = () => {
                         placeholder="Collection Code"
                         onChange={handleInputChange}
                         value={formData.collectionCode}
+                        maxLength={7}
                         required
                       />
                     </div>
@@ -282,11 +352,11 @@ const SampleCollectionMaster = () => {
                         placeholder="Collection Name"
                         onChange={handleInputChange}
                         value={formData.collectionName}
+                        maxLength={30}
                         required
                       />
                     </div>
                   </div>
-
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                     <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                       Save
@@ -314,7 +384,7 @@ const SampleCollectionMaster = () => {
                         <p>
                           Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
-                            {sampleList.find((item) => item.id === confirmDialog.sampleId)?.CollectionName}
+                            {sampleCollections.find((item) => item.collectionId === confirmDialog.collectionId)?.collectionName}
                           </strong>
                           ?
                         </p>
@@ -336,7 +406,7 @@ const SampleCollectionMaster = () => {
                 <nav className="d-flex justify-content-between align-items-center mt-3">
                   <div>
                     <span>
-                      Page {currentPage} of {filteredTotalPages} | Total Records: {filteredSampleList.length}
+                      Page {currentPage} of {filteredTotalPages} | Total Records: {filteredSampleCollections.length}
                     </span>
                   </div>
                   <ul className="pagination mb-0">
@@ -384,4 +454,4 @@ const SampleCollectionMaster = () => {
   )
 }
 
-export default SampleCollectionMaster;
+export default SampleCollectionMaster

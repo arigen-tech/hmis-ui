@@ -1,129 +1,126 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+
+import { getRequest } from "../../../service/apiService"
+import { LAB, DG_MAS_COLLECTION } from "../../../config/apiConfig"
+import LoadingScreen from "../../../Components/Loading"
 
 const PendingForSampleCollection = () => {
-  const [samples, setSamples] = useState([
-    {
-      id: 1,
-      reqDate: "23/07/2025",
-      reqTime: "08:11",
-      reqNo: "215337",
-      patientName: "SAROJAMMA S YADAV",
-      relation: "Mother",
-      name: "DEEPU N",
-      age: "71 Years",
-      gender: "Female",
-      mobile: "9876543210",
-      department: "GENERAL MEDICINE",
-      doctorName: "Sandeep",
-      priority: "Priority-1",
-      investigations: [
-        {
-          id: 1,
-          siNo: 1,
-          investigation: "HBV DNA PCR",
-          sample: "SERUM",
-          container: "Sterile Bottle/Red",
-          collected: true,
-          empanelled: false,
-          remarks: "",
-          appointment: false,
-        },
-        {
-          id: 2,
-          siNo: 2,
-          investigation: "Urine-Routine",
-          sample: "URINE",
-          container: "Urine Container",
-          collected: true,
-          empanelled: false,
-          remarks: "",
-          appointment: false,
-        },
-        {
-          id: 3,
-          siNo: 3,
-          investigation: "Hb A1C",
-          sample: "Whole Blood",
-          container: "EDTA collection tube",
-          collected: true,
-          empanelled: false,
-          remarks: "",
-          appointment: false,
-        },
-      ],
-      clinicalNotes: "",
-      acceptedBy: "Sandeep",
-    },
-    {
-      id: 2,
-      reqDate: "23/07/2025",
-      reqTime: "09:15",
-      reqNo: "215338",
-      patientName: "RAJESH KUMAR",
-      relation: "Self",
-      name: "RAJESH KUMAR",
-      age: "45 Years",
-      gender: "Male",
-      mobile: "9876543211",
-      department: "CARDIOLOGY",
-      doctorName: "Dr. Sharma",
-      priority: "Priority-2",
-      investigations: [
-        {
-          id: 1,
-          siNo: 1,
-          investigation: "Lipid Profile",
-          sample: "SERUM",
-          container: "Sterile Bottle/Red",
-          collected: false,
-          empanelled: false,
-          remarks: "",
-          appointment: false,
-        },
-      ],
-      clinicalNotes: "",
-      acceptedBy: "Dr. Sharma",
-    },
-    {
-      id: 3,
-      reqDate: "23/07/2025",
-      reqTime: "10:30",
-      reqNo: "215339",
-      patientName: "PRIYA SINGH",
-      relation: "Wife",
-      name: "AMIT SINGH",
-      age: "32 Years",
-      gender: "Female",
-      mobile: "9876543212",
-      department: "GYNECOLOGY",
-      doctorName: "Dr. Patel",
-      priority: "Priority-3",
-      investigations: [
-        {
-          id: 1,
-          siNo: 1,
-          investigation: "CBC",
-          sample: "WHOLE BLOOD",
-          container: "EDTA Tube",
-          collected: false,
-          empanelled: false,
-          remarks: "",
-          appointment: false,
-        },
-      ],
-      clinicalNotes: "",
-      acceptedBy: "Dr. Patel",
-    },
-  ])
-
+  const [samples, setSamples] = useState([])
+  const [containerOptions, setContainerOptions] = useState([])
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [mobileQuery, setMobileQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
   const [selectedSample, setSelectedSample] = useState(null)
   const [showDetailView, setShowDetailView] = useState(false)
+  
 
   const itemsPerPage = 10
+
+  // Fetch pending samples data
+  useEffect(() => {
+    fetchPendingSamples()
+    fetchContainerOptions()
+  }, [])
+
+  const fetchPendingSamples = async () => {
+    try {
+      setLoading(true);
+
+      const data = await getRequest(`${LAB}/pending-samples`); 
+
+      if (data.status === 200 && data.response) {
+        // Grouping samples by patient — implement this helper method as needed
+        const groupedData = groupInvestigationsByPatient(data.response);
+        setSamples(groupedData);
+      } else {
+        console.error('Error fetching pending samples:', data.message);
+      }
+    } catch (error) {
+      console.error('Error fetching pending samples:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchContainerOptions = async () => {
+    try {
+      const data = await getRequest(`${DG_MAS_COLLECTION}/getAll/1`); 
+
+      if (data.status === 200 && data.response) {
+        setContainerOptions(data.response);
+      } else {
+        console.error('Error fetching container options:', data.message);
+      }
+    } catch (error) {
+      console.error('Error fetching container options:', error);
+    }
+  };
+
+  // Group investigations by patient
+  const groupInvestigationsByPatient = (apiData) => {
+    const grouped = {}
+    let counter = 1
+
+    apiData.forEach((item) => {
+      const patientKey = `${item.patientName}_${item.mobile}_${item.reqDate}`
+
+      if (!grouped[patientKey]) {
+        grouped[patientKey] = {
+          id: counter++,
+          reqDate: formatDate(item.reqDate),
+          // reqTime: getCurrentTime(),
+          // reqNo: generateReqNo(),
+          patientName: item.patientName || '',
+          relation: item.relation || '',
+          name: item.name || '',
+          age: item.age || '',
+          gender: item.gender || '',
+          mobile: item.mobile || '',
+          department: item.department || '',
+          doctorName: item.doctorName || '',
+          // priority: item.priority || 'Priority-3',
+          investigations: [],
+          clinicalNotes: '',
+          acceptedBy: item.doctorName || '',
+        }
+      }
+
+      // Add investigation to the patient's investigations array
+      grouped[patientKey].investigations.push({
+        id: grouped[patientKey].investigations.length + 1,
+        siNo: grouped[patientKey].investigations.length + 1,
+        investigation: item.investigation || '',
+        sample: item.sample || '',
+        container: item.collection || '',
+        collected: true, // Changed to true by default
+        empanelled: false,
+        remarks: '',
+        appointment: false,
+      })
+    })
+
+    return Object.values(grouped)
+  }
+
+  const formatDate = (dateString) => {
+    if (!dateString) return new Date().toLocaleDateString('en-GB')
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-GB')
+  }
+
+  // const getCurrentTime = () => {
+  //   return new Date().toLocaleTimeString('en-GB', {
+  //     hour: '2-digit',
+  //     minute: '2-digit',
+  //     hour12: false
+  //   })
+  // }
+
+  // const generateReqNo = () => {
+  //   return Math.floor(100000 + Math.random() * 900000).toString()
+  // }
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
@@ -154,11 +151,28 @@ const PendingForSampleCollection = () => {
     }
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (selectedSample) {
-      const updatedSamples = samples.map((sample) => (sample.id === selectedSample.id ? selectedSample : sample))
-      setSamples(updatedSamples)
-      alert("Sample collection data saved successfully!")
+      try {
+        setLoading(true)
+        // Here you can add API call to save the sample collection data
+        // const response = await fetch('/api/save-sample-collection', {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify(selectedSample)
+        // })
+
+        const updatedSamples = samples.map((sample) =>
+          sample.id === selectedSample.id ? selectedSample : sample
+        )
+        setSamples(updatedSamples)
+        alert("Sample collection data saved successfully!")
+      } catch (error) {
+        console.error('Error saving sample collection:', error)
+        alert("Error saving sample collection data!")
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
@@ -243,6 +257,7 @@ const PendingForSampleCollection = () => {
   if (showDetailView && selectedSample) {
     return (
       <div className="content-wrapper">
+        {loading && <LoadingScreen />}
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
@@ -464,10 +479,12 @@ const PendingForSampleCollection = () => {
                               value={investigation.container}
                               onChange={(e) => handleInvestigationChange(investigation.id, "container", e.target.value)}
                             >
-                              <option value="Sterile Bottle/Red">Sterile Bottle/Red</option>
-                              <option value="Urine Container">Urine Container</option>
-                              <option value="EDTA collection tube">EDTA collection tube</option>
-                              <option value="EDTA Tube">EDTA Tube</option>
+                              <option value="">Select Container</option>
+                              {containerOptions.map((container, index) => (
+                                <option key={container.collectionId || index} value={container.collectionName}>
+                                  {container.collectionName}
+                                </option>
+                              ))}
                             </select>
                           </td>
                           <td>
@@ -510,10 +527,10 @@ const PendingForSampleCollection = () => {
 
                 {/* Action Buttons */}
                 <div className="text-center mt-4">
-                  <button className="btn btn-primary me-3" onClick={handleSubmit}>
+                  <button className="btn btn-primary me-3" onClick={handleSubmit} disabled={loading}>
                     <i className="mdi mdi-content-save"></i> SUBMIT
                   </button>
-                  <button className="btn btn-secondary" onClick={handleReset}>
+                  <button className="btn btn-secondary" onClick={handleReset} disabled={loading}>
                     <i className="mdi mdi-refresh"></i> RESET
                   </button>
                 </div>
@@ -534,147 +551,163 @@ const PendingForSampleCollection = () => {
               <h4 className="card-title p-2">PENDING FOR SAMPLE COLLECTION</h4>
             </div>
             <div className="card-body">
-              {/* Patient Search Section */}
-              <div className="card mb-3">
-                <div className="card-header py-3 bg-light border-bottom-1">
-                  <h6 className="mb-0 fw-bold">PATIENT SEARCH</h6>
-                </div>
-                <div className="card-body">
-                  <form>
-                    <div className="row g-4 align-items-end">
-                      <div className="col-md-4">
-                        <label className="form-label">Patient Name</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="Enter patient name"
-                          value={searchQuery}
-                          onChange={handleSearchChange}
-                        />
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label">Mobile No.</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="Enter mobile number"
-                          value={mobileQuery}
-                          onChange={handleMobileSearchChange}
-                        />
-                      </div>
-                      <div className="col-md-4 d-flex">
-                        <button type="button" className="btn btn-primary me-2">
-                          <i className="fa fa-search"></i> Search
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={() => {
-                            setSearchQuery("")
-                            setMobileQuery("")
-                          }}
-                        >
-                          <i className="mdi mdi-refresh"></i> Reset
-                        </button>
+              {loading ? (
+                <LoadingScreen />
+              ) : (
+                <>
+                  {/* Patient Search Section */}
+                  <div className="card mb-3">
+                    <div className="card-header py-3 bg-light border-bottom-1">
+                      <h6 className="mb-0 fw-bold">PATIENT SEARCH</h6>
+                    </div>
+                    <div className="card-body">
+                      <div>
+                        <div className="row g-4 align-items-end">
+                          <div className="col-md-4">
+                            <label className="form-label">Patient Name</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="Enter patient name"
+                              value={searchQuery}
+                              onChange={handleSearchChange}
+                            />
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label">Mobile No.</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="Enter mobile number"
+                              value={mobileQuery}
+                              onChange={handleMobileSearchChange}
+                            />
+                          </div>
+                          <div className="col-md-4 d-flex">
+                            <button type="button" className="btn btn-primary me-2">
+                              <i className="fa fa-search"></i> Search
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              onClick={() => {
+                                setSearchQuery("")
+                                setMobileQuery("")
+                              }}
+                            >
+                              <i className="mdi mdi-refresh"></i> Reset
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </form>
-                </div>
-              </div>
+                  </div>
 
-              {/* Priority Legend */}
-              <div className="d-flex mb-3">
-                <span className="badge bg-danger me-2">Priority-1</span>
-                <span className="badge bg-warning text-dark me-2">Priority-2</span>
-                <span className="badge bg-success">Priority-3</span>
-              </div>
+                  {/* Priority Legend */}
+                  <div className="d-flex mb-3">
+                    <span className="badge bg-danger me-2">Priority-1</span>
+                    <span className="badge bg-warning text-dark me-2">Priority-2</span>
+                    <span className="badge bg-success">Priority-3</span>
+                  </div>
 
-              <div className="table-responsive packagelist">
-                <table className="table table-bordered table-hover align-middle">
-                  <thead className="table-light">
-                    <tr>
-                      <th>Req Date</th>
-                      <th>Patient Name</th>
-                      <th>Relation</th>
-                      <th>Name</th>
-                      <th>Age</th>
-                      <th>Gender</th>
-                      <th>Mobile No.</th>
-                      <th>Department</th>
-                      <th>Doctor Name</th>
-                      <th>Priority</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentItems.map((item) => (
-                      <tr
-                        key={item.id}
-                        onClick={() => handleRowClick(item)}
-                        style={{ cursor: "pointer" }}
-                        className="table-row-hover"
-                      >
-                        <td>{item.reqDate}</td>
-                        <td>{item.patientName}</td>
-                        <td>{item.relation}</td>
-                        <td>{item.name}</td>
-                        <td>{item.age}</td>
-                        <td>{item.gender}</td>
-                        <td>{item.mobile}</td>
-                        <td>{item.department}</td>
-                        <td>{item.doctorName}</td>
-                        <td>
-                          <span className={`badge ${getPriorityColor(item.priority)}`}>{item.priority}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  <div className="table-responsive packagelist">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Req Date</th>
+                          <th>Patient Name</th>
+                          <th>Relation</th>
+                          <th>Name</th>
+                          <th>Age</th>
+                          <th>Gender</th>
+                          <th>Mobile No.</th>
+                          <th>Department</th>
+                          <th>Doctor Name</th>
+                          <th>Priority</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((item) => (
+                            <tr
+                              key={item.id}
+                              onClick={() => handleRowClick(item)}
+                              style={{ cursor: "pointer" }}
+                              className="table-row-hover"
+                            >
+                              <td>{item.reqDate}</td>
+                              <td>{item.patientName}</td>
+                              <td>{item.relation}</td>
+                              <td>{item.name}</td>
+                              <td>{item.age}</td>
+                              <td>{item.gender}</td>
+                              <td>{item.mobile}</td>
+                              <td>{item.department}</td>
+                              <td>{item.doctorName}</td>
+                              <td>
+                                <span className={`badge ${getPriorityColor(item.priority)}`}>{item.priority}</span>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="10" className="text-center py-4">
+                              No pending samples found
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
 
-              {/* Pagination */}
-              <nav className="d-flex justify-content-between align-items-center mt-3">
-                <div>
-                  <span>
-                    Page {currentPage} of {filteredTotalPages} | Total Records: {filteredSamples.length}
-                  </span>
-                </div>
-                <ul className="pagination mb-0">
-                  <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                    >
-                      &laquo; Previous
-                    </button>
-                  </li>
-                  {renderPagination()}
-                  <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === filteredTotalPages}
-                    >
-                      Next &raquo;
-                    </button>
-                  </li>
-                </ul>
-                <div className="d-flex align-items-center">
-                  <input
-                    type="number"
-                    min="1"
-                    max={filteredTotalPages}
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                    placeholder="Go to page"
-                    className="form-control me-2"
-                    style={{ width: "120px" }}
-                  />
-                  <button className="btn btn-primary" onClick={handlePageNavigation}>
-                    GO
-                  </button>
-                </div>
-              </nav>
+                  {/* Pagination */}
+                  {filteredSamples.length > 0 && (
+                    <nav className="d-flex justify-content-between align-items-center mt-3">
+                      <div>
+                        <span>
+                          Page {currentPage} of {filteredTotalPages} | Total Records: {filteredSamples.length}
+                        </span>
+                      </div>
+                      <ul className="pagination mb-0">
+                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                          >
+                            &laquo; Previous
+                          </button>
+                        </li>
+                        {renderPagination()}
+                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            disabled={currentPage === filteredTotalPages}
+                          >
+                            Next &raquo;
+                          </button>
+                        </li>
+                      </ul>
+                      <div className="d-flex align-items-center">
+                        <input
+                          type="number"
+                          min="1"
+                          max={filteredTotalPages}
+                          value={pageInput}
+                          onChange={(e) => setPageInput(e.target.value)}
+                          placeholder="Go to page"
+                          className="form-control me-2"
+                          style={{ width: "120px" }}
+                        />
+                        <button className="btn btn-primary" onClick={handlePageNavigation}>
+                          GO
+                        </button>
+                      </div>
+                    </nav>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -44,7 +44,8 @@ export const MAS_ITEM_SECTION = `${MASTERS}/storeSection`;
 export const MAS_ITEM_CATEGORY = `${MASTERS}/masItemCategory`;
 export const MAS_DRUG_MAS = `${MASTERS}/masStoreItem`;
 export const MAS_HSN = `${MASTERS}/masHSN`;
-
+export const DG_MAS_COLLECTION = `${MASTERS}/DgMasCollection`;
+export const  DG_UOM = `${MASTERS}/dgUom`;
 export const MAS_BRAND = `${MASTERS}/masBrand`;
 export const MAS_MANUFACTURE = `${MASTERS}/masManufacturer`;
 export const OPEN_BALANCE = "/openingBalanceEntry";
