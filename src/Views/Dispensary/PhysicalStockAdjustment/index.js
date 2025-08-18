@@ -94,12 +94,12 @@ const PhysicalStockAdjustment = () => {
           );
 
           if (selectedBatch) {
-            updatedEntry.computedStock = selectedBatch.openingQty.toString();
+            updatedEntry.computedStock = selectedBatch.closingQty.toString();
             updatedEntry.doe = selectedBatch.doe;
             updatedEntry.stockId = selectedBatch.stockId;
 
             if (entry.physicalStock) {
-              const computed = Number.parseFloat(selectedBatch.openingQty) || 0;
+              const computed = Number.parseFloat(selectedBatch.closingQty) || 0;
               const physical = Number.parseFloat(entry.physicalStock) || 0;
               const difference = physical - computed;
               if (difference > 0) {
@@ -591,13 +591,36 @@ const PhysicalStockAdjustment = () => {
                             type="number"
                             className="form-control form-control-sm"
                             value={entry.physicalStock}
-                            onChange={(e) => handleStockEntryChange(index, "physicalStock", e.target.value)}
+                            onChange={(e) => {
+                              let value = e.target.value;
+
+                              // Block empty string directly
+                              if (value === "") {
+                                handleStockEntryChange(index, "physicalStock", "");
+                                return;
+                              }
+
+                              let num = Number(value);
+
+                              if (num < 0) num = 0;
+
+                              
+
+                              handleStockEntryChange(index, "physicalStock", num.toString());
+                            }}
                             placeholder="0"
                             min="0"
+                            max={entry.computedStock || undefined}
                             step="1"
                             style={{ minWidth: "110px" }}
+                            onKeyDown={(e) => {
+                              if (["-", "+", "e", "E"].includes(e.key)) {
+                                e.preventDefault();
+                              }
+                            }}
                           />
                         </td>
+
 
                         <td>
                           <input
