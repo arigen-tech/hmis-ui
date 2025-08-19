@@ -55,7 +55,12 @@ const iconMap = {
   "Sub Charge Code": "icofont-code",
   "Main Chargecode": "icofont-code-alt",
   "UOM Master": "icofont-ruler-alt-1",
-  "Sample Collection Master": "icofont-test-bottle"
+  "Sample Collection Master": "icofont-test-bottle",
+  "Opening Balance": "icofont-coins",
+  "Physical Stock": "icofont-capsule",
+  "Indent": "icofont-prescription"
+
+
 };
 
 

@@ -2,8 +2,7 @@ import { useState, useRef, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest } from "../../../service/apiService";
-import { OPEN_BALANCE, MAS_DRUG_MAS } from "../../../config/apiConfig";
-
+import { OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
 
 const DrugExpiry = () => {
   const [searchFormData, setSearchFormData] = useState({
@@ -18,6 +17,7 @@ const DrugExpiry = () => {
   const [filteredDrugList, setFilteredDrugList] = useState([]);
   const [showCodeDropdown, setShowCodeDropdown] = useState(false);
   const [showNameDropdown, setShowNameDropdown] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
 
   console.log("searchFormData", searchFormData)
@@ -129,38 +129,38 @@ const DrugExpiry = () => {
   };
 
 
-const fetchBatchStock = async () => {
-  try {
-    const { fromDate, toDate, drugCode } = searchFormData;
+  const fetchBatchStock = async () => {
+    try {
+      const { fromDate, toDate, drugCode } = searchFormData;
 
-    const drugCodeStr = (drugCode ?? "").toString().trim();
+      const drugCodeStr = (drugCode ?? "").toString().trim();
 
-    const itemId = drugCodeStr || "0";
+      const itemId = drugCodeStr || "0";
 
-    let url = `${OPEN_BALANCE}/stocks/${fromDate}/${toDate}/${itemId}/${hospitalId}/${departmentId}`;
-    
-    if (drugCodeStr) {
-      url += `?itemId=${encodeURIComponent(drugCodeStr)}`;
-    }
+      let url = `${OPEN_BALANCE}/stocks/${fromDate}/${toDate}/${itemId}/${hospitalId}/${departmentId}`;
 
-    const data = await getRequest(url);
-    if (data.status === 200 && Array.isArray(data.response)) {
-      setFiltered(data.response);
-      setFilteredResults(data.response);
-      setShowResults(true);
-      setCurrentPage(1);
-    } else {
+      if (drugCodeStr) {
+        url += `?itemId=${encodeURIComponent(drugCodeStr)}`;
+      }
+
+      const data = await getRequest(url);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setFiltered(data.response);
+        setFilteredResults(data.response);
+        setShowResults(true);
+        setCurrentPage(1);
+      } else {
+        setFiltered([]);
+        setFilteredResults([]);
+        setShowResults(true);
+      }
+    } catch (error) {
       setFiltered([]);
       setFilteredResults([]);
-      setShowResults(true);
+      setShowResults(true); // <-- ensure this is set
+      console.error("Error fetching Store Item data:", error);
     }
-  } catch (error) {
-   setFiltered([]);
-    setFilteredResults([]);
-    setShowResults(true); // <-- ensure this is set
-    console.error("Error fetching Store Item data:", error);
-  }
-};
+  };
 
 
   const handleReset = () => {
@@ -192,9 +192,83 @@ const fetchBatchStock = async () => {
     })
   }
 
-  const handlePrint = () => {
-    window.print()
+
+
+
+  const handlePrint = async () => {
+    const fromDate = searchFormData.fromDate;
+    const toDate = searchFormData.toDate;
+  if (!fromDate || !toDate) {
+    alert("Please select both From Date and To Date");
+    return;
   }
+
+  if (new Date(fromDate) > new Date(toDate)) {
+    alert("From Date cannot be later than To Date");
+    return;
+  }
+
+  if (new Date(fromDate) > new Date() || new Date(toDate) > new Date()) {
+    alert("Dates cannot be in the future");
+    return;
+  }
+
+  const hospitalId =
+    localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
+  const departmentId =
+    localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
+
+  if (!hospitalId || !departmentId) {
+    alert("Hospital and Department must be selected.");
+    return;
+  }
+
+  setIsGeneratingPDF(true);
+
+  try {
+    // ✅ Fix: Format date as dd-MM-yyyy (required by backend)
+    const formatDate = (dateStr) => {
+      const date = new Date(dateStr);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}-${month}-${year}`;  // <-- backend expects this
+    };
+
+    const formattedFromDate = formatDate(fromDate);
+    const formattedToDate = formatDate(toDate);
+
+    const url = `${ALL_REPORTS}/drugExpiryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&itemId=0&fromDate=${formattedFromDate}&toDate=${formattedToDate}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/pdf",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to generate PDF");
+    }
+
+    const blob = await response.blob();
+    const fileURL = window.URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = fileURL;
+    link.setAttribute("download", "DrugExpiryReport.pdf");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+  } catch (error) {
+    console.error("Error generating PDF", error);
+    alert("Error generating PDF report. Please try again.");
+  } finally {
+    setIsGeneratingPDF(false);
+  }
+};
+
 
   const filteredTotalPages = Math.ceil(filteredResults.length / itemsPerPage)
   const currentItems = filteredResults.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
@@ -286,7 +360,7 @@ const fetchBatchStock = async () => {
                   </div>
                   <div className="form-group col-md-4 mt-3 position-relative">
                     <label>
-                      Drug Code <span className="text-danger">*</span>
+                      Drug Code
                     </label>
                     <input
                       type="text"
@@ -453,11 +527,18 @@ const fetchBatchStock = async () => {
                   <div className="d-flex justify-content-end mt-3">
                     <button
                       type="button"
-                      className="btn btn-primary "
+                      className="btn btn-warning"
                       onClick={handlePrint}
-
+                      disabled={isGeneratingPDF}
                     >
-                      Print
+                      {isGeneratingPDF ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Generating...
+                        </>
+                      ) : (
+                        "Generate PDF Report"
+                      )}
                     </button>
                   </div>
                 </>
