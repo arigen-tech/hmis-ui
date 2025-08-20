@@ -1,114 +1,33 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import Popup from "../../../Components/popup"
+import LoadingScreen from "../../../Components/Loading"
+import { getRequest } from "../../../service/apiService"
+import { 
+  MAS_INVESTIGATION,
+  MAS_DG_SAMPLE,
+  DG_UOM,
+  MAS_MAIN_CHARGE_CODE,
+  MAS_SUB_CHARGE_CODE,
+  DG_MAS_COLLECTION
+} from "../../../config/apiConfig"
 
 const InvestigationMaster = () => {
-    const [investigations, setInvestigations] = useState([
-        {
-            id: 1,
-            name: "17 OHP",
-            modality: "ENDOCRINOLOGY",
-            sample: "SERUM",
-            uom: "ng/ml",
-            status: "n",
-            department: "Laboratory1",
-            container: "Sterile Bottle/Red",
-            resultType: "Multiple",
-            minimumValue: "",
-            maximumValue: "",
-            loincCode: "",
-            flag: "Select",
-            confidential: false,
-            pandemic: false,
-            pandemicCases: "",
-        },
-        {
-            id: 2,
-            name: "AB COVID",
-            modality: "MICRO BIOLOGY",
-            sample: "SERUM",
-            uom: "U/L",
-            status: "n",
-            department: "Laboratory2",
-            container: "Sterile Bottle/Blue",
-            resultType: "Single",
-            minimumValue: "",
-            maximumValue: "",
-            loincCode: "",
-            flag: "Normal",
-            confidential: false,
-            pandemic: true,
-            pandemicCases: "10",
-        },
-        {
-            id: 3,
-            name: "ac covid",
-            modality: "MOLECULAR BIOLOGY",
-            sample: "SERUM",
-            uom: "IU/ml",
-            status: "n",
-            department: "Laboratory1",
-            container: "Sterile Bottle/Red",
-            resultType: "Multiple",
-            minimumValue: "",
-            maximumValue: "",
-            loincCode: "",
-            flag: "Critical",
-            confidential: false,
-            pandemic: true,
-            pandemicCases: "15",
-        },
-        {
-            id: 4,
-            name: "ACID PHOSPHATASE",
-            modality: "BIO-CHEMISTRY",
-            sample: "SERUM",
-            uom: "U/L",
-            status: "n",
-            department: "Laboratory3",
-            container: "Sterile Bottle/Green",
-            resultType: "Range",
-            minimumValue: "10",
-            maximumValue: "50",
-            loincCode: "LOINC123",
-            flag: "Normal",
-            confidential: true,
-            pandemic: false,
-            pandemicCases: "",
-        },
-        {
-            id: 5,
-            name: "AD cv",
-            modality: "ENDOCRINOLOGY",
-            sample: "Endocervical with Scarppings",
-            uom: "G/100ml",
-            status: "n",
-            department: "Laboratory2",
-            container: "Sterile Bottle/Blue",
-            resultType: "Single",
-            minimumValue: "",
-            maximumValue: "",
-            loincCode: "LOINC456",
-            flag: "Normal",
-            confidential: false,
-            pandemic: false,
-            pandemicCases: "",
-        },
-    ])
-
+    const [investigations, setInvestigations] = useState([])
+    const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState("")
     const [currentPage, setCurrentPage] = useState(1)
     const [pageInput, setPageInput] = useState("")
-    const itemsPerPage = 3
     const [selectedInvestigation, setSelectedInvestigation] = useState(null)
     const [formData, setFormData] = useState({
         investigationName: "",
-        department: "Laboratory1",
-        modality: "ENDOCRINOLOGY",
-        sample: "SERUM",
-        container: "Sterile Bottle/Red",
-        uom: "ng/ml",
-        resultType: "Multiple",
+        department: "",
+        modality: "",
+        sample: "",
+        container: "",
+        uom: "",
+        resultType: "Select",
         minimumValue: "",
         maximumValue: "",
         loincCode: "",
@@ -118,7 +37,80 @@ const InvestigationMaster = () => {
         pandemicCases: "",
         status: "n",
     })
-    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, investigationId: null, newStatus: null })
+    const [confirmDialog, setConfirmDialog] = useState({ 
+      isOpen: false, 
+      investigationId: null, 
+      newStatus: null 
+    })
+    const [dropdownOptions, setDropdownOptions] = useState({
+      departments: [],
+      modalities: [],
+      samples: [],
+      containers: [],
+      uoms: []
+    })
+    const [popupMessage, setPopupMessage] = useState(null)
+
+    const itemsPerPage = 3
+
+    // Fetch all required data on component mount
+    useEffect(() => {
+      const fetchData = async () => {
+        try {
+          setLoading(true)
+          
+          // Fetch all data in parallel
+          const [
+            investigationsRes,
+            departmentsRes,
+            modalitiesRes,
+            samplesRes,
+            containersRes,
+            uomsRes
+          ] = await Promise.all([
+            getRequest(`${MAS_INVESTIGATION}/getAll/0`),
+            getRequest(`${MAS_MAIN_CHARGE_CODE}/getAll/1`),
+            getRequest(`${MAS_SUB_CHARGE_CODE}/getAll/1`),
+            getRequest(`${MAS_DG_SAMPLE}/getAll/1`),
+            getRequest(`${DG_MAS_COLLECTION}/getAll/1`),
+            getRequest(`${DG_UOM}/getAll/1`)
+          ])
+
+          // Set investigations data
+          if (investigationsRes && investigationsRes.response) {
+            setInvestigations(investigationsRes.response.map(item => ({
+              ...item,
+              id: item.investigationId // Add id for consistency
+            })))
+          }
+
+          // Set dropdown options
+          setDropdownOptions({
+            departments: departmentsRes?.response || [],
+            modalities: modalitiesRes?.response || [],
+            samples: samplesRes?.response || [],
+            containers: containersRes?.response || [],
+            uoms: uomsRes?.response || []
+          })
+
+        } catch (error) {
+          console.error('Error fetching data:', error)
+          showPopup("Failed to load initial data", "error")
+        } finally {
+          setLoading(false)
+        }
+      }
+
+      fetchData()
+    }, [])
+
+    const showPopup = (message, type = "info") => {
+      setPopupMessage({
+        message,
+        type,
+        onClose: () => setPopupMessage(null)
+      })
+    }
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value)
@@ -136,12 +128,12 @@ const InvestigationMaster = () => {
     const handleReset = () => {
         setFormData({
             investigationName: "",
-            department: "Laboratory1",
-            modality: "ENDOCRINOLOGY",
-            sample: "SERUM",
-            container: "Sterile Bottle/Red",
-            uom: "ng/ml",
-            resultType: "Multiple",
+            department: "",
+            modality: "",
+            sample: "",
+            container: "",
+            uom: "",
+            resultType: "Select",
             minimumValue: "",
             maximumValue: "",
             loincCode: "",
@@ -155,18 +147,26 @@ const InvestigationMaster = () => {
     }
 
     const handleStatusToggle = (id) => {
-        const investigation = investigations.find((item) => item.id === id)
+        const investigation = investigations.find((item) => item.investigationId === id)
         if (investigation) {
             const newStatus = investigation.status === "y" ? "n" : "y"
             setConfirmDialog({ isOpen: true, investigationId: id, newStatus })
         }
     }
 
-    const handleConfirm = (confirmed) => {
+    const handleConfirm = async (confirmed) => {
         if (confirmed && confirmDialog.investigationId !== null) {
-            // Update the investigation in the list
+          try {
+            setLoading(true)
+            
+            // Here you would typically make an API call to update the status
+            // const response = await putRequest(`${MAS_INVESTIGATION}/status/${confirmDialog.investigationId}`, {
+            //   status: confirmDialog.newStatus
+            // })
+            
+            // For now, we'll update the local state
             const updatedInvestigations = investigations.map((item) => {
-                if (item.id === confirmDialog.investigationId) {
+                if (item.investigationId === confirmDialog.investigationId) {
                     return { ...item, status: confirmDialog.newStatus }
                 }
                 return item
@@ -175,54 +175,111 @@ const InvestigationMaster = () => {
             setInvestigations(updatedInvestigations)
 
             // Update the selected investigation and form data if it's currently selected
-            if (selectedInvestigation && selectedInvestigation.id === confirmDialog.investigationId) {
+            if (selectedInvestigation && selectedInvestigation.investigationId === confirmDialog.investigationId) {
                 setSelectedInvestigation({ ...selectedInvestigation, status: confirmDialog.newStatus })
                 setFormData({ ...formData, status: confirmDialog.newStatus })
             }
+
+            showPopup(`Investigation ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success")
+          } catch (error) {
+            console.error('Error updating status:', error)
+            showPopup("Failed to update investigation status", "error")
+          } finally {
+            setLoading(false)
+          }
         }
         setConfirmDialog({ isOpen: false, investigationId: null, newStatus: null })
     }
 
-
-    const filteredInvestigations = investigations.filter(
-        (item) =>
-            item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.modality.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.sample.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.uom.toLowerCase().includes(searchQuery.toLowerCase()),
-    )
-
-    const filteredTotalPages = Math.ceil(filteredInvestigations.length / itemsPerPage)
-
-    const currentItems = filteredInvestigations.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-
     const handleRowClick = (investigation) => {
         setSelectedInvestigation(investigation)
         setFormData({
-            investigationName: investigation.name,
-            department: investigation.department,
-            modality: investigation.modality,
-            sample: investigation.sample,
-            container: investigation.container,
-            uom: investigation.uom,
-            resultType: investigation.resultType,
-            minimumValue: investigation.minimumValue,
-            maximumValue: investigation.maximumValue,
-            loincCode: investigation.loincCode,
-            flag: investigation.flag,
-            confidential: investigation.confidential,
-            pandemic: investigation.pandemic,
-            pandemicCases: investigation.pandemicCases,
-            status: investigation.status,
+            investigationName: investigation.investigationName || "",
+            department: investigation.mainChargeCodeName || "",
+            modality: investigation.subChargeCodeName || "",
+            sample: investigation.sampleName || "",
+            container: investigation.collectionName || "",
+            uom: investigation.uomName || "",
+            resultType: investigation.multipleResults || "Select",
+            minimumValue: investigation.minNormalValue || "",
+            maximumValue: investigation.maxNormalValue || "",
+            loincCode: investigation.hicCode || "",
+            flag: "Select",
+            confidential: investigation.confidential === "y" || false,
+            pandemic: false,
+            pandemicCases: "",
+            status: investigation.status || "n",
         })
     }
+
+    const handleSubmit = async () => {
+      if (!selectedInvestigation) return
+      
+      try {
+        setLoading(true)
+        
+        // Here you would typically make an API call to save the changes
+        // const response = await putRequest(`${MAS_INVESTIGATION}/update/${selectedInvestigation.investigationId}`, {
+        //   investigationName: formData.investigationName,
+        //   mainChargeCodeName: formData.department,
+        //   subChargeCodeName: formData.modality,
+        //   sampleName: formData.sample,
+        //   collectionName: formData.container,
+        //   uomName: formData.uom,
+        //   multipleResults: formData.resultType,
+        //   minNormalValue: formData.minimumValue,
+        //   maxNormalValue: formData.maximumValue,
+        //   hicCode: formData.loincCode,
+        //   confidential: formData.confidential ? "y" : "n",
+        //   status: formData.status
+        // })
+        
+        // For now, we'll update the local state
+        const updatedInvestigations = investigations.map(item => 
+          item.investigationId === selectedInvestigation.investigationId ? { 
+            ...item, 
+            investigationName: formData.investigationName,
+            mainChargeCodeName: formData.department,
+            subChargeCodeName: formData.modality,
+            sampleName: formData.sample,
+            collectionName: formData.container,
+            uomName: formData.uom,
+            multipleResults: formData.resultType,
+            minNormalValue: formData.minimumValue,
+            maxNormalValue: formData.maximumValue,
+            hicCode: formData.loincCode,
+            confidential: formData.confidential ? "y" : "n",
+            status: formData.status
+          } : item
+        )
+        
+        setInvestigations(updatedInvestigations)
+        showPopup("Investigation updated successfully!", "success")
+      } catch (error) {
+        console.error('Error saving investigation:', error)
+        showPopup("Failed to save investigation", "error")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    const filteredInvestigations = investigations.filter(
+        (item) =>
+            item.investigationName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.subChargeCodeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.sampleName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.uomName?.toLowerCase().includes(searchQuery.toLowerCase()),
+    )
+
+    const filteredTotalPages = Math.ceil(filteredInvestigations.length / itemsPerPage)
+    const currentItems = filteredInvestigations.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
     const handlePageNavigation = () => {
         const pageNumber = Number.parseInt(pageInput, 10)
         if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
             setCurrentPage(pageNumber)
         } else {
-            alert("Please enter a valid page number.")
+            showPopup("Please enter a valid page number", "warning")
         }
     }
 
@@ -251,7 +308,7 @@ const InvestigationMaster = () => {
         }
 
         return pageNumbers.map((number, index) => (
-            <li key={index} className={`page-item ${number === currentPage ? "y" : ""}`}>
+            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
                 {typeof number === "number" ? (
                     <button className="page-link" onClick={() => setCurrentPage(number)}>
                         {number}
@@ -263,9 +320,21 @@ const InvestigationMaster = () => {
         ))
     }
 
-    return (
+    if (loading && investigations.length === 0) {
+      return <LoadingScreen message="Loading investigation data..." />
+    }
 
+    return (
         <div className="content-wrapper">
+            {popupMessage && (
+              <Popup 
+                message={popupMessage.message} 
+                type={popupMessage.type} 
+                onClose={popupMessage.onClose} 
+              />
+            )}
+            {loading && <LoadingScreen overlay />}
+            
             <div className="row">
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
@@ -291,20 +360,15 @@ const InvestigationMaster = () => {
                                             <i className="mdi mdi-magnify"></i> Search
                                         </button>
                                     </div>
-
                                 </div>
                                 <div className="col-md-4 d-flex justify-content-end">
                                     <button type="button" className="btn btn-primary ms-2" onClick={() => setSearchQuery("")}>
                                         <i className="mdi mdi-magnify"></i> Show All
                                     </button>
                                 </div>
-
-
                             </div>
 
-
                             <div className="card-body">
-
                                 <div className="table-responsive packagelist">
                                     <table className="table table-bordered table-hover align-middle">
                                         <thead className="table-light">
@@ -317,47 +381,51 @@ const InvestigationMaster = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {currentItems.map((item) => (
-                                                <tr
-                                                    key={item.id}
-                                                    onClick={() => handleRowClick(item)}
-                                                    className={selectedInvestigation && selectedInvestigation.id === item.id ? "table-primary" : ""}
-                                                    style={{ cursor: "pointer" }}
-                                                >
-                                                    <td>{item.name}</td>
-                                                    <td>{item.modality}</td>
-                                                    <td>{item.sample}</td>
-                                                    <td>{item.uom}</td>
-                                                    <td onClick={(e) => e.stopPropagation()}>
-                                                        <div className="form-check form-switch">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={item.status === "y"}
-                                                                onChange={() => handleStatusToggle(item.id)}
-                                                                id={`switch-${item.id}`}
-                                                            />
-                                                            <label className="form-check-label" htmlFor={`switch-${item.id}`}>
-                                                                {item.status === "y" ? "Active" : "Deactivated"}
-                                                            </label>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                            {currentItems.length > 0 ? (
+                                              currentItems.map((item) => (
+                                                  <tr
+                                                      key={item.investigationId}
+                                                      onClick={() => handleRowClick(item)}
+                                                      className={selectedInvestigation && selectedInvestigation.investigationId === item.investigationId ? "table-primary" : ""}
+                                                      style={{ cursor: "pointer" }}
+                                                  >
+                                                      <td>{item.investigationName}</td>
+                                                      <td>{item.subChargeCodeName || "-"}</td>
+                                                      <td>{item.sampleName || "-"}</td>
+                                                      <td>{item.uomName || "-"}</td>
+                                                      <td onClick={(e) => e.stopPropagation()}>
+                                                          <div className="form-check form-switch">
+                                                              <input
+                                                                  className="form-check-input"
+                                                                  type="checkbox"
+                                                                  checked={item.status === "y"}
+                                                                  onChange={() => handleStatusToggle(item.investigationId)}
+                                                                  id={`switch-${item.investigationId}`}
+                                                              />
+                                                              <label className="form-check-label" htmlFor={`switch-${item.investigationId}`}>
+                                                                  {item.status === "y" ? "Active" : "Deactivated"}
+                                                              </label>
+                                                          </div>
+                                                      </td>
+                                                  </tr>
+                                              ))
+                                            ) : (
+                                              <tr>
+                                                <td colSpan="5" className="text-center py-4">
+                                                  {loading ? "Loading..." : "No investigations found"}
+                                                </td>
+                                              </tr>
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
 
-                                {/* Form Section - 3 items per row */}
+                                {/* Form Section */}
                                 <div className="row mb-3 mt-3">
                                     <div className="col-sm-12">
                                         <div className="card shadow mb-3">
                                             <div className="card-body">
                                                 <div className="row g-3 align-items-center">
-
-
-
-
                                                     <div className="col-md-4">
                                                         <div className="mb-2">
                                                             <label className="form-label fw-bold mb-1">
@@ -377,10 +445,18 @@ const InvestigationMaster = () => {
                                                             <label className="form-label fw-bold mb-1">
                                                                 Department<span className="text-danger">*</span>
                                                             </label>
-                                                            <select className="form-select" name="department" value={formData.department} onChange={handleInputChange}>
-                                                                <option value="Laboratory1">Laboratory1</option>
-                                                                <option value="Laboratory2">Laboratory2</option>
-                                                                <option value="Laboratory3">Laboratory3</option>
+                                                            <select 
+                                                              className="form-select" 
+                                                              name="department" 
+                                                              value={formData.department} 
+                                                              onChange={handleInputChange}
+                                                            >
+                                                              <option value="">Select Department</option>
+                                                              {dropdownOptions.departments.map((dept) => (
+                                                                <option key={dept.chargecodeId} value={dept.chargecodeName}>
+                                                                  {dept.chargecodeName}
+                                                                </option>
+                                                              ))}
                                                             </select>
                                                         </div>
                                                     </div>
@@ -389,11 +465,18 @@ const InvestigationMaster = () => {
                                                             <label className="form-label fw-bold mb-1">
                                                                 Modality<span className="text-danger">*</span>
                                                             </label>
-                                                            <select className="form-select" name="modality" value={formData.modality} onChange={handleInputChange}>
-                                                                <option value="ENDOCRINOLOGY">ENDOCRINOLOGY</option>
-                                                                <option value="MICRO BIOLOGY">MICRO BIOLOGY</option>
-                                                                <option value="MOLECULAR BIOLOGY">MOLECULAR BIOLOGY</option>
-                                                                <option value="BIO-CHEMISTRY">BIO-CHEMISTRY</option>
+                                                            <select 
+                                                              className="form-select" 
+                                                              name="modality" 
+                                                              value={formData.modality} 
+                                                              onChange={handleInputChange}
+                                                            >
+                                                              <option value="">Select Modality</option>
+                                                              {dropdownOptions.modalities.map((mod) => (
+                                                                <option key={mod.subId} value={mod.subName}>
+                                                                  {mod.subName}
+                                                                </option>
+                                                              ))}
                                                             </select>
                                                         </div>
                                                     </div>
@@ -403,11 +486,18 @@ const InvestigationMaster = () => {
                                                             <label className="form-label fw-bold mb-1">
                                                                 Sample<span className="text-danger">*</span>
                                                             </label>
-                                                            <select className="form-select" name="sample" value={formData.sample} onChange={handleInputChange}>
-                                                                <option value="SERUM">SERUM</option>
-                                                                <option value="PLASMA">PLASMA</option>
-                                                                <option value="WHOLE BLOOD">WHOLE BLOOD</option>
-                                                                <option value="Endocervical with Scarppings">Endocervical with Scarppings</option>
+                                                            <select 
+                                                              className="form-select" 
+                                                              name="sample" 
+                                                              value={formData.sample} 
+                                                              onChange={handleInputChange}
+                                                            >
+                                                              <option value="">Select Sample</option>
+                                                              {dropdownOptions.samples.map((sample) => (
+                                                                <option key={sample.Id} value={sample.sampleDescription}>
+                                                                  {sample.sampleDescription}
+                                                                </option>
+                                                              ))}
                                                             </select>
                                                         </div>
                                                     </div>
@@ -416,10 +506,18 @@ const InvestigationMaster = () => {
                                                             <label className="form-label fw-bold mb-1">
                                                                 Container<span className="text-danger">*</span>
                                                             </label>
-                                                            <select className="form-select" name="container" value={formData.container} onChange={handleInputChange}>
-                                                                <option value="Sterile Bottle/Red">Sterile Bottle/Red</option>
-                                                                <option value="Sterile Bottle/Blue">Sterile Bottle/Blue</option>
-                                                                <option value="Sterile Bottle/Green">Sterile Bottle/Green</option>
+                                                            <select 
+                                                              className="form-select" 
+                                                              name="container" 
+                                                              value={formData.container} 
+                                                              onChange={handleInputChange}
+                                                            >
+                                                              <option value="">Select Container</option>
+                                                              {dropdownOptions.containers.map((cont) => (
+                                                                <option key={cont.collectionId} value={cont.collectionName}>
+                                                                  {cont.collectionName}
+                                                                </option>
+                                                              ))}
                                                             </select>
                                                         </div>
                                                     </div>
@@ -428,11 +526,18 @@ const InvestigationMaster = () => {
                                                             <label className="form-label fw-bold mb-1">
                                                                 UOM<span className="text-danger">*</span>
                                                             </label>
-                                                            <select className="form-select" name="uom" value={formData.uom} onChange={handleInputChange}>
-                                                                <option value="ng/ml">ng/ml</option>
-                                                                <option value="U/L">U/L</option>
-                                                                <option value="IU/ml">IU/ml</option>
-                                                                <option value="G/100ml">G/100ml</option>
+                                                            <select 
+                                                              className="form-select" 
+                                                              name="uom" 
+                                                              value={formData.uom} 
+                                                              onChange={handleInputChange}
+                                                            >
+                                                              <option value="">Select UOM</option>
+                                                              {dropdownOptions.uoms.map((uom) => (
+                                                                <option key={uom.id} value={uom.name}>
+                                                                  {uom.name}
+                                                                </option>
+                                                              ))}
                                                             </select>
                                                         </div>
                                                     </div>
@@ -442,7 +547,13 @@ const InvestigationMaster = () => {
                                                             <label className="form-label fw-bold mb-1">
                                                                 Result Type<span className="text-danger">*</span>
                                                             </label>
-                                                            <select className="form-select" name="resultType" value={formData.resultType} onChange={handleInputChange}>
+                                                            <select 
+                                                              className="form-select" 
+                                                              name="resultType" 
+                                                              value={formData.resultType} 
+                                                              onChange={handleInputChange}
+                                                            >
+                                                                <option value="Select">Select</option>
                                                                 <option value="Multiple">Multiple</option>
                                                                 <option value="Single">Single</option>
                                                                 <option value="Range">Range</option>
@@ -494,15 +605,18 @@ const InvestigationMaster = () => {
                                                             <label className="form-label fw-bold mb-1">
                                                                 Flag<span className="text-danger">*</span>
                                                             </label>
-                                                            <select className="form-select" name="flag" value={formData.flag} onChange={handleInputChange}>
+                                                            <select 
+                                                              className="form-select" 
+                                                              name="flag" 
+                                                              value={formData.flag} 
+                                                              onChange={handleInputChange}
+                                                            >
                                                                 <option value="Select">Select</option>
                                                                 <option value="Normal">Normal</option>
                                                                 <option value="Critical">Critical</option>
                                                             </select>
                                                         </div>
                                                     </div>
-
-
 
                                                     <div className="col-md-4">
                                                         <div className="mb-2">
@@ -552,49 +666,54 @@ const InvestigationMaster = () => {
                                                     </div>
 
                                                     <div className="col-12 text-end mt-2 mb-3">
-                                                        <button className="btn btn-success me-2" disabled={!selectedInvestigation}>
-                                                           Save
+                                                        <button 
+                                                          className="btn btn-success me-2" 
+                                                          onClick={handleSubmit}
+                                                          disabled={!selectedInvestigation || loading}
+                                                        >
+                                                          {loading ? "Saving..." : "Save"}
                                                         </button>
-                                                        <button className="btn btn-secondary" onClick={handleReset}>
+                                                        <button 
+                                                          className="btn btn-secondary" 
+                                                          onClick={handleReset}
+                                                          disabled={loading}
+                                                        >
                                                             Reset
                                                         </button>
                                                     </div>
                                                 </div>
                                             </div>
-
-                                        </div >
+                                        </div>
                                     </div>
                                 </div>
 
                                 {/* Confirmation Modal */}
-                                {
-                                    confirmDialog.isOpen && (
-                                        <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-                                            <div className="modal-dialog" role="document">
-                                                <div className="modal-content">
-                                                    <div className="modal-header">
-                                                        <h5 className="modal-title">Confirm Status Change</h5>
-                                                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)}></button>
-                                                    </div>
-                                                    <div className="modal-body">
-                                                        <p>
-                                                            Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                                                            <strong>{investigations.find((item) => item.id === confirmDialog.investigationId)?.name}</strong>?
-                                                        </p>
-                                                    </div>
-                                                    <div className="modal-footer">
-                                                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
-                                                            Cancel
-                                                        </button>
-                                                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
-                                                            Confirm
-                                                        </button>
-                                                    </div>
+                                {confirmDialog.isOpen && (
+                                    <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+                                        <div className="modal-dialog" role="document">
+                                            <div className="modal-content">
+                                                <div className="modal-header">
+                                                    <h5 className="modal-title">Confirm Status Change</h5>
+                                                    <button type="button" className="btn-close" onClick={() => handleConfirm(false)}></button>
+                                                </div>
+                                                <div className="modal-body">
+                                                    <p>
+                                                        Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                        <strong>{investigations.find((item) => item.investigationId === confirmDialog.investigationId)?.investigationName}</strong>?
+                                                    </p>
+                                                </div>
+                                                <div className="modal-footer">
+                                                    <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                                                        Cancel
+                                                    </button>
+                                                    <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                                                        Confirm
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
-                                    )
-                                }
+                                    </div>
+                                )}
 
                                 {/* Pagination */}
                                 <nav className="d-flex justify-content-between align-items-center mt-2">
@@ -636,14 +755,12 @@ const InvestigationMaster = () => {
                                     </div>
                                 </nav>
                             </div>
-                        </div >
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-
     )
 }
-
 
 export default InvestigationMaster

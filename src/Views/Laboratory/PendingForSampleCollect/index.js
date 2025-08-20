@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
-
-import { getRequest } from "../../../service/apiService"
+import { getRequest, postRequest } from "../../../service/apiService"
 import { LAB, DG_MAS_COLLECTION } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
+import Popup from "../../../Components/popup"
 
 const PendingForSampleCollection = () => {
   const [samples, setSamples] = useState([])
@@ -14,9 +14,17 @@ const PendingForSampleCollection = () => {
   const [pageInput, setPageInput] = useState("")
   const [selectedSample, setSelectedSample] = useState(null)
   const [showDetailView, setShowDetailView] = useState(false)
-  
+  const [popupMessage, setPopupMessage] = useState(null)
 
   const itemsPerPage = 10
+
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => setPopupMessage(null)
+    })
+  }
 
   // Fetch pending samples data
   useEffect(() => {
@@ -27,18 +35,21 @@ const PendingForSampleCollection = () => {
   const fetchPendingSamples = async () => {
     try {
       setLoading(true);
+      const data = await getRequest(`${LAB}/pending-samples`);
 
-      const data = await getRequest(`${LAB}/pending-samples`); 
+      console.log("Raw API Response:", data); // Debugging - check if IDs exist here
 
       if (data.status === 200 && data.response) {
-        // Grouping samples by patient — implement this helper method as needed
+        console.log("First sample item:", data.response[0]); // Debugging
         const groupedData = groupInvestigationsByPatient(data.response);
         setSamples(groupedData);
       } else {
         console.error('Error fetching pending samples:', data.message);
+        showPopup('Failed to load pending samples', 'error')
       }
     } catch (error) {
       console.error('Error fetching pending samples:', error);
+      showPopup('Error fetching pending samples', 'error')
     } finally {
       setLoading(false);
     }
@@ -46,15 +57,17 @@ const PendingForSampleCollection = () => {
 
   const fetchContainerOptions = async () => {
     try {
-      const data = await getRequest(`${DG_MAS_COLLECTION}/getAll/1`); 
+      const data = await getRequest(`${DG_MAS_COLLECTION}/getAll/1`);
 
       if (data.status === 200 && data.response) {
         setContainerOptions(data.response);
       } else {
         console.error('Error fetching container options:', data.message);
+        showPopup('Failed to load container options', 'error')
       }
     } catch (error) {
       console.error('Error fetching container options:', error);
+      showPopup('Error fetching container options', 'error')
     }
   };
 
@@ -64,14 +77,13 @@ const PendingForSampleCollection = () => {
     let counter = 1
 
     apiData.forEach((item) => {
-      const patientKey = `${item.patientName}_${item.mobile}_${item.reqDate}`
+      const patientKey = `${item.patientName}_${item.mobile}_${item.reqDate}_${item.orderNo}`
 
       if (!grouped[patientKey]) {
         grouped[patientKey] = {
           id: counter++,
           reqDate: formatDate(item.reqDate),
-          // reqTime: getCurrentTime(),
-          // reqNo: generateReqNo(),
+          ReqNo: item.orderNo || '',
           patientName: item.patientName || '',
           relation: item.relation || '',
           name: item.name || '',
@@ -80,10 +92,12 @@ const PendingForSampleCollection = () => {
           mobile: item.mobile || '',
           department: item.department || '',
           doctorName: item.doctorName || '',
-          // priority: item.priority || 'Priority-3',
+          priority: item.priority || '',
           investigations: [],
           clinicalNotes: '',
           acceptedBy: item.doctorName || '',
+          vistId: item.vistId || 0,
+          orderhdId: item.orderhdId || 0
         }
       }
 
@@ -93,11 +107,16 @@ const PendingForSampleCollection = () => {
         siNo: grouped[patientKey].investigations.length + 1,
         investigation: item.investigation || '',
         sample: item.sample || '',
-        container: item.collection || '',
-        collected: true, // Changed to true by default
+        container: item.collection || '', // Changed from item.collection
+        collected: true,
         empanelled: false,
         remarks: '',
         appointment: false,
+        subChargeCodeId: item.subChargeCodeId || 0,
+        investigationId: item.investigationId || 0,
+        mainChargeCodeId: item.mainChargcodeId || 0, // Changed from mainChargeCodeId to mainChargcodeId
+        sampleId: item.sampleId || 0,
+        collectionId: item.collectionId || 0
       })
     })
 
@@ -109,18 +128,6 @@ const PendingForSampleCollection = () => {
     const date = new Date(dateString)
     return date.toLocaleDateString('en-GB')
   }
-
-  // const getCurrentTime = () => {
-  //   return new Date().toLocaleTimeString('en-GB', {
-  //     hour: '2-digit',
-  //     minute: '2-digit',
-  //     hour12: false
-  //   })
-  // }
-
-  // const generateReqNo = () => {
-  //   return Math.floor(100000 + Math.random() * 900000).toString()
-  // }
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
@@ -155,21 +162,42 @@ const PendingForSampleCollection = () => {
     if (selectedSample) {
       try {
         setLoading(true)
-        // Here you can add API call to save the sample collection data
-        // const response = await fetch('/api/save-sample-collection', {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify(selectedSample)
-        // })
 
-        const updatedSamples = samples.map((sample) =>
-          sample.id === selectedSample.id ? selectedSample : sample
-        )
-        setSamples(updatedSamples)
-        alert("Sample collection data saved successfully!")
+        // Prepare the request payload
+        const requestPayload = {
+          visitId: selectedSample.vistId,
+          orderHdId: selectedSample.orderhdId,
+          sampleCollectionReq: selectedSample.investigations
+            .filter(inv => inv.collected)
+            .map(inv => ({
+              subChargeCodeId: inv.subChargeCodeId,
+              investigationId: inv.investigationId,
+              mainChargeCodeId: inv.mainChargeCodeId,
+              empanelledStatus: inv.empanelled ? "y" : "n",
+              sampleId: inv.sampleId,
+              collectionId: inv.collectionId,
+              collected: "y",
+              remarks: inv.remarks || ""
+            }))
+        }
+
+        console.log("Submitting payload:", JSON.stringify(requestPayload, null, 2));
+
+        // Make the API call
+        const response = await postRequest(`${LAB}/savesamplecollection`, requestPayload)
+
+        if (response.status === 200) {
+          const updatedSamples = samples.map((sample) =>
+            sample.id === selectedSample.id ? selectedSample : sample
+          )
+          setSamples(updatedSamples)
+          showPopup("Sample collection data saved successfully!", "success")
+        } else {
+          throw new Error(response.message || "Failed to save sample collection")
+        }
       } catch (error) {
         console.error('Error saving sample collection:', error)
-        alert("Error saving sample collection data!")
+        showPopup(error.message || "Error saving sample collection data", "error")
       } finally {
         setLoading(false)
       }
@@ -200,7 +228,7 @@ const PendingForSampleCollection = () => {
     if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
       setCurrentPage(pageNumber)
     } else {
-      alert("Please enter a valid page number.")
+      showPopup("Please enter a valid page number.", "warning")
     }
   }
 
@@ -257,6 +285,13 @@ const PendingForSampleCollection = () => {
   if (showDetailView && selectedSample) {
     return (
       <div className="content-wrapper">
+        {popupMessage && (
+          <Popup
+            message={popupMessage.message}
+            type={popupMessage.type}
+            onClose={popupMessage.onClose}
+          />
+        )}
         {loading && <LoadingScreen />}
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
@@ -295,8 +330,8 @@ const PendingForSampleCollection = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={selectedSample.reqNo}
-                      onChange={(e) => setSelectedSample({ ...selectedSample, reqNo: e.target.value })}
+                      value={selectedSample.ReqNo || ''}
+                      onChange={(e) => setSelectedSample({ ...selectedSample, ReqNo: e.target.value })}
                     />
                   </div>
                   <div className="col-md-3">
@@ -346,7 +381,7 @@ const PendingForSampleCollection = () => {
                       </div>
                     </div>
                     <div className="row mt-3">
-                      <div className="col-md-4">
+                      {/* <div className="col-md-4">
                         <label className="form-label fw-bold">Name</label>
                         <input
                           type="text"
@@ -354,7 +389,7 @@ const PendingForSampleCollection = () => {
                           value={selectedSample.name}
                           onChange={(e) => setSelectedSample({ ...selectedSample, name: e.target.value })}
                         />
-                      </div>
+                      </div> */}
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Age</label>
                         <input
@@ -378,7 +413,7 @@ const PendingForSampleCollection = () => {
                 </div>
 
                 {/* Sample Details */}
-                <div className="card mb-4">
+                {/* <div className="card mb-4">
                   <div className="card-header">
                     <h5 className="mb-0">SAMPLE DETAILS</h5>
                   </div>
@@ -435,7 +470,7 @@ const PendingForSampleCollection = () => {
                       </div>
                     </div>
                   </div>
-                </div>
+                </div> */}
 
                 {/* Investigations Table */}
                 <div className="table-responsive">
@@ -544,6 +579,13 @@ const PendingForSampleCollection = () => {
 
   return (
     <div className="content-wrapper">
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
