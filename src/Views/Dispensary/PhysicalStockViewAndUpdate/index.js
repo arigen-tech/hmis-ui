@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import ReactDOM from "react-dom";
-import { OPEN_BALANCE, MAS_DRUG_MAS } from "../../../config/apiConfig";
+import { OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
 import { getRequest, putRequest } from "../../../service/apiService";
 
 const PhysicalStockAdjustmentViewUpdate = () => {
@@ -39,6 +39,7 @@ const PhysicalStockAdjustmentViewUpdate = () => {
   const [toDate, setToDate] = useState("2025-07-17");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("");
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
 
@@ -364,6 +365,49 @@ const PhysicalStockAdjustmentViewUpdate = () => {
     });
   };
 
+  const generatereport = async (id) => {
+
+    if (!id) {
+      alert("Please select List");
+      return;
+    }
+
+
+    setIsGeneratingPDF(true);
+
+    try {
+
+      const url = `${ALL_REPORTS}/stockTakingReport?takingMId=${id}`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      const blob = await response.blob();
+      const fileURL = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = fileURL;
+      link.setAttribute("download", "DrugExpiryReport.pdf");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+    } catch (error) {
+      console.error("Error generating PDF", error);
+      alert("Error generating PDF report. Please try again.");
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
   const itemsPerPage = 10;
   const currentItems = filteredPhysicalStockData.slice(
     (currentPage - 1) * itemsPerPage,
@@ -477,6 +521,27 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
+                  </div>
+                  <div className="col-md-3 mt-3">
+                    <button
+                      onClick={() => generatereport(selectedRecord?.takingMId)}
+                      className="btn btn-success"
+                      disabled={isGeneratingPDF}
+                      type="button"
+                    >
+                      {isGeneratingPDF ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Generating...
+                        </>
+                      ) : (
+                        " Download Invoice"
+                      )}
+
+                    </button>
+
+
+
                   </div>
                 </div>
 
@@ -823,17 +888,19 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                   </div>
                 </div>
 
-                <div className="d-flex justify-content-end gap-2 mt-4">
-                  <button type="button" className="btn btn-primary" onClick={() => handleSubmit("s")} disabled={processing}>
-                    Update
-                  </button>
-                  <button type="button" className="btn btn-primary" onClick={() => handleSubmit("p")} disabled={processing}>
-                    Submit
-                  </button>
-                  <button type="button" className="btn btn-danger" onClick={handleReset}>
-                    Reset
-                  </button>
-                </div>
+                {(selectedRecord?.status === "s" || selectedRecord?.status === "r") && (
+                  <div className="d-flex justify-content-end gap-2 mt-4">
+                    <button type="button" className="btn btn-primary" onClick={() => handleSubmit("s")} disabled={processing}>
+                      Update
+                    </button>
+                    <button type="button" className="btn btn-primary" onClick={() => handleSubmit("p")} disabled={processing}>
+                      Submit
+                    </button>
+                    <button type="button" className="btn btn-danger" onClick={handleReset}>
+                      Reset
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

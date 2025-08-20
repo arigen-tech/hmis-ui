@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import Popup from "../../../Components/popup"
-import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS } from "../../../config/apiConfig";
+import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
 import { getRequest, putRequest } from "../../../service/apiService"
 import ReactDOM from 'react-dom';
 import LoadingScreen from "../../../Components/Loading";
@@ -19,6 +19,7 @@ const OpeningBalanceApproval = () => {
   const crUser = localStorage.getItem("username") || sessionStorage.getItem("username");
   const [currentLogUser, setCurrentLogUser] = useState(null);
   const deptId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [currentDept, setCurrentDept] = useState(null);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -31,12 +32,6 @@ const OpeningBalanceApproval = () => {
     enteredBy: "",
     department: "",
   });
-
-
-
-
-
-
 
   const fetchOpenBalance = async () => {
     try {
@@ -391,6 +386,49 @@ const OpeningBalanceApproval = () => {
     ])
   }
 
+  const generatereport = async (id) => {
+
+    if (!id) {
+      alert("Please select List");
+      return;
+    }
+
+
+    setIsGeneratingPDF(true);
+
+    try {
+
+      const url = `${ALL_REPORTS}/openingBalanceReport?balanceMId=${id}`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      const blob = await response.blob();
+      const fileURL = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = fileURL;
+      link.setAttribute("download", "DrugExpiryReport.pdf");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+    } catch (error) {
+      console.error("Error generating PDF", error);
+      alert("Error generating PDF report. Please try again.");
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
   const renderPagination = () => {
     const pageNumbers = []
     const maxVisiblePages = 5
@@ -502,7 +540,25 @@ const OpeningBalanceApproval = () => {
                     />
                   </div>
                   <div className="col-md-3 mt-3">
-                    <button className="btn btn-success">Download Invoice</button>
+                    <button
+                      onClick={() => generatereport(selectedRecord?.balanceMId)}
+                      className="btn btn-success"
+                      disabled={isGeneratingPDF}
+                      type="button"
+                    >
+                      {isGeneratingPDF ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Generating...
+                        </>
+                      ) : (
+                        " Download Invoice"
+                      )}
+                     
+                    </button>
+
+                    
+
                   </div>
                 </div>
 
@@ -932,6 +988,7 @@ const OpeningBalanceApproval = () => {
 
                 {/* Action Buttons */}
                 {(selectedRecord?.status === "s" || selectedRecord?.status === "r") && (
+                  
 
                   <div className="d-flex justify-content-end mt-4">
                     <button
