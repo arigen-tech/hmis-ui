@@ -440,7 +440,6 @@ const SampleValidation = () => {
                     <thead className="table-light">
                       <tr>
                         <th>S.No.</th>
-                        {/* <th>Diag No.</th> */}
                         <th>Code</th>
                         <th>Name</th>
                         <th>Sample</th>
@@ -454,16 +453,7 @@ const SampleValidation = () => {
                     <tbody>
                       {selectedSample.investigations.map((investigation) => (
                         <tr key={investigation.id}>
-                          {/* <td>{investigation.sr_no}</td>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={investigation.diag_no}
-
-                              onChange={(e) => handleInvestigationChange(investigation.id, "diag_no", e.target.value)}
-                            />
-                          </td> */}
+                          <td>{investigation.sr_no}</td>
                           <td>
                             <input
                               type="text"
