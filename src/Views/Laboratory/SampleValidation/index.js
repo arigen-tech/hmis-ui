@@ -192,6 +192,16 @@ const SampleValidation = () => {
     }
   }
 
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null)
+      },
+    })
+  }
+
   const handleSubmit = () => {
     setShowDetailView(false)
     if (selectedSample) {
@@ -222,18 +232,8 @@ const SampleValidation = () => {
     return barCodeMatch && patientNameMatch && mobileNoMatch
   })
 
-  const filteredTotalPages = Math.ceil(filteredSampleList.length / itemsPerPage)
+  const filteredTotalPages = Math.ceil(filteredSampleList.length / itemsPerPage) || 1
   const currentItems = filteredSampleList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => {
-        setPopupMessage(null)
-      },
-    })
-  }
 
   const handlePageNavigation = () => {
     const pageNumber = Number.parseInt(pageInput, 10)
@@ -281,7 +281,7 @@ const SampleValidation = () => {
     ))
   }
 
-  // Detail View Component
+  // Detail View
   if (showDetailView && selectedSample) {
     return (
       <div className="content-wrapper">
@@ -296,6 +296,7 @@ const SampleValidation = () => {
                   </button>
                 </div>
               </div>
+
               <div className="card-body">
                 {/* Order Information Header */}
                 <div className="row mb-4">
@@ -438,41 +439,36 @@ const SampleValidation = () => {
                   <table className="table table-bordered table-hover">
                     <thead className="table-light">
                       <tr>
-                        <th>Sr No.</th>
-                        <th>Diag No.</th>
-                        <th>Test Code</th>
-                        <th>Test Name</th>
+                        <th>S.No.</th>
+                        {/* <th>Diag No.</th> */}
+                        <th>Code</th>
+                        <th>Name</th>
                         <th>Sample</th>
-                        <th>Quantity</th>
+                        <th>Qty</th>
                         <th>Empanelled Lab</th>
-                        <th>Date&Time</th>
                         <th>Accepted</th>
                         <th>Rejected</th>
                         <th>Reason</th>
-                        <th>Additional Remarks</th>
                       </tr>
                     </thead>
                     <tbody>
                       {selectedSample.investigations.map((investigation) => (
                         <tr key={investigation.id}>
-                          <td>{investigation.sr_no}</td>
+                          {/* <td>{investigation.sr_no}</td>
                           <td>
                             <input
                               type="text"
                               className="form-control"
                               value={investigation.diag_no}
-                                style={{border: '2px solid black' }}
 
                               onChange={(e) => handleInvestigationChange(investigation.id, "diag_no", e.target.value)}
                             />
-                          </td>
+                          </td> */}
                           <td>
                             <input
                               type="text"
                               className="form-control"
                               value={investigation.test_code}
-                                style={{border: '2px solid black' }}
-
                               onChange={(e) => handleInvestigationChange(investigation.id, "test_code", e.target.value)}
                             />
                           </td>
@@ -481,8 +477,6 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.test_name}
-                                style={{border: '2px solid black' }}
-
                               onChange={(e) => handleInvestigationChange(investigation.id, "test_name", e.target.value)}
                             />
                           </td>
@@ -491,8 +485,6 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.sample}
-                                style={{border: '2px solid black' }}
-
                               onChange={(e) => handleInvestigationChange(investigation.id, "sample", e.target.value)}
                             />
                           </td>
@@ -501,8 +493,6 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.quantity}
-                                style={{border: '2px solid black' }}
-
                               onChange={(e) => handleInvestigationChange(investigation.id, "quantity", e.target.value)}
                             />
                           </td>
@@ -511,21 +501,9 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.empanelled_lab}
-                                style={{border: '2px solid black' }}
-
                               onChange={(e) =>
                                 handleInvestigationChange(investigation.id, "empanelled_lab", e.target.value)
                               }
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={investigation.date_time}
-                                style={{border: '2px solid black' }}
-
-                              onChange={(e) => handleInvestigationChange(investigation.id, "date_time", e.target.value)}
                             />
                           </td>
                           <td>
@@ -534,8 +512,7 @@ const SampleValidation = () => {
                                 className="form-check-input"
                                 type="checkbox"
                                 checked={investigation.accepted}
-                                style={{ width: '20px', height: '20px', border: '2px solid black' }}
-
+                                style={{ width: "20px", height: "20px", border: "2px solid black" }}
                                 onChange={(e) =>
                                   handleInvestigationChange(investigation.id, "accepted", e.target.checked)
                                 }
@@ -548,8 +525,7 @@ const SampleValidation = () => {
                                 className="form-check-input"
                                 type="checkbox"
                                 checked={investigation.rejected}
-                                style={{ width: '20px', height: '20px', border: '2px solid black' }}
-
+                                style={{ width: "20px", height: "20px", border: "2px solid black" }}
                                 onChange={(e) =>
                                   handleInvestigationChange(investigation.id, "rejected", e.target.checked)
                                 }
@@ -561,23 +537,7 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.reason}
-                                style={{border: '2px solid black' }}
-
-
-                              
                               onChange={(e) => handleInvestigationChange(investigation.id, "reason", e.target.value)}
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={investigation.additional_remarks}
-                                style={{border: '2px solid black' }}
-
-                              onChange={(e) =>
-                                handleInvestigationChange(investigation.id, "additional_remarks", e.target.value)
-                              }
                             />
                           </td>
                         </tr>
@@ -606,7 +566,7 @@ const SampleValidation = () => {
     )
   }
 
-  // List View Component
+  // List View
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -618,6 +578,7 @@ const SampleValidation = () => {
                 <i className="mdi mdi-plus"></i> Generate Report
               </button>
             </div>
+
             <div className="card-body">
               {/* Patient Search Section */}
               <div className="card mb-3">
@@ -683,6 +644,7 @@ const SampleValidation = () => {
                 </div>
               </div>
 
+              {/* Table */}
               <div className="table-responsive packagelist">
                 <table className="table table-bordered table-hover align-middle">
                   <thead className="table-light">
@@ -723,6 +685,7 @@ const SampleValidation = () => {
                 <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
               )}
 
+              {/* Pagination */}
               <nav className="d-flex justify-content-between align-items-center mt-3">
                 <div>
                   <span>
