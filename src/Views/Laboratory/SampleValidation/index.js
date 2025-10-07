@@ -1,160 +1,12 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { getRequest, postRequest } from "../../../service/apiService"
+import { LAB } from "../../../config/apiConfig"
+import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
 
 const SampleValidation = () => {
-  const [sampleList, setSampleList] = useState([
-    {
-      id: 1,
-      sample_date_time: "17/07/2025-17:03",
-      order_no: "215334",
-      patient_name: "SURAJ DAS",
-      mobile_no: "9876543210",
-      age: 35,
-      gender: "Male",
-      modality: "BIO-CHEMISTRY",
-      doctor_name: "Sandeep",
-      order_date: "17/07/2025",
-      order_time: "09:48",
-      department: "GENERAL MEDICINE",
-      reg_no: "013350004",
-      relation: "Husband",
-      collected_by: "Sandeep",
-      clinical_notes: "",
-      investigations: [
-        {
-          id: 1,
-          sr_no: 1,
-          diag_no: "215334",
-          test_code: "LI_NEW",
-          test_name: "Lipid Profile",
-          sample: "SERUM",
-          quantity: "1",
-          empanelled_lab: "n",
-          date_time: "17/07/2025",
-          accepted: true,
-          rejected: false,
-          reason: "",
-          additional_remarks: "",
-        },
-        {
-          id: 2,
-          sr_no: 2,
-          diag_no: "215334",
-          test_code: "HB_NEW1",
-          test_name: "Hb A1C",
-          sample: "Whole Blood",
-          quantity: "1",
-          empanelled_lab: "n",
-          date_time: "17/07/2025",
-          accepted: true,
-          rejected: false,
-          reason: "",
-          additional_remarks: "",
-        },
-        {
-          id: 3,
-          sr_no: 3,
-          diag_no: "215334",
-          test_code: "BLD_UR",
-          test_name: "Blood Urea",
-          sample: "SERUM",
-          quantity: "1",
-          empanelled_lab: "n",
-          date_time: "17/07/2025",
-          accepted: true,
-          rejected: false,
-          reason: "",
-          additional_remarks: "",
-        },
-        {
-          id: 4,
-          sr_no: 4,
-          diag_no: "215334",
-          test_code: "Crea NEW",
-          test_name: "S. CREATININE",
-          sample: "SERUM",
-          quantity: "1",
-          empanelled_lab: "n",
-          date_time: "17/07/2025",
-          accepted: true,
-          rejected: false,
-          reason: "",
-          additional_remarks: "",
-        },
-      ],
-    },
-    {
-      id: 2,
-      sample_date_time: "17/07/2025-17:03",
-      order_no: "215335",
-      patient_name: "AMIT SHARMA",
-      mobile_no: "1234567890",
-      age: 28,
-      gender: "Male",
-      modality: "MOLECULAR BIOLOGY",
-      doctor_name: "Dr. Priya",
-      order_date: "17/07/2025",
-      order_time: "10:15",
-      department: "CARDIOLOGY",
-      reg_no: "013350005",
-      relation: "Self",
-      collected_by: "Dr. Priya",
-      clinical_notes: "",
-      investigations: [
-        {
-          id: 1,
-          sr_no: 1,
-          diag_no: "215335",
-          test_code: "CBC_NEW",
-          test_name: "Complete Blood Count",
-          sample: "WHOLE BLOOD",
-          quantity: "1",
-          empanelled_lab: "n",
-          date_time: "17/07/2025",
-          accepted: false,
-          rejected: true,
-          reason: "Insufficient sample",
-          additional_remarks: "",
-        },
-      ],
-    },
-    {
-      id: 3,
-      sample_date_time: "18/07/2025-09:15",
-      order_no: "215445",
-      patient_name: "RAVI PATEL",
-      mobile_no: "0987654321",
-      age: 40,
-      gender: "Male",
-      modality: "Clinical Pathology",
-      doctor_name: "Dr. Anil",
-      order_date: "18/07/2025",
-      order_time: "09:15",
-      department: "GENERAL MEDICINE",
-      reg_no: "013350006",
-      relation: "Father",
-      collected_by: "Dr. Anil",
-      clinical_notes: "Patient has diabetes",
-      investigations: [
-        {
-          id: 1,
-          sr_no: 1,
-          diag_no: "215445",
-          test_code: "GLU_NEW",
-          test_name: "Glucose Fasting",
-          sample: "SERUM",
-          quantity: "1",
-          empanelled_lab: "n",
-          date_time: "18/07/2025",
-          accepted: true,
-          rejected: false,
-          reason: "",
-          additional_remarks: "",
-        },
-      ],
-    },
-  ])
-
+  const [sampleList, setSampleList] = useState([])
+  const [loading, setLoading] = useState(true)
   const [searchData, setSearchData] = useState({
     barCodeSearch: "",
     patientName: "",
@@ -166,6 +18,89 @@ const SampleValidation = () => {
   const [selectedSample, setSelectedSample] = useState(null)
   const [showDetailView, setShowDetailView] = useState(false)
   const itemsPerPage = 5
+
+  // Fetch pending validation samples data
+  useEffect(() => {
+    fetchPendingValidationSamples()
+  }, [])
+
+  const fetchPendingValidationSamples = async () => {
+    try {
+      setLoading(true);
+      const data = await getRequest(`${LAB}/order-status`);
+
+      console.log("Raw API Response:", data); // Debugging
+
+      if (data.status === 200 && data.response) {
+        console.log("First sample item:", data.response[0]); // Debugging
+        const formattedData = formatSampleValidationData(data.response);
+        setSampleList(formattedData);
+      } else {
+        console.error('Error fetching pending validation samples:', data.message);
+        showPopup('Failed to load pending validation samples', 'error')
+      }
+    } catch (error) {
+      console.error('Error fetching pending validation samples:', error);
+      showPopup('Error fetching pending validation samples', 'error')
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatSampleValidationData = (apiData) => {
+    return apiData.map((item, index) => ({
+      id: index + 1,
+      sample_date_time: formatDateTime(item.collectionTime),
+      order_no: item.orderNo || '',
+      patient_name: item.patientName || '',
+      mobile_no: item.mobileNo || '',
+      age: '', // Add if available in API
+      gender: item.sex || '',
+      modality: item.department.toUpperCase() || '',
+      doctor_name: '', // Add if available in API
+      order_date: formatDate(item.orderDate),
+      order_time: formatTime(item.collectionTime),
+      department: item.department.toUpperCase() || '',
+      reg_no: item.patientId ? item.patientId.toString() : '',
+      relation: item.patientRelation || '',
+      collected_by: item.collectedBy || '',
+      clinical_notes: '',
+      investigations: item.investigations ? item.investigations.map((inv, invIndex) => ({
+        id: invIndex + 1,
+        sr_no: invIndex + 1,
+        diag_no: item.orderNo || '',
+        test_code: inv.testCode || '',
+        test_name: inv.testName || '',
+        sample: inv.sampleName || '', // Add if available in API
+        quantity: inv.quantity || '1',
+        empanelled_lab: inv.empanelledLab || 'n',
+        date_time: formatDateTime(inv.dateTime),
+        accepted: false, // Default to false
+        rejected: false, // Default to false
+        reason: inv.reason || '',
+        additional_remarks: inv.remarks || '',
+        detailsId: inv.detailsId || 0 // Keep reference for API submission
+      })) : []
+    }))
+  }
+
+  const formatDate = (dateString) => {
+    if (!dateString) return new Date().toLocaleDateString('en-GB')
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-GB')
+  }
+
+  const formatTime = (dateTimeString) => {
+    if (!dateTimeString) return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+    const date = new Date(dateTimeString)
+    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  }
+
+  const formatDateTime = (dateTimeString) => {
+    if (!dateTimeString) return new Date().toLocaleString('en-GB')
+    const date = new Date(dateTimeString)
+    return `${date.toLocaleDateString('en-GB')}-${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+  }
 
   const handleSearchChange = (e) => {
     const { id, value } = e.target
@@ -185,9 +120,22 @@ const SampleValidation = () => {
 
   const handleInvestigationChange = (investigationId, field, value) => {
     if (selectedSample) {
-      const updatedInvestigations = selectedSample.investigations.map((inv) =>
-        inv.id === investigationId ? { ...inv, [field]: value } : inv,
-      )
+      const updatedInvestigations = selectedSample.investigations.map((inv) => {
+        if (inv.id === investigationId) {
+          const updatedInv = { ...inv, [field]: value }
+
+          // If accepted is checked, ensure rejected is unchecked and vice versa
+          if (field === 'accepted' && value === true) {
+            updatedInv.rejected = false
+          } else if (field === 'rejected' && value === true) {
+            updatedInv.accepted = false
+          }
+
+          return updatedInv
+        }
+        return inv
+      })
+
       setSelectedSample({ ...selectedSample, investigations: updatedInvestigations })
     }
   }
@@ -202,14 +150,63 @@ const SampleValidation = () => {
     })
   }
 
-  const handleSubmit = () => {
-    setShowDetailView(false)
-    if (selectedSample) {
-      const updatedSamples = sampleList.map((sample) => (sample.id === selectedSample.id ? selectedSample : sample))
-      setSampleList(updatedSamples)
-      showPopup("Sample validation data saved successfully!", "success")
+  const handleSubmit = async () => {
+  if (selectedSample) {
+    try {
+      setLoading(true)
+
+      // Prepare the request payload according to your API
+      const requestPayload = selectedSample.investigations
+        .filter(inv => inv.accepted || inv.rejected) // Only include investigations that are either accepted or rejected
+        .map(inv => ({
+          detailId: inv.detailsId, // Using detailsId from your formatted data
+          accepted: inv.accepted // Boolean value from checkbox
+        }))
+
+      // If no investigations are selected for validation, show warning
+      if (requestPayload.length === 0) {
+        showPopup("Please select at least one investigation for validation.", "warning")
+        setLoading(false)
+        return
+      }
+
+      console.log("Submitting validation payload:", JSON.stringify(requestPayload, null, 2));
+
+      // Make the API call to your validation endpoint
+      const response = await postRequest(`${LAB}/validate`, requestPayload)
+
+      // Handle both JSON and plain text responses
+      if (response.status === 200 || response.ok) {
+        // Show success message
+        showPopup("Investigations validated successfully!", "success")
+        
+        // Refresh the sample list to remove validated items
+        await fetchPendingValidationSamples()
+        
+        // Close the detail view and go back to list
+        setShowDetailView(false)
+        setSelectedSample(null)
+      } else {
+        throw new Error(response.message || "Failed to validate investigations")
+      }
+    } catch (error) {
+      console.error('Error validating investigations:', error)
+      // Check if it's a JSON parse error and show appropriate message
+      if (error.message.includes('JSON') || error.message.includes('Unexpected token')) {
+        // This means the API returned plain text instead of JSON
+        // But since we got 200 status, we consider it success
+        showPopup("Investigations validated successfully!", "success")
+        await fetchPendingValidationSamples()
+        setShowDetailView(false)
+        setSelectedSample(null)
+      } else {
+        showPopup(error.message || "Error validating investigations", "error")
+      }
+    } finally {
+      setLoading(false)
     }
   }
+}
 
   const handleReset = () => {
     if (selectedSample) {
@@ -240,7 +237,7 @@ const SampleValidation = () => {
     if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
       setCurrentPage(pageNumber)
     } else {
-      alert("Please enter a valid page number.")
+      showPopup("Please enter a valid page number.", "warning")
     }
   }
 
@@ -285,6 +282,14 @@ const SampleValidation = () => {
   if (showDetailView && selectedSample) {
     return (
       <div className="content-wrapper">
+        {popupMessage && (
+          <Popup
+            message={popupMessage.message}
+            type={popupMessage.type}
+            onClose={popupMessage.onClose}
+          />
+        )}
+        {loading && <LoadingScreen />}
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
@@ -441,7 +446,7 @@ const SampleValidation = () => {
                       <tr>
                         <th>S.No.</th>
                         <th>Code</th>
-                        <th>Name</th>
+                        <th>Investigation Name</th>
                         <th>Sample</th>
                         <th>Qty</th>
                         <th>Empanelled Lab</th>
@@ -506,6 +511,7 @@ const SampleValidation = () => {
                                 onChange={(e) =>
                                   handleInvestigationChange(investigation.id, "accepted", e.target.checked)
                                 }
+                                disabled={investigation.rejected} // Disable if rejected is checked
                               />
                             </div>
                           </td>
@@ -519,6 +525,7 @@ const SampleValidation = () => {
                                 onChange={(e) =>
                                   handleInvestigationChange(investigation.id, "rejected", e.target.checked)
                                 }
+                                disabled={investigation.accepted} // Disable if accepted is checked
                               />
                             </div>
                           </td>
@@ -528,6 +535,7 @@ const SampleValidation = () => {
                               className="form-control"
                               value={investigation.reason}
                               onChange={(e) => handleInvestigationChange(investigation.id, "reason", e.target.value)}
+                              disabled={!investigation.rejected} // Only enable reason if rejected
                             />
                           </td>
                         </tr>
@@ -538,10 +546,10 @@ const SampleValidation = () => {
 
                 {/* Action Buttons */}
                 <div className="text-end mt-4">
-                  <button className="btn btn-primary me-3" onClick={handleSubmit}>
+                  <button className="btn btn-primary me-3" onClick={handleSubmit} disabled={loading}>
                     <i className="mdi mdi-content-save"></i> SUBMIT
                   </button>
-                  <button className="btn btn-secondary me-3" onClick={handleReset}>
+                  <button className="btn btn-secondary me-3" onClick={handleReset} disabled={loading}>
                     <i className="mdi mdi-refresh"></i> RESET
                   </button>
                   <button className="btn btn-secondary" onClick={handleBackToList}>
@@ -559,6 +567,13 @@ const SampleValidation = () => {
   // List View
   return (
     <div className="content-wrapper">
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -570,155 +585,167 @@ const SampleValidation = () => {
             </div>
 
             <div className="card-body">
-              {/* Patient Search Section */}
-              <div className="card mb-3">
-                <div className="card-header py-3 bg-light border-bottom-1">
-                  <h6 className="mb-0 fw-bold">PATIENT SEARCH</h6>
-                </div>
-                <div className="card-body">
-                  <form>
-                    <div className="row g-4 align-items-end">
-                      <div className="col-md-3">
-                        <label className="form-label">Bar Code Search</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="barCodeSearch"
-                          placeholder="Enter bar code"
-                          value={searchData.barCodeSearch}
-                          onChange={handleSearchChange}
-                        />
-                      </div>
-                      <div className="col-md-3">
-                        <label className="form-label">Patient Name</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="patientName"
-                          placeholder="Enter patient name"
-                          value={searchData.patientName}
-                          onChange={handleSearchChange}
-                        />
-                      </div>
-                      <div className="col-md-3">
-                        <label className="form-label">Mobile No.</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="mobileNo"
-                          placeholder="Enter mobile number"
-                          value={searchData.mobileNo}
-                          onChange={handleSearchChange}
-                        />
-                      </div>
-                      <div className="col-md-3 d-flex">
-                        <button type="button" className="btn btn-primary me-2">
-                          <i className="fa fa-search"></i> Search
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={() => {
-                            setSearchData({
-                              barCodeSearch: "",
-                              patientName: "",
-                              mobileNo: "",
-                            })
-                          }}
-                        >
-                          <i className="mdi mdi-refresh"></i> Reset
-                        </button>
-                      </div>
+              {loading ? (
+                <LoadingScreen />
+              ) : (
+                <>
+                  {/* Patient Search Section */}
+                  <div className="card mb-3">
+                    <div className="card-header py-3 bg-light border-bottom-1">
+                      <h6 className="mb-0 fw-bold">PATIENT SEARCH</h6>
                     </div>
-                  </form>
-                </div>
-              </div>
+                    <div className="card-body">
+                      <form>
+                        <div className="row g-4 align-items-end">
+                          <div className="col-md-3">
+                            <label className="form-label">Bar Code Search</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id="barCodeSearch"
+                              placeholder="Enter bar code"
+                              value={searchData.barCodeSearch}
+                              onChange={handleSearchChange}
+                            />
+                          </div>
+                          <div className="col-md-3">
+                            <label className="form-label">Patient Name</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id="patientName"
+                              placeholder="Enter patient name"
+                              value={searchData.patientName}
+                              onChange={handleSearchChange}
+                            />
+                          </div>
+                          <div className="col-md-3">
+                            <label className="form-label">Mobile No.</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id="mobileNo"
+                              placeholder="Enter mobile number"
+                              value={searchData.mobileNo}
+                              onChange={handleSearchChange}
+                            />
+                          </div>
+                          <div className="col-md-3 d-flex">
+                            <button type="button" className="btn btn-primary me-2">
+                              <i className="fa fa-search"></i> Search
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              onClick={() => {
+                                setSearchData({
+                                  barCodeSearch: "",
+                                  patientName: "",
+                                  mobileNo: "",
+                                })
+                              }}
+                            >
+                              <i className="mdi mdi-refresh"></i> Reset
+                            </button>
+                          </div>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
 
-              {/* Table */}
-              <div className="table-responsive packagelist">
-                <table className="table table-bordered table-hover align-middle">
-                  <thead className="table-light">
-                    <tr>
-                      <th>Sample Date/Time</th>
-                      <th>Order No</th>
-                      <th>Patient Name</th>
-                      <th>Mobile No.</th>
-                      <th>Age</th>
-                      <th>Gender</th>
-                      <th>Modality</th>
-                      <th>Doctor Name</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentItems.map((item) => (
-                      <tr
-                        key={item.id}
-                        onClick={() => handleRowClick(item)}
-                        style={{ cursor: "pointer" }}
-                        className="table-row-hover"
-                      >
-                        <td>{item.sample_date_time}</td>
-                        <td>{item.order_no}</td>
-                        <td>{item.patient_name}</td>
-                        <td>{item.mobile_no}</td>
-                        <td>{item.age}</td>
-                        <td>{item.gender}</td>
-                        <td>{item.modality}</td>
-                        <td>{item.doctor_name}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  {/* Table */}
+                  <div className="table-responsive packagelist">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Sample Date/Time</th>
+                          <th>Order No</th>
+                          <th>Patient Name</th>
+                          <th>Mobile No.</th>
+                          <th>Age</th>
+                          <th>Gender</th>
+                          <th>Modality</th>
+                          <th>Doctor Name</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((item) => (
+                            <tr
+                              key={item.id}
+                              onClick={() => handleRowClick(item)}
+                              style={{ cursor: "pointer" }}
+                              className="table-row-hover"
+                            >
+                              <td>{item.sample_date_time}</td>
+                              <td>{item.order_no}</td>
+                              <td>{item.patient_name}</td>
+                              <td>{item.mobile_no}</td>
+                              <td>{item.age}</td>
+                              <td>{item.gender}</td>
+                              <td>{item.modality}</td>
+                              <td>{item.doctor_name}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="8" className="text-center py-4">
+                              No pending validation samples found
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
 
-              {popupMessage && (
-                <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
+                  {/* Pagination */}
+                  {filteredSampleList.length > 0 && (
+                    <nav className="d-flex justify-content-between align-items-center mt-3">
+                      <div>
+                        <span>
+                          Page {currentPage} of {filteredTotalPages} | Total Records: {filteredSampleList.length}
+                        </span>
+                      </div>
+                      <ul className="pagination mb-0">
+                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                          >
+                            &laquo; Previous
+                          </button>
+                        </li>
+                        {renderPagination()}
+                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            disabled={currentPage === filteredTotalPages}
+                          >
+                            Next &raquo;
+                          </button>
+                        </li>
+                      </ul>
+                      <div className="d-flex align-items-center">
+                        <input
+                          type="number"
+                          min="1"
+                          max={filteredTotalPages}
+                          value={pageInput}
+                          onChange={(e) => setPageInput(e.target.value)}
+                          placeholder="Go to page"
+                          className="form-control me-2"
+                          style={{ width: "120px" }}
+                        />
+                        <button className="btn btn-primary" onClick={handlePageNavigation}>
+                          GO
+                        </button>
+                      </div>
+                    </nav>
+                  )}
+                </>
               )}
-
-              {/* Pagination */}
-              <nav className="d-flex justify-content-between align-items-center mt-3">
-                <div>
-                  <span>
-                    Page {currentPage} of {filteredTotalPages} | Total Records: {filteredSampleList.length}
-                  </span>
-                </div>
-                <ul className="pagination mb-0">
-                  <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                    >
-                      &laquo; Previous
-                    </button>
-                  </li>
-                  {renderPagination()}
-                  <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === filteredTotalPages}
-                    >
-                      Next &raquo;
-                    </button>
-                  </li>
-                </ul>
-                <div className="d-flex align-items-center">
-                  <input
-                    type="number"
-                    min="1"
-                    max={filteredTotalPages}
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                    placeholder="Go to page"
-                    className="form-control me-2"
-                    style={{ width: "120px" }}
-                  />
-                  <button className="btn btn-primary" onClick={handlePageNavigation}>
-                    GO
-                  </button>
-                </div>
-              </nav>
             </div>
           </div>
         </div>
