@@ -77,15 +77,11 @@ const GeneralMedicineWaitingList = () => {
       diagnosis: "",
       communicableDisease: false,
       infectiousDisease: false,
-    }
+    },
   ])
 
   // Available templates
-  const [templates, setTemplates] = useState([
-    "Blood Test Template",
-    "Cardiac Template",
-    "Diabetes Template"
-  ])
+  const [templates, setTemplates] = useState(["Blood Test Template", "Cardiac Template", "Diabetes Template"])
 
   const itemsPerPage = 10
 
@@ -158,7 +154,7 @@ const GeneralMedicineWaitingList = () => {
     }
   }
 
-  const handleSubmit = () => { }
+  const handleSubmit = () => {}
 
   const handleResetForm = () => {
     setFormData({
@@ -240,11 +236,14 @@ const GeneralMedicineWaitingList = () => {
   }
 
   const handleAddDiagnosisItem = () => {
-    setDiagnosisItems([...diagnosisItems, {
-      diagnosis: "",
-      communicableDisease: false,
-      infectiousDisease: false,
-    }])
+    setDiagnosisItems([
+      ...diagnosisItems,
+      {
+        diagnosis: "",
+        communicableDisease: false,
+        infectiousDisease: false,
+      },
+    ])
   }
 
   const handleRemoveDiagnosisItem = (index) => {
@@ -340,6 +339,161 @@ const GeneralMedicineWaitingList = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Personal Details (frontend-only, no binding/handlers) */}
+              <div className="row mb-3">
+                <div className="col-sm-12">
+                  <div className="card shadow mb-3">
+                    <div className="card-header py-3 bg-light border-bottom-1">
+                      <h6 className="mb-0 fw-bold">Personal Details</h6>
+                    </div>
+                    <div className="card-body">
+                      <form>
+                        <div className="row g-3">
+                          <div className="col-md-9">
+                            <div className="row g-3">
+                              <div className="col-md-4">
+                                <label className="form-label" htmlFor="firstName">
+                                  First Name <span className="text-danger">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  id="firstName"
+                                  name="firstName"
+                                  placeholder="Enter First Name"
+                                />
+                              </div>
+                              <div className="col-md-4">
+                                <label className="form-label" htmlFor="middleName">
+                                  Middle Name
+                                </label>
+                                <input
+                                  type="text"
+                                  id="middleName"
+                                  name="middleName"
+                                  className="form-control"
+                                  placeholder="Enter Middle Name"
+                                />
+                              </div>
+                              <div className="col-md-4">
+                                <label className="form-label" htmlFor="lastName">
+                                  Last Name
+                                </label>
+                                <input
+                                  type="text"
+                                  id="lastName"
+                                  name="lastName"
+                                  className="form-control"
+                                  placeholder="Enter Last Name"
+                                />
+                              </div>
+                              <div className="col-md-4">
+                                <label className="form-label" htmlFor="mobileNo">
+                                  Mobile No.<span className="text-danger">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  id="mobileNo"
+                                  name="mobileNo"
+                                  className="form-control"
+                                  maxLength={10}
+                                  placeholder="Enter Mobile Number"
+                                />
+                              </div>
+                              <div className="col-md-4">
+                                <label className="form-label" htmlFor="gender">
+                                  Gender <span className="text-danger">*</span>
+                                </label>
+                                <select className="form-select" id="gender" name="gender" defaultValue="">
+                                  <option value="">Select</option>
+                                  <option value="male">Male</option>
+                                  <option value="female">Female</option>
+                                  <option value="other">Other</option>
+                                </select>
+                              </div>
+                              <div className="col-md-4">
+                                <label className="form-label" htmlFor="relation">
+                                  Relation <span className="text-danger">*</span>
+                                </label>
+                                <select className="form-select" id="relation" name="relation" defaultValue="">
+                                  <option value="">Select</option>
+                                  <option value="self">Self</option>
+                                  <option value="husband">Husband</option>
+                                  <option value="wife">Wife</option>
+                                  <option value="son">Son</option>
+                                  <option value="daughter">Daughter</option>
+                                </select>
+                              </div>
+                              <div className="col-md-4">
+                                <label className="form-label" htmlFor="dob">
+                                  DOB <span className="text-danger">*</span>
+                                </label>
+                                <input
+                                  type="date"
+                                  id="dob"
+                                  name="dob"
+                                  className="form-control"
+                                  max={new Date().toISOString().split("T")[0]}
+                                  placeholder="Select Date of Birth"
+                                />
+                              </div>
+                              <div className="col-md-4">
+                                <label className="form-label" htmlFor="age">
+                                  Age
+                                </label>
+                                <input
+                                  type="text"
+                                  id="age"
+                                  name="age"
+                                  className="form-control"
+                                  placeholder="Enter Age"
+                                />
+                              </div>
+                              <div className="col-md-4">
+                                <label className="form-label" htmlFor="email">
+                                  Email <span className="text-danger">*</span>
+                                </label>
+                                <input
+                                  type="email"
+                                  id="email"
+                                  name="email"
+                                  className="form-control"
+                                  placeholder="Enter Email Address"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="col-md-3">
+                            <div className="text-center">
+                              <div className="card p-3 shadow">
+                                <img
+                                  src="/default-profile.png"
+                                  alt="Profile"
+                                  className="img-fluid border"
+                                  style={{ width: "100%", height: "150px" }}
+                                />
+                                <div className="mt-2">
+                                  <button type="button" className="btn btn-primary me-2 mb-2">
+                                    Start Camera
+                                  </button>
+                                  <button type="button" className="btn btn-success me-2 mb-2">
+                                    Take Photo
+                                  </button>
+                                  <button type="button" className="btn btn-danger mb-2">
+                                    Clear Photo
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="card-body">
                 {/* Clinical History Section */}
                 <div className="card mb-3">
@@ -349,9 +503,7 @@ const GeneralMedicineWaitingList = () => {
                     onClick={() => toggleSection("clinicalHistory")}
                   >
                     <h6 className="mb-0 fw-bold">Clinical History</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.clinicalHistory ? "−" : "+"}
-                    </span>
+                    <span style={{ fontSize: "18px" }}>{expandedSections.clinicalHistory ? "−" : "+"}</span>
                   </div>
                   {expandedSections.clinicalHistory && (
                     <div className="card-body">
@@ -433,9 +585,7 @@ const GeneralMedicineWaitingList = () => {
                     onClick={() => toggleSection("vitalDetail")}
                   >
                     <h6 className="mb-0 fw-bold">Vital Detail</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.vitalDetail ? "−" : "+"}
-                    </span>
+                    <span style={{ fontSize: "18px" }}>{expandedSections.vitalDetail ? "−" : "+"}</span>
                   </div>
                   {expandedSections.vitalDetail && (
                     <div className="card-body">
@@ -620,18 +770,14 @@ const GeneralMedicineWaitingList = () => {
                     onClick={() => toggleSection("diagnosis")}
                   >
                     <h6 className="mb-0 fw-bold">Diagnosis</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.diagnosis ? "−" : "+"}
-                    </span>
+                    <span style={{ fontSize: "18px" }}>{expandedSections.diagnosis ? "−" : "+"}</span>
                   </div>
                   {expandedSections.diagnosis && (
                     <div className="card-body">
-
-
                       {/* Diagnosis Table */}
                       <div className="table-responsive">
                         <table className="table table-bordered">
-                          <thead >
+                          <thead>
                             <tr>
                               <th className="col-md-6">
                                 Diagnosis<span className="text-danger">*</span>
@@ -659,7 +805,9 @@ const GeneralMedicineWaitingList = () => {
                                     type="checkbox"
                                     className="form-check-input border-black"
                                     checked={item.communicableDisease}
-                                    onChange={(e) => handleDiagnosisChange(index, "communicableDisease", e.target.checked)}
+                                    onChange={(e) =>
+                                      handleDiagnosisChange(index, "communicableDisease", e.target.checked)
+                                    }
                                   />
                                 </td>
                                 <td className="text-center">
@@ -667,14 +815,13 @@ const GeneralMedicineWaitingList = () => {
                                     type="checkbox"
                                     className="form-check-input border-black"
                                     checked={item.infectiousDisease}
-                                    onChange={(e) => handleDiagnosisChange(index, "infectiousDisease", e.target.checked)}
+                                    onChange={(e) =>
+                                      handleDiagnosisChange(index, "infectiousDisease", e.target.checked)
+                                    }
                                   />
                                 </td>
                                 <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-success"
-                                    onClick={handleAddDiagnosisItem}
-                                  >
+                                  <button className="btn btn-sm btn-success" onClick={handleAddDiagnosisItem}>
                                     +
                                   </button>
                                 </td>
@@ -705,9 +852,7 @@ const GeneralMedicineWaitingList = () => {
                     onClick={() => toggleSection("investigation")}
                   >
                     <h6 className="mb-0 fw-bold">Investigation</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.investigation ? "−" : "+"}
-                    </span>
+                    <span style={{ fontSize: "18px" }}>{expandedSections.investigation ? "−" : "+"}</span>
                   </div>
                   {expandedSections.investigation && (
                     <div className="card-body">
@@ -744,7 +889,14 @@ const GeneralMedicineWaitingList = () => {
                       <div className="row mb-3">
                         <div className="col-12">
                           <div className="form-check">
-                            <input className="form-check-input" type="radio" name="investigationType" id="lab" checked={investigationType === "lab"} onChange={() => setInvestigationType("lab")} />
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="investigationType"
+                              id="lab"
+                              checked={investigationType === "lab"}
+                              onChange={() => setInvestigationType("lab")}
+                            />
                             <label className="form-check-label " htmlFor="lab">
                               Lab
                             </label>
@@ -778,10 +930,7 @@ const GeneralMedicineWaitingList = () => {
                                   />
                                 </td>
                                 <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-success"
-                                    onClick={handleAddInvestigationItem}
-                                  >
+                                  <button className="btn btn-sm btn-success" onClick={handleAddInvestigationItem}>
                                     +
                                   </button>
                                 </td>
@@ -815,9 +964,7 @@ const GeneralMedicineWaitingList = () => {
                       <h6 className="mb-0 fw-bold">
                         {section.charAt(0).toUpperCase() + section.slice(1).replace(/([A-Z])/g, " $1")}
                       </h6>
-                      <span style={{ fontSize: "18px" }}>
-                        {expandedSections[section] ? "−" : "+"}
-                      </span>
+                      <span style={{ fontSize: "18px" }}>{expandedSections[section] ? "−" : "+"}</span>
                     </div>
                     {expandedSections[section] && (
                       <div className="card-body">
@@ -846,10 +993,10 @@ const GeneralMedicineWaitingList = () => {
 
         {/* Create Template Modal */}
         {showCreateTemplateModal && (
-          <div className="modal d-block" >
+          <div className="modal d-block">
             <div className="modal-dialog modal-lg">
               <div className="modal-content">
-                <div className="modal-header" >
+                <div className="modal-header">
                   <h5 className="modal-title">Investigation Template</h5>
                   <button type="button" className="btn-close btn-close" onClick={handleCloseModal}></button>
                 </div>
@@ -883,7 +1030,7 @@ const GeneralMedicineWaitingList = () => {
                           id="templateLab"
                           name="templateType"
                           checked={templateType === "lab"}
-                          onChange={() => setTemplateType(templateType === "lab" ? "" : "lab")} // Toggle logic
+                          onChange={() => setTemplateType(templateType === "lab" ? "" : "lab")}
                         />
                         <label className="form-check-label" htmlFor="templateLab">
                           Lab
@@ -895,7 +1042,7 @@ const GeneralMedicineWaitingList = () => {
                   {/* Investigation Table */}
                   <div className="table-responsive">
                     <table className="table table-bordered">
-                      <thead >
+                      <thead>
                         <tr>
                           <th>Investigation</th>
                           <th>Add</th>
@@ -915,10 +1062,7 @@ const GeneralMedicineWaitingList = () => {
                               />
                             </td>
                             <td className="text-center">
-                              <button
-                                className="btn btn-sm btn-success"
-                                onClick={handleAddInvestigationItem}
-                              >
+                              <button className="btn btn-sm btn-success" onClick={handleAddInvestigationItem}>
                                 +
                               </button>
                             </td>
@@ -955,10 +1099,10 @@ const GeneralMedicineWaitingList = () => {
 
         {/* Update Template Modal */}
         {showUpdateTemplateModal && (
-          <div className="modal d-block" >
+          <div className="modal d-block">
             <div className="modal-dialog">
               <div className="modal-content">
-                <div className="modal-header" >
+                <div className="modal-header">
                   <h5 className="modal-title">Update Investigation Template</h5>
                   <button type="button" className="btn-close btn" onClick={handleCloseModal}></button>
                 </div>
@@ -1094,9 +1238,7 @@ const GeneralMedicineWaitingList = () => {
                     {currentItems.map((item) => (
                       <tr key={item.id} onClick={() => handleRowClick(item)} style={{ cursor: "pointer" }}>
                         <td>
-                          <span className={`badge ${getPriorityColor(item.priority)}`}>
-                            {item.tokenNo}
-                          </span>
+                          <span className={`badge ${getPriorityColor(item.priority)}`}>{item.tokenNo}</span>
                         </td>
                         <td>{item.employeeNo}</td>
                         <td>{item.patientName}</td>
@@ -1143,7 +1285,7 @@ const GeneralMedicineWaitingList = () => {
                       onClick={() => setCurrentPage(currentPage - 1)}
                       disabled={currentPage === 1}
                     >
-                      &laquo; Previous
+                      « Previous
                     </button>
                   </li>
                   {renderPagination()}
@@ -1153,7 +1295,7 @@ const GeneralMedicineWaitingList = () => {
                       onClick={() => setCurrentPage(currentPage + 1)}
                       disabled={currentPage === filteredTotalPages}
                     >
-                      Next &raquo;
+                      Next »
                     </button>
                   </li>
                 </ul>
