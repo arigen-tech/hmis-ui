@@ -1,4 +1,5 @@
 import { useState } from "react"
+// Removed invalid asset import, using public image from /public instead.
 
 const GeneralMedicineWaitingList = () => {
   const [waitingList, setWaitingList] = useState([
@@ -29,9 +30,11 @@ const GeneralMedicineWaitingList = () => {
   const [pageInput, setPageInput] = useState("")
   const [showDetailView, setShowDetailView] = useState(false)
   const [selectedPatient, setSelectedPatient] = useState(null)
+
   const [investigationType, setInvestigationType] = useState("lab")
 
   const [expandedSections, setExpandedSections] = useState({
+    personalDetails: false,
     clinicalHistory: false,
     vitalDetail: false,
     diagnosis: false,
@@ -62,26 +65,61 @@ const GeneralMedicineWaitingList = () => {
 
   const [errors, setErrors] = useState({})
 
-  // Investigation template states
   const [showCreateTemplateModal, setShowCreateTemplateModal] = useState(false)
   const [showUpdateTemplateModal, setShowUpdateTemplateModal] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState("Select..")
   const [templateName, setTemplateName] = useState("")
-  const [investigationItems, setInvestigationItems] = useState([""])
+  const getToday = () => new Date().toISOString().split("T")[0]
+  const [investigationItems, setInvestigationItems] = useState([{ name: "", date: getToday() }])
   const [updateTemplateSelection, setUpdateTemplateSelection] = useState("Select..")
   const [templateType, setTemplateType] = useState("")
 
-  // Diagnosis state
   const [diagnosisItems, setDiagnosisItems] = useState([
     {
-      diagnosis: "",
+      workingDiagnosis: "",
+      icdDiagnosis: "",
       communicableDisease: false,
       infectiousDisease: false,
     },
   ])
 
-  // Available templates
   const [templates, setTemplates] = useState(["Blood Test Template", "Cardiac Template", "Diabetes Template"])
+
+  const [treatmentItems, setTreatmentItems] = useState([
+    {
+      drugName: "Diclofenac Sodium Tab. IP 50 mg[D168]",
+      dispUnit: "Tab",
+      dosage: "1",
+      frequency: "BID",
+      days: "5",
+      total: "10",
+      instruction: "",
+      stock: "",
+    },
+    {
+      drugName: "TAB CETIRIZINE 10 MG[D00162]",
+      dispUnit: "Tab",
+      dosage: "1",
+      frequency: "OD",
+      days: "5",
+      total: "5",
+      instruction: "",
+      stock: "",
+    },
+    {
+      drugName: "Ferrous Sulphate with Folic Acid Tab. [D00078]",
+      dispUnit: "Tab",
+      dosage: "1",
+      frequency: "OD",
+      days: "15",
+      total: "15",
+      instruction: "",
+      stock: "",
+    },
+  ])
+
+  const [selectedBloodTestTemplate, setSelectedBloodTestTemplate] = useState("Select..")
+  const [selectedCardiacTestTemplate, setSelectedCardiacTestTemplate] = useState("Select..")
 
   const itemsPerPage = 10
 
@@ -116,6 +154,7 @@ const GeneralMedicineWaitingList = () => {
     setShowDetailView(false)
     setSelectedPatient(null)
     setExpandedSections({
+      personalDetails: false,
       clinicalHistory: false,
       vitalDetail: false,
       diagnosis: false,
@@ -186,11 +225,10 @@ const GeneralMedicineWaitingList = () => {
     setWaitingList(updatedList)
   }
 
-  // Investigation template functions
   const handleCreateTemplate = () => {
     setShowCreateTemplateModal(true)
     setTemplateName("")
-    setInvestigationItems([""])
+    setInvestigationItems([{ name: "", date: getToday() }])
   }
 
   const handleUpdateTemplate = () => {
@@ -199,7 +237,7 @@ const GeneralMedicineWaitingList = () => {
   }
 
   const handleAddInvestigationItem = () => {
-    setInvestigationItems([...investigationItems, ""])
+    setInvestigationItems((prev) => [...prev, { name: "", date: getToday() }])
   }
 
   const handleRemoveInvestigationItem = (index) => {
@@ -207,9 +245,9 @@ const GeneralMedicineWaitingList = () => {
     setInvestigationItems(newItems)
   }
 
-  const handleInvestigationItemChange = (index, value) => {
+  const handleInvestigationItemChange = (index, field, value) => {
     const newItems = [...investigationItems]
-    newItems[index] = value
+    newItems[index] = { ...newItems[index], [field]: value }
     setInvestigationItems(newItems)
   }
 
@@ -218,20 +256,20 @@ const GeneralMedicineWaitingList = () => {
       setTemplates([...templates, templateName])
       setShowCreateTemplateModal(false)
       setTemplateName("")
-      setInvestigationItems([""])
+      setInvestigationItems([{ name: "", date: getToday() }])
     }
   }
 
   const handleResetTemplate = () => {
     setTemplateName("")
-    setInvestigationItems([""])
+    setInvestigationItems([{ name: "", date: getToday() }])
   }
 
   const handleCloseModal = () => {
     setShowCreateTemplateModal(false)
     setShowUpdateTemplateModal(false)
     setTemplateName("")
-    setInvestigationItems([""])
+    setInvestigationItems([{ name: "", date: getToday() }])
     setUpdateTemplateSelection("Select..")
   }
 
@@ -239,7 +277,8 @@ const GeneralMedicineWaitingList = () => {
     setDiagnosisItems([
       ...diagnosisItems,
       {
-        diagnosis: "",
+        workingDiagnosis: "",
+        icdDiagnosis: "",
         communicableDisease: false,
         infectiousDisease: false,
       },
@@ -257,6 +296,35 @@ const GeneralMedicineWaitingList = () => {
     setDiagnosisItems(newItems)
   }
 
+  const handleAddTreatmentItem = () => {
+    setTreatmentItems([
+      ...treatmentItems,
+      {
+        drugName: "",
+        dispUnit: "Tab",
+        dosage: "",
+        frequency: "OD",
+        days: "",
+        total: "",
+        instruction: "",
+        stock: "",
+      },
+    ])
+  }
+
+  const handleRemoveTreatmentItem = (index) => {
+    if (treatmentItems.length === 1) return
+    const newItems = treatmentItems.filter((_, i) => i !== index)
+    setTreatmentItems(newItems)
+  }
+
+  const handleTreatmentChange = (index, field, value) => {
+    const newItems = [...treatmentItems]
+    newItems[index] = { ...newItems[index], [field]: value }
+    setTreatmentItems(newItems)
+  }
+
+  // Filters and pagination
   const filteredList = waitingList.filter((item) => {
     const matchesEmployee = searchFilters.employeeNo === "" || item.employeeNo.includes(searchFilters.employeeNo)
     const matchesPatient =
@@ -340,155 +408,121 @@ const GeneralMedicineWaitingList = () => {
                 </div>
               </div>
 
-              {/* Personal Details (frontend-only, no binding/handlers) */}
-              <div className="row mb-3">
-                <div className="col-sm-12">
-                  <div className="card shadow mb-3">
-                    <div className="card-header py-3 bg-light border-bottom-1">
-                      <h6 className="mb-0 fw-bold">Personal Details</h6>
-                    </div>
-                    <div className="card-body">
-                      <form>
-                        <div className="row g-3">
-                          <div className="col-md-9">
-                            <div className="row g-3">
-                              <div className="col-md-4">
-                                <label className="form-label" htmlFor="firstName">
-                                  First Name <span className="text-danger">*</span>
-                                </label>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  id="firstName"
-                                  name="firstName"
-                                  placeholder="Enter First Name"
-                                />
-                              </div>
-                              <div className="col-md-4">
-                                <label className="form-label" htmlFor="middleName">
-                                  Middle Name
-                                </label>
-                                <input
-                                  type="text"
-                                  id="middleName"
-                                  name="middleName"
-                                  className="form-control"
-                                  placeholder="Enter Middle Name"
-                                />
-                              </div>
-                              <div className="col-md-4">
-                                <label className="form-label" htmlFor="lastName">
-                                  Last Name
-                                </label>
-                                <input
-                                  type="text"
-                                  id="lastName"
-                                  name="lastName"
-                                  className="form-control"
-                                  placeholder="Enter Last Name"
-                                />
-                              </div>
-                              <div className="col-md-4">
-                                <label className="form-label" htmlFor="mobileNo">
-                                  Mobile No.<span className="text-danger">*</span>
-                                </label>
-                                <input
-                                  type="text"
-                                  id="mobileNo"
-                                  name="mobileNo"
-                                  className="form-control"
-                                  maxLength={10}
-                                  placeholder="Enter Mobile Number"
-                                />
-                              </div>
-                              <div className="col-md-4">
-                                <label className="form-label" htmlFor="gender">
-                                  Gender <span className="text-danger">*</span>
-                                </label>
-                                <select className="form-select" id="gender" name="gender" defaultValue="">
-                                  <option value="">Select</option>
-                                  <option value="male">Male</option>
-                                  <option value="female">Female</option>
-                                  <option value="other">Other</option>
-                                </select>
-                              </div>
-                              <div className="col-md-4">
-                                <label className="form-label" htmlFor="relation">
-                                  Relation <span className="text-danger">*</span>
-                                </label>
-                                <select className="form-select" id="relation" name="relation" defaultValue="">
-                                  <option value="">Select</option>
-                                  <option value="self">Self</option>
-                                  <option value="husband">Husband</option>
-                                  <option value="wife">Wife</option>
-                                  <option value="son">Son</option>
-                                  <option value="daughter">Daughter</option>
-                                </select>
-                              </div>
-                              <div className="col-md-4">
-                                <label className="form-label" htmlFor="dob">
-                                  DOB <span className="text-danger">*</span>
-                                </label>
-                                <input
-                                  type="date"
-                                  id="dob"
-                                  name="dob"
-                                  className="form-control"
-                                  max={new Date().toISOString().split("T")[0]}
-                                  placeholder="Select Date of Birth"
-                                />
-                              </div>
-                              <div className="col-md-4">
-                                <label className="form-label" htmlFor="age">
-                                  Age
-                                </label>
-                                <input
-                                  type="text"
-                                  id="age"
-                                  name="age"
-                                  className="form-control"
-                                  placeholder="Enter Age"
-                                />
-                              </div>
-                              <div className="col-md-4">
-                                <label className="form-label" htmlFor="email">
-                                  Email <span className="text-danger">*</span>
-                                </label>
-                                <input
-                                  type="email"
-                                  id="email"
-                                  name="email"
-                                  className="form-control"
-                                  placeholder="Enter Email Address"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                          <div className="col-md-3">
-                            <div className="text-center">
-                              <div className="card p-3 shadow">
-                                <img
-                                  src="/default-profile.png"
-                                  alt="Profile"
-                                  className="img-fluid border"
-                                  style={{ width: "100%", height: "150px" }}
-                                />
-                                <div className="mt-2">
-                                  <button type="button" className="btn btn-primary me-2 mb-2">
-                                    Start Camera
-                                  </button>
-                                  <button type="button" className="btn btn-success me-2 mb-2">
-                                    Take Photo
-                                  </button>
-                                  <button type="button" className="btn btn-danger mb-2">
-                                    Clear Photo
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+              <div className="card mb-3">
+                <div className="card-header py-3 bg-light border-bottom-1">
+                  <h6 className="mb-0 fw-bold">Personal Details</h6>
+                </div>
+                <div className="card-body p-3">
+                  <div className="row g-3">
+                    <div className="col-md-9">
+                      <div className="row g-3">
+                        <div className="col-md-4">
+                          <label className="form-label" htmlFor="firstName">
+                            First Name
+                          </label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="firstName"
+                            name="firstName"
+                            placeholder="Enter First Name"
+                          />
                         </div>
-                      </form>
+                        <div className="col-md-4">
+                          <label className="form-label" htmlFor="middleName">
+                            Middle Name
+                          </label>
+                          <input
+                            type="text"
+                            id="middleName"
+                            name="middleName"
+                            className="form-control"
+                            placeholder="Enter Middle Name"
+                          />
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label" htmlFor="lastName">
+                            Last Name
+                          </label>
+                          <input
+                            type="text"
+                            id="lastName"
+                            name="lastName"
+                            className="form-control"
+                            placeholder="Enter Last Name"
+                          />
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label" htmlFor="mobileNo">
+                            Mobile No.
+                          </label>
+                          <input
+                            type="text"
+                            id="mobileNo"
+                            name="mobileNo"
+                            className="form-control"
+                            maxLength={10}
+                            placeholder="Enter Mobile Number"
+                          />
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label" htmlFor="gender">
+                            Gender
+                          </label>
+                          <select className="form-select" id="gender" name="gender" defaultValue="">
+                            <option value="">Select</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label" htmlFor="relation">
+                            Relation
+                          </label>
+                          <select className="form-select" id="relation" name="relation" defaultValue="">
+                            <option value="">Select</option>
+                            <option value="self">Self</option>
+                            <option value="husband">Husband</option>
+                            <option value="wife">Wife</option>
+                            <option value="son">Son</option>
+                            <option value="daughter">Daughter</option>
+                          </select>
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label" htmlFor="dob">
+                            DOB
+                          </label>
+                          <input
+                            type="date"
+                            id="dob"
+                            name="dob"
+                            className="form-control"
+                            max={new Date().toISOString().split("T")[0]}
+                            placeholder="Select Date of Birth"
+                          />
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label" htmlFor="age">
+                            Age
+                          </label>
+                          <input type="text" id="age" name="age" className="form-control" placeholder="Enter Age" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-md-3">
+                      <div className="text-center">
+                        <div className="card p-3 shadow">
+                          {/* CHANGE START */}
+                          <img
+                            src="/placeholder-user.jpg"
+                            alt="Profile photo"
+                            className="img-fluid border"
+                            style={{ width: "100%", height: "150px", objectFit: "cover" }}
+                          />
+                          {/* CHANGE END */}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -546,10 +580,7 @@ const GeneralMedicineWaitingList = () => {
                           {/* Patient Signs & Symptoms and Clinical Examination */}
                           <div className="row">
                             <div className="col-md-6">
-                              <label className="form-label fw-bold">
-                                Patient signs & symptoms
-                                <span className="text-danger">*</span>
-                              </label>
+                              <label className="form-label fw-bold">Patient signs & symptoms</label>
                               <input
                                 type="text"
                                 className="form-control"
@@ -563,7 +594,7 @@ const GeneralMedicineWaitingList = () => {
                               <label className="form-label fw-bold">Clinical Examination</label>
                               <textarea
                                 className="form-control"
-                                rows="3"
+                                rows={3}
                                 name="clinicalExamination"
                                 value={formData.clinicalExamination}
                                 onChange={handleChange}
@@ -592,10 +623,7 @@ const GeneralMedicineWaitingList = () => {
                       <div className="row g-3 align-items-center">
                         {/* Patient Height */}
                         <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">
-                            Height
-                            <span className="text-danger">*</span>
-                          </label>
+                          <label className="form-label me-2">Height</label>
                           <input
                             type="number"
                             className={`form-control ${errors.height ? "is-invalid" : ""}`}
@@ -611,10 +639,7 @@ const GeneralMedicineWaitingList = () => {
 
                         {/* Weight */}
                         <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">
-                            Weight
-                            <span className="text-danger">*</span>
-                          </label>
+                          <label className="form-label me-2">Weight</label>
                           <input
                             type="number"
                             min={0}
@@ -630,10 +655,7 @@ const GeneralMedicineWaitingList = () => {
 
                         {/* Temperature */}
                         <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">
-                            Temperature
-                            <span className="text-danger">*</span>
-                          </label>
+                          <label className="form-label me-2">Temperature</label>
                           <input
                             type="number"
                             min={0}
@@ -649,10 +671,7 @@ const GeneralMedicineWaitingList = () => {
 
                         {/* BP (Systolic / Diastolic) */}
                         <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">
-                            BP
-                            <span className="text-danger">*</span>
-                          </label>
+                          <label className="form-label me-2">BP</label>
                           <input
                             type="number"
                             min={0}
@@ -679,10 +698,7 @@ const GeneralMedicineWaitingList = () => {
 
                         {/* Pulse */}
                         <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">
-                            Pulse
-                            <span className="text-danger">*</span>
-                          </label>
+                          <label className="form-label me-2">Pulse</label>
                           <input
                             type="number"
                             min={0}
@@ -762,7 +778,6 @@ const GeneralMedicineWaitingList = () => {
                   )}
                 </div>
 
-                {/* Diagnosis Section */}
                 <div className="card mb-3">
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
@@ -774,16 +789,14 @@ const GeneralMedicineWaitingList = () => {
                   </div>
                   {expandedSections.diagnosis && (
                     <div className="card-body">
-                      {/* Diagnosis Table */}
                       <div className="table-responsive">
                         <table className="table table-bordered">
                           <thead>
                             <tr>
-                              <th className="col-md-6">
-                                Diagnosis<span className="text-danger">*</span>
-                              </th>
-                              <th className="col-md-2 text-center">Communicable</th>
-                              <th className="col-md-2 text-center">Infectious</th>
+                              <th className="col-md-4">Working Diagnosis</th>
+                              <th className="col-md-4">ICD Diagnosis</th>
+                              <th className="col-md-1 text-center">Communicable</th>
+                              <th className="col-md-1 text-center">Infectious</th>
                               <th className="col-md-1 text-center">Add</th>
                               <th className="col-md-1 text-center">Delete</th>
                             </tr>
@@ -795,9 +808,18 @@ const GeneralMedicineWaitingList = () => {
                                   <input
                                     type="text"
                                     className="form-control border-black"
-                                    value={item.diagnosis}
-                                    onChange={(e) => handleDiagnosisChange(index, "diagnosis", e.target.value)}
-                                    placeholder="Enter diagnosis"
+                                    value={item.workingDiagnosis}
+                                    onChange={(e) => handleDiagnosisChange(index, "workingDiagnosis", e.target.value)}
+                                    placeholder="Enter working diagnosis"
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    type="text"
+                                    className="form-control border-black"
+                                    value={item.icdDiagnosis}
+                                    onChange={(e) => handleDiagnosisChange(index, "icdDiagnosis", e.target.value)}
+                                    placeholder="Enter ICD diagnosis"
                                   />
                                 </td>
                                 <td className="text-center">
@@ -885,9 +907,8 @@ const GeneralMedicineWaitingList = () => {
                         </div>
                       </div>
 
-                      {/* Lab Radio Button */}
                       <div className="row mb-3">
-                        <div className="col-12">
+                        <div className="col-12 d-flex gap-4">
                           <div className="form-check">
                             <input
                               className="form-check-input"
@@ -897,22 +918,33 @@ const GeneralMedicineWaitingList = () => {
                               checked={investigationType === "lab"}
                               onChange={() => setInvestigationType("lab")}
                             />
-                            <label className="form-check-label " htmlFor="lab">
+                            <label className="form-check-label" htmlFor="lab">
                               Lab
+                            </label>
+                          </div>
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="investigationType"
+                              id="ecg"
+                              checked={investigationType === "ecg"}
+                              onChange={() => setInvestigationType("ecg")}
+                            />
+                            <label className="form-check-label" htmlFor="ecg">
+                              ECG
                             </label>
                           </div>
                         </div>
                       </div>
 
-                      {/* Show Recommended Investigation Link */}
-                      <div className="row mb-3"></div>
-
-                      {/* Investigation Table */}
+                      {/* Investigation Table with default Date column */}
                       <div className="table-responsive">
                         <table className="table table-bordered">
                           <thead style={{ backgroundColor: "#b0c4de" }}>
                             <tr>
-                              <th style={{ width: "70%" }}>Investigation</th>
+                              <th style={{ width: "55%" }}>Investigation</th>
+                              <th style={{ width: "15%" }}>Date</th>
                               <th style={{ width: "15%" }}>Add</th>
                               <th style={{ width: "15%" }}>Delete</th>
                             </tr>
@@ -924,9 +956,17 @@ const GeneralMedicineWaitingList = () => {
                                   <input
                                     type="text"
                                     className="form-control border-black"
-                                    value={item}
-                                    onChange={(e) => handleInvestigationItemChange(index, e.target.value)}
+                                    value={item.name}
+                                    onChange={(e) => handleInvestigationItemChange(index, "name", e.target.value)}
                                     placeholder="Enter investigation"
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    type="date"
+                                    className="form-control border-black"
+                                    value={item.date}
+                                    onChange={(e) => handleInvestigationItemChange(index, "date", e.target.value)}
                                   />
                                 </td>
                                 <td className="text-center">
@@ -953,8 +993,160 @@ const GeneralMedicineWaitingList = () => {
                   )}
                 </div>
 
-                {/* Other Expandable Sections */}
-                {["treatment", "minorProcedure", "referral", "followUp", "doctorRemark"].map((section) => (
+                {/* Treatment Section */}
+                <div className="card mb-3">
+                  <div
+                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("treatment")}
+                  >
+                    <h6 className="mb-0 fw-bold">Treatment</h6>
+                    <span style={{ fontSize: "18px" }}>{expandedSections.treatment ? "−" : "+"}</span>
+                  </div>
+                  {expandedSections.treatment && (
+                    <div className="card-body">
+                      <div className="row g-3 mb-3">
+                        <div className="col-md-4">
+                          <label className="form-label fw-bold">Blood Test Template</label>
+                          <select
+                            className="form-select"
+                            value={selectedBloodTestTemplate}
+                            onChange={(e) => setSelectedBloodTestTemplate(e.target.value)}
+                          >
+                            <option value="Select..">Select..</option>
+                            <option value="Blood Test Template">Blood Test Template</option>
+                          </select>
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label fw-bold">Cardiac Test Template</label>
+                          <select
+                            className="form-select"
+                            value={selectedCardiacTestTemplate}
+                            onChange={(e) => setSelectedCardiacTestTemplate(e.target.value)}
+                          >
+                            <option value="Select..">Select..</option>
+                            <option value="Cardiac Template">Cardiac Test Template</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="table-responsive">
+                        <table className="table table-bordered">
+                          <thead style={{ backgroundColor: "#b0c4de" }}>
+                            <tr>
+                              <th style={{ minWidth: 260 }}>Drugs Name/Drugs Code</th>
+                              <th className="text-center">Disp. Unit</th>
+                              <th className="text-center">Dosage</th>
+                              <th className="text-center">Frequency</th>
+                              <th className="text-center">Days</th>
+                              <th className="text-center">Total</th>
+                              <th className="text-center">Instruction</th>
+                              <th className="text-center">Add</th>
+                              <th className="text-center">Delete</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {treatmentItems.map((row, index) => (
+                              <tr key={index}>
+                                <td>
+                                  <input
+                                    type="text"
+                                    className="form-control border-black"
+                                    value={row.drugName}
+                                    onChange={(e) => handleTreatmentChange(index, "drugName", e.target.value)}
+                                    placeholder="Enter drug name or code"
+                                  />
+                                </td>
+                                <td>
+                                  <select
+                                    className="form-select"
+                                    value={row.dispUnit}
+                                    onChange={(e) => handleTreatmentChange(index, "dispUnit", e.target.value)}
+                                  >
+                                    <option value="Tab">Tab</option>
+                                    <option value="Cap">Cap</option>
+                                    <option value="Syr">Syr</option>
+                                  </select>
+                                </td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    className="form-control border-black"
+                                    value={row.dosage}
+                                    onChange={(e) => handleTreatmentChange(index, "dosage", e.target.value)}
+                                    placeholder="1"
+                                  />
+                                </td>
+                                <td>
+                                  <select
+                                    className="form-select"
+                                    value={row.frequency}
+                                    onChange={(e) => handleTreatmentChange(index, "frequency", e.target.value)}
+                                  >
+                                    <option value="OD">OD</option>
+                                    <option value="BID">BID</option>
+                                    <option value="TID">TID</option>
+                                    <option value="QID">QID</option>
+                                    <option value="HS">HS</option>
+                                    <option value="SOS">SOS</option>
+                                  </select>
+                                </td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    className="form-control border-black"
+                                    value={row.days}
+                                    onChange={(e) => handleTreatmentChange(index, "days", e.target.value)}
+                                    placeholder="0"
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    className="form-control border-black"
+                                    value={row.total}
+                                    onChange={(e) => handleTreatmentChange(index, "total", e.target.value)}
+                                    placeholder="0"
+                                  />
+                                </td>
+                                <td>
+                                  <select
+                                    className="form-select"
+                                    value={row.instruction}
+                                    onChange={(e) => handleTreatmentChange(index, "instruction", e.target.value)}
+                                  >
+                                    <option value="">Select...</option>
+                                    <option value="After Meal">After Meal</option>
+                                    <option value="Before Meal">Before Meal</option>
+                                  </select>
+                                </td>
+
+                                <td className="text-center">
+                                  <button className="btn btn-sm btn-success" onClick={handleAddTreatmentItem}>
+                                    +
+                                  </button>
+                                </td>
+                                <td className="text-center">
+                                  <button
+                                    className="btn btn-sm text-white"
+                                    style={{ backgroundColor: "#dc3545" }}
+                                    onClick={() => handleRemoveTreatmentItem(index)}
+                                    disabled={treatmentItems.length === 1}
+                                  >
+                                    −
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Other Expandable Sections (unchanged) */}
+                {["minorProcedure", "referral", "followUp", "doctorRemark"].map((section) => (
                   <div key={section} className="card mb-3">
                     <div
                       className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
@@ -991,7 +1183,6 @@ const GeneralMedicineWaitingList = () => {
           </div>
         </div>
 
-        {/* Create Template Modal */}
         {showCreateTemplateModal && (
           <div className="modal d-block">
             <div className="modal-dialog modal-lg">
@@ -1004,10 +1195,7 @@ const GeneralMedicineWaitingList = () => {
                   {/* Template Name */}
                   <div className="row mb-3">
                     <div className="col-md-3">
-                      <label className="form-label fw-bold">
-                        Template Name
-                        <span className="text-danger">*</span>
-                      </label>
+                      <label className="form-label fw-bold">Template Name</label>
                     </div>
                     <div className="col-md-9">
                       <input
@@ -1020,9 +1208,8 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   </div>
 
-                  {/* Lab Radio Button */}
                   <div className="row mb-3">
-                    <div className="col-12">
+                    <div className="col-12 d-flex gap-4">
                       <div className="form-check">
                         <input
                           className="form-check-input"
@@ -1030,16 +1217,29 @@ const GeneralMedicineWaitingList = () => {
                           id="templateLab"
                           name="templateType"
                           checked={templateType === "lab"}
-                          onChange={() => setTemplateType(templateType === "lab" ? "" : "lab")}
+                          onChange={() => setTemplateType("lab")}
                         />
                         <label className="form-check-label" htmlFor="templateLab">
                           Lab
                         </label>
                       </div>
+                      <div className="form-check">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          id="templateECG"
+                          name="templateType"
+                          checked={templateType === "ecg"}
+                          onChange={() => setTemplateType("ecg")}
+                        />
+                        <label className="form-check-label" htmlFor="templateECG">
+                          ECG
+                        </label>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Investigation Table */}
+                  {/* Investigation Table (name only in modal) */}
                   <div className="table-responsive">
                     <table className="table table-bordered">
                       <thead>
@@ -1056,8 +1256,8 @@ const GeneralMedicineWaitingList = () => {
                               <input
                                 type="text"
                                 className="form-control border-black"
-                                value={item}
-                                onChange={(e) => handleInvestigationItemChange(index, e.target.value)}
+                                value={item.name}
+                                onChange={(e) => handleInvestigationItemChange(index, "name", e.target.value)}
                                 placeholder="Enter investigation"
                               />
                             </td>
@@ -1097,7 +1297,6 @@ const GeneralMedicineWaitingList = () => {
           </div>
         )}
 
-        {/* Update Template Modal */}
         {showUpdateTemplateModal && (
           <div className="modal d-block">
             <div className="modal-dialog">
@@ -1109,9 +1308,7 @@ const GeneralMedicineWaitingList = () => {
                 <div className="modal-body">
                   <div className="row">
                     <div className="col-md-4">
-                      <label className="form-label fw-bold">
-                        Select Template <span className="text-danger">*</span>
-                      </label>
+                      <label className="form-label fw-bold">Select Template</label>
                     </div>
                     <div className="col-md-8">
                       <select
@@ -1302,7 +1499,7 @@ const GeneralMedicineWaitingList = () => {
                 <div className="d-flex align-items-center">
                   <input
                     type="number"
-                    min="1"
+                    min={1}
                     max={filteredTotalPages}
                     value={pageInput}
                     onChange={(e) => setPageInput(e.target.value)}

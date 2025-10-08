@@ -533,7 +533,6 @@ const PendingForResultEntry = () => {
                                                                     type="text"
                                                                     className="form-control"
                                                                     value={investigation.investigation}
-                                                                    style={{ border: '2px solid black' }}
 
                                                                     onChange={(e) =>
                                                                         handleInvestigationChange(investigation.id, "investigation", e.target.value)
@@ -545,7 +544,6 @@ const PendingForResultEntry = () => {
                                                                     type="text"
                                                                     className="form-control"
                                                                     value={investigation.sample}
-                                                                    style={{ border: '2px solid black' }}
 
                                                                     onChange={(e) =>
                                                                         handleInvestigationChange(investigation.id, "sample", e.target.value)
@@ -557,7 +555,6 @@ const PendingForResultEntry = () => {
                                                                     type="text"
                                                                     className="form-control"
                                                                     value={investigation.result}
-                                                                    style={{ border: '2px solid black' }}
 
                                                                     onChange={(e) =>
                                                                         handleInvestigationChange(investigation.id, "result", e.target.value)
@@ -569,7 +566,6 @@ const PendingForResultEntry = () => {
                                                                     type="text"
                                                                     className="form-control"
                                                                     value={investigation.units}
-                                                                    style={{ border: '2px solid black' }}
                                                                     onChange={(e) => handleInvestigationChange(investigation.id, "units", e.target.value)}
                                                                 />
                                                             </td>
@@ -578,7 +574,6 @@ const PendingForResultEntry = () => {
                                                                     className="form-control"
                                                                     rows="2"
                                                                     value={investigation.normalRange}
-                                                                    style={{ border: '2px solid black' }}
 
                                                                     onChange={(e) =>
                                                                         handleInvestigationChange(investigation.id, "normalRange", e.target.value)
@@ -590,7 +585,6 @@ const PendingForResultEntry = () => {
                                                                     type="text"
                                                                     className="form-control"
                                                                     value={investigation.remarks}
-                                                                    style={{ border: '2px solid black' }}
                                                                     onChange={(e) =>
                                                                         handleInvestigationChange(investigation.id, "remarks", e.target.value)
                                                                     }
@@ -602,7 +596,6 @@ const PendingForResultEntry = () => {
                                                                         className="form-check-input"
                                                                         type="checkbox"
                                                                         checked={investigation.reject}
-                                                                        style={{ width: '20px', height: '20px', border: '2px solid black' }}
                                                                         onChange={(e) =>
                                                                             handleInvestigationChange(investigation.id, "reject", e.target.checked)
                                                                         }
@@ -628,7 +621,6 @@ const PendingForResultEntry = () => {
                                                                             type="text"
                                                                             className="form-control"
                                                                             value={subTest.investigation}
-                                                                            style={{ border: '2px solid black' }}
 
                                                                             onChange={(e) =>
                                                                                 handleSubTestChange(
@@ -645,7 +637,6 @@ const PendingForResultEntry = () => {
                                                                             type="text"
                                                                             className="form-control"
                                                                             value={subTest.sample}
-                                                                            style={{ border: '2px solid black' }}
 
                                                                             onChange={(e) =>
                                                                                 handleSubTestChange(investigation.id, subTest.id, "sample", e.target.value)
@@ -657,7 +648,6 @@ const PendingForResultEntry = () => {
                                                                             type="text"
                                                                             className="form-control"
                                                                             value={subTest.result}
-                                                                            style={{ border: '2px solid black' }}
 
                                                                             onChange={(e) =>
                                                                                 handleSubTestChange(investigation.id, subTest.id, "result", e.target.value)
@@ -669,7 +659,6 @@ const PendingForResultEntry = () => {
                                                                             type="text"
                                                                             className="form-control"
                                                                             value={subTest.units}
-                                                                            style={{ border: '2px solid black' }}
                                                                             onChange={(e) =>
                                                                                 handleSubTestChange(investigation.id, subTest.id, "units", e.target.value)
                                                                             }
@@ -680,7 +669,6 @@ const PendingForResultEntry = () => {
                                                                             className="form-control"
                                                                             rows="2"
                                                                             value={subTest.normalRange}
-                                                                            style={{ border: '2px solid black' }}
 
                                                                             onChange={(e) =>
                                                                                 handleSubTestChange(investigation.id, subTest.id, "normalRange", e.target.value)
@@ -692,7 +680,6 @@ const PendingForResultEntry = () => {
                                                                             type="text"
                                                                             className="form-control"
                                                                             value={subTest.remarks}
-                                                                            style={{ border: '2px solid black' }}
                                                                             onChange={(e) =>
                                                                                 handleSubTestChange(investigation.id, subTest.id, "remarks", e.target.value)
                                                                             }
@@ -704,7 +691,6 @@ const PendingForResultEntry = () => {
                                                                                 className="form-check-input"
                                                                                 type="checkbox"
                                                                                 checked={subTest.reject}
-                                                                                style={{ width: '20px', height: '20px', border: '2px solid black' }}
                                                                                 onChange={(e) =>
                                                                                     handleSubTestChange(investigation.id, subTest.id, "reject", e.target.checked)
                                                                                 }
