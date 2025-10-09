@@ -1,5 +1,7 @@
 import { useState } from "react"
 // Removed invalid asset import, using public image from /public instead.
+import placeholderImage from "../../../assets/images/placeholder.jpg"
+
 
 const GeneralMedicineWaitingList = () => {
   const [waitingList, setWaitingList] = useState([
@@ -30,6 +32,7 @@ const GeneralMedicineWaitingList = () => {
   const [pageInput, setPageInput] = useState("")
   const [showDetailView, setShowDetailView] = useState(false)
   const [selectedPatient, setSelectedPatient] = useState(null)
+  const [image, setImage] = useState(placeholderImage)
 
   const [investigationType, setInvestigationType] = useState("lab")
 
@@ -408,11 +411,11 @@ const GeneralMedicineWaitingList = () => {
                 </div>
               </div>
 
-              <div className="card mb-3">
-                <div className="card-header py-3 bg-light border-bottom-1">
+              <div className="card mb-3" style={{border:"none"}}>
+                <div className="card-header py-3">
                   <h6 className="mb-0 fw-bold">Personal Details</h6>
                 </div>
-                <div className="card-body p-3">
+                <div className="card-body ">
                   <div className="row g-3">
                     <div className="col-md-9">
                       <div className="row g-3">
@@ -515,7 +518,7 @@ const GeneralMedicineWaitingList = () => {
                         <div className="card p-3 shadow">
                           {/* CHANGE START */}
                           <img
-                            src="/placeholder-user.jpg"
+                            src={image}
                             alt="Profile photo"
                             className="img-fluid border"
                             style={{ width: "100%", height: "150px", objectFit: "cover" }}
@@ -590,7 +593,7 @@ const GeneralMedicineWaitingList = () => {
                                 placeholder="Enter symptoms"
                               />
                             </div>
-                            <div className="col-md-6">
+                            <div className="col-md-6  mb-3 ">
                               <label className="form-label fw-bold">Clinical Examination</label>
                               <textarea
                                 className="form-control"
@@ -599,6 +602,24 @@ const GeneralMedicineWaitingList = () => {
                                 value={formData.clinicalExamination}
                                 onChange={handleChange}
                                 placeholder="Enter clinical examination details"
+                              ></textarea>
+                            </div>
+                            <div className="col-md-6">
+                              <label className="form-label fw-bold">Past History</label>
+                              <textarea
+                                className="form-control"
+                                rows={3}
+                                name="pastHistory"
+                                placeholder="Enter Past History"
+                              ></textarea>
+                            </div>
+                            <div className="col-md-6">
+                              <label className="form-label fw-bold">Family History</label>
+                              <textarea
+                                className="form-control"
+                                rows={3}
+                                name="FamilyHistory"
+                                placeholder="Enter Family History"
                               ></textarea>
                             </div>
                           </div>
@@ -927,12 +948,12 @@ const GeneralMedicineWaitingList = () => {
                               className="form-check-input"
                               type="radio"
                               name="investigationType"
-                              id="ecg"
-                              checked={investigationType === "ecg"}
-                              onChange={() => setInvestigationType("ecg")}
+                              id="Radiology"
+                              checked={investigationType === "Radiology"}
+                              onChange={() => setInvestigationType("Radiology")}
                             />
-                            <label className="form-check-label" htmlFor="ecg">
-                              ECG
+                            <label className="form-check-label" htmlFor="Radiology">
+                              Radiology
                             </label>
                           </div>
                         </div>
@@ -1007,7 +1028,7 @@ const GeneralMedicineWaitingList = () => {
                     <div className="card-body">
                       <div className="row g-3 mb-3">
                         <div className="col-md-4">
-                          <label className="form-label fw-bold">Blood Test Template</label>
+                          <label className="form-label fw-bold"> Template</label>
                           <select
                             className="form-select"
                             value={selectedBloodTestTemplate}
@@ -1017,32 +1038,21 @@ const GeneralMedicineWaitingList = () => {
                             <option value="Blood Test Template">Blood Test Template</option>
                           </select>
                         </div>
-                        <div className="col-md-4">
-                          <label className="form-label fw-bold">Cardiac Test Template</label>
-                          <select
-                            className="form-select"
-                            value={selectedCardiacTestTemplate}
-                            onChange={(e) => setSelectedCardiacTestTemplate(e.target.value)}
-                          >
-                            <option value="Select..">Select..</option>
-                            <option value="Cardiac Template">Cardiac Test Template</option>
-                          </select>
-                        </div>
                       </div>
 
                       <div className="table-responsive">
                         <table className="table table-bordered">
                           <thead style={{ backgroundColor: "#b0c4de" }}>
                             <tr>
-                              <th style={{ minWidth: 260 }}>Drugs Name/Drugs Code</th>
-                              <th className="text-center">Disp. Unit</th>
-                              <th className="text-center">Dosage</th>
-                              <th className="text-center">Frequency</th>
-                              <th className="text-center">Days</th>
-                              <th className="text-center">Total</th>
-                              <th className="text-center">Instruction</th>
-                              <th className="text-center">Add</th>
-                              <th className="text-center">Delete</th>
+                              <th style={{ minWidth: 350 }}>Drugs Name/Drugs Code</th>
+                              <th className="text-center" style={{ minWidth: 40 , maxWidth: 80 }}>Disp. Unit</th>
+                              <th className="text-center" style={{ minWidth: 5 , maxWidth: 20 }}>Dosage</th>
+                              <th className="text-center" style={{ minWidth: 10, maxWidth: 40 }}>Frequency</th>
+                              <th className="text-center" style={{ minWidth: 10 }}>Days</th>
+                              <th className="text-center" style={{ minWidth: 5, maxWidth: 20 }}>Total</th>
+                              <th className="text-center" style={{ minWidth: 10 }}>Instruction</th>
+                              <th className="text-center" style={{ minWidth: 10 }}>Add</th>
+                              <th className="text-center" style={{ minWidth: 10 }}>Delete</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1227,13 +1237,13 @@ const GeneralMedicineWaitingList = () => {
                         <input
                           className="form-check-input"
                           type="radio"
-                          id="templateECG"
+                          id="radiology"
                           name="templateType"
-                          checked={templateType === "ecg"}
-                          onChange={() => setTemplateType("ecg")}
+                          checked={templateType === "Radiology"}
+                          onChange={() => setTemplateType("Radiology")}
                         />
-                        <label className="form-check-label" htmlFor="templateECG">
-                          ECG
+                        <label className="form-check-label" htmlFor="Radiology">
+                          Radiology
                         </label>
                       </div>
                     </div>
