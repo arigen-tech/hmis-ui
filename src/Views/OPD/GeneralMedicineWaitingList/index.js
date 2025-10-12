@@ -2,7 +2,6 @@ import { useState } from "react"
 // Removed invalid asset import, using public image from /public instead.
 import placeholderImage from "../../../assets/images/placeholder.jpg"
 
-
 const GeneralMedicineWaitingList = () => {
   const [waitingList, setWaitingList] = useState([
     {
@@ -77,9 +76,10 @@ const GeneralMedicineWaitingList = () => {
   const [updateTemplateSelection, setUpdateTemplateSelection] = useState("Select..")
   const [templateType, setTemplateType] = useState("")
 
+  const [workingDiagnosis, setWorkingDiagnosis] = useState("")
+
   const [diagnosisItems, setDiagnosisItems] = useState([
     {
-      workingDiagnosis: "",
       icdDiagnosis: "",
       communicableDisease: false,
       infectiousDisease: false,
@@ -280,7 +280,6 @@ const GeneralMedicineWaitingList = () => {
     setDiagnosisItems([
       ...diagnosisItems,
       {
-        workingDiagnosis: "",
         icdDiagnosis: "",
         communicableDisease: false,
         infectiousDisease: false,
@@ -810,14 +809,26 @@ const GeneralMedicineWaitingList = () => {
                   </div>
                   {expandedSections.diagnosis && (
                     <div className="card-body">
+                      {/* Working Diagnosis - single free text entry */}
+                      <div className="mb-3">
+                        <label className="form-label fw-bold">Working Diagnosis</label>
+                        <input
+                          type="text"
+                          className="form-control border-black"
+                          value={workingDiagnosis}
+                          onChange={(e) => setWorkingDiagnosis(e.target.value)}
+                          placeholder="Enter working diagnosis"
+                        />
+                      </div>
+
+                      {/* ICD Diagnosis - multiple add/delete */}
                       <div className="table-responsive">
                         <table className="table table-bordered">
                           <thead>
                             <tr>
-                              <th className="col-md-4">Working Diagnosis</th>
-                              <th className="col-md-4">ICD Diagnosis</th>
-                              <th className="col-md-1 text-center">Communicable</th>
-                              <th className="col-md-1 text-center">Infectious</th>
+                              <th className="col-md-6">ICD Diagnosis</th>
+                              <th className="col-md-2 text-center">Communicable</th>
+                              <th className="col-md-2 text-center">Infectious</th>
                               <th className="col-md-1 text-center">Add</th>
                               <th className="col-md-1 text-center">Delete</th>
                             </tr>
@@ -825,15 +836,6 @@ const GeneralMedicineWaitingList = () => {
                           <tbody>
                             {diagnosisItems.map((item, index) => (
                               <tr key={index}>
-                                <td>
-                                  <input
-                                    type="text"
-                                    className="form-control border-black"
-                                    value={item.workingDiagnosis}
-                                    onChange={(e) => handleDiagnosisChange(index, "workingDiagnosis", e.target.value)}
-                                    placeholder="Enter working diagnosis"
-                                  />
-                                </td>
                                 <td>
                                   <input
                                     type="text"
