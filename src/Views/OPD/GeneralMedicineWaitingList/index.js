@@ -411,7 +411,7 @@ const GeneralMedicineWaitingList = () => {
                 </div>
               </div>
 
-              <div className="card mb-3" style={{border:"none"}}>
+              <div className="mb-3 card" style={{ border: "none" }}>
                 <div className="card-header py-3">
                   <h6 className="mb-0 fw-bold">Personal Details</h6>
                 </div>
@@ -518,7 +518,7 @@ const GeneralMedicineWaitingList = () => {
                         <div className="card p-3 shadow">
                           {/* CHANGE START */}
                           <img
-                            src={image}
+                            src={image || "/placeholder.svg"}
                             alt="Profile photo"
                             className="img-fluid border"
                             style={{ width: "100%", height: "150px", objectFit: "cover" }}
@@ -1044,15 +1044,37 @@ const GeneralMedicineWaitingList = () => {
                         <table className="table table-bordered">
                           <thead style={{ backgroundColor: "#b0c4de" }}>
                             <tr>
-                              <th style={{ minWidth: 350 }}>Drugs Name/Drugs Code</th>
-                              <th className="text-center" style={{ minWidth: 40 , maxWidth: 80 }}>Disp. Unit</th>
-                              <th className="text-center" style={{ minWidth: 5 , maxWidth: 20 }}>Dosage</th>
-                              <th className="text-center" style={{ minWidth: 10, maxWidth: 40 }}>Frequency</th>
-                              <th className="text-center" style={{ minWidth: 10 }}>Days</th>
-                              <th className="text-center" style={{ minWidth: 5, maxWidth: 20 }}>Total</th>
-                              <th className="text-center" style={{ minWidth: 10 }}>Instruction</th>
-                              <th className="text-center" style={{ minWidth: 10 }}>Add</th>
-                              <th className="text-center" style={{ minWidth: 10 }}>Delete</th>
+                              <th style={{ minWidth: 370 }}>Drugs Name/Drugs Code</th> {/* big */}
+                              <th className="text-center" style={{ minWidth: 100, maxWidth: 140 }}>
+                                Disp. Unit
+                              </th>{" "}
+                              {/* a bit big */}
+                              <th className="text-center" style={{ minWidth: 50, maxWidth: 80 }}>
+                                Dosage
+                              </th>{" "}
+                              {/* very small */}
+                              <th className="text-center" style={{ minWidth: 120, maxWidth: 180 }}>
+                                Frequency
+                              </th>{" "}
+                              {/* big */}
+                              <th className="text-center" style={{ minWidth: 80, maxWidth: 100 }}>
+                                Days
+                              </th>{" "}
+                              {/* small */}
+                              <th className="text-center" style={{ minWidth: 80, maxWidth: 100 }}>
+                                Total
+                              </th>{" "}
+                              {/* small */}
+                              <th className="text-center" style={{ minWidth: 10 }}>
+                                Instruction
+                              </th>{" "}
+                              {/* as-is */}
+                              <th className="text-center" style={{ minWidth: 10 }}>
+                                Add
+                              </th>
+                              <th className="text-center" style={{ minWidth: 10 }}>
+                                Delete
+                              </th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1062,6 +1084,7 @@ const GeneralMedicineWaitingList = () => {
                                   <input
                                     type="text"
                                     className="form-control border-black"
+                                    style={{ fontSize: "1.125rem" }}
                                     value={row.drugName}
                                     onChange={(e) => handleTreatmentChange(index, "drugName", e.target.value)}
                                     placeholder="Enter drug name or code"
@@ -1070,6 +1093,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td>
                                   <select
                                     className="form-select"
+                                    style={{ fontSize: "1.05rem" }}
                                     value={row.dispUnit}
                                     onChange={(e) => handleTreatmentChange(index, "dispUnit", e.target.value)}
                                   >
@@ -1082,6 +1106,7 @@ const GeneralMedicineWaitingList = () => {
                                   <input
                                     type="number"
                                     className="form-control border-black"
+                                    style={{ fontSize: "0.75rem" }}
                                     value={row.dosage}
                                     onChange={(e) => handleTreatmentChange(index, "dosage", e.target.value)}
                                     placeholder="1"
@@ -1090,6 +1115,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td>
                                   <select
                                     className="form-select"
+                                    style={{ fontSize: "1.125rem" }}
                                     value={row.frequency}
                                     onChange={(e) => handleTreatmentChange(index, "frequency", e.target.value)}
                                   >
@@ -1105,6 +1131,7 @@ const GeneralMedicineWaitingList = () => {
                                   <input
                                     type="number"
                                     className="form-control border-black"
+                                    style={{ fontSize: "0.875rem" }}
                                     value={row.days}
                                     onChange={(e) => handleTreatmentChange(index, "days", e.target.value)}
                                     placeholder="0"
@@ -1114,6 +1141,7 @@ const GeneralMedicineWaitingList = () => {
                                   <input
                                     type="number"
                                     className="form-control border-black"
+                                    style={{ fontSize: "0.875rem" }}
                                     value={row.total}
                                     onChange={(e) => handleTreatmentChange(index, "total", e.target.value)}
                                     placeholder="0"

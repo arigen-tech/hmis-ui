@@ -153,7 +153,7 @@ const Sidebar = () => {
   const [searchText, setSearchText] = useState("")
 
   return (
-    <div className="sidebar px-4 py-4 py-md-5 me-0">
+    <div className="sidebar px-4 py-4 py-md-5 me-0 ms-1">
       <div className="d-flex flex-column h-100">
         <Link to="index" className="mb-0 brand-icon">
           <span className="logo-icon">
