@@ -48,41 +48,44 @@ const SampleValidation = () => {
   };
 
   const formatSampleValidationData = (apiData) => {
-    return apiData.map((item, index) => ({
-      id: index + 1,
-      sample_date_time: formatDateTime(item.collectionTime),
-      order_no: item.orderNo || '',
-      patient_name: item.patientName || '',
-      mobile_no: item.mobileNo || '',
-      age: '', // Add if available in API
-      gender: item.sex || '',
-      modality: item.department.toUpperCase() || '',
-      doctor_name: '', // Add if available in API
-      order_date: formatDate(item.orderDate),
-      order_time: formatTime(item.collectionTime),
-      department: item.department.toUpperCase() || '',
-      reg_no: item.patientId ? item.patientId.toString() : '',
-      relation: item.patientRelation || '',
-      collected_by: item.collectedBy || '',
-      clinical_notes: '',
-      investigations: item.investigations ? item.investigations.map((inv, invIndex) => ({
-        id: invIndex + 1,
-        sr_no: invIndex + 1,
-        diag_no: item.orderNo || '',
-        test_code: inv.testCode || '',
-        test_name: inv.testName || '',
-        sample: inv.sampleName || '', // Add if available in API
-        quantity: inv.quantity || '1',
-        empanelled_lab: inv.empanelledLab || 'n',
-        date_time: formatDateTime(inv.dateTime),
-        accepted: false, // Default to false
-        rejected: false, // Default to false
-        reason: inv.reason || '',
-        additional_remarks: inv.remarks || '',
-        detailsId: inv.detailsId || 0 // Keep reference for API submission
-      })) : []
-    }))
-  }
+  return apiData.map((item, index) => ({
+    id: index + 1,
+    sample_date_time: formatDateTime(item.collectionTime),
+    order_no: item.orderNo || '',
+    patient_name: item.patientName || '',
+    mobile_no: item.mobileNo || '',
+    age: item.age || '', // Now available in API
+    gender: item.sex || '',
+    modality: item.subChargeCodeName || '', // Use subChargeCodeName for modality
+    doctor_name: '', // Add if available in API
+    order_date: formatDate(item.orderDate),
+    order_time: formatTime(item.collectionTime),
+    department: item.subChargeCodeName || '', // Use subChargeCodeName for department too
+    reg_no: item.patientId ? item.patientId.toString() : '',
+    relation: item.patientRelation || '',
+    collected_by: item.collectedBy || '',
+    clinical_notes: '',
+    headerId: item.headerId || 0, // Add headerId for reference
+    investigations: item.investigations ? item.investigations.map((inv, invIndex) => ({
+      id: invIndex + 1,
+      sr_no: invIndex + 1,
+      diag_no: item.orderNo || '',
+      test_code: inv.testCode || '',
+      test_name: inv.testName || '',
+      sample: inv.sampleName || '', // Now available in API as sampleName
+      quantity: inv.quantity || '1',
+      empanelled_lab: inv.empanelledLab || 'n',
+      date_time: formatDateTime(inv.dateTime),
+      accepted: false, // Default to false
+      rejected: false, // Default to false
+      reason: inv.reason || '',
+      additional_remarks: inv.remarks || '',
+      detailsId: inv.detailsId || 0, // Keep reference for API submission
+      investigationId: inv.investigationId || 0, // Add investigationId
+      sampleId: inv.sampleId || 0 // Add sampleId
+    })) : []
+  }))
+}
 
   const formatDate = (dateString) => {
     if (!dateString) return new Date().toLocaleDateString('en-GB')
