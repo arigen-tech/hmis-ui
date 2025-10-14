@@ -94,26 +94,27 @@ const Assignapplication = () => {
 
 
     const processChildApplications = (apps, parentPath = "", srNoStart = 1) => {
-        setLoading(true);
         let result = [];
         let currentSrNo = srNoStart;
 
         if (!apps || !Array.isArray(apps)) return result;
 
         for (const app of apps) {
-            
-            const displayPath = parentPath ? `${parentPath}->${app.name}` : app.name;
+            const displayPath = parentPath ? parentPath + "->" + app.name : app.name;
 
-            
+            // ✅ FIX: Check both 'assigned' AND 'status' properties
+            const isChecked = app.assigned === true && app.status && app.status.toLowerCase() === 'y';
+
             const currentApp = {
                 srNo: currentSrNo++,
                 module: app.name,
-                displayName: displayPath, 
+                displayName: displayPath,
                 templateId: app.templateId || null,
                 appId: app.appId,
-                status: app.status?.toLowerCase() || 'n',
+                status: app.status ? app.status.toLowerCase() : 'n',
                 lastChgDate: app.lastChgDate,
-                checked: app.assigned && app.status?.toLowerCase() === 'y',
+                checked: isChecked, // ✅ Fixed
+                assigned: app.assigned, // ✅ Track assignment status
                 parentHierarchy: parentPath,
                 nestLevel: parentPath ? parentPath.split("->").length : 0,
                 isParent: app.children && app.children.length > 0,
@@ -122,28 +123,19 @@ const Assignapplication = () => {
 
             result.push(currentApp);
 
-            // Recursively process children if they exist
             if (app.children && Array.isArray(app.children) && app.children.length > 0) {
                 const childResults = processChildApplications(
                     app.children,
                     displayPath,
                     currentSrNo
                 );
-
-                
                 currentSrNo += childResults.length;
-
-                
                 result = [...result, ...childResults];
             }
-            
         }
 
         return result;
-
-        
     };
-
 
     const handleToggleExpand = (appId) => {
         setChildApplications(prevData => {
@@ -169,7 +161,7 @@ const Assignapplication = () => {
             
             const childResponse = await getRequest(`${MAS_APPLICATION}/getAllChildrenByParentId/${selectedParentId}?templateId=${selectedTemplate || ''}`);
 
-            if (!childResponse?.response) {
+            if (!childResponse || !childResponse.response) {
                 throw new Error("Failed to fetch child applications");
             }
 
@@ -177,7 +169,7 @@ const Assignapplication = () => {
 
             
             const selectedParentApp = parentApplications.find(app => app.id === selectedParentId);
-            const parentName = selectedParentApp?.applicationName || "";
+            const parentName = selectedParentApp ? selectedParentApp.applicationName : "";
 
             
             const processedChildren = processChildApplications(childResponse.response, "");
@@ -306,7 +298,7 @@ const Assignapplication = () => {
                     if (i === 0) {
                         currentPath = parentChain[i];
                     } else {
-                        currentPath = `${currentPath}->${parentChain[i]}`;
+                        currentPath = currentPath + "->" + parentChain[i];
                     }
                     
                     // Find the parent item by its display name
@@ -347,180 +339,230 @@ const Assignapplication = () => {
     };
 
     const handleSave = async () => {
-        try {
-           
-            setLoading(true);
-            
-            // Get the selected (checked) and unselected (unchecked) child applications
-            const selectedChildren = childApplications.filter(item => item.checked);
-            const unselectedChildren = childApplications.filter(item => !item.checked);
-    
-            console.log("Selected children:", selectedChildren);
-            console.log("Unselected children:", unselectedChildren);
-    
-            if (childApplications.length === 0) {
-                setPopupMessage({
-                    message: "No child applications available to update.",
-                    type: "warning",
-                    onClose: () => setPopupMessage(null)
-                });
-                setShowModal(true);
-                setLoading(false); 
-                return;
-            }
-    
-            // Get list of app IDs already assigned to this template
-            const assignedAppIds = new Set(
-                Array.isArray(templateModules) ? templateModules.map(module => module.appId) : []
-            );
-    
-            console.log("Currently assigned app IDs:", Array.from(assignedAppIds));
-    
-           
-            if (Array.isArray(templateModules)) {
-                templateModules.forEach(module => {
-                    console.log(`Template module check: ${module.appId}, status: ${module.status}`);
-                });
-            }
-    
-            
-            const applicationStatusUpdates = [];
-            const templateApplicationAssignments = [];
-    
-            
-            if (!assignedAppIds.has(selectedParentApp)) {
-                templateApplicationAssignments.push({
-                    templateId: Number(selectedTemplate),
-                    appId: selectedParentApp,
-                    
-                    
-                    status: "y"  
-                });
-            }
-    
-            // Process each child application
-            childApplications.forEach(child => {
-                const appId = child.appId;
-                const isChecked = child.checked;
-                const status = isChecked ? "y" : "n";
-                const isAssigned = assignedAppIds.has(appId);
-    
-                console.log(`Processing app ${appId}, checked: ${isChecked}, assigned: ${isAssigned}`);
-    
-                if (isAssigned) {
-                    // For already assigned apps, always include a status update
-                    applicationStatusUpdates.push({
-                        appId: appId,
-                        status: status
-                    });
-                    console.log(`Added status update for ${appId}: ${status}`);
-                } else if (isChecked) {
-                    
-                    templateApplicationAssignments.push({
-                        templateId: Number(selectedTemplate),
-                        appId: appId,
-                        lastChgBy: 0,
-                        orderNo: 1,
-                        status: "y"
-                    });
-                    console.log(`Added new assignment for ${appId}`);
-                } else {
-                    
-                    applicationStatusUpdates.push({
-                        appId: appId,
-                        status: "n" 
-                    });
-                    console.log(`Added status update for unchecked app ${appId}: n`);
-                }
-            });
-    
-            
-            const allTemplateApps = await getRequest(`${ASSIGN_TEMPLATES}/getAllTemplateById/${selectedTemplate}`);
-            if (allTemplateApps?.response) {
-                allTemplateApps.response.forEach(app => {
-                    const appId = app.appId;
-                   
-                    if (appId === selectedParentApp) return;
-    
-                    
-                    const childApp = childApplications.find(child => child.appId === appId);
-                    if (childApp && !childApp.checked) {
-                        
-                        const hasUpdate = applicationStatusUpdates.some(update => update.appId === appId);
-                        if (!hasUpdate) {
-                            applicationStatusUpdates.push({
-                                appId: appId,
-                                status: "n"  
-                            });
-                            console.log(`Added missing status update for unchecked app ${appId}: n`);
-                        }
-                    }
-                });
-            }
-    
-            console.log("Status updates:", applicationStatusUpdates);
-            console.log("Template assignments:", templateApplicationAssignments);
-    
-           
-            if (applicationStatusUpdates.length === 0 && templateApplicationAssignments.length === 0) {
-                setPopupMessage({
-                    message: "No changes detected to apply.",
-                    type: "info",
-                    onClose: () => setPopupMessage(null)
-                });
-                setShowModal(true);
-                setLoading(false); 
-                return;
-            }
-    
-            const payload = {
-                applicationStatusUpdates: applicationStatusUpdates,
-                templateApplicationAssignments: templateApplicationAssignments
-            };
-    
-            console.log("Final payload being sent to API:", payload);
-    
-            
-            const response = await postRequest(`${MAS_APPLICATION}/assignUpdateTemplate`, payload);
-            console.log("API response:", response);
-    
-            if (response) {
-                if (response.status === 200 || response.status === 207) {
-                    
-                    const message = response.data || "Assign template to application successfully";
-    
-                    setPopupMessage({
-                        message: message,
-                        type: response.status === 200 ? "success" : "warning",
-                        onClose: () => {
-                            setPopupMessage(null);
-                            
-                            handleParentApplicationSelect({ target: { value: selectedParentApp } });
-                        }
-                    });
-                } else {
-                   
-                    throw new Error(response.message || "Failed to process request");
-                }
-            } else {
-                throw new Error("No response received from server");
-            }
-    
-            setShowModal(true);
-        } catch (error) {
-            console.error("Error saving template application:", error);
-    
+    try {
+        setLoading(true);
+
+        // Validate required fields
+        if (!selectedTemplate) {
             setPopupMessage({
-                message: error.message || "Failed to assign template to application",
-                type: "error",
+                message: "Please select a template first.",
+                type: "warning",
                 onClose: () => setPopupMessage(null)
             });
             setShowModal(true);
-        } finally {
-            
             setLoading(false);
+            return;
         }
-    };
+
+        if (!selectedParentApp) {
+            setPopupMessage({
+                message: "Please select a parent application first.",
+                type: "warning",
+                onClose: () => setPopupMessage(null)
+            });
+            setShowModal(true);
+            setLoading(false);
+            return;
+        }
+
+        if (childApplications.length === 0) {
+            setPopupMessage({
+                message: "No child applications available to update.",
+                type: "warning",
+                onClose: () => setPopupMessage(null)
+            });
+            setShowModal(true);
+            setLoading(false);
+            return;
+        }
+
+        // ✅ FIX 1: Create better tracking of assigned apps
+        const assignedAppMap = new Map();
+        
+        if (Array.isArray(templateModules)) {
+            templateModules.forEach(module => {
+                assignedAppMap.set(module.appId, {
+                    templateId: module.templateId,
+                    status: module.status
+                });
+            });
+        }
+        
+        // Also track from childApplications that have 'assigned' flag
+        childApplications.forEach(child => {
+            if (child.assigned) {
+                assignedAppMap.set(child.appId, {
+                    templateId: child.templateId || Number(selectedTemplate),
+                    status: child.status
+                });
+            }
+        });
+        
+        const assignedAppIds = new Set(assignedAppMap.keys());
+
+        // ✅ FIX 2: Track managed app IDs (apps under current parent's hierarchy)
+        const managedAppIds = new Set(childApplications.map(child => child.appId));
+        managedAppIds.add(selectedParentApp);
+
+        console.log("=== DEBUG INFO ===");
+        console.log("Assigned App IDs:", Array.from(assignedAppIds));
+        console.log("Managed App IDs:", Array.from(managedAppIds));
+
+        const applicationStatusUpdates = [];
+        const templateApplicationAssignments = [];
+        const processedAppIds = new Set(); // ✅ FIX 3: Track processed apps to avoid duplicates
+
+        // Process parent application
+        const isParentAssigned = assignedAppIds.has(selectedParentApp);
+        if (!isParentAssigned) {
+            templateApplicationAssignments.push({
+                templateId: Number(selectedTemplate),
+                appId: selectedParentApp,
+                lastChgBy: 0,
+                orderNo: 1,
+                status: "y"
+            });
+            processedAppIds.add(selectedParentApp);
+        } else {
+            // Keep parent active
+            applicationStatusUpdates.push({
+                templateId: Number(selectedTemplate),
+                appId: selectedParentApp,
+                status: "y"
+            });
+            processedAppIds.add(selectedParentApp);
+        }
+
+        // Process child applications
+        childApplications.forEach(child => {
+            const appId = child.appId;
+            
+            // Skip if already processed
+            if (processedAppIds.has(appId)) {
+                return;
+            }
+            
+            const isChecked = child.checked;
+            const isAssigned = assignedAppIds.has(appId);
+            const newStatus = isChecked ? "y" : "n";
+
+            if (isAssigned) {
+                // Update status for already assigned applications
+                applicationStatusUpdates.push({
+                    templateId: Number(selectedTemplate),
+                    appId: appId,
+                    status: newStatus
+                });
+                processedAppIds.add(appId);
+            } else if (isChecked) {
+                // Add new assignment only if checked
+                templateApplicationAssignments.push({
+                    templateId: Number(selectedTemplate),
+                    appId: appId,
+                    lastChgBy: 0,
+                    orderNo: 1,
+                    status: "y"
+                });
+                processedAppIds.add(appId);
+            }
+            // ✅ Don't do anything for unchecked AND unassigned items
+        });
+
+        // ✅ FIX 4: Only process apps within the managed scope
+        try {
+            const allTemplateApps = await getRequest(ASSIGN_TEMPLATES + "/getAllTemplateById/" + selectedTemplate);
+            if (allTemplateApps && allTemplateApps.response) {
+                allTemplateApps.response.forEach(app => {
+                    const appId = app.appId;
+                    
+                    // ✅ CRITICAL: Only process apps in current parent's hierarchy
+                    if (!managedAppIds.has(appId)) {
+                        console.log("Skipping " + appId + " - not in current parent hierarchy");
+                        return;
+                    }
+
+                    // Skip if already processed
+                    if (processedAppIds.has(appId)) {
+                        return;
+                    }
+
+                    // This app was assigned but not in current childApplications - deactivate it
+                    applicationStatusUpdates.push({
+                        templateId: Number(selectedTemplate),
+                        appId: appId,
+                        status: "n"
+                    });
+                    processedAppIds.add(appId);
+                    console.log("Setting " + appId + " to inactive - was assigned but not in current view");
+                });
+            }
+        } catch (error) {
+            console.error("Error checking existing assignments:", error);
+        }
+
+        if (applicationStatusUpdates.length === 0 && templateApplicationAssignments.length === 0) {
+            setPopupMessage({
+                message: "No changes detected to apply.",
+                type: "info",
+                onClose: () => setPopupMessage(null)
+            });
+            setShowModal(true);
+            setLoading(false);
+            return;
+        }
+
+        const payload = {
+            applicationStatusUpdates: applicationStatusUpdates,
+            templateApplicationAssignments: templateApplicationAssignments
+        };
+
+        console.log("=== SAVE PAYLOAD ===");
+        console.log("Status Updates:", applicationStatusUpdates.map(u => u.appId + ": " + u.status));
+        console.log("New Assignments:", templateApplicationAssignments.map(a => a.appId + ": " + a.status));
+        console.log("===================");
+
+        const response = await postRequest(MAS_APPLICATION + "/assignUpdateTemplate", payload);
+
+        if (response) {
+            if (response.status === 200 || response.status === 207) {
+                const message = response.data || "Template assigned to applications successfully";
+
+                setPopupMessage({
+                    message: message,
+                    type: response.status === 200 ? "success" : "warning",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        setShowModal(false);
+                        // Refresh the data
+                        if (selectedTemplate) {
+                            handleTemplateSelect({ target: { value: selectedTemplate } });
+                        }
+                        if (selectedParentApp) {
+                            handleParentApplicationSelect({ target: { value: selectedParentApp } });
+                        }
+                    }
+                });
+            } else {
+                throw new Error(response.message || "Failed to process request");
+            }
+        } else {
+            throw new Error("No response received from server");
+        }
+
+        setShowModal(true);
+    } catch (error) {
+        console.error("Error saving template application:", error);
+
+        setPopupMessage({
+            message: error.message || "Failed to assign template to application",
+            type: "error",
+            onClose: () => setPopupMessage(null)
+        });
+        setShowModal(true);
+    } finally {
+        setLoading(false);
+    }
+};
 
     const handlePrevious = () => {
         if (currentPage > 1) {

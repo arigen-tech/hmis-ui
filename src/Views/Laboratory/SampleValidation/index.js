@@ -143,6 +143,15 @@ const SampleValidation = () => {
     }
   }
 
+  // NEW FUNCTION: Check if all investigations are accepted
+  const areAllInvestigationsAccepted = () => {
+    if (!selectedSample || !selectedSample.investigations || selectedSample.investigations.length === 0) {
+      return false;
+    }
+    
+    return selectedSample.investigations.every(inv => inv.accepted === true);
+  }
+
   const showPopup = (message, type = "info") => {
     setPopupMessage({
       message,
@@ -154,67 +163,90 @@ const SampleValidation = () => {
   }
 
   const handleSubmit = async () => {
-  if (selectedSample) {
-    try {
-      setLoading(true)
+    if (selectedSample) {
+      try {
+        setLoading(true)
 
-      // Prepare the request payload according to your API
-      const requestPayload = selectedSample.investigations
-        .filter(inv => inv.accepted || inv.rejected) // Only include investigations that are either accepted or rejected
-        .map(inv => ({
-          detailId: inv.detailsId, // Using detailsId from your formatted data
-          accepted: inv.accepted // Boolean value from checkbox
-        }))
+        // NEW VALIDATION: Check if all investigations are accepted
+        if (!areAllInvestigationsAccepted()) {
+          showPopup("Please accept ALL investigations before submitting. All rows must have the Accepted checkbox checked.", "warning")
+          setLoading(false)
+          return
+        }
 
-      // If no investigations are selected for validation, show warning
-      if (requestPayload.length === 0) {
-        showPopup("Please select at least one investigation for validation.", "warning")
+        // Prepare the request payload according to your API
+        const requestPayload = selectedSample.investigations
+          .filter(inv => inv.accepted || inv.rejected) // Only include investigations that are either accepted or rejected
+          .map(inv => ({
+            detailId: inv.detailsId, // Using detailsId from your formatted data
+            accepted: inv.accepted // Boolean value from checkbox
+          }))
+
+        // If no investigations are selected for validation, show warning
+        if (requestPayload.length === 0) {
+          showPopup("Please select at least one investigation for validation.", "warning")
+          setLoading(false)
+          return
+        }
+
+        console.log("Submitting validation payload:", JSON.stringify(requestPayload, null, 2));
+
+        // Make the API call to your validation endpoint
+        const response = await postRequest(`${LAB}/validate`, requestPayload)
+
+        // Handle both JSON and plain text responses
+        if (response.status === 200 || response.ok) {
+          // Show success message
+          showPopup("Investigations validated successfully!", "success")
+          
+          // Refresh the sample list to remove validated items
+          await fetchPendingValidationSamples()
+          
+          // Close the detail view and go back to list
+          setShowDetailView(false)
+          setSelectedSample(null)
+        } else {
+          throw new Error(response.message || "Failed to validate investigations")
+        }
+      } catch (error) {
+        console.error('Error validating investigations:', error)
+        // Check if it's a JSON parse error and show appropriate message
+        if (error.message.includes('JSON') || error.message.includes('Unexpected token')) {
+          // This means the API returned plain text instead of JSON
+          // But since we got 200 status, we consider it success
+          showPopup("Investigations validated successfully!", "success")
+          await fetchPendingValidationSamples()
+          setShowDetailView(false)
+          setSelectedSample(null)
+        } else {
+          showPopup(error.message || "Error validating investigations", "error")
+        }
+      } finally {
         setLoading(false)
-        return
       }
-
-      console.log("Submitting validation payload:", JSON.stringify(requestPayload, null, 2));
-
-      // Make the API call to your validation endpoint
-      const response = await postRequest(`${LAB}/validate`, requestPayload)
-
-      // Handle both JSON and plain text responses
-      if (response.status === 200 || response.ok) {
-        // Show success message
-        showPopup("Investigations validated successfully!", "success")
-        
-        // Refresh the sample list to remove validated items
-        await fetchPendingValidationSamples()
-        
-        // Close the detail view and go back to list
-        setShowDetailView(false)
-        setSelectedSample(null)
-      } else {
-        throw new Error(response.message || "Failed to validate investigations")
-      }
-    } catch (error) {
-      console.error('Error validating investigations:', error)
-      // Check if it's a JSON parse error and show appropriate message
-      if (error.message.includes('JSON') || error.message.includes('Unexpected token')) {
-        // This means the API returned plain text instead of JSON
-        // But since we got 200 status, we consider it success
-        showPopup("Investigations validated successfully!", "success")
-        await fetchPendingValidationSamples()
-        setShowDetailView(false)
-        setSelectedSample(null)
-      } else {
-        showPopup(error.message || "Error validating investigations", "error")
-      }
-    } finally {
-      setLoading(false)
     }
   }
-}
 
   const handleReset = () => {
     if (selectedSample) {
       const originalSample = sampleList.find((s) => s.id === selectedSample.id)
       setSelectedSample({ ...originalSample })
+    }
+  }
+
+  // NEW FUNCTION: Handle "Accept All" button
+  const handleAcceptAll = () => {
+    if (selectedSample) {
+      const updatedInvestigations = selectedSample.investigations.map(inv => ({
+        ...inv,
+        accepted: true,
+        rejected: false
+      }))
+      
+      setSelectedSample({ 
+        ...selectedSample, 
+        investigations: updatedInvestigations 
+      })
     }
   }
 
@@ -283,6 +315,11 @@ const SampleValidation = () => {
 
   // Detail View
   if (showDetailView && selectedSample) {
+    // Calculate acceptance status for the header
+    const totalInvestigations = selectedSample.investigations.length;
+    const acceptedCount = selectedSample.investigations.filter(inv => inv.accepted).length;
+    const allAccepted = areAllInvestigationsAccepted();
+
     return (
       <div className="content-wrapper">
         {popupMessage && (
@@ -299,9 +336,15 @@ const SampleValidation = () => {
               <div className="card-header">
                 <div className="d-flex justify-content-between align-items-center">
                   <h4 className="card-title p-2">SAMPLE VALIDATION</h4>
-                  <button className="btn btn-secondary" onClick={handleBackToList}>
-                    <i className="mdi mdi-arrow-left"></i> Back to List
-                  </button>
+                  <div className="d-flex align-items-center">
+                    {/* Acceptance Status Display */}
+                    <div className={`badge ${allAccepted ? 'bg-success' : 'bg-warning'} me-3`}>
+                      {acceptedCount}/{totalInvestigations} Accepted
+                    </div>
+                    <button className="btn btn-secondary" onClick={handleBackToList}>
+                      <i className="mdi mdi-arrow-left"></i> Back to List
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -314,7 +357,7 @@ const SampleValidation = () => {
                       type="text"
                       className="form-control"
                       value={selectedSample.order_date}
-                      onChange={(e) => setSelectedSample({ ...selectedSample, order_date: e.target.value })}
+                      readOnly
                     />
                   </div>
                   <div className="col-md-3">
@@ -323,7 +366,7 @@ const SampleValidation = () => {
                       type="text"
                       className="form-control"
                       value={selectedSample.order_time}
-                      onChange={(e) => setSelectedSample({ ...selectedSample, order_time: e.target.value })}
+                      readOnly
                     />
                   </div>
                   <div className="col-md-3">
@@ -332,7 +375,7 @@ const SampleValidation = () => {
                       type="text"
                       className="form-control"
                       value={selectedSample.order_no}
-                      onChange={(e) => setSelectedSample({ ...selectedSample, order_no: e.target.value })}
+                      readOnly
                     />
                   </div>
                   <div className="col-md-3">
@@ -341,7 +384,7 @@ const SampleValidation = () => {
                       type="text"
                       className="form-control"
                       value={selectedSample.department}
-                      onChange={(e) => setSelectedSample({ ...selectedSample, department: e.target.value })}
+                      readOnly
                     />
                   </div>
                 </div>
@@ -359,7 +402,7 @@ const SampleValidation = () => {
                           type="text"
                           className="form-control"
                           value={selectedSample.reg_no}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, reg_no: e.target.value })}
+                          readOnly
                         />
                       </div>
                       <div className="col-md-3">
@@ -368,7 +411,7 @@ const SampleValidation = () => {
                           type="text"
                           className="form-control"
                           value={selectedSample.patient_name}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, patient_name: e.target.value })}
+                          readOnly
                         />
                       </div>
                       <div className="col-md-3">
@@ -377,7 +420,7 @@ const SampleValidation = () => {
                           type="text"
                           className="form-control"
                           value={selectedSample.gender}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, gender: e.target.value })}
+                          readOnly
                         />
                       </div>
                       <div className="col-md-3">
@@ -386,7 +429,7 @@ const SampleValidation = () => {
                           type="text"
                           className="form-control"
                           value={selectedSample.relation}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, relation: e.target.value })}
+                          readOnly
                         />
                       </div>
                     </div>
@@ -406,7 +449,7 @@ const SampleValidation = () => {
                           type="text"
                           className="form-control"
                           value={selectedSample.order_date}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, order_date: e.target.value })}
+                          readOnly
                         />
                       </div>
                       <div className="col-md-3">
@@ -415,7 +458,7 @@ const SampleValidation = () => {
                           type="text"
                           className="form-control"
                           value={selectedSample.order_time}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, order_time: e.target.value })}
+                          readOnly
                         />
                       </div>
                       <div className="col-md-3">
@@ -426,7 +469,7 @@ const SampleValidation = () => {
                           type="text"
                           className="form-control"
                           value={selectedSample.collected_by}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, collected_by: e.target.value })}
+                          readOnly
                         />
                       </div>
                       <div className="col-md-3">
@@ -435,11 +478,23 @@ const SampleValidation = () => {
                           className="form-control"
                           rows="1"
                           value={selectedSample.clinical_notes}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, clinical_notes: e.target.value })}
+                          readOnly
                         ></textarea>
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Investigations Table Header with Accept All Button */}
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h5 className="mb-0">INVESTIGATIONS</h5>
+                  <button 
+                    className="btn btn-success btn-sm" 
+                    onClick={handleAcceptAll}
+                    disabled={allAccepted}
+                  >
+                    <i className="mdi mdi-check-all"></i> Accept All
+                  </button>
                 </div>
 
                 {/* Investigations Table */}
@@ -467,7 +522,7 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.test_code}
-                              onChange={(e) => handleInvestigationChange(investigation.id, "test_code", e.target.value)}
+                              readOnly
                             />
                           </td>
                           <td>
@@ -475,7 +530,7 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.test_name}
-                              onChange={(e) => handleInvestigationChange(investigation.id, "test_name", e.target.value)}
+                              readOnly
                             />
                           </td>
                           <td>
@@ -483,7 +538,7 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.sample}
-                              onChange={(e) => handleInvestigationChange(investigation.id, "sample", e.target.value)}
+                              readOnly
                             />
                           </td>
                           <td>
@@ -491,7 +546,7 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.quantity}
-                              onChange={(e) => handleInvestigationChange(investigation.id, "quantity", e.target.value)}
+                              readOnly
                             />
                           </td>
                           <td>
@@ -499,9 +554,7 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.empanelled_lab}
-                              onChange={(e) =>
-                                handleInvestigationChange(investigation.id, "empanelled_lab", e.target.value)
-                              }
+                              readOnly
                             />
                           </td>
                           <td>
@@ -549,7 +602,11 @@ const SampleValidation = () => {
 
                 {/* Action Buttons */}
                 <div className="text-end mt-4">
-                  <button className="btn btn-primary me-3" onClick={handleSubmit} disabled={loading}>
+                  <button 
+                    className="btn btn-primary me-3" 
+                    onClick={handleSubmit} 
+                    disabled={loading || !allAccepted}
+                  >
                     <i className="mdi mdi-content-save"></i> SUBMIT
                   </button>
                   <button className="btn btn-secondary me-3" onClick={handleReset} disabled={loading}>
@@ -559,6 +616,15 @@ const SampleValidation = () => {
                     <i className="mdi mdi-arrow-left"></i> BACK
                   </button>
                 </div>
+
+                {/* Submission Requirement Notice */}
+                {/* {!allAccepted && (
+                  <div className="alert alert-warning mt-3">
+                    <i className="mdi mdi-alert-circle-outline"></i> 
+                    <strong>Important:</strong> All investigations must be accepted before submission. 
+                    Please check the "Accepted" checkbox for all rows or use the "Accept All" button.
+                  </div>
+                )} */}
               </div>
             </div>
           </div>
@@ -567,7 +633,7 @@ const SampleValidation = () => {
     )
   }
 
-  // List View
+  // List View (unchanged)
   return (
     <div className="content-wrapper">
       {popupMessage && (
