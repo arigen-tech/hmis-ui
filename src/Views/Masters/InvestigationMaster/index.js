@@ -1,16 +1,15 @@
-"use client"
-
 import { useState, useEffect } from "react"
+import {useNavigate} from "react-router-dom"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading"
 import { getRequest } from "../../../service/apiService"
-import { 
-  MAS_INVESTIGATION,
-  MAS_DG_SAMPLE,
-  DG_UOM,
-  MAS_MAIN_CHARGE_CODE,
-  MAS_SUB_CHARGE_CODE,
-  DG_MAS_COLLECTION
+import {
+    MAS_INVESTIGATION,
+    MAS_DG_SAMPLE,
+    DG_UOM,
+    MAS_MAIN_CHARGE_CODE,
+    MAS_SUB_CHARGE_CODE,
+    DG_MAS_COLLECTION
 } from "../../../config/apiConfig"
 
 const InvestigationMaster = () => {
@@ -37,79 +36,81 @@ const InvestigationMaster = () => {
         pandemicCases: "",
         status: "n",
     })
-    const [confirmDialog, setConfirmDialog] = useState({ 
-      isOpen: false, 
-      investigationId: null, 
-      newStatus: null 
+    const [confirmDialog, setConfirmDialog] = useState({
+        isOpen: false,
+        investigationId: null,
+        newStatus: null
     })
     const [dropdownOptions, setDropdownOptions] = useState({
-      departments: [],
-      modalities: [],
-      samples: [],
-      containers: [],
-      uoms: []
+        departments: [],
+        modalities: [],
+        samples: [],
+        containers: [],
+        uoms: []
     })
     const [popupMessage, setPopupMessage] = useState(null)
 
     const itemsPerPage = 3
 
+    const navigate = useNavigate()
+
     // Fetch all required data on component mount
     useEffect(() => {
-      const fetchData = async () => {
-        try {
-          setLoading(true)
-          
-          // Fetch all data in parallel
-          const [
-            investigationsRes,
-            departmentsRes,
-            modalitiesRes,
-            samplesRes,
-            containersRes,
-            uomsRes
-          ] = await Promise.all([
-            getRequest(`${MAS_INVESTIGATION}/getAll/0`),
-            getRequest(`${MAS_MAIN_CHARGE_CODE}/getAll/1`),
-            getRequest(`${MAS_SUB_CHARGE_CODE}/getAll/1`),
-            getRequest(`${MAS_DG_SAMPLE}/getAll/1`),
-            getRequest(`${DG_MAS_COLLECTION}/getAll/1`),
-            getRequest(`${DG_UOM}/getAll/1`)
-          ])
+        const fetchData = async () => {
+            try {
+                setLoading(true)
 
-          // Set investigations data
-          if (investigationsRes && investigationsRes.response) {
-            setInvestigations(investigationsRes.response.map(item => ({
-              ...item,
-              id: item.investigationId // Add id for consistency
-            })))
-          }
+                // Fetch all data in parallel
+                const [
+                    investigationsRes,
+                    departmentsRes,
+                    modalitiesRes,
+                    samplesRes,
+                    containersRes,
+                    uomsRes
+                ] = await Promise.all([
+                    getRequest(`${MAS_INVESTIGATION}/getAll/0`),
+                    getRequest(`${MAS_MAIN_CHARGE_CODE}/getAll/1`),
+                    getRequest(`${MAS_SUB_CHARGE_CODE}/getAll/1`),
+                    getRequest(`${MAS_DG_SAMPLE}/getAll/1`),
+                    getRequest(`${DG_MAS_COLLECTION}/getAll/1`),
+                    getRequest(`${DG_UOM}/getAll/1`)
+                ])
 
-          // Set dropdown options
-          setDropdownOptions({
-            departments: departmentsRes?.response || [],
-            modalities: modalitiesRes?.response || [],
-            samples: samplesRes?.response || [],
-            containers: containersRes?.response || [],
-            uoms: uomsRes?.response || []
-          })
+                // Set investigations data
+                if (investigationsRes && investigationsRes.response) {
+                    setInvestigations(investigationsRes.response.map(item => ({
+                        ...item,
+                        id: item.investigationId // Add id for consistency
+                    })))
+                }
 
-        } catch (error) {
-          console.error('Error fetching data:', error)
-          showPopup("Failed to load initial data", "error")
-        } finally {
-          setLoading(false)
+                // Set dropdown options
+                setDropdownOptions({
+                    departments: departmentsRes?.response || [],
+                    modalities: modalitiesRes?.response || [],
+                    samples: samplesRes?.response || [],
+                    containers: containersRes?.response || [],
+                    uoms: uomsRes?.response || []
+                })
+
+            } catch (error) {
+                console.error('Error fetching data:', error)
+                showPopup("Failed to load initial data", "error")
+            } finally {
+                setLoading(false)
+            }
         }
-      }
 
-      fetchData()
+        fetchData()
     }, [])
 
     const showPopup = (message, type = "info") => {
-      setPopupMessage({
-        message,
-        type,
-        onClose: () => setPopupMessage(null)
-      })
+        setPopupMessage({
+            message,
+            type,
+            onClose: () => setPopupMessage(null)
+        })
     }
 
     const handleSearchChange = (e) => {
@@ -156,37 +157,37 @@ const InvestigationMaster = () => {
 
     const handleConfirm = async (confirmed) => {
         if (confirmed && confirmDialog.investigationId !== null) {
-          try {
-            setLoading(true)
-            
-            // Here you would typically make an API call to update the status
-            // const response = await putRequest(`${MAS_INVESTIGATION}/status/${confirmDialog.investigationId}`, {
-            //   status: confirmDialog.newStatus
-            // })
-            
-            // For now, we'll update the local state
-            const updatedInvestigations = investigations.map((item) => {
-                if (item.investigationId === confirmDialog.investigationId) {
-                    return { ...item, status: confirmDialog.newStatus }
+            try {
+                setLoading(true)
+
+                // Here you would typically make an API call to update the status
+                // const response = await putRequest(`${MAS_INVESTIGATION}/status/${confirmDialog.investigationId}`, {
+                //   status: confirmDialog.newStatus
+                // })
+
+                // For now, we'll update the local state
+                const updatedInvestigations = investigations.map((item) => {
+                    if (item.investigationId === confirmDialog.investigationId) {
+                        return { ...item, status: confirmDialog.newStatus }
+                    }
+                    return item
+                })
+
+                setInvestigations(updatedInvestigations)
+
+                // Update the selected investigation and form data if it's currently selected
+                if (selectedInvestigation && selectedInvestigation.investigationId === confirmDialog.investigationId) {
+                    setSelectedInvestigation({ ...selectedInvestigation, status: confirmDialog.newStatus })
+                    setFormData({ ...formData, status: confirmDialog.newStatus })
                 }
-                return item
-            })
 
-            setInvestigations(updatedInvestigations)
-
-            // Update the selected investigation and form data if it's currently selected
-            if (selectedInvestigation && selectedInvestigation.investigationId === confirmDialog.investigationId) {
-                setSelectedInvestigation({ ...selectedInvestigation, status: confirmDialog.newStatus })
-                setFormData({ ...formData, status: confirmDialog.newStatus })
+                showPopup(`Investigation ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success")
+            } catch (error) {
+                console.error('Error updating status:', error)
+                showPopup("Failed to update investigation status", "error")
+            } finally {
+                setLoading(false)
             }
-
-            showPopup(`Investigation ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success")
-          } catch (error) {
-            console.error('Error updating status:', error)
-            showPopup("Failed to update investigation status", "error")
-          } finally {
-            setLoading(false)
-          }
         }
         setConfirmDialog({ isOpen: false, investigationId: null, newStatus: null })
     }
@@ -213,54 +214,54 @@ const InvestigationMaster = () => {
     }
 
     const handleSubmit = async () => {
-      if (!selectedInvestigation) return
-      
-      try {
-        setLoading(true)
-        
-        // Here you would typically make an API call to save the changes
-        // const response = await putRequest(`${MAS_INVESTIGATION}/update/${selectedInvestigation.investigationId}`, {
-        //   investigationName: formData.investigationName,
-        //   mainChargeCodeName: formData.department,
-        //   subChargeCodeName: formData.modality,
-        //   sampleName: formData.sample,
-        //   collectionName: formData.container,
-        //   uomName: formData.uom,
-        //   multipleResults: formData.resultType,
-        //   minNormalValue: formData.minimumValue,
-        //   maxNormalValue: formData.maximumValue,
-        //   hicCode: formData.loincCode,
-        //   confidential: formData.confidential ? "y" : "n",
-        //   status: formData.status
-        // })
-        
-        // For now, we'll update the local state
-        const updatedInvestigations = investigations.map(item => 
-          item.investigationId === selectedInvestigation.investigationId ? { 
-            ...item, 
-            investigationName: formData.investigationName,
-            mainChargeCodeName: formData.department,
-            subChargeCodeName: formData.modality,
-            sampleName: formData.sample,
-            collectionName: formData.container,
-            uomName: formData.uom,
-            multipleResults: formData.resultType,
-            minNormalValue: formData.minimumValue,
-            maxNormalValue: formData.maximumValue,
-            hicCode: formData.loincCode,
-            confidential: formData.confidential ? "y" : "n",
-            status: formData.status
-          } : item
-        )
-        
-        setInvestigations(updatedInvestigations)
-        showPopup("Investigation updated successfully!", "success")
-      } catch (error) {
-        console.error('Error saving investigation:', error)
-        showPopup("Failed to save investigation", "error")
-      } finally {
-        setLoading(false)
-      }
+        if (!selectedInvestigation) return
+
+        try {
+            setLoading(true)
+
+            // Here you would typically make an API call to save the changes
+            // const response = await putRequest(`${MAS_INVESTIGATION}/update/${selectedInvestigation.investigationId}`, {
+            //   investigationName: formData.investigationName,
+            //   mainChargeCodeName: formData.department,
+            //   subChargeCodeName: formData.modality,
+            //   sampleName: formData.sample,
+            //   collectionName: formData.container,
+            //   uomName: formData.uom,
+            //   multipleResults: formData.resultType,
+            //   minNormalValue: formData.minimumValue,
+            //   maxNormalValue: formData.maximumValue,
+            //   hicCode: formData.loincCode,
+            //   confidential: formData.confidential ? "y" : "n",
+            //   status: formData.status
+            // })
+
+            // For now, we'll update the local state
+            const updatedInvestigations = investigations.map(item =>
+                item.investigationId === selectedInvestigation.investigationId ? {
+                    ...item,
+                    investigationName: formData.investigationName,
+                    mainChargeCodeName: formData.department,
+                    subChargeCodeName: formData.modality,
+                    sampleName: formData.sample,
+                    collectionName: formData.container,
+                    uomName: formData.uom,
+                    multipleResults: formData.resultType,
+                    minNormalValue: formData.minimumValue,
+                    maxNormalValue: formData.maximumValue,
+                    hicCode: formData.loincCode,
+                    confidential: formData.confidential ? "y" : "n",
+                    status: formData.status
+                } : item
+            )
+
+            setInvestigations(updatedInvestigations)
+            showPopup("Investigation updated successfully!", "success")
+        } catch (error) {
+            console.error('Error saving investigation:', error)
+            showPopup("Failed to save investigation", "error")
+        } finally {
+            setLoading(false)
+        }
     }
 
     const filteredInvestigations = investigations.filter(
@@ -321,20 +322,20 @@ const InvestigationMaster = () => {
     }
 
     if (loading && investigations.length === 0) {
-      return <LoadingScreen message="Loading investigation data..." />
+        return <LoadingScreen message="Loading investigation data..." />
     }
 
     return (
         <div className="content-wrapper">
             {popupMessage && (
-              <Popup 
-                message={popupMessage.message} 
-                type={popupMessage.type} 
-                onClose={popupMessage.onClose} 
-              />
+                <Popup
+                    message={popupMessage.message}
+                    type={popupMessage.type}
+                    onClose={popupMessage.onClose}
+                />
             )}
             {loading && <LoadingScreen overlay />}
-            
+
             <div className="row">
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
@@ -382,39 +383,39 @@ const InvestigationMaster = () => {
                                         </thead>
                                         <tbody>
                                             {currentItems.length > 0 ? (
-                                              currentItems.map((item) => (
-                                                  <tr
-                                                      key={item.investigationId}
-                                                      onClick={() => handleRowClick(item)}
-                                                      className={selectedInvestigation && selectedInvestigation.investigationId === item.investigationId ? "table-primary" : ""}
-                                                      style={{ cursor: "pointer" }}
-                                                  >
-                                                      <td>{item.investigationName}</td>
-                                                      <td>{item.subChargeCodeName || "-"}</td>
-                                                      <td>{item.sampleName || "-"}</td>
-                                                      <td>{item.uomName || "-"}</td>
-                                                      <td onClick={(e) => e.stopPropagation()}>
-                                                          <div className="form-check form-switch">
-                                                              <input
-                                                                  className="form-check-input"
-                                                                  type="checkbox"
-                                                                  checked={item.status === "y"}
-                                                                  onChange={() => handleStatusToggle(item.investigationId)}
-                                                                  id={`switch-${item.investigationId}`}
-                                                              />
-                                                              <label className="form-check-label" htmlFor={`switch-${item.investigationId}`}>
-                                                                  {item.status === "y" ? "Active" : "Deactivated"}
-                                                              </label>
-                                                          </div>
-                                                      </td>
-                                                  </tr>
-                                              ))
+                                                currentItems.map((item) => (
+                                                    <tr
+                                                        key={item.investigationId}
+                                                        onClick={() => handleRowClick(item)}
+                                                        className={selectedInvestigation && selectedInvestigation.investigationId === item.investigationId ? "table-primary" : ""}
+                                                        style={{ cursor: "pointer" }}
+                                                    >
+                                                        <td>{item.investigationName}</td>
+                                                        <td>{item.subChargeCodeName || "-"}</td>
+                                                        <td>{item.sampleName || "-"}</td>
+                                                        <td>{item.uomName || "-"}</td>
+                                                        <td onClick={(e) => e.stopPropagation()}>
+                                                            <div className="form-check form-switch">
+                                                                <input
+                                                                    className="form-check-input"
+                                                                    type="checkbox"
+                                                                    checked={item.status === "y"}
+                                                                    onChange={() => handleStatusToggle(item.investigationId)}
+                                                                    id={`switch-${item.investigationId}`}
+                                                                />
+                                                                <label className="form-check-label" htmlFor={`switch-${item.investigationId}`}>
+                                                                    {item.status === "y" ? "Active" : "Deactivated"}
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))
                                             ) : (
-                                              <tr>
-                                                <td colSpan="5" className="text-center py-4">
-                                                  {loading ? "Loading..." : "No investigations found"}
-                                                </td>
-                                              </tr>
+                                                <tr>
+                                                    <td colSpan="5" className="text-center py-4">
+                                                        {loading ? "Loading..." : "No investigations found"}
+                                                    </td>
+                                                </tr>
                                             )}
                                         </tbody>
                                     </table>
@@ -445,18 +446,18 @@ const InvestigationMaster = () => {
                                                             <label className="form-label fw-bold mb-1">
                                                                 Department<span className="text-danger">*</span>
                                                             </label>
-                                                            <select 
-                                                              className="form-select" 
-                                                              name="department" 
-                                                              value={formData.department} 
-                                                              onChange={handleInputChange}
+                                                            <select
+                                                                className="form-select"
+                                                                name="department"
+                                                                value={formData.department}
+                                                                onChange={handleInputChange}
                                                             >
-                                                              <option value="">Select Department</option>
-                                                              {dropdownOptions.departments.map((dept) => (
-                                                                <option key={dept.chargecodeId} value={dept.chargecodeName}>
-                                                                  {dept.chargecodeName}
-                                                                </option>
-                                                              ))}
+                                                                <option value="">Select Department</option>
+                                                                {dropdownOptions.departments.map((dept) => (
+                                                                    <option key={dept.chargecodeId} value={dept.chargecodeName}>
+                                                                        {dept.chargecodeName}
+                                                                    </option>
+                                                                ))}
                                                             </select>
                                                         </div>
                                                     </div>
@@ -465,18 +466,18 @@ const InvestigationMaster = () => {
                                                             <label className="form-label fw-bold mb-1">
                                                                 Modality<span className="text-danger">*</span>
                                                             </label>
-                                                            <select 
-                                                              className="form-select" 
-                                                              name="modality" 
-                                                              value={formData.modality} 
-                                                              onChange={handleInputChange}
+                                                            <select
+                                                                className="form-select"
+                                                                name="modality"
+                                                                value={formData.modality}
+                                                                onChange={handleInputChange}
                                                             >
-                                                              <option value="">Select Modality</option>
-                                                              {dropdownOptions.modalities.map((mod) => (
-                                                                <option key={mod.subId} value={mod.subName}>
-                                                                  {mod.subName}
-                                                                </option>
-                                                              ))}
+                                                                <option value="">Select Modality</option>
+                                                                {dropdownOptions.modalities.map((mod) => (
+                                                                    <option key={mod.subId} value={mod.subName}>
+                                                                        {mod.subName}
+                                                                    </option>
+                                                                ))}
                                                             </select>
                                                         </div>
                                                     </div>
@@ -486,18 +487,18 @@ const InvestigationMaster = () => {
                                                             <label className="form-label fw-bold mb-1">
                                                                 Sample<span className="text-danger">*</span>
                                                             </label>
-                                                            <select 
-                                                              className="form-select" 
-                                                              name="sample" 
-                                                              value={formData.sample} 
-                                                              onChange={handleInputChange}
+                                                            <select
+                                                                className="form-select"
+                                                                name="sample"
+                                                                value={formData.sample}
+                                                                onChange={handleInputChange}
                                                             >
-                                                              <option value="">Select Sample</option>
-                                                              {dropdownOptions.samples.map((sample) => (
-                                                                <option key={sample.Id} value={sample.sampleDescription}>
-                                                                  {sample.sampleDescription}
-                                                                </option>
-                                                              ))}
+                                                                <option value="">Select Sample</option>
+                                                                {dropdownOptions.samples.map((sample) => (
+                                                                    <option key={sample.Id} value={sample.sampleDescription}>
+                                                                        {sample.sampleDescription}
+                                                                    </option>
+                                                                ))}
                                                             </select>
                                                         </div>
                                                     </div>
@@ -506,18 +507,18 @@ const InvestigationMaster = () => {
                                                             <label className="form-label fw-bold mb-1">
                                                                 Container<span className="text-danger">*</span>
                                                             </label>
-                                                            <select 
-                                                              className="form-select" 
-                                                              name="container" 
-                                                              value={formData.container} 
-                                                              onChange={handleInputChange}
+                                                            <select
+                                                                className="form-select"
+                                                                name="container"
+                                                                value={formData.container}
+                                                                onChange={handleInputChange}
                                                             >
-                                                              <option value="">Select Container</option>
-                                                              {dropdownOptions.containers.map((cont) => (
-                                                                <option key={cont.collectionId} value={cont.collectionName}>
-                                                                  {cont.collectionName}
-                                                                </option>
-                                                              ))}
+                                                                <option value="">Select Container</option>
+                                                                {dropdownOptions.containers.map((cont) => (
+                                                                    <option key={cont.collectionId} value={cont.collectionName}>
+                                                                        {cont.collectionName}
+                                                                    </option>
+                                                                ))}
                                                             </select>
                                                         </div>
                                                     </div>
@@ -526,18 +527,18 @@ const InvestigationMaster = () => {
                                                             <label className="form-label fw-bold mb-1">
                                                                 UOM<span className="text-danger">*</span>
                                                             </label>
-                                                            <select 
-                                                              className="form-select" 
-                                                              name="uom" 
-                                                              value={formData.uom} 
-                                                              onChange={handleInputChange}
+                                                            <select
+                                                                className="form-select"
+                                                                name="uom"
+                                                                value={formData.uom}
+                                                                onChange={handleInputChange}
                                                             >
-                                                              <option value="">Select UOM</option>
-                                                              {dropdownOptions.uoms.map((uom) => (
-                                                                <option key={uom.id} value={uom.name}>
-                                                                  {uom.name}
-                                                                </option>
-                                                              ))}
+                                                                <option value="">Select UOM</option>
+                                                                {dropdownOptions.uoms.map((uom) => (
+                                                                    <option key={uom.id} value={uom.name}>
+                                                                        {uom.name}
+                                                                    </option>
+                                                                ))}
                                                             </select>
                                                         </div>
                                                     </div>
@@ -547,17 +548,23 @@ const InvestigationMaster = () => {
                                                             <label className="form-label fw-bold mb-1">
                                                                 Result Type<span className="text-danger">*</span>
                                                             </label>
-                                                            <select 
-                                                              className="form-select" 
-                                                              name="resultType" 
-                                                              value={formData.resultType} 
-                                                              onChange={handleInputChange}
-                                                            >
-                                                                <option value="Select">Select</option>
-                                                                <option value="Multiple">Multiple</option>
-                                                                <option value="Single">Single</option>
-                                                                <option value="Range">Range</option>
-                                                            </select>
+                                                            <div className="d-flex align-items-center">
+                                                                <select
+                                                                    className="form-select flex-grow-1"
+                                                                    name="resultType"
+                                                                    value={formData.resultType}
+                                                                    onChange={handleInputChange}
+                                                                >
+                                                                    <option value="Select">Select</option>
+                                                                    <option value="Multiple">Multiple</option>
+                                                                    <option value="Single">Single</option>
+                                                                    <option value="Range">Range</option>
+                                                                </select>
+                                                                <button type="button" className="btn btn-success ms-2"
+                                                                onClick={()=> navigate("/investigation-multiple-results")}>
+                                                                    Add
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div className="col-md-4">
@@ -605,11 +612,11 @@ const InvestigationMaster = () => {
                                                             <label className="form-label fw-bold mb-1">
                                                                 Flag<span className="text-danger">*</span>
                                                             </label>
-                                                            <select 
-                                                              className="form-select" 
-                                                              name="flag" 
-                                                              value={formData.flag} 
-                                                              onChange={handleInputChange}
+                                                            <select
+                                                                className="form-select"
+                                                                name="flag"
+                                                                value={formData.flag}
+                                                                onChange={handleInputChange}
                                                             >
                                                                 <option value="Select">Select</option>
                                                                 <option value="Normal">Normal</option>
@@ -666,17 +673,17 @@ const InvestigationMaster = () => {
                                                     </div>
 
                                                     <div className="col-12 text-end mt-2 mb-3">
-                                                        <button 
-                                                          className="btn btn-success me-2" 
-                                                          onClick={handleSubmit}
-                                                          disabled={!selectedInvestigation || loading}
+                                                        <button
+                                                            className="btn btn-success me-2"
+                                                            onClick={handleSubmit}
+                                                            disabled={!selectedInvestigation || loading}
                                                         >
-                                                          {loading ? "Saving..." : "Save"}
+                                                            {loading ? "Saving..." : "Save"}
                                                         </button>
-                                                        <button 
-                                                          className="btn btn-secondary" 
-                                                          onClick={handleReset}
-                                                          disabled={loading}
+                                                        <button
+                                                            className="btn btn-secondary"
+                                                            onClick={handleReset}
+                                                            disabled={loading}
                                                         >
                                                             Reset
                                                         </button>
