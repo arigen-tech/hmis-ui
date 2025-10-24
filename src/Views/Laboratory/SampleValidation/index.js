@@ -112,9 +112,19 @@ const SampleValidation = () => {
   }
 
   const handleRowClick = (sample) => {
-    setSelectedSample(sample)
-    setShowDetailView(true)
+  // Create a copy of the sample and set all investigations to accepted by default
+  const sampleWithAcceptedInvestigations = {
+    ...sample,
+    investigations: sample.investigations.map(inv => ({
+      ...inv,
+      accepted: true, // Set accepted to true by default
+      rejected: false // Ensure rejected is false
+    }))
   }
+  
+  setSelectedSample(sampleWithAcceptedInvestigations)
+  setShowDetailView(true)
+}
 
   const handleBackToList = () => {
     setShowDetailView(false)

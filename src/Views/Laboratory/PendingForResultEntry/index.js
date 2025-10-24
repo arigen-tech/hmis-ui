@@ -97,7 +97,8 @@ const PendingForResultEntry = () => {
           remarks: "",
           reject: false,
           subInvestigationId: subTest.subInvestigationId || 0,
-          sampleId: subTest.sampleId || 0
+          sampleId: subTest.sampleId || 0,
+          resultType: subTest.resultType
         })) : []
       })) : []
     }))
@@ -212,6 +213,48 @@ const PendingForResultEntry = () => {
         return inv
       })
       setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
+    }
+  }
+
+  // Render result input based on result type
+  const renderResultInput = (item, isSubTest = false, investigationId = null) => {
+    const resultType = isSubTest ? item.resultType : null;
+
+    if (isSubTest && resultType === 'r') {
+      // Render dropdown for result type 'r'
+      return (
+        <select
+          className="form-select"
+          value={item.result || ""}
+          onChange={(e) => {
+            if (isSubTest && investigationId) {
+              handleSubTestChange(investigationId, item.id, "result", e.target.value)
+            } else if (!isSubTest) {
+              handleInvestigationChange(item.id, "result", e.target.value)
+            }
+          }}
+        >
+          <option value="">Select Result</option>
+          <option value="Positive">Positive</option>
+          <option value="Negative">Negative</option>
+        </select>
+      );
+    } else {
+      // Render text input for other types
+      return (
+        <input
+          type="text"
+          className="form-control"
+          value={item.result}
+          onChange={(e) => {
+            if (isSubTest && investigationId) {
+              handleSubTestChange(investigationId, item.id, "result", e.target.value)
+            } else if (!isSubTest) {
+              handleInvestigationChange(item.id, "result", e.target.value)
+            }
+          }}
+        />
+      );
     }
   }
 
@@ -529,14 +572,7 @@ const PendingForResultEntry = () => {
                                 />
                               </td>
                               <td>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={investigation.result}
-                                  onChange={(e) =>
-                                    handleInvestigationChange(investigation.id, "result", e.target.value)
-                                  }
-                                />
+                                {renderResultInput(investigation)}
                               </td>
                               <td>
                                 <input
@@ -608,19 +644,7 @@ const PendingForResultEntry = () => {
                                     />
                                   </td>
                                   <td>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      value={subTest.result}
-                                      onChange={(e) =>
-                                        handleSubTestChange(
-                                          investigation.id,
-                                          subTest.id,
-                                          "result",
-                                          e.target.value,
-                                        )
-                                      }
-                                    />
+                                    {renderResultInput(subTest, true, investigation.id)}
                                   </td>
                                   <td>
                                     <input
