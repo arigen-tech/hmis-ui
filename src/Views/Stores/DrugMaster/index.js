@@ -6,123 +6,57 @@ import { MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITE
 
 
 const DrugMaster = () => {
-    // HSN Code data for dropdown
-    const hsnCodes = [
-        { code: "30049099", description: "Other medicaments" },
-        { code: "30041000", description: "Penicillins and their derivatives" },
-        { code: "30042000", description: "Streptomycins and their derivatives" },
-        { code: "30043100", description: "Tetracyclines and their derivatives" },
-        { code: "30043200", description: "Chloramphenicol and its derivatives" },
-        { code: "30043300", description: "Erythromycin and its derivatives" },
-        { code: "30043900", description: "Other antibiotics" },
-        { code: "30044000", description: "Medicaments containing alkaloids" },
-        { code: "30045000", description: "Other medicaments containing vitamins" },
-        { code: "30046000", description: "Medicaments containing antimalarial active principles" },
-    ]
-
-
+    const [formData, setFormData] = useState({
+        drugCode: "",
+        drugName: "",
+        itemGroup: "",
+        section: "",
+        itemType: "",
+        unitAU: "",
+        itemClass: "",
+        dispensingUnit: "",
+        itemCategory: "",
+        dispensingQty: "",
+        reorderLevel: "",
+        reorderLevelStore: "",
+        hsnCode: "",
+        noOfDays: "",
+        frequency: "",
+        dosage: "",
+        facilityCode: "",
+        dangerousDrug: false,
+        inactiveForEntry: false,
+    })
     const [popupMessage, setPopupMessage] = useState(null)
-    // const [drugs, setDrugs] = useState([
-    //   {
-    //     id: 1,
-    //     drugCode: "D492",
-    //     drugName: "ORAL SUSPENSION 200 MG + 40 MG/5 ML",
-    //     itemGroup: "Drug",
-    //     unit: "ML",
-    //     section: "Anti infective drugs - Other antibacterial",
-    //     itemClass: "LIQUID",
-    //     status: "y",
-    //     reorderLevelStore: "50",
-    //     hsnCode: "30049099",
-    //   },
-    //   {
-    //     id: 2,
-    //     drugCode: "D4",
-    //     drugName: "ACETYL SALICYLIC ACID (ASA) TABLET (ENTERIC COATED) 325 MG",
-    //     itemGroup: "Drug",
-    //     unit: "Tab",
-    //     section: "Non-opioids and non-steroidal anti-inflammatory medicines (NSAIDs)",
-    //     itemClass: "TABLET",
-    //     status: "y",
-    //     reorderLevelStore: "75",
-    //     hsnCode: "30044000",
-    //   },
-    //   {
-    //     id: 3,
-    //     drugCode: "D3",
-    //     drugName: "Acetyl salicylic acid (Aspirin) - 150 Tab. IP",
-    //     itemGroup: "Drug",
-    //     unit: "Tab",
-    //     section: "Non-opioids and non-steroidal anti-inflammatory medicines (NSAIDs)",
-    //     itemClass: "TABLET",
-    //     status: "y",
-    //     reorderLevelStore: "60",
-    //     hsnCode: "30044000",
-    //   },
-    //   {
-    //     id: 4,
-    //     drugCode: "D2",
-    //     drugName: "Acetyl salicylic acid (Aspirin) - 75 Tab. IP",
-    //     itemGroup: "Drug",
-    //     unit: "Tab",
-    //     section: "Non-opioids and non-steroidal anti-inflammatory medicines (NSAIDs)",
-    //     itemClass: "TABLET",
-    //     status: "n",
-    //     reorderLevelStore: "40",
-    //     hsnCode: "30044000",
-    //   },
-    //   {
-    //     id: 5,
-    //     drugCode: "D556",
-    //     drugName: "ACT (Artesunate Combination Theraphy) red color Age 9-14 years",
-    //     itemGroup: "Drug",
-    //     unit: "Tab",
-    //     section: "Antimalarial medicines- for curative treatment",
-    //     itemClass: "TABLET",
-    //     status: "y",
-    //     reorderLevelStore: "30",
-    //     hsnCode: "30046000",
-    //   },
-    // ])
     const [drugs, setDrugs] = useState([])
-    const [searchQuery, setSearchQuery] = useState("")
-    const [currentPage, setCurrentPage] = useState(1)
-    const [pageInput, setPageInput] = useState("")
-    const [loading, setLoading] = useState(false);
-    const [masStoreItemData, setMasStoreItemData] = useState([]);
+    const [masStoreGroup, setMasStoreGroup] = useState([])
     const [masItemTypeData, setMasItemTypeData] = useState([]);
     const [itemSectionData, setItemSectionData] = useState([]);
     const [itemClassData, setItemClassData] = useState([]);
     const [serviceCategoryData, setServiceCategoryData] = useState([]);
     const [storeUnitData, setStoreUnitData] = useState([]);
     const [hsnList, setHsnList] = useState([]);
+    const [process, setProcess] = useState(false)
+    const [editEnabled, setEditEnabled] = useState(false)
+
+    const [searchQuery, setSearchQuery] = useState("")
+    const [currentPage, setCurrentPage] = useState(1)
+    const [pageInput, setPageInput] = useState("")
+    const [loading, setLoading] = useState(false);
+  const departmentId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
+  const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
+
 
     const itemsPerPage = 5
     const [editingDrug, setEditingDrug] = useState(null)
     const [showForm, setShowForm] = useState(false)
     const [isFormValid, setIsFormValid] = useState(false)
-    const [formData, setFormData] = useState({
-        drugCode: "",
-        drugName: "",
-        itemGroup: "Drug",
-        section: "Anti infective drugs - Other antibacterial",
-        itemType: "PVMS",
-        unitAU: "BOTTLE",
-        itemClass: "LIQUID",
-        dispensingUnit: "ML",
-        itemCategory: "Category 1",
-        dispensingQty: "",
-        reorderLevel: "100",
-        reorderLevelStore: "",
-        hsnCode: "",
-        noOfDays: "",
-        frequency: "Select",
-        dosage: "",
-        facilityCode: "Primary",
-        dangerousDrug: false,
-        inactiveForEntry: false,
-    })
-    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, drugId: null, newStatus: null })
+
+
+    console.log("form data", formData);
+
+
+    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, drugId: null, newStatus: null, name: "" })
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value)
@@ -131,22 +65,42 @@ const DrugMaster = () => {
 
 
 
+
+
     useEffect(() => {
         fetchDrugMasterData();
-        fetchMasStoreItem();
-        fetchMasStoreItem();
-        fetchMasItemType();
-        fetchItemSectionData();
-        fetchItemClassData();
-        fetchServiceCategoryData();
+        fetchMasStoreGroup();
         fetchStoreUnit();
         fetchHsnData();
     }, []);
 
+    useEffect(() => {
+        if (formData.itemGroup) {
+            fetchMasItemType(formData.itemGroup);
+        }
+    }, [formData.itemGroup]);
+
+
+    useEffect(() => {
+        if (formData.itemType) {
+            fetchItemSectionData(formData.itemType);
+        }
+    }, [formData.itemType]);
+
+
+    useEffect(() => {
+        if (formData.section) {
+            fetchServiceCategoryData(formData.section);
+            fetchItemClassData(formData.section);
+        }
+    }, [formData.section]);
+
+    console.log("hos' dep", hospitalId, departmentId);
+
     const fetchDrugMasterData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${MAS_DRUG_MAS}/getAll/0`);
+            const data = await getRequest(`${MAS_DRUG_MAS}/getAll/0/${hospitalId}/${departmentId}`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setDrugs(data.response);
             } else {
@@ -160,84 +114,68 @@ const DrugMaster = () => {
         }
     };
 
-
-    const fetchMasStoreItem = async () => {
+    const fetchMasStoreGroup = async () => {
         try {
             const data = await getRequest(`${MAS_STORE_GROUP}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
-                setMasStoreItemData(data.response);
+                setMasStoreGroup(data.response);
             } else {
-                setMasStoreItemData([]);
+                setMasStoreGroup([]);
             }
         } catch (error) {
             console.error("Error fetching Store Item data:", error);
         }
     };
 
-
-
-    const fetchMasItemType = async () => {
+    const fetchMasItemType = async (groupId) => {
         try {
-            const data = await getRequest(`${MAS_ITEM_TYPE}/getByAll/1`);
+            const data = await getRequest(`${MAS_ITEM_TYPE}/findByGroupId/${groupId}`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setMasItemTypeData(data.response);
             } else {
                 setMasItemTypeData([]);
             }
         } catch (error) {
-            console.error("Error fetching Store Item data:", error);
+            console.error("Error fetching Item Types:", error);
         }
     };
 
-    const fetchItemSectionData = async () => {
-        setLoading(true);
+    const fetchItemSectionData = async (itemTypeId) => {
         try {
-            const data = await getRequest(`${MAS_ITEM_SECTION}/getAll/1`);
+            const data = await getRequest(`${MAS_ITEM_SECTION}/findByItemType/${itemTypeId}`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setItemSectionData(data.response);
             } else {
                 setItemSectionData([]);
-                console.error("Unexpected API response format for sections:", data);
             }
         } catch (error) {
-            console.error("Error fetching Item Section data:", error);
-        } finally {
-            setLoading(false);
-        }
-    }
-
-
-    const fetchItemClassData = async () => {
-        setLoading(true);
-        try {
-            const data = await getRequest(`${MAS_ITEM_CLASS}/getAll/1`);
-            if (data.status === 200 && Array.isArray(data.response)) {
-                setItemClassData(data.response);
-            } else {
-                setItemClassData([]);
-                console.error("Unexpected API response format for item classes:", data);
-            }
-        } catch (error) {
-            console.error("Error fetching Item Class data:", error);
-        } finally {
-            setLoading(false);
+            console.error("Error fetching Sections:", error);
         }
     };
 
-    const fetchServiceCategoryData = async () => {
-        setLoading(true);
+    const fetchServiceCategoryData = async (sectionId) => {
         try {
-            const data = await getRequest(`${MAS_ITEM_CATEGORY}/getAll/1`);
+            const data = await getRequest(`${MAS_ITEM_CATEGORY}/findBySectionId/${sectionId}`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setServiceCategoryData(data.response);
             } else {
                 setServiceCategoryData([]);
-                console.error("Unexpected API response format for service categories:", data);
             }
         } catch (error) {
-            console.error("Error fetching Service Category data:", error);
-        } finally {
-            setLoading(false); // Optional
+            console.error("Error fetching Categories:", error);
+        }
+    };
+
+    const fetchItemClassData = async (sectionId) => {
+        try {
+            const data = await getRequest(`${MAS_ITEM_CLASS}/getAllBySectionId/${sectionId}`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setItemClassData(data.response);
+            } else {
+                setItemClassData([]);
+            }
+        } catch (error) {
+            console.error("Error fetching Item Classes:", error);
         }
     };
 
@@ -271,6 +209,9 @@ const DrugMaster = () => {
         }
     };
 
+
+
+
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target
         const updatedFormData = {
@@ -279,7 +220,6 @@ const DrugMaster = () => {
         }
         setFormData(updatedFormData)
 
-        // Check if all required fields have values
         setIsFormValid(
             !!updatedFormData.drugCode &&
             !!updatedFormData.drugName &&
@@ -288,99 +228,185 @@ const DrugMaster = () => {
             !!updatedFormData.itemClass &&
             !!updatedFormData.dispensingUnit &&
             !!updatedFormData.reorderLevel &&
-            !!updatedFormData.itemCategory &&
-            !!updatedFormData.facilityCode,
+            !!updatedFormData.itemCategory,
+           
         )
     }
 
-    const handleSwitchChange = (id, newStatus) => {
-        setConfirmDialog({ isOpen: true, drugId: id, newStatus })
+    const handleSwitchChange = (id, newStatus, name) => {
+        setConfirmDialog({ isOpen: true, drugId: id, newStatus, name })
     }
 
-    const handleConfirm = (confirmed) => {
+    const handleConfirm = async (confirmed) => {
         if (confirmed && confirmDialog.drugId !== null) {
-            setDrugs((prevData) =>
-                prevData.map((item) =>
-                    item.id === confirmDialog.drugId ? { ...item, status: confirmDialog.newStatus } : item,
-                ),
-            )
+            try {
+                const response = await putRequest(
+                    `${MAS_DRUG_MAS}/status/${confirmDialog.drugId}?status=${confirmDialog.newStatus}`,
+
+                );
+                if (response.status === 200) {
+                    showPopup("Status updated successfully!", "success");
+                    await fetchDrugMasterData();
+                } else {
+                    showPopup(response.message || "Failed to update status.", "error");
+                }
+            } catch (error) {
+                console.error("Error updating status:", error);
+                showPopup("Error updating status.", "error");
+            }
         }
-        setConfirmDialog({ isOpen: false, drugId: null, newStatus: null })
+        setConfirmDialog({ isOpen: false, drugId: null, newStatus: null });
     }
 
-    const handleEdit = (drug) => {
-        setEditingDrug(drug)
-        setShowForm(true)
+    const handleEdit = async (drug) => {
+        setEditingDrug(drug);
+        setEditEnabled(true);
+        setShowForm(true);
+
+        await fetchMasItemType(drug.groupId);
+
+        await fetchItemSectionData(drug.itemTypeId);
+
+        await fetchServiceCategoryData(drug.sectionId);
+        await fetchItemClassData(drug.sectionId);
+
         setFormData({
-            drugCode: drug.drugCode,
-            drugName: drug.drugName,
-            itemGroup: drug.itemGroup,
-            section: drug.section,
-            itemType: "PVMS",
-            unitAU: "BOTTLE",
-            itemClass: drug.itemClass,
-            itemCategory: drug.itemCategory,
-            dispensingUnit: drug.unit,
-            dispensingQty: "",
-            reorderLevel: "100",
-            reorderLevelStore: drug.reorderLevelStore || "",
+            drugCode: drug.pvmsNo || "",
+            drugName: drug.nomenclature || "",
+            itemGroup: drug.groupId || "",
+            section: drug.sectionId || "",
+            itemType: drug.itemTypeId || "",
+            unitAU: drug.unitAU || "",
+            itemClass: drug.itemClassId || "",
+            dispensingUnit: drug.dispUnit || "",
+            itemCategory: drug.masItemCategoryid || "",
+            dispensingQty: drug.adispQty || "",
+            reorderLevel: drug.reOrderLevelDispensary || "",
+            reorderLevelStore: drug.reOrderLevelStore || "",
             hsnCode: drug.hsnCode || "",
+            noOfDays: drug.noOfDays || "",
+            frequency: drug.frequency || "",
+            dosage: drug.dosage || "",
+            facilityCode: drug.facilityCode || "",
+            dangerousDrug: drug.dangerousDrug || false,
+            inactiveForEntry: drug.inactiveForEntry || false,
+        });
+        setIsFormValid(true);
+    };
+
+
+    const handleSave = async (e) => {
+        e.preventDefault();
+        if (!isFormValid) return;
+
+        setProcess(true);
+
+        try {
+            const payload = {
+                pvmsNo: formData.drugCode,
+                nomenclature: formData.drugName,
+                groupId: Number(formData.itemGroup),
+                itemTypeId: Number(formData.itemType),
+                dispUnit: formData.dispensingUnit,
+                unitAU: Number(formData.unitAU),
+                sectionId: Number(formData.section),
+                itemClassId: Number(formData.itemClass),
+                masItemCategoryId: Number(formData.itemCategory),
+                adispQty: Number(formData.dispensingQty),
+                reOrderLevelDispensary: Number(formData.reorderLevel),
+                reOrderLevelStore: Number(formData.reorderLevelStore),
+                hsnCode: formData.hsnCode,
+                facilityCode: formData.facilityCode,
+                dangerousDrug: formData.dangerousDrug,
+                inactiveForEntry: formData.inactiveForEntry,
+            };
+
+            let response;
+
+            if (editingDrug) {
+                response = await putRequest(
+                    `${MAS_DRUG_MAS}/update/${editingDrug.itemId}`,
+                    payload
+                );
+
+                if (response.status === 200) {
+                    showPopup("Drug updated successfully!", "success");
+                } else {
+                    throw new Error(response.message || "Failed to update item");
+                }
+            } else {
+                response = await postRequest(`${MAS_DRUG_MAS}/create`, payload);
+
+                if (response.status === 200) {
+                    showPopup("Drug added successfully!", "success");
+                } else {
+                    throw new Error(response.message || "Failed to add item");
+                }
+            }
+
+            setEditingDrug(null);
+            setShowForm(false);
+            setEditEnabled(false);
+            setFormData({
+                drugCode: "",
+                drugName: "",
+                itemGroup: "",
+                section: "",
+                itemType: "",
+                unitAU: "",
+                itemClass: "",
+                dispensingUnit: "",
+                itemCategory: "",
+                dispensingQty: "",
+                reorderLevel: "",
+                reorderLevelStore: "",
+                hsnCode: "",
+                noOfDays: "",
+                frequency: "",
+                dosage: "",
+                facilityCode: "",
+                dangerousDrug: false,
+                inactiveForEntry: false,
+            });
+
+            await fetchDrugMasterData();
+
+        } catch (error) {
+            console.error("Error saving drug:", error);
+            showPopup(error.message || "Failed to save drug.", "error");
+        } finally {
+            setProcess(false);
+        }
+    };
+
+    const handleBack = () => {
+        setShowForm(false);
+        setEditEnabled(false);
+        setEditingDrug(null);
+        setFormData({
+            drugCode: "",
+            drugName: "",
+            itemGroup: "",
+            section: "",
+            itemType: "",
+            unitAU: "",
+            itemClass: "",
+            dispensingUnit: "",
+            itemCategory: "",
+            dispensingQty: "",
+            reorderLevel: "",
+            reorderLevelStore: "",
+            hsnCode: "",
             noOfDays: "",
-            frequency: "Select",
+            frequency: "",
             dosage: "",
-            facilityCode: "Primary",
+            facilityCode: "",
             dangerousDrug: false,
             inactiveForEntry: false,
-        })
-        setIsFormValid(true)
+        });
     }
 
-    const handleSave = (e) => {
-        e.preventDefault()
-        if (!isFormValid) return
 
-        if (editingDrug) {
-            setDrugs(
-                drugs.map((item) =>
-                    item.id === editingDrug.id
-                        ? {
-                            ...item,
-                            drugCode: formData.drugCode,
-                            drugName: formData.drugName,
-                            itemGroup: formData.itemGroup,
-                            section: formData.section,
-                            itemClass: formData.itemClass,
-                            itemCategory: formData.itemCategory,
-                            unit: formData.dispensingUnit,
-                            reorderLevelStore: formData.reorderLevelStore,
-                            hsnCode: formData.hsnCode,
-                        }
-                        : item,
-                ),
-            )
-            showPopup("Drug updated successfully!", "success")
-        } else {
-            const newDrug = {
-                id: Date.now(),
-                drugCode: formData.drugCode,
-                drugName: formData.drugName,
-                itemGroup: formData.itemGroup,
-                unit: formData.dispensingUnit,
-                section: formData.section,
-                itemClass: formData.itemClass,
-                itemCategory: formData.itemCategory,
-                status: "y",
-                reorderLevelStore: formData.reorderLevelStore || "",
-                hsnCode: formData.hsnCode || "",
-            }
-            setDrugs([...drugs, newDrug])
-            showPopup("Drug added successfully!", "success")
-        }
-
-        setEditingDrug(null)
-        setShowForm(false)
-
-    }
 
     const showPopup = (message, type = "info") => {
         setPopupMessage({
@@ -392,14 +418,17 @@ const DrugMaster = () => {
         })
     }
 
-    const filteredDrugs = drugs.filter(
-        (item) =>
-            (item.drugName?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-            (item.drugCode?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-            (item.itemGroup?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-            (item.section?.toLowerCase() || "").includes(searchQuery.toLowerCase())
-
-    )
+    const filteredDrugs = drugs.filter((item) => {
+        const query = searchQuery.toLowerCase();
+        return (
+            (item.pvmsNo?.toLowerCase() || "").includes(query) ||
+            (item.nomenclature?.toLowerCase() || "").includes(query) ||
+            (item.groupName?.toLowerCase() || "").includes(query) ||
+            (item.itemClassName?.toLowerCase() || "").includes(query) ||
+            (item.sectionName?.toLowerCase() || "").includes(query) ||
+            (item.unitAU?.toString().toLowerCase() || "").includes(query)
+        );
+    })
 
     const filteredTotalPages = Math.ceil(filteredDrugs.length / itemsPerPage)
     const currentItems = filteredDrugs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
@@ -452,27 +481,6 @@ const DrugMaster = () => {
 
     const handleAdd = () => {
         setEditingDrug(null)
-        setFormData({
-            drugCode: "",
-            drugName: "",
-            itemGroup: "Drug",
-            section: "Anti infective drugs - Other antibacterial",
-            itemType: "PVMS",
-            unitAU: "BOTTLE",
-            itemClass: "LIQUID",
-            itemCategory: "Category 2",
-            dispensingUnit: "ML",
-            dispensingQty: "",
-            reorderLevel: "100",
-            reorderLevelStore: "",
-            hsnCode: "",
-            noOfDays: "",
-            frequency: "Select",
-            dosage: "",
-            facilityCode: "Primary",
-            dangerousDrug: false,
-            inactiveForEntry: false,
-        })
         setShowForm(true)
     }
 
@@ -531,30 +539,31 @@ const DrugMaster = () => {
                                         </thead>
                                         <tbody>
                                             {currentItems.map((item) => (
-                                                <tr key={item.id}>
-                                                    <td>{item.drugCode}</td>
-                                                    <td>{item.drugName}</td>
-                                                    <td>{item.itemGroup}</td>
-                                                    <td>{item.unit}</td>
-                                                    <td>{item.section}</td>
-                                                    <td>{item.itemClass}</td>
+                                                <tr key={item.itemId}>
+                                                    <td>{item.pvmsNo}</td>
+                                                    <td>{item.nomenclature}</td>
+                                                    <td>{item.groupName}</td>
+                                                    <td>{item.unitAU}</td>
+                                                    <td>{item.sectionName}</td>
+                                                    <td>{item.itemClassName}</td>
                                                     <td>
                                                         <div className="form-check form-switch">
                                                             <input
                                                                 className="form-check-input"
                                                                 type="checkbox"
                                                                 checked={item.status === "y"}
-                                                                onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
+                                                                onChange={() => handleSwitchChange(item.itemId, item.status === "y" ? "n" : "y", item.nomenclature)}
                                                                 id={`switch-${item.id}`}
                                                             />
                                                             <label
                                                                 className="form-check-label px-0"
-                                                                htmlFor={`switch-${item.id}`}
-                                                                onClick={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
+                                                                htmlFor={`switch-${item.itemId}`}
+
                                                             >
                                                                 {item.status === "y" ? "Active" : "Deactivated"}
                                                             </label>
                                                         </div>
+
                                                     </td>
                                                     <td>
                                                         <button
@@ -571,9 +580,9 @@ const DrugMaster = () => {
                                     </table>
                                 </div>
                             ) : (
-                                <form className="forms row" onSubmit={handleSave}>
+                                <form className="forms row">
                                     <div className="d-flex justify-content-end">
-                                        <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                                        <button type="button" className="btn btn-secondary" onClick={handleBack}>
                                             <i className="mdi mdi-arrow-left"></i> Back
                                         </button>
                                     </div>
@@ -614,14 +623,18 @@ const DrugMaster = () => {
                                             </label>
                                             <select
                                                 className="form-select"
+                                                name="itemGroup"
+                                                value={formData.itemGroup}
+                                                onChange={handleInputChange}
                                             >
                                                 <option value="">Select Store Item</option>
-                                                {masStoreItemData.map((item) => (
-                                                    <option key={item.groupCode} value={item.groupCode}>
+                                                {masStoreGroup.map((item) => (
+                                                    <option key={item.id} value={item.id}>
                                                         {item.groupName}
                                                     </option>
                                                 ))}
                                             </select>
+
                                         </div>
 
                                         <div className="form-group col-md-4 mt-3">
@@ -631,13 +644,14 @@ const DrugMaster = () => {
                                             <select
                                                 className="form-select"
                                                 name="itemType"
+                                                value={formData.itemType}
                                                 onChange={handleInputChange}
                                                 required
                                             >
                                                 <option value="">Select Item Type</option>
 
                                                 {masItemTypeData.map((item) => (
-                                                    <option key={item.code} value={item.code}>
+                                                    <option key={item.id} value={item.id}>
                                                         {item.name}
                                                     </option>
                                                 ))}
@@ -651,6 +665,7 @@ const DrugMaster = () => {
                                             <select
                                                 className="form-select"
                                                 name="section"
+                                                value={formData.section}
                                                 onChange={handleInputChange}
                                                 required
                                             >
@@ -886,9 +901,10 @@ const DrugMaster = () => {
                                     </div>
 
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                                        <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                                            Save
+                                        <button onClick={handleSave} type="submit" className="btn btn-primary me-2">
+                                            {process ? (editEnabled ? "Updating..." : "Saving...") : (editEnabled ? "Update" : "Save")}
                                         </button>
+
                                         <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
                                             Cancel
                                         </button>
@@ -910,7 +926,7 @@ const DrugMaster = () => {
                                             <div className="modal-body">
                                                 <p>
                                                     Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                                                    <strong>{drugs.find((item) => item.id === confirmDialog.drugId)?.drugName}</strong>?
+                                                    <strong>{confirmDialog.name}</strong>?
                                                 </p>
                                             </div>
                                             <div className="modal-footer">

@@ -1,6 +1,6 @@
-export const API_HOST = 'https://103.133.215.182:8445';
-// export const API_HOST = 'http://localhost:8080';
-// export const API_HOST = 'http://192.168.1.12:8080';
+// export const API_HOST = 'https://103.133.215.182:8445';
+export const API_HOST = 'http://localhost:8080';
+// export const API_HOST = 'http://192.168.1.8:8080';
 
 
 
@@ -44,10 +44,12 @@ export const MAS_ITEM_SECTION = `${MASTERS}/storeSection`;
 export const MAS_ITEM_CATEGORY = `${MASTERS}/masItemCategory`;
 export const MAS_DRUG_MAS = `${MASTERS}/masStoreItem`;
 export const MAS_HSN = `${MASTERS}/masHSN`;
-
+export const DG_MAS_COLLECTION = `${MASTERS}/DgMasCollection`;
+export const  DG_UOM = `${MASTERS}/dgUom`;
 export const MAS_BRAND = `${MASTERS}/masBrand`;
 export const MAS_MANUFACTURE = `${MASTERS}/masManufacturer`;
 export const OPEN_BALANCE = "/openingBalanceEntry";
+export const ALL_REPORTS = `${API_HOST}/report`;
 
 
 export const FILTER_OPD_DEPT=`OPD`;
@@ -151,3 +153,6 @@ export const ALL_INVESTIGATION_PRICE_DETAILS = `/investigation-price-details/get
 export const MAS_INVESTIGATION = `/DgMasInvestigation`;
 export const MAS_PACKAGE_INVESTIGATION = `/investigation-package`;
 export const LAB_REGISTRATION = `/lab/registration`;
+export const INVESTIGATION_PACKAGE_Mapping = `/package-investigation-mapping`;
+export const INVESTIGATION_PACKAGE_API = `/investigation-package`;
+export const LAB = `/lab`;

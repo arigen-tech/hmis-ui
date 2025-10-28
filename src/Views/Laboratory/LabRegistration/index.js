@@ -1,4 +1,4 @@
-"use client"
+
 
 import { useState, useRef, useEffect } from "react"
 import placeholderImage from "../../../assets/images/placeholder.jpg"
@@ -14,9 +14,11 @@ import {
   PATIENT_IMAGE_UPLOAD,
   MAS_DISTRICT,
   MAS_INVESTIGATION,
-  MAS_PACKAGE_INVESTIGATION,
-  MAS_SERVICE_CATEGORY
+  INVESTIGATION_PACKAGE_Mapping,
+  MAS_SERVICE_CATEGORY,
+  MAS_PACKAGE_INVESTIGATION
 } from "../../../config/apiConfig"
+import LoadingScreen from "../../../Components/Loading"
 
 
 const LabRegistration = () => {
@@ -41,7 +43,11 @@ const LabRegistration = () => {
   const [activeRowIndex, setActiveRowIndex] = useState(null)
   const [investigationItems, setInvestigationItems] = useState([])
   const [packageItems, setPackageItems] = useState([])
+
+  const [isDuplicatePatient, setIsDuplicatePatient] = useState(false);
+
   const navigate = useNavigate()
+
   const [gstConfig, setGstConfig] = useState({
     gstApplicable: true,
     gstPercent: 0, // default fallback
@@ -108,11 +114,15 @@ const LabRegistration = () => {
 
   const [checkedRows, setCheckedRows] = useState([true])
 
-  // Enhanced payment calculation function
+  // Enhanced payment calculation function - FIXED
   const calculatePaymentBreakdown = () => {
-    const checkedItems = formData.rows.filter((_, index) => checkedRows[index])
+    console.log("=== CALCULATING PAYMENT BREAKDOWN ===")
+    console.log("Current GST Config:", gstConfig)
 
-    const totalAmount = checkedItems.reduce((total, item) => {
+    const checkedItems = formData.rows.filter((_, index) => checkedRows[index])
+    console.log("Checked Items:", checkedItems)
+
+    const totalOriginalAmount = checkedItems.reduce((total, item) => {
       return total + (Number.parseFloat(item.originalAmount) || 0)
     }, 0)
 
@@ -120,23 +130,46 @@ const LabRegistration = () => {
       return total + (Number.parseFloat(item.discountAmount) || 0)
     }, 0)
 
-    const baseAmountAfterDiscount = totalAmount - totalDiscountAmount
+    const totalNetAmount = totalOriginalAmount - totalDiscountAmount
 
-    // Use GST configuration from backend instead of hardcoded value
-    const gstPercent = gstConfig.gstPercent
-    const taxAmount = gstConfig.gstApplicable ? (baseAmountAfterDiscount * gstPercent) / 100 : 0
-    const finalPaymentAmount = baseAmountAfterDiscount + taxAmount
+    // Fix: Calculate GST on each item's net amount individually, then sum up
+    // This matches the backend logic exactly
+    const totalGstAmount = checkedItems.reduce((total, item) => {
+      const itemOriginalAmount = Number.parseFloat(item.originalAmount) || 0
+      const itemDiscountAmount = Number.parseFloat(item.discountAmount) || 0
+      const itemNetAmount = itemOriginalAmount - itemDiscountAmount
 
-    return {
-      totalAmount: totalAmount.toFixed(2),
+      // Calculate GST on this item's net amount (after discount)
+      const itemGstAmount = gstConfig.gstApplicable ? (itemNetAmount * gstConfig.gstPercent) / 100 : 0
+      console.log(
+        `Item GST Calculation - Original: ${itemOriginalAmount}, Discount: ${itemDiscountAmount}, Net: ${itemNetAmount}, GST%: ${gstConfig.gstPercent}, GST Amount: ${itemGstAmount}`,
+      )
+      return total + itemGstAmount
+    }, 0)
+
+    const finalAmount = totalNetAmount + totalGstAmount
+
+    const breakdown = {
+      // Properties expected by your UI component
+      totalOriginalAmount: totalOriginalAmount.toFixed(2),
       totalDiscountAmount: totalDiscountAmount.toFixed(2),
-      baseAmountAfterDiscount: baseAmountAfterDiscount.toFixed(2),
-      taxAmount: taxAmount.toFixed(2),
-      finalPaymentAmount: finalPaymentAmount.toFixed(2),
-      gstPercent,
+      totalNetAmount: totalNetAmount.toFixed(2),
+      totalGstAmount: totalGstAmount.toFixed(2),
+      finalAmount: finalAmount.toFixed(2),
+      gstPercent: gstConfig.gstPercent,
       gstApplicable: gstConfig.gstApplicable,
       itemCount: checkedItems.length,
+      // Legacy properties (if needed elsewhere in your code)
+      totalAmount: totalOriginalAmount.toFixed(2),
+      baseAmountAfterDiscount: totalNetAmount.toFixed(2),
+      taxAmount: totalGstAmount.toFixed(2),
+      finalPaymentAmount: finalAmount.toFixed(2),
     }
+
+    console.log("Final Payment Breakdown:", breakdown)
+    console.log("=== END PAYMENT BREAKDOWN ===")
+
+    return breakdown
   }
 
   const startCamera = async () => {
@@ -197,6 +230,7 @@ const LabRegistration = () => {
   }
 
   const uploadImage = async (base64Image) => {
+    setLoading(true);
     try {
       const blob = await fetch(base64Image).then((res) => res.blob())
       const formData1 = new FormData()
@@ -219,6 +253,8 @@ const LabRegistration = () => {
     } catch (error) {
       console.error("Upload error:", error)
       Swal.fire("Error!", "Something went wrong!", "error")
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -229,14 +265,27 @@ const LabRegistration = () => {
   }
 
   function calculateAgeFromDOB(dob) {
-    const birthDate = new Date(dob)
-    const today = new Date()
-    let age = today.getFullYear() - birthDate.getFullYear()
-    const m = today.getMonth() - birthDate.getMonth()
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--
+    const birthDate = new Date(dob);
+    const today = new Date();
+
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+    let days = today.getDate() - birthDate.getDate();
+
+    // Adjust if the day difference is negative
+    if (days < 0) {
+      months--;
+      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+      days += prevMonth.getDate();
     }
-    return age
+
+    // Adjust if the month difference is negative
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    return `${years}Y ${months}M ${days}D`;
   }
 
   const handleChange = async (e) => {
@@ -328,17 +377,20 @@ const LabRegistration = () => {
   const handleTypeChange = (type) => {
     setFormData((prev) => ({
       ...prev,
-      type: type,
+      type: type
     }))
     if (type === "package") {
       fetchPackageInvestigationDetails(1)
     }
   }
 
+
+
   const handleRowChange = (index, field, value) => {
     setFormData((prev) => {
       const updatedRows = prev.rows.map((item, i) => {
         if (i !== index) return item
+
         const updatedItem = { ...item, [field]: value }
 
         if (field === "originalAmount" || field === "discountAmount") {
@@ -354,8 +406,13 @@ const LabRegistration = () => {
     })
   }
 
-  const addRow = (e, type = formData.type) => {
-    e.preventDefault()
+  const addRow = (e, type) => {
+    e.preventDefault();
+    const lastRow = formData.rows[formData.rows.length - 1];
+    if (!lastRow.name || !lastRow.date) {
+      Swal.fire("Missing Fields", "Please fill all required fields.", "warning");
+      return;
+    }
     setFormData((prev) => ({
       ...prev,
       rows: [
@@ -367,12 +424,14 @@ const LabRegistration = () => {
           originalAmount: 0,
           discountAmount: 0,
           netAmount: 0,
-          type: type,
-        },
-      ],
-    }))
-    setCheckedRows((prev) => [...prev, true])
-  }
+          type: type // ✅ captures fresh type from button click
+        }
+      ]
+    }));
+    setCheckedRows((prev) => [...prev, true]);
+  };
+
+
 
   const removeRow = (index) => {
     setFormData((prev) => ({
@@ -508,14 +567,17 @@ const LabRegistration = () => {
   }
 
   async function fetchInvestigationDetails(genderValue) {
+    setLoading(true);
     try {
       const selectedGender = genderData.find((gender) => gender.id === Number(genderValue))
       if (!selectedGender) {
         console.error("No gender found with ID:", genderValue)
         return []
       }
+
       const genderApplicable = selectedGender.genderCode.toLowerCase()
       const data = await getRequest(`${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}`)
+
       if (data.status === 200 && Array.isArray(data.response)) {
         return data.response
       } else {
@@ -525,12 +587,15 @@ const LabRegistration = () => {
     } catch (error) {
       console.error("Error fetching investigation details:", error)
       return []
+    } finally {
+      setLoading(false);
     }
   }
 
   async function fetchPackageInvestigationDetails(flag) {
+    // setLoading(true);
     try {
-      const data = await getRequest(`${MAS_PACKAGE_INVESTIGATION}/getAllPackInvestigation/${flag}`)
+      const data = await getRequest(`${INVESTIGATION_PACKAGE_Mapping}/getAllPackageMap/${flag}`)
       if (data.status === 200 && Array.isArray(data.response)) {
         setPackageItems(data.response)
         return data.response
@@ -541,10 +606,13 @@ const LabRegistration = () => {
     } catch (error) {
       console.error("Error fetching package investigation details:", error)
       return []
+    } finally {
+      // setLoading(false);
     }
   }
 
   async function fetchPackagePrice(packName) {
+    // setLoading(true);
     try {
       const data = await getRequest(`${MAS_PACKAGE_INVESTIGATION}/pricePack?packName=${packName}`)
       if (data.status === 200 && data.response) {
@@ -556,49 +624,101 @@ const LabRegistration = () => {
     } catch (error) {
       console.error("Error fetching package price:", error)
       return null
+    } finally {
+      // setLoading(false);
     }
   }
 
   async function fetchGstConfiguration() {
-  try {
-    const data = await getRequest(`${MAS_SERVICE_CATEGORY}/masServiceCategory/getAll/1`)
-    
-    if (data?.status === 200 && Array.isArray(data.response)) {
-      // Get the first service category or find by specific criteria
-      const serviceCategory = data.response[0] // or add your specific filtering logic
-      
-      if (serviceCategory) {
-        setGstConfig({
-          gstApplicable: serviceCategory.gstApplicable,
-          gstPercent: serviceCategory.gstPercent,
-        })
-        
-        console.log("GST Configuration loaded:", {
-          gstApplicable: serviceCategory.gstApplicable,
-          gstPercent: serviceCategory.gstPercent,
-        })
+    setLoading(true);
+    try {
+      console.log("=== FETCHING GST CONFIGURATION ===");
+
+      const data = await getRequest(`${MAS_SERVICE_CATEGORY}/getGstConfig/1`);
+
+      console.log("GST API Response:", JSON.stringify(data, null, 2));
+
+      if (
+        data &&
+        data.status === 200 &&
+        data.response &&
+        typeof data.response.gstApplicable !== "undefined"
+      ) {
+        const gstConfiguration = {
+          gstApplicable: !!data.response.gstApplicable,
+          gstPercent: Number(data.response.gstPercent) || 0,
+        };
+
+        console.log("Setting GST Configuration:", gstConfiguration);
+        setGstConfig(gstConfiguration);
       } else {
-        console.warn("Service category not found")
+        console.warn("Invalid API response:", data);
         setGstConfig({
           gstApplicable: false,
           gstPercent: 0,
-        })
+        });
       }
-    } else {
-      console.warn("Invalid API response")
+    } catch (error) {
+      console.error("Error fetching GST configuration:", error);
       setGstConfig({
         gstApplicable: false,
         gstPercent: 0,
-      })
+      });
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error("Error fetching GST configuration:", error)
-    setGstConfig({
-      gstApplicable: false,
-      gstPercent: 0,
-    })
   }
-}
+
+  async function checkDuplicatePatient(firstName, dob, gender, mobile, relation) {
+    const params = new URLSearchParams({
+      firstName,
+      dob,
+      gender,
+      mobile,
+      relation,
+    }).toString();
+
+    const result = await getRequest(`/patient/check-duplicate?${params}`);
+    return result === true;
+  }
+
+  useEffect(() => {
+    const { firstName, dob, gender, mobileNo, relation } = formData;
+
+    if (firstName && dob && gender && mobileNo && relation) {
+      const timer = setTimeout(async () => {
+        try {
+          const isDuplicate = await checkDuplicatePatient(firstName, dob, gender, mobileNo, relation);
+          if (isDuplicate) {
+            Swal.fire("Duplicate Found!", "A patient with these details already exists.", "warning");
+            setIsDuplicatePatient(true);
+          } else {
+            setIsDuplicatePatient(false);
+          }
+        } catch (err) {
+          console.error("Duplicate check failed:", err);
+        }
+      }, 800);
+
+      return () => clearTimeout(timer);
+    } else {
+      // If any field is cleared, reset duplicate flag
+      setIsDuplicatePatient(false);
+    }
+  }, [
+    formData.firstName,
+    formData.dob,
+    formData.gender,
+    formData.mobileNo,
+    formData.relation
+  ]);
+
+
+
+  // Add this useEffect after the existing useEffect
+  useEffect(() => {
+    console.log("GST Config changed:", gstConfig)
+  }, [gstConfig])
 
   const validateForm = () => {
     const requiredFields = ["firstName", "gender", "relation", "dob", "email", "mobileNo"]
@@ -647,23 +767,28 @@ const LabRegistration = () => {
   }
 
   const handleSubmit = async (shouldNavigateToPayment = false) => {
-    console.log("handleSubmit called with shouldNavigateToPayment:", shouldNavigateToPayment)
-    const isFormValid = shouldNavigateToPayment ? true : validateForm()
-    console.log("Form validation result:", isFormValid)
+    console.log("handleSubmit called with shouldNavigateToPayment:", shouldNavigateToPayment);
+    const isFormValid = shouldNavigateToPayment ? true : validateForm();
+    console.log("Form validation result:", isFormValid);
+
+    if (isDuplicatePatient) {
+      Swal.fire("Duplicate Found!", "A patient with these details already exists. Please check your details.", "warning");
+      return;
+    }
 
     if (isFormValid) {
-      console.log("Form validation passed, proceeding with registration...")
+      console.log("Form validation passed, proceeding with registration...");
       try {
-        setLoading(true)
+        setLoading(true);
 
-        // Build patient object
+        // ✅ Build patient object
         const patientRequest = {
           uhidNo: "",
           patientFn: formData.firstName,
           patientMn: formData.middleName || "",
           patientLn: formData.lastName || "",
           patientDob: formData.dob,
-          patientAge: formData.age.toString(),
+          patientAge: formData.age?.toString(),
           patientGenderId: formData.gender,
           patientEmailId: formData.email,
           patientMobileNumber: formData.mobileNo,
@@ -677,7 +802,6 @@ const LabRegistration = () => {
           patientDistrictId: formData.district,
           patientStateId: formData.state,
           patientCountryId: formData.country,
-          pincode: formData.pinCode || "",
           emerFn: formData.emergencyFirstName || "",
           emerLn: formData.emergencyLastName || "",
           emerMobile: formData.emergencyMobile || "",
@@ -696,183 +820,89 @@ const LabRegistration = () => {
           regDate: new Date().toISOString().split("T")[0],
           lastChgBy: sessionStorage.getItem("username"),
           patientHospitalId: Number(sessionStorage.getItem("hospitalId")),
-        }
+        };
 
-        // Register patient
-        const patientResult = await postRequest("/patient/register", {
-          patient: patientRequest,
-        })
+        // ✅ Register patient
+        const patientResult = await postRequest("/patient/register", { patient: patientRequest });
+        const patientId = patientResult?.response?.patient?.id;
+        if (!patientId) throw new Error(patientResult.message || "Patient registration failed");
 
-        const patientId = patientResult?.response?.patient?.id
+        // ✅ Validate checked rows
+        const hasCheckedItems = formData.rows.some((row, index) => checkedRows[index]);
+        if (!hasCheckedItems) throw new Error("Please select at least one investigation or package.");
 
-        if (!patientId) {
-          throw new Error(patientResult.message || "Patient registration failed")
-        }
+        // ✅ Check for any invalid rows with no itemId
+        const invalidRow = formData.rows.find((row, index) => checkedRows[index] && !row.itemId);
+        if (invalidRow) throw new Error("One or more selected rows have no valid investigation/package. Please select from dropdown.");
 
-        // Validate that at least one item is checked
-        const hasCheckedItems = formData.rows.some((row, index) => checkedRows && checkedRows[index] === true)
+        // ✅ Calculate payment breakdown
+        const paymentBreakdown = calculatePaymentBreakdown();
+        const totalFinalAmount = parseFloat(paymentBreakdown.finalAmount);
 
-        if (!hasCheckedItems) {
-          throw new Error("Please select at least one investigation or package to proceed.")
-        }
-
-        // Calculate payment amount from checked items
-        let totalAmount = 0
-        let totalDiscountAmount = 0
-
-        // Build lab data
+        // ✅ Build final lab request - SEND ALL ITEMS (both checked and unchecked)
         const labData = {
           patientId: patientId,
           labInvestigationReq: [],
-          labPackegReqs: [],
-        }
+        };
 
-        // Process ALL rows and send them to backend
+        // Send ALL rows with their respective check status
         formData.rows.forEach((row, index) => {
-          const isChecked = checkedRows && checkedRows[index] === true
-          console.log(`Processing item at index ${index}: ${row.name}, Type: ${row.type}, Checked: ${isChecked}`)
-
-          const originalAmount = Number.parseFloat(row.originalAmount) || 0
-          const discountAmount = Number.parseFloat(row.discountAmount) || 0
-          const netAmount = Number.parseFloat(row.netAmount) || originalAmount
-
-          // Add to payment totals ONLY if checked
-          if (isChecked) {
-            totalAmount += originalAmount
-            totalDiscountAmount += discountAmount
-          }
-
-          if (row.type === "investigation") {
+          if (row.itemId) { // Only include rows that have valid itemId
             labData.labInvestigationReq.push({
-              investigationId: row.itemId,
-              investigationName: row.name,
+              id: row.itemId,
               appointmentDate: row.date || new Date().toISOString().split("T")[0],
-              originalAmount: originalAmount,
-              discountAmount: discountAmount,
-              netAmount: netAmount,
-              status: "y",
-              createdBy: sessionStorage.getItem("username"),
-              hospitalId: Number(sessionStorage.getItem("hospitalId")),
-              genderApplicable: "c",
-              investigationType: "m",
-              checkStatus: isChecked,
-              actualAmount: originalAmount,
-              discountedAmount: discountAmount,
-            })
-          } else if (row.type === "package") {
-            labData.labPackegReqs.push({
-              packegId: row.itemId,
-              packName: row.name,
-              packDate: row.date || new Date().toISOString().split("T")[0],
-              appointmentDate: row.date || new Date().toISOString().split("T")[0],
-              originalAmount: originalAmount,
-              discountAmount: discountAmount,
-              netAmount: netAmount,
-              status: "y",
-              createdBy: sessionStorage.getItem("username"),
-              hospitalId: Number(sessionStorage.getItem("hospitalId")),
-              descrp: "",
-              baseCost: originalAmount,
-              disc: discountAmount,
-              discPer: discountAmount > 0 ? (discountAmount / originalAmount) * 100 : 0,
-              actualCost: netAmount,
-              checkStatus: isChecked,
-              actualAmount: originalAmount,
-              discountedAmount: discountAmount,
-            })
+              checkStatus: checkedRows[index] || false, // Send actual check status
+              actualAmount: parseFloat(row.originalAmount) || 0,
+              discountedAmount: parseFloat(row.discountAmount) || 0,
+              type: row.type === "investigation" ? "i" : "p",
+            });
           }
-        })
+        });
 
-        // Calculate final payment amount
-        const baseAmountAfterDiscount = totalAmount - totalDiscountAmount
-        const gstPercent = gstConfig.gstPercent
-        const taxAmount = gstConfig.gstApplicable ? (baseAmountAfterDiscount * gstPercent) / 100 : 0
-        const finalPaymentAmount = baseAmountAfterDiscount + taxAmount
+        console.log("FINAL LAB DATA:", labData);
 
-        console.log("=== PAYMENT CALCULATION ===")
-        console.log("Total Amount:", totalAmount)
-        console.log("Total Discount:", totalDiscountAmount)
-        console.log("Amount After Discount:", baseAmountAfterDiscount)
-        console.log("Tax Amount:", taxAmount)
-        console.log("Final Payment Amount:", finalPaymentAmount)
-        console.log("========================")
-
-        console.log("=== FINAL REQUEST DATA ===")
-        console.log("Total Items being sent:", formData.rows.length)
-        console.log("Investigations being sent:", labData.labInvestigationReq.length)
-        console.log("Packages being sent:", labData.labPackegReqs.length)
-        console.log("Checked Investigations:", labData.labInvestigationReq.filter((i) => i.checkStatus).length)
-        console.log("Checked Packages:", labData.labPackegReqs.filter((p) => p.checkStatus).length)
-        console.log("Final Lab Data:", JSON.stringify(labData, null, 2))
-        console.log("========================")
-
-        // Register lab
-        const labResult = await postRequest("/lab/registration", labData)
-
-        console.log("=== LAB RESULT DEBUG ===")
-        console.log("Full labResult:", JSON.stringify(labResult, null, 2))
-        console.log("labResult.status:", labResult?.status)
-        console.log("labResult.message:", labResult?.message)
-        console.log("labResult.response:", labResult?.response)
-        console.log("========================")
-
-        if (!labResult) {
-          throw new Error("No response received from lab registration API")
+        // ✅ Call backend
+        const labResult = await postRequest("/lab/registration", labData);
+        if (!labResult || labResult.status !== 200) {
+          throw new Error(labResult?.message || "Lab registration failed.");
         }
 
-        const isSuccess =
-          labResult.status === 200 && labResult.message && labResult.message.toLowerCase().includes("success")
-
-        if (!isSuccess) {
-          const errorMessage = labResult?.response?.msg || labResult?.message || "Lab registration failed"
-          throw new Error(errorMessage)
-        }
-
-        console.log("Lab registration successful!")
-        console.log("Lab registration result:", labResult)
+        console.log("Lab registration successful:", labResult);
 
         if (shouldNavigateToPayment) {
           Swal.fire({
             title: "Success!",
-            text: "Patient and Lab registered successfully! You will now be redirected to the payment page.",
+            text: "Patient and Lab registered successfully! Redirecting to payment.",
             icon: "success",
-            confirmButtonText: "OK, Proceed to Payment",
-          }).then((result) => {
-            if (result.isConfirmed) {
-              navigate("/payment", {
-                state: {
-                  amount: finalPaymentAmount,
-                  patientId: patientId,
-                  labData: labResult,
-                  selectedItems: {
-                    investigations: labData.labInvestigationReq.filter((i) => i.checkStatus),
-                    packages: labData.labPackegReqs.filter((p) => p.checkStatus),
-                  },
-                  paymentBreakdown: {
-                    totalAmount: totalAmount,
-                    discountAmount: totalDiscountAmount,
-                    taxAmount: taxAmount,
-                    finalAmount: finalPaymentAmount,
-                  },
+            confirmButtonText: "OK, Proceed",
+          }).then(() => {
+            navigate("/payment", {
+              state: {
+                amount: totalFinalAmount,
+                patientId,
+                labData: labResult,
+                selectedItems: {
+                  // Only send checked items to payment page
+                  investigations: labData.labInvestigationReq.filter((i) => i.type === "i" && i.checkStatus),
+                  packages: labData.labInvestigationReq.filter((i) => i.type === "p" && i.checkStatus),
                 },
-              })
-            }
-          })
+                paymentBreakdown,
+              },
+            });
+          });
         } else {
-          Swal.fire({
-            title: "Success!",
-            text: "Patient and Lab registered successfully!",
-            icon: "success",
-          }).then(() => handleReset())
+          Swal.fire("Success!", "Patient and Lab registered successfully!", "success").then(() => handleReset());
         }
       } catch (error) {
-        console.error("Registration error:", error)
-        Swal.fire("Error!", error.message || "Registration failed", "error")
+        console.error("Registration error:", error);
+        Swal.fire("Error!", error.message || "Registration failed", "error");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-  }
+  };
+
+
 
   const isMobileNoMissing = !formData.mobileNo || formData.mobileNo.trim() === ""
 
@@ -935,8 +965,26 @@ const LabRegistration = () => {
     (row) => !row.date || row.date.trim() === "" || !row.name || row.name.trim() === "",
   )
 
+
   // Get payment breakdown for display
   const paymentBreakdown = calculatePaymentBreakdown()
+
+  const getMissingMandatoryFields = () => {
+    const missing = []
+    if (!formData.mobileNo || formData.mobileNo.trim() === "") {
+      missing.push("Mobile Number")
+    }
+    formData.rows.forEach((row, idx) => {
+      if (!row.name || row.name.trim() === "") missing.push(`Row ${idx + 1}: Name`)
+      if (!row.date || row.date.trim() === "") missing.push(`Row ${idx + 1}: Date`)
+      if (row.originalAmount === undefined || row.originalAmount === "" || isNaN(row.originalAmount)) missing.push(`Row ${idx + 1}: Original Amount`)
+    })
+    return missing
+  }
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <div className="body d-flex py-3">
@@ -963,7 +1011,7 @@ const LabRegistration = () => {
                       <div className="row g-3">
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="firstName">
-                            First Name *
+                            First Name <span className="text-danger">*</span>
                           </label>
                           <input
                             type="text"
@@ -1006,7 +1054,7 @@ const LabRegistration = () => {
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="mobileNo">
-                            Mobile No.
+                            Mobile No.<span className="text-danger">*</span>
                           </label>
                           <input
                             type="text"
@@ -1026,7 +1074,7 @@ const LabRegistration = () => {
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="gender">
-                            Gender *
+                            Gender <span className="text-danger">*</span>
                           </label>
                           <select
                             className={`form-select ${errors.gender ? "is-invalid" : ""}`}
@@ -1046,7 +1094,7 @@ const LabRegistration = () => {
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="relation">
-                            Relation *
+                            Relation <span className="text-danger">*</span>
                           </label>
                           <select
                             className={`form-select ${errors.relation ? "is-invalid" : ""}`}
@@ -1066,7 +1114,7 @@ const LabRegistration = () => {
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="dob">
-                            DOB *
+                            DOB <span className="text-danger">*</span>
                           </label>
                           <input
                             type="date"
@@ -1085,7 +1133,7 @@ const LabRegistration = () => {
                             Age
                           </label>
                           <input
-                            type="number"
+                            type="text" // <<== NOT number!
                             id="age"
                             name="age"
                             className={`form-control ${errors.age ? "is-invalid" : ""}`}
@@ -1093,11 +1141,12 @@ const LabRegistration = () => {
                             onChange={handleChange}
                             placeholder="Enter Age"
                           />
+
                           {errors.age && <div className="invalid-feedback">{errors.age}</div>}
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="email">
-                            Email *
+                            Email <span className="text-danger">*</span>
                           </label>
                           <input
                             type="email"
@@ -1565,9 +1614,9 @@ const LabRegistration = () => {
                 <table className="table table-bordered">
                   <thead>
                     <tr>
-                      <th>{formData.type === "investigation" ? "Investigation Name" : "Package Name"}</th>
-                      <th>Date</th>
-                      <th>Original Amount</th>
+                      <th>{formData.type === "investigation" ? "Investigation Name" : "Package Name"} <span className="text-danger">*</span></th>
+                      <th>Date  <span className="text-danger">*</span></th>
+                      <th>Original Amount  <span className="text-danger">*</span></th>
                       <th>Discount Amount</th>
                       <th>Net Amount</th>
                       <th>Action</th>
@@ -1611,7 +1660,6 @@ const LabRegistration = () => {
                                 }}
                                 onBlur={() => setTimeout(() => setActiveRowIndex(null), 200)}
                               />
-
                               {activeRowIndex === index && row.name.trim() !== "" && (
                                 <ul
                                   className="list-group position-absolute w-100 mt-1"
@@ -1625,95 +1673,99 @@ const LabRegistration = () => {
                                 >
                                   {formData.type === "investigation"
                                     ? investigationItems
-                                        .filter((item) =>
-                                          item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
-                                        )
-                                        .map((item, i) => {
-                                          const hasDiscount = item.disc && item.disc > 0
-                                          const displayPrice = item.price || 0
-                                          const discountAmount = hasDiscount ? item.disc : 0
-                                          const finalPrice = hasDiscount ? displayPrice - discountAmount : displayPrice
+                                      .filter((item) =>
+                                        item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
+                                      )
+                                      .map((item, i) => {
+                                        const hasDiscount = item.disc && item.disc > 0
+                                        const displayPrice = item.price || 0
+                                        const discountAmount = hasDiscount ? item.disc : 0
+                                        const finalPrice = hasDiscount ? displayPrice - discountAmount : displayPrice
 
-                                          return (
-                                            <li
-                                              key={i}
-                                              className="list-group-item list-group-item-action"
-                                              style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                              onClick={() => {
-                                                if (item.price === null || item.price === 0 || item.price === "0") {
-                                                  Swal.fire(
-                                                    "Warning",
-                                                    "Price has not been configured for this Investigation",
-                                                    "warning",
-                                                  )
-                                                } else {
-                                                  handleRowChange(index, "name", item.investigationName)
-                                                  handleRowChange(index, "itemId", item.investigationId)
-                                                  handleRowChange(index, "originalAmount", displayPrice)
-                                                  handleRowChange(index, "discountAmount", discountAmount)
-                                                  handleRowChange(index, "netAmount", finalPrice)
-                                                  setActiveRowIndex(null)
-                                                }
-                                              }}
-                                            >
-                                              <div>
-                                                <strong>{item.investigationName}</strong>
-                                                <div className="d-flex justify-content-between">
-                                                  <span>
-                                                    {item.price === null
-                                                      ? "Price not configured"
-                                                      : `₹${finalPrice.toFixed(2)}`}
-                                                  </span>
-                                                  {hasDiscount && (
-                                                    <span className="text-success">
-                                                      (Discount: ₹{discountAmount.toFixed(2)})
-                                                    </span>
-                                                  )}
-                                                </div>
-                                                {item.investigationType && (
-                                                  <small className="text-muted">Type: {item.investigationType}</small>
-                                                )}
-                                              </div>
-                                            </li>
-                                          )
-                                        })
-                                    : packageItems
-                                        .filter((item) => item.packName.toLowerCase().includes(row.name.toLowerCase()))
-                                        .map((item, i) => (
+                                        return (
                                           <li
                                             key={i}
                                             className="list-group-item list-group-item-action"
                                             style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                            onClick={async () => {
-                                              const priceDetails = await fetchPackagePrice(item.packName)
-                                              if (!priceDetails || !priceDetails.actualCost) {
+                                            onClick={() => {
+                                              if (item.price === null || item.price === 0 || item.price === "0") {
                                                 Swal.fire(
                                                   "Warning",
-                                                  "Price has not been configured for this Package",
-                                                  "warning",
-                                                )
+                                                  "Price has not been configured for this Investigation",
+                                                  "warning"
+                                                );
                                               } else {
-                                                handleRowChange(index, "name", item.packName)
-                                                handleRowChange(index, "itemId", item.id || priceDetails.packId)
-                                                handleRowChange(
-                                                  index,
-                                                  "originalAmount",
-                                                  priceDetails.baseCost || priceDetails.actualCost,
-                                                )
-                                                handleRowChange(index, "discountAmount", priceDetails.disc || 0)
-                                                handleRowChange(index, "netAmount", priceDetails.actualCost)
-                                                setActiveRowIndex(null)
+                                                handleRowChange(index, "name", item.investigationName);
+                                                handleRowChange(index, "itemId", item.investigationId);
+                                                handleRowChange(index, "originalAmount", displayPrice);
+                                                handleRowChange(index, "discountAmount", discountAmount);
+                                                handleRowChange(index, "netAmount", finalPrice);
+                                                handleRowChange(index, "type", formData.type); // ✅ FORCE type from radio!
+                                                setActiveRowIndex(null);
                                               }
                                             }}
                                           >
                                             <div>
-                                              <strong>{item.packName}</strong>
+                                              <strong>{item.investigationName}</strong>
                                               <div className="d-flex justify-content-between">
-                                                <span>₹{item.actualCost.toFixed(2)}</span>
+                                                <span>
+                                                  {item.price === null
+                                                    ? "Price not configured"
+                                                    : `₹${finalPrice.toFixed(2)}`}
+                                                </span>
+                                                {hasDiscount && (
+                                                  <span className="text-success">
+                                                    (Discount: ₹{discountAmount.toFixed(2)})
+                                                  </span>
+                                                )}
                                               </div>
+                                              {item.investigationType && (
+                                                <small className="text-muted">
+                                                  Type: {item.investigationType}
+                                                </small>
+                                              )}
                                             </div>
                                           </li>
-                                        ))}
+                                        )
+                                      })
+                                    : packageItems
+                                      .filter((item) => item.packName.toLowerCase().includes(row.name.toLowerCase()))
+                                      .map((item, i) => (
+                                        <li
+                                          key={i}
+                                          className="list-group-item list-group-item-action"
+                                          style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
+                                          onClick={async () => {
+                                            const priceDetails = await fetchPackagePrice(item.packName);
+                                            if (!priceDetails || !priceDetails.actualCost) {
+                                              Swal.fire(
+                                                "Warning",
+                                                "Price has not been configured for this Package",
+                                                "warning"
+                                              );
+                                            } else {
+                                              handleRowChange(index, "name", item.packName);
+                                              handleRowChange(index, "itemId", item.id || priceDetails.packId);
+                                              handleRowChange(
+                                                index,
+                                                "originalAmount",
+                                                priceDetails.baseCost || priceDetails.actualCost
+                                              );
+                                              handleRowChange(index, "discountAmount", priceDetails.disc || 0);
+                                              handleRowChange(index, "netAmount", priceDetails.actualCost);
+                                              handleRowChange(index, "type", formData.type); // ✅ FORCE type from radio!
+                                              setActiveRowIndex(null);
+                                            }
+                                          }}
+                                        >
+                                          <div>
+                                            <strong>{item.packName}</strong>
+                                            <div className="d-flex justify-content-between">
+                                              <span>₹{item.actualCost.toFixed(2)}</span>
+                                            </div>
+                                          </div>
+                                        </li>
+                                      ))}
                                 </ul>
                               )}
                             </div>
@@ -1769,7 +1821,7 @@ const LabRegistration = () => {
                 </table>
 
                 <div className="d-flex justify-content-between align-items-center">
-                  <button type="button" className="btn btn-success" onClick={addRow}>
+                  <button type="button" className="btn btn-success" onClick={(e) => addRow(e, formData.type)}>
                     Add {formData.type === "investigation" ? "Investigation" : "Package"} +
                   </button>
 
@@ -1780,9 +1832,10 @@ const LabRegistration = () => {
                       placeholder="Enter Coupon Code"
                       style={{ width: "200px" }}
                     />
-                    <button type="button" className="btn btn-primary">
+                    <button type="button" className="btn btn-primary me-2">
                       <i className="icofont-ticket me-1"></i> Apply Coupon
                     </button>
+
                   </div>
                 </div>
               </div>
@@ -1816,7 +1869,7 @@ const LabRegistration = () => {
               <div className="card-body text-white">
                 {/* Summary Cards Grid */}
                 <div className="row g-3 mb-4">
-                  {/* Total Amount Card */}
+                  {/* Total Original Amount Card */}
                   <div className="col-md-3">
                     <div
                       className="card h-100"
@@ -1827,7 +1880,7 @@ const LabRegistration = () => {
                           <i className="fa fa-receipt fa-2x text-white" style={{ opacity: 0.8 }}></i>
                         </div>
                         <h6 className="card-title text-white mb-1">Total Amount</h6>
-                        <h4 className="text-white fw-bold">₹{paymentBreakdown.totalAmount}</h4>
+                        <h4 className="text-white fw-bold">₹{paymentBreakdown.totalOriginalAmount}</h4>
                       </div>
                     </div>
                   </div>
@@ -1860,7 +1913,7 @@ const LabRegistration = () => {
                             <i className="fa fa-file-invoice fa-2x text-warning"></i>
                           </div>
                           <h6 className="card-title text-white mb-1">Tax ({paymentBreakdown.gstPercent}% GST)</h6>
-                          <h4 className="text-warning fw-bold">₹{paymentBreakdown.taxAmount}</h4>
+                          <h4 className="text-warning fw-bold">₹{paymentBreakdown.totalGstAmount}</h4>
                         </div>
                       </div>
                     </div>
@@ -1881,7 +1934,7 @@ const LabRegistration = () => {
                           <i className="fa fa-credit-card fa-2x text-white"></i>
                         </div>
                         <h6 className="card-title text-white mb-1">Final Amount</h6>
-                        <h4 className="text-white fw-bold">₹{paymentBreakdown.finalPaymentAmount}</h4>
+                        <h4 className="text-white fw-bold">₹{paymentBreakdown.finalAmount}</h4>
                       </div>
                     </div>
                   </div>
@@ -1898,31 +1951,27 @@ const LabRegistration = () => {
                       <div className="col-md-8">
                         <div className="d-flex justify-content-between py-2 border-bottom">
                           <span className="text-muted">Subtotal ({paymentBreakdown.itemCount} items)</span>
-                          <span className="fw-medium text-dark">₹{paymentBreakdown.totalAmount}</span>
+                          <span className="fw-medium text-dark">₹{paymentBreakdown.totalOriginalAmount}</span>
                         </div>
-
                         {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
                           <div className="d-flex justify-content-between py-2 border-bottom">
                             <span className="text-success">Discount Applied</span>
                             <span className="fw-medium text-success">-₹{paymentBreakdown.totalDiscountAmount}</span>
                           </div>
                         )}
-
                         <div className="d-flex justify-content-between py-2 border-bottom">
                           <span className="text-muted">Amount after Discount</span>
-                          <span className="fw-medium text-dark">₹{paymentBreakdown.baseAmountAfterDiscount}</span>
+                          <span className="fw-medium text-dark">₹{paymentBreakdown.totalNetAmount}</span>
                         </div>
-
                         {paymentBreakdown.gstApplicable && (
                           <div className="d-flex justify-content-between py-2 border-bottom">
                             <span className="text-muted">GST ({paymentBreakdown.gstPercent}%)</span>
-                            <span className="fw-medium text-warning">+₹{paymentBreakdown.taxAmount}</span>
+                            <span className="fw-medium text-warning">+₹{paymentBreakdown.totalGstAmount}</span>
                           </div>
                         )}
-
                         <div className="d-flex justify-content-between py-3 border-top">
                           <span className="h5 fw-bold text-dark">Total Payable</span>
-                          <span className="h4 fw-bold text-primary">₹{paymentBreakdown.finalPaymentAmount}</span>
+                          <span className="h4 fw-bold text-primary">₹{paymentBreakdown.finalAmount}</span>
                         </div>
                       </div>
                       <div className="col-md-4">
@@ -1957,6 +2006,16 @@ const LabRegistration = () => {
                       type="button"
                       className="btn btn-primary me-2"
                       onClick={async () => {
+                        const missingFields = getMissingMandatoryFields()
+                        if (loading) return
+                        if (missingFields.length > 0) {
+                          Swal.fire(
+                            "Missing Mandatory Fields",
+                            "Please fill all mandatory fields before proceeding.",
+                            "warning"
+                          )
+                          return
+                        }
                         try {
                           console.log("Pay Now button clicked")
                           await handleSubmit(true)
@@ -1964,10 +2023,9 @@ const LabRegistration = () => {
                           console.error("Error in payment flow:", error)
                         }
                       }}
-                      disabled={loading || isAnyDateOrNameMissing || isMobileNoMissing}
                     >
                       <i className="fa fa-credit-card me-1"></i>
-                      {loading ? "Processing..." : `Pay Now - ₹${paymentBreakdown.finalPaymentAmount}`}
+                      {loading ? "Processing..." : `Pay Now - ₹${paymentBreakdown.finalAmount}`}
                     </button>
                     <button type="button" className="btn btn-secondary" onClick={handleReset}>
                       Reset

@@ -53,6 +53,26 @@ import HSNMaster from './Views/Masters/HSNMaster';
 import ViewAndUpdate from './Views/Dispensary/ViewAndUpdate';
 import PaymentPage from './Views/Payment/payment';
 import LabPaymentSuccess from './Views/Payment/LabPaymentSuccess';
+import PackageMaster from './Views/Masters/PackageMaster';
+import PackageInvestigationMaster from './Views/Masters/PackageInvestigationMaster';
+import PendingForBilling from './Views/Laboratory/PendingForBilling';
+import OPDBillingDetails from './Views/Laboratory/OPDBillingDetails';
+import LabBillingDetails from './Views/Laboratory/LabBillingDetails';
+import StockStatusReport from './Views/Dispensary/StockStatusReport';
+import OpdWaitingList from './Views/OPD/OpdWaitingList';
+import UpdateLabRegistration from './Views/Laboratory/UpdateLabRegistration';
+import UpdateUnitRate from './Views/Dispensary/UpdateUnitRate';
+import DrugExpiry from './Views/Stores/DrugExpiryReport';
+import PendingSampleCollection from './Views/Laboratory/PendingForSampleCollection';
+import PhysicalStockAdjustment from './Views/Dispensary/PhysicalStockAdjustment';
+import PhysicalStockAdjustmentViewUpdate from './Views/Dispensary/PhysicalStockViewAndUpdate';
+import PhysicalStockAdjustmentApproval from './Views/Dispensary/PhysicalStockApproval';
+import SampleValidation from './Views/Laboratory/SampleValidation';
+import PendingForSampleCollection from './Views/Laboratory/PendingForSampleCollect';
+import PendingForResultEntry from './Views/Laboratory/PendingForResultEntry';
+import PhysicalStockTakingRegister from './Views/Dispensary/PhysicalStockRegister';
+import OpeningBalanceRegister from './Views/Dispensary/OpeningBalanceRegister';
+import GeneralMedicineWaitingList from './Views/OPD/GeneralMedicineWaitingList';
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -141,6 +161,26 @@ function App() {
                 <Route path="ItemSection" element={<ItemSection/>} />
                 <Route path="HSNMaster" element={<HSNMaster/>} />
                 <Route path="view-and-update" element={<ViewAndUpdate/>}/>
+                <Route path="PackageMaster" element={<PackageMaster/>} />
+                <Route path="PackageInvestigationMaster" element={<PackageInvestigationMaster/>} />
+                <Route path="PendingForBilling" element={<PendingForBilling />} />
+                <Route path="OPDBillingDetails" element={<OPDBillingDetails />} />
+                <Route path="LabBillingDetails" element={<LabBillingDetails/>} />
+                <Route path="StockStatusReport" element={<StockStatusReport/>} />
+                <Route path="OPDWaitingList" element={<OpdWaitingList />} />
+                <Route path="UpdateLabRegistration" element={<UpdateLabRegistration/>} />
+                <Route path="UpdateUnitRate" element={<UpdateUnitRate/>} />
+                <Route path="DrugExpiry" element={<DrugExpiry />} />
+                <Route path="PendingSampleCollection" element={<PendingSampleCollection/>} />
+                <Route path="PhysicalStockAdjustment" element={<PhysicalStockAdjustment/>} />
+                <Route path="PhysicalStockAdjustmentViewUpdate" element={<PhysicalStockAdjustmentViewUpdate/>}/>
+                <Route path="PhysicalStockAdjustmentApproval" element={<PhysicalStockAdjustmentApproval/>} />
+                <Route path="SampleValidation" element={<SampleValidation/>} />
+                <Route path="PendingForSampleCollection" element={<PendingForSampleCollection/>} />
+                <Route path="PendingForResultEntry" element={<PendingForResultEntry/>} />
+                <Route path="PhysicalStockTakingRegister" element={<PhysicalStockTakingRegister/>} />
+                <Route path="OpeningBalanceRegister" element={<OpeningBalanceRegister/>} />
+                <Route path="GeneralMedicineWaitingList" element={<GeneralMedicineWaitingList/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>

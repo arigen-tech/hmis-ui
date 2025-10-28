@@ -113,7 +113,7 @@ const Approveemployee = () => {
     const approveEmployee = async (employeeId, departmentId) => {
         setLoading(true);
         try {
-            const response = await putRequest(`${EMPLOYEE_REGISTRATION}/approve/${employeeId}/${departmentId}`);
+            const response = await putRequest(`/${EMPLOYEE_REGISTRATION}/approve/${employeeId}/${departmentId}`);
 
             if (response.status === 200) {
                 showPopup("Employee approved successfully", "success");

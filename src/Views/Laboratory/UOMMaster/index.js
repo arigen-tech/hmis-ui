@@ -1,15 +1,11 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
+import LoadingScreen from "../../../Components/Loading"
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import { DG_UOM } from "../../../config/apiConfig"
 
 const UOMMaster = () => {
-  const [uomList, setUomList] = useState([
-    { id: 1, UOMCODE: "-", UOMNAME: "-", status: "y" },
-    { id: 2, UOMCODE: "%", UOMNAME: "%", status: "y" },
-    { id: 3, UOMCODE: "/100 ml", UOMNAME: "/100 ml count", status: "y" },
-    { id: 4, UOMCODE: "cumm", UOMNAME: "cumm", status: "y" },
-    { id: 5, UOMCODE: "HPFF", UOMNAME: "HPFF", status: "y" },
-  ])
-
+  const [uomList, setUomList] = useState([])
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, uomId: null, newStatus: false })
   const [formData, setFormData] = useState({
     uomCode: "",
@@ -22,19 +18,40 @@ const UOMMaster = () => {
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
+  const [loading, setLoading] = useState(true)
   const itemsPerPage = 5
+
+  useEffect(() => {
+    fetchUOMData(0)
+  }, [])
+
+  const fetchUOMData = async (flag = 0) => {
+    try {
+      setLoading(true)
+      const response = await getRequest(`${DG_UOM}/getAll/${flag}`)
+      
+      if (response && response.response) {
+        setUomList(response.response)
+      }
+    } catch (err) {
+      console.error("Error fetching UOM data:", err)
+      showPopup("Failed to load UOM data", "error")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
     setCurrentPage(1)
   }
-
-  const filteredUomList = uomList.filter(
+  
+  const filteredUomList = Array.isArray(uomList) ? uomList.filter(
     (item) =>
-      item.UOMCODE.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.UOMNAME.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
-
+      (item?.uomCode?.toString().toLowerCase().includes(searchQuery.toLowerCase()) || 
+       item?.name?.toString().toLowerCase().includes(searchQuery.toLowerCase()))
+  ) : []
+  
   const filteredTotalPages = Math.ceil(filteredUomList.length / itemsPerPage)
 
   const currentItems = filteredUomList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
@@ -43,43 +60,68 @@ const UOMMaster = () => {
     setEditingUOM(item)
     setShowForm(true)
     setFormData({
-      uomCode: item.UOMCODE,
-      uomName: item.UOMNAME,
+      uomCode: item.uomCode,
+      uomName: item.name,
     })
     setIsFormValid(true)
   }
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault()
     if (!isFormValid) return
 
-    if (editingUOM) {
-      setUomList(
-        uomList.map((item) =>
-          item.id === editingUOM.id
-            ? {
-                ...item,
-                UOMCODE: formData.uomCode,
-                UOMNAME: formData.uomName,
-              }
-            : item,
-        ),
-      )
-      showPopup("UOM updated successfully!", "success")
-    } else {
-      const newUOM = {
-        id: Date.now(),
-        UOMCODE: formData.uomCode,
-        UOMNAME: formData.uomName,
-        status: "y",
-      }
-      setUomList([...uomList, newUOM])
-      showPopup("New UOM added successfully!", "success")
-    }
+    try {
+      setLoading(true)
 
-    setEditingUOM(null)
-    setShowForm(false)
-    setFormData({ uomCode: "", uomName: "" })
+      // Check for duplicate UOM code
+      const isDuplicate = uomList.some(
+        (code) =>
+          code.uomCode === formData.uomCode &&
+          (!editingUOM || code.id !== editingUOM.id)
+      )
+
+      if (isDuplicate && !editingUOM) {
+        showPopup("UOM with the same code already exists!", "error")
+        setLoading(false)
+        return
+      }
+
+      if (editingUOM) {
+        // Update existing UOM
+        const response = await putRequest(`${DG_UOM}/updateById/${editingUOM.id}`, {
+          uomCode: formData.uomCode,
+          name: formData.uomName,
+          status: editingUOM.status,
+        })
+
+        if (response && response.status === 200) {
+          fetchUOMData()
+          showPopup("UOM updated successfully!", "success")
+        }
+      } else {
+        // Add new UOM
+        const response = await postRequest(`${DG_UOM}/create`, {
+          uomCode: formData.uomCode,
+          name: formData.uomName,
+          status: "y",
+        })
+
+        if (response && response.status === 200) {
+          fetchUOMData()
+          showPopup("New UOM added successfully!", "success")
+        }
+      }
+
+      // Reset form and state
+      setEditingUOM(null)
+      setFormData({ uomCode: "", uomName: "" })
+      setShowForm(false)
+    } catch (err) {
+      console.error("Error saving UOM:", err)
+      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const showPopup = (message, type = "info") => {
@@ -96,13 +138,32 @@ const UOMMaster = () => {
     setConfirmDialog({ isOpen: true, uomId: id, newStatus })
   }
 
-  const handleConfirm = (confirmed) => {
+  const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.uomId !== null) {
-      setUomList((prevData) =>
-        prevData.map((item) =>
-          item.id === confirmDialog.uomId ? { ...item, status: confirmDialog.newStatus } : item,
-        ),
-      )
+      try {
+        setLoading(true)
+        const response = await putRequest(
+          `${DG_UOM}/status/${confirmDialog.uomId}?status=${confirmDialog.newStatus}`
+        )
+        if (response && response.response) {
+          setUomList((prevData) =>
+            prevData.map((item) =>
+              item.id === confirmDialog.uomId
+                ? { ...item, status: confirmDialog.newStatus }
+                : item
+            )
+          )
+          showPopup(
+            `UOM ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            "success"
+          )
+        }
+      } catch (err) {
+        console.error("Error updating UOM status:", err)
+        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error")
+      } finally {
+        setLoading(false)
+      }
     }
     setConfirmDialog({ isOpen: false, uomId: null, newStatus: null })
   }
@@ -113,9 +174,7 @@ const UOMMaster = () => {
 
     // Check if all required fields have values
     const updatedFormData = { ...formData, [id]: value }
-    setIsFormValid(
-      !!updatedFormData.uomCode && !!updatedFormData.uomName,
-    )
+    setIsFormValid(!!updatedFormData.uomCode && !!updatedFormData.uomName)
   }
 
   const handlePageNavigation = () => {
@@ -125,6 +184,12 @@ const UOMMaster = () => {
     } else {
       alert("Please enter a valid page number.")
     }
+  }
+
+  const handleRefresh = () => {
+    setSearchQuery("")
+    setCurrentPage(1)
+    fetchUOMData()
   }
 
   const renderPagination = () => {
@@ -193,6 +258,9 @@ const UOMMaster = () => {
                     <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                       <i className="mdi mdi-plus"></i> Add
                     </button>
+                    <button type="button" className="btn btn-success me-2" onClick={handleRefresh}>
+                      <i className="mdi mdi-refresh"></i> Show All
+                    </button>
                     <button type="button" className="btn btn-success me-2">
                       <i className="mdi mdi-plus"></i> Generate Report
                     </button>
@@ -201,7 +269,9 @@ const UOMMaster = () => {
               </div>
             </div>
             <div className="card-body">
-              {!showForm ? (
+              {loading ? (
+                <LoadingScreen />
+              ) : !showForm ? (
                 <div className="table-responsive packagelist">
                   <table className="table table-bordered table-hover align-middle">
                     <thead className="table-light">
@@ -215,8 +285,8 @@ const UOMMaster = () => {
                     <tbody>
                       {currentItems.map((item) => (
                         <tr key={item.id}>
-                          <td>{item.UOMCODE}</td>
-                          <td>{item.UOMNAME}</td>
+                          <td>{item.uomCode}</td>
+                          <td>{item.name}</td>
                           <td>
                             <div className="form-check form-switch">
                               <input
@@ -229,7 +299,6 @@ const UOMMaster = () => {
                               <label
                                 className="form-check-label px-0"
                                 htmlFor={`switch-${item.id}`}
-                                onClick={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
                               >
                                 {item.status === "y" ? "Active" : "Deactivated"}
                               </label>
@@ -268,6 +337,7 @@ const UOMMaster = () => {
                         placeholder="UOM Code"
                         onChange={handleInputChange}
                         value={formData.uomCode}
+                        maxLength={7}
                         required
                       />
                     </div>
@@ -282,11 +352,11 @@ const UOMMaster = () => {
                         placeholder="UOM Name"
                         onChange={handleInputChange}
                         value={formData.uomName}
+                        maxLength={30}
                         required
                       />
                     </div>
                   </div>
-
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                     <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                       Save
@@ -314,7 +384,7 @@ const UOMMaster = () => {
                         <p>
                           Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
-                            {uomList.find((item) => item.id === confirmDialog.uomId)?.UOMNAME}
+                            {uomList.find((item) => item.id === confirmDialog.uomId)?.name}
                           </strong>
                           ?
                         </p>
@@ -384,4 +454,4 @@ const UOMMaster = () => {
   )
 }
 
-export default UOMMaster;
+export default UOMMaster

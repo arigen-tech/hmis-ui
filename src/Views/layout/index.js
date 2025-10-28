@@ -7,7 +7,7 @@ const Layout = () => {
     return(
       <div id="ihealth-layout" className="theme-tradewind">
         <Sidebar />
-      <div className="main px-lg-4 px-md-4">
+      <div className="main px-lg-2 px-md-2">
          <Header />
             
             <div className="main-panel">

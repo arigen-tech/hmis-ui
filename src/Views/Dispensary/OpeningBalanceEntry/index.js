@@ -18,7 +18,8 @@ const OpeningBalanceEntry = () => {
   const [currentLogUser, setCurrentLogUser] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [drugCodeOptions, setDrugCodeOptions] = useState([]);
-
+  const departmentId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
+  const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
 
 
 
@@ -181,16 +182,16 @@ const OpeningBalanceEntry = () => {
 
         if (dom && doe && new Date(dom) > new Date(doe)) {
           alert("Date of Manufacturing (DOM) cannot be later than Date of Expiry (DOE).");
-          return entry; 
+          return entry;
         }
 
 
 
         // Auto-calculate totalCost
-        if (field === "qty" || field === "purchaseRatePerUnit") {
+        if (field === "qty" || field === "mrpPerUnit") {
           const qty = parseFloat(field === "qty" ? value : entry.qty) || 0;
-          const purchaseRate = parseFloat(field === "purchaseRatePerUnit" ? value : entry.purchaseRatePerUnit) || 0;
-          updatedEntry.totalCost = (qty * purchaseRate).toFixed(2);
+          const mrpRate = parseFloat(field === "mrpPerUnit" ? value : entry.mrpPerUnit) || 0;
+          updatedEntry.totalCost = (qty * mrpRate).toFixed(2);
         }
 
         return updatedEntry;
@@ -260,11 +261,24 @@ const OpeningBalanceEntry = () => {
   };
 
   const convertToISODate = (dateStr) => {
-  const [day, month, year] = dateStr.split('/');
-  const date = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
-  return date.toISOString();
-};
+    const [day, month, year] = dateStr.split('/');
+    const date = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
+    return date.toISOString();
+  };
 
+
+  // Add this function to check for duplicates
+  const hasDuplicateDrugEntries = (entries) => {
+    const seen = new Set();
+    for (const entry of entries) {
+      const key = `${entry.batchNoSerialNo}|${entry.dom}|${entry.doe}`;
+      if (seen.has(key)) {
+        return true;
+      }
+      seen.add(key);
+    }
+    return false;
+  };
 
   const handleSave = async () => {
     const formErrors = validateFormData(formData);
@@ -272,6 +286,12 @@ const OpeningBalanceEntry = () => {
 
     const hasFormErrors = Object.keys(formErrors).length > 0;
     const hasDrugErrors = drugErrors.some(err => Object.keys(err).length > 0);
+
+    // Duplicate check
+    if (hasDuplicateDrugEntries(drugEntries)) {
+      showPopup("Duplicate entry found for Batch No/Serial No, DOM, and DOE.", "warning");
+      return;
+    }
 
     if (hasFormErrors || hasDrugErrors) {
       let firstErrorMsg = "";
@@ -342,6 +362,12 @@ const OpeningBalanceEntry = () => {
     const hasFormErrors = Object.keys(formErrors).length > 0;
     const hasDrugErrors = drugErrors.some(err => Object.keys(err).length > 0);
 
+    // Duplicate check
+    if (hasDuplicateDrugEntries(drugEntries)) {
+      showPopup("Duplicate entry found for Batch No/Serial No, DOM, and DOE.", "warning");
+      return;
+    }
+
     if (hasFormErrors || hasDrugErrors) {
       let firstErrorMsg = "";
 
@@ -393,6 +419,7 @@ const OpeningBalanceEntry = () => {
 
       if (response?.status === 200 || response?.success) {
         showPopup("Opening Balance Submit successfully!", "success");
+        handleReset();
       } else {
         showPopup("Failed to Submit data. Please try again.", "error");
       }
@@ -573,15 +600,20 @@ const OpeningBalanceEntry = () => {
 
                           {activeDrugCodeDropdown === index && (
                             <ul
-                              className="list-group position-absolute w-100 mt-1"
+                              className="list-group position-fixed"
                               style={{
                                 zIndex: 9999,
                                 maxHeight: 180,
                                 overflowY: "auto",
+                                width: "200px",
+                                top: `${document.querySelector(`input[value="${entry.itemCode}"]`)?.getBoundingClientRect().bottom + window.scrollY}px`,
+                                left: `${document.querySelector(`input[value="${entry.itemCode}"]`)?.getBoundingClientRect().left + window.scrollX}px`,
+                                backgroundColor: "white",
+                                border: "1px solid #dee2e6",
+                                borderRadius: "0.375rem",
+                                boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)"
                               }}
                             >
-
-
                               {drugCodeOptions
                                 .filter((opt) =>
                                   opt.code.toLowerCase().includes(entry.drugCode.toLowerCase())
@@ -661,17 +693,21 @@ const OpeningBalanceEntry = () => {
                           />
 
                           {activeDrugNameDropdown === index && (
-
                             <ul
-                              className="list-group position-absolute w-100 mt-1"
+                              className="list-group position-fixed"
                               style={{
                                 zIndex: 9999,
                                 maxHeight: 180,
                                 overflowY: "auto",
+                                width: "200px",
+                                top: `${document.querySelector(`input[value="${entry.itemCode}"]`)?.getBoundingClientRect().bottom + window.scrollY}px`,
+                                left: `${document.querySelector(`input[value="${entry.itemCode}"]`)?.getBoundingClientRect().left + window.scrollX}px`,
+                                backgroundColor: "white",
+                                border: "1px solid #dee2e6",
+                                borderRadius: "0.375rem",
+                                boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)"
                               }}
                             >
-
-
 
                               {drugCodeOptions
                                 .filter((opt) =>
