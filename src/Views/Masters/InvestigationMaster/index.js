@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import Popup from "../../../Components/popup"
@@ -412,6 +410,10 @@ const InvestigationMaster = () => {
       showPopup("UOM is required", "error")
       return false
     }
+    if (formData.resultType === "Single" && !formData.uomId) {
+    showPopup("UOM is required for Single result type", "error")
+    return false
+  }
     if (formData.resultType === "Select") {
       showPopup("Result Type is required", "error")
       return false
@@ -698,8 +700,8 @@ const InvestigationMaster = () => {
                           <div className="col-md-4">
                             <div className="mb-2">
                               <label className="form-label fw-bold mb-1">
-                                UOM<span className="text-danger">*</span>
-                              </label>
+  UOM{formData.resultType === "Single" && <span className="text-danger">*</span>}
+</label>
                               <select
                                 className="form-select"
                                 name="uomId"
@@ -771,6 +773,25 @@ const InvestigationMaster = () => {
                               />
                             </div>
                           </div>
+                           <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label fw-bold mb-1">
+                                Gender Applicable<span className="text-danger">*</span>
+                              </label>
+                              <select
+                                className="form-select"
+                                name="genderApplicable"
+                                value={formData.genderApplicable}
+                                onChange={handleInputChange}
+                              >
+                                <option value="">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female"> Female</option>
+                                <option value="Common"> Common</option>
+                              </select>
+                            </div>
+                          </div>
+
 
                           <div className="col-md-4">
                             <div className="mb-2">
