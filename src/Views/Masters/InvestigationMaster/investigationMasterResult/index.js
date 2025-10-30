@@ -1,66 +1,159 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
+import { getRequest, putRequest } from "../../../../service/apiService"
+import { MAS_INVESTIGATION, DG_UOM } from "../../../../config/apiConfig"
+import Popup from "../../../../Components/popup"
+import LoadingScreen from "../../../../Components/Loading"
 
 const InvestigationMasterResult = () => {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const { investigationName, department, modality, investigationId, sample, container, uom } = location.state || {}
+  const { 
+  investigationId, 
+  investigationName, 
+  subInvestigations = [],
+  mainChargeCodeId,
+  subChargeCodeId,
+  sampleId,
+  uomId,
+  containerId, // Add this line
+  mainChargeCodeName,
+  subChargeCodeName,
+  collectionId  
+} = location.state || {}
 
-  const [subTests, setSubTests] = useState([
-    {
-      id: 1,
-      printOrder: 4,
-      autoComplete: "",
-      enterable: "HDL Cholesterol",
-      loinc: "",
-      unit: "mg/dl",
-      resultType: "Single Parameter",
-      comparisonType: "Normal Value",
-    },
-    {
-      id: 2,
-      printOrder: 1,
-      autoComplete: "",
-      enterable: "Total Cholesterol",
-      loinc: "",
-      unit: "mg/dl",
-      resultType: "Single Parameter",
-      comparisonType: "Normal Value",
-    },
-    {
-      id: 3,
-      printOrder: 2,
-      autoComplete: "",
-      enterable: "Triglycerides",
-      loinc: "",
-      unit: "mg/dl",
-      resultType: "Single Parameter",
-      comparisonType: "Normal Value",
-    },
-    {
-      id: 4,
-      printOrder: 3,
-      autoComplete: "",
-      enterable: "VLDL",
-      loinc: "",
-      unit: "mg/dl",
-      resultType: "Single Parameter",
-      comparisonType: "Normal Value",
-    },
-  ])
-
+  const [subTests, setSubTests] = useState([])
   const [showNormalValueModal, setShowNormalValueModal] = useState(false)
   const [showFixedValueModal, setShowFixedValueModal] = useState(false)
   const [selectedTestId, setSelectedTestId] = useState(null)
-  const [normalValues, setNormalValues] = useState([
-    { gender: "MALE", fromAge: 0, toAge: 100, minNormalValue: 40, maxNormalValue: 60, normalValue: 0 },
-    { gender: "FEMALE", fromAge: 0, toAge: 100, minNormalValue: 40, maxNormalValue: 60, normalValue: 0 },
-  ])
+  const [normalValues, setNormalValues] = useState([])
+  const [fixedValues, setFixedValues] = useState([])
+  const [uomOptions, setUomOptions] = useState([]) // State for UOM dropdown options
+  const [loading, setLoading] = useState(false)
+  const [popupMessage, setPopupMessage] = useState(null)
 
-  const [fixedValues, setFixedValues] = useState([{ fixedValue: "" }])
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => setPopupMessage(null),
+    })
+  }
+
+  // Fetch UOM options from API same as the first file
+  useEffect(() => {
+    const fetchUomOptions = async () => {
+      try {
+        setLoading(true)
+        // Fetch UOM data from backend API - same as first file
+        const uomsRes = await getRequest(`${DG_UOM}/getAll/1`)
+        
+        if (uomsRes && uomsRes.response) {
+          setUomOptions(
+            uomsRes.response.map((uom) => ({
+              id: uom.id,
+              name: uom.name,
+            }))
+          )
+        } else {
+          // Fallback to empty array if API fails
+          setUomOptions([])
+        }
+      } catch (error) {
+        console.error("Error fetching UOM options:", error)
+        setUomOptions([]) // Fallback to empty array
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchUomOptions()
+  }, [])
+
+  // Initialize subTests from API data when component mounts
+  useEffect(() => {
+    if (subInvestigations && subInvestigations.length > 0) {
+      // Map API subInvestigationResponseList to subTests format
+      const mappedSubTests = subInvestigations.map((subInv, index) => ({
+        id: subInv.subInvestigationId || index + 1,
+        printOrder: subInv.orderNo || index + 1,
+        autoComplete: subInv.subInvestigationCode || "",
+        enterable: subInv.subInvestigationName || "",
+        loinc: "",
+        unit: getUnitName(subInv.uomId) || "mg/dl",
+        resultType: mapResultType(subInv.resultType) || "Single Parameter",
+        comparisonType: mapComparisonType(subInv.comparisonType) || "None", // Auto-select based on API data
+        // Store original API data for reference
+        originalData: subInv,
+        // Store existing fixed and normal values
+        fixedValues: subInv.fixedValueResponseList?.map(fv => ({
+          fixedId: fv.fixedId,
+          fixedValue: fv.fixedValue
+        })) || [],
+        normalValues: subInv.normalValueResponseList?.map(nv => ({
+          normalId: nv.normalId,
+          gender: nv.sex === 'M' ? 'MALE' : 'FEMALE',
+          fromAge: nv.fromAge || 0,
+          toAge: nv.toAge || 100,
+          minNormalValue: nv.minNormalValue || "",
+          maxNormalValue: nv.maxNormalValue || "",
+          normalValue: nv.normalValue || ""
+        })) || []
+      }))
+      setSubTests(mappedSubTests)
+    } else {
+      // Default empty state if no sub-investigations
+      setSubTests([
+        {
+          id: 1,
+          printOrder: 1,
+          autoComplete: "",
+          enterable: "",
+          loinc: "",
+          unit: "mg/dl",
+          resultType: "Single Parameter",
+          comparisonType: "None", // Default to "None" for new rows
+          fixedValues: [],
+          normalValues: []
+        }
+      ])
+    }
+  }, [subInvestigations, uomOptions]) // Added uomOptions dependency
+
+  // Helper function to map result type from API to UI
+  const mapResultType = (apiResultType) => {
+    const typeMap = {
+      's': 'Single Parameter',
+      'm': 'Multiple Parameter', 
+      't': 'Text'
+    }
+    return typeMap[apiResultType] || "Single Parameter"
+  }
+
+  // Helper function to map comparison type from API to UI
+  const mapComparisonType = (apiComparisonType) => {
+    const typeMap = {
+      'f': 'Fixed Value',    // 'f' from API = Fixed Value in UI
+      'n': 'Normal Value',   // 'n' from API = Normal Value in UI
+      'v': 'None'           // 'v' from API = None in UI
+    }
+    return typeMap[apiComparisonType] || "None" // Default to "None" if not specified
+  }
+
+  // Helper function to get unit name from ID using fetched UOM options
+  const getUnitName = (uomId) => {
+    const uom = uomOptions.find(option => option.id === uomId)
+    return uom ? uom.name : "mg/dl"
+  }
+
+  // Helper function to get UOM ID from name using fetched UOM options
+  const getUomIdFromName = (unitName) => {
+    const uom = uomOptions.find(option => option.name === unitName)
+    return uom ? uom.id : uomOptions[0]?.id || 1
+  }
 
   const handleAddRow = () => {
     const newId = subTests.length > 0 ? Math.max(...subTests.map((test) => test.id)) + 1 : 1
@@ -74,9 +167,11 @@ const InvestigationMasterResult = () => {
         autoComplete: "",
         enterable: "",
         loinc: "",
-        unit: "mg/dl",
+        unit: uomOptions[0]?.name || "mg/dl", // Use first UOM option as default
         resultType: "Single Parameter",
-        comparisonType: "Select",
+        comparisonType: "None", // Auto-select "None" for new rows created with + button
+        fixedValues: [],
+        normalValues: []
       },
     ])
   }
@@ -89,8 +184,101 @@ const InvestigationMasterResult = () => {
     navigate(-1)
   }
 
-  const handleUpdate = () => {
-    alert("Update functionality would be implemented here")
+  const handleUpdate = async () => {
+  try {
+    setLoading(true);
+
+    // Prepare the main investigation data for multiple update
+    const mainInvestigationData = {
+      investigationId: investigationId,
+      investigationName: investigationName,
+      confidential: "n", // Default value
+      investigationType: "m", // Multiple investigation type
+      maxNormalValue: "", // Add if available from main investigation
+      minNormalValue: "", // Add if available from main investigation
+      mainChargeCodeId: mainChargeCodeId,
+      uomId: uomId,
+      subChargeCodeId: subChargeCodeId,
+      sampleId: sampleId,
+      collectionId: collectionId, // Use the actual collectionId from main investigation, NOT hardcoded
+      masInvestReq: subTests.map(test => {
+        // Prepare fixed values
+        const fixedValues = test.fixedValues?.map(fv => ({
+          fixedId: fv.fixedId || null,
+          fixedValue: fv.fixedValue || ""
+        })) || [];
+
+        // Prepare normal values
+        const normalValues = test.normalValues?.map(nv => ({
+          normalId: nv.normalId || null,
+          sex: nv.gender === "MALE" ? "M" : "F",
+          fromAge: parseInt(nv.fromAge) || 0,
+          toAge: parseInt(nv.toAge) || 100,
+          minNormalValue: nv.minNormalValue || "",
+          maxNormalValue: nv.maxNormalValue || "",
+          normalValue: nv.normalValue || "",
+          mainChargeCodeId: mainChargeCodeId
+        })) || [];
+
+        return {
+          subInvestigationId: test.originalData?.subInvestigationId || null,
+          subInvestigationCode: test.autoComplete || "",
+          subInvestigationName: test.enterable || "",
+          resultType: getApiResultType(test.resultType),
+          comparisonType: getApiComparisonType(test.comparisonType),
+          mainChargeCodeId: mainChargeCodeId,
+          subChargeCodeId: subChargeCodeId,
+          uomId: getUomIdFromName(test.unit),
+          fixedValues: fixedValues,
+          normalValues: normalValues,
+          fixedValueIdsToDelete: test.fixedValueIdsToDelete || [],
+          normalValueIdsToDelete: test.normalValueIdsToDelete || []
+        };
+      }),
+      subInvestigationIdsToDelete: [] // Add logic to track deleted sub-investigations if needed
+    };
+
+    console.log("Update payload:", mainInvestigationData);
+
+    // Make API call to update multiple investigation
+    const response = await putRequest(
+      `${MAS_INVESTIGATION}/update-multiple-investigation/${investigationId}`,
+      mainInvestigationData
+    );
+
+    if (response && response.status === 200) {
+      showPopup("Sub-investigations updated successfully!", "success");
+    } else {
+      throw new Error(response?.message || "Failed to update sub-investigations");
+    }
+  } catch (error) {
+    console.error("Error updating sub-investigations:", error);
+    showPopup("Failed to update sub-investigations", "error");
+  } finally {
+    setLoading(false);
+  }
+}
+
+  // Helper function to convert UI result type to API format
+  const getApiResultType = (uiResultType) => {
+    const typeMap = {
+      'Single Parameter': 's',
+      'Multiple Parameter': 'm',
+      'Text': 't',
+      'Range': 'r'
+    }
+    return typeMap[uiResultType] || 's'
+  }
+
+  // Helper function to convert UI comparison type to API format
+  const getApiComparisonType = (uiComparisonType) => {
+    const typeMap = {
+      'Fixed Value': 'f',    // Fixed Value in UI = 'f' in API
+      'Normal Value': 'n',   // Normal Value in UI = 'n' in API
+      'None': 'v',          // None in UI = 'v' in API
+      'Select': null
+    }
+    return typeMap[uiComparisonType] || 'v'
   }
 
   const handleGoClick = (testId) => {
@@ -98,8 +286,24 @@ const InvestigationMasterResult = () => {
     setSelectedTestId(testId)
 
     if (test.comparisonType === "Normal Value") {
+      // Load existing normal values if available
+      const existingNormalValues = test.normalValues || []
+      if (existingNormalValues.length > 0) {
+        setNormalValues(existingNormalValues)
+      } else {
+        setNormalValues([
+          { gender: "MALE", fromAge: 0, toAge: 100, minNormalValue: "", maxNormalValue: "", normalValue: "" },
+        ])
+      }
       setShowNormalValueModal(true)
     } else if (test.comparisonType === "Fixed Value") {
+      // Load existing fixed values if available
+      const existingFixedValues = test.fixedValues || []
+      if (existingFixedValues.length > 0) {
+        setFixedValues(existingFixedValues)
+      } else {
+        setFixedValues([{ fixedValue: "" }])
+      }
       setShowFixedValueModal(true)
     }
   }
@@ -111,9 +315,9 @@ const InvestigationMasterResult = () => {
         gender: "MALE",
         fromAge: 0,
         toAge: 100,
-        minNormalValue: 40,
-        maxNormalValue: 60,
-        normalValue: 0,
+        minNormalValue: "",
+        maxNormalValue: "",
+        normalValue: "",
       },
     ])
   }
@@ -136,8 +340,47 @@ const InvestigationMasterResult = () => {
     }
   }
 
+  const handleNormalValueSubmit = () => {
+    // Update the selected test with normal values
+    const updatedTests = subTests.map(test => {
+      if (test.id === selectedTestId) {
+        return {
+          ...test,
+          normalValues: normalValues,
+          // Clear fixed values when switching to normal values
+          fixedValues: [],
+          fixedValueIdsToDelete: test.fixedValues?.map(fv => fv.fixedId).filter(id => id) || []
+        }
+      }
+      return test
+    })
+    setSubTests(updatedTests)
+    setShowNormalValueModal(false)
+  }
+
+  const handleFixedValueSubmit = () => {
+    // Update the selected test with fixed values
+    const updatedTests = subTests.map(test => {
+      if (test.id === selectedTestId) {
+        return {
+          ...test,
+          fixedValues: fixedValues,
+          // Clear normal values when switching to fixed values
+          normalValues: [],
+          normalValueIdsToDelete: test.normalValues?.map(nv => nv.normalId).filter(id => id) || []
+        }
+      }
+      return test
+    })
+    setSubTests(updatedTests)
+    setShowFixedValueModal(false)
+  }
+
   return (
     <div className="content-wrapper">
+      {popupMessage && <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />}
+      {loading && <LoadingScreen overlay />}
+      
       {!showNormalValueModal && !showFixedValueModal ? (
         <div className="row">
           <div className="col-sm-12">
@@ -160,7 +403,7 @@ const InvestigationMasterResult = () => {
                             <input
                               type="text"
                               className="form-control bg-light"
-                              value={department || "laboratory 3"}
+                              value={mainChargeCodeName || "Laboratory"}
                               readOnly
                             />
                           </div>
@@ -169,7 +412,7 @@ const InvestigationMasterResult = () => {
                             <input
                               type="text"
                               className="form-control bg-light"
-                              value={modality || "BIO-CHEMISTRY"}
+                              value={subChargeCodeName || "BIO-CHEMISTRY"}
                               readOnly
                             />
                           </div>
@@ -178,7 +421,7 @@ const InvestigationMasterResult = () => {
                             <input
                               type="text"
                               className="form-control bg-light"
-                              value={investigationName || "ACID PHOSPHATE"}
+                              value={investigationName || "No investigation selected"}
                               readOnly
                             />
                           </div>
@@ -264,12 +507,16 @@ const InvestigationMasterResult = () => {
                                         )
                                         setSubTests(updatedTests)
                                       }}
+                                      disabled={loading}
                                     >
-                                      <option value="mg/dl">mg/dl</option>
-                                      <option value="%">%</option>
-                                      <option value="g/dl">g/dl</option>
-                                      <option value="mmol/L">mmol/L</option>
+                                      <option value="">Select Unit</option>
+                                      {uomOptions.map((uom) => (
+                                        <option key={uom.id} value={uom.name}>
+                                          {uom.name}
+                                        </option>
+                                      ))}
                                     </select>
+                                    {loading && <div className="text-muted small">Loading units...</div>}
                                   </td>
                                   <td>
                                     <select
@@ -325,10 +572,10 @@ const InvestigationMasterResult = () => {
                         </div>
 
                         <div className="d-flex justify-content-end mt-4">
-                          <button className="btn btn-success me-2" onClick={handleUpdate}>
-                            Update
+                          <button className="btn btn-success me-2" onClick={handleUpdate} disabled={loading}>
+                            {loading ? "Updating..." : "Update"}
                           </button>
-                          <button className="btn btn-secondary" onClick={handleBack}>
+                          <button className="btn btn-secondary" onClick={handleBack} disabled={loading}>
                             Back
                           </button>
                         </div>
@@ -455,7 +702,7 @@ const InvestigationMasterResult = () => {
                   </table>
                 </div>
                 <div className="d-flex justify-content-end mt-3">
-                  <button className="btn btn-success me-2" onClick={() => setShowNormalValueModal(false)}>
+                  <button className="btn btn-success me-2" onClick={handleNormalValueSubmit}>
                     Submit
                   </button>
                   <button className="btn btn-secondary" onClick={() => setShowNormalValueModal(false)}>
@@ -514,7 +761,7 @@ const InvestigationMasterResult = () => {
                   </table>
                 </div>
                 <div className="d-flex justify-content-end mt-3">
-                  <button className="btn btn-success me-2" onClick={() => setShowFixedValueModal(false)}>
+                  <button className="btn btn-success me-2" onClick={handleFixedValueSubmit}>
                     Submit
                   </button>
                   <button className="btn btn-secondary" onClick={() => setShowFixedValueModal(false)}>
