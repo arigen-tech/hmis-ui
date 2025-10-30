@@ -80,6 +80,7 @@ const validRoutes = [
   "/PhysicalStockTakingRegister",
   "/OpeningBalanceRegister",
   "/GeneralMedicineWaitingList",
+  "/SampleMaster",
 ];
 
 const NotAuthorized = () => {
