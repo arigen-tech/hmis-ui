@@ -12,18 +12,19 @@ const InvestigationMasterResult = () => {
   const navigate = useNavigate()
 
   const { 
-  investigationId, 
-  investigationName, 
-  subInvestigations = [],
-  mainChargeCodeId,
-  subChargeCodeId,
-  sampleId,
-  uomId,
-  containerId, // Add this line
-  mainChargeCodeName,
-  subChargeCodeName,
-  collectionId  
-} = location.state || {}
+    investigationId, 
+    investigationName, 
+    subInvestigations = [],
+    mainChargeCodeId,
+    subChargeCodeId,
+    sampleId,
+    uomId,
+    containerId,
+    mainChargeCodeName,
+    subChargeCodeName,
+    collectionId,
+    genderApplicable // Add genderApplicable from location state
+  } = location.state || {}
 
   const [subTests, setSubTests] = useState([])
   const [showNormalValueModal, setShowNormalValueModal] = useState(false)
@@ -31,9 +32,28 @@ const InvestigationMasterResult = () => {
   const [selectedTestId, setSelectedTestId] = useState(null)
   const [normalValues, setNormalValues] = useState([])
   const [fixedValues, setFixedValues] = useState([])
-  const [uomOptions, setUomOptions] = useState([]) // State for UOM dropdown options
+  const [uomOptions, setUomOptions] = useState([])
   const [loading, setLoading] = useState(false)
   const [popupMessage, setPopupMessage] = useState(null)
+
+  // Gender mapping functions
+  const mapGenderToDisplay = (genderCode) => {
+    const genderMap = {
+      'm': 'Male',
+      'f': 'Female', 
+      'c': 'Common'
+    }
+    return genderMap[genderCode?.toLowerCase()] || "Select"
+  }
+
+  const mapGenderToCode = (genderDisplay) => {
+    const genderMap = {
+      'Male': 'm',
+      'Female': 'f',
+      'Common': 'c'
+    }
+    return genderMap[genderDisplay] || null
+  }
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -85,7 +105,7 @@ const InvestigationMasterResult = () => {
         loinc: "",
         unit: getUnitName(subInv.uomId) || "mg/dl",
         resultType: mapResultType(subInv.resultType) || "Single Parameter",
-        comparisonType: mapComparisonType(subInv.comparisonType) || "None", // Auto-select based on API data
+        comparisonType: mapComparisonType(subInv.comparisonType) || "None",
         // Store original API data for reference
         originalData: subInv,
         // Store existing fixed and normal values
@@ -113,15 +133,15 @@ const InvestigationMasterResult = () => {
           autoComplete: "",
           enterable: "",
           loinc: "",
-          unit: "mg/dl",
+          unit: uomOptions[0]?.name || "mg/dl",
           resultType: "Single Parameter",
-          comparisonType: "None", // Default to "None" for new rows
+          comparisonType: "None",
           fixedValues: [],
           normalValues: []
         }
       ])
     }
-  }, [subInvestigations, uomOptions]) // Added uomOptions dependency
+  }, [subInvestigations, uomOptions])
 
   // Helper function to map result type from API to UI
   const mapResultType = (apiResultType) => {
@@ -136,11 +156,11 @@ const InvestigationMasterResult = () => {
   // Helper function to map comparison type from API to UI
   const mapComparisonType = (apiComparisonType) => {
     const typeMap = {
-      'f': 'Fixed Value',    // 'f' from API = Fixed Value in UI
-      'n': 'Normal Value',   // 'n' from API = Normal Value in UI
-      'v': 'None'           // 'v' from API = None in UI
+      'f': 'Fixed Value',
+      'n': 'Normal Value',
+      'v': 'None'
     }
-    return typeMap[apiComparisonType] || "None" // Default to "None" if not specified
+    return typeMap[apiComparisonType] || "None"
   }
 
   // Helper function to get unit name from ID using fetched UOM options
@@ -167,9 +187,9 @@ const InvestigationMasterResult = () => {
         autoComplete: "",
         enterable: "",
         loinc: "",
-        unit: uomOptions[0]?.name || "mg/dl", // Use first UOM option as default
+        unit: uomOptions[0]?.name || "mg/dl",
         resultType: "Single Parameter",
-        comparisonType: "None", // Auto-select "None" for new rows created with + button
+        comparisonType: "None",
         fixedValues: [],
         normalValues: []
       },
@@ -185,79 +205,83 @@ const InvestigationMasterResult = () => {
   }
 
   const handleUpdate = async () => {
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    // Prepare the main investigation data for multiple update
-    const mainInvestigationData = {
-      investigationId: investigationId,
-      investigationName: investigationName,
-      confidential: "n", // Default value
-      investigationType: "m", // Multiple investigation type
-      maxNormalValue: "", // Add if available from main investigation
-      minNormalValue: "", // Add if available from main investigation
-      mainChargeCodeId: mainChargeCodeId,
-      uomId: uomId,
-      subChargeCodeId: subChargeCodeId,
-      sampleId: sampleId,
-      collectionId: collectionId, // Use the actual collectionId from main investigation, NOT hardcoded
-      masInvestReq: subTests.map(test => {
-        // Prepare fixed values
-        const fixedValues = test.fixedValues?.map(fv => ({
-          fixedId: fv.fixedId || null,
-          fixedValue: fv.fixedValue || ""
-        })) || [];
+      // Map gender to code before sending to API
+      const genderCode = mapGenderToCode(genderApplicable)
 
-        // Prepare normal values
-        const normalValues = test.normalValues?.map(nv => ({
-          normalId: nv.normalId || null,
-          sex: nv.gender === "MALE" ? "M" : "F",
-          fromAge: parseInt(nv.fromAge) || 0,
-          toAge: parseInt(nv.toAge) || 100,
-          minNormalValue: nv.minNormalValue || "",
-          maxNormalValue: nv.maxNormalValue || "",
-          normalValue: nv.normalValue || "",
-          mainChargeCodeId: mainChargeCodeId
-        })) || [];
+      // Prepare the main investigation data for multiple update
+      const mainInvestigationData = {
+        investigationId: investigationId,
+        investigationName: investigationName,
+        confidential: "n",
+        investigationType: "m",
+        maxNormalValue: "",
+        minNormalValue: "",
+        mainChargeCodeId: mainChargeCodeId,
+        uomId: uomId,
+        subChargeCodeId: subChargeCodeId,
+        sampleId: sampleId,
+        collectionId: collectionId,
+        genderApplicable: genderCode, // Add gender applicable field
+        masInvestReq: subTests.map(test => {
+          // Prepare fixed values
+          const fixedValues = test.fixedValues?.map(fv => ({
+            fixedId: fv.fixedId || null,
+            fixedValue: fv.fixedValue || ""
+          })) || [];
 
-        return {
-          subInvestigationId: test.originalData?.subInvestigationId || null,
-          subInvestigationCode: test.autoComplete || "",
-          subInvestigationName: test.enterable || "",
-          resultType: getApiResultType(test.resultType),
-          comparisonType: getApiComparisonType(test.comparisonType),
-          mainChargeCodeId: mainChargeCodeId,
-          subChargeCodeId: subChargeCodeId,
-          uomId: getUomIdFromName(test.unit),
-          fixedValues: fixedValues,
-          normalValues: normalValues,
-          fixedValueIdsToDelete: test.fixedValueIdsToDelete || [],
-          normalValueIdsToDelete: test.normalValueIdsToDelete || []
-        };
-      }),
-      subInvestigationIdsToDelete: [] // Add logic to track deleted sub-investigations if needed
-    };
+          // Prepare normal values
+          const normalValues = test.normalValues?.map(nv => ({
+            normalId: nv.normalId || null,
+            sex: nv.gender === "MALE" ? "M" : "F",
+            fromAge: parseInt(nv.fromAge) || 0,
+            toAge: parseInt(nv.toAge) || 100,
+            minNormalValue: nv.minNormalValue || "",
+            maxNormalValue: nv.maxNormalValue || "",
+            normalValue: nv.normalValue || "",
+            mainChargeCodeId: mainChargeCodeId
+          })) || [];
 
-    console.log("Update payload:", mainInvestigationData);
+          return {
+            subInvestigationId: test.originalData?.subInvestigationId || null,
+            subInvestigationCode: test.autoComplete || "",
+            subInvestigationName: test.enterable || "",
+            resultType: getApiResultType(test.resultType),
+            comparisonType: getApiComparisonType(test.comparisonType),
+            mainChargeCodeId: mainChargeCodeId,
+            subChargeCodeId: subChargeCodeId,
+            uomId: getUomIdFromName(test.unit),
+            fixedValues: fixedValues,
+            normalValues: normalValues,
+            fixedValueIdsToDelete: test.fixedValueIdsToDelete || [],
+            normalValueIdsToDelete: test.normalValueIdsToDelete || []
+          };
+        }),
+        subInvestigationIdsToDelete: []
+      };
 
-    // Make API call to update multiple investigation
-    const response = await putRequest(
-      `${MAS_INVESTIGATION}/update-multiple-investigation/${investigationId}`,
-      mainInvestigationData
-    );
+      console.log("Update payload:", mainInvestigationData);
 
-    if (response && response.status === 200) {
-      showPopup("Sub-investigations updated successfully!", "success");
-    } else {
-      throw new Error(response?.message || "Failed to update sub-investigations");
+      // Make API call to update multiple investigation
+      const response = await putRequest(
+        `${MAS_INVESTIGATION}/update-multiple-investigation/${investigationId}`,
+        mainInvestigationData
+      );
+
+      if (response && response.status === 200) {
+        showPopup("Sub-investigations updated successfully!", "success");
+      } else {
+        throw new Error(response?.message || "Failed to update sub-investigations");
+      }
+    } catch (error) {
+      console.error("Error updating sub-investigations:", error);
+      showPopup("Failed to update sub-investigations", "error");
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error("Error updating sub-investigations:", error);
-    showPopup("Failed to update sub-investigations", "error");
-  } finally {
-    setLoading(false);
   }
-}
 
   // Helper function to convert UI result type to API format
   const getApiResultType = (uiResultType) => {
@@ -273,9 +297,9 @@ const InvestigationMasterResult = () => {
   // Helper function to convert UI comparison type to API format
   const getApiComparisonType = (uiComparisonType) => {
     const typeMap = {
-      'Fixed Value': 'f',    // Fixed Value in UI = 'f' in API
-      'Normal Value': 'n',   // Normal Value in UI = 'n' in API
-      'None': 'v',          // None in UI = 'v' in API
+      'Fixed Value': 'f',
+      'Normal Value': 'n',
+      'None': 'v',
       'Select': null
     }
     return typeMap[uiComparisonType] || 'v'
@@ -398,7 +422,7 @@ const InvestigationMasterResult = () => {
                       </div>
                       <div className="card-body">
                         <div className="row mb-4">
-                          <div className="col-md-4">
+                          <div className="col-md-3">
                             <label className="form-label">Department Name</label>
                             <input
                               type="text"
@@ -407,7 +431,7 @@ const InvestigationMasterResult = () => {
                               readOnly
                             />
                           </div>
-                          <div className="col-md-4">
+                          <div className="col-md-3">
                             <label className="form-label">Modality</label>
                             <input
                               type="text"
@@ -416,12 +440,21 @@ const InvestigationMasterResult = () => {
                               readOnly
                             />
                           </div>
-                          <div className="col-md-4">
+                          <div className="col-md-3">
                             <label className="form-label">Investigation Name</label>
                             <input
                               type="text"
                               className="form-control bg-light"
                               value={investigationName || "No investigation selected"}
+                              readOnly
+                            />
+                          </div>
+                          <div className="col-md-3">
+                            <label className="form-label">Gender Applicable</label>
+                            <input
+                              type="text"
+                              className="form-control bg-light"
+                              value={mapGenderToDisplay(genderApplicable) || "Not specified"}
                               readOnly
                             />
                           </div>

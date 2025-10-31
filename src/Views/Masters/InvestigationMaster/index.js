@@ -34,6 +34,7 @@ const InvestigationMaster = () => {
     resultType: "Select",
     minimumValue: "",
     maximumValue: "",
+    genderApplicable: "Select",
     loincCode: "",
     flag: "Select",
     confidential: false,
@@ -59,6 +60,25 @@ const InvestigationMaster = () => {
   const itemsPerPage = 3
 
   const navigate = useNavigate()
+
+  // Gender mapping functions
+  const mapGenderToDisplay = (genderCode) => {
+    const genderMap = {
+      'm': 'Male',
+      'f': 'Female', 
+      'c': 'Common'
+    }
+    return genderMap[genderCode?.toLowerCase()] || "Select"
+  }
+
+  const mapGenderToCode = (genderDisplay) => {
+    const genderMap = {
+      'Male': 'm',
+      'Female': 'f',
+      'Common': 'c'
+    }
+    return genderMap[genderDisplay] || null
+  }
 
   // Fetch all required data on component mount
   useEffect(() => {
@@ -197,6 +217,7 @@ const InvestigationMaster = () => {
       resultType: "Select",
       minimumValue: "",
       maximumValue: "",
+      genderApplicable: "Select",
       loincCode: "",
       flag: "Select",
       confidential: false,
@@ -285,6 +306,7 @@ const InvestigationMaster = () => {
       resultType: mapInvestigationTypeToResultType(investigation.investigationType) || "Select",
       minimumValue: investigation.minNormalValue || "",
       maximumValue: investigation.maxNormalValue || "",
+      genderApplicable: mapGenderToDisplay(investigation.genderApplicable) || "Select",
       loincCode: investigation.hicCode || "", // Fixed: using hicCode from API
       flag: "Select",
       confidential: investigation.confidential === "y" || false,
@@ -298,128 +320,119 @@ const InvestigationMaster = () => {
   }
 
   const handleSubmit = async () => {
-    if (!validateForm()) {
-      return
+  if (!validateForm()) {
+    return
+  }
+
+  try {
+    setLoading(true)
+
+    // Map gender to code before sending to API
+    const genderCode = mapGenderToCode(formData.genderApplicable)
+
+    // Prepare the common request payload with correct API field names
+    const commonPayload = {
+      investigationName: formData.investigationName,
+      mainChargeCodeId: Number.parseInt(formData.departmentId) || 0,
+      subChargeCodeId: Number.parseInt(formData.modalityId) || 0,
+      sampleId: Number.parseInt(formData.sampleId) || 0,
+      collectionId: Number.parseInt(formData.containerId) || 0,
+      // For Multiple result type, UOM can be null, for others it's required
+      uomId: formData.resultType === "Multiple" ? 
+        (formData.uomId ? Number.parseInt(formData.uomId) : null) : 
+        Number.parseInt(formData.uomId) || 0,
+      investigationType: formData.resultType.toLowerCase().charAt(0),
+      maxNormalValue: formData.maximumValue || null,
+      minNormalValue: formData.minimumValue || null,
+      multipleResults: formData.resultType === "Multiple" ? "y" : "n",
+      hicCode: formData.loincCode,
+      confidential: formData.confidential ? "y" : "n",
+      status: formData.status,
+      genderApplicable: genderCode,
+      // Include additional fields that might be required
+      appearInDischargeSummary: selectedInvestigation?.appearInDischargeSummary || null,
+      testOrderNo: selectedInvestigation?.testOrderNo || null,
+      numericOrString: selectedInvestigation?.numericOrString || null,
     }
 
-    try {
-      setLoading(true)
+    let response
 
-      // Prepare the common request payload with correct API field names
-      const commonPayload = {
-        investigationName: formData.investigationName,
-        mainChargeCodeId: Number.parseInt(formData.departmentId) || 0,
-        subChargeCodeId: Number.parseInt(formData.modalityId) || 0,
-        sampleId: Number.parseInt(formData.sampleId) || 0,
-        collectionId: Number.parseInt(formData.containerId) || 0,
-        uomId: Number.parseInt(formData.uomId) || 0,
-        investigationType: formData.resultType.toLowerCase().charAt(0),
-        maxNormalValue: formData.maximumValue || null,
-        minNormalValue: formData.minimumValue || null,
-        multipleResults: formData.resultType === "Multiple" ? "y" : "n",
-        hicCode: formData.loincCode, // Using correct API field name
-        confidential: formData.confidential ? "y" : "n",
-        status: formData.status,
-        // Include additional fields that might be required
-        appearInDischargeSummary: selectedInvestigation?.appearInDischargeSummary || null,
-        testOrderNo: selectedInvestigation?.testOrderNo || null,
-        numericOrString: selectedInvestigation?.numericOrString || null,
+    if (selectedInvestigation) {
+      // Update existing investigation
+      response = await putRequest(
+        `${MAS_INVESTIGATION}/update-single-investigation/${selectedInvestigation.investigationId}`,
+        commonPayload
+      )
+    } else {
+      // Create new investigation
+      response = await postRequest(`${MAS_INVESTIGATION}/create-investigation`, commonPayload)
+    }
+
+    if (response && response.status === 200) {
+      // Refresh the investigations list
+      const investigationsRes = await getRequest(`${MAS_INVESTIGATION}/getAll/0`)
+      if (investigationsRes && investigationsRes.response) {
+        setInvestigations(
+          investigationsRes.response.map((item) => ({
+            ...item,
+            id: item.investigationId,
+          })),
+        )
       }
-
-      let response
 
       if (selectedInvestigation) {
-        // Update existing investigation
-        // if (formData.resultType === "Single" || formData.resultType === "Range") {
-        //   response = await putRequest(
-        //     `${MAS_INVESTIGATION}/update-single-investigation/${selectedInvestigation.investigationId}`,
-        //     commonPayload
-        //   )
-        // } else if (formData.resultType === "Multiple") {
-        //   // response = await putRequest(
-        //   //   `${MAS_INVESTIGATION}/update-multiple-investigation/${selectedInvestigation.investigationId}`,
-        //   //   commonPayload
-        //   // )
-        //   response = await putRequest(
-        //     `${MAS_INVESTIGATION}/update-single-investigation/${selectedInvestigation.investigationId}`,
-        //     commonPayload
-        //   )
-        // } else {
-        //   throw new Error("Invalid result type selected")
-        // }
-        response = await putRequest(
-            `${MAS_INVESTIGATION}/update-single-investigation/${selectedInvestigation.investigationId}`,
-            commonPayload
-          )
+        showPopup("Investigation updated successfully!", "success")
       } else {
-        // Create new investigation
-        response = await postRequest(`${MAS_INVESTIGATION}/create-investigation`, commonPayload)
+        showPopup("Investigation created successfully!", "success")
+        handleReset() // Reset form after successful creation
       }
-
-      if (response && response.status === 200) {
-        // Refresh the investigations list
-        const investigationsRes = await getRequest(`${MAS_INVESTIGATION}/getAll/0`)
-        if (investigationsRes && investigationsRes.response) {
-          setInvestigations(
-            investigationsRes.response.map((item) => ({
-              ...item,
-              id: item.investigationId,
-            })),
-          )
-        }
-
-        if (selectedInvestigation) {
-          showPopup("Investigation updated successfully!", "success")
-        } else {
-          showPopup("Investigation created successfully!", "success")
-          handleReset() // Reset form after successful creation
-        }
-      } else {
-        throw new Error(response?.message || `Failed to ${selectedInvestigation ? "update" : "create"} investigation`)
-      }
-    } catch (error) {
-      console.error("Error saving investigation:", error)
-      showPopup(`Failed to ${selectedInvestigation ? "update" : "create"} investigation`, "error")
-    } finally {
-      setLoading(false)
+    } else {
+      throw new Error(response?.message || `Failed to ${selectedInvestigation ? "update" : "create"} investigation`)
     }
+  } catch (error) {
+    console.error("Error saving investigation:", error)
+    showPopup(`Failed to ${selectedInvestigation ? "update" : "create"} investigation`, "error")
+  } finally {
+    setLoading(false)
   }
+}
 
   const validateForm = () => {
-    if (!formData.investigationName.trim()) {
-      showPopup("Investigation Name is required", "error")
-      return false
-    }
-    if (!formData.departmentId) {
-      showPopup("Department is required", "error")
-      return false
-    }
-    if (!formData.modalityId) {
-      showPopup("Modality is required", "error")
-      return false
-    }
-    if (!formData.sampleId) {
-      showPopup("Sample is required", "error")
-      return false
-    }
-    if (!formData.containerId) {
-      showPopup("Container is required", "error")
-      return false
-    }
-    if (!formData.uomId) {
-      showPopup("UOM is required", "error")
-      return false
-    }
-    if (formData.resultType === "Single" && !formData.uomId) {
-    showPopup("UOM is required for Single result type", "error")
+  if (!formData.investigationName.trim()) {
+    showPopup("Investigation Name is required", "error")
     return false
   }
-    if (formData.resultType === "Select") {
-      showPopup("Result Type is required", "error")
-      return false
-    }
-    return true
+  if (!formData.departmentId) {
+    showPopup("Department is required", "error")
+    return false
   }
+  if (!formData.modalityId) {
+    showPopup("Modality is required", "error")
+    return false
+  }
+  if (!formData.sampleId) {
+    showPopup("Sample is required", "error")
+    return false
+  }
+  if (!formData.containerId) {
+    showPopup("Container is required", "error")
+    return false
+  }
+  // Make UOM required only for Single and Range result types, optional for Multiple
+  if (formData.resultType !== "Multiple" && !formData.uomId) {
+    showPopup("UOM is required for Single and Range result types", "error")
+    return false
+  }
+  if (formData.resultType === "Select") {
+    showPopup("Result Type is required", "error")
+    return false
+  }
+  if (formData.genderApplicable === "Select") {
+    showPopup("Gender Applicable is required", "error")
+    return false
+  }
+  return true
+}
 
   const handleNavigateToSubInvestigations = () => {
     if (!selectedInvestigation) {
@@ -436,7 +449,8 @@ const InvestigationMaster = () => {
         subChargeCodeId: formData.modalityId,
         sampleId: formData.sampleId,
         uomId: formData.uomId,
-        collectionId: formData.containerId
+        collectionId: formData.containerId,
+        genderApplicable: formData.genderApplicable
       }
     })
   }
@@ -549,6 +563,7 @@ const InvestigationMaster = () => {
                         <th>Modality</th>
                         <th>Sample</th>
                         <th>UOM</th>
+                        <th>Gender</th>
                         <th>Status</th>
                       </tr>
                     </thead>
@@ -569,6 +584,7 @@ const InvestigationMaster = () => {
                             <td>{item.subChargeCodeName || "-"}</td>
                             <td>{item.sampleName || "-"}</td>
                             <td>{item.uomName || "-"}</td>
+                            <td>{mapGenderToDisplay(item.genderApplicable) || "-"}</td>
                             <td onClick={(e) => e.stopPropagation()}>
                               <div className="form-check form-switch">
                                 <input
@@ -587,7 +603,7 @@ const InvestigationMaster = () => {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="5" className="text-center py-4">
+                          <td colSpan="6" className="text-center py-4">
                             {loading ? "Loading..." : "No investigations found"}
                           </td>
                         </tr>
@@ -698,25 +714,27 @@ const InvestigationMaster = () => {
                             </div>
                           </div>
                           <div className="col-md-4">
-                            <div className="mb-2">
-                              <label className="form-label fw-bold mb-1">
-  UOM{formData.resultType === "Single" && <span className="text-danger">*</span>}
-</label>
-                              <select
-                                className="form-select"
-                                name="uomId"
-                                value={formData.uomId}
-                                onChange={handleInputChange}
-                              >
-                                <option value="">Select UOM</option>
-                                {dropdownOptions.uoms.map((uom) => (
-                                  <option key={uom.id} value={uom.id}>
-                                    {uom.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
+  <div className="mb-2">
+    <label className="form-label fw-bold mb-1">
+      UOM
+      {formData.resultType !== "Multiple" && <span className="text-danger">*</span>}
+      {formData.resultType === "Multiple" && <span className="text-muted"> (Optional)</span>}
+    </label>
+    <select
+      className="form-select"
+      name="uomId"
+      value={formData.uomId}
+      onChange={handleInputChange}
+    >
+      <option value="">Select UOM</option>
+      {dropdownOptions.uoms.map((uom) => (
+        <option key={uom.id} value={uom.id}>
+          {uom.name}
+        </option>
+      ))}
+    </select>
+  </div>
+</div>
 
                           <div className="col-md-4">
                             <div className="mb-2">
@@ -773,7 +791,7 @@ const InvestigationMaster = () => {
                               />
                             </div>
                           </div>
-                           <div className="col-md-4">
+                          <div className="col-md-4">
                             <div className="mb-2">
                               <label className="form-label fw-bold mb-1">
                                 Gender Applicable<span className="text-danger">*</span>
@@ -784,14 +802,13 @@ const InvestigationMaster = () => {
                                 value={formData.genderApplicable}
                                 onChange={handleInputChange}
                               >
-                                <option value="">Select Gender</option>
+                                <option value="Select">Select Gender</option>
                                 <option value="Male">Male</option>
-                                <option value="Female"> Female</option>
-                                <option value="Common"> Common</option>
+                                <option value="Female">Female</option>
+                                <option value="Common">Common</option>
                               </select>
                             </div>
                           </div>
-
 
                           <div className="col-md-4">
                             <div className="mb-2">
