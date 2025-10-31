@@ -1,5 +1,4 @@
 import { useState } from "react"
-// Removed invalid asset import, using public image from /public instead.
 import placeholderImage from "../../../assets/images/placeholder.jpg"
 
 const GeneralMedicineWaitingList = () => {
@@ -31,9 +30,10 @@ const GeneralMedicineWaitingList = () => {
   const [pageInput, setPageInput] = useState("")
   const [showDetailView, setShowDetailView] = useState(false)
   const [selectedPatient, setSelectedPatient] = useState(null)
-  const [image, setImage] = useState(placeholderImage)
+  const [image, setImage] = useState(null)
 
   const [investigationType, setInvestigationType] = useState("lab")
+  const [procedureCareType, setProcedureCareType] = useState("procedure")
 
   const [expandedSections, setExpandedSections] = useState({
     personalDetails: false,
@@ -42,10 +42,15 @@ const GeneralMedicineWaitingList = () => {
     diagnosis: false,
     investigation: false,
     treatment: false,
-    minorProcedure: false,
+    nlp: false,
     referral: false,
     followUp: false,
     doctorRemark: false,
+  })
+
+  const [expandedNlpSubsections, setExpandedNlpSubsections] = useState({
+    treatmentAdvice: true,
+    procedureCare: false,
   })
 
   const [selectedHistoryType, setSelectedHistoryType] = useState("")
@@ -69,6 +74,9 @@ const GeneralMedicineWaitingList = () => {
 
   const [showCreateTemplateModal, setShowCreateTemplateModal] = useState(false)
   const [showUpdateTemplateModal, setShowUpdateTemplateModal] = useState(false)
+  const [showTreatmentAdviceModal, setShowTreatmentAdviceModal] = useState(false)
+  const [treatmentAdviceModalType, setTreatmentAdviceModalType] = useState("")
+
   const [selectedTemplate, setSelectedTemplate] = useState("Select..")
   const [templateName, setTemplateName] = useState("")
   const getToday = () => new Date().toISOString().split("T")[0]
@@ -87,6 +95,13 @@ const GeneralMedicineWaitingList = () => {
   ])
 
   const [templates, setTemplates] = useState(["Blood Test Template", "Cardiac Template", "Diabetes Template"])
+  const [treatmentAdviceTemplates, setTreatmentAdviceTemplates] = useState([
+    "MEDICINES TO BE REPEATED AT FAC",
+    "WARM WATER GARGLING, WITH/WITHOUT",
+    "REVIEW AFTER 3 MONTHS WITH - FBS - P",
+    "REVIEW AFTER 3 MONTHS",
+    "REVIEW AFTER 6 MONTHS",
+  ])
 
   const [treatmentItems, setTreatmentItems] = useState([
     {
@@ -118,6 +133,59 @@ const GeneralMedicineWaitingList = () => {
       total: "15",
       instruction: "",
       stock: "",
+    },
+  ])
+
+  const [nlpItems, setNlpItems] = useState([
+    {
+      nip: "",
+      newNIP: "",
+      class: "Select",
+      au: "Select",
+      dispUnit: "Select",
+      uomQty: "",
+      dosage: "",
+      frequency: "Select",
+      days: "",
+      total: "",
+      instruction: "",
+      stock: "",
+    },
+  ])
+
+  const [nlpSearchInput, setNlpSearchInput] = useState("")
+  const [isNlpDropdownVisible, setIsNlpDropdownVisible] = useState(false)
+  const [selectedNlpIndex, setSelectedNlpIndex] = useState(null)
+
+  const nipOptions = [
+    { id: 1, name: "NIP-001", code: "001" },
+    { id: 2, name: "NIP-002", code: "002" },
+    { id: 3, name: "NIP-003", code: "003" },
+    { id: 4, name: "NIP-004", code: "004" },
+    { id: 5, name: "NIP-005", code: "005" },
+  ]
+
+  const [treatmentAdviceSelection, setTreatmentAdviceSelection] = useState("")
+  const [generalTreatmentAdvice, setGeneralTreatmentAdvice] = useState("")
+  const [procedureTreatmentAdvice, setProcedureTreatmentAdvice] = useState("")
+  const [physiotherapyTreatmentAdvice, setPhysiotherapyTreatmentAdvice] = useState("")
+  const [selectedTreatmentAdviceItems, setSelectedTreatmentAdviceItems] = useState([])
+
+  const [procedureCareItems, setProcedureCareItems] = useState([
+    {
+      name: "",
+      frequency: "",
+      days: "",
+      remarks: "",
+    },
+  ])
+
+  const [physiotherapyItems, setPhysiotherapyItems] = useState([
+    {
+      name: "",
+      frequency: "",
+      days: "",
+      remarks: "",
     },
   ])
 
@@ -163,7 +231,7 @@ const GeneralMedicineWaitingList = () => {
       diagnosis: false,
       investigation: false,
       treatment: false,
-      minorProcedure: false,
+      nlp: false,
       referral: false,
       followUp: false,
       doctorRemark: false,
@@ -175,6 +243,13 @@ const GeneralMedicineWaitingList = () => {
     setExpandedSections((prev) => ({
       ...prev,
       [section]: !prev[section],
+    }))
+  }
+
+  const toggleNlpSubsection = (subsection) => {
+    setExpandedNlpSubsections((prev) => ({
+      ...prev,
+      [subsection]: true,
     }))
   }
 
@@ -271,9 +346,13 @@ const GeneralMedicineWaitingList = () => {
   const handleCloseModal = () => {
     setShowCreateTemplateModal(false)
     setShowUpdateTemplateModal(false)
+    setShowTreatmentAdviceModal(false)
     setTemplateName("")
     setInvestigationItems([{ name: "", date: getToday() }])
     setUpdateTemplateSelection("Select..")
+    setTreatmentAdviceSelection("")
+    setSelectedTreatmentAdviceItems([])
+    setTreatmentAdviceModalType("")
   }
 
   const handleAddDiagnosisItem = () => {
@@ -326,7 +405,129 @@ const GeneralMedicineWaitingList = () => {
     setTreatmentItems(newItems)
   }
 
-  // Filters and pagination
+  const handleNlpSearchChange = (value) => {
+    setNlpSearchInput(value)
+    setIsNlpDropdownVisible(true)
+  }
+
+  const handleNlpSelect = (nip, index) => {
+    const newItems = [...nlpItems]
+    newItems[index] = { ...newItems[index], nip: nip.name }
+    setNlpItems(newItems)
+    setNlpSearchInput("")
+    setIsNlpDropdownVisible(false)
+  }
+
+  const handleAddNlpItem = () => {
+    setNlpItems([
+      ...nlpItems,
+      {
+        nip: "",
+        newNIP: "",
+        class: "Select",
+        au: "Select",
+        dispUnit: "Select",
+        uomQty: "",
+        dosage: "",
+        frequency: "Select",
+        days: "",
+        total: "",
+        instruction: "",
+        stock: "",
+      },
+    ])
+  }
+
+  const handleRemoveNlpItem = (index) => {
+    if (nlpItems.length === 1) return
+    const newItems = nlpItems.filter((_, i) => i !== index)
+    setNlpItems(newItems)
+  }
+
+  const handleNlpChange = (index, field, value) => {
+    const newItems = [...nlpItems]
+    newItems[index] = { ...newItems[index], [field]: value }
+    setNlpItems(newItems)
+  }
+
+  const handleOpenTreatmentAdviceModal = (type) => {
+    setTreatmentAdviceModalType(type)
+    setShowTreatmentAdviceModal(true)
+    setSelectedTreatmentAdviceItems([])
+  }
+
+  const handleTreatmentAdviceCheckboxChange = (index) => {
+    setSelectedTreatmentAdviceItems((prev) => {
+      if (prev.includes(index)) {
+        return prev.filter((i) => i !== index)
+      } else {
+        return [...prev, index]
+      }
+    })
+  }
+
+  const handleSaveTreatmentAdvice = () => {
+    const selected = selectedTreatmentAdviceItems.map((i) => treatmentAdviceTemplates[i]).join(", ")
+
+    if (treatmentAdviceModalType === "general") {
+      setGeneralTreatmentAdvice(selected)
+    } else if (treatmentAdviceModalType === "procedure") {
+      setProcedureTreatmentAdvice(selected)
+    } else if (treatmentAdviceModalType === "physiotherapy") {
+      setPhysiotherapyTreatmentAdvice(selected)
+    }
+
+    handleCloseModal()
+  }
+
+  const handleAddProcedureCareItem = () => {
+    setProcedureCareItems([
+      ...procedureCareItems,
+      {
+        name: "",
+        frequency: "",
+        days: "",
+        remarks: "",
+      },
+    ])
+  }
+
+  const handleRemoveProcedureCareItem = (index) => {
+    if (procedureCareItems.length === 1) return
+    const newItems = procedureCareItems.filter((_, i) => i !== index)
+    setProcedureCareItems(newItems)
+  }
+
+  const handleProcedureCareChange = (index, field, value) => {
+    const newItems = [...procedureCareItems]
+    newItems[index] = { ...newItems[index], [field]: value }
+    setProcedureCareItems(newItems)
+  }
+
+  const handleAddPhysiotherapyItem = () => {
+    setPhysiotherapyItems([
+      ...physiotherapyItems,
+      {
+        name: "",
+        frequency: "",
+        days: "",
+        remarks: "",
+      },
+    ])
+  }
+
+  const handleRemovePhysiotherapyItem = (index) => {
+    if (physiotherapyItems.length === 1) return
+    const newItems = physiotherapyItems.filter((_, i) => i !== index)
+    setPhysiotherapyItems(newItems)
+  }
+
+  const handlePhysiotherapyChange = (index, field, value) => {
+    const newItems = [...physiotherapyItems]
+    newItems[index] = { ...newItems[index], [field]: value }
+    setPhysiotherapyItems(newItems)
+  }
+
   const filteredList = waitingList.filter((item) => {
     const matchesEmployee = searchFilters.employeeNo === "" || item.employeeNo.includes(searchFilters.employeeNo)
     const matchesPatient =
@@ -414,7 +615,7 @@ const GeneralMedicineWaitingList = () => {
                 <div className="card-header py-3">
                   <h6 className="mb-0 fw-bold">Personal Details</h6>
                 </div>
-                <div className="card-body ">
+                <div className="card-body">
                   <div className="row g-3">
                     <div className="col-md-9">
                       <div className="row g-3">
@@ -515,14 +716,12 @@ const GeneralMedicineWaitingList = () => {
                     <div className="col-md-3">
                       <div className="text-center">
                         <div className="card p-3 shadow">
-                          {/* CHANGE START */}
                           <img
                             src={image || "/placeholder.svg"}
                             alt="Profile photo"
                             className="img-fluid border"
                             style={{ width: "100%", height: "150px", objectFit: "cover" }}
                           />
-                          {/* CHANGE END */}
                         </div>
                       </div>
                     </div>
@@ -579,7 +778,6 @@ const GeneralMedicineWaitingList = () => {
                           </div>
                         </div>
                         <div className="col-md-9">
-                          {/* Patient Signs & Symptoms and Clinical Examination */}
                           <div className="row">
                             <div className="col-md-6">
                               <label className="form-label fw-bold">Patient signs & symptoms</label>
@@ -641,7 +839,6 @@ const GeneralMedicineWaitingList = () => {
                   {expandedSections.vitalDetail && (
                     <div className="card-body">
                       <div className="row g-3 align-items-center">
-                        {/* Patient Height */}
                         <div className="col-md-4 d-flex">
                           <label className="form-label me-2">Height</label>
                           <input
@@ -657,7 +854,6 @@ const GeneralMedicineWaitingList = () => {
                           {errors.height && <div className="invalid-feedback d-block">{errors.height}</div>}
                         </div>
 
-                        {/* Weight */}
                         <div className="col-md-4 d-flex">
                           <label className="form-label me-2">Weight</label>
                           <input
@@ -673,7 +869,6 @@ const GeneralMedicineWaitingList = () => {
                           {errors.weight && <div className="invalid-feedback d-block">{errors.weight}</div>}
                         </div>
 
-                        {/* Temperature */}
                         <div className="col-md-4 d-flex">
                           <label className="form-label me-2">Temperature</label>
                           <input
@@ -689,7 +884,6 @@ const GeneralMedicineWaitingList = () => {
                           {errors.temperature && <div className="invalid-feedback d-block">{errors.temperature}</div>}
                         </div>
 
-                        {/* BP (Systolic / Diastolic) */}
                         <div className="col-md-4 d-flex">
                           <label className="form-label me-2">BP</label>
                           <input
@@ -716,7 +910,6 @@ const GeneralMedicineWaitingList = () => {
                           {errors.diastolicBP && <div className="invalid-feedback d-block">{errors.diastolicBP}</div>}
                         </div>
 
-                        {/* Pulse */}
                         <div className="col-md-4 d-flex">
                           <label className="form-label me-2">Pulse</label>
                           <input
@@ -732,7 +925,6 @@ const GeneralMedicineWaitingList = () => {
                           {errors.pulse && <div className="invalid-feedback d-block">{errors.pulse}</div>}
                         </div>
 
-                        {/* BMI */}
                         <div className="col-md-4 d-flex">
                           <label className="form-label me-2">BMI</label>
                           <input
@@ -748,7 +940,6 @@ const GeneralMedicineWaitingList = () => {
                           {errors.bmi && <div className="invalid-feedback d-block">{errors.bmi}</div>}
                         </div>
 
-                        {/* RR */}
                         <div className="col-md-4 d-flex">
                           <label className="form-label me-2">RR</label>
                           <input
@@ -764,7 +955,6 @@ const GeneralMedicineWaitingList = () => {
                           {errors.rr && <div className="invalid-feedback d-block">{errors.rr}</div>}
                         </div>
 
-                        {/* SpO2 */}
                         <div className="col-md-4 d-flex">
                           <label className="form-label me-2">SpO2</label>
                           <input
@@ -809,7 +999,6 @@ const GeneralMedicineWaitingList = () => {
                   </div>
                   {expandedSections.diagnosis && (
                     <div className="card-body">
-                      {/* Working Diagnosis - single free text entry */}
                       <div className="mb-3">
                         <label className="form-label fw-bold">Working Diagnosis</label>
                         <input
@@ -821,7 +1010,6 @@ const GeneralMedicineWaitingList = () => {
                         />
                       </div>
 
-                      {/* ICD Diagnosis - multiple add/delete */}
                       <div className="table-responsive">
                         <table className="table table-bordered">
                           <thead>
@@ -901,7 +1089,6 @@ const GeneralMedicineWaitingList = () => {
                   </div>
                   {expandedSections.investigation && (
                     <div className="card-body">
-                      {/* Template Section */}
                       <div className="row mb-3 align-items-center">
                         <div className="col-md-2">
                           <label className="form-label fw-bold">Template</label>
@@ -961,7 +1148,6 @@ const GeneralMedicineWaitingList = () => {
                         </div>
                       </div>
 
-                      {/* Investigation Table with default Date column */}
                       <div className="table-responsive">
                         <table className="table table-bordered">
                           <thead style={{ backgroundColor: "#b0c4de" }}>
@@ -1046,31 +1232,25 @@ const GeneralMedicineWaitingList = () => {
                         <table className="table table-bordered">
                           <thead style={{ backgroundColor: "#b0c4de" }}>
                             <tr>
-                              <th style={{ minWidth: 370 }}>Drugs Name/Drugs Code</th> {/* big */}
+                              <th style={{ minWidth: 370 }}>Drugs Name/Drugs Code</th>
                               <th className="text-center" style={{ minWidth: 100, maxWidth: 140 }}>
                                 Disp. Unit
-                              </th>{" "}
-                              {/* a bit big */}
+                              </th>
                               <th className="text-center" style={{ minWidth: 50, maxWidth: 80 }}>
                                 Dosage
-                              </th>{" "}
-                              {/* very small */}
+                              </th>
                               <th className="text-center" style={{ minWidth: 120, maxWidth: 180 }}>
                                 Frequency
-                              </th>{" "}
-                              {/* big */}
+                              </th>
                               <th className="text-center" style={{ minWidth: 80, maxWidth: 100 }}>
                                 Days
-                              </th>{" "}
-                              {/* small */}
+                              </th>
                               <th className="text-center" style={{ minWidth: 80, maxWidth: 100 }}>
                                 Total
-                              </th>{" "}
-                              {/* small */}
+                              </th>
                               <th className="text-center" style={{ minWidth: 10 }}>
                                 Instruction
-                              </th>{" "}
-                              {/* as-is */}
+                              </th>
                               <th className="text-center" style={{ minWidth: 10 }}>
                                 Add
                               </th>
@@ -1185,8 +1365,502 @@ const GeneralMedicineWaitingList = () => {
                   )}
                 </div>
 
-                {/* Other Expandable Sections (unchanged) */}
-                {["minorProcedure", "referral", "followUp", "doctorRemark"].map((section) => (
+                
+
+                <div className="card mb-3">
+                  <div
+                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("nlp")}
+                  >
+                    <h6 className="mb-0 fw-bold">NLP</h6>
+                    <span style={{ fontSize: "18px" }}>{expandedSections.nlp ? "−" : "+"}</span>
+                  </div>
+
+                  
+                  {expandedSections.nlp && (
+
+                    <div className="card-body">
+
+                       {/* NIP Subsection */}
+                       <div className="card mb-3">
+                        <div
+                          className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                          style={{ cursor: "default" }}
+                          onClick={() => toggleNlpSubsection("nip")}
+                        >
+                          <h6 className="mb-0">NIP</h6>
+                        </div>
+                        {expandedNlpSubsections.nip && (
+                          <div className="card-body">
+                            <div className="table-responsive">
+                              <table className="table table-bordered">
+                                <thead style={{ backgroundColor: "#b0c4de" }}>
+                                  <tr>
+                                    <th>NIP</th>
+                                    <th>New NIP</th>
+                                    <th>Class</th>
+                                    <th>AU</th>
+                                    <th>Disp. Unit</th>
+                                    <th>UOM Qty</th>
+                                    <th>Dosage</th>
+                                    <th>Frequency</th>
+                                    <th>Days</th>
+                                    <th>Total</th>
+                                    <th>Instruction</th>
+                                    <th>Stock</th>
+                                    <th className="text-center">Add</th>
+                                    <th className="text-center">Delete</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {nlpItems.map((item, index) => (
+                                    <tr key={index}>
+                                      <td className="position-relative">
+                                        <input
+                                          type="text"
+                                          className="form-control border-black"
+                                          value={item.nip}
+                                          onChange={(e) => {
+                                            handleNlpSearchChange(e.target.value)
+                                            setSelectedNlpIndex(index)
+                                          }}
+                                          placeholder="Search NIP"
+                                          autoComplete="off"
+                                        />
+                                        {isNlpDropdownVisible && selectedNlpIndex === index && nlpSearchInput && (
+                                          <ul
+                                            className="list-group position-absolute w-100 mt-1"
+                                            style={{ zIndex: 1000, top: "100%" }}
+                                          >
+                                            {nipOptions
+                                              .filter((nip) =>
+                                                nip.name.toLowerCase().includes(nlpSearchInput.toLowerCase()),
+                                              )
+                                              .map((nip) => (
+                                                <li
+                                                  key={nip.id}
+                                                  className="list-group-item list-group-item-action"
+                                                  onClick={() => handleNlpSelect(nip, index)}
+                                                >
+                                                  {nip.name}
+                                                </li>
+                                              ))}
+                                          </ul>
+                                        )}
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control border-black"
+                                          value={item.newNIP}
+                                          onChange={(e) => handleNlpChange(index, "newNIP", e.target.value)}
+                                          placeholder="New NIP"
+                                        />
+                                      </td>
+                                      <td>
+                                        <select
+                                          className="form-select"
+                                          value={item.class}
+                                          onChange={(e) => handleNlpChange(index, "class", e.target.value)}
+                                        >
+                                          <option value="Select">Select</option>
+                                          <option value="Class A">Class A</option>
+                                          <option value="Class B">Class B</option>
+                                          <option value="Class C">Class C</option>
+                                        </select>
+                                      </td>
+                                      <td>
+                                        <select
+                                          className="form-select"
+                                          value={item.au}
+                                          onChange={(e) => handleNlpChange(index, "au", e.target.value)}
+                                        >
+                                          <option value="Select">Select</option>
+                                          <option value="AU-1">AU-1</option>
+                                          <option value="AU-2">AU-2</option>
+                                          <option value="AU-3">AU-3</option>
+                                        </select>
+                                      </td>
+                                      <td>
+                                        <select
+                                          className="form-select"
+                                          value={item.dispUnit}
+                                          onChange={(e) => handleNlpChange(index, "dispUnit", e.target.value)}
+                                        >
+                                          <option value="Select">Select</option>
+                                          <option value="Tab">Tab</option>
+                                          <option value="Cap">Cap</option>
+                                          <option value="Syr">Syr</option>
+                                        </select>
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="number"
+                                          className="form-control border-black"
+                                          value={item.uomQty}
+                                          onChange={(e) => handleNlpChange(index, "uomQty", e.target.value)}
+                                          placeholder="0"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="number"
+                                          className="form-control border-black"
+                                          value={item.dosage}
+                                          onChange={(e) => handleNlpChange(index, "dosage", e.target.value)}
+                                          placeholder="0"
+                                        />
+                                      </td>
+                                      <td>
+                                        <select
+                                          className="form-select"
+                                          value={item.frequency}
+                                          onChange={(e) => handleNlpChange(index, "frequency", e.target.value)}
+                                        >
+                                          <option value="Select">Select</option>
+                                          <option value="OD">OD</option>
+                                          <option value="BID">BID</option>
+                                          <option value="TID">TID</option>
+                                          <option value="QID">QID</option>
+                                        </select>
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="number"
+                                          className="form-control border-black"
+                                          value={item.days}
+                                          onChange={(e) => handleNlpChange(index, "days", e.target.value)}
+                                          placeholder="0"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="number"
+                                          className="form-control border-black"
+                                          value={item.total}
+                                          onChange={(e) => handleNlpChange(index, "total", e.target.value)}
+                                          placeholder="0"
+                                        />
+                                      </td>
+                                      <td>
+                                        <select
+                                          className="form-select"
+                                          value={item.instruction}
+                                          onChange={(e) => handleNlpChange(index, "instruction", e.target.value)}
+                                        >
+                                          <option value="">Select...</option>
+                                          <option value="After Meal">After Meal</option>
+                                          <option value="Before Meal">Before Meal</option>
+                                        </select>
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="number"
+                                          className="form-control border-black"
+                                          value={item.stock}
+                                          onChange={(e) => handleNlpChange(index, "stock", e.target.value)}
+                                          placeholder="0"
+                                        />
+                                      </td>
+                                      <td className="text-center">
+                                        <button className="btn btn-sm btn-success" onClick={handleAddNlpItem}>
+                                          +
+                                        </button>
+                                      </td>
+                                      <td className="text-center">
+                                        <button
+                                          className="btn btn-sm text-white"
+                                          style={{ backgroundColor: "#dc3545" }}
+                                          onClick={() => handleRemoveNlpItem(index)}
+                                          disabled={nlpItems.length === 1}
+                                        >
+                                          −
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      
+                      {/* Treatment Advice Subsection */}
+                      <div className="card mb-3">
+                        <div
+                          className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                          style={{ cursor: "default" }}
+                          onClick={() => toggleNlpSubsection("treatmentAdvice")}
+                        >
+                          <h6 className="mb-0">Treatment Advice</h6>
+                        </div>
+                        {expandedNlpSubsections.treatmentAdvice && (
+                          <div className="card-body">
+                            <div className="row align-items-end">
+                              <div className="col-md-11">
+                                <label className="form-label fw-bold">Treatment Advice</label>
+                                <textarea
+                                  className="form-control border-black"
+                                  rows={3}
+                                  value={generalTreatmentAdvice}
+                                  placeholder="Treatment advice will be populated here"
+                                  readOnly
+                                ></textarea>
+                              </div>
+                              <div className="col-md-1 text-center">
+                                <button
+                                  className="btn btn-primary"
+                                  style={{ padding: "8px 12px" }}
+                                  onClick={() => handleOpenTreatmentAdviceModal("general")}
+                                  title="Add Treatment Advice"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                     
+
+                      {/* Procedure Care Subsection */}
+                      <div className="card mb-3">
+                        <div
+                          className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                          style={{ cursor: "default" }}
+                          onClick={() => toggleNlpSubsection("procedureCare")}
+                        >
+                          <h6 className="mb-0">Procedure Care</h6>
+                        </div>
+                        {expandedNlpSubsections.procedureCare && (
+                          <div className="card-body">
+                            <div className="row mb-3">
+                              <div className="col-12 d-flex gap-4">
+                                <div className="form-check">
+                                  <input
+                                    className="form-check-input"
+                                    type="radio"
+                                    name="procedureCareType"
+                                    id="procedure"
+                                    checked={procedureCareType === "procedure"}
+                                    onChange={() => setProcedureCareType("procedure")}
+                                  />
+                                  <label className="form-check-label" htmlFor="procedure">
+                                    Procedure
+                                  </label>
+                                </div>
+                                <div className="form-check">
+                                  <input
+                                    className="form-check-input"
+                                    type="radio"
+                                    name="procedureCareType"
+                                    id="physiotherapy"
+                                    checked={procedureCareType === "physiotherapy"}
+                                    onChange={() => setProcedureCareType("physiotherapy")}
+                                  />
+                                  <label className="form-check-label" htmlFor="physiotherapy">
+                                    Physiotherapy
+                                  </label>
+                                </div>
+                              </div>
+                            </div>
+
+                            {procedureCareType === "procedure" ? (
+                              <div className="table-responsive">
+                                <table className="table table-bordered">
+                                  <thead style={{ backgroundColor: "#b0c4de" }}>
+                                    <tr>
+                                      <th style={{ width: "40%" }}>Nursing Care Name</th>
+                                      <th className="text-center" style={{ width: "20%" }}>
+                                        Frequency
+                                      </th>
+                                      <th className="text-center" style={{ width: "15%" }}>
+                                        No.Of Days
+                                      </th>
+                                      <th style={{ width: "15%" }}>Remarks</th>
+                                      <th className="text-center" style={{ width: "5%" }}>
+                                        Add
+                                      </th>
+                                      <th className="text-center" style={{ width: "5%" }}>
+                                        Delete
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {procedureCareItems.map((row, index) => (
+                                      <tr key={index}>
+                                        <td>
+                                          <input
+                                            type="text"
+                                            className="form-control border-black"
+                                            value={row.name}
+                                            onChange={(e) => handleProcedureCareChange(index, "name", e.target.value)}
+                                            placeholder="Enter nursing care name"
+                                          />
+                                        </td>
+                                        <td>
+                                          <select
+                                            className="form-select"
+                                            value={row.frequency}
+                                            onChange={(e) =>
+                                              handleProcedureCareChange(index, "frequency", e.target.value)
+                                            }
+                                          >
+                                            <option value="">Select</option>
+                                            <option value="OD">OD</option>
+                                            <option value="BID">BID</option>
+                                            <option value="TID">TID</option>
+                                            <option value="QID">QID</option>
+                                          </select>
+                                        </td>
+                                        <td>
+                                          <input
+                                            type="number"
+                                            className="form-control border-black"
+                                            value={row.days}
+                                            onChange={(e) => handleProcedureCareChange(index, "days", e.target.value)}
+                                            placeholder="0"
+                                          />
+                                        </td>
+                                        <td>
+                                          <input
+                                            type="text"
+                                            className="form-control border-black"
+                                            value={row.remarks}
+                                            onChange={(e) =>
+                                              handleProcedureCareChange(index, "remarks", e.target.value)
+                                            }
+                                            placeholder="Enter remarks"
+                                          />
+                                        </td>
+                                        <td className="text-center">
+                                          <button
+                                            className="btn btn-sm btn-success"
+                                            onClick={handleAddProcedureCareItem}
+                                          >
+                                            +
+                                          </button>
+                                        </td>
+                                        <td className="text-center">
+                                          <button
+                                            className="btn btn-sm text-white"
+                                            style={{ backgroundColor: "#dc3545" }}
+                                            onClick={() => handleRemoveProcedureCareItem(index)}
+                                            disabled={procedureCareItems.length === 1}
+                                          >
+                                            −
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              <div className="table-responsive">
+                                <table className="table table-bordered">
+                                  <thead style={{ backgroundColor: "#b0c4de" }}>
+                                    <tr>
+                                      <th style={{ width: "40%" }}>Nursing Care Name</th>
+                                      <th className="text-center" style={{ width: "20%" }}>
+                                        Frequency
+                                      </th>
+                                      <th className="text-center" style={{ width: "15%" }}>
+                                        No.Of Days
+                                      </th>
+                                      <th style={{ width: "15%" }}>Remarks</th>
+                                      <th className="text-center" style={{ width: "5%" }}>
+                                        Add
+                                      </th>
+                                      <th className="text-center" style={{ width: "5%" }}>
+                                        Delete
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {physiotherapyItems.map((row, index) => (
+                                      <tr key={index}>
+                                        <td>
+                                          <input
+                                            type="text"
+                                            className="form-control border-black"
+                                            value={row.name}
+                                            onChange={(e) => handlePhysiotherapyChange(index, "name", e.target.value)}
+                                            placeholder="Enter nursing care name"
+                                          />
+                                        </td>
+                                        <td>
+                                          <select
+                                            className="form-select"
+                                            value={row.frequency}
+                                            onChange={(e) =>
+                                              handlePhysiotherapyChange(index, "frequency", e.target.value)
+                                            }
+                                          >
+                                            <option value="">Select</option>
+                                            <option value="OD">OD</option>
+                                            <option value="BID">BID</option>
+                                            <option value="TID">TID</option>
+                                            <option value="QID">QID</option>
+                                          </select>
+                                        </td>
+                                        <td>
+                                          <input
+                                            type="number"
+                                            className="form-control border-black"
+                                            value={row.days}
+                                            onChange={(e) => handlePhysiotherapyChange(index, "days", e.target.value)}
+                                            placeholder="0"
+                                          />
+                                        </td>
+                                        <td>
+                                          <input
+                                            type="text"
+                                            className="form-control border-black"
+                                            value={row.remarks}
+                                            onChange={(e) =>
+                                              handlePhysiotherapyChange(index, "remarks", e.target.value)
+                                            }
+                                            placeholder="Enter remarks"
+                                          />
+                                        </td>
+                                        <td className="text-center">
+                                          <button
+                                            className="btn btn-sm btn-success"
+                                            onClick={handleAddPhysiotherapyItem}
+                                          >
+                                            +
+                                          </button>
+                                        </td>
+                                        <td className="text-center">
+                                          <button
+                                            className="btn btn-sm text-white"
+                                            style={{ backgroundColor: "#dc3545" }}
+                                            onClick={() => handleRemovePhysiotherapyItem(index)}
+                                            disabled={physiotherapyItems.length === 1}
+                                          >
+                                            −
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* End of NLP Section */}
+
+                {["referral", "followUp", "doctorRemark"].map((section) => (
                   <div key={section} className="card mb-3">
                     <div
                       className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
@@ -1206,7 +1880,6 @@ const GeneralMedicineWaitingList = () => {
                   </div>
                 ))}
 
-                {/* Action Buttons */}
                 <div className="text-center mt-4">
                   <button className="btn btn-primary me-3" onClick={handleSubmit}>
                     <i className="mdi mdi-content-save"></i> SUBMIT
@@ -1223,6 +1896,7 @@ const GeneralMedicineWaitingList = () => {
           </div>
         </div>
 
+        {/* Modals */}
         {showCreateTemplateModal && (
           <div className="modal d-block">
             <div className="modal-dialog modal-lg">
@@ -1232,7 +1906,6 @@ const GeneralMedicineWaitingList = () => {
                   <button type="button" className="btn-close btn-close" onClick={handleCloseModal}></button>
                 </div>
                 <div className="modal-body">
-                  {/* Template Name */}
                   <div className="row mb-3">
                     <div className="col-md-3">
                       <label className="form-label fw-bold">Template Name</label>
@@ -1279,7 +1952,6 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   </div>
 
-                  {/* Investigation Table (name only in modal) */}
                   <div className="table-responsive">
                     <table className="table table-bordered">
                       <thead>
@@ -1375,6 +2047,54 @@ const GeneralMedicineWaitingList = () => {
             </div>
           </div>
         )}
+
+        {showTreatmentAdviceModal && (
+          <div className="modal d-block">
+            <div className="modal-dialog modal-lg">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title">TREATMENT ADVICE TEMPLATE</h5>
+                  <button type="button" className="btn-close" onClick={handleCloseModal}></button>
+                </div>
+                <div className="modal-body">
+                  <div className="table-responsive">
+                    <table className="table table-bordered">
+                      <thead style={{ backgroundColor: "#b0c4de" }}>
+                        <tr>
+                          <th style={{ width: "5%" }}></th>
+                          <th style={{ width: "95%" }}>Template Values</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {treatmentAdviceTemplates.map((advice, index) => (
+                          <tr key={index}>
+                            <td>
+                              <input
+                                type="checkbox"
+                                className="form-check-input"
+                                checked={selectedTreatmentAdviceItems.includes(index)}
+                                onChange={() => handleTreatmentAdviceCheckboxChange(index)}
+                              />
+                            </td>
+                            <td>{advice}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button className="btn btn-primary" onClick={handleSaveTreatmentAdvice}>
+                    OK
+                  </button>
+                  <button className="btn btn-secondary" onClick={handleCloseModal}>
+                    CLOSE
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -1384,7 +2104,6 @@ const GeneralMedicineWaitingList = () => {
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            {/* Header */}
             <div className="card-header">
               <div className="d-flex justify-content-between align-items-center">
                 <h4 className="card-title p-2 mb-0">GENERAL MEDICINE WAITING LIST</h4>
@@ -1395,7 +2114,6 @@ const GeneralMedicineWaitingList = () => {
               </div>
             </div>
             <div className="card-body">
-              {/* Search Filters */}
               <div className="card mb-3">
                 <div className="card-body">
                   <div className="row g-3 align-items-end">
@@ -1453,7 +2171,6 @@ const GeneralMedicineWaitingList = () => {
                 </div>
               </div>
 
-              {/* Waiting List Table */}
               <div className="table-responsive">
                 <table className="table table-bordered table-hover align-middle">
                   <thead className="table-light">
@@ -1501,14 +2218,12 @@ const GeneralMedicineWaitingList = () => {
                 </table>
               </div>
 
-              {/* Priority Legend */}
               <div className="d-flex mb-3 mt-3">
                 <span className="badge bg-danger me-2">Priority-1</span>
                 <span className="badge bg-warning text-dark me-2">Priority-2</span>
                 <span className="badge bg-success">Priority-3</span>
               </div>
 
-              {/* Pagination */}
               <nav className="d-flex justify-content-between align-items-center mt-3">
                 <div>
                   <span>
