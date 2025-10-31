@@ -46,11 +46,16 @@ const GeneralMedicineWaitingList = () => {
     referral: false,
     followUp: false,
     doctorRemark: false,
+    surgeryAdvice: false, // Added for Surgery Advice
+    additionalAdvice: false, // Added for Additional Advice
   })
 
   const [expandedNlpSubsections, setExpandedNlpSubsections] = useState({
     treatmentAdvice: true,
     procedureCare: false,
+    nip: false, // Added NIP subsection toggle
+    surgeryAdvice: false, // Added Surgery Advice subsection toggle
+    additionalAdvice: false, // Added Additional Advice subsection toggle
   })
 
   const [selectedHistoryType, setSelectedHistoryType] = useState("")
@@ -189,6 +194,29 @@ const GeneralMedicineWaitingList = () => {
     },
   ])
 
+  // Added state for Surgery Advice and Additional Advice sections
+  const [surgeryType, setSurgeryType] = useState("major")
+  const [surgerySearchInput, setSurgerySearchInput] = useState("")
+  const [isSurgeryDropdownVisible, setIsSurgeryDropdownVisible] = useState(false)
+  const [selectedSurgeryIndex, setSelectedSurgeryIndex] = useState(null)
+  const [additionalAdvice, setAdditionalAdvice] = useState("")
+  const [admissionAdvised, setAdmissionAdvised] = useState(false)
+
+  const surgeryOptions = [
+    { id: 1, name: "Appendectomy", code: "APD" },
+    { id: 2, name: "Cholecystectomy", code: "CHO" },
+    { id: 3, name: "Hernia Repair", code: "HER" },
+    { id: 4, name: "Hysterectomy", code: "HYS" },
+    { id: 5, name: "Prostatectomy", code: "PRO" },
+  ]
+
+  const [surgeryItems, setSurgeryItems] = useState([
+    {
+      surgery: "",
+      selected: false,
+    },
+  ])
+
   const [selectedBloodTestTemplate, setSelectedBloodTestTemplate] = useState("Select..")
   const [selectedCardiacTestTemplate, setSelectedCardiacTestTemplate] = useState("Select..")
 
@@ -235,6 +263,8 @@ const GeneralMedicineWaitingList = () => {
       referral: false,
       followUp: false,
       doctorRemark: false,
+      surgeryAdvice: false, // Reset Surgery Advice
+      additionalAdvice: false, // Reset Additional Advice
     })
     setSelectedHistoryType("")
   }
@@ -249,7 +279,7 @@ const GeneralMedicineWaitingList = () => {
   const toggleNlpSubsection = (subsection) => {
     setExpandedNlpSubsections((prev) => ({
       ...prev,
-      [subsection]: true,
+      [subsection]: !prev[subsection],
     }))
   }
 
@@ -526,6 +556,43 @@ const GeneralMedicineWaitingList = () => {
     const newItems = [...physiotherapyItems]
     newItems[index] = { ...newItems[index], [field]: value }
     setPhysiotherapyItems(newItems)
+  }
+
+  // Handlers for Surgery Advice
+  const handleAddSurgeryItem = () => {
+    setSurgeryItems([
+      ...surgeryItems,
+      {
+        surgery: "",
+        selected: false,
+      },
+    ])
+  }
+
+  const handleRemoveSurgeryItem = (index) => {
+    if (surgeryItems.length === 1) return
+    const newItems = surgeryItems.filter((_, i) => i !== index)
+    setSurgeryItems(newItems)
+  }
+
+  const handleSurgerySearchChange = (value, index) => {
+    setSurgerySearchInput(value)
+    setIsSurgeryDropdownVisible(true)
+    setSelectedSurgeryIndex(index)
+  }
+
+  const handleSurgerySelect = (surgery, index) => {
+    const newItems = [...surgeryItems]
+    newItems[index] = { ...newItems[index], surgery: surgery.name }
+    setSurgeryItems(newItems)
+    setSurgerySearchInput("")
+    setIsSurgeryDropdownVisible(false)
+  }
+
+  const handleSurgeryChange = (index, field, value) => {
+    const newItems = [...surgeryItems]
+    newItems[index] = { ...newItems[index], [field]: value }
+    setSurgeryItems(newItems)
   }
 
   const filteredList = waitingList.filter((item) => {
@@ -1365,8 +1432,6 @@ const GeneralMedicineWaitingList = () => {
                   )}
                 </div>
 
-                
-
                 <div className="card mb-3">
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
@@ -1376,20 +1441,55 @@ const GeneralMedicineWaitingList = () => {
                     <h6 className="mb-0 fw-bold">NLP</h6>
                     <span style={{ fontSize: "18px" }}>{expandedSections.nlp ? "−" : "+"}</span>
                   </div>
-
-                  
                   {expandedSections.nlp && (
-
                     <div className="card-body">
-
-                       {/* NIP Subsection */}
-                       <div className="card mb-3">
+                      {/* Treatment Advice Subsection */}
+                      <div className="card mb-3">
                         <div
                           className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
-                          style={{ cursor: "default" }}
+                          style={{ cursor: "pointer" }}
+                          onClick={() => toggleNlpSubsection("treatmentAdvice")}
+                        >
+                          <h6 className="mb-0">Treatment Advice</h6>
+                          <span style={{ fontSize: "16px" }}>{expandedNlpSubsections.treatmentAdvice ? "−" : "+"}</span>
+                        </div>
+                        {expandedNlpSubsections.treatmentAdvice && (
+                          <div className="card-body">
+                            <div className="row align-items-end">
+                              <div className="col-md-11">
+                                <label className="form-label fw-bold">Treatment Advice</label>
+                                <textarea
+                                  className="form-control border-black"
+                                  rows={3}
+                                  value={generalTreatmentAdvice}
+                                  placeholder="Treatment advice will be populated here"
+                                  readOnly
+                                ></textarea>
+                              </div>
+                              <div className="col-md-1 text-center">
+                                <button
+                                  className="btn btn-primary"
+                                  style={{ padding: "8px 12px" }}
+                                  onClick={() => handleOpenTreatmentAdviceModal("general")}
+                                  title="Add Treatment Advice"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* NIP Subsection */}
+                      <div className="card mb-3">
+                        <div
+                          className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                          style={{ cursor: "pointer" }}
                           onClick={() => toggleNlpSubsection("nip")}
                         >
                           <h6 className="mb-0">NIP</h6>
+                          <span style={{ fontSize: "16px" }}>{expandedNlpSubsections.nip ? "−" : "+"}</span>
                         </div>
                         {expandedNlpSubsections.nip && (
                           <div className="card-body">
@@ -1587,54 +1687,15 @@ const GeneralMedicineWaitingList = () => {
                         )}
                       </div>
 
-                      
-                      {/* Treatment Advice Subsection */}
-                      <div className="card mb-3">
-                        <div
-                          className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
-                          style={{ cursor: "default" }}
-                          onClick={() => toggleNlpSubsection("treatmentAdvice")}
-                        >
-                          <h6 className="mb-0">Treatment Advice</h6>
-                        </div>
-                        {expandedNlpSubsections.treatmentAdvice && (
-                          <div className="card-body">
-                            <div className="row align-items-end">
-                              <div className="col-md-11">
-                                <label className="form-label fw-bold">Treatment Advice</label>
-                                <textarea
-                                  className="form-control border-black"
-                                  rows={3}
-                                  value={generalTreatmentAdvice}
-                                  placeholder="Treatment advice will be populated here"
-                                  readOnly
-                                ></textarea>
-                              </div>
-                              <div className="col-md-1 text-center">
-                                <button
-                                  className="btn btn-primary"
-                                  style={{ padding: "8px 12px" }}
-                                  onClick={() => handleOpenTreatmentAdviceModal("general")}
-                                  title="Add Treatment Advice"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                     
-
                       {/* Procedure Care Subsection */}
                       <div className="card mb-3">
                         <div
                           className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
-                          style={{ cursor: "default" }}
+                          style={{ cursor: "pointer" }}
                           onClick={() => toggleNlpSubsection("procedureCare")}
                         >
                           <h6 className="mb-0">Procedure Care</h6>
+                          <span style={{ fontSize: "16px" }}>{expandedNlpSubsections.procedureCare ? "−" : "+"}</span>
                         </div>
                         {expandedNlpSubsections.procedureCare && (
                           <div className="card-body">
@@ -1852,6 +1913,174 @@ const GeneralMedicineWaitingList = () => {
                                 </table>
                               </div>
                             )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Surgery Advice Subsection */}
+                      <div className="card mb-3">
+                        <div
+                          className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                          style={{ cursor: "pointer" }}
+                          onClick={() => toggleNlpSubsection("surgeryAdvice")}
+                        >
+                          <h6 className="mb-0">Surgery Advice</h6>
+                          <span style={{ fontSize: "16px" }}>{expandedNlpSubsections.surgeryAdvice ? "−" : "+"}</span>
+                        </div>
+                        {expandedNlpSubsections.surgeryAdvice && (
+                          <div className="card-body">
+                            <div className="row mb-3 align-items-center">
+                              <div className="col-12 d-flex gap-4 mb-3">
+                                <div className="form-check">
+                                  <input
+                                    className="form-check-input"
+                                    type="radio"
+                                    name="surgeryType"
+                                    id="major"
+                                    checked={surgeryType === "major"}
+                                    onChange={() => setSurgeryType("major")}
+                                  />
+                                  <label className="form-check-label" htmlFor="major">
+                                    Major
+                                  </label>
+                                </div>
+                                <div className="form-check">
+                                  <input
+                                    className="form-check-input"
+                                    type="radio"
+                                    name="surgeryType"
+                                    id="minor"
+                                    checked={surgeryType === "minor"}
+                                    onChange={() => setSurgeryType("minor")}
+                                  />
+                                  <label className="form-check-label" htmlFor="minor">
+                                    Minor
+                                  </label>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="table-responsive">
+                              <table className="table table-bordered">
+                                <thead style={{ backgroundColor: "#b0c4de" }}>
+                                  <tr>
+                                    <th style={{ width: "10%" }}>S.No</th>
+                                    <th style={{ width: "70%" }}>Surgery</th>
+                                    <th style={{ width: "15%" }}>Select</th>
+                                    <th style={{ width: "5%" }}>Add</th>
+                                    <th style={{ width: "5%" }}>Delete</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {surgeryItems.map((item, index) => (
+                                    <tr key={index}>
+                                      <td className="text-center">{index + 1}</td>
+                                      <td className="position-relative">
+                                        <input
+                                          type="text"
+                                          className="form-control border-black"
+                                          value={item.surgery}
+                                          onChange={(e) => {
+                                            handleSurgerySearchChange(e.target.value, index)
+                                          }}
+                                          placeholder="Search Surgery"
+                                          autoComplete="off"
+                                        />
+                                        {isSurgeryDropdownVisible &&
+                                          selectedSurgeryIndex === index &&
+                                          surgerySearchInput && (
+                                            <ul
+                                              className="list-group position-absolute w-100 mt-1"
+                                              style={{ zIndex: 1000, top: "100%" }}
+                                            >
+                                              {surgeryOptions
+                                                .filter((surgery) =>
+                                                  surgery.name.toLowerCase().includes(surgerySearchInput.toLowerCase()),
+                                                )
+                                                .map((surgery) => (
+                                                  <li
+                                                    key={surgery.id}
+                                                    className="list-group-item list-group-item-action"
+                                                    onClick={() => handleSurgerySelect(surgery, index)}
+                                                  >
+                                                    {surgery.name}
+                                                  </li>
+                                                ))}
+                                            </ul>
+                                          )}
+                                      </td>
+                                      <td className="text-center">
+                                        <input
+                                          type="checkbox"
+                                          className="form-check-input"
+                                          checked={item.selected}
+                                          onChange={(e) => handleSurgeryChange(index, "selected", e.target.checked)}
+                                        />
+                                      </td>
+                                      <td className="text-center">
+                                        <button className="btn btn-sm btn-success" onClick={handleAddSurgeryItem}>
+                                          +
+                                        </button>
+                                      </td>
+                                      <td className="text-center">
+                                        <button
+                                          className="btn btn-sm text-white"
+                                          style={{ backgroundColor: "#dc3545" }}
+                                          onClick={() => handleRemoveSurgeryItem(index)}
+                                          disabled={surgeryItems.length === 1}
+                                        >
+                                          −
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Additional Advice Subsection */}
+                      <div className="card mb-3">
+                        <div
+                          className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                          style={{ cursor: "pointer" }}
+                          onClick={() => toggleNlpSubsection("additionalAdvice")}
+                        >
+                          <h6 className="mb-0">Additional Advice</h6>
+                          <span style={{ fontSize: "16px" }}>
+                            {expandedNlpSubsections.additionalAdvice ? "−" : "+"}
+                          </span>
+                        </div>
+                        {expandedNlpSubsections.additionalAdvice && (
+                          <div className="card-body">
+                            <div className="row">
+                              <div className="col-md-9">
+                                <label className="form-label fw-bold">Additional Advice</label>
+                                <textarea
+                                  className="form-control border-black"
+                                  rows={4}
+                                  value={additionalAdvice}
+                                  onChange={(e) => setAdditionalAdvice(e.target.value)}
+                                  placeholder="Enter additional advice"
+                                ></textarea>
+                              </div>
+                              <div className="col-md-3 d-flex align-items-end">
+                                <div className="form-check">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    id="admissionAdvised"
+                                    checked={admissionAdvised}
+                                    onChange={(e) => setAdmissionAdvised(e.target.checked)}
+                                  />
+                                  <label className="form-check-label" htmlFor="admissionAdvised">
+                                    Admission Advised
+                                  </label>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
