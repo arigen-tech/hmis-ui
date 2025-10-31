@@ -46,16 +46,16 @@ const GeneralMedicineWaitingList = () => {
     referral: false,
     followUp: false,
     doctorRemark: false,
-    surgeryAdvice: false, // Added for Surgery Advice
-    additionalAdvice: false, // Added for Additional Advice
+    surgeryAdvice: false,
+    additionalAdvice: false,
   })
 
   const [expandedNlpSubsections, setExpandedNlpSubsections] = useState({
     treatmentAdvice: true,
     procedureCare: false,
-    nip: false, // Added NIP subsection toggle
-    surgeryAdvice: false, // Added Surgery Advice subsection toggle
-    additionalAdvice: false, // Added Additional Advice subsection toggle
+    nip: false,
+    surgeryAdvice: false,
+    additionalAdvice: false,
   })
 
   const [selectedHistoryType, setSelectedHistoryType] = useState("")
@@ -194,13 +194,23 @@ const GeneralMedicineWaitingList = () => {
     },
   ])
 
-  // Added state for Surgery Advice and Additional Advice sections
   const [surgeryType, setSurgeryType] = useState("major")
   const [surgerySearchInput, setSurgerySearchInput] = useState("")
   const [isSurgeryDropdownVisible, setIsSurgeryDropdownVisible] = useState(false)
   const [selectedSurgeryIndex, setSelectedSurgeryIndex] = useState(null)
   const [additionalAdvice, setAdditionalAdvice] = useState("")
   const [admissionAdvised, setAdmissionAdvised] = useState(false)
+  const [admissionDate, setAdmissionDate] = useState("")
+  const [selectedWard, setSelectedWard] = useState("CHILDREN WARD")
+  const [admissionNotes, setAdmissionNotes] = useState("")
+
+  const wardData = {
+    "CHILDREN WARD": { occupied: 0, vacant: 20 },
+    "GENERAL WARD": { occupied: 5, vacant: 15 },
+    "ICU WARD": { occupied: 8, vacant: 2 },
+    "MATERNITY WARD": { occupied: 3, vacant: 7 },
+    "SURGICAL WARD": { occupied: 10, vacant: 10 },
+  }
 
   const surgeryOptions = [
     { id: 1, name: "Appendectomy", code: "APD" },
@@ -263,8 +273,8 @@ const GeneralMedicineWaitingList = () => {
       referral: false,
       followUp: false,
       doctorRemark: false,
-      surgeryAdvice: false, // Reset Surgery Advice
-      additionalAdvice: false, // Reset Additional Advice
+      surgeryAdvice: false,
+      additionalAdvice: false,
     })
     setSelectedHistoryType("")
   }
@@ -558,7 +568,6 @@ const GeneralMedicineWaitingList = () => {
     setPhysiotherapyItems(newItems)
   }
 
-  // Handlers for Surgery Advice
   const handleAddSurgeryItem = () => {
     setSurgeryItems([
       ...surgeryItems,
@@ -2055,6 +2064,80 @@ const GeneralMedicineWaitingList = () => {
                         </div>
                         {expandedNlpSubsections.additionalAdvice && (
                           <div className="card-body">
+                            {admissionAdvised && (
+                              <div className="row mb-4 pb-4 border-bottom">
+                                <div className="col-12">
+                                  <div className="row g-3">
+                                    <div className="col-md-2 d-flex align-items-center">
+                                      <div className="form-check">
+                                        <input
+                                          className="form-check-input"
+                                          type="checkbox"
+                                          id="admissionAdvised"
+                                          checked={admissionAdvised}
+                                          onChange={(e) => setAdmissionAdvised(e.target.checked)}
+                                        />
+                                        <label className="form-check-label fw-bold" htmlFor="admissionAdvised">
+                                          Admission Advised
+                                        </label>
+                                      </div>
+                                    </div>
+                                    <div className="col-md-2">
+                                      <label className="form-label fw-bold">Admission Date</label>
+                                      <input
+                                        type="date"
+                                        className="form-control border-black"
+                                        value={admissionDate}
+                                        onChange={(e) => setAdmissionDate(e.target.value)}
+                                      />
+                                    </div>
+                                    <div className="col-md-2">
+                                      <label className="form-label fw-bold">Ward</label>
+                                      <select
+                                        className="form-select border-black"
+                                        value={selectedWard}
+                                        onChange={(e) => setSelectedWard(e.target.value)}
+                                      >
+                                        <option value="CHILDREN WARD">CHILDREN WARD</option>
+                                        <option value="GENERAL WARD">GENERAL WARD</option>
+                                        <option value="ICU WARD">ICU WARD</option>
+                                        <option value="MATERNITY WARD">MATERNITY WARD</option>
+                                        <option value="SURGICAL WARD">SURGICAL WARD</option>
+                                      </select>
+                                    </div>
+                                    <div className="col-md-1">
+                                      <label className="form-label fw-bold">Occupied Bed</label>
+                                      <input
+                                        type="text"
+                                        className="form-control border-black"
+                                        value={wardData[selectedWard]?.occupied || 0}
+                                        readOnly
+                                      />
+                                    </div>
+                                    <div className="col-md-1">
+                                      <label className="form-label fw-bold">Vacant Bed</label>
+                                      <input
+                                        type="text"
+                                        className="form-control border-black"
+                                        value={wardData[selectedWard]?.vacant || 0}
+                                        readOnly
+                                      />
+                                    </div>
+                                    <div className="col-md-4">
+                                      <label className="form-label fw-bold">Admission Notes</label>
+                                      <textarea
+                                        className="form-control border-black"
+                                        rows={2}
+                                        value={admissionNotes}
+                                        onChange={(e) => setAdmissionNotes(e.target.value)}
+                                        placeholder="Enter admission notes"
+                                      ></textarea>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
                             <div className="row">
                               <div className="col-md-9">
                                 <label className="form-label fw-bold">Additional Advice</label>
@@ -2067,7 +2150,7 @@ const GeneralMedicineWaitingList = () => {
                                 ></textarea>
                               </div>
                               <div className="col-md-3 d-flex align-items-end">
-                                <div className="form-check">
+                                <div className="form-check w-100">
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
