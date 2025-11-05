@@ -47,62 +47,105 @@ const PendingForResultEntry = () => {
     }
   };
 
-  const formatResultEntryData = (apiData) => {
-    return apiData.map((item, index) => ({
-      id: index + 1,
-      order_date: formatDate(item.orderDate),
-      order_no: item.orderNo || '',
-      collection_date: formatDate(item.collectedDate),
-      collection_time: formatTime(item.collectedTime),
-      patient_name: item.patientName || '',
-      relation: item.relation || '',
-      department: item.department || '',
-      doctor_name:  /*item.doctorName */''|| '',
-      modality: item.subChargeCodeName || '',
-      priority: "Priority-3", // Default priority since not in API
-      age: item.patientAge || '',
-      gender: item.patientGender || '',
-      clinical_notes: '',
-      entered_by: item.enteredBy || '', // Added enteredBy from API
-      patientId: item.patientId || 0,
-      subChargeCodeId: item.subChargeCodeId || 0,
-      mobile_no: item.patientPhoneNo || '', // Added mobile number for search filtering
-      investigations: item.resultInvestigationResponseList ? item.resultInvestigationResponseList.map((inv, invIndex) => ({
-        id: invIndex + 1,
-        si_no: invIndex + 1,
-        diag_no: inv.diagNo || '',
-        investigation: inv.investigationName || '',
-        sample: inv.resultSubInvestigationResponseList && inv.resultSubInvestigationResponseList.length > 0 
-          ? inv.resultSubInvestigationResponseList[0].sampleName 
-          : '',
-        result: "",
-        units: inv.resultSubInvestigationResponseList && inv.resultSubInvestigationResponseList.length > 0 
-          ? inv.resultSubInvestigationResponseList[0].unit 
-          : '',
-        normal_range: inv.resultSubInvestigationResponseList && inv.resultSubInvestigationResponseList.length > 0 
-          ? inv.resultSubInvestigationResponseList[0].normalRange 
-          : '',
-        remarks: "",
-        reject: false,
-        investigationId: inv.investigationId || 0,
-        subTests: inv.resultSubInvestigationResponseList ? inv.resultSubInvestigationResponseList.map((subTest, subIndex) => ({
-          id: `${invIndex + 1}.${subIndex + 1}`,
-          si_no: `${invIndex + 1}.${getSubIndex(subIndex)}`, // Use a,b,c instead of numbers
-          diag_no: "---",
-          investigation: subTest.subInvestigationName || '',
-          sample: subTest.sampleName || '',
+ const formatResultEntryData = (apiData) => {
+  return apiData.map((item, index) => ({
+    id: index + 1,
+    order_date: formatDate(item.orderDate),
+    order_no: item.orderNo || '',
+    collection_date: formatDate(item.collectedDate),
+    collection_time: formatTime(item.collectedTime),
+    patient_name: item.patientName || '',
+    relation: item.relation || '',
+    department: item.department || '',
+    doctor_name: item.doctorName || '',
+    modality: item.subChargeCodeName || '',
+    priority: "Priority-3",
+    age: item.patientAge || '',
+    gender: item.patientGender || '',
+    clinical_notes: item.clinicalNotes || '',
+    entered_by: item.enteredBy || '',
+    patientId: item.patientId || 0,
+    subChargeCodeId: item.subChargeCodeId || 0,
+    mobile_no: item.patientPhoneNo || '',
+    
+    // NEW FIELDS FOR SUBMIT API
+    relationId: item.relationId || 0,
+    mainChargeCodeId: item.mainChargeCodeId || 0,
+    sampleCollectionHeaderId: item.sampleCollectionHeaderId || 0,
+    
+    investigations: item.resultInvestigationResponseList ? item.resultInvestigationResponseList.map((inv, invIndex) => {
+      const hasSubTests = inv.resultSubInvestigationResponseList && inv.resultSubInvestigationResponseList.length > 0;
+      
+      if (hasSubTests) {
+        return {
+          id: invIndex + 1,
+          si_no: invIndex + 1,
+          diag_no: inv.diagNo || '',
+          investigation: inv.investigationName || '',
+          sample: inv.sampleName || '',
           result: "",
-          units: subTest.unit || '',
-          normal_range: subTest.normalRange || '',
+          units: inv.unitName || '',
+          normal_range: "",
           remarks: "",
           reject: false,
-          subInvestigationId: subTest.subInvestigationId || 0,
-          sampleId: subTest.sampleId || 0,
-          resultType: subTest.resultType
-        })) : []
-      })) : []
-    }))
-  }
+          investigationId: inv.investigationId || 0,
+          // NEW FIELDS FOR SUBMIT API
+          sampleCollectionDetailsId: inv.sampleCollectionDetailsId || 0,
+          sampleId: inv.sampleId || 0,
+          resultType: inv.resultType || 's',
+          
+          subTests: inv.resultSubInvestigationResponseList.map((subTest, subIndex) => ({
+            id: `${invIndex + 1}.${subIndex + 1}`,
+            si_no: getSubTestNumber(invIndex + 1, subIndex, inv.resultSubInvestigationResponseList.length),
+            diag_no: "---",
+            investigation: subTest.subInvestigationName || '',
+            sample: subTest.sampleName || '',
+            result: "",
+            units: subTest.unit || '',
+            normal_range: subTest.normalValue || '',
+            remarks: "",
+            reject: false,
+            subInvestigationId: subTest.subInvestigationId || 0,
+            sampleId: subTest.sampleId || 0,
+            resultType: subTest.resultType || 't',
+            comparisonType: subTest.comparisonType || 't',
+            dgFixedValueResponseList: subTest.dgFixedValueResponseList || [],
+            normalId: subTest.normalId || null
+          }))
+        };
+      } else {
+        return {
+          id: invIndex + 1,
+          si_no: invIndex + 1,
+          diag_no: inv.diagNo || '',
+          investigation: inv.investigationName || '',
+          sample: inv.sampleName || '',
+          result: "",
+          units: inv.unitName || '',
+          normal_range: inv.normalValue || '',
+          remarks: "",
+          reject: false,
+          investigationId: inv.investigationId || 0,
+          // NEW FIELDS FOR SUBMIT API
+          sampleCollectionDetailsId: inv.sampleCollectionDetailsId || 0,
+          sampleId: inv.sampleId || 0,
+          resultType: inv.resultType || 's',
+          subTests: []
+        };
+      }
+    }) : []
+  }))
+}
+
+// Enhanced sub-test numbering function
+const getSubTestNumber = (mainIndex, subIndex, totalSubTests) => {
+  if (totalSubTests === 1) {
+    return ""; // Blank for single sub-test
+  } else {
+    return `${mainIndex}.${getSubIndex(subIndex)}`; // Use a,b,c for 2-3 sub-tests
+  } 
+}
+
 
   // Function to convert number to a,b,c format
   const getSubIndex = (index) => {
@@ -110,56 +153,41 @@ const PendingForResultEntry = () => {
   }
 
   const formatDate = (dateString) => {
-    if (!dateString) return new Date().toLocaleDateString('en-GB')
+    if (!dateString) return new Date().toLocaleDateString('en-GB');
     
-    // Handle LocalDateTime object or string
-    if (typeof dateString === 'string') {
-      const date = new Date(dateString)
-      return isNaN(date.getTime()) ? new Date().toLocaleDateString('en-GB') : date.toLocaleDateString('en-GB')
-    } else if (dateString instanceof Date) {
-      return dateString.toLocaleDateString('en-GB')
-    } else {
-      // If it's an object (LocalDateTime), try to parse it
-      try {
-        // Handle Java LocalDateTime/LocalTime objects that might come as strings or objects
-        const dateStr = JSON.stringify(dateString);
-        const parsedDate = new Date(dateStr.replace(/"/g, ''));
-        return isNaN(parsedDate.getTime()) ? new Date().toLocaleDateString('en-GB') : parsedDate.toLocaleDateString('en-GB');
-      } catch {
-        return new Date().toLocaleDateString('en-GB')
+    try {
+      // Handle LocalDateTime string like "2025-10-30T12:26:04.85009"
+      if (typeof dateString === 'string') {
+        // Extract just the date part if it's a full datetime string
+        const datePart = dateString.split('T')[0];
+        const date = new Date(datePart);
+        return isNaN(date.getTime()) ? new Date().toLocaleDateString('en-GB') : date.toLocaleDateString('en-GB');
       }
+      return new Date().toLocaleDateString('en-GB');
+    } catch (error) {
+      console.error('Error formatting date:', error, dateString);
+      return new Date().toLocaleDateString('en-GB');
     }
   }
 
   const formatTime = (timeValue) => {
-    if (!timeValue) return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+    if (!timeValue) return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     
     try {
-      // Handle different time formats that might come from Java LocalTime
+      // Handle LocalTime object or string
       if (typeof timeValue === 'string') {
-        // If it's already a string time like "11:28:55.9"
+        // If it's already a time string like "12:26:04.85009"
         const timeParts = timeValue.split(':');
         if (timeParts.length >= 2) {
-          return `${timeParts[0]}:${timeParts[1]}`; // Return just hours and minutes
+          return `${timeParts[0].padStart(2, '0')}:${timeParts[1].padStart(2, '0')}`;
         }
-        const date = new Date(`1970-01-01T${timeValue}`);
-        return isNaN(date.getTime()) ? 
-          new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 
-          date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-      } else if (timeValue instanceof Date) {
-        return timeValue.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-      } else {
-        // If it's an object (LocalTime), try to extract hours and minutes
-        const timeStr = JSON.stringify(timeValue);
-        // Try to parse hours and minutes from the object
-        const match = timeStr.match(/"hour":(\d+).*?"minute":(\d+)/);
-        if (match) {
-          const hours = match[1].padStart(2, '0');
-          const minutes = match[2].padStart(2, '0');
-          return `${hours}:${minutes}`;
-        }
-        return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      } else if (timeValue && typeof timeValue === 'object') {
+        // If it's a LocalTime object from Java
+        const hours = String(timeValue.hour || 0).padStart(2, '0');
+        const minutes = String(timeValue.minute || 0).padStart(2, '0');
+        return `${hours}:${minutes}`;
       }
+      return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     } catch (error) {
       console.error('Error formatting time:', error, timeValue);
       return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -217,97 +245,231 @@ const PendingForResultEntry = () => {
   }
 
   // Render result input based on result type
-  const renderResultInput = (item, isSubTest = false, investigationId = null) => {
-    const resultType = isSubTest ? item.resultType : null;
+const renderResultInput = (item, isSubTest = false, investigationId = null) => {
+  const resultType = isSubTest ? item.resultType : null;
+  const comparisonType = isSubTest ? item.comparisonType : null;
 
-    if (isSubTest && resultType === 'r') {
-      // Render dropdown for result type 'r'
-      return (
-        <select
-          className="form-select"
-          value={item.result || ""}
-          onChange={(e) => {
-            if (isSubTest && investigationId) {
-              handleSubTestChange(investigationId, item.id, "result", e.target.value)
-            } else if (!isSubTest) {
-              handleInvestigationChange(item.id, "result", e.target.value)
-            }
-          }}
-        >
-          <option value="">Select Result</option>
-          <option value="Positive">Positive</option>
-          <option value="Negative">Negative</option>
-        </select>
-      );
-    } else {
-      // Render text input for other types
-      return (
-        <input
-          type="text"
-          className="form-control"
-          value={item.result}
-          onChange={(e) => {
-            if (isSubTest && investigationId) {
-              handleSubTestChange(investigationId, item.id, "result", e.target.value)
-            } else if (!isSubTest) {
-              handleInvestigationChange(item.id, "result", e.target.value)
-            }
-          }}
-        />
-      );
-    }
+  if (isSubTest && comparisonType === 'f') {
+    // Render dropdown for comparison type 'f' (fixed values) - use dgFixedValueResponseList
+    const fixedValues = item.dgFixedValueResponseList || [];
+    
+    return (
+      <select
+        className="form-select"
+        value={item.result || ""}
+        onChange={(e) => {
+          if (isSubTest && investigationId) {
+            handleSubTestChange(investigationId, item.id, "result", e.target.value)
+          } else if (!isSubTest) {
+            handleInvestigationChange(item.id, "result", e.target.value)
+          }
+        }}
+      >
+        <option value="">Select Result</option>
+        {fixedValues.map((fixedValue, index) => (
+          <option key={index} value={fixedValue.fixedValue}>
+            {fixedValue.fixedValue}
+          </option>
+        ))}
+      </select>
+    );
+  } else if (isSubTest && resultType === 'r') {
+    // Render dropdown for result type 'r' (radio/select)
+    return (
+      <select
+        className="form-select"
+        value={item.result || ""}
+        onChange={(e) => {
+          if (isSubTest && investigationId) {
+            handleSubTestChange(investigationId, item.id, "result", e.target.value)
+          } else if (!isSubTest) {
+            handleInvestigationChange(item.id, "result", e.target.value)
+          }
+        }}
+      >
+        <option value="">Select Result</option>
+        <option value="Positive">Positive</option>
+        <option value="Negative">Negative</option>
+        <option value="Reactive">Reactive</option>
+        <option value="Non-Reactive">Non-Reactive</option>
+        <option value="Present">Present</option>
+        <option value="Absent">Absent</option>
+      </select>
+    );
+  } else {
+    // Render text input for other types (text/numeric)
+    return (
+      <input
+        type="text"
+        className="form-control"
+        value={item.result}
+        onChange={(e) => {
+          if (isSubTest && investigationId) {
+            handleSubTestChange(investigationId, item.id, "result", e.target.value)
+          } else if (!isSubTest) {
+            handleInvestigationChange(item.id, "result", e.target.value)
+          }
+        }}
+      />
+    );
   }
+}
 
   const handleSubmit = async () => {
-    if (selectedResult) {
-      try {
-        setLoading(true)
+  if (selectedResult) {
+    try {
+      setLoading(true);
 
-        // Prepare the request payload according to your API
-        const requestPayload = {
-          orderNo: selectedResult.order_no,
-          patientId: selectedResult.patientId,
-          resultEntries: selectedResult.investigations.flatMap(inv => {
-            const mainTest = {
-              investigationId: inv.investigationId,
+      // Prepare the request payload according to your API structure
+      const requestPayload = {
+        relationId: selectedResult.relationId,
+        mainChargeCodeId: selectedResult.mainChargeCodeId,
+        subChargeCodeId: selectedResult.subChargeCodeId,
+        clinicalNotes: selectedResult.clinical_notes || "Clinical Notes",
+        sampleCollectionHeaderId: selectedResult.sampleCollectionHeaderId,
+        patientId: selectedResult.patientId, // Added patientId
+        investigationList: selectedResult.investigations.map((inv) => {
+          const resultEntryDetails = [];
+
+          // Handle main investigation result
+          if (!inv.reject && inv.result && inv.result.trim() !== "") {
+            resultEntryDetails.push({
               result: inv.result,
-              remarks: inv.remarks,
-              reject: inv.reject
+              remarks: inv.remarks || "",
+              sampleId: inv.sampleId,
+              investigationId: inv.investigationId,
+              subInvestigationId: null,
+              resultType: inv.resultType || "s",
+              comparisonType: inv.comparisonType || "n",
+              fixedId: 0,
+              normalId: 0,
+              normalRange: inv.normal_range || "", // Added normalRange for main investigation
+              fixedRange: null // Added fixedRange as null for now
+            });
+          }
+
+          // Handle sub-investigations
+          if (inv.subTests.length > 0) {
+            const hasAnySubTestResult = inv.subTests.some(subTest => 
+              !subTest.reject && subTest.result && subTest.result.trim() !== ""
+            );
+
+            // If any sub-test has result, include ALL sub-tests
+            if (hasAnySubTestResult) {
+              inv.subTests.forEach(subTest => {
+                // For sub-tests with results
+                if (!subTest.reject && subTest.result && subTest.result.trim() !== "") {
+                  // Find the selected fixed value if comparisonType is 'f'
+                  let fixedId = 0;
+                  let normalId = 0;
+                  
+                  if (subTest.comparisonType === 'f' && subTest.dgFixedValueResponseList) {
+                    const selectedFixedValue = subTest.dgFixedValueResponseList.find(
+                      fixedValue => fixedValue.fixedValue === subTest.result
+                    );
+                    fixedId = selectedFixedValue ? selectedFixedValue.fixedId : 0;
+                  } else if (subTest.comparisonType === 'n') {
+                    // For normal type, you might need to get normalId from somewhere
+                    // This depends on your data structure
+                    normalId = subTest.normalId || 0;
+                  }
+
+                  resultEntryDetails.push({
+                    result: subTest.result,
+                    remarks: subTest.remarks || "",
+                    sampleId: subTest.sampleId,
+                    investigationId: inv.investigationId,
+                    subInvestigationId: subTest.subInvestigationId,
+                    resultType: subTest.resultType || "s",
+                    comparisonType: subTest.comparisonType || "n",
+                    fixedId: fixedId,
+                    normalId: normalId,
+                    normalRange: subTest.normal_range || "", // Added normalRange for sub-tests
+                    fixedRange: null // Added fixedRange as null for now
+                  });
+                } 
+                // For empty sub-tests (when at least one has result)
+                else {
+                  resultEntryDetails.push({
+                    result: null,
+                    remarks: null,
+                    sampleId: subTest.sampleId,
+                    investigationId: inv.investigationId,
+                    subInvestigationId: subTest.subInvestigationId,
+                    resultType: subTest.resultType || "s",
+                    comparisonType: subTest.comparisonType || "n",
+                    fixedId: 0,
+                    normalId: 0,
+                    normalRange: subTest.normal_range || "", // Added normalRange for empty sub-tests
+                    fixedRange: null // Added fixedRange as null for now
+                  });
+                }
+              });
             }
+            // If no sub-tests have results but main investigation has result, still include sub-tests as null
+            else if (!inv.reject && inv.result && inv.result.trim() !== "") {
+              inv.subTests.forEach(subTest => {
+                resultEntryDetails.push({
+                  result: null,
+                  remarks: null,
+                  sampleId: subTest.sampleId,
+                  investigationId: inv.investigationId,
+                  subInvestigationId: subTest.subInvestigationId,
+                  resultType: subTest.resultType || "s",
+                  comparisonType: subTest.comparisonType || "n",
+                  fixedId: 0,
+                  normalId: 0,
+                  normalRange: subTest.normal_range || "", // Added normalRange for null sub-tests
+                  fixedRange: null // Added fixedRange as null for now
+                });
+              });
+            }
+          }
 
-            const subTests = inv.subTests.map(subTest => ({
-              subInvestigationId: subTest.subInvestigationId,
-              result: subTest.result,
-              remarks: subTest.remarks,
-              reject: subTest.reject
-            }))
+          // Only return investigation if it has any result entries
+          return resultEntryDetails.length > 0 ? {
+            investigationId: inv.investigationId,
+            sampleCollectionDetailsId: inv.sampleCollectionDetailsId,
+            resultEntryDetailsRequestList: resultEntryDetails
+          } : null;
+        }).filter(inv => inv !== null)
+      };
 
-            return [mainTest, ...subTests]
-          })
-        }
-
-        console.log("Submitting result entry payload:", JSON.stringify(requestPayload, null, 2));
-
-        // Make the API call to your result entry endpoint
-        // Note: You'll need to create this endpoint or use the appropriate one
-        const response = await postRequest(`${LAB}/submitResults`, requestPayload)
-
-        if (response.status === 200 || response.ok) {
-          showPopup("Results submitted successfully!", "success")
-          await fetchPendingResultEntries()
-          setShowDetailView(false)
-          setSelectedResult(null)
-        } else {
-          throw new Error(response.message || "Failed to submit results")
-        }
-      } catch (error) {
-        console.error('Error submitting results:', error)
-        showPopup(error.message || "Error submitting results", "error")
-      } finally {
-        setLoading(false)
+      // Check if there are any investigations with results to submit
+      if (requestPayload.investigationList.length === 0) {
+        showPopup("Please enter at least one result before submitting", "warning");
+        setLoading(false);
+        return;
       }
+
+      // Validate required fields
+      if (!requestPayload.relationId || !requestPayload.mainChargeCodeId || !requestPayload.subChargeCodeId || !requestPayload.sampleCollectionHeaderId || !requestPayload.patientId) {
+        showPopup("Missing required data. Please contact administrator.", "error");
+        setLoading(false);
+        return;
+      }
+
+      console.log("Submitting result entry payload:", JSON.stringify(requestPayload, null, 2));
+
+      // Use your endpoint
+      const response = await postRequest(`${LAB}/saveResultEntry`, requestPayload);
+
+      if (response.status === 200) {
+        showPopup("Results submitted successfully!", "success");
+        await fetchPendingResultEntries();
+        setShowDetailView(false);
+        setSelectedResult(null);
+      } else {
+        throw new Error(response.message || "Failed to submit results");
+      }
+    } catch (error) {
+      console.error('Error submitting results:', error);
+      showPopup(error.message || "Error submitting results", "error");
+    } finally {
+      setLoading(false);
     }
   }
+};
 
   const handleReset = () => {
     if (selectedResult) {
@@ -552,6 +714,7 @@ const PendingForResultEntry = () => {
                       {selectedResult.investigations.map((investigation) => (
                         <>
                           {investigation.subTests.length === 0 ? (
+                            // Main investigation without sub-tests
                             <tr key={investigation.id}>
                               <td>{investigation.si_no}</td>
                               <td>{investigation.diag_no}</td>
@@ -615,7 +778,9 @@ const PendingForResultEntry = () => {
                               </td>
                             </tr>
                           ) : (
+                            // Investigation with sub-tests
                             <>
+                              {/* Main investigation row (header) */}
                               <tr key={investigation.id}>
                                 <td>{investigation.si_no}</td>
                                 <td>{investigation.diag_no}</td>
@@ -623,9 +788,10 @@ const PendingForResultEntry = () => {
                                   <strong>{investigation.investigation}</strong>
                                 </td>
                               </tr>
+                              {/* Sub-test rows */}
                               {investigation.subTests.map((subTest) => (
                                 <tr key={subTest.id}>
-                                  <td>{subTest.si_no}</td> {/* This will now show a, b, c, etc. */}
+                                  <td>{subTest.si_no}</td>
                                   <td>{subTest.diag_no}</td>
                                   <td>
                                     <input
