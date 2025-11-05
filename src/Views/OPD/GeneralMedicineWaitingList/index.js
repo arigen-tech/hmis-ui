@@ -1,5 +1,6 @@
 import { useState } from "react"
 import placeholderImage from "../../../assets/images/placeholder.jpg"
+import OTDashboard from "./OTDashboard"
 
 const GeneralMedicineWaitingList = () => {
   const [waitingList, setWaitingList] = useState([
@@ -31,6 +32,7 @@ const GeneralMedicineWaitingList = () => {
   const [showDetailView, setShowDetailView] = useState(false)
   const [selectedPatient, setSelectedPatient] = useState(null)
   const [image, setImage] = useState(null)
+  const [showOtCalendarModal, setShowOtCalendarModal] = useState(false)
 
   const [investigationType, setInvestigationType] = useState("lab")
   const [procedureCareType, setProcedureCareType] = useState("procedure")
@@ -42,7 +44,7 @@ const GeneralMedicineWaitingList = () => {
     diagnosis: false,
     investigation: false,
     treatment: false,
-    nlp: false,
+    nip: false,
     referral: false,
     followUp: false,
     doctorRemark: false,
@@ -50,7 +52,7 @@ const GeneralMedicineWaitingList = () => {
     additionalAdvice: false,
   })
 
-  const [expandedNlpSubsections, setExpandedNlpSubsections] = useState({
+  const [expandedNipSubsections, setExpandedNipSubsections] = useState({
     treatmentAdvice: true,
     procedureCare: false,
     nip: false,
@@ -141,7 +143,7 @@ const GeneralMedicineWaitingList = () => {
     },
   ])
 
-  const [nlpItems, setNlpItems] = useState([
+  const [nipItems, setNipItems] = useState([
     {
       nip: "",
       newNIP: "",
@@ -158,9 +160,9 @@ const GeneralMedicineWaitingList = () => {
     },
   ])
 
-  const [nlpSearchInput, setNlpSearchInput] = useState("")
-  const [isNlpDropdownVisible, setIsNlpDropdownVisible] = useState(false)
-  const [selectedNlpIndex, setSelectedNlpIndex] = useState(null)
+  const [nipSearchInput, setNipSearchInput] = useState("")
+  const [isNipDropdownVisible, setIsNipDropdownVisible] = useState(false)
+  const [selectedNipIndex, setSelectedNipIndex] = useState(null)
 
   const nipOptions = [
     { id: 1, name: "NIP-001", code: "001" },
@@ -269,7 +271,7 @@ const GeneralMedicineWaitingList = () => {
       diagnosis: false,
       investigation: false,
       treatment: false,
-      nlp: false,
+      nip: false,
       referral: false,
       followUp: false,
       doctorRemark: false,
@@ -286,8 +288,8 @@ const GeneralMedicineWaitingList = () => {
     }))
   }
 
-  const toggleNlpSubsection = (subsection) => {
-    setExpandedNlpSubsections((prev) => ({
+  const toggleNipSubsection = (subsection) => {
+    setExpandedNipSubsections((prev) => ({
       ...prev,
       [subsection]: !prev[subsection],
     }))
@@ -445,22 +447,22 @@ const GeneralMedicineWaitingList = () => {
     setTreatmentItems(newItems)
   }
 
-  const handleNlpSearchChange = (value) => {
-    setNlpSearchInput(value)
-    setIsNlpDropdownVisible(true)
+  const handleNipSearchChange = (value) => {
+    setNipSearchInput(value)
+    setIsNipDropdownVisible(true)
   }
 
-  const handleNlpSelect = (nip, index) => {
-    const newItems = [...nlpItems]
+  const handleNipSelect = (nip, index) => {
+    const newItems = [...nipItems]
     newItems[index] = { ...newItems[index], nip: nip.name }
-    setNlpItems(newItems)
-    setNlpSearchInput("")
-    setIsNlpDropdownVisible(false)
+    setNipItems(newItems)
+    setNipSearchInput("")
+    setIsNipDropdownVisible(false)
   }
 
-  const handleAddNlpItem = () => {
-    setNlpItems([
-      ...nlpItems,
+  const handleAddNipItem = () => {
+    setNipItems([
+      ...nipItems,
       {
         nip: "",
         newNIP: "",
@@ -478,16 +480,16 @@ const GeneralMedicineWaitingList = () => {
     ])
   }
 
-  const handleRemoveNlpItem = (index) => {
-    if (nlpItems.length === 1) return
-    const newItems = nlpItems.filter((_, i) => i !== index)
-    setNlpItems(newItems)
+  const handleRemoveNipItem = (index) => {
+    if (nipItems.length === 1) return
+    const newItems = nipItems.filter((_, i) => i !== index)
+    setNipItems(newItems)
   }
 
-  const handleNlpChange = (index, field, value) => {
-    const newItems = [...nlpItems]
+  const handleNipChange = (index, field, value) => {
+    const newItems = [...nipItems]
     newItems[index] = { ...newItems[index], [field]: value }
-    setNlpItems(newItems)
+    setNipItems(newItems)
   }
 
   const handleOpenTreatmentAdviceModal = (type) => {
@@ -696,42 +698,6 @@ const GeneralMedicineWaitingList = () => {
                     <div className="col-md-9">
                       <div className="row g-3">
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="firstName">
-                            First Name
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="firstName"
-                            name="firstName"
-                            placeholder="Enter First Name"
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label" htmlFor="middleName">
-                            Middle Name
-                          </label>
-                          <input
-                            type="text"
-                            id="middleName"
-                            name="middleName"
-                            className="form-control"
-                            placeholder="Enter Middle Name"
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label" htmlFor="lastName">
-                            Last Name
-                          </label>
-                          <input
-                            type="text"
-                            id="lastName"
-                            name="lastName"
-                            className="form-control"
-                            placeholder="Enter Last Name"
-                          />
-                        </div>
-                        <div className="col-md-4">
                           <label className="form-label" htmlFor="mobileNo">
                             Mobile No.
                           </label>
@@ -742,50 +708,53 @@ const GeneralMedicineWaitingList = () => {
                             className="form-control"
                             maxLength={10}
                             placeholder="Enter Mobile Number"
+                            readOnly
                           />
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="gender">
                             Gender
                           </label>
-                          <select className="form-select" id="gender" name="gender" defaultValue="">
-                            <option value="">Select</option>
-                            <option value="male">Male</option>
-                            <option value="female">Female</option>
-                            <option value="other">Other</option>
-                          </select>
+                          <input
+                            type="text"
+                            id="gender"
+                            name="gender"
+                            className="form-control"
+                            placeholder="Select"
+                            readOnly
+                          />
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="relation">
                             Relation
                           </label>
-                          <select className="form-select" id="relation" name="relation" defaultValue="">
-                            <option value="">Select</option>
-                            <option value="self">Self</option>
-                            <option value="husband">Husband</option>
-                            <option value="wife">Wife</option>
-                            <option value="son">Son</option>
-                            <option value="daughter">Daughter</option>
-                          </select>
+                          <input
+                            type="text"
+                            id="relation"
+                            name="relation"
+                            className="form-control"
+                            placeholder="Select"
+                            readOnly
+                          />
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="dob">
                             DOB
                           </label>
                           <input
-                            type="date"
+                            type="text"
                             id="dob"
                             name="dob"
                             className="form-control"
-                            max={new Date().toISOString().split("T")[0]}
-                            placeholder="Select Date of Birth"
+                            placeholder="dd/mm/yyyy"
+                            readOnly
                           />
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="age">
                             Age
                           </label>
-                          <input type="text" id="age" name="age" className="form-control" placeholder="Enter Age" />
+                          <input type="text" id="age" name="age" className="form-control" placeholder="Enter Age" readOnly />
                         </div>
                       </div>
                     </div>
@@ -793,7 +762,7 @@ const GeneralMedicineWaitingList = () => {
                       <div className="text-center">
                         <div className="card p-3 shadow">
                           <img
-                            src={image || "/placeholder.svg"}
+                            src={placeholderImage || "/placeholder.svg"}
                             alt="Profile photo"
                             className="img-fluid border"
                             style={{ width: "100%", height: "150px", objectFit: "cover" }}
@@ -1445,24 +1414,24 @@ const GeneralMedicineWaitingList = () => {
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
-                    onClick={() => toggleSection("nlp")}
+                    onClick={() => toggleSection("nip")}
                   >
-                    <h6 className="mb-0 fw-bold">NLP</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.nlp ? "−" : "+"}</span>
+                    <h6 className="mb-0 fw-bold">NIP</h6>
+                    <span style={{ fontSize: "18px" }}>{expandedSections.nip ? "−" : "+"}</span>
                   </div>
-                  {expandedSections.nlp && (
+                  {expandedSections.nip && (
                     <div className="card-body">
                       {/* Treatment Advice Subsection */}
                       <div className="card mb-3">
                         <div
                           className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
                           style={{ cursor: "pointer" }}
-                          onClick={() => toggleNlpSubsection("treatmentAdvice")}
+                          onClick={() => toggleNipSubsection("treatmentAdvice")}
                         >
                           <h6 className="mb-0">Treatment Advice</h6>
-                          <span style={{ fontSize: "16px" }}>{expandedNlpSubsections.treatmentAdvice ? "−" : "+"}</span>
+                          <span style={{ fontSize: "16px" }}>{expandedNipSubsections.treatmentAdvice ? "−" : "+"}</span>
                         </div>
-                        {expandedNlpSubsections.treatmentAdvice && (
+                        {expandedNipSubsections.treatmentAdvice && (
                           <div className="card-body">
                             <div className="row align-items-end">
                               <div className="col-md-11">
@@ -1495,12 +1464,12 @@ const GeneralMedicineWaitingList = () => {
                         <div
                           className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
                           style={{ cursor: "pointer" }}
-                          onClick={() => toggleNlpSubsection("nip")}
+                          onClick={() => toggleNipSubsection("nip")}
                         >
                           <h6 className="mb-0">NIP</h6>
-                          <span style={{ fontSize: "16px" }}>{expandedNlpSubsections.nip ? "−" : "+"}</span>
+                          <span style={{ fontSize: "16px" }}>{expandedNipSubsections.nip ? "−" : "+"}</span>
                         </div>
-                        {expandedNlpSubsections.nip && (
+                        {expandedNipSubsections.nip && (
                           <div className="card-body">
                             <div className="table-responsive">
                               <table className="table table-bordered">
@@ -1523,7 +1492,7 @@ const GeneralMedicineWaitingList = () => {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {nlpItems.map((item, index) => (
+                                  {nipItems.map((item, index) => (
                                     <tr key={index}>
                                       <td className="position-relative">
                                         <input
@@ -1531,26 +1500,26 @@ const GeneralMedicineWaitingList = () => {
                                           className="form-control border-black"
                                           value={item.nip}
                                           onChange={(e) => {
-                                            handleNlpSearchChange(e.target.value)
-                                            setSelectedNlpIndex(index)
+                                            handleNipSearchChange(e.target.value)
+                                            setSelectedNipIndex(index)
                                           }}
                                           placeholder="Search NIP"
                                           autoComplete="off"
                                         />
-                                        {isNlpDropdownVisible && selectedNlpIndex === index && nlpSearchInput && (
+                                        {isNipDropdownVisible && selectedNipIndex === index && nipSearchInput && (
                                           <ul
                                             className="list-group position-absolute w-100 mt-1"
                                             style={{ zIndex: 1000, top: "100%" }}
                                           >
                                             {nipOptions
                                               .filter((nip) =>
-                                                nip.name.toLowerCase().includes(nlpSearchInput.toLowerCase()),
+                                                nip.name.toLowerCase().includes(nipSearchInput.toLowerCase()),
                                               )
                                               .map((nip) => (
                                                 <li
                                                   key={nip.id}
                                                   className="list-group-item list-group-item-action"
-                                                  onClick={() => handleNlpSelect(nip, index)}
+                                                  onClick={() => handleNipSelect(nip, index)}
                                                 >
                                                   {nip.name}
                                                 </li>
@@ -1563,7 +1532,7 @@ const GeneralMedicineWaitingList = () => {
                                           type="text"
                                           className="form-control border-black"
                                           value={item.newNIP}
-                                          onChange={(e) => handleNlpChange(index, "newNIP", e.target.value)}
+                                          onChange={(e) => handleNipChange(index, "newNIP", e.target.value)}
                                           placeholder="New NIP"
                                         />
                                       </td>
@@ -1571,7 +1540,7 @@ const GeneralMedicineWaitingList = () => {
                                         <select
                                           className="form-select"
                                           value={item.class}
-                                          onChange={(e) => handleNlpChange(index, "class", e.target.value)}
+                                          onChange={(e) => handleNipChange(index, "class", e.target.value)}
                                         >
                                           <option value="Select">Select</option>
                                           <option value="Class A">Class A</option>
@@ -1583,7 +1552,7 @@ const GeneralMedicineWaitingList = () => {
                                         <select
                                           className="form-select"
                                           value={item.au}
-                                          onChange={(e) => handleNlpChange(index, "au", e.target.value)}
+                                          onChange={(e) => handleNipChange(index, "au", e.target.value)}
                                         >
                                           <option value="Select">Select</option>
                                           <option value="AU-1">AU-1</option>
@@ -1595,7 +1564,7 @@ const GeneralMedicineWaitingList = () => {
                                         <select
                                           className="form-select"
                                           value={item.dispUnit}
-                                          onChange={(e) => handleNlpChange(index, "dispUnit", e.target.value)}
+                                          onChange={(e) => handleNipChange(index, "dispUnit", e.target.value)}
                                         >
                                           <option value="Select">Select</option>
                                           <option value="Tab">Tab</option>
@@ -1608,7 +1577,7 @@ const GeneralMedicineWaitingList = () => {
                                           type="number"
                                           className="form-control border-black"
                                           value={item.uomQty}
-                                          onChange={(e) => handleNlpChange(index, "uomQty", e.target.value)}
+                                          onChange={(e) => handleNipChange(index, "uomQty", e.target.value)}
                                           placeholder="0"
                                         />
                                       </td>
@@ -1617,7 +1586,7 @@ const GeneralMedicineWaitingList = () => {
                                           type="number"
                                           className="form-control border-black"
                                           value={item.dosage}
-                                          onChange={(e) => handleNlpChange(index, "dosage", e.target.value)}
+                                          onChange={(e) => handleNipChange(index, "dosage", e.target.value)}
                                           placeholder="0"
                                         />
                                       </td>
@@ -1625,7 +1594,7 @@ const GeneralMedicineWaitingList = () => {
                                         <select
                                           className="form-select"
                                           value={item.frequency}
-                                          onChange={(e) => handleNlpChange(index, "frequency", e.target.value)}
+                                          onChange={(e) => handleNipChange(index, "frequency", e.target.value)}
                                         >
                                           <option value="Select">Select</option>
                                           <option value="OD">OD</option>
@@ -1639,7 +1608,7 @@ const GeneralMedicineWaitingList = () => {
                                           type="number"
                                           className="form-control border-black"
                                           value={item.days}
-                                          onChange={(e) => handleNlpChange(index, "days", e.target.value)}
+                                          onChange={(e) => handleNipChange(index, "days", e.target.value)}
                                           placeholder="0"
                                         />
                                       </td>
@@ -1648,7 +1617,7 @@ const GeneralMedicineWaitingList = () => {
                                           type="number"
                                           className="form-control border-black"
                                           value={item.total}
-                                          onChange={(e) => handleNlpChange(index, "total", e.target.value)}
+                                          onChange={(e) => handleNipChange(index, "total", e.target.value)}
                                           placeholder="0"
                                         />
                                       </td>
@@ -1656,7 +1625,7 @@ const GeneralMedicineWaitingList = () => {
                                         <select
                                           className="form-select"
                                           value={item.instruction}
-                                          onChange={(e) => handleNlpChange(index, "instruction", e.target.value)}
+                                          onChange={(e) => handleNipChange(index, "instruction", e.target.value)}
                                         >
                                           <option value="">Select...</option>
                                           <option value="After Meal">After Meal</option>
@@ -1668,12 +1637,12 @@ const GeneralMedicineWaitingList = () => {
                                           type="number"
                                           className="form-control border-black"
                                           value={item.stock}
-                                          onChange={(e) => handleNlpChange(index, "stock", e.target.value)}
+                                          onChange={(e) => handleNipChange(index, "stock", e.target.value)}
                                           placeholder="0"
                                         />
                                       </td>
                                       <td className="text-center">
-                                        <button className="btn btn-sm btn-success" onClick={handleAddNlpItem}>
+                                        <button className="btn btn-sm btn-success" onClick={handleAddNipItem}>
                                           +
                                         </button>
                                       </td>
@@ -1681,8 +1650,8 @@ const GeneralMedicineWaitingList = () => {
                                         <button
                                           className="btn btn-sm text-white"
                                           style={{ backgroundColor: "#dc3545" }}
-                                          onClick={() => handleRemoveNlpItem(index)}
-                                          disabled={nlpItems.length === 1}
+                                          onClick={() => handleRemoveNipItem(index)}
+                                          disabled={nipItems.length === 1}
                                         >
                                           −
                                         </button>
@@ -1701,12 +1670,12 @@ const GeneralMedicineWaitingList = () => {
                         <div
                           className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
                           style={{ cursor: "pointer" }}
-                          onClick={() => toggleNlpSubsection("procedureCare")}
+                          onClick={() => toggleNipSubsection("procedureCare")}
                         >
                           <h6 className="mb-0">Procedure Care</h6>
-                          <span style={{ fontSize: "16px" }}>{expandedNlpSubsections.procedureCare ? "−" : "+"}</span>
+                          <span style={{ fontSize: "16px" }}>{expandedNipSubsections.procedureCare ? "−" : "+"}</span>
                         </div>
-                        {expandedNlpSubsections.procedureCare && (
+                        {expandedNipSubsections.procedureCare && (
                           <div className="card-body">
                             <div className="row mb-3">
                               <div className="col-12 d-flex gap-4">
@@ -1738,6 +1707,8 @@ const GeneralMedicineWaitingList = () => {
                                 </div>
                               </div>
                             </div>
+
+                             
 
                             {procedureCareType === "procedure" ? (
                               <div className="table-responsive">
@@ -1926,17 +1897,19 @@ const GeneralMedicineWaitingList = () => {
                         )}
                       </div>
 
+                    
+
                       {/* Surgery Advice Subsection */}
                       <div className="card mb-3">
                         <div
                           className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
                           style={{ cursor: "pointer" }}
-                          onClick={() => toggleNlpSubsection("surgeryAdvice")}
+                          onClick={() => toggleNipSubsection("surgeryAdvice")}
                         >
                           <h6 className="mb-0">Surgery Advice</h6>
-                          <span style={{ fontSize: "16px" }}>{expandedNlpSubsections.surgeryAdvice ? "−" : "+"}</span>
+                          <span style={{ fontSize: "16px" }}>{expandedNipSubsections.surgeryAdvice ? "−" : "+"}</span>
                         </div>
-                        {expandedNlpSubsections.surgeryAdvice && (
+                        {expandedNipSubsections.surgeryAdvice && (
                           <div className="card-body">
                             <div className="row mb-3 align-items-center">
                               <div className="col-12 d-flex gap-4 mb-3">
@@ -1966,6 +1939,23 @@ const GeneralMedicineWaitingList = () => {
                                     Minor
                                   </label>
                                 </div>
+
+                                 <div
+  style={{ cursor: "default" }}
+>
+  <div className="d-flex align-items-center">
+    <button
+      className="btn btn-sm btn-primary"
+      onClick={(e) => {
+        e.stopPropagation()
+        setShowOtCalendarModal(true)
+      }}
+      style={{ fontSize: "12px" }}
+    >
+      OTCalendar
+    </button>
+  </div>
+</div>
                               </div>
                             </div>
 
@@ -2055,14 +2045,14 @@ const GeneralMedicineWaitingList = () => {
                         <div
                           className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
                           style={{ cursor: "pointer" }}
-                          onClick={() => toggleNlpSubsection("additionalAdvice")}
+                          onClick={() => toggleNipSubsection("additionalAdvice")}
                         >
                           <h6 className="mb-0">Additional Advice</h6>
                           <span style={{ fontSize: "16px" }}>
-                            {expandedNlpSubsections.additionalAdvice ? "−" : "+"}
+                            {expandedNipSubsections.additionalAdvice ? "−" : "+"}
                           </span>
                         </div>
-                        {expandedNlpSubsections.additionalAdvice && (
+                        {expandedNipSubsections.additionalAdvice && (
                           <div className="card-body">
                             {admissionAdvised && (
                               <div className="row mb-4 pb-4 border-bottom">
@@ -2359,6 +2349,53 @@ const GeneralMedicineWaitingList = () => {
             </div>
           </div>
         )}
+
+        {/* OT Calendar Modal */}
+{showOtCalendarModal && (
+  <div
+    className="modal fade show"
+    style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)", zIndex: 0 }}
+    tabIndex="-1"
+    onClick={() => setShowOtCalendarModal(false)}
+  >
+<div
+  className="modal-dialog modal-lg"
+  style={{
+    width: "calc(100vw - 310px)",
+    left: "285px",
+    maxWidth: "none",   // remove Bootstrap’s limit
+    height: "90vh",     // 90% of viewport height
+    margin: "5vh auto", // center vertically
+    position: "fixed",  // important: ensures it stays where you set it
+  }}
+      onClick={(e) => e.stopPropagation()}
+>
+
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title">OT DASHBOARD</h5>
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => setShowOtCalendarModal(false)}
+          ></button>
+        </div>
+        <div className="modal-body" style={{ overflowY: "auto", flex: "1 1 auto", maxHeight: "calc(90vh - 120px)" }}>
+          <OTDashboard />
+        </div>
+        <div className="modal-footer">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setShowOtCalendarModal(false)}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
         {showTreatmentAdviceModal && (
           <div className="modal d-block">
