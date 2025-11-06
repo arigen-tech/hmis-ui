@@ -81,6 +81,8 @@ const validRoutes = [
   "/OpeningBalanceRegister",
   "/GeneralMedicineWaitingList",
   "/SampleMaster",
+  "/PatientwiseBilldatails",
+  "/ResultValidation",
 ];
 
 const NotAuthorized = () => {
