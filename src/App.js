@@ -185,7 +185,7 @@ function App() {
                 <Route path="OpeningBalanceRegister" element={<OpeningBalanceRegister/>} />
                 <Route path="GeneralMedicineWaitingList" element={<GeneralMedicineWaitingList/>} />
                 <Route path="SampleMaster" element={<SampleMaster/>} />
-                <Route path="PatientwiseBilldatails" element={<PatientwiseBilldatails/>} />
+                {/* <Route path="PatientwiseBilldatails" element={<PatientwiseBilldatails/>} /> */}
                 <Route path="ResultValidation" element={<ResultValidation/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
