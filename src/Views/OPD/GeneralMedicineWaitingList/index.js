@@ -1048,7 +1048,7 @@ const GeneralMedicineWaitingList = () => {
                         <label className="form-label fw-bold">Working Diagnosis</label>
                         <input
                           type="text"
-                          className="form-control border-black"
+                          className="form-control "
                           value={workingDiagnosis}
                           onChange={(e) => setWorkingDiagnosis(e.target.value)}
                           placeholder="Enter working diagnosis"
@@ -1072,7 +1072,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td>
                                   <input
                                     type="text"
-                                    className="form-control border-black"
+                                    className="form-control "
                                     value={item.icdDiagnosis}
                                     onChange={(e) => handleDiagnosisChange(index, "icdDiagnosis", e.target.value)}
                                     placeholder="Enter ICD diagnosis"
@@ -1209,7 +1209,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td>
                                   <input
                                     type="text"
-                                    className="form-control border-black"
+                                    className="form-control "
                                     value={item.name}
                                     onChange={(e) => handleInvestigationItemChange(index, "name", e.target.value)}
                                     placeholder="Enter investigation"
@@ -1218,7 +1218,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td>
                                   <input
                                     type="date"
-                                    className="form-control border-black"
+                                    className="form-control "
                                     value={item.date}
                                     onChange={(e) => handleInvestigationItemChange(index, "date", e.target.value)}
                                   />
@@ -1310,7 +1310,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td>
                                   <input
                                     type="text"
-                                    className="form-control border-black"
+                                    className="form-control "
                                     style={{ fontSize: "1.125rem" }}
                                     value={row.drugName}
                                     onChange={(e) => handleTreatmentChange(index, "drugName", e.target.value)}
@@ -1332,7 +1332,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td>
                                   <input
                                     type="number"
-                                    className="form-control border-black"
+                                    className="form-control "
                                     style={{ fontSize: "0.75rem" }}
                                     value={row.dosage}
                                     onChange={(e) => handleTreatmentChange(index, "dosage", e.target.value)}
@@ -1357,7 +1357,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td>
                                   <input
                                     type="number"
-                                    className="form-control border-black"
+                                    className="form-control "
                                     style={{ fontSize: "0.875rem" }}
                                     value={row.days}
                                     onChange={(e) => handleTreatmentChange(index, "days", e.target.value)}
@@ -1367,7 +1367,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td>
                                   <input
                                     type="number"
-                                    className="form-control border-black"
+                                    className="form-control "
                                     style={{ fontSize: "0.875rem" }}
                                     value={row.total}
                                     onChange={(e) => handleTreatmentChange(index, "total", e.target.value)}
@@ -1437,7 +1437,7 @@ const GeneralMedicineWaitingList = () => {
                               <div className="col-md-11">
                                 <label className="form-label fw-bold">Treatment Advice</label>
                                 <textarea
-                                  className="form-control border-black"
+                                  className="form-control "
                                   rows={3}
                                   value={generalTreatmentAdvice}
                                   placeholder="Treatment advice will be populated here"
@@ -1497,7 +1497,7 @@ const GeneralMedicineWaitingList = () => {
                                       <td className="position-relative">
                                         <input
                                           type="text"
-                                          className="form-control border-black"
+                                          className="form-control "
                                           value={item.nip}
                                           onChange={(e) => {
                                             handleNipSearchChange(e.target.value)
@@ -1530,7 +1530,7 @@ const GeneralMedicineWaitingList = () => {
                                       <td>
                                         <input
                                           type="text"
-                                          className="form-control border-black"
+                                          className="form-control "
                                           value={item.newNIP}
                                           onChange={(e) => handleNipChange(index, "newNIP", e.target.value)}
                                           placeholder="New NIP"
@@ -1575,7 +1575,7 @@ const GeneralMedicineWaitingList = () => {
                                       <td>
                                         <input
                                           type="number"
-                                          className="form-control border-black"
+                                          className="form-control "
                                           value={item.uomQty}
                                           onChange={(e) => handleNipChange(index, "uomQty", e.target.value)}
                                           placeholder="0"
@@ -1584,7 +1584,7 @@ const GeneralMedicineWaitingList = () => {
                                       <td>
                                         <input
                                           type="number"
-                                          className="form-control border-black"
+                                          className="form-control "
                                           value={item.dosage}
                                           onChange={(e) => handleNipChange(index, "dosage", e.target.value)}
                                           placeholder="0"
@@ -1606,7 +1606,7 @@ const GeneralMedicineWaitingList = () => {
                                       <td>
                                         <input
                                           type="number"
-                                          className="form-control border-black"
+                                          className="form-control "
                                           value={item.days}
                                           onChange={(e) => handleNipChange(index, "days", e.target.value)}
                                           placeholder="0"
@@ -1615,7 +1615,7 @@ const GeneralMedicineWaitingList = () => {
                                       <td>
                                         <input
                                           type="number"
-                                          className="form-control border-black"
+                                          className="form-control "
                                           value={item.total}
                                           onChange={(e) => handleNipChange(index, "total", e.target.value)}
                                           placeholder="0"
@@ -1635,7 +1635,7 @@ const GeneralMedicineWaitingList = () => {
                                       <td>
                                         <input
                                           type="number"
-                                          className="form-control border-black"
+                                          className="form-control "
                                           value={item.stock}
                                           onChange={(e) => handleNipChange(index, "stock", e.target.value)}
                                           placeholder="0"
@@ -1737,7 +1737,7 @@ const GeneralMedicineWaitingList = () => {
                                         <td>
                                           <input
                                             type="text"
-                                            className="form-control border-black"
+                                            className="form-control "
                                             value={row.name}
                                             onChange={(e) => handleProcedureCareChange(index, "name", e.target.value)}
                                             placeholder="Enter nursing care name"
@@ -1761,7 +1761,7 @@ const GeneralMedicineWaitingList = () => {
                                         <td>
                                           <input
                                             type="number"
-                                            className="form-control border-black"
+                                            className="form-control "
                                             value={row.days}
                                             onChange={(e) => handleProcedureCareChange(index, "days", e.target.value)}
                                             placeholder="0"
@@ -1770,7 +1770,7 @@ const GeneralMedicineWaitingList = () => {
                                         <td>
                                           <input
                                             type="text"
-                                            className="form-control border-black"
+                                            className="form-control "
                                             value={row.remarks}
                                             onChange={(e) =>
                                               handleProcedureCareChange(index, "remarks", e.target.value)
@@ -1828,7 +1828,7 @@ const GeneralMedicineWaitingList = () => {
                                         <td>
                                           <input
                                             type="text"
-                                            className="form-control border-black"
+                                            className="form-control "
                                             value={row.name}
                                             onChange={(e) => handlePhysiotherapyChange(index, "name", e.target.value)}
                                             placeholder="Enter nursing care name"
@@ -1852,7 +1852,7 @@ const GeneralMedicineWaitingList = () => {
                                         <td>
                                           <input
                                             type="number"
-                                            className="form-control border-black"
+                                            className="form-control "
                                             value={row.days}
                                             onChange={(e) => handlePhysiotherapyChange(index, "days", e.target.value)}
                                             placeholder="0"
@@ -1861,7 +1861,7 @@ const GeneralMedicineWaitingList = () => {
                                         <td>
                                           <input
                                             type="text"
-                                            className="form-control border-black"
+                                            className="form-control "
                                             value={row.remarks}
                                             onChange={(e) =>
                                               handlePhysiotherapyChange(index, "remarks", e.target.value)
@@ -1977,7 +1977,7 @@ const GeneralMedicineWaitingList = () => {
                                       <td className="position-relative">
                                         <input
                                           type="text"
-                                          className="form-control border-black"
+                                          className="form-control "
                                           value={item.surgery}
                                           onChange={(e) => {
                                             handleSurgerySearchChange(e.target.value, index)
@@ -2076,7 +2076,7 @@ const GeneralMedicineWaitingList = () => {
                                       <label className="form-label fw-bold">Admission Date</label>
                                       <input
                                         type="date"
-                                        className="form-control border-black"
+                                        className="form-control "
                                         value={admissionDate}
                                         onChange={(e) => setAdmissionDate(e.target.value)}
                                       />
@@ -2099,7 +2099,7 @@ const GeneralMedicineWaitingList = () => {
                                       <label className="form-label fw-bold">Occupied Bed</label>
                                       <input
                                         type="text"
-                                        className="form-control border-black"
+                                        className="form-control "
                                         value={wardData[selectedWard]?.occupied || 0}
                                         readOnly
                                       />
@@ -2108,7 +2108,7 @@ const GeneralMedicineWaitingList = () => {
                                       <label className="form-label fw-bold">Vacant Bed</label>
                                       <input
                                         type="text"
-                                        className="form-control border-black"
+                                        className="form-control "
                                         value={wardData[selectedWard]?.vacant || 0}
                                         readOnly
                                       />
@@ -2116,7 +2116,7 @@ const GeneralMedicineWaitingList = () => {
                                     <div className="col-md-4">
                                       <label className="form-label fw-bold">Admission Notes</label>
                                       <textarea
-                                        className="form-control border-black"
+                                        className="form-control "
                                         rows={2}
                                         value={admissionNotes}
                                         onChange={(e) => setAdmissionNotes(e.target.value)}
@@ -2132,7 +2132,7 @@ const GeneralMedicineWaitingList = () => {
                               <div className="col-md-9">
                                 <label className="form-label fw-bold">Additional Advice</label>
                                 <textarea
-                                  className="form-control border-black"
+                                  className="form-control "
                                   rows={4}
                                   value={additionalAdvice}
                                   onChange={(e) => setAdditionalAdvice(e.target.value)}
@@ -2269,7 +2269,7 @@ const GeneralMedicineWaitingList = () => {
                             <td>
                               <input
                                 type="text"
-                                className="form-control border-black"
+                                className="form-control "
                                 value={item.name}
                                 onChange={(e) => handleInvestigationItemChange(index, "name", e.target.value)}
                                 placeholder="Enter investigation"
@@ -2312,35 +2312,108 @@ const GeneralMedicineWaitingList = () => {
         )}
 
         {showUpdateTemplateModal && (
-          <div className="modal d-block">
-            <div className="modal-dialog">
+           <div className="modal d-block">
+            <div className="modal-dialog modal-lg">
               <div className="modal-content">
                 <div className="modal-header">
                   <h5 className="modal-title">Update Investigation Template</h5>
-                  <button type="button" className="btn-close btn" onClick={handleCloseModal}></button>
+                  <button type="button" className="btn-close btn-close" onClick={handleCloseModal}></button>
                 </div>
                 <div className="modal-body">
-                  <div className="row">
-                    <div className="col-md-4">
-                      <label className="form-label fw-bold">Select Template</label>
+                  <div className="row mb-3">
+                    <div className="col-md-3">
+                      <label className="form-label fw-bold">Template Name</label>
                     </div>
-                    <div className="col-md-8">
-                      <select
-                        className="form-select"
-                        value={updateTemplateSelection}
-                        onChange={(e) => setUpdateTemplateSelection(e.target.value)}
-                      >
-                        <option value="Select..">Select..</option>
-                        {templates.map((template, index) => (
-                          <option key={index} value={template}>
-                            {template}
-                          </option>
+                    <div className="col-md-9">
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={templateName}
+                        onChange={(e) => setTemplateName(e.target.value)}
+                        placeholder="Enter template name"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="row mb-3">
+                    <div className="col-12 d-flex gap-4">
+                      <div className="form-check">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          id="templateLab"
+                          name="templateType"
+                          checked={templateType === "lab"}
+                          onChange={() => setTemplateType("lab")}
+                        />
+                        <label className="form-check-label" htmlFor="templateLab">
+                          Lab
+                        </label>
+                      </div>
+                      <div className="form-check">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          id="radiology"
+                          name="templateType"
+                          checked={templateType === "Radiology"}
+                          onChange={() => setTemplateType("Radiology")}
+                        />
+                        <label className="form-check-label" htmlFor="Radiology">
+                          Radiology
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="table-responsive">
+                    <table className="table table-bordered">
+                      <thead>
+                        <tr>
+                          <th>Investigation</th>
+                          <th>Add</th>
+                          <th>Delete</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {investigationItems.map((item, index) => (
+                          <tr key={index}>
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control "
+                                value={item.name}
+                                onChange={(e) => handleInvestigationItemChange(index, "name", e.target.value)}
+                                placeholder="Enter investigation"
+                              />
+                            </td>
+                            <td className="text-center">
+                              <button className="btn btn-sm btn-success" onClick={handleAddInvestigationItem}>
+                                +
+                              </button>
+                            </td>
+                            <td className="text-center">
+                              <button
+                                className="btn btn-sm btn-danger"
+                                onClick={() => handleRemoveInvestigationItem(index)}
+                                disabled={investigationItems.length === 1}
+                              >
+                                −
+                              </button>
+                            </td>
+                          </tr>
                         ))}
-                      </select>
-                    </div>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
                 <div className="modal-footer">
+                  <button className="btn text-white" onClick={handleSaveTemplate}>
+                    Save
+                  </button>
+                  <button className="btn btn-secondary" onClick={handleResetTemplate}>
+                    Reset
+                  </button>
                   <button className="btn btn-secondary" onClick={handleCloseModal}>
                     Close
                   </button>
