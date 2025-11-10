@@ -1,123 +1,12 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { getRequest } from "../../../service/apiService"
+import { LAB } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
 
 const ResultValidation = () => {
-  const [resultList, setResultList] = useState([
-    {
-      id: 1,
-      order_date: "15/12/2023",
-      order_no: "ORD001",
-      collection_date: "15/12/2023",
-      collection_time: "10:30",
-      patient_name: "John Doe",
-      relation: "Self",
-      department: "Pathology",
-      doctor_name: "Dr. Smith",
-      modality: "Blood Test",
-      priority: "Priority-3",
-      age: "35",
-      gender: "Male",
-      clinical_notes: "Routine checkup",
-      validated_by: "",
-      patientId: 101,
-      mobile_no: "9876543210",
-      investigations: [
-        {
-          id: 1,
-          si_no: 1,
-          diag_no: "D001",
-          investigation: "Complete Blood Count",
-          sample: "Blood",
-          result: "Normal",
-          units: "10^3/µL",
-          normal_range: "4.5-11.0",
-          remarks: "",
-          reject: false,
-          validate: false,
-          subTests: []
-        },
-        {
-          id: 2,
-          si_no: 2,
-          diag_no: "D002",
-          investigation: "Liver Function Test",
-          sample: "Blood",
-          result: "",
-          units: "",
-          normal_range: "",
-          remarks: "",
-          reject: false,
-          validate: false,
-          subTests: [
-            {
-              id: "2.1",
-              si_no: "2.a",
-              diag_no: "---",
-              investigation: "ALT",
-              sample: "Blood",
-              result: "25",
-              units: "U/L",
-              normal_range: "7-56",
-              remarks: "",
-              reject: false,
-              validate: false,
-            },
-            {
-              id: "2.2",
-              si_no: "2.b",
-              diag_no: "---",
-              investigation: "AST",
-              sample: "Blood",
-              result: "30",
-              units: "U/L",
-              normal_range: "5-40",
-              remarks: "",
-              reject: false,
-              validate: false,
-            }
-          ]
-        }
-      ]
-    },
-    {
-      id: 2,
-      order_date: "16/12/2023",
-      order_no: "ORD002",
-      collection_date: "16/12/2023",
-      collection_time: "11:15",
-      patient_name: "Jane Smith",
-      relation: "Self",
-      department: "Biochemistry",
-      doctor_name: "Dr. Johnson",
-      modality: "Urine Test",
-      priority: "Priority-2",
-      age: "28",
-      gender: "Female",
-      clinical_notes: "Follow up",
-      validated_by: "",
-      patientId: 102,
-      mobile_no: "9876543211",
-      investigations: [
-        {
-          id: 1,
-          si_no: 1,
-          diag_no: "D003",
-          investigation: "Urine Analysis",
-          sample: "Urine",
-          result: "Negative",
-          units: "",
-          normal_range: "Negative",
-          remarks: "",
-          reject: false,
-          validate: false,
-          subTests: []
-        }
-      ]
-    }
-  ])
-
-  const [loading, setLoading] = useState(false)
+  const [resultList, setResultList] = useState([])
+  const [loading, setLoading] = useState(true)
   const [searchData, setSearchData] = useState({
     barCodeSearch: "",
     patientName: "",
@@ -132,6 +21,145 @@ const ResultValidation = () => {
   const [masterReject, setMasterReject] = useState(false)
   const itemsPerPage = 5
 
+  // Fetch unvalidated results data
+  useEffect(() => {
+    fetchUnvalidatedResults()
+  }, [])
+
+  const fetchUnvalidatedResults = async () => {
+    try {
+      setLoading(true);
+      const data = await getRequest(`${LAB}/unvalidated`);
+
+      if (data.status === 200 && data.response) {
+        const formattedData = formatValidationData(data.response);
+        setResultList(formattedData);
+      } else {
+        console.error('Error fetching unvalidated results:', data.message);
+        showPopup('Failed to load unvalidated results', 'error')
+      }
+    } catch (error) {
+      console.error('Error fetching unvalidated results:', error);
+      showPopup('Error fetching unvalidated results', 'error')
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatValidationData = (apiData) => {
+    return apiData.map((item, index) => ({
+      id: index + 1,
+      result_date: formatDate(item.resultDate),
+      result_time: formatTime(item.resultTime),
+      patient_name: item.patientName || '',
+      relation: item.relation || '',
+      department: item.subChargeCodeName || '',
+      doctor_name: "Doctor",
+      modality: item.subChargeCodeName || '',
+      priority: "Priority-3",
+      age: item.patientAge || '',
+      gender: item.patientGender || '',
+      clinical_notes: "",
+      validated_by: item.validatedBy || '',
+      patientId: item.patientId || 0,
+      mobile_no: item.patientPhnNum || '',
+      
+      investigations: item.resultEntryInvestigationResponses ? item.resultEntryInvestigationResponses.map((inv, invIndex) => {
+        const hasSubTests = inv.resultEntrySubInvestigationRes && inv.resultEntrySubInvestigationRes.length > 0;
+        
+        if (hasSubTests) {
+          return {
+            id: invIndex + 1,
+            si_no: invIndex + 1,
+            diag_no: inv.diagNo || '',
+            investigation: inv.investigationName || '',
+            sample: inv.sampleName || '',
+            result: inv.result || "",
+            units: inv.unit || '',
+            normal_range: inv.normalValue || '',
+            remarks: inv.remarks || "",
+            reject: false,
+            validate: false,
+            comparisonType: inv.comparisonType,
+            fixedId: inv.fixedId,
+            fixedDropdownValues: inv.fixedDropdownValues || [],
+            subTests: inv.resultEntrySubInvestigationRes.map((subTest, subIndex) => ({
+              id: `${invIndex + 1}.${subIndex + 1}`,
+              si_no: getSubTestNumber(invIndex + 1, subIndex, inv.resultEntrySubInvestigationRes.length),
+              diag_no: "---",
+              investigation: subTest.subInvestigationName || '',
+              sample: subTest.sampleName || '',
+              result: subTest.result || "",
+              units: subTest.unit || '',
+              normal_range: subTest.normalValue || '',
+              remarks: subTest.remarks || "",
+              reject: false,
+              validate: false,
+              comparisonType: subTest.comparisonType,
+              fixedId: subTest.fixedId,
+              fixedDropdownValues: subTest.fixedDropdownValues || [],
+            }))
+          };
+        } else {
+          return {
+            id: invIndex + 1,
+            si_no: invIndex + 1,
+            diag_no: inv.diagNo || '',
+            investigation: inv.investigationName || '',
+            sample: inv.sampleName || '',
+            result: inv.result || "",
+            units: inv.unit || '',
+            normal_range: inv.normalValue || '',
+            remarks: inv.remarks || "",
+            reject: false,
+            validate: false,
+            comparisonType: inv.comparisonType,
+            fixedId: inv.fixedId,
+            fixedDropdownValues: inv.fixedDropdownValues || [],
+            subTests: []
+          };
+        }
+      }) : []
+    }))
+  }
+
+  // Helper functions for formatting
+  const getSubTestNumber = (mainIndex, subIndex, totalSubTests) => {
+    if (totalSubTests === 1) {
+      return "";
+    } else {
+      return `${mainIndex}.${String.fromCharCode(97 + subIndex)}`;
+    } 
+  }
+
+  const formatDate = (dateString) => {
+    if (!dateString) return new Date().toLocaleDateString('en-GB');
+    try {
+      if (typeof dateString === 'string') {
+        const date = new Date(dateString);
+        return isNaN(date.getTime()) ? new Date().toLocaleDateString('en-GB') : date.toLocaleDateString('en-GB');
+      }
+      return new Date().toLocaleDateString('en-GB');
+    } catch (error) {
+      return new Date().toLocaleDateString('en-GB');
+    }
+  }
+
+  const formatTime = (timeValue) => {
+    if (!timeValue) return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    try {
+      if (typeof timeValue === 'string') {
+        const timeParts = timeValue.split(':');
+        if (timeParts.length >= 2) {
+          return `${timeParts[0].padStart(2, '0')}:${timeParts[1].padStart(2, '0')}`;
+        }
+      }
+      return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    } catch (error) {
+      return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+  }
+
   const showPopup = (message, type = "info") => {
     setPopupMessage({
       message,
@@ -142,6 +170,85 @@ const ResultValidation = () => {
     })
   }
 
+  // NEW FUNCTION: Handle result change for main investigations
+  const handleResultChange = (investigationId, value) => {
+    if (selectedResult) {
+      const updatedInvestigations = selectedResult.investigations.map((inv) => {
+        if (inv.id === investigationId) {
+          return { ...inv, result: value }
+        }
+        return inv
+      })
+      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
+    }
+  }
+
+  // NEW FUNCTION: Handle result change for sub-tests
+  const handleSubTestResultChange = (investigationId, subTestId, value) => {
+    if (selectedResult) {
+      const updatedInvestigations = selectedResult.investigations.map((inv) => {
+        if (inv.id === investigationId) {
+          const updatedSubTests = inv.subTests.map((subTest) => {
+            if (subTest.id === subTestId) {
+              return { ...subTest, result: value }
+            }
+            return subTest
+          })
+          return { ...inv, subTests: updatedSubTests }
+        }
+        return inv
+      })
+      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
+    }
+  }
+
+  // NEW FUNCTION: Render result input field
+  const renderResultInput = (test, isSubTest = false, investigationId = null) => {
+    if (test.comparisonType === 'f' && test.fixedDropdownValues && test.fixedDropdownValues.length > 0) {
+      return (
+        <select
+          className="form-select"
+          value={test.result}
+          onChange={(e) => {
+            if (isSubTest && investigationId) {
+              handleSubTestResultChange(investigationId, test.id, e.target.value)
+            } else {
+              handleResultChange(test.id, e.target.value)
+            }
+          }}
+        >
+          <option value="">Select Result</option>
+          {test.fixedDropdownValues.map((option) => (
+            <option 
+              key={option.fixedId} 
+              value={option.fixedValue}
+              selected={test.fixedId === option.fixedId}
+            >
+              {option.fixedValue}
+            </option>
+          ))}
+        </select>
+      )
+    } else {
+      return (
+        <input
+          type="text"
+          className="form-control"
+          value={test.result}
+          onChange={(e) => {
+            if (isSubTest && investigationId) {
+              handleSubTestResultChange(investigationId, test.id, e.target.value)
+            } else {
+              handleResultChange(test.id, e.target.value)
+            }
+          }}
+          placeholder="Enter result"
+        />
+      )
+    }
+  }
+
+  // ALL YOUR EXISTING CODE BELOW - with modifications to the table structure
   const handleSearchChange = (e) => {
     const { id, value } = e.target
     setSearchData((prevData) => ({ ...prevData, [id]: value }))
@@ -335,7 +442,7 @@ const ResultValidation = () => {
   const filteredResultList = resultList.filter((item) => {
     const barCodeMatch =
       searchData.barCodeSearch === "" ||
-      item.order_no.toLowerCase().includes(searchData.barCodeSearch.toLowerCase()) ||
+      item.id.toString().includes(searchData.barCodeSearch.toLowerCase()) ||
       item.patient_name.toLowerCase().includes(searchData.barCodeSearch.toLowerCase())
 
     const patientNameMatch =
@@ -397,7 +504,7 @@ const ResultValidation = () => {
     ))
   }
 
-  // Detail View
+  // Detail View - UPDATED TABLE STRUCTURE
   if (showDetailView && selectedResult) {
     return (
       <div className="content-wrapper">
@@ -428,7 +535,7 @@ const ResultValidation = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={selectedResult.collection_date}
+                      value={selectedResult.result_date}
                       readOnly
                     />
                   </div>
@@ -437,7 +544,7 @@ const ResultValidation = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={selectedResult.collection_time}
+                      value={selectedResult.result_time}
                       readOnly
                     />
                   </div>
@@ -519,7 +626,7 @@ const ResultValidation = () => {
                         <input
                           type="text"
                           className="form-control"
-                          value={selectedResult.order_no}
+                          value={selectedResult.id}
                           readOnly
                         />
                       </div>
@@ -593,7 +700,7 @@ const ResultValidation = () => {
                         <th className="text-center">
                           <div className="d-flex  align-items-center">
                             <span className="me-2">Validate</span>
-                            <div className="form-check mt-1  border-2 ">
+                            <div className="form-check mt-1 ">
                               <input
                                 className="form-check-input border-primary"
                                 type="checkbox"
@@ -631,7 +738,7 @@ const ResultValidation = () => {
                               <td>
                                 <input
                                   type="text"
-                                  className="form-control border-0 bg-transparent"
+                                  className="form-control  bg-transparent"
                                   value={investigation.investigation}
                                   readOnly
                                 />
@@ -645,12 +752,7 @@ const ResultValidation = () => {
                                 />
                               </td>
                               <td>
-                                <input
-                                  type="text"
-                                  className="form-control border-0 bg-transparent"
-                                  value={investigation.result}
-                                  readOnly
-                                />
+                                {renderResultInput(investigation)}
                               </td>
                               <td>
                                 <input
@@ -705,7 +807,7 @@ const ResultValidation = () => {
                           ) : (
                             // Investigation with sub-tests
                             <>
-                              <tr key={investigation.id} className="table-primary">
+                              <tr key={investigation.id}>
                                 <td>{investigation.si_no}</td>
                                 <td>{investigation.diag_no}</td>
                                 <td colSpan="8">
@@ -719,7 +821,7 @@ const ResultValidation = () => {
                                   <td className="ps-4">
                                     <input
                                       type="text"
-                                      className="form-control border-0 bg-transparent"
+                                      className="form-control  bg-transparent"
                                       value={subTest.investigation}
                                       readOnly
                                     />
@@ -733,12 +835,7 @@ const ResultValidation = () => {
                                     />
                                   </td>
                                   <td>
-                                    <input
-                                      type="text"
-                                      className="form-control border-0 bg-transparent"
-                                      value={subTest.result}
-                                      readOnly
-                                    />
+                                    {renderResultInput(subTest, true, investigation.id)}
                                   </td>
                                   <td>
                                     <input
@@ -913,10 +1010,9 @@ const ResultValidation = () => {
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
-                          <th>Order Date</th>
-                          <th>Order No.</th>
-                          <th>Collection Date</th>
-                          <th>Collection Time</th>
+                          <th>Diag No.</th>
+                          <th>Result Date</th>
+                          <th>Result Time</th>
                           <th>Patient Name</th>
                           <th>Relation</th>
                           <th>Department Name</th>
@@ -934,10 +1030,9 @@ const ResultValidation = () => {
                               style={{ cursor: "pointer" }}
                               className="table-row-hover"
                             >
-                              <td>{item.order_date}</td>
-                              <td>{item.order_no}</td>
-                              <td>{item.collection_date}</td>
-                              <td>{item.collection_time}</td>
+                              <td>{item.id}</td>
+                              <td>{item.result_date}</td>
+                              <td>{item.result_time}</td>
                               <td>{item.patient_name}</td>
                               <td>{item.relation}</td>
                               <td>{item.department}</td>
