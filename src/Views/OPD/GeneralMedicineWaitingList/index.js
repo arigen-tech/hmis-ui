@@ -1,6 +1,11 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import placeholderImage from "../../../assets/images/placeholder.jpg"
 import OTDashboard from "./OTDashboard"
+import InvestigationModal from "./InvestigationModal"
+import TreatmentModal from "./TreatmentModal"
+import { getRequest } from "../../../service/apiService"
+import { OPD_TEMPLATE, MAS_INVESTIGATION } from "../../../config/apiConfig"
+
 
 const GeneralMedicineWaitingList = () => {
   const [waitingList, setWaitingList] = useState([
@@ -31,11 +36,29 @@ const GeneralMedicineWaitingList = () => {
   const [pageInput, setPageInput] = useState("")
   const [showDetailView, setShowDetailView] = useState(false)
   const [selectedPatient, setSelectedPatient] = useState(null)
-  const [image, setImage] = useState(null)
   const [showOtCalendarModal, setShowOtCalendarModal] = useState(false)
+
+  // Modal states - UPDATED
+  const [showInvestigationModal, setShowInvestigationModal] = useState(false)
+  const [showTreatmentModal, setShowTreatmentModal] = useState(false)
+  const [investigationModalType, setInvestigationModalType] = useState("create")
+  const [treatmentModalType, setTreatmentModalType] = useState("create")
 
   const [investigationType, setInvestigationType] = useState("lab")
   const [procedureCareType, setProcedureCareType] = useState("procedure")
+
+
+  const [investigationTemplates, setInvestigationTemplates] = useState([])
+  const [selectedInvestigationTemplate, setSelectedInvestigationTemplate] = useState("Select..")
+  const [investigationTemplateLoading, setInvestigationTemplateLoading] = useState(false)
+  const [allInvestigations, setAllInvestigations] = useState([])
+  const [filteredInvestigationsByType, setFilteredInvestigationsByType] = useState([])
+  const [investigationTypes, setInvestigationTypes] = useState([])
+  const [activeInvestigationRowIndex, setActiveInvestigationRowIndex] = useState(null)
+
+
+
+
 
   const [expandedSections, setExpandedSections] = useState({
     personalDetails: false,
@@ -90,6 +113,13 @@ const GeneralMedicineWaitingList = () => {
   const [investigationItems, setInvestigationItems] = useState([{ name: "", date: getToday() }])
   const [updateTemplateSelection, setUpdateTemplateSelection] = useState("Select..")
   const [templateType, setTemplateType] = useState("")
+  const [dropdownVisible, setDropdownVisible] = useState(false)
+const [dropdownPosition, setDropdownPosition] = useState({
+  x: 0,
+  y: 0,
+  height: 0,
+})
+const [dropdownWidth, setDropdownWidth] = useState(0)
 
   const [workingDiagnosis, setWorkingDiagnosis] = useState("")
 
@@ -230,9 +260,212 @@ const GeneralMedicineWaitingList = () => {
   ])
 
   const [selectedBloodTestTemplate, setSelectedBloodTestTemplate] = useState("Select..")
-  const [selectedCardiacTestTemplate, setSelectedCardiacTestTemplate] = useState("Select..")
 
   const itemsPerPage = 10
+
+  // Modal handlers - UPDATED
+  const handleOpenInvestigationModal = (type = "create") => {
+    setInvestigationModalType(type)
+    setShowInvestigationModal(true)
+  }
+
+  const handleCloseInvestigationModal = () => {
+    setShowInvestigationModal(false)
+    setInvestigationModalType("create")
+  }
+
+  const handleOpenTreatmentModal = (type = "create") => {
+    setTreatmentModalType(type)
+    setShowTreatmentModal(true)
+  }
+
+  const handleCloseTreatmentModal = () => {
+    setShowTreatmentModal(false)
+    setTreatmentModalType("create")
+  }
+
+  const handleInputFocus = (event, index) => {
+  const rect = event.target.getBoundingClientRect()
+  setDropdownPosition({
+    x: rect.left,
+    y: rect.top,
+    height: rect.height,
+  })
+  setDropdownWidth(rect.width)
+  setActiveInvestigationRowIndex(index)
+  setDropdownVisible(true)
+}
+
+useEffect(() => {
+  const handleClickOutside = (e) => {
+    if (!e.target.closest(".form-control")) {
+      setDropdownVisible(false)
+    }
+  }
+  window.addEventListener("click", handleClickOutside)
+  return () => window.removeEventListener("click", handleClickOutside)
+}, [])
+
+
+  const extractInvestigationTypes = (investigations) => {
+    const uniqueTypes = []
+    const typeMap = new Map()
+
+    investigations.forEach(inv => {
+      const typeId = inv.mainChargeCodeId
+      const typeName = inv.mainChargeCodeName
+
+      if (typeId && typeName && !typeMap.has(typeId)) {
+        typeMap.set(typeId, typeName)
+        uniqueTypes.push({
+          id: typeId,
+          name: typeName,
+          value: typeName.toLowerCase().replace(/\s+/g, '-')
+        })
+      }
+    })
+
+    setInvestigationTypes(uniqueTypes)
+  }
+
+  const fetchInvestigationTemplates = async (flag = 1) => {
+    try {
+      setInvestigationTemplateLoading(true)
+      const response = await getRequest(`${OPD_TEMPLATE}/getAllTemplateInvestigations/${flag}`)
+      if (response && response.response) {
+        setInvestigationTemplates(response.response)
+      } else {
+        setInvestigationTemplates([])
+      }
+    } catch (error) {
+      console.error("Error fetching investigation templates:", error)
+      setInvestigationTemplates([])
+    } finally {
+      setInvestigationTemplateLoading(false)
+    }
+  }
+
+  const fetchAllInvestigations = async () => {
+    try {
+      const response = await getRequest(`${MAS_INVESTIGATION}/getAll/1`)
+      if (response && response.response) {
+        setAllInvestigations(response.response)
+        extractInvestigationTypes(response.response)
+      } else {
+        setAllInvestigations([])
+      }
+    } catch (error) {
+      console.error("Error fetching investigations:", error)
+      setAllInvestigations([])
+    }
+  }
+
+  const filterInvestigationsByMainChargeCode = () => {
+    console.log("Filtering investigations by type:", investigationType)
+
+    if (!investigationType || allInvestigations.length === 0) {
+      setFilteredInvestigationsByType([])
+      return
+    }
+
+    const selectedType = investigationTypes.find(type => type.value === investigationType)
+    console.log("Selected type for filtering:", selectedType)
+
+    if (selectedType) {
+      const filtered = allInvestigations.filter(inv => inv.mainChargeCodeId === selectedType.id)
+      console.log(`Filtered ${filtered.length} investigations for type:`, selectedType.name)
+      setFilteredInvestigationsByType(filtered)
+    } else {
+      setFilteredInvestigationsByType([])
+    }
+  }
+
+  const filterInvestigationsBySearch = (searchQuery) => {
+    if (!searchQuery.trim()) {
+      return filteredInvestigationsByType.slice(0, 5)
+    }
+
+    const filtered = filteredInvestigationsByType
+      .filter(inv =>
+        inv.investigationName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        inv.mainChargeCodeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        inv.subChargeCodeName?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+      .slice(0, 5)
+
+    return filtered
+  }
+
+  const handleInvestigationTemplateSelect = (template) => {
+    setSelectedInvestigationTemplate(template.templateId)
+
+    if (template.investigationResponseList && template.investigationResponseList.length > 0) {
+      const items = template.investigationResponseList.map(item => ({
+        name: item.investigationName || `Investigation #${item.investigationId}`,
+        date: getToday(),
+        investigationId: item.investigationId
+      }))
+      setInvestigationItems(items)
+    } else {
+      setInvestigationItems([{ name: "", date: getToday(), investigationId: null }])
+    }
+  }
+
+  const handleInvestigationSelect = (index, investigation) => {
+    const newItems = [...investigationItems]
+    newItems[index] = {
+      ...newItems[index],
+      name: investigation.investigationName,
+      investigationId: investigation.investigationId
+    }
+    setInvestigationItems(newItems)
+    setActiveInvestigationRowIndex(null)
+  }
+
+  // ADD THESE USEEFFECT HOOKS
+
+  // DEBUGGING: Add this at the top of your component to see what's happening
+  console.log("Component render - investigationType:", investigationType, "investigationTypes:", investigationTypes)
+
+  useEffect(() => {
+    if (showDetailView && selectedPatient) {
+      console.log("Fetching investigation data...")
+      fetchInvestigationTemplates()
+      fetchAllInvestigations()
+    }
+  }, [showDetailView, selectedPatient])
+
+  useEffect(() => {
+    console.log("All investigations loaded:", allInvestigations.length)
+    if (allInvestigations.length > 0) {
+      extractInvestigationTypes(allInvestigations)
+    }
+  }, [allInvestigations])
+
+  useEffect(() => {
+    console.log("Investigation types updated:", investigationTypes)
+    if (investigationTypes.length > 0) {
+      // FORCE SELECT LABORATORY
+      const labType = investigationTypes.find(type =>
+        type.name.toLowerCase().includes('laboratory') ||
+        type.name.toLowerCase().includes('lab')
+      )
+
+      if (labType && investigationType !== labType.value) {
+        console.log("Setting default to Laboratory:", labType)
+        setInvestigationType(labType.value)
+      } else if (investigationTypes.length > 0 && !investigationType) {
+        console.log("Setting to first type:", investigationTypes[0])
+        setInvestigationType(investigationTypes[0].value)
+      }
+    }
+  }, [investigationTypes])
+
+  useEffect(() => {
+    console.log("Investigation type changed to:", investigationType)
+    filterInvestigationsByMainChargeCode()
+  }, [investigationType])
+
 
   const handleFilterChange = (field, value) => {
     setSearchFilters((prev) => ({
@@ -313,7 +546,9 @@ const GeneralMedicineWaitingList = () => {
     }
   }
 
-  const handleSubmit = () => {}
+  const handleSubmit = () => {
+    console.log("Form submitted")
+  }
 
   const handleResetForm = () => {
     setFormData({
@@ -1033,6 +1268,7 @@ const GeneralMedicineWaitingList = () => {
                   )}
                 </div>
 
+                {/* Diagnosis Section */}
                 <div className="card mb-3">
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
@@ -1048,7 +1284,7 @@ const GeneralMedicineWaitingList = () => {
                         <label className="form-label fw-bold">Working Diagnosis</label>
                         <input
                           type="text"
-                          className="form-control "
+                          className="form-control"
                           value={workingDiagnosis}
                           onChange={(e) => setWorkingDiagnosis(e.target.value)}
                           placeholder="Enter working diagnosis"
@@ -1072,7 +1308,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td>
                                   <input
                                     type="text"
-                                    className="form-control "
+                                    className="form-control"
                                     value={item.icdDiagnosis}
                                     onChange={(e) => handleDiagnosisChange(index, "icdDiagnosis", e.target.value)}
                                     placeholder="Enter ICD diagnosis"
@@ -1105,8 +1341,7 @@ const GeneralMedicineWaitingList = () => {
                                 </td>
                                 <td className="text-center">
                                   <button
-                                    className="btn btn-sm text-white"
-                                    style={{ backgroundColor: "#dc3545" }}
+                                    className="btn btn-sm btn-danger"
                                     onClick={() => handleRemoveDiagnosisItem(index)}
                                     disabled={diagnosisItems.length === 1}
                                   >
@@ -1122,7 +1357,10 @@ const GeneralMedicineWaitingList = () => {
                   )}
                 </div>
 
-                {/* Investigation Section */}
+
+
+
+                {/* Investigation Section - COMPLETELY FIXED */}
                 <div className="card mb-3">
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
@@ -1141,58 +1379,81 @@ const GeneralMedicineWaitingList = () => {
                         <div className="col-md-4">
                           <select
                             className="form-select"
-                            value={selectedTemplate}
-                            onChange={(e) => setSelectedTemplate(e.target.value)}
+                            value={selectedInvestigationTemplate}
+                            onChange={(e) => {
+                              const selectedId = e.target.value
+                              const template = investigationTemplates.find(t => t.templateId == selectedId)
+                              if (template) {
+                                handleInvestigationTemplateSelect(template)
+                              } else {
+                                setSelectedInvestigationTemplate("Select..")
+                                setInvestigationItems([{ name: "", date: getToday(), investigationId: null }])
+                              }
+                            }}
+                            disabled={investigationTemplateLoading}
                           >
                             <option value="Select..">Select..</option>
-                            {templates.map((template, index) => (
-                              <option key={index} value={template}>
-                                {template}
+                            {investigationTemplates.map((template) => (
+                              <option key={template.templateId} value={template.templateId}>
+                                {template.opdTemplateName} ({template.opdTemplateCode})
                               </option>
                             ))}
                           </select>
                         </div>
                         <div className="col-md-6">
-                          <button className="btn btn-primary me-2" onClick={handleCreateTemplate}>
+                          <button
+                            className="btn btn-primary me-2"
+                            onClick={() => handleOpenInvestigationModal("create")}
+                          >
                             Create Template
                           </button>
-                          <button className="btn btn-primary" onClick={handleUpdateTemplate}>
+                          <button
+                            className="btn btn-primary"
+                            onClick={() => handleOpenInvestigationModal("edit")}
+                          >
                             Update Template
                           </button>
                         </div>
                       </div>
 
+                      {/* Radio Buttons - DEBUGGING ENABLED */}
                       <div className="row mb-3">
-                        <div className="col-12 d-flex gap-4">
-                          <div className="form-check">
-                            <input
-                              className="form-check-input"
-                              type="radio"
-                              name="investigationType"
-                              id="lab"
-                              checked={investigationType === "lab"}
-                              onChange={() => setInvestigationType("lab")}
-                            />
-                            <label className="form-check-label" htmlFor="lab">
-                              Lab
-                            </label>
-                          </div>
-                          <div className="form-check">
-                            <input
-                              className="form-check-input"
-                              type="radio"
-                              name="investigationType"
-                              id="Radiology"
-                              checked={investigationType === "Radiology"}
-                              onChange={() => setInvestigationType("Radiology")}
-                            />
-                            <label className="form-check-label" htmlFor="Radiology">
-                              Radiology
-                            </label>
+                        <div className="col-12">
+                          <div className="d-flex gap-4 flex-wrap">
+                            {investigationTypes.length > 0 ? (
+                              <>
+
+                                {investigationTypes.map((type) => (
+                                  <div key={type.value} className="form-check">
+                                    <input
+                                      className="form-check-input"
+                                      type="radio"
+                                      name="investigationType"
+                                      id={`inv-type-${type.value}`}
+                                      value={type.value}
+                                      checked={investigationType === type.value}
+                                      onChange={(e) => {
+                                        console.log("Radio button selected:", e.target.value)
+                                        setInvestigationType(e.target.value)
+                                      }}
+                                    />
+                                    <label className="form-check-label fw-bold" htmlFor={`inv-type-${type.value}`}>
+                                      {type.name.toUpperCase()}
+                                    </label>
+                                  </div>
+                                ))}
+                              </>
+                            ) : (
+                              <div className="text-muted small">
+                                Loading investigation types...
+                                {allInvestigations.length > 0 && ` (${allInvestigations.length} investigations loaded)`}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
 
+                      {/* Investigation Table - SIMPLIFIED DROPDOWN */}
                       <div className="table-responsive">
                         <table className="table table-bordered">
                           <thead style={{ backgroundColor: "#b0c4de" }}>
@@ -1207,18 +1468,96 @@ const GeneralMedicineWaitingList = () => {
                             {investigationItems.map((item, index) => (
                               <tr key={index}>
                                 <td>
-                                  <input
-                                    type="text"
-                                    className="form-control "
-                                    value={item.name}
-                                    onChange={(e) => handleInvestigationItemChange(index, "name", e.target.value)}
-                                    placeholder="Enter investigation"
-                                  />
+                                  <div style={{ position: "relative" }}>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      value={item.name}
+                                      onChange={(e) => {
+                                        const newItems = [...investigationItems]
+                                        newItems[index] = {
+                                          ...newItems[index],
+                                          name: e.target.value,
+                                          investigationId: null,
+                                        }
+                                        setInvestigationItems(newItems)
+                                        setActiveInvestigationRowIndex(index)
+                                      }}
+                                      onFocus={(e) => handleInputFocus(e, index)}
+                                      placeholder="Enter investigation"
+                                      autoComplete="off"
+                                    />
+
+                                    {/* Dropdown displayed as fixed overlay */}
+                                    {activeInvestigationRowIndex === index && dropdownVisible && (
+                                      <div
+                                        style={{
+                                          position: "fixed",
+                                          zIndex: 99999,
+                                          backgroundColor: "white",
+                                          borderRadius: "4px",
+                                          boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
+                                          maxHeight: "200px",
+                                          overflowY: "auto",
+                                          width: `${dropdownWidth}px`,
+                                          left: `${dropdownPosition.x}px`,
+                                          top: `${dropdownPosition.y + dropdownPosition.height}px`,
+                                        }}
+                                      >
+                                        {filterInvestigationsBySearch(item.name).length > 0 ? (
+                                          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                                            {filterInvestigationsBySearch(item.name).map((investigation) => (
+                                              <li
+                                                key={investigation.investigationId}
+                                                style={{
+                                                  backgroundColor: "#f8f9fa",
+                                                  cursor: "pointer",
+                                                  borderBottom: "1px solid #dee2e6",
+                                                  padding: "8px 12px",
+                                                  transition: "background-color 0.2s",
+                                                }}
+                                                onMouseEnter={(e) =>
+                                                  (e.target.style.backgroundColor = "#e9ecef")
+                                                }
+                                                onMouseLeave={(e) =>
+                                                  (e.target.style.backgroundColor = "#f8f9fa")
+                                                }
+                                                onClick={() => handleInvestigationSelect(index, investigation)}
+                                              >
+                                                <div>
+                                                  <strong style={{ color: "#3b82f6" }}>
+                                                    {investigation.investigationName}
+                                                  </strong>
+                                                  <div
+                                                    style={{
+                                                      color: "#6c757d",
+                                                      fontSize: "0.8rem",
+                                                      marginTop: "2px",
+                                                    }}
+                                                  >
+                                                    {investigation.mainChargeCodeName} •{" "}
+                                                    {investigation.subChargeCodeName}
+                                                  </div>
+                                                </div>
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        ) : (
+                                          <div style={{ textAlign: "center", padding: "12px", color: "#6c757d" }}>
+                                            {item.name.trim()
+                                              ? "No investigations found"
+                                              : "Start typing to search..."}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </td>
+
                                 <td>
                                   <input
                                     type="date"
-                                    className="form-control "
+                                    className="form-control"
                                     value={item.date}
                                     onChange={(e) => handleInvestigationItemChange(index, "date", e.target.value)}
                                   />
@@ -1230,8 +1569,7 @@ const GeneralMedicineWaitingList = () => {
                                 </td>
                                 <td className="text-center">
                                   <button
-                                    className="btn btn-sm text-white"
-                                    style={{ backgroundColor: "#dc3545" }}
+                                    className="btn btn-sm btn-danger"
                                     onClick={() => handleRemoveInvestigationItem(index)}
                                     disabled={investigationItems.length === 1}
                                   >
@@ -1261,7 +1599,7 @@ const GeneralMedicineWaitingList = () => {
                     <div className="card-body">
                       <div className="row g-3 mb-3">
                         <div className="col-md-4">
-                          <label className="form-label fw-bold"> Template</label>
+                          <label className="form-label fw-bold">Template</label>
                           <select
                             className="form-select"
                             value={selectedBloodTestTemplate}
@@ -1270,6 +1608,24 @@ const GeneralMedicineWaitingList = () => {
                             <option value="Select..">Select..</option>
                             <option value="Blood Test Template">Blood Test Template</option>
                           </select>
+                        </div>
+                        <div className="col-md-8 d-flex align-items-end gap-2">
+                          {/* UPDATED BUTTONS */}
+                          <button
+                            className="btn btn-primary"
+                            onClick={() => handleOpenTreatmentModal("create")}
+                          >
+                            Create Template
+                          </button>
+                          <button
+                            className="btn btn-primary"
+                            onClick={() => handleOpenTreatmentModal("edit")}
+                          >
+                            Update Template
+                          </button>
+                          <button className="btn btn-primary">
+                            Import New
+                          </button>
                         </div>
                       </div>
 
@@ -1310,7 +1666,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td>
                                   <input
                                     type="text"
-                                    className="form-control "
+                                    className="form-control"
                                     style={{ fontSize: "1.125rem" }}
                                     value={row.drugName}
                                     onChange={(e) => handleTreatmentChange(index, "drugName", e.target.value)}
@@ -1332,7 +1688,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td>
                                   <input
                                     type="number"
-                                    className="form-control "
+                                    className="form-control"
                                     style={{ fontSize: "0.75rem" }}
                                     value={row.dosage}
                                     onChange={(e) => handleTreatmentChange(index, "dosage", e.target.value)}
@@ -1357,7 +1713,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td>
                                   <input
                                     type="number"
-                                    className="form-control "
+                                    className="form-control"
                                     style={{ fontSize: "0.875rem" }}
                                     value={row.days}
                                     onChange={(e) => handleTreatmentChange(index, "days", e.target.value)}
@@ -1367,7 +1723,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td>
                                   <input
                                     type="number"
-                                    className="form-control "
+                                    className="form-control"
                                     style={{ fontSize: "0.875rem" }}
                                     value={row.total}
                                     onChange={(e) => handleTreatmentChange(index, "total", e.target.value)}
@@ -1393,8 +1749,7 @@ const GeneralMedicineWaitingList = () => {
                                 </td>
                                 <td className="text-center">
                                   <button
-                                    className="btn btn-sm text-white"
-                                    style={{ backgroundColor: "#dc3545" }}
+                                    className="btn btn-sm btn-danger"
                                     onClick={() => handleRemoveTreatmentItem(index)}
                                     disabled={treatmentItems.length === 1}
                                   >
@@ -1410,6 +1765,7 @@ const GeneralMedicineWaitingList = () => {
                   )}
                 </div>
 
+                {/* NIP Section */}
                 <div className="card mb-3">
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
@@ -1437,7 +1793,7 @@ const GeneralMedicineWaitingList = () => {
                               <div className="col-md-11">
                                 <label className="form-label fw-bold">Treatment Advice</label>
                                 <textarea
-                                  className="form-control "
+                                  className="form-control"
                                   rows={3}
                                   value={generalTreatmentAdvice}
                                   placeholder="Treatment advice will be populated here"
@@ -1497,7 +1853,7 @@ const GeneralMedicineWaitingList = () => {
                                       <td className="position-relative">
                                         <input
                                           type="text"
-                                          className="form-control "
+                                          className="form-control"
                                           value={item.nip}
                                           onChange={(e) => {
                                             handleNipSearchChange(e.target.value)
@@ -1530,7 +1886,7 @@ const GeneralMedicineWaitingList = () => {
                                       <td>
                                         <input
                                           type="text"
-                                          className="form-control "
+                                          className="form-control"
                                           value={item.newNIP}
                                           onChange={(e) => handleNipChange(index, "newNIP", e.target.value)}
                                           placeholder="New NIP"
@@ -1575,7 +1931,7 @@ const GeneralMedicineWaitingList = () => {
                                       <td>
                                         <input
                                           type="number"
-                                          className="form-control "
+                                          className="form-control"
                                           value={item.uomQty}
                                           onChange={(e) => handleNipChange(index, "uomQty", e.target.value)}
                                           placeholder="0"
@@ -1584,7 +1940,7 @@ const GeneralMedicineWaitingList = () => {
                                       <td>
                                         <input
                                           type="number"
-                                          className="form-control "
+                                          className="form-control"
                                           value={item.dosage}
                                           onChange={(e) => handleNipChange(index, "dosage", e.target.value)}
                                           placeholder="0"
@@ -1606,7 +1962,7 @@ const GeneralMedicineWaitingList = () => {
                                       <td>
                                         <input
                                           type="number"
-                                          className="form-control "
+                                          className="form-control"
                                           value={item.days}
                                           onChange={(e) => handleNipChange(index, "days", e.target.value)}
                                           placeholder="0"
@@ -1615,7 +1971,7 @@ const GeneralMedicineWaitingList = () => {
                                       <td>
                                         <input
                                           type="number"
-                                          className="form-control "
+                                          className="form-control"
                                           value={item.total}
                                           onChange={(e) => handleNipChange(index, "total", e.target.value)}
                                           placeholder="0"
@@ -1635,7 +1991,7 @@ const GeneralMedicineWaitingList = () => {
                                       <td>
                                         <input
                                           type="number"
-                                          className="form-control "
+                                          className="form-control"
                                           value={item.stock}
                                           onChange={(e) => handleNipChange(index, "stock", e.target.value)}
                                           placeholder="0"
@@ -1648,8 +2004,7 @@ const GeneralMedicineWaitingList = () => {
                                       </td>
                                       <td className="text-center">
                                         <button
-                                          className="btn btn-sm text-white"
-                                          style={{ backgroundColor: "#dc3545" }}
+                                          className="btn btn-sm btn-danger"
                                           onClick={() => handleRemoveNipItem(index)}
                                           disabled={nipItems.length === 1}
                                         >
@@ -1708,8 +2063,6 @@ const GeneralMedicineWaitingList = () => {
                               </div>
                             </div>
 
-                             
-
                             {procedureCareType === "procedure" ? (
                               <div className="table-responsive">
                                 <table className="table table-bordered">
@@ -1737,7 +2090,7 @@ const GeneralMedicineWaitingList = () => {
                                         <td>
                                           <input
                                             type="text"
-                                            className="form-control "
+                                            className="form-control"
                                             value={row.name}
                                             onChange={(e) => handleProcedureCareChange(index, "name", e.target.value)}
                                             placeholder="Enter nursing care name"
@@ -1761,7 +2114,7 @@ const GeneralMedicineWaitingList = () => {
                                         <td>
                                           <input
                                             type="number"
-                                            className="form-control "
+                                            className="form-control"
                                             value={row.days}
                                             onChange={(e) => handleProcedureCareChange(index, "days", e.target.value)}
                                             placeholder="0"
@@ -1770,7 +2123,7 @@ const GeneralMedicineWaitingList = () => {
                                         <td>
                                           <input
                                             type="text"
-                                            className="form-control "
+                                            className="form-control"
                                             value={row.remarks}
                                             onChange={(e) =>
                                               handleProcedureCareChange(index, "remarks", e.target.value)
@@ -1788,8 +2141,7 @@ const GeneralMedicineWaitingList = () => {
                                         </td>
                                         <td className="text-center">
                                           <button
-                                            className="btn btn-sm text-white"
-                                            style={{ backgroundColor: "#dc3545" }}
+                                            className="btn btn-sm btn-danger"
                                             onClick={() => handleRemoveProcedureCareItem(index)}
                                             disabled={procedureCareItems.length === 1}
                                           >
@@ -1828,7 +2180,7 @@ const GeneralMedicineWaitingList = () => {
                                         <td>
                                           <input
                                             type="text"
-                                            className="form-control "
+                                            className="form-control"
                                             value={row.name}
                                             onChange={(e) => handlePhysiotherapyChange(index, "name", e.target.value)}
                                             placeholder="Enter nursing care name"
@@ -1852,7 +2204,7 @@ const GeneralMedicineWaitingList = () => {
                                         <td>
                                           <input
                                             type="number"
-                                            className="form-control "
+                                            className="form-control"
                                             value={row.days}
                                             onChange={(e) => handlePhysiotherapyChange(index, "days", e.target.value)}
                                             placeholder="0"
@@ -1861,7 +2213,7 @@ const GeneralMedicineWaitingList = () => {
                                         <td>
                                           <input
                                             type="text"
-                                            className="form-control "
+                                            className="form-control"
                                             value={row.remarks}
                                             onChange={(e) =>
                                               handlePhysiotherapyChange(index, "remarks", e.target.value)
@@ -1879,8 +2231,7 @@ const GeneralMedicineWaitingList = () => {
                                         </td>
                                         <td className="text-center">
                                           <button
-                                            className="btn btn-sm text-white"
-                                            style={{ backgroundColor: "#dc3545" }}
+                                            className="btn btn-sm btn-danger"
                                             onClick={() => handleRemovePhysiotherapyItem(index)}
                                             disabled={physiotherapyItems.length === 1}
                                           >
@@ -1896,8 +2247,6 @@ const GeneralMedicineWaitingList = () => {
                           </div>
                         )}
                       </div>
-
-                    
 
                       {/* Surgery Advice Subsection */}
                       <div className="card mb-3">
@@ -1940,22 +2289,20 @@ const GeneralMedicineWaitingList = () => {
                                   </label>
                                 </div>
 
-                                 <div
-  style={{ cursor: "default" }}
->
-  <div className="d-flex align-items-center">
-    <button
-      className="btn btn-sm btn-primary"
-      onClick={(e) => {
-        e.stopPropagation()
-        setShowOtCalendarModal(true)
-      }}
-      style={{ fontSize: "12px" }}
-    >
-      OTCalendar
-    </button>
-  </div>
-</div>
+                                <div style={{ cursor: "default" }}>
+                                  <div className="d-flex align-items-center">
+                                    <button
+                                      className="btn btn-sm btn-primary"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setShowOtCalendarModal(true)
+                                      }}
+                                      style={{ fontSize: "12px" }}
+                                    >
+                                      OTCalendar
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
                             </div>
 
@@ -1977,7 +2324,7 @@ const GeneralMedicineWaitingList = () => {
                                       <td className="position-relative">
                                         <input
                                           type="text"
-                                          className="form-control "
+                                          className="form-control"
                                           value={item.surgery}
                                           onChange={(e) => {
                                             handleSurgerySearchChange(e.target.value, index)
@@ -2023,8 +2370,7 @@ const GeneralMedicineWaitingList = () => {
                                       </td>
                                       <td className="text-center">
                                         <button
-                                          className="btn btn-sm text-white"
-                                          style={{ backgroundColor: "#dc3545" }}
+                                          className="btn btn-sm btn-danger"
                                           onClick={() => handleRemoveSurgeryItem(index)}
                                           disabled={surgeryItems.length === 1}
                                         >
@@ -2076,7 +2422,7 @@ const GeneralMedicineWaitingList = () => {
                                       <label className="form-label fw-bold">Admission Date</label>
                                       <input
                                         type="date"
-                                        className="form-control "
+                                        className="form-control"
                                         value={admissionDate}
                                         onChange={(e) => setAdmissionDate(e.target.value)}
                                       />
@@ -2099,7 +2445,7 @@ const GeneralMedicineWaitingList = () => {
                                       <label className="form-label fw-bold">Occupied Bed</label>
                                       <input
                                         type="text"
-                                        className="form-control "
+                                        className="form-control"
                                         value={wardData[selectedWard]?.occupied || 0}
                                         readOnly
                                       />
@@ -2108,7 +2454,7 @@ const GeneralMedicineWaitingList = () => {
                                       <label className="form-label fw-bold">Vacant Bed</label>
                                       <input
                                         type="text"
-                                        className="form-control "
+                                        className="form-control"
                                         value={wardData[selectedWard]?.vacant || 0}
                                         readOnly
                                       />
@@ -2116,7 +2462,7 @@ const GeneralMedicineWaitingList = () => {
                                     <div className="col-md-4">
                                       <label className="form-label fw-bold">Admission Notes</label>
                                       <textarea
-                                        className="form-control "
+                                        className="form-control"
                                         rows={2}
                                         value={admissionNotes}
                                         onChange={(e) => setAdmissionNotes(e.target.value)}
@@ -2132,7 +2478,7 @@ const GeneralMedicineWaitingList = () => {
                               <div className="col-md-9">
                                 <label className="form-label fw-bold">Additional Advice</label>
                                 <textarea
-                                  className="form-control "
+                                  className="form-control"
                                   rows={4}
                                   value={additionalAdvice}
                                   onChange={(e) => setAdditionalAdvice(e.target.value)}
@@ -2160,7 +2506,6 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
-                {/* End of NLP Section */}
 
                 {["referral", "followUp", "doctorRemark"].map((section) => (
                   <div key={section} className="card mb-3">
@@ -2198,285 +2543,80 @@ const GeneralMedicineWaitingList = () => {
           </div>
         </div>
 
-        {/* Modals */}
-        {showCreateTemplateModal && (
-          <div className="modal d-block">
-            <div className="modal-dialog modal-lg">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Investigation Template</h5>
-                  <button type="button" className="btn-close btn-close" onClick={handleCloseModal}></button>
-                </div>
-                <div className="modal-body">
-                  <div className="row mb-3">
-                    <div className="col-md-3">
-                      <label className="form-label fw-bold">Template Name</label>
-                    </div>
-                    <div className="col-md-9">
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={templateName}
-                        onChange={(e) => setTemplateName(e.target.value)}
-                        placeholder="Enter template name"
-                      />
-                    </div>
-                  </div>
+        {/* Modals - UPDATED */}
+        <InvestigationModal
+          show={showInvestigationModal}
+          onClose={handleCloseInvestigationModal}
+          templateType={investigationModalType}
+          onTemplateSaved={(template) => {
+            console.log("Template saved:", template)
+            fetchInvestigationTemplates()
+          }}
+        />
 
-                  <div className="row mb-3">
-                    <div className="col-12 d-flex gap-4">
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          id="templateLab"
-                          name="templateType"
-                          checked={templateType === "lab"}
-                          onChange={() => setTemplateType("lab")}
-                        />
-                        <label className="form-check-label" htmlFor="templateLab">
-                          Lab
-                        </label>
-                      </div>
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          id="radiology"
-                          name="templateType"
-                          checked={templateType === "Radiology"}
-                          onChange={() => setTemplateType("Radiology")}
-                        />
-                        <label className="form-check-label" htmlFor="Radiology">
-                          Radiology
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="table-responsive">
-                    <table className="table table-bordered">
-                      <thead>
-                        <tr>
-                          <th>Investigation</th>
-                          <th>Add</th>
-                          <th>Delete</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {investigationItems.map((item, index) => (
-                          <tr key={index}>
-                            <td>
-                              <input
-                                type="text"
-                                className="form-control "
-                                value={item.name}
-                                onChange={(e) => handleInvestigationItemChange(index, "name", e.target.value)}
-                                placeholder="Enter investigation"
-                              />
-                            </td>
-                            <td className="text-center">
-                              <button className="btn btn-sm btn-success" onClick={handleAddInvestigationItem}>
-                                +
-                              </button>
-                            </td>
-                            <td className="text-center">
-                              <button
-                                className="btn btn-sm btn-danger"
-                                onClick={() => handleRemoveInvestigationItem(index)}
-                                disabled={investigationItems.length === 1}
-                              >
-                                −
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button className="btn text-white" onClick={handleSaveTemplate}>
-                    Save
-                  </button>
-                  <button className="btn btn-secondary" onClick={handleResetTemplate}>
-                    Reset
-                  </button>
-                  <button className="btn btn-secondary" onClick={handleCloseModal}>
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showUpdateTemplateModal && (
-           <div className="modal d-block">
-            <div className="modal-dialog modal-lg">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Update Investigation Template</h5>
-                  <button type="button" className="btn-close btn-close" onClick={handleCloseModal}></button>
-                </div>
-                <div className="modal-body">
-                  <div className="row mb-3">
-                    <div className="col-md-3">
-                      <label className="form-label fw-bold">Template Name</label>
-                    </div>
-                    <div className="col-md-9">
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={templateName}
-                        onChange={(e) => setTemplateName(e.target.value)}
-                        placeholder="Enter template name"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="row mb-3">
-                    <div className="col-12 d-flex gap-4">
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          id="templateLab"
-                          name="templateType"
-                          checked={templateType === "lab"}
-                          onChange={() => setTemplateType("lab")}
-                        />
-                        <label className="form-check-label" htmlFor="templateLab">
-                          Lab
-                        </label>
-                      </div>
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          id="radiology"
-                          name="templateType"
-                          checked={templateType === "Radiology"}
-                          onChange={() => setTemplateType("Radiology")}
-                        />
-                        <label className="form-check-label" htmlFor="Radiology">
-                          Radiology
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="table-responsive">
-                    <table className="table table-bordered">
-                      <thead>
-                        <tr>
-                          <th>Investigation</th>
-                          <th>Add</th>
-                          <th>Delete</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {investigationItems.map((item, index) => (
-                          <tr key={index}>
-                            <td>
-                              <input
-                                type="text"
-                                className="form-control "
-                                value={item.name}
-                                onChange={(e) => handleInvestigationItemChange(index, "name", e.target.value)}
-                                placeholder="Enter investigation"
-                              />
-                            </td>
-                            <td className="text-center">
-                              <button className="btn btn-sm btn-success" onClick={handleAddInvestigationItem}>
-                                +
-                              </button>
-                            </td>
-                            <td className="text-center">
-                              <button
-                                className="btn btn-sm btn-danger"
-                                onClick={() => handleRemoveInvestigationItem(index)}
-                                disabled={investigationItems.length === 1}
-                              >
-                                −
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button className="btn text-white" onClick={handleSaveTemplate}>
-                    Save
-                  </button>
-                  <button className="btn btn-secondary" onClick={handleResetTemplate}>
-                    Reset
-                  </button>
-                  <button className="btn btn-secondary" onClick={handleCloseModal}>
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <TreatmentModal
+          show={showTreatmentModal}
+          onClose={handleCloseTreatmentModal}
+          templateType={treatmentModalType}
+          onTemplateSaved={(template) => {
+            console.log("Treatment template saved:", template)
+            handleCloseTreatmentModal()
+          }}
+        />
 
         {/* OT Calendar Modal */}
-{showOtCalendarModal && (
-  <div
-    className="modal fade show"
-    style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)", zIndex: 0 }}
-    tabIndex="-1"
-    onClick={() => setShowOtCalendarModal(false)}
-  >
-<div
-  className="modal-dialog modal-lg"
-  style={{
-    width: "calc(100vw - 310px)",
-    left: "285px",
-    maxWidth: "none",   // remove Bootstrap’s limit
-    height: "90vh",     // 90% of viewport height
-    margin: "5vh auto", // center vertically
-    position: "fixed",  // important: ensures it stays where you set it
-  }}
-      onClick={(e) => e.stopPropagation()}
->
-
-      <div className="modal-content">
-        <div className="modal-header">
-          <h5 className="modal-title">OT DASHBOARD</h5>
-          <button
-            type="button"
-            className="btn-close"
-            onClick={() => setShowOtCalendarModal(false)}
-          ></button>
-        </div>
-        <div className="modal-body" style={{ overflowY: "auto", flex: "1 1 auto", maxHeight: "calc(90vh - 120px)" }}>
-          <OTDashboard />
-        </div>
-        <div className="modal-footer">
-          <button
-            type="button"
-            className="btn btn-secondary"
+        {showOtCalendarModal && (
+          <div
+            className="modal fade show"
+            style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)", zIndex: 0 }}
+            tabIndex="-1"
             onClick={() => setShowOtCalendarModal(false)}
           >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+            <div
+              className="modal-dialog modal-lg"
+              style={{
+                width: "calc(100vw - 310px)",
+                left: "285px",
+                maxWidth: "none",
+                height: "90vh",
+                margin: "5vh auto",
+                position: "fixed",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title">OT DASHBOARD</h5>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => setShowOtCalendarModal(false)}
+                  ></button>
+                </div>
+                <div className="modal-body" style={{ overflowY: "auto", flex: "1 1 auto", maxHeight: "calc(90vh - 120px)" }}>
+                  <OTDashboard />
+                </div>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setShowOtCalendarModal(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showTreatmentAdviceModal && (
-          <div className="modal d-block">
+          <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
             <div className="modal-dialog modal-lg">
               <div className="modal-content">
                 <div className="modal-header">
                   <h5 className="modal-title">TREATMENT ADVICE TEMPLATE</h5>
-                  <button type="button" className="btn-close" onClick={handleCloseModal}></button>
+                  <button type="button" className="btn-close" onClick={() => setShowTreatmentAdviceModal(false)}></button>
                 </div>
                 <div className="modal-body">
                   <div className="table-responsive">
@@ -2509,7 +2649,7 @@ const GeneralMedicineWaitingList = () => {
                   <button className="btn btn-primary" onClick={handleSaveTreatmentAdvice}>
                     OK
                   </button>
-                  <button className="btn btn-secondary" onClick={handleCloseModal}>
+                  <button className="btn btn-secondary" onClick={() => setShowTreatmentAdviceModal(false)}>
                     CLOSE
                   </button>
                 </div>
