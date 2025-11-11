@@ -1623,9 +1623,7 @@ useEffect(() => {
                           >
                             Update Template
                           </button>
-                          <button className="btn btn-primary">
-                            Import New
-                          </button>
+                         
                         </div>
                       </div>
 
@@ -2560,7 +2558,7 @@ useEffect(() => {
           templateType={treatmentModalType}
           onTemplateSaved={(template) => {
             console.log("Treatment template saved:", template)
-            handleCloseTreatmentModal()
+           
           }}
         />
 
