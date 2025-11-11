@@ -157,3 +157,11 @@ export const INVESTIGATION_PACKAGE_Mapping = `/package-investigation-mapping`;
 export const INVESTIGATION_PACKAGE_API = `/investigation-package`;
 export const LAB = `/lab`;
 export const OPD_TEMPLATE = `/opdTemplate`
+
+
+
+export const ITEM_CLASS = {
+  TABLET: 1,
+  CAPSULE: 2,
+  
+};

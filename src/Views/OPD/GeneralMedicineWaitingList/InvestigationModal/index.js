@@ -467,12 +467,8 @@ const InvestigationModal = ({
                             </div>
                         )}
 
-                        {/* Department Section */}
-                        <div className="row mb-3">
-                            <div className="col-12">
-                                <h6 className="fw-bold text-dark mb-2">GENERAL MEDICINE</h6>
-                            </div>
-                        </div>
+                        
+                        
 
                         {/* Template Name and Code */}
                         <div className="row mb-4">

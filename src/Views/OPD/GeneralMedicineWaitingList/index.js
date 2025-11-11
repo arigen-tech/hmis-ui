@@ -6,7 +6,6 @@ import TreatmentModal from "./TreatmentModal"
 import { getRequest } from "../../../service/apiService"
 import { OPD_TEMPLATE, MAS_INVESTIGATION } from "../../../config/apiConfig"
 
-
 const GeneralMedicineWaitingList = () => {
   const [waitingList, setWaitingList] = useState([
     {
@@ -47,7 +46,6 @@ const GeneralMedicineWaitingList = () => {
   const [investigationType, setInvestigationType] = useState("lab")
   const [procedureCareType, setProcedureCareType] = useState("procedure")
 
-
   const [investigationTemplates, setInvestigationTemplates] = useState([])
   const [selectedInvestigationTemplate, setSelectedInvestigationTemplate] = useState("Select..")
   const [investigationTemplateLoading, setInvestigationTemplateLoading] = useState(false)
@@ -55,10 +53,6 @@ const GeneralMedicineWaitingList = () => {
   const [filteredInvestigationsByType, setFilteredInvestigationsByType] = useState([])
   const [investigationTypes, setInvestigationTypes] = useState([])
   const [activeInvestigationRowIndex, setActiveInvestigationRowIndex] = useState(null)
-
-
-
-
 
   const [expandedSections, setExpandedSections] = useState({
     personalDetails: false,
@@ -114,12 +108,12 @@ const GeneralMedicineWaitingList = () => {
   const [updateTemplateSelection, setUpdateTemplateSelection] = useState("Select..")
   const [templateType, setTemplateType] = useState("")
   const [dropdownVisible, setDropdownVisible] = useState(false)
-const [dropdownPosition, setDropdownPosition] = useState({
-  x: 0,
-  y: 0,
-  height: 0,
-})
-const [dropdownWidth, setDropdownWidth] = useState(0)
+  const [dropdownPosition, setDropdownPosition] = useState({
+    x: 0,
+    y: 0,
+    height: 0,
+  })
+  const [dropdownWidth, setDropdownWidth] = useState(0)
 
   const [workingDiagnosis, setWorkingDiagnosis] = useState("")
 
@@ -263,6 +257,9 @@ const [dropdownWidth, setDropdownWidth] = useState(0)
 
   const itemsPerPage = 10
 
+  // NEW: Track selected templates to prevent duplicates
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState(new Set())
+
   // Modal handlers - UPDATED
   const handleOpenInvestigationModal = (type = "create") => {
     setInvestigationModalType(type)
@@ -285,27 +282,26 @@ const [dropdownWidth, setDropdownWidth] = useState(0)
   }
 
   const handleInputFocus = (event, index) => {
-  const rect = event.target.getBoundingClientRect()
-  setDropdownPosition({
-    x: rect.left,
-    y: rect.top,
-    height: rect.height,
-  })
-  setDropdownWidth(rect.width)
-  setActiveInvestigationRowIndex(index)
-  setDropdownVisible(true)
-}
-
-useEffect(() => {
-  const handleClickOutside = (e) => {
-    if (!e.target.closest(".form-control")) {
-      setDropdownVisible(false)
-    }
+    const rect = event.target.getBoundingClientRect()
+    setDropdownPosition({
+      x: rect.left,
+      y: rect.top,
+      height: rect.height,
+    })
+    setDropdownWidth(rect.width)
+    setActiveInvestigationRowIndex(index)
+    setDropdownVisible(true)
   }
-  window.addEventListener("click", handleClickOutside)
-  return () => window.removeEventListener("click", handleClickOutside)
-}, [])
 
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest(".form-control")) {
+        setDropdownVisible(false)
+      }
+    }
+    window.addEventListener("click", handleClickOutside)
+    return () => window.removeEventListener("click", handleClickOutside)
+  }, [])
 
   const extractInvestigationTypes = (investigations) => {
     const uniqueTypes = []
@@ -396,19 +392,70 @@ useEffect(() => {
     return filtered
   }
 
+  // UPDATED: Handle template selection to accumulate items
   const handleInvestigationTemplateSelect = (template) => {
-    setSelectedInvestigationTemplate(template.templateId)
+    const templateId = template.templateId
+    
+    // Check if template is already selected
+    if (selectedTemplateIds.has(templateId)) {
+      alert("This template is already selected")
+      setSelectedInvestigationTemplate("Select..")
+      return
+    }
+
+    setSelectedInvestigationTemplate(templateId)
+    
+    // Add template to selected templates set
+    setSelectedTemplateIds(prev => new Set([...prev, templateId]))
 
     if (template.investigationResponseList && template.investigationResponseList.length > 0) {
-      const items = template.investigationResponseList.map(item => ({
+      const newItems = template.investigationResponseList.map(item => ({
         name: item.investigationName || `Investigation #${item.investigationId}`,
         date: getToday(),
-        investigationId: item.investigationId
+        investigationId: item.investigationId,
+        templateSource: template.opdTemplateName // Track which template this came from
       }))
-      setInvestigationItems(items)
-    } else {
-      setInvestigationItems([{ name: "", date: getToday(), investigationId: null }])
+      
+      // Add new items to existing items, avoiding duplicates
+      setInvestigationItems(prev => {
+        const existingIds = new Set(prev.map(item => item.investigationId))
+        const uniqueNewItems = newItems.filter(item => !existingIds.has(item.investigationId))
+        return [...prev.filter(item => item.name !== ""), ...uniqueNewItems]
+      })
     }
+    
+    // Reset dropdown to "Select.." for next selection
+    setTimeout(() => {
+      setSelectedInvestigationTemplate("Select..")
+    }, 100)
+  }
+
+  // NEW: Function to clear all selected templates and items
+  const handleClearAllTemplates = () => {
+    setSelectedTemplateIds(new Set())
+    setInvestigationItems([{ name: "", date: getToday() }])
+  }
+
+  // NEW: Function to remove specific template items
+  const handleRemoveTemplateItems = (templateId) => {
+    const template = investigationTemplates.find(t => t.templateId == templateId)
+    if (!template) return
+
+    // Remove items from this template
+    setInvestigationItems(prev => 
+      prev.filter(item => 
+        !template.investigationResponseList?.some(templateItem => 
+          templateItem.investigationId === item.investigationId
+        )
+      )
+    )
+
+    // Remove template from selected set
+    setSelectedTemplateIds(prev => {
+      const newSet = new Set(prev)
+      newSet.delete(templateId)
+      return newSet
+    })
   }
 
   const handleInvestigationSelect = (index, investigation) => {
@@ -466,7 +513,6 @@ useEffect(() => {
     filterInvestigationsByMainChargeCode()
   }, [investigationType])
 
-
   const handleFilterChange = (field, value) => {
     setSearchFilters((prev) => ({
       ...prev,
@@ -512,6 +558,8 @@ useEffect(() => {
       additionalAdvice: false,
     })
     setSelectedHistoryType("")
+    // Clear templates when going back to list
+    setSelectedTemplateIds(new Set())
   }
 
   const toggleSection = (section) => {
@@ -1357,10 +1405,7 @@ useEffect(() => {
                   )}
                 </div>
 
-
-
-
-                {/* Investigation Section - COMPLETELY FIXED */}
+                {/* Investigation Section - UPDATED WITH MULTIPLE TEMPLATE SUPPORT */}
                 <div className="card mb-3">
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
@@ -1372,6 +1417,49 @@ useEffect(() => {
                   </div>
                   {expandedSections.investigation && (
                     <div className="card-body">
+                      {/* Selected Templates Display */}
+                      {selectedTemplateIds.size > 0 && (
+                        <div className="row mb-3">
+                          <div className="col-12">
+                            <div className="card">
+                              <div className="card-header py-2 bg-light">
+                                <div className="d-flex justify-content-between align-items-center">
+                                  <h6 className="mb-0 fw-bold">Selected Templates</h6>
+                                  <button 
+                                    className="btn btn-sm btn-outline-danger"
+                                    onClick={handleClearAllTemplates}
+                                  >
+                                    Clear All
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="card-body">
+                                <div className="d-flex flex-wrap gap-2">
+                                  {Array.from(selectedTemplateIds).map(templateId => {
+                                    const template = investigationTemplates.find(t => t.templateId == templateId)
+                                    return template ? (
+                                      <span key={templateId} className="badge bg-primary d-flex align-items-center gap-1">
+                                        {template.opdTemplateName}
+                                        <button
+                                          type="button"
+                                          className="btn-close btn-close-white"
+                                          style={{ fontSize: '0.7rem' }}
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            handleRemoveTemplateItems(templateId)
+                                          }}
+                                          aria-label="Remove template"
+                                        ></button>
+                                      </span>
+                                    ) : null
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="row mb-3 align-items-center">
                         <div className="col-md-2">
                           <label className="form-label fw-bold">Template</label>
@@ -1382,20 +1470,26 @@ useEffect(() => {
                             value={selectedInvestigationTemplate}
                             onChange={(e) => {
                               const selectedId = e.target.value
+                              if (selectedId === "Select..") return
+                              
                               const template = investigationTemplates.find(t => t.templateId == selectedId)
                               if (template) {
                                 handleInvestigationTemplateSelect(template)
                               } else {
                                 setSelectedInvestigationTemplate("Select..")
-                                setInvestigationItems([{ name: "", date: getToday(), investigationId: null }])
                               }
                             }}
                             disabled={investigationTemplateLoading}
                           >
                             <option value="Select..">Select..</option>
                             {investigationTemplates.map((template) => (
-                              <option key={template.templateId} value={template.templateId}>
+                              <option 
+                                key={template.templateId} 
+                                value={template.templateId}
+                                disabled={selectedTemplateIds.has(template.templateId)}
+                              >
                                 {template.opdTemplateName} ({template.opdTemplateCode})
+                                {selectedTemplateIds.has(template.templateId) ? ' (Already Selected)' : ''}
                               </option>
                             ))}
                           </select>
@@ -1416,13 +1510,12 @@ useEffect(() => {
                         </div>
                       </div>
 
-                      {/* Radio Buttons - DEBUGGING ENABLED */}
+                      {/* Radio Buttons */}
                       <div className="row mb-3">
                         <div className="col-12">
                           <div className="d-flex gap-4 flex-wrap">
                             {investigationTypes.length > 0 ? (
                               <>
-
                                 {investigationTypes.map((type) => (
                                   <div key={type.value} className="form-check">
                                     <input
@@ -1453,7 +1546,7 @@ useEffect(() => {
                         </div>
                       </div>
 
-                      {/* Investigation Table - SIMPLIFIED DROPDOWN */}
+                      {/* Investigation Table */}
                       <div className="table-responsive">
                         <table className="table table-bordered">
                           <thead style={{ backgroundColor: "#b0c4de" }}>
@@ -1610,7 +1703,6 @@ useEffect(() => {
                           </select>
                         </div>
                         <div className="col-md-8 d-flex align-items-end gap-2">
-                          {/* UPDATED BUTTONS */}
                           <button
                             className="btn btn-primary"
                             onClick={() => handleOpenTreatmentModal("create")}
@@ -1623,7 +1715,6 @@ useEffect(() => {
                           >
                             Update Template
                           </button>
-                         
                         </div>
                       </div>
 
@@ -2558,7 +2649,6 @@ useEffect(() => {
           templateType={treatmentModalType}
           onTemplateSaved={(template) => {
             console.log("Treatment template saved:", template)
-           
           }}
         />
 
