@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { getRequest } from "../../../service/apiService"
+import { getRequest, putRequest } from "../../../service/apiService"
 import { LAB } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
@@ -49,6 +49,7 @@ const ResultValidation = () => {
   const formatValidationData = (apiData) => {
     return apiData.map((item, index) => ({
       id: index + 1,
+      resultEntryHeaderId: item.resultEntryHeaderId || item.id,
       result_date: formatDate(item.resultDate),
       result_time: formatTime(item.resultTime),
       patient_name: item.patientName || '',
@@ -63,14 +64,15 @@ const ResultValidation = () => {
       validated_by: item.validatedBy || '',
       patientId: item.patientId || 0,
       mobile_no: item.patientPhnNum || '',
-      
+
       investigations: item.resultEntryInvestigationResponses ? item.resultEntryInvestigationResponses.map((inv, invIndex) => {
         const hasSubTests = inv.resultEntrySubInvestigationRes && inv.resultEntrySubInvestigationRes.length > 0;
-        
+
         if (hasSubTests) {
           return {
             id: invIndex + 1,
             si_no: invIndex + 1,
+            resultEntryDetailsId: inv.resultEntryDetailsId || inv.id,
             diag_no: inv.diagNo || '',
             investigation: inv.investigationName || '',
             sample: inv.sampleName || '',
@@ -80,12 +82,14 @@ const ResultValidation = () => {
             remarks: inv.remarks || "",
             reject: false,
             validate: false,
-            comparisonType: inv.comparisonType,
-            fixedId: inv.fixedId,
+            comparisonType: inv.comparisonType || "",
+            fixedId: inv.fixedId || null,
             fixedDropdownValues: inv.fixedDropdownValues || [],
+            inRange: inv.inRange !== undefined ? inv.inRange : null, // Ensure inRange is properly mapped
             subTests: inv.resultEntrySubInvestigationRes.map((subTest, subIndex) => ({
               id: `${invIndex + 1}.${subIndex + 1}`,
               si_no: getSubTestNumber(invIndex + 1, subIndex, inv.resultEntrySubInvestigationRes.length),
+              resultEntryDetailsId: subTest.resultEntryDetailsId || subTest.id,
               diag_no: "---",
               investigation: subTest.subInvestigationName || '',
               sample: subTest.sampleName || '',
@@ -95,15 +99,17 @@ const ResultValidation = () => {
               remarks: subTest.remarks || "",
               reject: false,
               validate: false,
-              comparisonType: subTest.comparisonType,
-              fixedId: subTest.fixedId,
+              comparisonType: subTest.comparisonType || "",
+              fixedId: subTest.fixedId || null,
               fixedDropdownValues: subTest.fixedDropdownValues || [],
+              inRange: subTest.inRange !== undefined ? subTest.inRange : null, // Ensure inRange is properly mapped
             }))
           };
         } else {
           return {
             id: invIndex + 1,
             si_no: invIndex + 1,
+            resultEntryDetailsId: inv.resultEntryDetailsId || inv.id,
             diag_no: inv.diagNo || '',
             investigation: inv.investigationName || '',
             sample: inv.sampleName || '',
@@ -113,8 +119,9 @@ const ResultValidation = () => {
             remarks: inv.remarks || "",
             reject: false,
             validate: false,
-            comparisonType: inv.comparisonType,
-            fixedId: inv.fixedId,
+            comparisonType: inv.comparisonType || "",
+            inRange: inv.inRange !== undefined ? inv.inRange : null, // Ensure inRange is properly mapped
+            fixedId: inv.fixedId || null,
             fixedDropdownValues: inv.fixedDropdownValues || [],
             subTests: []
           };
@@ -129,7 +136,7 @@ const ResultValidation = () => {
       return "";
     } else {
       return `${mainIndex}.${String.fromCharCode(97 + subIndex)}`;
-    } 
+    }
   }
 
   const formatDate = (dateString) => {
@@ -170,12 +177,26 @@ const ResultValidation = () => {
     })
   }
 
-  // NEW FUNCTION: Handle result change for main investigations
-  const handleResultChange = (investigationId, value) => {
+  // Get result text style based on inRange value
+  const getResultTextStyle = (inRange) => {
+    if (inRange === true) {
+      return { fontWeight: 'bold', color: 'green' };
+    } else if (inRange === false) {
+      return { fontWeight: 'bold', color: 'red' };
+    }
+    return {}; // Default style for null or undefined
+  }
+
+  // Handle result change for main investigations with fixedId
+  const handleResultChange = (investigationId, value, selectedFixedId = null) => {
     if (selectedResult) {
       const updatedInvestigations = selectedResult.investigations.map((inv) => {
         if (inv.id === investigationId) {
-          return { ...inv, result: value }
+          return {
+            ...inv,
+            result: value,
+            fixedId: selectedFixedId !== undefined ? selectedFixedId : inv.fixedId
+          }
         }
         return inv
       })
@@ -183,14 +204,18 @@ const ResultValidation = () => {
     }
   }
 
-  // NEW FUNCTION: Handle result change for sub-tests
-  const handleSubTestResultChange = (investigationId, subTestId, value) => {
+  // Handle result change for sub-tests with fixedId
+  const handleSubTestResultChange = (investigationId, subTestId, value, selectedFixedId = null) => {
     if (selectedResult) {
       const updatedInvestigations = selectedResult.investigations.map((inv) => {
         if (inv.id === investigationId) {
           const updatedSubTests = inv.subTests.map((subTest) => {
             if (subTest.id === subTestId) {
-              return { ...subTest, result: value }
+              return {
+                ...subTest,
+                result: value,
+                fixedId: selectedFixedId !== undefined ? selectedFixedId : subTest.fixedId
+              }
             }
             return subTest
           })
@@ -202,32 +227,44 @@ const ResultValidation = () => {
     }
   }
 
-  // NEW FUNCTION: Render result input field
+  // Render result input field with proper fixedId handling and inRange styling
   const renderResultInput = (test, isSubTest = false, investigationId = null) => {
+    const resultStyle = getResultTextStyle(test.inRange);
+
     if (test.comparisonType === 'f' && test.fixedDropdownValues && test.fixedDropdownValues.length > 0) {
+      // Find the currently selected option to display the correct value
+      const selectedOption = test.fixedDropdownValues.find(opt => opt.fixedId === test.fixedId);
+      const displayValue = selectedOption ? selectedOption.fixedValue : test.result;
+
       return (
-        <select
-          className="form-select"
-          value={test.result}
-          onChange={(e) => {
-            if (isSubTest && investigationId) {
-              handleSubTestResultChange(investigationId, test.id, e.target.value)
-            } else {
-              handleResultChange(test.id, e.target.value)
-            }
-          }}
-        >
-          <option value="">Select Result</option>
-          {test.fixedDropdownValues.map((option) => (
-            <option 
-              key={option.fixedId} 
-              value={option.fixedValue}
-              selected={test.fixedId === option.fixedId}
-            >
-              {option.fixedValue}
-            </option>
-          ))}
-        </select>
+        <div>
+          <select
+            className="form-select"
+            value={test.fixedId || ""}
+            onChange={(e) => {
+              const selectedFixedId = e.target.value ? parseInt(e.target.value) : null;
+              const selectedOption = test.fixedDropdownValues.find(opt => opt.fixedId === selectedFixedId);
+              const resultValue = selectedOption ? selectedOption.fixedValue : "";
+
+              if (isSubTest && investigationId) {
+                handleSubTestResultChange(investigationId, test.id, resultValue, selectedFixedId);
+              } else {
+                handleResultChange(test.id, resultValue, selectedFixedId);
+              }
+            }}
+            style={resultStyle}
+          >
+            <option value="">Select Result</option>
+            {test.fixedDropdownValues.map((option) => (
+              <option
+                key={option.fixedId}
+                value={option.fixedId}
+              >
+                {option.fixedValue}
+              </option>
+            ))}
+          </select>
+        </div>
       )
     } else {
       return (
@@ -237,18 +274,33 @@ const ResultValidation = () => {
           value={test.result}
           onChange={(e) => {
             if (isSubTest && investigationId) {
-              handleSubTestResultChange(investigationId, test.id, e.target.value)
+              handleSubTestResultChange(investigationId, test.id, e.target.value, null);
             } else {
-              handleResultChange(test.id, e.target.value)
+              handleResultChange(test.id, e.target.value, null);
             }
           }}
           placeholder="Enter result"
+          style={resultStyle}
         />
       )
     }
   }
 
-  // ALL YOUR EXISTING CODE BELOW - with modifications to the table structure
+  // Render result display for read-only fields with inRange styling
+  const renderResultDisplay = (test) => {
+    const resultStyle = getResultTextStyle(test.inRange);
+
+    return (
+      <input
+        type="text"
+        className="form-control border-0 bg-transparent"
+        value={test.result}
+        readOnly
+        style={resultStyle}
+      />
+    )
+  }
+
   const handleSearchChange = (e) => {
     const { id, value } = e.target
     setSearchData((prevData) => ({ ...prevData, [id]: value }))
@@ -256,9 +308,8 @@ const ResultValidation = () => {
   }
 
   const handleRowClick = (result) => {
-    setSelectedResult(JSON.parse(JSON.stringify(result))) // Deep copy
+    setSelectedResult(JSON.parse(JSON.stringify(result)))
     setShowDetailView(true)
-    // Reset master checkboxes when opening detail view
     setMasterValidate(false)
     setMasterReject(false)
   }
@@ -275,14 +326,13 @@ const ResultValidation = () => {
       const updatedInvestigations = selectedResult.investigations.map((inv) => {
         if (inv.id === investigationId) {
           const updatedInv = { ...inv, [field]: value }
-          
-          // Ensure validate and reject are mutually exclusive
+
           if (field === 'validate' && value === true) {
             updatedInv.reject = false
           } else if (field === 'reject' && value === true) {
             updatedInv.validate = false
           }
-          
+
           return updatedInv
         }
         return inv
@@ -299,14 +349,13 @@ const ResultValidation = () => {
           const updatedSubTests = inv.subTests.map((subTest) => {
             if (subTest.id === subTestId) {
               const updatedSubTest = { ...subTest, [field]: value }
-              
-              // Ensure validate and reject are mutually exclusive
+
               if (field === 'validate' && value === true) {
                 updatedSubTest.reject = false
               } else if (field === 'reject' && value === true) {
                 updatedSubTest.validate = false
               }
-              
+
               return updatedSubTest
             }
             return subTest
@@ -327,7 +376,6 @@ const ResultValidation = () => {
       return
     }
 
-    // Get all test items (main investigations + sub-tests)
     const allTests = []
     investigations.forEach(inv => {
       if (inv.subTests.length === 0) {
@@ -353,8 +401,8 @@ const ResultValidation = () => {
   const handleMasterValidateChange = (checked) => {
     if (selectedResult) {
       setMasterValidate(checked)
-      setMasterReject(!checked) // Uncheck reject if validate is checked
-      
+      setMasterReject(!checked)
+
       const updatedInvestigations = selectedResult.investigations.map(inv => ({
         ...inv,
         validate: checked,
@@ -365,7 +413,7 @@ const ResultValidation = () => {
           reject: !checked
         }))
       }))
-      
+
       setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
     }
   }
@@ -373,8 +421,8 @@ const ResultValidation = () => {
   const handleMasterRejectChange = (checked) => {
     if (selectedResult) {
       setMasterReject(checked)
-      setMasterValidate(!checked) // Uncheck validate if reject is checked
-      
+      setMasterValidate(!checked)
+
       const updatedInvestigations = selectedResult.investigations.map(inv => ({
         ...inv,
         validate: !checked,
@@ -385,46 +433,88 @@ const ResultValidation = () => {
           reject: checked
         }))
       }))
-      
+
       setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
     }
   }
 
-  const handleSubmit = () => {
-    if (selectedResult) {
-      setLoading(true)
+  const handleSubmit = async () => {
+    if (!selectedResult) return;
 
-      // Validate that at least one investigation is processed
-      const hasProcessedInvestigation = selectedResult.investigations.some(inv => 
-        inv.validate || inv.reject || inv.subTests.some(subTest => subTest.validate || subTest.reject)
-      )
+    const hasProcessedInvestigation = selectedResult.investigations.some(inv =>
+      inv.validate || inv.reject || inv.subTests.some(subTest => subTest.validate || subTest.reject)
+    );
 
-      if (!hasProcessedInvestigation) {
-        showPopup("Please validate or reject at least one investigation before submitting.", "warning")
-        setLoading(false)
-        return
+    if (!hasProcessedInvestigation) {
+      showPopup("Please validate or reject at least one investigation before submitting.", "warning");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const validationList = [];
+
+      selectedResult.investigations.forEach(inv => {
+        if (inv.subTests && inv.subTests.length > 0) {
+          inv.subTests.forEach(subTest => {
+            if (subTest.validate || subTest.reject) {
+              validationList.push({
+                resultEntryDetailsId: subTest.resultEntryDetailsId || subTest.id,
+                result: subTest.result || "",
+                remarks: subTest.remarks || "",
+                validated: subTest.validate === true,
+                fixedId: subTest.fixedId || null,
+                comparisonType: subTest.comparisonType || ""
+              });
+            }
+          });
+        } else {
+          if (inv.validate || inv.reject) {
+            validationList.push({
+              resultEntryDetailsId: inv.resultEntryDetailsId || inv.id,
+              result: inv.result || "",
+              remarks: inv.remarks || "",
+              validated: inv.validate === true,
+              fixedId: inv.fixedId || null,
+              comparisonType: inv.comparisonType || ""
+            });
+          }
+        }
+      });
+
+      if (validationList.length === 0) {
+        showPopup("No investigations selected for validation.", "warning");
+        setLoading(false);
+        return;
       }
 
-      // Simulate processing
-      setTimeout(() => {
-        // Update the main list with processed result
-        const updatedList = resultList.map(item =>
-          item.id === selectedResult.id ? { 
-            ...selectedResult, 
-            validated_by: selectedResult.validated_by || "Validator"
-          } : item
-        )
-        setResultList(updatedList)
+      const requestPayload = {
+        resultEntryHeaderId: selectedResult.resultEntryHeaderId || selectedResult.id,
+        validationList: validationList
+      };
 
-        showPopup("Results submitted successfully!", "success")
-        setShowDetailView(false)
-        setSelectedResult(null)
-        setMasterValidate(false)
-        setMasterReject(false)
-        setLoading(false)
-      }, 1000)
+      console.log("Submitting validation request:", requestPayload);
+
+      const response = await putRequest(`${LAB}/validate`, requestPayload);
+
+      if (response.status === 200) {
+        showPopup("Results validated successfully!", "success");
+        await fetchUnvalidatedResults();
+        setShowDetailView(false);
+        setSelectedResult(null);
+        setMasterValidate(false);
+        setMasterReject(false);
+      } else {
+        showPopup(response.message || "Failed to validate results", "error");
+      }
+    } catch (error) {
+      console.error("Error submitting validation:", error);
+      showPopup("Error submitting validation: " + (error.message || "Unknown error"), "error");
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -504,7 +594,7 @@ const ResultValidation = () => {
     ))
   }
 
-  // Detail View - UPDATED TABLE STRUCTURE
+  // Detail View
   if (showDetailView && selectedResult) {
     return (
       <div className="content-wrapper">
@@ -565,7 +655,7 @@ const ResultValidation = () => {
                   </div>
                   <div className="card-body">
                     <div className="row">
-                      <div className="col-md-3">
+                      <div className="col-md-4">
                         <label className="form-label fw-bold">Patient Name</label>
                         <input
                           type="text"
@@ -574,7 +664,7 @@ const ResultValidation = () => {
                           readOnly
                         />
                       </div>
-                      <div className="col-md-3">
+                      <div className="col-md-4">
                         <label className="form-label fw-bold">Relation</label>
                         <input
                           type="text"
@@ -583,7 +673,7 @@ const ResultValidation = () => {
                           readOnly
                         />
                       </div>
-                      <div className="col-md-3">
+                      <div className="col-md-4">
                         <label className="form-label fw-bold">Age</label>
                         <input
                           type="text"
@@ -592,7 +682,10 @@ const ResultValidation = () => {
                           readOnly
                         />
                       </div>
-                      <div className="col-md-3">
+                      
+                    </div>
+                    <div className="row mt-3">
+                      <div className="col-md-4">
                         <label className="form-label fw-bold">Gender</label>
                         <input
                           type="text"
@@ -601,8 +694,6 @@ const ResultValidation = () => {
                           readOnly
                         />
                       </div>
-                    </div>
-                    <div className="row mt-3">
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Mobile No.</label>
                         <input
@@ -612,7 +703,7 @@ const ResultValidation = () => {
                           readOnly
                         />
                       </div>
-                      <div className="col-md-4">
+                      {/* <div className="col-md-4">
                         <label className="form-label fw-bold">Patient ID</label>
                         <input
                           type="text"
@@ -620,8 +711,8 @@ const ResultValidation = () => {
                           value={selectedResult.patientId}
                           readOnly
                         />
-                      </div>
-                      <div className="col-md-4">
+                      </div> */}
+                      {/* <div className="col-md-4">
                         <label className="form-label fw-bold">Order No.</label>
                         <input
                           type="text"
@@ -629,7 +720,7 @@ const ResultValidation = () => {
                           value={selectedResult.id}
                           readOnly
                         />
-                      </div>
+                      </div> */}
                     </div>
                     <div className="row mt-3">
                       <div className="col-12">
@@ -698,9 +789,9 @@ const ResultValidation = () => {
                         <th>Normal Range</th>
                         <th>Remarks</th>
                         <th className="text-center">
-                          <div className="d-flex  align-items-center">
+                          <div className="d-flex align-items-center">
                             <span className="me-2">Validate</span>
-                            <div className="form-check mt-1 ">
+                            <div className="form-check mt-1">
                               <input
                                 className="form-check-input border-primary"
                                 type="checkbox"
@@ -712,7 +803,7 @@ const ResultValidation = () => {
                           </div>
                         </th>
                         <th className="text-center">
-                          <div className="d-flex  align-items-center">
+                          <div className="d-flex align-items-center">
                             <span className="me-2">Reject</span>
                             <div className="form-check mt-1">
                               <input
@@ -731,14 +822,13 @@ const ResultValidation = () => {
                       {selectedResult.investigations.map((investigation) => (
                         <>
                           {investigation.subTests.length === 0 ? (
-                            // Main investigation without sub-tests
                             <tr key={investigation.id}>
                               <td>{investigation.si_no}</td>
                               <td>{investigation.diag_no}</td>
                               <td>
                                 <input
                                   type="text"
-                                  className="form-control  bg-transparent"
+                                  className="form-control bg-transparent"
                                   value={investigation.investigation}
                                   readOnly
                                 />
@@ -805,7 +895,6 @@ const ResultValidation = () => {
                               </td>
                             </tr>
                           ) : (
-                            // Investigation with sub-tests
                             <>
                               <tr key={investigation.id}>
                                 <td>{investigation.si_no}</td>
@@ -814,6 +903,7 @@ const ResultValidation = () => {
                                   <strong>{investigation.investigation}</strong>
                                 </td>
                               </tr>
+                              {/* In the sub-test row, fix the columns */}
                               {investigation.subTests.map((subTest) => (
                                 <tr key={subTest.id}>
                                   <td>{subTest.si_no}</td>
@@ -821,7 +911,7 @@ const ResultValidation = () => {
                                   <td className="ps-4">
                                     <input
                                       type="text"
-                                      className="form-control  bg-transparent"
+                                      className="form-control bg-transparent"
                                       value={subTest.investigation}
                                       readOnly
                                     />
@@ -838,6 +928,7 @@ const ResultValidation = () => {
                                     {renderResultInput(subTest, true, investigation.id)}
                                   </td>
                                   <td>
+                                    {/* FIXED: This should be for units, not result display */}
                                     <input
                                       type="text"
                                       className="form-control border-0 bg-transparent"
@@ -898,7 +989,7 @@ const ResultValidation = () => {
 
                 <div className="text-end mt-4">
                   <button className="btn btn-success me-3" onClick={handleSubmit} disabled={loading}>
-                    <i className="mdi mdi-check-circle"></i> SUBMIT VALIDATION
+                    <i className="mdi mdi-check-circle"></i> VALIDATE
                   </button>
                   <button className="btn btn-secondary" onClick={handleBackToList}>
                     <i className="mdi mdi-arrow-left"></i> BACK TO LIST
@@ -912,7 +1003,7 @@ const ResultValidation = () => {
     )
   }
 
-  // List View (unchanged)
+  // List View
   return (
     <div className="content-wrapper">
       {popupMessage && (
