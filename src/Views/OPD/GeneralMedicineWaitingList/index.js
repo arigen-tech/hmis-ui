@@ -2700,113 +2700,112 @@ const GeneralMedicineWaitingList = () => {
           </div>
         )}
 
-        {showCurrentMedicationModal && (
-          <div
-            className="modal fade show"
-            style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)", zIndex: 0 }}
-            tabIndex="-1"
+      {showCurrentMedicationModal && (
+  <div
+    className="modal fade show"
+    style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)", zIndex: 0 }}
+    tabIndex="-1"
+    onClick={() => setShowCurrentMedicationModal(false)}
+  >
+    <div
+      className="modal-dialog modal-lg"
+      style={{
+        width: "calc(100vw - 310px)",
+        left: "285px",
+        maxWidth: "none",
+        height: "90vh",
+        margin: "5vh auto",
+        position: "fixed",
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title">Current Medication</h5>
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => setShowCurrentMedicationModal(false)}
+          ></button>
+        </div>
+        <div
+          className="modal-body"
+          style={{ overflowY: "auto", flex: "1 1 auto", maxHeight: "calc(90vh - 120px)" }}
+        >
+          <div className="table-responsive">
+            <table className="table table-bordered table-hover">
+              <thead style={{ backgroundColor: "#b0c4de" }}>
+                <tr>
+                  <th style={{ minWidth: 30 }}>Sr. No.</th>
+                  <th style={{ minWidth: 320 }}>Item Name</th>
+                  <th className="text-center" style={{ minWidth: 70 }}>
+                    Dosage
+                  </th>
+                  <th className="text-center" style={{ minWidth: 70 }}>
+                    No. Of Days
+                  </th>
+                  <th className="text-center" style={{ minWidth: 110 }}>
+                    Frequency
+                  </th>
+                  <th className="text-center" style={{ minWidth: 70 }}>
+                    Total
+                  </th>
+                  <th className="text-center" style={{ minWidth: 70 }}>
+                    Stock
+                  </th>
+                  <th style={{ minWidth: 130 }}>Prescribed By</th>
+                  <th style={{ minWidth: 130 }}>Department</th>
+                  <th className="text-center" style={{ minWidth: 110 }}>
+                    Prescribed Date
+                  </th>
+                  <th className="text-center" style={{ minWidth: 50 }}>
+                    Stop
+                  </th>
+                  <th className="text-center" style={{ minWidth: 50 }}>
+                    Repeat
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>CHOLECALCIFEROL (VITAMIN D3) 60000 IU TABLET</td>
+                  <td className="text-center">1</td>
+                  <td className="text-center">30</td>
+                  <td className="text-center">ONCE IN 7 DAYS</td>
+                  <td className="text-center">4</td>
+                  <td className="text-center">0</td>
+                  <td>Dr. M.G.Prashanth</td>
+                  <td>GENERAL MEDICINE</td>
+                  <td className="text-center">19/12/2020</td>
+                  <td className="text-center">
+                    <input type="checkbox" />
+                  </td>
+                  <td className="text-center">
+                    <input type="checkbox" />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style={{ marginTop: "15px" }}>
+            <button className="btn btn-primary me-2">STOP</button>
+            <button className="btn btn-primary me-2">REPEAT</button>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button
+            type="button"
+            className="btn btn-secondary"
             onClick={() => setShowCurrentMedicationModal(false)}
           >
-            <div
-              className="modal-dialog modal-lg"
-              style={{
-                width: "calc(100vw - 310px)",
-                left: "285px",
-                maxWidth: "none",
-                height: "90vh",
-                margin: "5vh auto",
-                position: "fixed",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Current Medication</h5>
-                  <button
-                    type="button"
-                    className="btn-close"
-                    onClick={() => setShowCurrentMedicationModal(false)}
-                  ></button>
-                </div>
-                <div
-                  className="modal-body"
-                  style={{ overflowY: "auto", flex: "1 1 auto", maxHeight: "calc(90vh - 120px)" }}
-                >
-                  <div className="table-responsive">
-                    <table className="table table-bordered table-hover">
-                      <thead style={{ backgroundColor: "#b0c4de" }}>
-                        <tr>
-                          <th style={{ minWidth: 50 }}>Sr. No.</th>
-                          <th style={{ minWidth: 370 }}>Item Name</th>
-                          <th className="text-center" style={{ minWidth: 80 }}>
-                            Dosage
-                          </th>
-                          <th className="text-center" style={{ minWidth: 80 }}>
-                            No. Of Days
-                          </th>
-                          <th className="text-center" style={{ minWidth: 120 }}>
-                            Frequency
-                          </th>
-                          <th className="text-center" style={{ minWidth: 80 }}>
-                            Total
-                          </th>
-                          <th className="text-center" style={{ minWidth: 80 }}>
-                            Stock
-                          </th>
-                          <th style={{ minWidth: 150 }}>Prescribed By</th>
-                          <th style={{ minWidth: 150 }}>Department</th>
-                          <th className="text-center" style={{ minWidth: 120 }}>
-                            Prescribed Date
-                          </th>
-                          <th className="text-center" style={{ minWidth: 60 }}>
-                            Stop
-                          </th>
-                          <th className="text-center" style={{ minWidth: 60 }}>
-                            Repeat
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td>1</td>
-                          <td>CHOLECALCIFEROL (VITAMIN D3) 60000 IU TABLET</td>
-                          <td className="text-center">1</td>
-                          <td className="text-center">30</td>
-                          <td className="text-center">ONCE IN 7 DAYS</td>
-                          <td className="text-center">4</td>
-                          <td className="text-center">0</td>
-                          <td>Dr. M.G.Prashanth</td>
-                          <td>GENERAL MEDICINE</td>
-                          <td className="text-center">19/12/2020</td>
-                          <td className="text-center">
-                            <input type="checkbox" />
-                          </td>
-                          <td className="text-center">
-                            <input type="checkbox" />
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  <div style={{ marginTop: "15px" }}>
-                    <button className="btn btn-primary me-2">STOP</button>
-                    <button className="btn btn-primary me-2">REPEAT</button>
-                    <button className="btn btn-primary">CLOSE</button>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => setShowCurrentMedicationModal(false)}
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
         {showTreatmentAdviceModal && (
           <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
