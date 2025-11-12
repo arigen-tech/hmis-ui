@@ -651,12 +651,13 @@ const TreatmentModal = ({
             </div>
 
             {/* Treatment Table */}
-            <div className="table-responsive" style={{ overflowX: 'auto', maxWidth: '100%' }}>
-              <table className="table table-bordered" style={{ minWidth: '1200px', width: '100%' }}>
+<div className="table-responsive" style={{ overflowX: 'auto', maxWidth: '100%' }}>
+  <table className="table table-bordered" style={{ width: '100%' }}>
+
                 <thead className="table-light">
                   <tr>
                     <th style={{ minWidth: 370 }}>DRUGS NAME/DRUGS CODE</th>
-                    <th style={{ minWidth: '10px', maxWidth: '10px' }}>DISP. UNIT</th>
+                    <th style={{ minWidth: '20px', maxWidth: '20px' }}>DISP. UNIT</th>
                     <th style={{ minWidth: '12px', maxWidth: '12px' }}>DOSAGE</th>
                     <th style={{ minWidth: '90px' }}>FREQUENCY</th>
                     <th style={{ minWidth: '12px', maxWidth: '12px' }}>DAYS</th>
@@ -773,7 +774,7 @@ const TreatmentModal = ({
                           className="form-control"
                           value={row.dispUnit}
                           readOnly
-                          style={{ borderRadius: '4px', minWidth: '10px', maxWidth:'80px', backgroundColor: '#f8f9fa' }}
+                          style={{ borderRadius: '4px', minWidth: '20px', maxWidth:'80px', backgroundColor: '#f8f9fa' }}
                         />
                       </td>
 
