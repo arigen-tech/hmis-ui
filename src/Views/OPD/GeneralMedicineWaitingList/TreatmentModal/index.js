@@ -3,7 +3,7 @@ import Popup from "../../../../Components/popup";
 import ReactDOM from "react-dom"
 import LoadingScreen from "../../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../../service/apiService"
-import { MAS_FREQUENCY, MAS_DRUG_MAS, OPD_TEMPLATE, ITEM_CLASS } from "../../../../config/apiConfig";
+import { MAS_FREQUENCY, MAS_DRUG_MAS, OPD_TEMPLATE, ITEM_CLASS, DRUG_TYPE } from "../../../../config/apiConfig";
 
 // Portal Component for dropdown
 const Portal = ({ children }) => {
@@ -40,6 +40,7 @@ const TreatmentModal = ({
     instruction: "",
     stock: "",
     itemClassId: null,
+    adispQty: null,
   }])
   const [templates, setTemplates] = useState([])
   const [allDrugs, setAllDrugs] = useState([])
@@ -65,8 +66,8 @@ const TreatmentModal = ({
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!event.target.closest(".form-control") && 
-          !event.target.closest(".dropdown-list")) {
+      if (!event.target.closest(".form-control") &&
+        !event.target.closest(".dropdown-list")) {
         setDropdownVisible(false);
       }
     };
@@ -123,12 +124,13 @@ const TreatmentModal = ({
       if (response && response.response) {
         // Map API response - store BOTH the numeric ID and the string name
         const mappedDrugs = response.response.map(drug => {
-          console.log("Drug mapping:", { 
-            itemId: drug.itemId, 
-            nomenclature: drug.nomenclature, 
-            dispUnit: drug.dispUnit, 
+          console.log("Drug mapping:", {
+            itemId: drug.itemId,
+            nomenclature: drug.nomenclature,
+            dispUnit: drug.dispUnit,
             dispUnitName: drug.dispUnitName,
-            itemClassId: drug.itemClassId
+            itemClassId: drug.itemClassId,
+            adispQty: drug.adispQty
           })
           return {
             id: drug.itemId,
@@ -137,6 +139,7 @@ const TreatmentModal = ({
             dispUnitName: drug.dispUnitName,
             dispUnitId: drug.dispUnit,
             itemClassId: drug.itemClassId,
+            adispQty: drug.adispQty,
             // Keep original fields
             itemId: drug.itemId,
             nomenclature: drug.nomenclature,
@@ -202,6 +205,7 @@ const TreatmentModal = ({
           instruction: item.instruction || "",
           stock: "",
           itemClassId: drug ? drug.itemClassId : null,
+          adispQty: drug ? drug.adispQty : null,
         }
       })
       setTreatmentItems(items)
@@ -219,6 +223,7 @@ const TreatmentModal = ({
         instruction: "",
         stock: "",
         itemClassId: null,
+        adispQty: null,
       }])
       setSelectedDrugs([])
     }
@@ -239,6 +244,7 @@ const TreatmentModal = ({
       instruction: "",
       stock: "",
       itemClassId: null,
+      adispQty: null,
     }])
     setSelectedDrugs([])
     setSelectedTemplateId("")
@@ -261,6 +267,7 @@ const TreatmentModal = ({
         instruction: "",
         stock: "",
         itemClassId: null,
+        adispQty: null,
       },
     ])
   }
@@ -277,7 +284,7 @@ const TreatmentModal = ({
     }
   }
 
-  // Calculate total based on itemClassId
+  // Calculate total based on itemClassId and adispQty
   const calculateTotal = (item) => {
     if (!item.dosage || !item.days || !item.frequencyId || item.itemClassId === null) {
       return "";
@@ -293,12 +300,20 @@ const TreatmentModal = ({
     let total = 0;
 
     // Calculate total based on itemClassId
-    if (item.itemClassId === ITEM_CLASS.TABLET || item.itemClassId === ITEM_CLASS.CAPSULE) {
-      // For itemClassId 1 and 2: dosage * frequency * days
+    if (DRUG_TYPE.SOLID.includes(item.itemClassId)) {
+      // For solid types (tablets and capsules): dosage * frequency * days
       total = Math.ceil(dosage * frequencyMultiplier * days);
+    } else if (DRUG_TYPE.LIQUID.includes(item.itemClassId)) {
+      // For liquid types: (dosage * frequency * days) / adispQty (if available)
+      if (item.adispQty && item.adispQty > 0) {
+        total = Math.ceil((dosage * frequencyMultiplier * days) / item.adispQty);
+      } else {
+        // If liquid type but no adispQty, use solid calculation
+        total = Math.ceil(dosage * frequencyMultiplier * days);
+      }
     } else {
-      // For other itemClassId: (dosage * frequency * days) / 100
-      total = Math.ceil((dosage * frequencyMultiplier * days) / 100);
+      // For unknown drug types, set to 1 as safe default
+      total = 1;
     }
 
     return total.toString();
@@ -347,7 +362,8 @@ const TreatmentModal = ({
       drugName: drug.name,
       drugId: drug.id,
       dispUnit: drug.dispUnitName,
-      itemClassId: drug.itemClassId
+      itemClassId: drug.itemClassId,
+      adispQty: drug.adispQty
     };
 
     // Recalculate total after drug selection if all required fields are present
@@ -602,13 +618,6 @@ const TreatmentModal = ({
               </div>
             )}
 
-            {/* Department */}
-            <div className="row mb-3">
-              <div className="col-md-12">
-                <label className="form-label fw-bold">GENERAL MEDICINE</label>
-              </div>
-            </div>
-
             {/* Template Name and Code */}
             <div className="row mb-4">
               <div className="col-md-6">
@@ -653,7 +662,7 @@ const TreatmentModal = ({
                     <th style={{ minWidth: '80px' }}>DAYS</th>
                     <th style={{ minWidth: '80px' }}>TOTAL</th>
                     <th style={{ minWidth: '120px' }}>INSTRUCTION</th>
-                    <th style={{ minWidth: '80px' }}>STOCK</th>
+                    {/* <th style={{ minWidth: '80px' }}>STOCK</th> */}
                     <th style={{ minWidth: '60px' }}>ADD</th>
                     <th style={{ minWidth: '60px' }}>DELETE</th>
                   </tr>
@@ -677,6 +686,7 @@ const TreatmentModal = ({
                                 drugId: null,
                                 dispUnit: "",
                                 itemClassId: null,
+                                adispQty: null,
                                 total: "" // Reset total when drug is cleared
                               };
                               setTreatmentItems(newItems);
@@ -734,7 +744,7 @@ const TreatmentModal = ({
                                               marginTop: "2px",
                                             }}
                                           >
-                                            {drug.code && <span>Code: {drug.code}</span>}
+                                            
                                             {isSelectedInOtherRow && (
                                               <span className="text-success ms-2">
                                                 <i className="fas fa-check-circle me-1"></i> Added
@@ -808,7 +818,7 @@ const TreatmentModal = ({
                         />
                       </td>
 
-                      {/* Total - Auto-calculated based on itemClassId */}
+                      {/* Total - Auto-calculated based on itemClassId and adispQty */}
                       <td>
                         <input
                           type="number"
@@ -841,7 +851,7 @@ const TreatmentModal = ({
                       </td>
 
                       {/* Stock */}
-                      <td>
+                      {/* <td>
                         <input
                           type="number"
                           className="form-control"
@@ -850,7 +860,7 @@ const TreatmentModal = ({
                           placeholder="0"
                           style={{ borderRadius: '4px', minWidth: '70px' }}
                         />
-                      </td>
+                      </td> */}
 
                       {/* Add Button */}
                       <td className="text-center align-middle">
