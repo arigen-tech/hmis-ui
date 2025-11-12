@@ -36,6 +36,7 @@ const GeneralMedicineWaitingList = () => {
   const [showDetailView, setShowDetailView] = useState(false)
   const [selectedPatient, setSelectedPatient] = useState(null)
   const [showOtCalendarModal, setShowOtCalendarModal] = useState(false)
+  const [showCurrentMedicationModal, setShowCurrentMedicationModal] = useState(false)
 
   // Modal states - UPDATED
   const [showInvestigationModal, setShowInvestigationModal] = useState(false)
@@ -281,6 +282,14 @@ const GeneralMedicineWaitingList = () => {
     setTreatmentModalType("create")
   }
 
+  const handleOpenCurrentMedicationModal = () => {
+    setShowCurrentMedicationModal(true)
+  }
+
+  const handleCloseCurrentMedicationModal = () => {
+    setShowCurrentMedicationModal(false)
+  }
+
   const handleInputFocus = (event, index) => {
     const rect = event.target.getBoundingClientRect()
     setDropdownPosition({
@@ -383,8 +392,8 @@ const GeneralMedicineWaitingList = () => {
 
     const filtered = filteredInvestigationsByType
       .filter(inv =>
-        inv.investigationName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        inv.mainChargeCodeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          inv.investigationName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          inv.mainChargeCodeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         inv.subChargeCodeName?.toLowerCase().includes(searchQuery.toLowerCase())
       )
       .slice(0, 5)
@@ -1333,6 +1342,7 @@ const GeneralMedicineWaitingList = () => {
                         <input
                           type="text"
                           className="form-control"
+                          style={{ width: "200px" }}
                           value={workingDiagnosis}
                           onChange={(e) => setWorkingDiagnosis(e.target.value)}
                           placeholder="Enter working diagnosis"
@@ -1609,12 +1619,8 @@ const GeneralMedicineWaitingList = () => {
                                                   padding: "8px 12px",
                                                   transition: "background-color 0.2s",
                                                 }}
-                                                onMouseEnter={(e) =>
-                                                  (e.target.style.backgroundColor = "#e9ecef")
-                                                }
-                                                onMouseLeave={(e) =>
-                                                  (e.target.style.backgroundColor = "#f8f9fa")
-                                                }
+                                                onMouseEnter={(e) => (e.target.style.backgroundColor = "#e9ecef")}
+                                                onMouseLeave={(e) => (e.target.style.backgroundColor = "#f8f9fa")}
                                                 onClick={() => handleInvestigationSelect(index, investigation)}
                                               >
                                                 <div>
@@ -1637,9 +1643,7 @@ const GeneralMedicineWaitingList = () => {
                                           </ul>
                                         ) : (
                                           <div style={{ textAlign: "center", padding: "12px", color: "#6c757d" }}>
-                                            {item.name.trim()
-                                              ? "No investigations found"
-                                              : "Start typing to search..."}
+                                            {item.name.trim() ? "No investigations found" : "Start typing to search..."}
                                           </div>
                                         )}
                                       </div>
@@ -1714,6 +1718,9 @@ const GeneralMedicineWaitingList = () => {
                             onClick={() => handleOpenTreatmentModal("edit")}
                           >
                             Update Template
+                          </button>
+                          <button className="btn btn-primary" onClick={handleOpenCurrentMedicationModal}>
+                            Current Medication
                           </button>
                         </div>
                       </div>
@@ -2675,20 +2682,123 @@ const GeneralMedicineWaitingList = () => {
               <div className="modal-content">
                 <div className="modal-header">
                   <h5 className="modal-title">OT DASHBOARD</h5>
+                  <button type="button" className="btn-close" onClick={() => setShowOtCalendarModal(false)}></button>
+                </div>
+                <div
+                  className="modal-body"
+                  style={{ overflowY: "auto", flex: "1 1 auto", maxHeight: "calc(90vh - 120px)" }}
+                >
+                  <OTDashboard />
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowOtCalendarModal(false)}>
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showCurrentMedicationModal && (
+          <div
+            className="modal fade show"
+            style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)", zIndex: 0 }}
+            tabIndex="-1"
+            onClick={() => setShowCurrentMedicationModal(false)}
+          >
+            <div
+              className="modal-dialog modal-lg"
+              style={{
+                width: "calc(100vw - 310px)",
+                left: "285px",
+                maxWidth: "none",
+                height: "90vh",
+                margin: "5vh auto",
+                position: "fixed",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title">Current Medication</h5>
                   <button
                     type="button"
                     className="btn-close"
-                    onClick={() => setShowOtCalendarModal(false)}
+                    onClick={() => setShowCurrentMedicationModal(false)}
                   ></button>
                 </div>
-                <div className="modal-body" style={{ overflowY: "auto", flex: "1 1 auto", maxHeight: "calc(90vh - 120px)" }}>
-                  <OTDashboard />
+                <div
+                  className="modal-body"
+                  style={{ overflowY: "auto", flex: "1 1 auto", maxHeight: "calc(90vh - 120px)" }}
+                >
+                  <div className="table-responsive">
+                    <table className="table table-bordered table-hover">
+                      <thead style={{ backgroundColor: "#b0c4de" }}>
+                        <tr>
+                          <th style={{ minWidth: 50 }}>Sr. No.</th>
+                          <th style={{ minWidth: 370 }}>Item Name</th>
+                          <th className="text-center" style={{ minWidth: 80 }}>
+                            Dosage
+                          </th>
+                          <th className="text-center" style={{ minWidth: 80 }}>
+                            No. Of Days
+                          </th>
+                          <th className="text-center" style={{ minWidth: 120 }}>
+                            Frequency
+                          </th>
+                          <th className="text-center" style={{ minWidth: 80 }}>
+                            Total
+                          </th>
+                          <th className="text-center" style={{ minWidth: 80 }}>
+                            Stock
+                          </th>
+                          <th style={{ minWidth: 150 }}>Prescribed By</th>
+                          <th style={{ minWidth: 150 }}>Department</th>
+                          <th className="text-center" style={{ minWidth: 120 }}>
+                            Prescribed Date
+                          </th>
+                          <th className="text-center" style={{ minWidth: 60 }}>
+                            Stop
+                          </th>
+                          <th className="text-center" style={{ minWidth: 60 }}>
+                            Repeat
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>1</td>
+                          <td>CHOLECALCIFEROL (VITAMIN D3) 60000 IU TABLET</td>
+                          <td className="text-center">1</td>
+                          <td className="text-center">30</td>
+                          <td className="text-center">ONCE IN 7 DAYS</td>
+                          <td className="text-center">4</td>
+                          <td className="text-center">0</td>
+                          <td>Dr. M.G.Prashanth</td>
+                          <td>GENERAL MEDICINE</td>
+                          <td className="text-center">19/12/2020</td>
+                          <td className="text-center">
+                            <input type="checkbox" />
+                          </td>
+                          <td className="text-center">
+                            <input type="checkbox" />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ marginTop: "15px" }}>
+                    <button className="btn btn-primary me-2">STOP</button>
+                    <button className="btn btn-primary me-2">REPEAT</button>
+                    <button className="btn btn-primary">CLOSE</button>
+                  </div>
                 </div>
                 <div className="modal-footer">
                   <button
                     type="button"
                     className="btn btn-secondary"
-                    onClick={() => setShowOtCalendarModal(false)}
+                    onClick={() => setShowCurrentMedicationModal(false)}
                   >
                     Close
                   </button>
@@ -2704,7 +2814,11 @@ const GeneralMedicineWaitingList = () => {
               <div className="modal-content">
                 <div className="modal-header">
                   <h5 className="modal-title">TREATMENT ADVICE TEMPLATE</h5>
-                  <button type="button" className="btn-close" onClick={() => setShowTreatmentAdviceModal(false)}></button>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => setShowTreatmentAdviceModal(false)}
+                  ></button>
                 </div>
                 <div className="modal-body">
                   <div className="table-responsive">
@@ -2926,3 +3040,4 @@ const GeneralMedicineWaitingList = () => {
 }
 
 export default GeneralMedicineWaitingList
+
