@@ -815,7 +815,7 @@ const TreatmentModal = ({
                           value={row.days}
                           onChange={(e) => handleTreatmentChange(index, "days", e.target.value)}
                           placeholder="0"
-                          style={{ borderRadius: '4px', minWidth: '12px', maxWidth: '102px' }}
+                          style={{ borderRadius: '4px', minWidth: '60px', maxWidth: '60px' }}
                         />
                       </td>
 
