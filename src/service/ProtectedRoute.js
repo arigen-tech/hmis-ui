@@ -83,6 +83,7 @@ const validRoutes = [
   "/SampleMaster",
   "/PatientwiseBilldatails",
   "/ResultValidation",
+  "/UpdateResultValidation",
 ];
 
 const NotAuthorized = () => {

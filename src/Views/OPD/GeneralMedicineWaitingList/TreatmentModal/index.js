@@ -651,20 +651,21 @@ const TreatmentModal = ({
             </div>
 
             {/* Treatment Table */}
-            <div className="table-responsive" style={{ overflowX: 'auto', maxWidth: '100%' }}>
-              <table className="table table-bordered" style={{ minWidth: '1200px', width: '100%' }}>
+<div className="table-responsive" style={{ overflowX: 'auto', maxWidth: '100%' }}>
+  <table className="table table-bordered" style={{ width: '100%' }}>
+
                 <thead className="table-light">
                   <tr>
-                    <th style={{ minWidth: '200px' }}>DRUGS NAME/DRUGS CODE</th>
-                    <th style={{ minWidth: '100px' }}>DISP. UNIT</th>
-                    <th style={{ minWidth: '80px' }}>DOSAGE</th>
-                    <th style={{ minWidth: '100px' }}>FREQUENCY</th>
-                    <th style={{ minWidth: '80px' }}>DAYS</th>
+                    <th style={{ minWidth: 370 }}>DRUGS NAME/DRUGS CODE</th>
+                    <th style={{ minWidth: '74px', maxWidth: '74px' }}>DISP. UNIT</th>
+                    <th style={{ minWidth: '74px', maxWidth: '74px'  }}>DOSAGE</th>
+                    <th style={{ minWidth: '90px' }}>FREQUENCY</th>
+                    <th style={{ minWidth: '12px', maxWidth: '12px' }}>DAYS</th>
                     <th style={{ minWidth: '80px' }}>TOTAL</th>
-                    <th style={{ minWidth: '120px' }}>INSTRUCTION</th>
+                    <th style={{ minWidth: '70px' }}>INSTRUCTION</th>
                     {/* <th style={{ minWidth: '80px' }}>STOCK</th> */}
-                    <th style={{ minWidth: '60px' }}>ADD</th>
-                    <th style={{ minWidth: '60px' }}>DELETE</th>
+                    <th style={{ minWidth: '40px' }}>ADD</th>
+                    <th style={{ minWidth: '40px' }}>DELETE</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -773,7 +774,7 @@ const TreatmentModal = ({
                           className="form-control"
                           value={row.dispUnit}
                           readOnly
-                          style={{ borderRadius: '4px', minWidth: '90px', backgroundColor: '#f8f9fa' }}
+                          style={{ borderRadius: '4px', minWidth: '20px', maxWidth:'80px', backgroundColor: '#f8f9fa' }}
                         />
                       </td>
 
@@ -785,7 +786,7 @@ const TreatmentModal = ({
                           value={row.dosage}
                           onChange={(e) => handleTreatmentChange(index, "dosage", e.target.value)}
                           placeholder="1"
-                          style={{ borderRadius: '4px', minWidth: '70px' }}
+                          style={{ borderRadius: '4px', minwidth: '12px', maxWidth: '102px' }}
                         />
                       </td>
 
@@ -814,7 +815,7 @@ const TreatmentModal = ({
                           value={row.days}
                           onChange={(e) => handleTreatmentChange(index, "days", e.target.value)}
                           placeholder="0"
-                          style={{ borderRadius: '4px', minWidth: '70px' }}
+                          style={{ borderRadius: '4px', minWidth: '60px', maxWidth: '60px' }}
                         />
                       </td>
 
@@ -829,7 +830,8 @@ const TreatmentModal = ({
                           readOnly={row.drugId && row.dosage && row.days && row.frequencyId}
                           style={{
                             borderRadius: '4px',
-                            minWidth: '70px',
+                            minWidth: '20px',
+                            maxWidth: '90px',
                             backgroundColor: (row.drugId && row.dosage && row.days && row.frequencyId) ? '#f8f9fa' : 'white'
                           }}
                         />
@@ -841,7 +843,7 @@ const TreatmentModal = ({
                           className="form-select"
                           value={row.instruction}
                           onChange={(e) => handleTreatmentChange(index, "instruction", e.target.value)}
-                          style={{ borderRadius: '4px', minWidth: '110px' }}
+                          style={{ borderRadius: '4px', minWidth: '70px' }}
                         >
                           <option value="">Select Instruction...</option>
                           <option value="After Meal">After Meal</option>
