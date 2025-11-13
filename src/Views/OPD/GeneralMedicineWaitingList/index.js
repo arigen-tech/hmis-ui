@@ -231,15 +231,19 @@ const GeneralMedicineWaitingList = () => {
   const [selectedWard, setSelectedWard] = useState("CHILDREN WARD")
   const [admissionNotes, setAdmissionNotes] = useState("")
 
-  // Referral state
+  // Referral state - UPDATED
   const [referralData, setReferralData] = useState({
     isReferred: "No",
     referTo: "",
-    referralType: "Both",
+    referralType: "Internal",
     referralScope: "Internal",
     referralDate: getToday(),
     empanel: false,
     currentPriorityNo: "",
+    select: "",
+    noOfDays: "",
+    treatmentType: "OPD",
+    referredFor: "",
   })
 
   const [departmentData, setDepartmentData] = useState([
@@ -498,7 +502,7 @@ const GeneralMedicineWaitingList = () => {
     setActiveInvestigationRowIndex(null)
   }
 
-  // Referral handlers
+  // Referral handlers - UPDATED
   const handleReferralChange = (field, value) => {
     setReferralData(prev => ({
       ...prev,
@@ -2668,7 +2672,7 @@ const GeneralMedicineWaitingList = () => {
                   )}
                 </div>
 
-                {/* Referral Section */}
+                {/* Referral Section - UPDATED BASED ON SCREENSHOTS */}
                 <div className="card mb-3">
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
@@ -2727,29 +2731,65 @@ const GeneralMedicineWaitingList = () => {
                                 placeholder="Enter referral"
                               />
                             </div>
-                            <div className="col-md-2">
-                              <label className="form-label fw-bold">Both</label>
-                              <select
-                                className="form-select"
-                                value={referralData.referralType}
-                                onChange={(e) => handleReferralChange("referralType", e.target.value)}
-                              >
-                                <option value="Both">Both</option>
-                                <option value="Internal">Internal</option>
-                                <option value="External">External</option>
-                              </select>
-                            </div>
-                            <div className="col-md-2">
-                              <label className="form-label fw-bold">Internal</label>
-                              <select
-                                className="form-select"
-                                value={referralData.referralScope}
-                                onChange={(e) => handleReferralChange("referralScope", e.target.value)}
-                              >
-                                <option value="Internal">Internal</option>
-                                <option value="External">External</option>
-                              </select>
-                            </div>
+                            
+                            {/* Layout changes based on referral type */}
+                            {referralData.referralType === "Internal" && (
+                              <>
+                                <div className="col-md-2">
+                                  <label className="form-label fw-bold">Internal</label>
+                                  <div className="form-check">
+                                    <input
+                                      className="form-check-input"
+                                      type="checkbox"
+                                      checked={referralData.referralScope === "Internal"}
+                                      onChange={(e) => handleReferralChange("referralScope", e.target.checked ? "Internal" : "")}
+                                    />
+                                    <label className="form-check-label">Internal</label>
+                                  </div>
+                                </div>
+                                <div className="col-md-2">
+                                  <label className="form-label fw-bold">Empanel</label>
+                                  <div className="form-check">
+                                    <input
+                                      className="form-check-input"
+                                      type="checkbox"
+                                      checked={referralData.empanel}
+                                      onChange={(e) => handleReferralChange("empanel", e.target.checked)}
+                                    />
+                                    <label className="form-check-label">Empanel</label>
+                                  </div>
+                                </div>
+                              </>
+                            )}
+
+                            {referralData.referralType === "Both" && (
+                              <>
+                                <div className="col-md-2">
+                                  <label className="form-label fw-bold">Both</label>
+                                  <div className="d-flex flex-column">
+                                    <div className="form-check">
+                                      <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        checked={referralData.referralScope === "Internal"}
+                                        onChange={(e) => handleReferralChange("referralScope", e.target.checked ? "Internal" : "")}
+                                      />
+                                      <label className="form-check-label">Internal</label>
+                                    </div>
+                                    <div className="form-check">
+                                      <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        checked={referralData.empanel}
+                                        onChange={(e) => handleReferralChange("empanel", e.target.checked)}
+                                      />
+                                      <label className="form-check-label">Empanel</label>
+                                    </div>
+                                  </div>
+                                </div>
+                              </>
+                            )}
+
                             <div className="col-md-2">
                               <label className="form-label fw-bold">Refer Date:</label>
                               <input
@@ -2758,20 +2798,6 @@ const GeneralMedicineWaitingList = () => {
                                 value={referralData.referralDate}
                                 onChange={(e) => handleReferralChange("referralDate", e.target.value)}
                               />
-                            </div>
-                            <div className="col-md-2 d-flex align-items-end">
-                              <div className="form-check">
-                                <input
-                                  className="form-check-input"
-                                  type="checkbox"
-                                  id="empanel"
-                                  checked={referralData.empanel}
-                                  onChange={(e) => handleReferralChange("empanel", e.target.checked)}
-                                />
-                                <label className="form-check-label fw-bold" htmlFor="empanel">
-                                  Empanel
-                                </label>
-                              </div>
                             </div>
                           </>
                         )}
@@ -2788,6 +2814,53 @@ const GeneralMedicineWaitingList = () => {
                                 value={referralData.currentPriorityNo}
                                 onChange={(e) => handleReferralChange("currentPriorityNo", e.target.value)}
                                 placeholder="Enter priority no"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Additional fields for referral */}
+                          <div className="row mb-3">
+                            <div className="col-md-2">
+                              <label className="form-label fw-bold">Select</label>
+                              <select
+                                className="form-select"
+                                value={referralData.select}
+                                onChange={(e) => handleReferralChange("select", e.target.value)}
+                              >
+                                <option value="">Select...</option>
+                                <option value="Option1">Option 1</option>
+                                <option value="Option2">Option 2</option>
+                              </select>
+                            </div>
+                            <div className="col-md-2">
+                              <label className="form-label fw-bold">No. of Days</label>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={referralData.noOfDays}
+                                onChange={(e) => handleReferralChange("noOfDays", e.target.value)}
+                                placeholder="0"
+                              />
+                            </div>
+                            <div className="col-md-2">
+                              <label className="form-label fw-bold">Treatment Type *</label>
+                              <select
+                                className="form-select"
+                                value={referralData.treatmentType}
+                                onChange={(e) => handleReferralChange("treatmentType", e.target.value)}
+                              >
+                                <option value="OPD">OPD</option>
+                                <option value="IPD">IPD</option>
+                              </select>
+                            </div>
+                            <div className="col-md-2">
+                              <label className="form-label fw-bold">Referred For*</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={referralData.referredFor}
+                                onChange={(e) => handleReferralChange("referredFor", e.target.value)}
+                                placeholder="Referred for"
                               />
                             </div>
                           </div>
@@ -3296,6 +3369,7 @@ const GeneralMedicineWaitingList = () => {
                   <button className="btn btn-primary" onClick={handlePageNavigation}>
                     GO
                   </button>
+
                 </div>
               </nav>
             </div>
