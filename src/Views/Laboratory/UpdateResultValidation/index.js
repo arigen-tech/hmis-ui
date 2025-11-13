@@ -417,18 +417,26 @@ const UpdateResultValidation = () => {
                 </div>
 
                 {/* Investigations Table */}
-                <div className="table-responsive" >
-                  <table className="table table-bordered table-hover" style={{ marginBottom: "0" }}>
+                <div className="table-responsive" style={{ overflowX: "auto" }}>
+                  <table 
+                    className="table table-bordered table-hover" 
+                    style={{ 
+                      marginBottom: "0",
+                      tableLayout: "fixed",
+                      width: "100%",
+                      minWidth: "800px"
+                    }}
+                  >
                     <thead className="table-light">
                       <tr>
-                        <th style={{ width: "60px", padding: "6px 4px", textAlign: "center" }}>SI No.</th>
-                        <th style={{ width: "70px", padding: "6px 4px", textAlign: "center" }}>Diag No.</th>
-                        <th style={{ width: "150px", padding: "6px 4px" }}>Investigation</th>
-                        <th style={{ width: "65px", padding: "6px 4px" }}>Sample</th>
-                        <th style={{ width: "70px", padding: "6px 4px" }}>Result</th>
-                        <th style={{ width: "60px", padding: "6px 4px" }}>Units</th>
-                        <th style={{ width: "100px", padding: "6px 4px" }}>Normal Range</th>
-                        <th style={{ width: "100px", padding: "6px 4px" }}>Remarks</th>
+                        <th style={{ width: "60px" }}>SI No.</th>
+                        <th style={{ width: "80px" }}>Diag No.</th>
+                        <th style={{ width: "200px" }}>Investigation</th>
+                        <th style={{ width: "80px" }}>Sample</th>
+                        <th style={{ width: "80px" }}>Result</th>
+                        <th style={{ width: "60px" }}>Units</th>
+                        <th style={{ width: "120px" }}>Normal Range</th>
+                        <th style={{ width: "100px" }}>Remarks</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -437,58 +445,65 @@ const UpdateResultValidation = () => {
                           {investigation.subTests.length === 0 ? (
                             // Main investigation without sub-tests
                             <tr key={investigation.id}>
-                              <td style={{ padding: "6px 4px", textAlign: "center"}}>
+                              <td style={{ padding: "4px", textAlign: "center", width: "60px" }}>
                                 {investigation.si_no}
                               </td>
-                              <td style={{ padding: "6px 4px", textAlign: "center" }}>
+                              <td style={{ padding: "4px", textAlign: "center", width: "80px" }}>
                                 {investigation.diag_no}
                               </td>
-                              <td style={{ padding: "6px 4px" }}>
+                              <td style={{ padding: "4px", width: "200px" }}>
                                 <input
                                   type="text"
                                   className="form-control"
                                   value={investigation.investigation}
                                   readOnly
-                                  style={{  padding: "4px 6px", height: "28px" }}
+                                  style={{ border: "none", backgroundColor: "transparent", padding: "2px 4px" }}
                                 />
                               </td>
-                              <td style={{ padding: "6px 4px" }}>
+                              <td style={{ padding: "4px", width: "80px" }}>
                                 <input
                                   type="text"
                                   className="form-control"
                                   value={investigation.sample}
                                   readOnly
-                                  style={{  padding: "4px 6px", height: "28px" }}
+                                  style={{ border: "none", backgroundColor: "transparent", padding: "2px 4px" }}
                                 />
                               </td>
-                              <td style={{ padding: "6px 4px" }}>
+                              <td style={{ padding: "4px", width: "80px" }}>
                                 <input
                                   type="text"
                                   className="form-control"
                                   value={investigation.result}
                                   readOnly
-                                  style={{ padding: "4px 6px", height: "28px" }}
+                                  style={{ border: "none", backgroundColor: "transparent", padding: "2px 4px" }}
                                 />
                               </td>
-                              <td style={{ padding: "6px 4px" }}>
+                              <td style={{ padding: "4px", width: "60px" }}>
                                 <input
                                   type="text"
                                   className="form-control"
                                   value={investigation.units}
                                   readOnly
-                                  style={{  padding: "4px 6px", height: "28px" }}
+                                  style={{ border: "none", backgroundColor: "transparent", padding: "2px 4px" }}
                                 />
                               </td>
-                              <td style={{ padding: "6px 4px" }}>
+                              <td style={{ padding: "4px", width: "120px" }}>
                                 <textarea
                                   className="form-control"
-                                  rows="2"
+                                  rows="1"
                                   value={investigation.normal_range}
                                   readOnly
-                                  style={{  padding: "4px 6px", height: "28px", resize: "none" }}
+                                  style={{ 
+                                    border: "none", 
+                                    backgroundColor: "transparent", 
+                                    padding: "2px 4px",
+                                    resize: "none",
+                                    height: "auto",
+                                    minHeight: "34px"
+                                  }}
                                 ></textarea>
                               </td>
-                              <td style={{ padding: "6px 4px" }}>
+                              <td style={{ padding: "4px", width: "100px" }}>
                                 <input
                                   type="text"
                                   className="form-control"
@@ -496,7 +511,7 @@ const UpdateResultValidation = () => {
                                   onChange={(e) =>
                                     handleInvestigationChange(investigation.id, "remarks", e.target.value)
                                   }
-                                  style={{  padding: "4px 6px", height: "28px" }}
+                                  style={{ padding: "2px 4px", fontSize: "0.875rem" }}
                                 />
                               </td>
                             </tr>
@@ -505,71 +520,78 @@ const UpdateResultValidation = () => {
                             <>
                               {/* Main investigation row (header) */}
                               <tr key={investigation.id}>
-                                <td style={{ padding: "6px 4px", textAlign: "center"}}>
+                                <td style={{ padding: "4px", textAlign: "center", width: "60px" }}>
                                   {investigation.si_no}
                                 </td>
-                                <td style={{ padding: "6px 4px", textAlign: "center"}}>
+                                <td style={{ padding: "4px", textAlign: "center", width: "80px" }}>
                                   {investigation.diag_no}
                                 </td>
-                                <td colSpan="7" style={{ padding: "6px 4px" }}>
+                                <td colSpan="6" style={{ padding: "4px" }}>
                                   <strong>{investigation.investigation}</strong>
                                 </td>
                               </tr>
                               {/* Sub-test rows */}
                               {investigation.subTests.map((subTest) => (
                                 <tr key={subTest.id}>
-                                  <td style={{ padding: "6px 4px", textAlign: "center" }}>
+                                  <td style={{ padding: "4px", textAlign: "center", width: "60px" }}>
                                     {subTest.si_no}
                                   </td>
-                                  <td style={{ padding: "6px 4px", textAlign: "center" }}>
+                                  <td style={{ padding: "4px", textAlign: "center", width: "80px" }}>
                                     {subTest.diag_no}
                                   </td>
-                                  <td style={{ padding: "6px 4px" }}>
+                                  <td style={{ padding: "4px", width: "200px" }}>
                                     <input
                                       type="text"
                                       className="form-control"
                                       value={subTest.investigation}
                                       readOnly
-                                      style={{  padding: "4px 6px", height: "28px" }}
+                                      style={{ border: "none", backgroundColor: "transparent", padding: "2px 4px" }}
                                     />
                                   </td>
-                                  <td style={{ padding: "6px 4px" }}>
+                                  <td style={{ padding: "4px", width: "80px" }}>
                                     <input
                                       type="text"
                                       className="form-control"
                                       value={subTest.sample}
                                       readOnly
-                                      style={{ padding: "4px 6px", height: "28px" }}
+                                      style={{ border: "none", backgroundColor: "transparent", padding: "2px 4px" }}
                                     />
                                   </td>
-                                  <td style={{ padding: "6px 4px" }}>
+                                  <td style={{ padding: "4px", width: "80px" }}>
                                     <input
                                       type="text"
                                       className="form-control"
                                       value={subTest.result}
                                       readOnly
-                                      style={{padding: "4px 6px", height: "28px" }}
+                                      style={{ border: "none", backgroundColor: "transparent", padding: "2px 4px" }}
                                     />
                                   </td>
-                                  <td style={{ padding: "6px 4px" }}>
+                                  <td style={{ padding: "4px", width: "60px" }}>
                                     <input
                                       type="text"
                                       className="form-control"
                                       value={subTest.units}
                                       readOnly
-                                      style={{ padding: "4px 6px", height: "28px" }}
+                                      style={{ border: "none", backgroundColor: "transparent", padding: "2px 4px" }}
                                     />
                                   </td>
-                                  <td style={{ padding: "6px 4px" }}>
+                                  <td style={{ padding: "4px", width: "120px" }}>
                                     <textarea
                                       className="form-control"
-                                      rows="2"
+                                      rows="1"
                                       value={subTest.normal_range}
                                       readOnly
-                                      style={{  padding: "4px 6px", height: "28px", resize: "none" }}
+                                      style={{ 
+                                        border: "none", 
+                                        backgroundColor: "transparent", 
+                                        padding: "2px 4px",
+                                        resize: "none",
+                                        height: "auto",
+                                        minHeight: "34px"
+                                      }}
                                     ></textarea>
                                   </td>
-                                  <td style={{ padding: "6px 4px" }}>
+                                  <td style={{ padding: "4px", width: "100px" }}>
                                     <input
                                       type="text"
                                       className="form-control"
@@ -577,7 +599,7 @@ const UpdateResultValidation = () => {
                                       onChange={(e) =>
                                         handleSubTestChange(investigation.id, subTest.id, "remarks", e.target.value)
                                       }
-                                      style={{  padding: "4px 6px", height: "28px" }}
+                                      style={{ padding: "2px 4px", fontSize: "0.875rem" }}
                                     />
                                   </td>
                                 </tr>
