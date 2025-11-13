@@ -8,7 +8,6 @@ const UpdateResultValidation = () => {
   const [resultList, setResultList] = useState([])
   const [loading, setLoading] = useState(false)
   const [searchData, setSearchData] = useState({
-    barCodeSearch: "",
     patientName: "",
     mobileNo: "",
   })
@@ -26,18 +25,12 @@ const UpdateResultValidation = () => {
       order_date: "15/01/2024",
       order_no: "ORD-001",
       order_time: "09:15 AM",
-      collection_date: "15/01/2024",
-      collection_time: "10:30",
       patient_name: "John Doe",
       relation: "Self",
-      department: "Pathology",
       doctor_name: "Dr. Smith",
-      modality: "Blood Test",
-      priority: "Priority-2",
       age: "35",
       gender: "Male",
       clinical_notes: "Routine checkup",
-      validated_by: "Lab Technician",
       mobile_no: "9876543210",
       investigations: [
         {
@@ -98,18 +91,12 @@ const UpdateResultValidation = () => {
       order_date: "16/01/2024",
       order_no: "ORD-002",
       order_time: "10:45 AM",
-      collection_date: "16/01/2024",
-      collection_time: "11:15",
       patient_name: "Jane Smith",
       relation: "Self",
-      department: "Biochemistry",
       doctor_name: "Dr. Johnson",
-      modality: "Urine Test",
-      priority: "Priority-3",
       age: "28",
       gender: "Female",
       clinical_notes: "Follow-up test",
-      validated_by: "Senior Technician",
       mobile_no: "9876543211",
       investigations: [
         {
@@ -224,17 +211,13 @@ const UpdateResultValidation = () => {
   }
 
   const filteredResultList = resultList.filter((item) => {
-    const barCodeMatch =
-      searchData.barCodeSearch === "" ||
-      item.order_no.toLowerCase().includes(searchData.barCodeSearch.toLowerCase()) ||
-      item.patient_name.toLowerCase().includes(searchData.barCodeSearch.toLowerCase())
-
+   
     const patientNameMatch =
       searchData.patientName === "" || item.patient_name.toLowerCase().includes(searchData.patientName.toLowerCase())
 
     const mobileNoMatch = searchData.mobileNo === "" || (item.mobile_no && item.mobile_no.includes(searchData.mobileNo))
 
-    return barCodeMatch && patientNameMatch && mobileNoMatch
+    return  patientNameMatch && mobileNoMatch
   })
 
   const filteredTotalPages = Math.ceil(filteredResultList.length / itemsPerPage) || 1
@@ -308,12 +291,7 @@ const UpdateResultValidation = () => {
 
               <div className="card-body">
                 {/* Collection Date */}
-                <div className="row mb-3">
-                  <div className="col-md-3">
-                    <label className="form-label fw-bold">Collection Date</label>
-                    <input type="text" className="form-control" value={selectedResult.collection_date} readOnly />
-                  </div>
-                </div>
+                
 
                 {/* Patient Details */}
                 <div className="card mb-4">
@@ -386,35 +364,7 @@ const UpdateResultValidation = () => {
                   </div>
                 </div>
 
-                {/* Validation Details - ORIGINAL STATE */}
-                <div className="card mb-4">
-                  <div className="card-header bg-light">
-                    <h5 className="mb-0">VALIDATION DETAILS</h5>
-                  </div>
-                  <div className="card-body">
-                    <div className="row">
-                      <div className="col-md-3">
-                        <label className="form-label fw-bold">Date</label>
-                        <input type="text" className="form-control" value={selectedResult.collection_date} readOnly />
-                      </div>
-                      <div className="col-md-3">
-                        <label className="form-label fw-bold">Time</label>
-                        <input type="text" className="form-control" value={selectedResult.collection_time} readOnly />
-                      </div>
-                      <div className="col-md-3">
-                        <label className="form-label fw-bold">
-                          Validated By <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedResult.validated_by}
-                          onChange={(e) => setSelectedResult({ ...selectedResult, validated_by: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+            
 
                 {/* Investigations Table */}
                 <div className="table-responsive" style={{ overflowX: "auto" }}>
@@ -659,17 +609,7 @@ const UpdateResultValidation = () => {
                     <div className="card-body">
                       <form>
                         <div className="row g-4 align-items-end">
-                          <div className="col-md-3">
-                            <label className="form-label">Bar Code Search</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id="barCodeSearch"
-                              placeholder="Enter bar code"
-                              value={searchData.barCodeSearch}
-                              onChange={handleSearchChange}
-                            />
-                          </div>
+                          
                           <div className="col-md-3">
                             <label className="form-label">Patient Name</label>
                             <input
@@ -701,7 +641,6 @@ const UpdateResultValidation = () => {
                               className="btn btn-secondary"
                               onClick={() => {
                                 setSearchData({
-                                  barCodeSearch: "",
                                   patientName: "",
                                   mobileNo: "",
                                 })
@@ -729,14 +668,10 @@ const UpdateResultValidation = () => {
                         <tr>
                           <th>Order Date</th>
                           <th>Order No.</th>
-                          <th>Collection Date</th>
-                          <th>Collection Time</th>
                           <th>Patient Name</th>
+                          <th>Mobile No</th>
                           <th>Relation</th>
-                          <th>Department Name</th>
                           <th>Doctor Name</th>
-                          <th>Modality</th>
-                          <th>Priority</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -750,16 +685,11 @@ const UpdateResultValidation = () => {
                             >
                               <td>{item.order_date}</td>
                               <td>{item.order_no}</td>
-                              <td>{item.collection_date}</td>
-                              <td>{item.collection_time}</td>
                               <td>{item.patient_name}</td>
+                            <td>{item.mobile_no}</td>
                               <td>{item.relation}</td>
-                              <td>{item.department}</td>
                               <td>{item.doctor_name}</td>
-                              <td>{item.modality}</td>
-                              <td>
-                                <span className={`badge ${getPriorityColor(item.priority)}`}>{item.priority}</span>
-                              </td>
+                             
                             </tr>
                           ))
                         ) : (
