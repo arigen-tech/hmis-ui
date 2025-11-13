@@ -197,18 +197,7 @@ const UpdateResultValidation = () => {
     }
   }
 
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case "Priority-1":
-        return "bg-danger text-white"
-      case "Priority-2":
-        return "bg-warning text-dark"
-      case "Priority-3":
-        return "bg-success text-white"
-      default:
-        return "bg-secondary text-white"
-    }
-  }
+  
 
   const filteredResultList = resultList.filter((item) => {
    
@@ -322,10 +311,7 @@ const UpdateResultValidation = () => {
                         <label className="form-label fw-bold">Mobile No.</label>
                         <input type="text" className="form-control" value={selectedResult.mobile_no} readOnly />
                       </div>
-                      <div className="col-md-4">
-                        <label className="form-label fw-bold">Department</label>
-                        <input type="text" className="form-control" value={selectedResult.department} readOnly />
-                      </div>
+                      
                     </div>
                     <div className="row mt-3">
                       <div className="col-12">
@@ -654,12 +640,7 @@ const UpdateResultValidation = () => {
                     </div>
                   </div>
 
-                  {/* Priority Legend */}
-                  <div className="d-flex mb-3">
-                    <span className="badge bg-danger me-2">Priority-1</span>
-                    <span className="badge bg-warning text-dark me-2">Priority-2</span>
-                    <span className="badge bg-success">Priority-3</span>
-                  </div>
+                 
 
                   {/* Table */}
                   <div className="table-responsive packagelist">
