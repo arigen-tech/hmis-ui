@@ -1748,6 +1748,9 @@ const GeneralMedicineWaitingList = () => {
                               <th className="text-center" style={{ minWidth: 10 }}>
                                 Instruction
                               </th>
+                              <th className="text-center" style={{ minWidth: 85 }}>
+                                Stock
+                              </th>
                               <th className="text-center" style={{ minWidth: 10 }}>
                                 Add
                               </th>
@@ -1836,6 +1839,15 @@ const GeneralMedicineWaitingList = () => {
                                     <option value="After Meal">After Meal</option>
                                     <option value="Before Meal">Before Meal</option>
                                   </select>
+                                </td>
+
+                                 <td>
+                                  <input
+                                    type="number"
+                                    className="form-control"
+                                    style={{ fontSize: "0.875rem" }}
+                                    placeholder="0"
+                                  />
                                 </td>
 
                                 <td className="text-center">
