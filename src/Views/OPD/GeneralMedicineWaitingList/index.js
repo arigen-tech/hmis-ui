@@ -231,6 +231,26 @@ const GeneralMedicineWaitingList = () => {
   const [selectedWard, setSelectedWard] = useState("CHILDREN WARD")
   const [admissionNotes, setAdmissionNotes] = useState("")
 
+  // Referral state
+  const [referralData, setReferralData] = useState({
+    isReferred: "No",
+    referTo: "",
+    referralType: "Both",
+    referralScope: "Internal",
+    referralDate: getToday(),
+    empanel: false,
+    currentPriorityNo: "",
+  })
+
+  const [departmentData, setDepartmentData] = useState([
+    {
+      selected: false,
+      doctor: "Select",
+    }
+  ])
+
+  const [referralNotes, setReferralNotes] = useState("")
+
   const wardData = {
     "CHILDREN WARD": { occupied: 0, vacant: 20 },
     "GENERAL WARD": { occupied: 5, vacant: 15 },
@@ -476,6 +496,39 @@ const GeneralMedicineWaitingList = () => {
     }
     setInvestigationItems(newItems)
     setActiveInvestigationRowIndex(null)
+  }
+
+  // Referral handlers
+  const handleReferralChange = (field, value) => {
+    setReferralData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleDepartmentChange = (index, field, value) => {
+    const newData = [...departmentData]
+    newData[index] = {
+      ...newData[index],
+      [field]: value
+    }
+    setDepartmentData(newData)
+  }
+
+  const handleAddDepartment = () => {
+    setDepartmentData([
+      ...departmentData,
+      {
+        selected: false,
+        doctor: "Select",
+      }
+    ])
+  }
+
+  const handleRemoveDepartment = (index) => {
+    if (departmentData.length === 1) return
+    const newData = departmentData.filter((_, i) => i !== index)
+    setDepartmentData(newData)
   }
 
   // ADD THESE USEEFFECT HOOKS
@@ -2615,7 +2668,210 @@ const GeneralMedicineWaitingList = () => {
                   )}
                 </div>
 
-                {["referral", "followUp", "doctorRemark"].map((section) => (
+                {/* Referral Section */}
+                <div className="card mb-3">
+                  <div
+                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("referral")}
+                  >
+                    <h6 className="mb-0 fw-bold">Referral</h6>
+                    <span style={{ fontSize: "18px" }}>{expandedSections.referral ? "−" : "+"}</span>
+                  </div>
+                  {expandedSections.referral && (
+                    <div className="card-body">
+                      <div className="row mb-3">
+                        <div className="col-md-2">
+                          <label className="form-label fw-bold">Referral</label>
+                          <div className="d-flex gap-3">
+                            <div className="form-check">
+                              <input
+                                className="form-check-input"
+                                type="radio"
+                                name="isReferred"
+                                id="referralNo"
+                                value="No"
+                                checked={referralData.isReferred === "No"}
+                                onChange={(e) => handleReferralChange("isReferred", e.target.value)}
+                              />
+                              <label className="form-check-label" htmlFor="referralNo">
+                                No
+                              </label>
+                            </div>
+                            <div className="form-check">
+                              <input
+                                className="form-check-input"
+                                type="radio"
+                                name="isReferred"
+                                id="referralYes"
+                                value="Yes"
+                                checked={referralData.isReferred === "Yes"}
+                                onChange={(e) => handleReferralChange("isReferred", e.target.value)}
+                              />
+                              <label className="form-check-label" htmlFor="referralYes">
+                                Yes
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+
+                        {referralData.isReferred === "Yes" && (
+                          <>
+                            <div className="col-md-2">
+                              <label className="form-label fw-bold">Refer To</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={referralData.referTo}
+                                onChange={(e) => handleReferralChange("referTo", e.target.value)}
+                                placeholder="Enter referral"
+                              />
+                            </div>
+                            <div className="col-md-2">
+                              <label className="form-label fw-bold">Both</label>
+                              <select
+                                className="form-select"
+                                value={referralData.referralType}
+                                onChange={(e) => handleReferralChange("referralType", e.target.value)}
+                              >
+                                <option value="Both">Both</option>
+                                <option value="Internal">Internal</option>
+                                <option value="External">External</option>
+                              </select>
+                            </div>
+                            <div className="col-md-2">
+                              <label className="form-label fw-bold">Internal</label>
+                              <select
+                                className="form-select"
+                                value={referralData.referralScope}
+                                onChange={(e) => handleReferralChange("referralScope", e.target.value)}
+                              >
+                                <option value="Internal">Internal</option>
+                                <option value="External">External</option>
+                              </select>
+                            </div>
+                            <div className="col-md-2">
+                              <label className="form-label fw-bold">Refer Date:</label>
+                              <input
+                                type="date"
+                                className="form-control"
+                                value={referralData.referralDate}
+                                onChange={(e) => handleReferralChange("referralDate", e.target.value)}
+                              />
+                            </div>
+                            <div className="col-md-2 d-flex align-items-end">
+                              <div className="form-check">
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  id="empanel"
+                                  checked={referralData.empanel}
+                                  onChange={(e) => handleReferralChange("empanel", e.target.checked)}
+                                />
+                                <label className="form-check-label fw-bold" htmlFor="empanel">
+                                  Empanel
+                                </label>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {referralData.isReferred === "Yes" && (
+                        <>
+                          <div className="row mb-3">
+                            <div className="col-md-2">
+                              <label className="form-label fw-bold">Current Priority No.</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={referralData.currentPriorityNo}
+                                onChange={(e) => handleReferralChange("currentPriorityNo", e.target.value)}
+                                placeholder="Enter priority no"
+                              />
+                            </div>
+                          </div>
+
+                          <hr className="my-4" />
+
+                          <div className="row mb-3">
+                            <div className="col-12">
+                              <h6 className="fw-bold mb-3">Department</h6>
+                              <div className="table-responsive">
+                                <table className="table table-bordered">
+                                  <thead style={{ backgroundColor: "#b0c4de" }}>
+                                    <tr>
+                                      <th style={{ width: "10%" }}>Select</th>
+                                      <th style={{ width: "70%" }}>Doctor</th>
+                                      <th style={{ width: "10%" }}>Add</th>
+                                      <th style={{ width: "10%" }}>Delete</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {departmentData.map((item, index) => (
+                                      <tr key={index}>
+                                        <td className="text-center">
+                                          <input
+                                            type="checkbox"
+                                            className="form-check-input"
+                                            checked={item.selected}
+                                            onChange={(e) => handleDepartmentChange(index, "selected", e.target.checked)}
+                                          />
+                                        </td>
+                                        <td>
+                                          <select
+                                            className="form-select"
+                                            value={item.doctor}
+                                            onChange={(e) => handleDepartmentChange(index, "doctor", e.target.value)}
+                                          >
+                                            <option value="Select">Select</option>
+                                            <option value="Dr. Smith">Dr. Smith</option>
+                                            <option value="Dr. Johnson">Dr. Johnson</option>
+                                            <option value="Dr. Williams">Dr. Williams</option>
+                                            <option value="Dr. Brown">Dr. Brown</option>
+                                          </select>
+                                        </td>
+                                        <td className="text-center">
+                                          <button className="btn btn-sm btn-success" onClick={handleAddDepartment}>
+                                            +
+                                          </button>
+                                        </td>
+                                        <td className="text-center">
+                                          <button
+                                            className="btn btn-sm btn-danger"
+                                            onClick={() => handleRemoveDepartment(index)}
+                                            disabled={departmentData.length === 1}
+                                          >
+                                            −
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="row">
+                            <div className="col-12">
+                              <h6 className="fw-bold mb-3">Referral Notes</h6>
+                              <textarea
+                                className="form-control"
+                                rows={4}
+                                value={referralNotes}
+                                onChange={(e) => setReferralNotes(e.target.value)}
+                                placeholder="Enter referral notes"
+                              ></textarea>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {["followUp", "doctorRemark"].map((section) => (
                   <div key={section} className="card mb-3">
                     <div
                       className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
@@ -3051,4 +3307,3 @@ const GeneralMedicineWaitingList = () => {
 }
 
 export default GeneralMedicineWaitingList
-
