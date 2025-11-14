@@ -77,6 +77,7 @@ import SampleMaster from './Views/Masters/SampleMaster';
 import PatientwiseBilldatails from './Views/Masters/PatientwiseBilldatails';
 import ResultValidation from './Views/Laboratory/ResultValidation';
 import UpdateResultValidation from './Views/Laboratory/UpdateResultValidation';
+import OpdRRecallPatient from './Views/OPD/OpdRecallPatient';
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -189,6 +190,7 @@ function App() {
                 <Route path="PatientwiseBilldatails" element={<PatientwiseBilldatails/>} />
                 <Route path="ResultValidation" element={<ResultValidation/>} />
                 <Route path="UpdateResultValidation" element={<UpdateResultValidation/>} />
+                <Route path="OpdRecallPatient" element={<OpdRRecallPatient />} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
