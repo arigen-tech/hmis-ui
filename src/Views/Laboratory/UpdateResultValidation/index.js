@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react"
-import { getRequest, postRequest } from "../../../service/apiService"
+import React, { useState, useEffect } from "react"
+import { getRequest, putRequest } from "../../../service/apiService"
 import { LAB } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
 
 const UpdateResultValidation = () => {
   const [resultList, setResultList] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [searchData, setSearchData] = useState({
     patientName: "",
     mobileNo: "",
@@ -18,112 +18,221 @@ const UpdateResultValidation = () => {
   const [showDetailView, setShowDetailView] = useState(false)
   const itemsPerPage = 5
 
-  // Mock data for demonstration
-  const mockValidationData = [
-    {
-      id: 1,
-      order_date: "15/01/2024",
-      order_no: "ORD-001",
-      order_time: "09:15 AM",
-      patient_name: "John Doe",
-      relation: "Self",
-      doctor_name: "Dr. Smith",
-      age: "35",
-      gender: "Male",
-      clinical_notes: "Routine checkup",
-      mobile_no: "9876543210",
-      investigations: [
-        {
-          id: 1,
-          si_no: 1,
-          diag_no: "D001",
-          investigation: "Complete Blood Count",
-          sample: "Blood",
-          result: "Normal",
-          units: "-",
-          normal_range: "Normal",
-          remarks: "",
-          reject: false,
-          subTests: [
-            {
-              id: "1.1",
-              si_no: "",
-              diag_no: "---",
-              investigation: "Hemoglobin",
-              sample: "Blood",
-              result: "14.2",
-              units: "g/dL",
-              normal_range: "13.5-17.5",
-              remarks: "",
-              reject: false,
-            },
-            {
-              id: "1.2",
-              si_no: "1.b",
-              diag_no: "---",
-              investigation: "WBC Count",
-              sample: "Blood",
-              result: "7,500",
-              units: "cells/μL",
-              normal_range: "4,500-11,000",
-              remarks: "",
-              reject: false,
-            },
-          ],
-        },
-        {
-          id: 2,
-          si_no: 2,
-          diag_no: "D002",
-          investigation: "Blood Glucose",
-          sample: "Blood",
-          result: "95",
-          units: "mg/dL",
-          normal_range: "70-110",
-          remarks: "",
-          reject: false,
-          subTests: [],
-        },
-      ],
-    },
-    {
-      id: 2,
-      order_date: "16/01/2024",
-      order_no: "ORD-002",
-      order_time: "10:45 AM",
-      patient_name: "Jane Smith",
-      relation: "Self",
-      doctor_name: "Dr. Johnson",
-      age: "28",
-      gender: "Female",
-      clinical_notes: "Follow-up test",
-      mobile_no: "9876543211",
-      investigations: [
-        {
-          id: 1,
-          si_no: 1,
-          diag_no: "D003",
-          investigation: "Urine Analysis",
-          sample: "Urine",
-          result: "Clear",
-          units: "-",
-          normal_range: "Clear",
-          remarks: "",
-          reject: false,
-          subTests: [],
-        },
-      ],
-    },
-  ]
-
+  // Fetch update results data
   useEffect(() => {
-    // Simulate API call with mock data
-    setLoading(true)
-    setTimeout(() => {
-      setResultList(mockValidationData)
-      setLoading(false)
-    }, 1000)
+    fetchUpdateResults()
   }, [])
+
+  const fetchUpdateResults = async () => {
+    try {
+      setLoading(true);
+      const data = await getRequest(`${LAB}/getUpdate`);
+
+      if (data.status === 200 && data.response) {
+        const formattedData = formatUpdateData(data.response);
+        setResultList(formattedData);
+      } else {
+        console.error('Error fetching update results:', data.message);
+        showPopup('Failed to load update results', 'error')
+      }
+    } catch (error) {
+      console.error('Error fetching update results:', error);
+      showPopup('Error fetching update results', 'error')
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatUpdateData = (apiData) => {
+    // Group by orderHdId to merge multiple headers
+    const orderMap = new Map();
+
+    apiData.forEach((order) => {
+      const orderHdId = order.orderHdId;
+      
+      if (!orderMap.has(orderHdId)) {
+        // Create base order object
+        orderMap.set(orderHdId, {
+          id: orderHdId,
+          orderHdId: orderHdId,
+          order_date: formatDate(order.orderDate),
+          order_no: order.orderNo,
+          order_time: formatTime(order.orderTime),
+          patient_name: order.patientName || '',
+          relation: order.relation || '',
+          age: order.patientAge || '',
+          gender: order.patientGender || '',
+          clinical_notes: "",
+          mobile_no: order.patientPhnNum || '',
+          patientId: order.patientId || 0,
+          doctor_name: '',
+          headers: [] // Store all headers for this order
+        });
+      }
+
+      // Add all headers for this order
+      const currentOrder = orderMap.get(orderHdId);
+      if (order.resultEntryUpdateHeaderResponses) {
+        order.resultEntryUpdateHeaderResponses.forEach((header) => {
+          currentOrder.headers.push({
+            resultEntryHeaderId: header.resultEntryHeaderId,
+            investigations: header.resultEntryUpdateInvestigationResponseList ? 
+              header.resultEntryUpdateInvestigationResponseList.map((inv, invIndex) => {
+                const hasSubTests = inv.entryUpdateSubInvestigationResponses && inv.entryUpdateSubInvestigationResponses.length > 0;
+
+                if (hasSubTests) {
+                  return {
+                    id: `${header.resultEntryHeaderId}-${invIndex + 1}`,
+                    original_si_no: invIndex + 1,
+                    resultEntryDetailsId: inv.resultEntryDetailsId,
+                    diag_no: inv.diagNo || '',
+                    investigation: inv.investigationName || '',
+                    sample: inv.sampleName || '',
+                    result: inv.result || "",
+                    units: inv.unit || '',
+                    normal_range: inv.normalValue || '',
+                    remarks: inv.remarks || "",
+                    inRange: inv.inRange !== undefined ? inv.inRange : null,
+                    comparisonType: inv.comparisonType || "",
+                    fixedId: inv.fixedId || null,
+                    fixedDropdownValues: inv.fixedDropdownValues || [],
+                    headerId: header.resultEntryHeaderId,
+                    subTests: inv.entryUpdateSubInvestigationResponses.map((subTest, subIndex) => ({
+                      id: `${header.resultEntryHeaderId}-${invIndex + 1}.${subIndex + 1}`,
+                      original_si_no: getSubTestNumber(invIndex + 1, subIndex, inv.entryUpdateSubInvestigationResponses.length),
+                      resultEntryDetailsId: subTest.resultEntryDetailsId,
+                      diag_no: "---",
+                      investigation: subTest.subInvestigationName || '',
+                      sample: subTest.sampleName || '',
+                      result: subTest.result || "",
+                      units: subTest.unit || '',
+                      normal_range: subTest.normalValue || '',
+                      remarks: subTest.remarks || "",
+                      inRange: subTest.inRange !== undefined ? subTest.inRange : null,
+                      comparisonType: subTest.comparisonType || "",
+                      fixedId: subTest.fixedId || null,
+                      fixedDropdownValues: subTest.fixedDropdownValues || [],
+                      headerId: header.resultEntryHeaderId,
+                    }))
+                  };
+                } else {
+                  return {
+                    id: `${header.resultEntryHeaderId}-${invIndex + 1}`,
+                    original_si_no: invIndex + 1,
+                    resultEntryDetailsId: inv.resultEntryDetailsId,
+                    diag_no: inv.diagNo || '',
+                    investigation: inv.investigationName || '',
+                    sample: inv.sampleName || '',
+                    result: inv.result || "",
+                    units: inv.unit || '',
+                    normal_range: inv.normalValue || '',
+                    remarks: inv.remarks || "",
+                    inRange: inv.inRange !== undefined ? inv.inRange : null,
+                    comparisonType: inv.comparisonType || "",
+                    fixedId: inv.fixedId || null,
+                    fixedDropdownValues: inv.fixedDropdownValues || [],
+                    headerId: header.resultEntryHeaderId,
+                    subTests: []
+                  };
+                }
+              }) : []
+          });
+        });
+      }
+    });
+
+    // Convert map to array and flatten investigations for display
+    return Array.from(orderMap.values()).map(order => ({
+      ...order,
+      // For list view, we just need basic info
+      investigationCount: order.headers.reduce((count, header) => 
+        count + (header.investigations ? header.investigations.length : 0), 0
+      ),
+      headerCount: order.headers.length
+    }));
+  }
+
+  // Helper functions for formatting
+  const getSubTestNumber = (mainIndex, subIndex, totalSubTests) => {
+    if (totalSubTests === 1) {
+      return "";
+    } else {
+      return `${mainIndex}.${String.fromCharCode(97 + subIndex)}`;
+    }
+  }
+
+  // New function to generate sequential serial numbers
+  const generateSequentialSerialNumbers = (investigations) => {
+    let mainCounter = 1;
+    let processedInvestigations = [];
+    
+    investigations.forEach((investigation) => {
+      if (investigation.subTests.length === 0) {
+        // Single investigation without sub-tests
+        processedInvestigations.push({
+          ...investigation,
+          si_no: mainCounter.toString(),
+          displayType: 'single'
+        });
+        mainCounter++;
+      } else {
+        // Investigation with sub-tests
+        // Add main investigation row
+        processedInvestigations.push({
+          ...investigation,
+          si_no: mainCounter.toString(),
+          displayType: 'main',
+          isHeader: true
+        });
+        
+        // Add sub-tests with proper numbering
+        investigation.subTests.forEach((subTest, subIndex) => {
+          const subTestNumber = investigation.subTests.length === 1 ? 
+            "" : 
+            `${mainCounter}.${String.fromCharCode(97 + subIndex)}`;
+          
+          processedInvestigations.push({
+            ...subTest,
+            si_no: subTestNumber,
+            displayType: 'subtest',
+            parentId: investigation.id
+          });
+        });
+        
+        mainCounter++;
+      }
+    });
+    
+    return processedInvestigations;
+  }
+
+  const formatDate = (dateString) => {
+    if (!dateString) return new Date().toLocaleDateString('en-GB');
+    try {
+      if (typeof dateString === 'string') {
+        const date = new Date(dateString);
+        return isNaN(date.getTime()) ? new Date().toLocaleDateString('en-GB') : date.toLocaleDateString('en-GB');
+      }
+      return new Date().toLocaleDateString('en-GB');
+    } catch (error) {
+      return new Date().toLocaleDateString('en-GB');
+    }
+  }
+
+  const formatTime = (timeValue) => {
+    if (!timeValue) return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    try {
+      if (typeof timeValue === 'string') {
+        const timeParts = timeValue.split(':');
+        if (timeParts.length >= 2) {
+          return `${timeParts[0].padStart(2, '0')}:${timeParts[1].padStart(2, '0')}`;
+        }
+      }
+      return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    } catch (error) {
+      return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+  }
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -135,39 +244,26 @@ const UpdateResultValidation = () => {
     })
   }
 
-  const handleSearchChange = (e) => {
-    const { id, value } = e.target
-    setSearchData((prevData) => ({ ...prevData, [id]: value }))
-    setCurrentPage(1)
-  }
-
-  const handleRowClick = (result) => {
-    setSelectedResult(result)
-    setShowDetailView(true)
-  }
-
-  const handleBackToList = () => {
-    setShowDetailView(false)
-    setSelectedResult(null)
-  }
-
-  const handleInvestigationChange = (investigationId, field, value) => {
-    if (selectedResult) {
-      const updatedInvestigations = selectedResult.investigations.map((inv) =>
-        inv.id === investigationId ? { ...inv, [field]: value } : inv,
-      )
-      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
+  // Get result text style based on inRange value
+  const getResultTextStyle = (inRange) => {
+    if (inRange === true) {
+      return { fontWeight: 'bold', color: 'green' };
+    } else if (inRange === false) {
+      return { fontWeight: 'bold', color: 'red' };
     }
+    return {}; // Default style for null or undefined
   }
 
-  const handleSubTestChange = (investigationId, subTestId, field, value) => {
+  // FIXED: Handle result change for main investigations
+  const handleResultChange = (investigationId, value, selectedFixedId = null) => {
     if (selectedResult) {
       const updatedInvestigations = selectedResult.investigations.map((inv) => {
         if (inv.id === investigationId) {
-          const updatedSubTests = inv.subTests.map((subTest) =>
-            subTest.id === subTestId ? { ...subTest, [field]: value } : subTest,
-          )
-          return { ...inv, subTests: updatedSubTests }
+          return {
+            ...inv,
+            result: value,
+            fixedId: selectedFixedId !== undefined ? selectedFixedId : inv.fixedId
+          }
         }
         return inv
       })
@@ -175,38 +271,239 @@ const UpdateResultValidation = () => {
     }
   }
 
-  const handleValidate = async () => {
-    try {
-      setLoading(true)
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      showPopup("Results validated successfully!", "success")
-      setShowDetailView(false)
-      setSelectedResult(null)
-    } catch (error) {
-      showPopup("Error validating results", "error")
-    } finally {
-      setLoading(false)
+  // FIXED: Handle result change for sub-tests
+  const handleSubTestResultChange = (subTestId, value, selectedFixedId = null) => {
+    if (selectedResult) {
+      const updatedInvestigations = selectedResult.investigations.map((inv) => {
+        if (inv.displayType === 'subtest' && inv.id === subTestId) {
+          return {
+            ...inv,
+            result: value,
+            fixedId: selectedFixedId !== undefined ? selectedFixedId : inv.fixedId
+          }
+        }
+        return inv
+      })
+      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
     }
   }
+
+  // FIXED: Handle remarks change for main investigations
+  const handleRemarksChange = (investigationId, value) => {
+    if (selectedResult) {
+      const updatedInvestigations = selectedResult.investigations.map((inv) => {
+        if (inv.id === investigationId) {
+          return {
+            ...inv,
+            remarks: value
+          }
+        }
+        return inv
+      })
+      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
+    }
+  }
+
+  // FIXED: Handle remarks change for sub-tests
+  const handleSubTestRemarksChange = (subTestId, value) => {
+    if (selectedResult) {
+      const updatedInvestigations = selectedResult.investigations.map((inv) => {
+        if (inv.displayType === 'subtest' && inv.id === subTestId) {
+          return {
+            ...inv,
+            remarks: value
+          }
+        }
+        return inv
+      })
+      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
+    }
+  }
+
+  // Render result input field with proper fixedId handling and inRange styling
+  const renderResultInput = (test) => {
+    const resultStyle = getResultTextStyle(test.inRange);
+
+    if (test.comparisonType === 'f' && test.fixedDropdownValues && test.fixedDropdownValues.length > 0) {
+      return (
+        <div>
+          <select
+            className="form-select"
+            value={test.fixedId || ""}
+            onChange={(e) => {
+              const selectedFixedId = e.target.value ? parseInt(e.target.value) : null;
+              const selectedOption = test.fixedDropdownValues.find(opt => opt.fixedId === selectedFixedId);
+              const resultValue = selectedOption ? selectedOption.fixedValue : "";
+
+              if (test.displayType === 'subtest') {
+                handleSubTestResultChange(test.id, resultValue, selectedFixedId);
+              } else {
+                handleResultChange(test.id, resultValue, selectedFixedId);
+              }
+            }}
+            style={resultStyle}
+          >
+            <option value="">Select Result</option>
+            {test.fixedDropdownValues.map((option) => (
+              <option
+                key={option.fixedId}
+                value={option.fixedId}
+              >
+                {option.fixedValue}
+              </option>
+            ))}
+          </select>
+        </div>
+      )
+    } else {
+      return (
+        <input
+          type="text"
+          className="form-control"
+          value={test.result}
+          onChange={(e) => {
+            if (test.displayType === 'subtest') {
+              handleSubTestResultChange(test.id, e.target.value, null);
+            } else {
+              handleResultChange(test.id, e.target.value, null);
+            }
+          }}
+          placeholder="Enter result"
+          style={resultStyle}
+        />
+      )
+    }
+  }
+
+  // Render remarks input field
+  const renderRemarksInput = (test) => {
+    return (
+      <input
+        type="text"
+        className="form-control"
+        value={test.remarks}
+        onChange={(e) => {
+          if (test.displayType === 'subtest') {
+            handleSubTestRemarksChange(test.id, e.target.value);
+          } else {
+            handleRemarksChange(test.id, e.target.value);
+          }
+        }}
+        placeholder="Enter remarks"
+        style={{ padding: "2px 4px", fontSize: "0.875rem" }}
+      />
+    )
+  }
+
+  const handleSearchChange = (e) => {
+    const { id, value } = e.target
+    setSearchData((prevData) => ({ ...prevData, [id]: value }))
+    setCurrentPage(1)
+  }
+
+  const handleRowClick = (result) => {
+    // When clicking a row, combine all investigations from all headers
+    const allInvestigations = result.headers.flatMap(header => header.investigations);
+    
+    // Generate sequential serial numbers for all investigations
+    const investigationsWithSequentialNumbers = generateSequentialSerialNumbers(allInvestigations);
+    
+    setSelectedResult({
+      ...result,
+      investigations: investigationsWithSequentialNumbers
+    });
+    setShowDetailView(true);
+  }
+
+  const handleBackToList = () => {
+    setShowDetailView(false)
+    setSelectedResult(null)
+  }
+
+  // UPDATED: Handle Update based on your service implementation
+  const handleUpdate = async () => {
+    if (!selectedResult) return;
+
+    setLoading(true);
+
+    try {
+      // Prepare update payload for all headers
+      const updatePromises = selectedResult.headers.map(header => {
+        const headerInvestigations = selectedResult.investigations.filter(inv => 
+          inv.headerId === header.resultEntryHeaderId && inv.displayType !== 'main'
+        );
+
+        const resultUpdateDetailRequests = [];
+
+        headerInvestigations.forEach(inv => {
+          if (inv.displayType === 'subtest' || inv.displayType === 'single') {
+            resultUpdateDetailRequests.push({
+              resultEntryDetailsId: inv.resultEntryDetailsId,
+              result: inv.result || "",
+              remarks: inv.remarks || "",
+              fixedId: inv.fixedId || null,
+              comparisonType: inv.comparisonType || ""
+            });
+          }
+        });
+
+        // Create payload according to your API structure
+        const requestPayload = {
+          orderHdId: selectedResult.orderHdId,
+          resultEntryHeaderId: header.resultEntryHeaderId,
+          resultUpdateDetailRequests: resultUpdateDetailRequests
+        };
+
+        console.log("Submitting update request for header:", header.resultEntryHeaderId, requestPayload);
+
+        // Call update API for each header
+        return putRequest(`${LAB}/update`, requestPayload);
+      });
+
+      const responses = await Promise.all(updatePromises);
+      const allSuccess = responses.every(response => response.status === 200);
+
+      if (allSuccess) {
+        showPopup("All results updated successfully!", "success");
+        await fetchUpdateResults();
+        setShowDetailView(false);
+        setSelectedResult(null);
+      } else {
+        const errorMessages = responses
+          .filter(response => response.status !== 200)
+          .map(response => response.message)
+          .join(', ');
+        showPopup(`Some results failed to update: ${errorMessages}`, "error");
+      }
+    } catch (error) {
+      console.error("Error submitting update:", error);
+      showPopup("Error submitting update: " + (error.message || "Unknown error"), "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleReset = () => {
     if (selectedResult) {
       const originalResult = resultList.find((r) => r.id === selectedResult.id)
-      setSelectedResult({ ...originalResult })
+      if (originalResult) {
+        const allInvestigations = originalResult.headers.flatMap(header => header.investigations);
+        const investigationsWithSequentialNumbers = generateSequentialSerialNumbers(allInvestigations);
+        setSelectedResult({
+          ...originalResult,
+          investigations: investigationsWithSequentialNumbers
+        });
+      }
     }
   }
 
-  
-
   const filteredResultList = resultList.filter((item) => {
-   
     const patientNameMatch =
       searchData.patientName === "" || item.patient_name.toLowerCase().includes(searchData.patientName.toLowerCase())
 
     const mobileNoMatch = searchData.mobileNo === "" || (item.mobile_no && item.mobile_no.includes(searchData.mobileNo))
 
-    return  patientNameMatch && mobileNoMatch
+    return patientNameMatch && mobileNoMatch
   })
 
   const filteredTotalPages = Math.ceil(filteredResultList.length / itemsPerPage) || 1
@@ -271,7 +568,7 @@ const UpdateResultValidation = () => {
             <div className="card form-card">
               <div className="card-header">
                 <div className="d-flex justify-content-between align-items-center">
-                  <h4 className="card-title p-2">RESULT VALIDATION</h4>
+                  <h4 className="card-title p-2">UPDATE RESULT ENTRY</h4>
                   <button className="btn btn-secondary" onClick={handleBackToList}>
                     <i className="mdi mdi-arrow-left"></i> Back to List
                   </button>
@@ -279,9 +576,6 @@ const UpdateResultValidation = () => {
               </div>
 
               <div className="card-body">
-                {/* Collection Date */}
-                
-
                 {/* Patient Details */}
                 <div className="card mb-4">
                   <div className="card-header bg-light">
@@ -311,7 +605,6 @@ const UpdateResultValidation = () => {
                         <label className="form-label fw-bold">Mobile No.</label>
                         <input type="text" className="form-control" value={selectedResult.mobile_no} readOnly />
                       </div>
-                      
                     </div>
                     <div className="row mt-3">
                       <div className="col-12">
@@ -350,8 +643,6 @@ const UpdateResultValidation = () => {
                   </div>
                 </div>
 
-            
-
                 {/* Investigations Table */}
                 <div className="table-responsive" style={{ overflowX: "auto" }}>
                   <table 
@@ -376,11 +667,24 @@ const UpdateResultValidation = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedResult.investigations.map((investigation) => (
-                        <>
-                          {investigation.subTests.length === 0 ? (
-                            // Main investigation without sub-tests
-                            <tr key={investigation.id}>
+                      {selectedResult.investigations.map((investigation, index) => (
+                        <React.Fragment key={investigation.id}>
+                          {investigation.displayType === 'main' ? (
+                            // Main investigation header row
+                            <tr>
+                              <td style={{ padding: "4px", textAlign: "center", width: "60px" }}>
+                                {investigation.si_no}
+                              </td>
+                              <td style={{ padding: "4px", textAlign: "center", width: "80px" }}>
+                                {investigation.diag_no}
+                              </td>
+                              <td colSpan="6" style={{ padding: "4px" }}>
+                                <strong>{investigation.investigation}</strong>
+                              </td>
+                            </tr>
+                          ) : investigation.displayType === 'subtest' ? (
+                            // Sub-test row
+                            <tr>
                               <td style={{ padding: "4px", textAlign: "center", width: "60px" }}>
                                 {investigation.si_no}
                               </td>
@@ -406,13 +710,7 @@ const UpdateResultValidation = () => {
                                 />
                               </td>
                               <td style={{ padding: "4px", width: "80px" }}>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={investigation.result}
-                                  readOnly
-                                  style={{ border: "none", backgroundColor: "transparent", padding: "2px 4px" }}
-                                />
+                                {renderResultInput(investigation)}
                               </td>
                               <td style={{ padding: "4px", width: "60px" }}>
                                 <input
@@ -440,109 +738,70 @@ const UpdateResultValidation = () => {
                                 ></textarea>
                               </td>
                               <td style={{ padding: "4px", width: "100px" }}>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={investigation.remarks}
-                                  onChange={(e) =>
-                                    handleInvestigationChange(investigation.id, "remarks", e.target.value)
-                                  }
-                                  style={{ padding: "2px 4px", fontSize: "0.875rem" }}
-                                />
+                                {renderRemarksInput(investigation)}
                               </td>
                             </tr>
                           ) : (
-                            // Investigation with sub-tests
-                            <>
-                              {/* Main investigation row (header) */}
-                              <tr key={investigation.id}>
-                                <td style={{ padding: "4px", textAlign: "center", width: "60px" }}>
-                                  {investigation.si_no}
-                                </td>
-                                <td style={{ padding: "4px", textAlign: "center", width: "80px" }}>
-                                  {investigation.diag_no}
-                                </td>
-                                <td colSpan="6" style={{ padding: "4px" }}>
-                                  <strong>{investigation.investigation}</strong>
-                                </td>
-                              </tr>
-                              {/* Sub-test rows */}
-                              {investigation.subTests.map((subTest) => (
-                                <tr key={subTest.id}>
-                                  <td style={{ padding: "4px", textAlign: "center", width: "60px" }}>
-                                    {subTest.si_no}
-                                  </td>
-                                  <td style={{ padding: "4px", textAlign: "center", width: "80px" }}>
-                                    {subTest.diag_no}
-                                  </td>
-                                  <td style={{ padding: "4px", width: "200px" }}>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      value={subTest.investigation}
-                                      readOnly
-                                      style={{ border: "none", backgroundColor: "transparent", padding: "2px 4px" }}
-                                    />
-                                  </td>
-                                  <td style={{ padding: "4px", width: "80px" }}>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      value={subTest.sample}
-                                      readOnly
-                                      style={{ border: "none", backgroundColor: "transparent", padding: "2px 4px" }}
-                                    />
-                                  </td>
-                                  <td style={{ padding: "4px", width: "80px" }}>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      value={subTest.result}
-                                      readOnly
-                                      style={{ border: "none", backgroundColor: "transparent", padding: "2px 4px" }}
-                                    />
-                                  </td>
-                                  <td style={{ padding: "4px", width: "60px" }}>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      value={subTest.units}
-                                      readOnly
-                                      style={{ border: "none", backgroundColor: "transparent", padding: "2px 4px" }}
-                                    />
-                                  </td>
-                                  <td style={{ padding: "4px", width: "120px" }}>
-                                    <textarea
-                                      className="form-control"
-                                      rows="1"
-                                      value={subTest.normal_range}
-                                      readOnly
-                                      style={{ 
-                                        border: "none", 
-                                        backgroundColor: "transparent", 
-                                        padding: "2px 4px",
-                                        resize: "none",
-                                        height: "auto",
-                                        minHeight: "34px"
-                                      }}
-                                    ></textarea>
-                                  </td>
-                                  <td style={{ padding: "4px", width: "100px" }}>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      value={subTest.remarks}
-                                      onChange={(e) =>
-                                        handleSubTestChange(investigation.id, subTest.id, "remarks", e.target.value)
-                                      }
-                                      style={{ padding: "2px 4px", fontSize: "0.875rem" }}
-                                    />
-                                  </td>
-                                </tr>
-                              ))}
-                            </>
+                            // Single investigation without sub-tests
+                            <tr>
+                              <td style={{ padding: "4px", textAlign: "center", width: "60px" }}>
+                                {investigation.si_no}
+                              </td>
+                              <td style={{ padding: "4px", textAlign: "center", width: "80px" }}>
+                                {investigation.diag_no}
+                              </td>
+                              <td style={{ padding: "4px", width: "200px" }}>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={investigation.investigation}
+                                  readOnly
+                                  style={{ border: "none", backgroundColor: "transparent", padding: "2px 4px" }}
+                                />
+                              </td>
+                              <td style={{ padding: "4px", width: "80px" }}>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={investigation.sample}
+                                  readOnly
+                                  style={{ border: "none", backgroundColor: "transparent", padding: "2px 4px" }}
+                                />
+                              </td>
+                              <td style={{ padding: "4px", width: "80px" }}>
+                                {renderResultInput(investigation)}
+                              </td>
+                              <td style={{ padding: "4px", width: "60px" }}>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={investigation.units}
+                                  readOnly
+                                  style={{ border: "none", backgroundColor: "transparent", padding: "2px 4px" }}
+                                />
+                              </td>
+                              <td style={{ padding: "4px", width: "120px" }}>
+                                <textarea
+                                  className="form-control"
+                                  rows="1"
+                                  value={investigation.normal_range}
+                                  readOnly
+                                  style={{ 
+                                    border: "none", 
+                                    backgroundColor: "transparent", 
+                                    padding: "2px 4px",
+                                    resize: "none",
+                                    height: "auto",
+                                    minHeight: "34px"
+                                  }}
+                                ></textarea>
+                              </td>
+                              <td style={{ padding: "4px", width: "100px" }}>
+                                {renderRemarksInput(investigation)}
+                              </td>
+                            </tr>
                           )}
-                        </>
+                        </React.Fragment>
                       ))}
                     </tbody>
                   </table>
@@ -550,7 +809,7 @@ const UpdateResultValidation = () => {
 
                 {/* Action Buttons */}
                 <div className="text-end mt-4">
-                  <button className="btn btn-success me-3" onClick={handleValidate} disabled={loading}>
+                  <button className="btn btn-success me-3" onClick={handleUpdate} disabled={loading}>
                     <i className="mdi mdi-check-all"></i> UPDATE
                   </button>
                   <button className="btn btn-secondary me-3" onClick={handleReset} disabled={loading}>
@@ -568,7 +827,7 @@ const UpdateResultValidation = () => {
     )
   }
 
-  // List View (unchanged)
+  // List View (same as before)
   return (
     <div className="content-wrapper">
       {popupMessage && <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />}
@@ -576,10 +835,7 @@ const UpdateResultValidation = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title p-2">PENDING FOR RESULT VALIDATION</h4>
-              <button type="button" className="btn btn-success">
-                <i className="mdi mdi-plus"></i> Generate Report
-              </button>
+              <h4 className="card-title p-2">UPDATE RESULT ENTRY</h4>
             </div>
 
             <div className="card-body">
@@ -595,7 +851,6 @@ const UpdateResultValidation = () => {
                     <div className="card-body">
                       <form>
                         <div className="row g-4 align-items-end">
-                          
                           <div className="col-md-3">
                             <label className="form-label">Patient Name</label>
                             <input
@@ -640,8 +895,6 @@ const UpdateResultValidation = () => {
                     </div>
                   </div>
 
-                 
-
                   {/* Table */}
                   <div className="table-responsive packagelist">
                     <table className="table table-bordered table-hover align-middle">
@@ -667,15 +920,14 @@ const UpdateResultValidation = () => {
                               <td>{item.order_date}</td>
                               <td>{item.order_no}</td>
                               <td>{item.patient_name}</td>
-                            <td>{item.mobile_no}</td>
+                              <td>{item.mobile_no}</td>
                               <td>{item.relation}</td>
                               <td>{item.doctor_name}</td>
-                             
                             </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="10" className="text-center py-4">
+                            <td colSpan="6" className="text-center py-4">
                               No pending validation entries found
                             </td>
                           </tr>
