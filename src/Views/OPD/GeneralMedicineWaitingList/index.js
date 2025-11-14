@@ -232,19 +232,20 @@ const GeneralMedicineWaitingList = () => {
   const [admissionNotes, setAdmissionNotes] = useState("")
 
   // Referral state - UPDATED
-  const [referralData, setReferralData] = useState({
-    isReferred: "No",
-    referTo: "",
-    referralType: "Internal",
-    referralScope: "Internal",
-    referralDate: getToday(),
-    empanel: false,
-    currentPriorityNo: "",
-    select: "",
-    noOfDays: "",
-    treatmentType: "OPD",
-    referredFor: "",
-  })
+const [referralData, setReferralData] = useState({
+  isReferred: "No",
+  referTo: "",
+  referralType: "Internal", 
+  referralScope: "Internal",
+  referralDate: getToday(),
+  empanel: false,
+  currentPriorityNo: "",
+  select: "",
+  noOfDays: "",
+  treatmentType: "OPD",
+  referredFor: "",
+  hospital: "",
+})
 
   const [departmentData, setDepartmentData] = useState([
     {
@@ -416,8 +417,8 @@ const GeneralMedicineWaitingList = () => {
 
     const filtered = filteredInvestigationsByType
       .filter(inv =>
-          inv.investigationName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          inv.mainChargeCodeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        inv.investigationName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        inv.mainChargeCodeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         inv.subChargeCodeName?.toLowerCase().includes(searchQuery.toLowerCase())
       )
       .slice(0, 5)
@@ -428,7 +429,7 @@ const GeneralMedicineWaitingList = () => {
   // UPDATED: Handle template selection to accumulate items
   const handleInvestigationTemplateSelect = (template) => {
     const templateId = template.templateId
-    
+
     // Check if template is already selected
     if (selectedTemplateIds.has(templateId)) {
       alert("This template is already selected")
@@ -437,7 +438,7 @@ const GeneralMedicineWaitingList = () => {
     }
 
     setSelectedInvestigationTemplate(templateId)
-    
+
     // Add template to selected templates set
     setSelectedTemplateIds(prev => new Set([...prev, templateId]))
 
@@ -448,7 +449,7 @@ const GeneralMedicineWaitingList = () => {
         investigationId: item.investigationId,
         templateSource: template.opdTemplateName // Track which template this came from
       }))
-      
+
       // Add new items to existing items, avoiding duplicates
       setInvestigationItems(prev => {
         const existingIds = new Set(prev.map(item => item.investigationId))
@@ -456,7 +457,7 @@ const GeneralMedicineWaitingList = () => {
         return [...prev.filter(item => item.name !== ""), ...uniqueNewItems]
       })
     }
-    
+
     // Reset dropdown to "Select.." for next selection
     setTimeout(() => {
       setSelectedInvestigationTemplate("Select..")
@@ -475,9 +476,9 @@ const GeneralMedicineWaitingList = () => {
     if (!template) return
 
     // Remove items from this template
-    setInvestigationItems(prev => 
-      prev.filter(item => 
-        !template.investigationResponseList?.some(templateItem => 
+    setInvestigationItems(prev =>
+      prev.filter(item =>
+        !template.investigationResponseList?.some(templateItem =>
           templateItem.investigationId === item.investigationId
         )
       )
@@ -1492,7 +1493,7 @@ const GeneralMedicineWaitingList = () => {
                               <div className="card-header py-2 bg-light">
                                 <div className="d-flex justify-content-between align-items-center">
                                   <h6 className="mb-0 fw-bold">Selected Templates</h6>
-                                  <button 
+                                  <button
                                     className="btn btn-sm btn-outline-danger"
                                     onClick={handleClearAllTemplates}
                                   >
@@ -1538,7 +1539,7 @@ const GeneralMedicineWaitingList = () => {
                             onChange={(e) => {
                               const selectedId = e.target.value
                               if (selectedId === "Select..") return
-                              
+
                               const template = investigationTemplates.find(t => t.templateId == selectedId)
                               if (template) {
                                 handleInvestigationTemplateSelect(template)
@@ -1550,8 +1551,8 @@ const GeneralMedicineWaitingList = () => {
                           >
                             <option value="Select..">Select..</option>
                             {investigationTemplates.map((template) => (
-                              <option 
-                                key={template.templateId} 
+                              <option
+                                key={template.templateId}
                                 value={template.templateId}
                                 disabled={selectedTemplateIds.has(template.templateId)}
                               >
@@ -1898,7 +1899,7 @@ const GeneralMedicineWaitingList = () => {
                                   </select>
                                 </td>
 
-                                 <td>
+                                <td>
                                   <input
                                     type="number"
                                     className="form-control"
@@ -2673,277 +2674,356 @@ const GeneralMedicineWaitingList = () => {
                 </div>
 
                 {/* Referral Section - UPDATED BASED ON SCREENSHOTS */}
-                <div className="card mb-3">
-                  <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => toggleSection("referral")}
-                  >
-                    <h6 className="mb-0 fw-bold">Referral</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.referral ? "−" : "+"}</span>
-                  </div>
-                  {expandedSections.referral && (
-                    <div className="card-body">
-                      <div className="row mb-3">
-                        <div className="col-md-2">
-                          <label className="form-label fw-bold">Referral</label>
-                          <div className="d-flex gap-3">
-                            <div className="form-check">
-                              <input
-                                className="form-check-input"
-                                type="radio"
-                                name="isReferred"
-                                id="referralNo"
-                                value="No"
-                                checked={referralData.isReferred === "No"}
-                                onChange={(e) => handleReferralChange("isReferred", e.target.value)}
-                              />
-                              <label className="form-check-label" htmlFor="referralNo">
-                                No
-                              </label>
-                            </div>
-                            <div className="form-check">
-                              <input
-                                className="form-check-input"
-                                type="radio"
-                                name="isReferred"
-                                id="referralYes"
-                                value="Yes"
-                                checked={referralData.isReferred === "Yes"}
-                                onChange={(e) => handleReferralChange("isReferred", e.target.value)}
-                              />
-                              <label className="form-check-label" htmlFor="referralYes">
-                                Yes
-                              </label>
-                            </div>
-                          </div>
-                        </div>
+                {/* Referral Section - UPDATED BASED ON SCREENSHOTS */}
+<div className="card mb-3">
+  <div
+    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+    style={{ cursor: "pointer" }}
+    onClick={() => toggleSection("referral")}
+  >
+    <h6 className="mb-0 fw-bold">Referral</h6>
+    <span style={{ fontSize: "18px" }}>{expandedSections.referral ? "−" : "+"}</span>
+  </div>
+  {expandedSections.referral && (
+    <div className="card-body">
+      <div className="row mb-3">
+        <div className="col-md-2">
+          <label className="form-label fw-bold">Referral</label>
+          <div className="d-flex gap-3">
+            <div className="form-check">
+              <input
+                className="form-check-input"
+                type="radio"
+                name="isReferred"
+                id="referralNo"
+                value="No"
+                checked={referralData.isReferred === "No"}
+                onChange={(e) => handleReferralChange("isReferred", e.target.value)}
+              />
+              <label className="form-check-label" htmlFor="referralNo">
+                No
+              </label>
+            </div>
+            <div className="form-check">
+              <input
+                className="form-check-input"
+                type="radio"
+                name="isReferred"
+                id="referralYes"
+                value="Yes"
+                checked={referralData.isReferred === "Yes"}
+                onChange={(e) => handleReferralChange("isReferred", e.target.value)}
+              />
+              <label className="form-check-label" htmlFor="referralYes">
+                Yes
+              </label>
+            </div>
+          </div>
+        </div>
 
-                        {referralData.isReferred === "Yes" && (
-                          <>
-                            <div className="col-md-2">
-                              <label className="form-label fw-bold">Refer To</label>
-                              <input
-                                type="text"
-                                className="form-control"
-                                value={referralData.referTo}
-                                onChange={(e) => handleReferralChange("referTo", e.target.value)}
-                                placeholder="Enter referral"
-                              />
-                            </div>
-                            
-                            {/* Layout changes based on referral type */}
-                            {referralData.referralType === "Internal" && (
-                              <>
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">Internal</label>
-                                  <div className="form-check">
-                                    <input
-                                      className="form-check-input"
-                                      type="checkbox"
-                                      checked={referralData.referralScope === "Internal"}
-                                      onChange={(e) => handleReferralChange("referralScope", e.target.checked ? "Internal" : "")}
-                                    />
-                                    <label className="form-check-label">Internal</label>
-                                  </div>
-                                </div>
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">Empanel</label>
-                                  <div className="form-check">
-                                    <input
-                                      className="form-check-input"
-                                      type="checkbox"
-                                      checked={referralData.empanel}
-                                      onChange={(e) => handleReferralChange("empanel", e.target.checked)}
-                                    />
-                                    <label className="form-check-label">Empanel</label>
-                                  </div>
-                                </div>
-                              </>
-                            )}
+        {referralData.isReferred === "Yes" && (
+          <>
+            <div className="col-md-2">
+              <label className="form-label fw-bold">Refer To</label>
+              <select
+                className="form-select"
+                value={referralData.referTo}
+                onChange={(e) => handleReferralChange("referTo", e.target.value)}
+              >
+                <option value="">Select...</option>
+                <option value="Internal">Internal</option>
+                <option value="Empanel">Empanel</option>
+                <option value="Both">Both</option>
+              </select>
+            </div>
 
-                            {referralData.referralType === "Both" && (
-                              <>
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">Both</label>
-                                  <div className="d-flex flex-column">
-                                    <div className="form-check">
-                                      <input
-                                        className="form-check-input"
-                                        type="checkbox"
-                                        checked={referralData.referralScope === "Internal"}
-                                        onChange={(e) => handleReferralChange("referralScope", e.target.checked ? "Internal" : "")}
-                                      />
-                                      <label className="form-check-label">Internal</label>
-                                    </div>
-                                    <div className="form-check">
-                                      <input
-                                        className="form-check-input"
-                                        type="checkbox"
-                                        checked={referralData.empanel}
-                                        onChange={(e) => handleReferralChange("empanel", e.target.checked)}
-                                      />
-                                      <label className="form-check-label">Empanel</label>
-                                    </div>
-                                  </div>
-                                </div>
-                              </>
-                            )}
+            <div className="col-md-2">
+              <label className="form-label fw-bold">Refer Date:</label>
+              <input
+                type="date"
+                className="form-control"
+                value={referralData.referralDate}
+                onChange={(e) => handleReferralChange("referralDate", e.target.value)}
+              />
+            </div>
+          </>
+        )}
+      </div>
 
-                            <div className="col-md-2">
-                              <label className="form-label fw-bold">Refer Date:</label>
-                              <input
-                                type="date"
-                                className="form-control"
-                                value={referralData.referralDate}
-                                onChange={(e) => handleReferralChange("referralDate", e.target.value)}
-                              />
-                            </div>
-                          </>
-                        )}
-                      </div>
-
-                      {referralData.isReferred === "Yes" && (
-                        <>
-                          <div className="row mb-3">
-                            <div className="col-md-2">
-                              <label className="form-label fw-bold">Current Priority No.</label>
-                              <input
-                                type="text"
-                                className="form-control"
-                                value={referralData.currentPriorityNo}
-                                onChange={(e) => handleReferralChange("currentPriorityNo", e.target.value)}
-                                placeholder="Enter priority no"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Additional fields for referral */}
-                          <div className="row mb-3">
-                            <div className="col-md-2">
-                              <label className="form-label fw-bold">Select</label>
-                              <select
-                                className="form-select"
-                                value={referralData.select}
-                                onChange={(e) => handleReferralChange("select", e.target.value)}
-                              >
-                                <option value="">Select...</option>
-                                <option value="Option1">Option 1</option>
-                                <option value="Option2">Option 2</option>
-                              </select>
-                            </div>
-                            <div className="col-md-2">
-                              <label className="form-label fw-bold">No. of Days</label>
-                              <input
-                                type="number"
-                                className="form-control"
-                                value={referralData.noOfDays}
-                                onChange={(e) => handleReferralChange("noOfDays", e.target.value)}
-                                placeholder="0"
-                              />
-                            </div>
-                            <div className="col-md-2">
-                              <label className="form-label fw-bold">Treatment Type *</label>
-                              <select
-                                className="form-select"
-                                value={referralData.treatmentType}
-                                onChange={(e) => handleReferralChange("treatmentType", e.target.value)}
-                              >
-                                <option value="OPD">OPD</option>
-                                <option value="IPD">IPD</option>
-                              </select>
-                            </div>
-                            <div className="col-md-2">
-                              <label className="form-label fw-bold">Referred For*</label>
-                              <input
-                                type="text"
-                                className="form-control"
-                                value={referralData.referredFor}
-                                onChange={(e) => handleReferralChange("referredFor", e.target.value)}
-                                placeholder="Referred for"
-                              />
-                            </div>
-                          </div>
-
-                          <hr className="my-4" />
-
-                          <div className="row mb-3">
-                            <div className="col-12">
-                              <h6 className="fw-bold mb-3">Department</h6>
-                              <div className="table-responsive">
-                                <table className="table table-bordered">
-                                  <thead style={{ backgroundColor: "#b0c4de" }}>
-                                    <tr>
-                                      <th style={{ width: "10%" }}>Select</th>
-                                      <th style={{ width: "70%" }}>Doctor</th>
-                                      <th style={{ width: "10%" }}>Add</th>
-                                      <th style={{ width: "10%" }}>Delete</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {departmentData.map((item, index) => (
-                                      <tr key={index}>
-                                        <td className="text-center">
-                                          <input
-                                            type="checkbox"
-                                            className="form-check-input"
-                                            checked={item.selected}
-                                            onChange={(e) => handleDepartmentChange(index, "selected", e.target.checked)}
-                                          />
-                                        </td>
-                                        <td>
-                                          <select
-                                            className="form-select"
-                                            value={item.doctor}
-                                            onChange={(e) => handleDepartmentChange(index, "doctor", e.target.value)}
-                                          >
-                                            <option value="Select">Select</option>
-                                            <option value="Dr. Smith">Dr. Smith</option>
-                                            <option value="Dr. Johnson">Dr. Johnson</option>
-                                            <option value="Dr. Williams">Dr. Williams</option>
-                                            <option value="Dr. Brown">Dr. Brown</option>
-                                          </select>
-                                        </td>
-                                        <td className="text-center">
-                                          <button className="btn btn-sm btn-success" onClick={handleAddDepartment}>
-                                            +
-                                          </button>
-                                        </td>
-                                        <td className="text-center">
-                                          <button
-                                            className="btn btn-sm btn-danger"
-                                            onClick={() => handleRemoveDepartment(index)}
-                                            disabled={departmentData.length === 1}
-                                          >
-                                            −
-                                          </button>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="row">
-                            <div className="col-12">
-                              <h6 className="fw-bold mb-3">Referral Notes</h6>
-                              <textarea
-                                className="form-control"
-                                rows={4}
-                                value={referralNotes}
-                                onChange={(e) => setReferralNotes(e.target.value)}
-                                placeholder="Enter referral notes"
-                              ></textarea>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
+      {referralData.isReferred === "Yes" && (
+        <>
+          {/* INTERNAL REFERRAL */}
+          {referralData.referTo === "Internal" && (
+            <>
+              <div className="row mb-3">
+                <div className="col-md-2">
+                  <label className="form-label fw-bold">Current Priority No.</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={referralData.currentPriorityNo}
+                    onChange={(e) => handleReferralChange("currentPriorityNo", e.target.value)}
+                    placeholder="Enter priority no"
+                  />
                 </div>
+              </div>
 
+              <hr className="my-4" />
+
+              <div className="row mb-3">
+                <div className="col-12">
+                  <h6 className="fw-bold mb-3">Department</h6>
+                  <div className="table-responsive">
+                    <table className="table table-bordered">
+                      <thead style={{ backgroundColor: "#b0c4de" }}>
+                        <tr>
+                          <th style={{ width: "10%" }}>Select</th>
+                          <th style={{ width: "70%" }}>Doctor</th>
+                          <th style={{ width: "10%" }}>Add</th>
+                          <th style={{ width: "10%" }}>Delete</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {departmentData.map((item, index) => (
+                          <tr key={index}>
+                            <td className="text-center">
+                              <input
+                                type="checkbox"
+                                className="form-check-input"
+                                checked={item.selected}
+                                onChange={(e) => handleDepartmentChange(index, "selected", e.target.checked)}
+                              />
+                            </td>
+                            <td>
+                              <select
+                                className="form-select"
+                                value={item.doctor}
+                                onChange={(e) => handleDepartmentChange(index, "doctor", e.target.value)}
+                              >
+                                <option value="Select">Select</option>
+                                <option value="Dr. Smith">Dr. Smith</option>
+                                <option value="Dr. Johnson">Dr. Johnson</option>
+                                <option value="Dr. Williams">Dr. Williams</option>
+                                <option value="Dr. Brown">Dr. Brown</option>
+                              </select>
+                            </td>
+                            <td className="text-center">
+                              <button className="btn btn-sm btn-success" onClick={handleAddDepartment}>
+                                +
+                              </button>
+                            </td>
+                            <td className="text-center">
+                              <button
+                                className="btn btn-sm btn-danger"
+                                onClick={() => handleRemoveDepartment(index)}
+                                disabled={departmentData.length === 1}
+                              >
+                                −
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* EMPANEL REFERRAL */}
+          {referralData.referTo === "Empanel" && (
+            <>
+              <div className="row mb-3">
+                <div className="col-md-2">
+                  <label className="form-label fw-bold">Hospital *</label>
+                  <select
+                    className="form-select"
+                    value={referralData.hospital}
+                    onChange={(e) => handleReferralChange("hospital", e.target.value)}
+                  >
+                    <option value="">Select...</option>
+                    <option value="Hospital A">Hospital A</option>
+                    <option value="Hospital B">Hospital B</option>
+                    <option value="Hospital C">Hospital C</option>
+                  </select>
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label fw-bold">No. of Days</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={referralData.noOfDays}
+                    onChange={(e) => handleReferralChange("noOfDays", e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label fw-bold">Treatment Type *</label>
+                  <select
+                    className="form-select"
+                    value={referralData.treatmentType}
+                    onChange={(e) => handleReferralChange("treatmentType", e.target.value)}
+                  >
+                    <option value="OPD">OPD</option>
+                    <option value="IPD">IPD</option>
+                  </select>
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label fw-bold">Referred For*</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={referralData.referredFor}
+                    onChange={(e) => handleReferralChange("referredFor", e.target.value)}
+                    placeholder="Referred for"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* BOTH REFERRAL */}
+          {referralData.referTo === "Both" && (
+            <>
+              <div className="row mb-3">
+                <div className="col-md-2">
+                  <label className="form-label fw-bold">Current Priority No.</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={referralData.currentPriorityNo}
+                    onChange={(e) => handleReferralChange("currentPriorityNo", e.target.value)}
+                    placeholder="Enter priority no"
+                  />
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label fw-bold">Hospital *</label>
+                  <select
+                    className="form-select"
+                    value={referralData.hospital}
+                    onChange={(e) => handleReferralChange("hospital", e.target.value)}
+                  >
+                    <option value="">Select...</option>
+                    <option value="Hospital A">Hospital A</option>
+                    <option value="Hospital B">Hospital B</option>
+                    <option value="Hospital C">Hospital C</option>
+                  </select>
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label fw-bold">No. of Days</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={referralData.noOfDays}
+                    onChange={(e) => handleReferralChange("noOfDays", e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label fw-bold">Treatment Type *</label>
+                  <select
+                    className="form-select"
+                    value={referralData.treatmentType}
+                    onChange={(e) => handleReferralChange("treatmentType", e.target.value)}
+                  >
+                    <option value="OPD">OPD</option>
+                    <option value="IPD">IPD</option>
+                  </select>
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label fw-bold">Referred For*</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={referralData.referredFor}
+                    onChange={(e) => handleReferralChange("referredFor", e.target.value)}
+                    placeholder="Referred for"
+                  />
+                </div>
+              </div>
+
+              <hr className="my-4" />
+
+              <div className="row mb-3">
+                <div className="col-12">
+                  <h6 className="fw-bold mb-3">Department</h6>
+                  <div className="table-responsive">
+                    <table className="table table-bordered">
+                      <thead style={{ backgroundColor: "#b0c4de" }}>
+                        <tr>
+                          <th style={{ width: "10%" }}>Select</th>
+                          <th style={{ width: "70%" }}>Doctor</th>
+                          <th style={{ width: "10%" }}>Add</th>
+                          <th style={{ width: "10%" }}>Delete</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {departmentData.map((item, index) => (
+                          <tr key={index}>
+                            <td className="text-center">
+                              <input
+                                type="checkbox"
+                                className="form-check-input"
+                                checked={item.selected}
+                                onChange={(e) => handleDepartmentChange(index, "selected", e.target.checked)}
+                              />
+                            </td>
+                            <td>
+                              <select
+                                className="form-select"
+                                value={item.doctor}
+                                onChange={(e) => handleDepartmentChange(index, "doctor", e.target.value)}
+                              >
+                                <option value="Select">Select</option>
+                                <option value="Dr. Smith">Dr. Smith</option>
+                                <option value="Dr. Johnson">Dr. Johnson</option>
+                                <option value="Dr. Williams">Dr. Williams</option>
+                                <option value="Dr. Brown">Dr. Brown</option>
+                              </select>
+                            </td>
+                            <td className="text-center">
+                              <button className="btn btn-sm btn-success" onClick={handleAddDepartment}>
+                                +
+                              </button>
+                            </td>
+                            <td className="text-center">
+                              <button
+                                className="btn btn-sm btn-danger"
+                                onClick={() => handleRemoveDepartment(index)}
+                                disabled={departmentData.length === 1}
+                              >
+                                −
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* REFERRAL NOTES (COMMON FOR ALL TYPES) */}
+          <div className="row">
+            <div className="col-12">
+              <h6 className="fw-bold mb-3">Referral Notes</h6>
+              <textarea
+                className="form-control"
+                rows={4}
+                value={referralNotes}
+                onChange={(e) => setReferralNotes(e.target.value)}
+                placeholder="Enter referral notes"
+              ></textarea>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )}
+</div>
                 {["followUp", "doctorRemark"].map((section) => (
                   <div key={section} className="card mb-3">
                     <div
@@ -3041,112 +3121,112 @@ const GeneralMedicineWaitingList = () => {
           </div>
         )}
 
-      {showCurrentMedicationModal && (
-  <div
-    className="modal fade show"
-    style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)", zIndex: 0 }}
-    tabIndex="-1"
-    onClick={() => setShowCurrentMedicationModal(false)}
-  >
-    <div
-      className="modal-dialog modal-lg"
-      style={{
-        width: "calc(100vw - 310px)",
-        left: "285px",
-        maxWidth: "none",
-        height: "90vh",
-        margin: "5vh auto",
-        position: "fixed",
-      }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="modal-content">
-        <div className="modal-header">
-          <h5 className="modal-title">Current Medication</h5>
-          <button
-            type="button"
-            className="btn-close"
-            onClick={() => setShowCurrentMedicationModal(false)}
-          ></button>
-        </div>
-        <div
-          className="modal-body"
-          style={{ overflowY: "auto", flex: "1 1 auto", maxHeight: "calc(90vh - 120px)" }}
-        >
-          <div className="table-responsive">
-            <table className="table table-bordered table-hover">
-              <thead style={{ backgroundColor: "#b0c4de" }}>
-                <tr>
-                  <th style={{ minWidth: 30 }}>Sr. No.</th>
-                  <th style={{ minWidth: 320 }}>Item Name</th>
-                  <th className="text-center" style={{ minWidth: 70 }}>
-                    Dosage
-                  </th>
-                  <th className="text-center" style={{ minWidth: 70 }}>
-                    No. Of Days
-                  </th>
-                  <th className="text-center" style={{ minWidth: 110 }}>
-                    Frequency
-                  </th>
-                  <th className="text-center" style={{ minWidth: 70 }}>
-                    Total
-                  </th>
-                  <th className="text-center" style={{ minWidth: 70 }}>
-                    Stock
-                  </th>
-                  <th style={{ minWidth: 130 }}>Prescribed By</th>
-                  <th style={{ minWidth: 130 }}>Department</th>
-                  <th className="text-center" style={{ minWidth: 110 }}>
-                    Prescribed Date
-                  </th>
-                  <th className="text-center" style={{ minWidth: 50 }}>
-                    Stop
-                  </th>
-                  <th className="text-center" style={{ minWidth: 50 }}>
-                    Repeat
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>1</td>
-                  <td>CHOLECALCIFEROL (VITAMIN D3) 60000 IU TABLET</td>
-                  <td className="text-center">1</td>
-                  <td className="text-center">30</td>
-                  <td className="text-center">ONCE IN 7 DAYS</td>
-                  <td className="text-center">4</td>
-                  <td className="text-center">0</td>
-                  <td>Dr. M.G.Prashanth</td>
-                  <td>GENERAL MEDICINE</td>
-                  <td className="text-center">19/12/2020</td>
-                  <td className="text-center">
-                    <input type="checkbox" />
-                  </td>
-                  <td className="text-center">
-                    <input type="checkbox" />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div style={{ marginTop: "15px" }}>
-            <button className="btn btn-primary me-2">STOP</button>
-            <button className="btn btn-primary me-2">REPEAT</button>
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button
-            type="button"
-            className="btn btn-secondary"
+        {showCurrentMedicationModal && (
+          <div
+            className="modal fade show"
+            style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)", zIndex: 0 }}
+            tabIndex="-1"
             onClick={() => setShowCurrentMedicationModal(false)}
           >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+            <div
+              className="modal-dialog modal-lg"
+              style={{
+                width: "calc(100vw - 310px)",
+                left: "285px",
+                maxWidth: "none",
+                height: "90vh",
+                margin: "5vh auto",
+                position: "fixed",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title">Current Medication</h5>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => setShowCurrentMedicationModal(false)}
+                  ></button>
+                </div>
+                <div
+                  className="modal-body"
+                  style={{ overflowY: "auto", flex: "1 1 auto", maxHeight: "calc(90vh - 120px)" }}
+                >
+                  <div className="table-responsive">
+                    <table className="table table-bordered table-hover">
+                      <thead style={{ backgroundColor: "#b0c4de" }}>
+                        <tr>
+                          <th style={{ minWidth: 30 }}>Sr. No.</th>
+                          <th style={{ minWidth: 320 }}>Item Name</th>
+                          <th className="text-center" style={{ minWidth: 70 }}>
+                            Dosage
+                          </th>
+                          <th className="text-center" style={{ minWidth: 70 }}>
+                            No. Of Days
+                          </th>
+                          <th className="text-center" style={{ minWidth: 110 }}>
+                            Frequency
+                          </th>
+                          <th className="text-center" style={{ minWidth: 70 }}>
+                            Total
+                          </th>
+                          <th className="text-center" style={{ minWidth: 70 }}>
+                            Stock
+                          </th>
+                          <th style={{ minWidth: 130 }}>Prescribed By</th>
+                          <th style={{ minWidth: 130 }}>Department</th>
+                          <th className="text-center" style={{ minWidth: 110 }}>
+                            Prescribed Date
+                          </th>
+                          <th className="text-center" style={{ minWidth: 50 }}>
+                            Stop
+                          </th>
+                          <th className="text-center" style={{ minWidth: 50 }}>
+                            Repeat
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>1</td>
+                          <td>CHOLECALCIFEROL (VITAMIN D3) 60000 IU TABLET</td>
+                          <td className="text-center">1</td>
+                          <td className="text-center">30</td>
+                          <td className="text-center">ONCE IN 7 DAYS</td>
+                          <td className="text-center">4</td>
+                          <td className="text-center">0</td>
+                          <td>Dr. M.G.Prashanth</td>
+                          <td>GENERAL MEDICINE</td>
+                          <td className="text-center">19/12/2020</td>
+                          <td className="text-center">
+                            <input type="checkbox" />
+                          </td>
+                          <td className="text-center">
+                            <input type="checkbox" />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ marginTop: "15px" }}>
+                    <button className="btn btn-primary me-2">STOP</button>
+                    <button className="btn btn-primary me-2">REPEAT</button>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setShowCurrentMedicationModal(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showTreatmentAdviceModal && (
           <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
