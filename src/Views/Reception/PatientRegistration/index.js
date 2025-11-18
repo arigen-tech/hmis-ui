@@ -37,60 +37,60 @@ const PatientRegistration = () => {
   const [doctorData, setDoctorData] = useState([]);
   const [session, setSession] = useState([]);
   const [formData, setFormData] = useState({
-    imageurl: undefined,
-    firstName: undefined,
-    middleName: undefined,
-    lastName: undefined,
-    mobileNo: undefined,
-    gender: undefined,
-    relation: undefined,
-    dob: undefined,
-    age: undefined,
-    email: undefined,
-    address1: undefined,
-    address2: undefined,
-    country: undefined,
-    state: undefined,
-    district: undefined,
-    city: undefined,
-    pinCode: undefined,
-    nokFirstName: undefined,
-    nokMiddleName: undefined,
-    nokLastName: undefined,
-    nokEmail: undefined,
-    nokMobile: undefined,
-    nokAddress1: undefined,
-    nokAddress2: undefined,
-    nokCountry: undefined,
-    nokState: undefined,
-    nokDistrict: undefined,
-    nokCity: undefined,
-    nokPinCode: undefined,
-    emergencyFirstName: undefined,
-    emergencyLastName: undefined,
-    emergencyMobile: undefined,
-    height: undefined,
-    weight: undefined,
-    temperature: undefined,
-    systolicBP: undefined,
-    diastolicBP: undefined,
-    pulse: undefined,
-    bmi: undefined,
-    rr: undefined,
-    spo2: undefined,
-    speciality: undefined,
-    doctor: undefined,
-    session: undefined,
-    appointmentDate: undefined,
-    maritalStatus: undefined,
-    religion: undefined,
-    emergencyRelationId: undefined,
-    nokRelation: undefined,
-    idealWeight: undefined,
-    varation: undefined,
-    department: undefined,
-    selDoctorId: undefined,
-    selSession: undefined
+    imageurl: "",
+    firstName: "",
+    middleName: "",
+    lastName: "",
+    mobileNo: "",
+    gender: "",
+    relation: "",
+    dob: "",
+    age: "",
+    email: "",
+    address1: "",
+    address2: "",
+    country: "",
+    state: "",
+    district: "",
+    city: "",
+    pinCode: "",
+    nokFirstName: "",
+    nokMiddleName: "",
+    nokLastName: "",
+    nokEmail: "",
+    nokMobile: "",
+    nokAddress1: "",
+    nokAddress2: "",
+    nokCountry: "",
+    nokState: "",
+    nokDistrict: "",
+    nokCity: "",
+    nokPinCode: "",
+    emergencyFirstName: "",
+    emergencyLastName: "",
+    emergencyMobile: "",
+    height: "",
+    weight: "",
+    temperature: "",
+    systolicBP: "",
+    diastolicBP: "",
+    pulse: "",
+    bmi: "",
+    rr: "",
+    spo2: "",
+    speciality: "",
+    doctor: "",
+    session: "",
+    appointmentDate: "",
+    maritalStatus: "",
+    religion: "",
+    emergencyRelationId: "",
+    nokRelation: "",
+    idealWeight: "",
+    varation: "",
+    department: "",
+    selDoctorId: "",
+    selSession: ""
 
   });
   const [image, setImage] = useState(placeholderImage);
@@ -146,7 +146,7 @@ const PatientRegistration = () => {
 
       setImage(imageData);
       stopCamera();
-      debugger;
+      // //debugger
       confirmUpload(imageData);
 
     }
@@ -225,7 +225,7 @@ const PatientRegistration = () => {
     return new Date(birthYear, today.getMonth(), today.getDate()).toISOString().split('T')[0];
   }
   function checkBMI(a, b) {
-    debugger;
+    //debugger
     if (a === '' || b == '') {
       return;
     }
@@ -330,7 +330,7 @@ const PatientRegistration = () => {
 
 
   const handleAddChange = (e) => {
-    debugger;
+    //debugger
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -531,10 +531,23 @@ const PatientRegistration = () => {
 
     numericFields.forEach((field) => {
       const value = formData[field];
-      if (value != undefined && value !== "" && (isNaN(value) || Number(value) < 0)) {
-        debugger;
-        newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} must be a non-negative number.`;
-        valid = false;
+      
+
+      if (value !== undefined && value !== "") {
+        if (field === "age" || field === "patientAge") {
+          // Validate correct format like "25Y 10M 2D"
+          const agePattern = /^\d+Y\s\d+M\s\d+D$/;
+          if (!agePattern.test(value)) {
+            newErrors[field] = "Age must be in format '25Y 10M 2D'.";
+            valid = false;
+          }
+        } else {
+          // Validate numeric fields
+          if (isNaN(value) || Number(value) < 0) {
+            newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} must be a non-negative number.`;
+            valid = false;
+          }
+        }
       }
       if ((field === "age" || requiredFields.includes(field)) && Number(value) <= 0) {
         newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} must be greater than 0.`;
@@ -648,14 +661,14 @@ const PatientRegistration = () => {
           iniDoctorId: 0,
         },
       };
-      debugger;
+      //debugger
       if (isNaN(requestData.visit.doctorId))
         requestData.visit = null;
       // requestData.opdPatientDetail=null;
       console.log(new Date(Date.now()).toJSON())
 
       try {
-        debugger;
+        //debugger
         const data = await postRequest(`${PATIENT_REGISTRATION}`, requestData);
         if (data.status === 200 && Array.isArray(data.response)) {
           Swal.fire("Patient Registration Successful")

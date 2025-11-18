@@ -1,6 +1,6 @@
 // export const API_HOST = 'https://103.133.215.182:8445';
 export const API_HOST = 'http://localhost:8080';
-// export const API_HOST = 'http://192.168.1.8:8080';
+//  export const API_HOST = 'http://192.168.1.8:8080';
 
 
 
@@ -127,9 +127,10 @@ export const IDENTITY_TYPE = `/identification-types`;
 export const DOCTOR_ROSTER = `/doctor`;
 export const GET_DOCTOR_SESSION = `/doctor/rosterfind?`;
 export const EMPLOYEE_REGISTRATION = `api/employee`;
-export const PATIENT_REGISTRATION = `/patient/register`;
-export const GET_PRECONSULTATION = `/patient/getPendingPreConsultations`;
-export const SET_VITALS = `/patient/saveVitalDetails`;
+export const PATIENT_REGISTRATION=`/patient/register`;
+export const GET_PRECONSULTATION=`/patient/getPendingPreConsultations`;
+export const SET_VITALS=`/patient/saveVitalDetails`;
+export const GET_WAITING_LIST=`/patient/getWaitingList`;
 
 export const PATIENT_FOLLOW_UP = `/patient/update`;
 export const PATIENT_SEARCH = `/patient/search`;

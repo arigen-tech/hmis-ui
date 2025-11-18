@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { postRequest } from "../../../service/apiService"
 import Swal from "sweetalert2"
 import Popup from "../../../Components/popup"
+import { postRequest } from "../../../service/apiService"
 
 const PaymentPage = () => {
   const location = useLocation()
@@ -10,6 +10,7 @@ const PaymentPage = () => {
 
   // Get all the data passed from lab registration or billing details
   const {
+    billingType,
     amount = 0,
     patientId,
     labData,
@@ -60,6 +61,8 @@ const PaymentPage = () => {
 
     // Try other possible paths
     const possiblePaths = [
+      labData?.response?.billingType,
+      labData?.billingType,
       labData?.response?.billHdId,
       labData?.response?.billId,
       labData?.response?.id,
@@ -131,6 +134,7 @@ const PaymentPage = () => {
       }
 
       const paymentUpdateRequest = {
+        billingType: billingType,
         billHeaderId: Number(billHeaderId),
         amount: Number.parseFloat(amount),
         mode: paymentMethod,
@@ -155,29 +159,50 @@ const PaymentPage = () => {
         console.log("Extracted paymentStatus:", paymentStatus);
 
         // ✅ Success condition based on your API: status 200, message "success", and billNo exists
+        // ✅ Success condition based on your API: status 200, message "success", and billNo exists
         if (billNo && msg === "Success") {
           setPopupMessage({
             message: "Payment successful!",
             type: "success",
             onClose: () => {
               setPopupMessage(null);
-              navigate("/lab-payment-success", {
-                state: {
-                  amount,
-                  paymentReferenceNo,
-                  paymentMethod,
-                  patientId,
-                  billNo,
-                  paymentStatus,
-                  paymentResponse: response,
-                },
-              });
+
+              // ✅ Conditional navigation based on billingType
+              if (billingType && billingType.toLowerCase() === "consultation services") {
+                navigate("/opd-payment-success", {
+                  state: {
+                    billingType,
+                    amount,
+                    paymentReferenceNo,
+                    paymentMethod,
+                    patientId,
+                    billNo,
+                    paymentStatus,
+                    paymentResponse: response,
+                  },
+                });
+              } else {
+                // ✅ Default: navigate to lab success page
+                navigate("/lab-payment-success", {
+                  state: {
+                    billingType,
+                    amount,
+                    paymentReferenceNo,
+                    paymentMethod,
+                    patientId,
+                    billNo,
+                    paymentStatus,
+                    paymentResponse: response,
+                  },
+                });
+              }
             },
           });
         } else {
           const errorMessage = msg || "Payment processing failed";
           Swal.fire("Payment Failed!", errorMessage, "error");
         }
+
       } else {
         const errorMessage =
           response?.response?.msg ||

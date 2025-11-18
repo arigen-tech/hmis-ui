@@ -1,16 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useNavigate, useLocation } from "react-router-dom"
-import { getRequest } from "../../../service/apiService"
-import { MAS_SERVICE_CATEGORY } from "../../../config/apiConfig"
+import { useEffect, useState } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import Swal from "sweetalert2"
 import LoadingScreen from "../../../Components/Loading"
+import { MAS_SERVICE_CATEGORY } from "../../../config/apiConfig"
+import { getRequest } from "../../../service/apiService"
 
 const LabBillingDetails = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const [formData, setFormData] = useState({
+    billingType: "",
     patientName: "",
     mobileNo: "",
     age: "",
@@ -108,6 +109,7 @@ const LabBillingDetails = () => {
 
       // Format patient data - Fixed patientId mapping
       const patientData = {
+        billingType: billingData.billingType||"",
         patientName: billingData.patientName || "",
         mobileNo: billingData.mobileNo || "",
         age: billingData.age || "",
@@ -272,15 +274,15 @@ const LabBillingDetails = () => {
     const totalGstAmount =
       gstConfig.gstApplicable && gstConfig.gstPercent > 0
         ? checkedItems.reduce((total, item) => {
-            const itemOriginalAmount = Number.parseFloat(item.originalAmount) || 0
-            const itemDiscountAmount = Number.parseFloat(item.discountAmount) || 0
-            const itemNetAmount = itemOriginalAmount - itemDiscountAmount
-            const itemGstAmount = (itemNetAmount * gstConfig.gstPercent) / 100
-            console.log(
-              `Item GST Calculation - Original: ${itemOriginalAmount}, Discount: ${itemDiscountAmount}, Net: ${itemNetAmount}, GST%: ${gstConfig.gstPercent}, GST Amount: ${itemGstAmount}`,
-            )
-            return total + itemGstAmount
-          }, 0)
+          const itemOriginalAmount = Number.parseFloat(item.originalAmount) || 0
+          const itemDiscountAmount = Number.parseFloat(item.discountAmount) || 0
+          const itemNetAmount = itemOriginalAmount - itemDiscountAmount
+          const itemGstAmount = (itemNetAmount * gstConfig.gstPercent) / 100
+          console.log(
+            `Item GST Calculation - Original: ${itemOriginalAmount}, Discount: ${itemDiscountAmount}, Net: ${itemNetAmount}, GST%: ${gstConfig.gstPercent}, GST Amount: ${itemGstAmount}`,
+          )
+          return total + itemGstAmount
+        }, 0)
         : 0
 
     const finalAmount = totalNetAmount + totalGstAmount
@@ -360,19 +362,22 @@ const LabBillingDetails = () => {
       let billingHeaderId = null
 
       if (billingData) {
-        // Try different possible field names for billing header ID - FIXED
+        // Try different possible field names for billing header ID - now includes billingType as fallback
         billingHeaderId =
-          billingData.billinghdid || // FIXED: This is the correct field name from your API
+          billingData.billinghdid ||
           billingData.billHeaderId ||
           billingData.billinghdId ||
           billingData.billingHeaderId ||
           billingData.billHdId ||
           billingData.id ||
-          (Array.isArray(billingData) ? billingData[0]?.billinghdid : null) || // FIXED
+          billingData.billingType ||
+          (Array.isArray(billingData) ? billingData[0]?.billinghdid : null) ||
           (Array.isArray(billingData) ? billingData[0]?.billHeaderId : null) ||
           (Array.isArray(billingData) ? billingData[0]?.billinghdId : null) ||
-          (Array.isArray(billingData) ? billingData[0]?.id : null)
+          (Array.isArray(billingData) ? billingData[0]?.id : null) ||
+          (Array.isArray(billingData) ? billingData[0]?.billingType : null);
       }
+
 
       console.log("Billing Data:", billingData)
       console.log("Extracted Billing Header ID:", billingHeaderId)
@@ -390,7 +395,7 @@ const LabBillingDetails = () => {
       // Create lab data structure for payment processing
       const labData = {
         response: {
-          billinghdId: billingHeaderId, // Use the correct field name
+          billingType: billingData.billingType, // Use the correct field name
           billinghdid: billingHeaderId, // Also include lowercase version
           billHeaderId: billingHeaderId, // Add both possible field names
           // Add other necessary fields from billing data
@@ -405,7 +410,8 @@ const LabBillingDetails = () => {
         labData,
         selectedItems,
         paymentBreakdown,
-        billingHeaderId, // Add this for debugging
+        billingHeaderId, 
+        billingType: formData.billingType || billingData.billingType || "",// Add this for debugging
       })
 
       // Navigate to payment page with all required data
@@ -416,7 +422,8 @@ const LabBillingDetails = () => {
           labData: labData,
           selectedItems: selectedItems,
           paymentBreakdown: paymentBreakdown,
-          billingHeaderId: billingHeaderId, // Pass it directly as well
+          billingHeaderId: billingHeaderId,
+          billingType: formData.billingType || billingData.billingType || "", // Pass it directly as well
         },
       })
     } catch (error) {
@@ -554,8 +561,8 @@ const LabBillingDetails = () => {
                   </div>
                 </div>
 
-                
-                
+
+
 
                 {/* Rest of the component remains the same... */}
                 {/* Lab Investigation/Package Details */}

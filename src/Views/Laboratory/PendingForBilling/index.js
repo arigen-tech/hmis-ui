@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import LoadingScreen from "../../../Components/Loading"
-import { getRequest } from "../../../service/apiService"
 import { LAB } from "../../../config/apiConfig"
+import { getRequest } from "../../../service/apiService"
 
 const PendingForBilling = () => {
   const navigate = useNavigate()
@@ -35,7 +35,10 @@ const PendingForBilling = () => {
           department: item.department || "N/A",
           amount: item.amount || 0,
           billingStatus: item.billingStatus === "p" ? "Pending" : "Pending",
-          fullData: item, // Store the complete record including details array
+          fullData: item,
+          registrationCost: item.registrationCost,
+          visitType:item.visitType,
+          // Store the complete record including details array
         }))
 
         setPatientList(mappedData)
@@ -76,7 +79,9 @@ const PendingForBilling = () => {
           return "/LabBillingDetails"
         case "opd":
         case "opd services":
-          return "/OPDBillingDetails"
+        case "consultation":
+        case "consultation services":
+          return "/OPDBillingDetails";
         case "ipd":
         case "ipd services":
           return "/IPDBillingDetails"

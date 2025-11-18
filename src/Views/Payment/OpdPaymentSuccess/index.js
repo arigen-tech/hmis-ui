@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { ALL_REPORTS } from "../../../config/apiConfig";
-const LabPaymentSuccess = () => {
+const OpdPaymentSuccess = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -16,7 +16,7 @@ const LabPaymentSuccess = () => {
 
     try {
       // ✅ Use exactly the returned status from backend!
-      const url = `${ALL_REPORTS}/labReport?billNo=${encodeURIComponent(billNo)}&paymentStatus=${paymentStatus}`;
+      const url = `${ALL_REPORTS}/opdReport?visit=427`;
 
       console.log("Download URL:", url);
 
@@ -36,7 +36,7 @@ const LabPaymentSuccess = () => {
 
       const link = document.createElement("a");
       link.href = downloadUrl;
-      link.download = `LabReceipt_${billNo}.pdf`;
+      link.download = `OpdReceipt_${billNo}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -49,7 +49,7 @@ const LabPaymentSuccess = () => {
 
 
   const handleBackToRegistration = () => {
-    navigate("/labregistration");
+    navigate("/PendingForBilling");
   };
 
   return (
@@ -104,7 +104,7 @@ const LabPaymentSuccess = () => {
                     className="btn btn-secondary d-flex align-items-center gap-2"
                     onClick={handleBackToRegistration}
                   >
-                    Back to Lab Registration
+                    Back to Billing Page
                   </button>
                 </div>
               </div>
@@ -116,4 +116,5 @@ const LabPaymentSuccess = () => {
   );
 };
 
-export default LabPaymentSuccess;
+export default OpdPaymentSuccess;
+  

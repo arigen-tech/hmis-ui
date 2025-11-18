@@ -1,8 +1,8 @@
-import {useEffect, useState} from "react"
-import Popup from "../../../Components/popup"
-import {getRequest, postRequest} from "../../../service/apiService";
-import {ALL_DISTRICT, GET_PRECONSULTATION, PATIENT_FOLLOW_UP, SET_VITALS} from "../../../config/apiConfig";
+import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
+import Popup from "../../../Components/popup";
+import { GET_PRECONSULTATION, SET_VITALS } from "../../../config/apiConfig";
+import { getRequest, postRequest } from "../../../service/apiService";
 
 const OpdPreconsultation = () => {
 
@@ -206,7 +206,7 @@ const OpdPreconsultation = () => {
       lastChgBy: sessionStorage.getItem('username')
     };
     try {
-      debugger;
+      // debugger;
       const data = await postRequest(`${SET_VITALS}`, requestData);
       if (data.status === 200) {
         fetchPendingPreconsultation();
