@@ -127,159 +127,258 @@ const PaymentPage = () => {
   }
 
   const handlePayment = async () => {
-    try {
-      setLoading(true);
-
-      if (paymentMethod !== "cash" && !paymentDetails.trim()) {
-        Swal.fire("Error!", "Please enter payment details", "error");
-        return;
-      }
-
-      const billHeaderId = getBillHeaderId();
-      console.log("Final Bill Header ID for payment:", billHeaderId);
-
-      if (!billHeaderId) {
-        Swal.fire({
-          title: "Error!",
-          text: "Bill Header ID not found. Cannot proceed with payment. Please go back and try again.",
-          icon: "error",
-          confirmButtonText: "Go Back",
-        }).then(() => {
-          navigate(-1);
-        });
-        return;
-      }
-
-      // ✅ Prepare the investigation status
-      const investigationStatus = prepareInvestigationAndPackageStatus();
-      console.log("Final investigationStatus to send:", investigationStatus);
-
-      // ✅ Use paymentData if available, otherwise create new request
-      const paymentUpdateRequest = paymentData ? {
-        ...paymentData, // Use the complete payment data from previous component
-        mode: paymentMethod, // Update payment method if changed
-        paymentReferenceNo: paymentReferenceNo, // Use generated reference
-      } : {
-        billingType: billingType,
-        billHeaderId: Number(billHeaderId),
-        amount: Number.parseFloat(amount),
-        mode: paymentMethod,
-        paymentReferenceNo: paymentReferenceNo,
-        investigationandPackegBillStatus: investigationStatus,
-      };
-
-      console.log("Final Payment Update Request:", paymentUpdateRequest);
-
-      // ✅ Validate that we have items to update
-      if (!paymentUpdateRequest.investigationandPackegBillStatus || 
-          paymentUpdateRequest.investigationandPackegBillStatus.length === 0) {
-        Swal.fire({
-          title: "Warning!",
-          html: `No items selected for payment update.<br/>
-                 The payment will be processed but no specific items will be marked as paid.<br/>
-                 <small>Bill Header ID: ${billHeaderId}</small>`,
-          icon: "warning",
-          showCancelButton: true,
-          confirmButtonText: "Proceed Anyway",
-          cancelButtonText: "Go Back",
-        }).then((result) => {
-          if (!result.isConfirmed) {
-            setLoading(false);
-            return;
-          }
-          // Continue with payment even if no items
-          proceedWithPayment(paymentUpdateRequest);
-        });
-      } else {
-        proceedWithPayment(paymentUpdateRequest);
-      }
-    } catch (error) {
-      console.error("Payment error:", error);
-      Swal.fire(
-        "Error!",
-        error.message || "Something went wrong during payment processing",
-        "error"
-      );
-      setLoading(false);
+  try {
+    // Basic validation
+    if (paymentMethod !== "cash" && !paymentDetails.trim()) {
+      Swal.fire("Error!", "Please enter payment details", "error");
+      return;
     }
-  };
+
+    const billHeaderId = getBillHeaderId();
+    console.log("Final Bill Header ID for payment:", billHeaderId);
+
+    if (!billHeaderId) {
+      await Swal.fire({
+        title: "Error!",
+        text: "Bill Header ID not found. Cannot proceed with payment.",
+        icon: "error",
+        confirmButtonText: "Go Back",
+      });
+      navigate(-1);
+      return;
+    }
+
+    // ✅ PREPARE PAYMENT DATA WITH EXPLICIT FLAGS
+    const paymentUpdateRequest = {
+      // Core payment data
+      billHeaderId: Number(billHeaderId),
+      amount: Number.parseFloat(amount),
+      mode: paymentMethod,
+      paymentReferenceNo: paymentReferenceNo,
+      investigationandPackegBillStatus: prepareInvestigationAndPackageStatus(),
+      
+      // ✅ EXPLICIT FLAGS TO PREVENT DUPLICATES
+      isPaymentUpdate: true,
+      shouldNotCreateNewBilling: true,
+      useExistingBillingHeader: true,
+      
+      // Additional context
+      patientId: patientId,
+      billingType: billingType
+    };
+
+    // Add payment details for non-cash methods
+    if (paymentMethod !== "cash") {
+      paymentUpdateRequest.paymentDetails = paymentDetails;
+    }
+
+    console.log("=== FINAL PAYMENT REQUEST ===");
+    console.log("Payment Request:", paymentUpdateRequest);
+
+    // ✅ PROCEED WITH PAYMENT
+    await proceedWithPayment(paymentUpdateRequest);
+
+  } catch (error) {
+    console.error("Payment initialization error:", error);
+    Swal.fire("Error!", "Failed to initialize payment", "error");
+  }
+};
 
   // ✅ Extract payment logic to separate function
-  const proceedWithPayment = async (paymentUpdateRequest) => {
-    try {
-      const response = await postRequest("/lab/updatepaymentstatus", paymentUpdateRequest);
+ const proceedWithPayment = async (paymentUpdateRequest) => {
+  try {
+    setLoading(true);
+    
+    console.log("=== PAYMENT PROCESS START ===");
+    console.log("Original Payment Request:", paymentUpdateRequest);
 
-      console.log("Payment API Response:", response);
-
-      
-
-      if (response && response.status === 200 && response.message === "success") {
-        const billNo = response?.response?.billNo;
-        const msg = response?.response?.msg;
-        const paymentStatus = response?.response?.paymentStatus;
-
-        console.log("Extracted billNo:", billNo);
-        console.log("Extracted msg:", msg);
-        console.log("Extracted paymentStatus:", paymentStatus);
-
-        if (billNo && msg === "Success") {
-          setPopupMessage({
-            message: "Payment successful!",
-            type: "success",
-            onClose: () => {
-              setPopupMessage(null);
-
-              if (billingType && billingType.toLowerCase() === "consultation services") {
-                navigate("/opd-payment-success", {
-                  state: {
-                    billingType,
-                    amount,
-                    paymentReferenceNo,
-                    paymentMethod,
-                    patientId,
-                    billNo,
-                    paymentStatus,
-                    paymentResponse: response,
-                  },
-                });
-              } else {
-                navigate("/lab-payment-success", {
-                  state: {
-                    billingType,
-                    amount,
-                    paymentReferenceNo,
-                    paymentMethod,
-                    patientId,
-                    billNo,
-                    paymentStatus,
-                    paymentResponse: response,
-                  },
-                });
-              }
-            },
-          });
-        } else {
-          const errorMessage = msg || "Payment processing failed";
-          Swal.fire("Payment Failed!", errorMessage, "error");
-        }
-      } else {
-        const errorMessage =
-          response?.response?.msg ||
-          response?.message ||
-          "Payment processing failed";
-        Swal.fire("Payment Failed!", errorMessage, "error");
-      }
-    } catch (error) {
-      console.error("Payment processing error:", error);
-      Swal.fire(
-        "Error!",
-        error.message || "Something went wrong during payment processing",
-        "error"
-      );
-    } finally {
-      setLoading(false);
+    // ✅ CRITICAL: Validate required fields
+    if (!paymentUpdateRequest.billHeaderId) {
+      throw new Error("Bill Header ID is missing. Cannot process payment.");
     }
+
+    if (!paymentUpdateRequest.amount || paymentUpdateRequest.amount <= 0) {
+      throw new Error("Invalid payment amount.");
+    }
+
+    // ✅ ENHANCED PAYMENT REQUEST WITH SAFETY FLAGS
+    const enhancedPaymentRequest = {
+      // Core payment data
+      billHeaderId: Number(paymentUpdateRequest.billHeaderId),
+      amount: Number.parseFloat(paymentUpdateRequest.amount),
+      mode: paymentUpdateRequest.mode || "cash",
+      paymentReferenceNo: paymentUpdateRequest.paymentReferenceNo || `PAY${Date.now()}`,
+      investigationandPackegBillStatus: paymentUpdateRequest.investigationandPackegBillStatus || [],
+      
+      // ✅ CRITICAL SAFETY FLAGS TO PREVENT DUPLICATE BILLING
+      isPaymentUpdate: true,
+      shouldNotCreateNewBilling: true,
+      useExistingBillingHeader: true,
+      operationType: "payment_update_only",
+      
+      // Additional context for backend
+      patientId: paymentUpdateRequest.patientId,
+      billingType: paymentUpdateRequest.billingType,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log("=== ENHANCED PAYMENT REQUEST ===");
+    console.log("With Safety Flags:", enhancedPaymentRequest);
+
+    // ✅ CALL PAYMENT API (NOT REGISTRATION API)
+    const response = await postRequest("/lab/updatepaymentstatus", enhancedPaymentRequest);
+
+    console.log("=== PAYMENT API RESPONSE ===");
+    console.log("Full Response:", response);
+
+    // ✅ ENHANCED RESPONSE VALIDATION
+    if (response && response.status === 200) {
+      
+      // ✅ CRITICAL CHECK: Detect if backend created a new billing header (SHOULD NOT HAPPEN)
+      const newBillinghdId = response?.response?.billinghdId;
+      const originalBillHeaderId = enhancedPaymentRequest.billHeaderId;
+      
+      if (newBillinghdId && newBillinghdId !== originalBillHeaderId) {
+        console.error("❌ BACKEND ERROR: DUPLICATE BILLING HEADER CREATED!");
+        console.error("Original BillHeaderId:", originalBillHeaderId);
+        console.error("New BillinghdId created:", newBillinghdId);
+        
+        // Show specific error for backend issue
+        await Swal.fire({
+          title: "Backend Configuration Error!",
+          html: `
+            <div style="text-align:left">
+              <p><strong>Payment API created duplicate billing header!</strong></p>
+              <p><strong>Original ID:</strong> ${originalBillHeaderId}</p>
+              <p><strong>New ID Created:</strong> ${newBillinghdId}</p>
+              <p class="text-danger">This is a backend issue - payment API should not create new billing headers.</p>
+              <p class="text-warning">Contact administrator to fix the payment API endpoint.</p>
+            </div>
+          `,
+          icon: "error",
+          confirmButtonText: "Understand"
+        });
+        
+        // Still proceed with success if payment was processed
+        if (response.response.msg === "Success") {
+          console.warn("⚠️ Payment processed but with duplicate billing header");
+          handlePaymentSuccess(response, enhancedPaymentRequest);
+        }
+        return;
+      }
+
+      // ✅ NORMAL SUCCESS FLOW - No duplicate created
+      if (response.message === "success" && response.response?.msg === "Success") {
+        handlePaymentSuccess(response, enhancedPaymentRequest);
+      } else {
+        const errorMessage = response?.response?.msg || 
+                            response?.message || 
+                            "Payment processing failed";
+        throw new Error(errorMessage);
+      }
+      
+    } else {
+      // ✅ IMPROVED ERROR HANDLING
+      const errorMessage = response?.response?.msg || 
+                          response?.message || 
+                          "Payment API returned error status";
+      
+      console.error("Payment API Error Details:", {
+        status: response?.status,
+        message: response?.message,
+        response: response?.response
+      });
+      
+      throw new Error(errorMessage);
+    }
+
+  } catch (error) {
+    console.error("❌ Payment processing error:", error);
+    
+    // ✅ USER-FRIENDLY ERROR MESSAGES
+    let errorTitle = "Payment Error!";
+    let errorText = error.message || "Something went wrong during payment processing";
+    
+    // Specific error for network issues
+    if (error.message.includes("Network Error") || error.message.includes("Failed to fetch")) {
+      errorTitle = "Network Error!";
+      errorText = "Unable to connect to payment server. Please check your internet connection.";
+    }
+    
+    // Specific error for duplicate billing
+    if (error.message.includes("duplicate") || error.message.includes("billing header")) {
+      errorTitle = "Backend Error!";
+      errorText = "Payment system configuration error. Please contact administrator.";
+    }
+
+    await Swal.fire({
+      title: errorTitle,
+      text: errorText,
+      icon: "error",
+      confirmButtonText: "OK"
+    });
+    
+  } finally {
+    setLoading(false);
+  }
+};
+
+// ✅ EXTRACTED SUCCESS HANDLING METHOD
+const handlePaymentSuccess = (response, paymentRequest) => {
+  const billNo = response?.response?.billNo;
+  const paymentStatus = response?.response?.paymentStatus;
+  const msg = response?.response?.msg;
+
+  console.log("=== PAYMENT SUCCESS ===");
+  console.log("Bill No:", billNo);
+  console.log("Payment Status:", paymentStatus);
+  console.log("Original BillHeaderId:", paymentRequest.billHeaderId);
+
+  setPopupMessage({
+    message: `Payment Successful! ${billNo ? `Bill: ${billNo}` : ''}`,
+    type: "success",
+    onClose: () => {
+      setPopupMessage(null);
+      navigateToSuccessPage(response, paymentRequest);
+    },
+  });
+};
+
+// ✅ EXTRACTED NAVIGATION METHOD
+const navigateToSuccessPage = (response, paymentRequest) => {
+  const successState = {
+    // Payment details
+    billingType: billingType,
+    amount: paymentRequest.amount,
+    paymentReferenceNo: paymentRequest.paymentReferenceNo,
+    paymentMethod: paymentRequest.mode,
+    
+    // Patient details
+    patientId: patientId,
+    
+    // Response details
+    billNo: response?.response?.billNo,
+    paymentStatus: response?.response?.paymentStatus,
+    paymentResponse: response,
+    
+    // ✅ CRITICAL: Debug information to track duplicates
+    originalBillHeaderId: paymentRequest.billHeaderId,
+    newBillinghdId: response?.response?.billinghdId, // Should be same as original
+    hasDuplicate: response?.response?.billinghdId && 
+                  response.response.billinghdId !== paymentRequest.billHeaderId,
+    paymentRequest: paymentRequest
   };
+
+  console.log("=== NAVIGATING TO SUCCESS PAGE ===");
+  console.log("Success State:", successState);
+
+  // Choose the correct success page based on billing type
+  const successPage = (billingType && billingType.toLowerCase() === "consultation services") 
+    ? "/opd-payment-success" 
+    : "/lab-payment-success";
+
+  navigate(successPage, { state: successState });
+};
 
   const handleCancel = () => {
     Swal.fire({
