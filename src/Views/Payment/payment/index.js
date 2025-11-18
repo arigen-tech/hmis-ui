@@ -17,6 +17,8 @@ const PaymentPage = () => {
     selectedItems,
     paymentBreakdown,
     billingHeaderId, // Direct billing header ID
+    investigationandPackegBillStatus, // ✅ THIS IS WHAT YOU'RE ACTUALLY SENDING
+    paymentData // ✅ Check if paymentData is passed
   } = location.state || {}
 
   const [paymentMethod, setPaymentMethod] = useState("cash")
@@ -33,6 +35,13 @@ const PaymentPage = () => {
       return `PAY${timestamp}${random}`
     }
     setPaymentReferenceNo(generateReferenceNo())
+    
+    // ✅ DEBUG: Log what we're receiving
+    console.log("=== PAYMENT PAGE - RECEIVED DATA ===")
+    console.log("location.state:", location.state)
+    console.log("investigationandPackegBillStatus:", investigationandPackegBillStatus)
+    console.log("selectedItems:", selectedItems)
+    console.log("paymentData:", paymentData)
   }, [])
 
   // Enhanced function to get bill header ID - try multiple sources
@@ -59,34 +68,42 @@ const PaymentPage = () => {
       return labData.response.billHeaderId
     }
 
-    // Try other possible paths
-    const possiblePaths = [
-      labData?.response?.billingType,
-      labData?.billingType,
-      labData?.response?.billHdId,
-      labData?.response?.billId,
-      labData?.response?.id,
-      labData?.billHeaderId,
-      labData?.billHdId,
-      labData?.billinghdId,
-    ]
-
-    for (const path of possiblePaths) {
-      if (path !== undefined && path !== null) {
-        console.log("Using fallback path:", path)
-        return path
-      }
+    // Try from paymentData if available
+    if (paymentData?.billHeaderId !== undefined && paymentData?.billHeaderId !== null) {
+      console.log("Using paymentData.billHeaderId:", paymentData.billHeaderId)
+      return paymentData.billHeaderId
     }
 
     console.log("No bill header ID found!")
     return null
   }
 
-  // Prepare investigation and package status list for the payment request
+  // ✅ FIXED: Prepare investigation and package status list
   const prepareInvestigationAndPackageStatus = () => {
+    console.log("=== PREPARING INVESTIGATION AND PACKAGE STATUS ===")
+    
+    // ✅ Option 1: Use investigationandPackegBillStatus if provided directly
+    if (investigationandPackegBillStatus && investigationandPackegBillStatus.length > 0) {
+      console.log("Using investigationandPackegBillStatus:", investigationandPackegBillStatus)
+      return investigationandPackegBillStatus
+    }
+    
+    // ✅ Option 2: Use paymentData if available
+    if (paymentData?.investigationandPackegBillStatus) {
+      console.log("Using paymentData.investigationandPackegBillStatus:", paymentData.investigationandPackegBillStatus)
+      return paymentData.investigationandPackegBillStatus
+    }
+    
+    // ✅ Option 3: Use selectedItems (old structure) for backward compatibility
     const statusList = []
 
-    // Add selected investigations
+    // Check if selectedItems has the new structure (array of items)
+    if (Array.isArray(selectedItems)) {
+      console.log("Using selectedItems as array:", selectedItems)
+      return selectedItems
+    }
+
+    // Old structure: selectedItems with investigations and packages
     if (selectedItems?.investigations) {
       selectedItems.investigations.forEach((investigation) => {
         statusList.push({
@@ -96,7 +113,6 @@ const PaymentPage = () => {
       })
     }
 
-    // Add selected packages
     if (selectedItems?.packages) {
       selectedItems.packages.forEach((pkg) => {
         statusList.push({
@@ -106,6 +122,7 @@ const PaymentPage = () => {
       })
     }
 
+    console.log("Final status list:", statusList)
     return statusList
   }
 
@@ -133,22 +150,69 @@ const PaymentPage = () => {
         return;
       }
 
-      const paymentUpdateRequest = {
+      // ✅ Prepare the investigation status
+      const investigationStatus = prepareInvestigationAndPackageStatus();
+      console.log("Final investigationStatus to send:", investigationStatus);
+
+      // ✅ Use paymentData if available, otherwise create new request
+      const paymentUpdateRequest = paymentData ? {
+        ...paymentData, // Use the complete payment data from previous component
+        mode: paymentMethod, // Update payment method if changed
+        paymentReferenceNo: paymentReferenceNo, // Use generated reference
+      } : {
         billingType: billingType,
         billHeaderId: Number(billHeaderId),
         amount: Number.parseFloat(amount),
         mode: paymentMethod,
         paymentReferenceNo: paymentReferenceNo,
-        investigationandPackegBillStatus: prepareInvestigationAndPackageStatus(),
+        investigationandPackegBillStatus: investigationStatus,
       };
 
-      console.log("Payment Update Request:", paymentUpdateRequest);
+      console.log("Final Payment Update Request:", paymentUpdateRequest);
 
+      // ✅ Validate that we have items to update
+      if (!paymentUpdateRequest.investigationandPackegBillStatus || 
+          paymentUpdateRequest.investigationandPackegBillStatus.length === 0) {
+        Swal.fire({
+          title: "Warning!",
+          html: `No items selected for payment update.<br/>
+                 The payment will be processed but no specific items will be marked as paid.<br/>
+                 <small>Bill Header ID: ${billHeaderId}</small>`,
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonText: "Proceed Anyway",
+          cancelButtonText: "Go Back",
+        }).then((result) => {
+          if (!result.isConfirmed) {
+            setLoading(false);
+            return;
+          }
+          // Continue with payment even if no items
+          proceedWithPayment(paymentUpdateRequest);
+        });
+      } else {
+        proceedWithPayment(paymentUpdateRequest);
+      }
+    } catch (error) {
+      console.error("Payment error:", error);
+      Swal.fire(
+        "Error!",
+        error.message || "Something went wrong during payment processing",
+        "error"
+      );
+      setLoading(false);
+    }
+  };
+
+  // ✅ Extract payment logic to separate function
+  const proceedWithPayment = async (paymentUpdateRequest) => {
+    try {
       const response = await postRequest("/lab/updatepaymentstatus", paymentUpdateRequest);
 
       console.log("Payment API Response:", response);
 
-      // ✅ Check based on your actual API response structure
+      
+
       if (response && response.status === 200 && response.message === "success") {
         const billNo = response?.response?.billNo;
         const msg = response?.response?.msg;
@@ -158,8 +222,6 @@ const PaymentPage = () => {
         console.log("Extracted msg:", msg);
         console.log("Extracted paymentStatus:", paymentStatus);
 
-        // ✅ Success condition based on your API: status 200, message "success", and billNo exists
-        // ✅ Success condition based on your API: status 200, message "success", and billNo exists
         if (billNo && msg === "Success") {
           setPopupMessage({
             message: "Payment successful!",
@@ -167,7 +229,6 @@ const PaymentPage = () => {
             onClose: () => {
               setPopupMessage(null);
 
-              // ✅ Conditional navigation based on billingType
               if (billingType && billingType.toLowerCase() === "consultation services") {
                 navigate("/opd-payment-success", {
                   state: {
@@ -182,7 +243,6 @@ const PaymentPage = () => {
                   },
                 });
               } else {
-                // ✅ Default: navigate to lab success page
                 navigate("/lab-payment-success", {
                   state: {
                     billingType,
@@ -202,7 +262,6 @@ const PaymentPage = () => {
           const errorMessage = msg || "Payment processing failed";
           Swal.fire("Payment Failed!", errorMessage, "error");
         }
-
       } else {
         const errorMessage =
           response?.response?.msg ||
@@ -211,7 +270,7 @@ const PaymentPage = () => {
         Swal.fire("Payment Failed!", errorMessage, "error");
       }
     } catch (error) {
-      console.error("Payment error:", error);
+      console.error("Payment processing error:", error);
       Swal.fire(
         "Error!",
         error.message || "Something went wrong during payment processing",
@@ -240,6 +299,7 @@ const PaymentPage = () => {
 
   // Get the current billHeaderId for display
   const currentBillHeaderId = getBillHeaderId()
+  const investigationStatus = prepareInvestigationAndPackageStatus()
 
   return (
     <div className="container py-5">
@@ -263,6 +323,14 @@ const PaymentPage = () => {
                 <div className="d-flex justify-content-between mt-1">
                   <span>Reference No:</span>
                   <span className="text-muted">{paymentReferenceNo}</span>
+                </div>
+                <div className="d-flex justify-content-between mt-1">
+                  <span>Bill Header ID:</span>
+                  <span className="text-muted">{currentBillHeaderId || "Not found"}</span>
+                </div>
+                <div className="d-flex justify-content-between mt-1">
+                  <span>Items to update:</span>
+                  <span className="text-muted">{investigationStatus?.length || 0} items</span>
                 </div>
               </div>
 
@@ -330,6 +398,15 @@ const PaymentPage = () => {
                   Cancel Payment
                 </button>
               </div>
+
+              {/* Show warning if no items to update */}
+              {currentBillHeaderId && (!investigationStatus || investigationStatus.length === 0) && (
+                <div className="alert alert-warning mt-3">
+                  <i className="fa fa-exclamation-triangle me-2"></i>
+                  <strong>Warning:</strong> No specific items selected for payment update. 
+                  The payment will be processed but individual items may not be marked as paid.
+                </div>
+              )}
 
               {/* Show error if no bill header ID */}
               {!currentBillHeaderId && (

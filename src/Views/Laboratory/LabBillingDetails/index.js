@@ -5,7 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 import Swal from "sweetalert2"
 import LoadingScreen from "../../../Components/Loading"
 import { MAS_SERVICE_CATEGORY } from "../../../config/apiConfig"
-import { getRequest } from "../../../service/apiService"
+import { getRequest, postRequest } from "../../../service/apiService"
 
 const LabBillingDetails = () => {
   const navigate = useNavigate()
@@ -82,7 +82,8 @@ const LabBillingDetails = () => {
       const responseData = location.state.billingData
       const billingData = Array.isArray(responseData) ? responseData[0] : responseData
       const details = billingData.details || []
-      console.log("Billing Data:", billingData) // Debug log
+      console.log("=== BILLING DATA ===", billingData)
+      console.log("=== BILLING DETAILS ===", details)
 
       // Extract investigations and packages from details
       const investigations = details
@@ -109,7 +110,7 @@ const LabBillingDetails = () => {
 
       // Format patient data - Fixed patientId mapping
       const patientData = {
-        billingType: billingData.billingType||"",
+        billingType: billingData.billingType || "",
         patientName: billingData.patientName || "",
         mobileNo: billingData.mobileNo || "",
         age: billingData.age || "",
@@ -119,10 +120,37 @@ const LabBillingDetails = () => {
         address: billingData.address || "",
       }
 
-      // Format rows from the details array
+      // ✅ FIXED: Format rows from the details array with proper ID mapping
       const formattedRows = details.map((item, index) => {
         const isPackage = item.packageId !== null && item.packageId !== undefined
         const isInvestigation = item.investigationId !== null && item.investigationId !== undefined
+
+        // ✅ CRITICAL FIX: Properly extract and validate item IDs
+        const investigationId = item.investigationId
+        const packageId = item.packageId
+
+        // ✅ Use the actual ID from the source (investigationId or packageId)
+        const itemId = isPackage ? packageId : investigationId
+
+        // ✅ Validate that we have a valid item ID
+        const validItemId = itemId !== null && itemId !== undefined && itemId !== 0
+
+        console.log(`Row ${index} ID Mapping:`, {
+          itemName: item.itemName,
+          isPackage,
+          isInvestigation,
+          investigationId,
+          packageId,
+          extractedItemId: itemId,
+          validItemId,
+          basePrice: item.basePrice,
+          discount: item.discount
+        })
+
+        if (!validItemId) {
+          console.error(`❌ INVALID ITEM ID for row ${index}:`, item)
+        }
+
         return {
           id: item.id || index + 1,
           name: item.itemName || (isPackage ? item.packageName : item.investigationName) || "",
@@ -131,12 +159,19 @@ const LabBillingDetails = () => {
           discountAmount: item.discount || 0,
           netAmount: item.amountAfterDiscount || item.netAmount || 0,
           type: isPackage ? "package" : "investigation",
-          investigationId: item.investigationId,
-          packageId: item.packageId,
-          itemId: isPackage ? item.packageId : item.investigationId, // Add itemId for payment processing
+          investigationId: investigationId,
+          packageId: packageId,
+          itemId: itemId, // ✅ Use the actual ID from source data
           itemDetails: item,
+          hasValidId: validItemId, // ✅ Add validation flag for debugging
         }
       })
+
+      // ✅ Check for rows with invalid IDs
+      const rowsWithInvalidIds = formattedRows.filter(row => !row.hasValidId)
+      if (rowsWithInvalidIds.length > 0) {
+        console.warn(`⚠️ Found ${rowsWithInvalidIds.length} rows with invalid IDs:`, rowsWithInvalidIds)
+      }
 
       // Determine the type based on the items
       const hasPackages = formattedRows.some((row) => row.type === "package")
@@ -148,8 +183,12 @@ const LabBillingDetails = () => {
         defaultType = "package"
       }
 
-      console.log("Patient Data:", patientData) // Debug log
-      console.log("Formatted Rows:", formattedRows) // Debug log
+      console.log("=== FINAL FORMATTED DATA ===")
+      console.log("Patient Data:", patientData)
+      console.log("Formatted Rows:", formattedRows)
+      console.log("Rows with valid IDs:", formattedRows.filter(row => row.hasValidId).length)
+      console.log("Rows with invalid IDs:", formattedRows.filter(row => !row.hasValidId).length)
+      console.log("Default type:", defaultType)
 
       setFormData({
         ...patientData,
@@ -165,11 +204,10 @@ const LabBillingDetails = () => {
       setIsFormValid(isValid)
       setIsLoading(false)
     } else {
-      console.log("No billing data found in location.state") // Debug log
+      console.log("No billing data found in location.state")
       navigate("/PendingForBilling")
     }
   }, [location.state, navigate])
-
   // Add GST config change effect - same as lab registration
   useEffect(() => {
     console.log("GST Config changed:", gstConfig)
@@ -303,7 +341,7 @@ const LabBillingDetails = () => {
     return breakdown
   }
 
-  // Update handleSave to navigate to payment page - fix billing header ID passing
+
   const handleSave = async (e) => {
     e.preventDefault()
     if (!isFormValid) return
@@ -311,124 +349,209 @@ const LabBillingDetails = () => {
     try {
       setIsLoading(true)
 
-      // Validate checked rows
-      const hasCheckedItems = formData.rows.some((row, index) => checkedRows[index])
-      if (!hasCheckedItems) {
-        Swal.fire("Error!", "Please select at least one investigation or package.", "error")
-        return
-      }
-
-      // Check for any invalid rows with no itemId
-      const invalidRow = formData.rows.find((row, index) => checkedRows[index] && !row.itemId)
-      if (invalidRow) {
-        Swal.fire(
-          "Error!",
-          "One or more selected rows have no valid investigation/package. Please select from dropdown.",
-          "error",
-        )
-        return
-      }
-
-      // Calculate payment breakdown
-      const paymentBreakdown = calculatePaymentBreakdown()
-      const totalFinalAmount = Number.parseFloat(paymentBreakdown.finalAmount)
-
-      // Prepare selected items for payment page
-      const selectedItems = {
-        investigations: formData.rows
-          .filter((row, index) => checkedRows[index] && row.type === "investigation")
-          .map((row) => ({
-            id: row.itemId,
-            name: row.name,
-            originalAmount: row.originalAmount,
-            discountAmount: row.discountAmount,
-            netAmount: row.netAmount,
-            type: "i",
-          })),
-        packages: formData.rows
-          .filter((row, index) => checkedRows[index] && row.type === "package")
-          .map((row) => ({
-            id: row.itemId,
-            name: row.name,
-            originalAmount: row.originalAmount,
-            discountAmount: row.discountAmount,
-            netAmount: row.netAmount,
-            type: "p",
-          })),
-      }
-
-      // Get billing header ID from location state - FIXED to use correct field name
       const billingData = location.state?.billingData
-      let billingHeaderId = null
+      const isArray = Array.isArray(billingData)
+      const data = isArray ? billingData[0] : billingData
 
-      if (billingData) {
-        // Try different possible field names for billing header ID - now includes billingType as fallback
-        billingHeaderId =
-          billingData.billinghdid ||
-          billingData.billHeaderId ||
-          billingData.billinghdId ||
-          billingData.billingHeaderId ||
-          billingData.billHdId ||
-          billingData.id ||
-          billingData.billingType ||
-          (Array.isArray(billingData) ? billingData[0]?.billinghdid : null) ||
-          (Array.isArray(billingData) ? billingData[0]?.billHeaderId : null) ||
-          (Array.isArray(billingData) ? billingData[0]?.billinghdId : null) ||
-          (Array.isArray(billingData) ? billingData[0]?.id : null) ||
-          (Array.isArray(billingData) ? billingData[0]?.billingType : null);
-      }
+      console.log("=== SAVE - BILLING DATA ===")
+      console.log("Original billing data:", data)
+      console.log("Existing billinghdid:", data.billinghdid)
+      console.log("orderhdid:", data.orderhdid)
 
+      const patientId = formData.patientId || data.patientid || data.patientId
 
-      console.log("Billing Data:", billingData)
-      console.log("Extracted Billing Header ID:", billingHeaderId)
-
-      if (!billingHeaderId) {
+      if (!patientId) {
         Swal.fire({
           title: "Error!",
-          text: "Billing Header ID not found. Cannot proceed with payment. Please go back and try again.",
+          text: "Patient ID not found. Please go back and try again.",
           icon: "error",
           confirmButtonText: "Go Back",
         })
+        setIsLoading(false)
         return
       }
 
-      // Create lab data structure for payment processing
+      // ✅ CRITICAL FIX: Check if we already have a valid billing header ID
+      let billingHeaderId = data.billinghdid
+
+      // ✅ ONLY register if NO billing header exists AND we have valid items
+      if (!billingHeaderId) {
+        console.log("❌ No existing billing header found. Checking if registration is needed...")
+
+        // ✅ Validate that we have items with valid IDs before attempting registration
+        const itemsWithValidIds = formData.rows.filter(row =>
+          row.itemId && row.itemId !== null && row.itemId !== undefined && row.itemId !== 0
+        )
+
+        if (itemsWithValidIds.length === 0) {
+          Swal.fire({
+            title: "Error!",
+            text: "No valid items found for registration. Please check the investigation data.",
+            icon: "error",
+            confirmButtonText: "OK",
+          })
+          setIsLoading(false)
+          return
+        }
+
+        try {
+          // ✅ REGISTER ONLY IF NO EXISTING BILLING HEADER
+          const allItemsForRegistration = itemsWithValidIds.map((row) => {
+            console.log(`Registration - Row: ${row.name}, ItemId: ${row.itemId}, Type: ${row.type}`)
+
+            return {
+              id: Number(row.itemId),
+              appointmentDate: row.date || new Date().toISOString().split("T")[0],
+              checkStatus: true,
+              actualAmount: Number.parseFloat(row.originalAmount) || 0,
+              discountedAmount: Number.parseFloat(row.discountAmount) || 0,
+              type: row.type === "investigation" ? "i" : "p",
+            }
+          })
+
+          console.log("=== REGISTERING NEW BILLING HEADER ===")
+          console.log("Items for registration:", allItemsForRegistration)
+
+          let registrationResponse;
+
+          if (data.orderhdid) {
+            console.log("=== USING EXISTING ORDER API ===")
+            const labBillingData = {
+              patientId: Number(patientId),
+              orderhdid: data.orderhdid,
+              labInvestigationReq: allItemsForRegistration,
+            }
+
+            registrationResponse = await postRequest("/lab/registration/billing", labBillingData)
+          } else {
+            console.log("=== USING FRESH REGISTRATION API ===")
+            const labRegistrationData = {
+              patientId: Number(patientId),
+              labInvestigationReq: allItemsForRegistration,
+            }
+
+            registrationResponse = await postRequest("/lab/registration", labRegistrationData)
+          }
+
+          console.log("=== REGISTRATION RESPONSE ===")
+          console.log("Response:", registrationResponse)
+
+          if (!registrationResponse || registrationResponse.status !== 200) {
+            throw new Error(registrationResponse?.message || "Registration failed.")
+          }
+
+          // ✅ Extract billing header ID from response
+          billingHeaderId =
+            registrationResponse?.response?.billinghdId ||
+            registrationResponse?.response?.billinghdid ||
+            registrationResponse?.response?.billHeaderId ||
+            registrationResponse?.response?.id
+
+          if (!billingHeaderId) {
+            throw new Error("Billing Header ID not returned from registration")
+          }
+
+          console.log("✓ NEW Registration successful. Billing Header ID:", billingHeaderId)
+
+          await Swal.fire({
+            title: "Registered!",
+            text: `New billing header created Successfully. `,
+            icon: "success",
+            confirmButtonText: "Continue to Payment",
+          })
+
+        } catch (registrationError) {
+          console.error("❌ Registration error:", registrationError)
+          Swal.fire("Registration Error!", registrationError.message, "error")
+          setIsLoading(false)
+          return
+        }
+      } else {
+        // ✅ USE EXISTING BILLING HEADER - NO REGISTRATION
+        console.log("✓ USING EXISTING Billing Header ID:", billingHeaderId)
+        console.log("🚫 SKIPPING REGISTRATION - Using existing billing header")
+      }
+
+      // ✅ Calculate payment based on SELECTED items only
+      const paymentBreakdown = calculatePaymentBreakdown()
+      const totalFinalAmount = Number.parseFloat(paymentBreakdown.finalAmount)
+
+      // ✅ Extract CHECKED items for payment
+      const selectedItemsForPayment = formData.rows
+        .filter((row, index) => checkedRows[index] && row.itemId)
+        .map((row) => ({
+          id: Number(row.itemId),
+          type: row.type === "investigation" ? "i" : "p",
+        }))
+
+      console.log("=== PAYMENT ITEMS ===")
+      console.log("Selected items for payment:", selectedItemsForPayment)
+
+      // ✅ CRITICAL: Validate that we have selected items
+      if (selectedItemsForPayment.length === 0) {
+        Swal.fire("Error!", "Please select at least one investigation or package for payment.", "error")
+        setIsLoading(false)
+        return
+      }
+
+      // ✅ Prepare payment data - ONLY payment update, no registration
+      const paymentData = {
+        billHeaderId: Number(billingHeaderId), // Use existing or newly created billing header
+        amount: totalFinalAmount,
+        mode: "cash",
+        paymentReferenceNo: `PAY${Date.now()}`,
+        investigationandPackegBillStatus: selectedItemsForPayment,
+        // ✅ CRITICAL: Add flags to prevent duplicate registration in payment API
+        isPaymentUpdate: true,
+        shouldNotCreateNewBilling: true,
+        useExistingBillingHeader: true
+      }
+
+      console.log("=== PAYMENT DATA ===")
+      console.log("Payment data to send:", paymentData)
+      console.log("Billing Header Source:", billingHeaderId ? "EXISTING" : "NEW")
+
+      // ✅ Prepare labData for payment page
       const labData = {
         response: {
-          billingType: billingData.billingType, // Use the correct field name
-          billinghdid: billingHeaderId, // Also include lowercase version
-          billHeaderId: billingHeaderId, // Add both possible field names
-          // Add other necessary fields from billing data
-          patientId: formData.patientId,
+          billinghdId: billingHeaderId,
+          billinghdid: billingHeaderId,
+          billHeaderId: billingHeaderId,
+          patientId: patientId,
           totalAmount: totalFinalAmount,
         },
       }
 
-      console.log("Navigating to payment with data:", {
-        amount: totalFinalAmount,
-        patientId: formData.patientId,
-        labData,
-        selectedItems,
-        paymentBreakdown,
-        billingHeaderId, 
-        billingType: formData.billingType || billingData.billingType || "",// Add this for debugging
-      })
-
-      // Navigate to payment page with all required data
-      navigate("/payment", {
-        state: {
-          amount: totalFinalAmount,
-          patientId: formData.patientId,
-          labData: labData,
-          selectedItems: selectedItems,
-          paymentBreakdown: paymentBreakdown,
-          billingHeaderId: billingHeaderId,
-          billingType: formData.billingType || billingData.billingType || "", // Pass it directly as well
-        },
+      // ✅ Final confirmation with clear billing header info
+      Swal.fire({
+        title: "Confirm Payment",
+        
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Proceed to Payment",
+        cancelButtonText: "Cancel",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          navigate("/payment", {
+            state: {
+              amount: totalFinalAmount,
+              patientId: patientId,
+              labData: labData,
+              paymentData: paymentData,
+              investigationandPackegBillStatus: selectedItemsForPayment,
+              paymentBreakdown: paymentBreakdown,
+              billingHeaderId: billingHeaderId,
+              // ✅ CRITICAL: Tell payment page whether this is existing or new billing
+              wasRegistered: !data.billinghdid, // true if NEW, false if EXISTING
+              originalOrderHdId: data.orderhdid,
+              originalBillingData: data
+            },
+          })
+        }
       })
     } catch (error) {
-      console.error("Error preparing payment:", error)
-      Swal.fire("Error!", error.message || "Something went wrong while preparing payment", "error")
+      console.error("❌ Error:", error)
+      Swal.fire("Error!", error.message || "Something went wrong", "error")
     } finally {
       setIsLoading(false)
     }
