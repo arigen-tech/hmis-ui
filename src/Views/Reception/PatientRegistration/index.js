@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import { getRequest, postRequest } from "../../../service/apiService";
 import Swal from "sweetalert2";
@@ -14,6 +15,7 @@ import {
 import { DEPARTMENT_CODE_OPD } from "../../../config/constants";
 import axios from "axios";
 const PatientRegistration = () => {
+  const navigate = useNavigate();
   useEffect(() => {
     // Fetching gender data (simulated API response)
     fetchGenderData();
@@ -34,8 +36,15 @@ const PatientRegistration = () => {
   const [districtData, setDistrictData] = useState([]);
   const [nokDistrictData, setNokDistrictData] = useState([]);
   const [departmentData, setDepartmentData] = useState([]);
-  const [doctorData, setDoctorData] = useState([]);
+  const [doctorDataMap, setDoctorDataMap] = useState({});
   const [session, setSession] = useState([]);
+  const [appointments, setAppointments] = useState([{
+    id: 0,
+    speciality: "",
+    selDoctorId: "",
+    selSession: ""
+  }]);
+  const [nextAppointmentId, setNextAppointmentId] = useState(1);
   const [formData, setFormData] = useState({
     imageurl: "",
     firstName: "",
@@ -333,6 +342,92 @@ const PatientRegistration = () => {
     //debugger
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+  useEffect(() => {
+    if (appointments.length === 0) {
+      setFormData((prev) => ({
+        ...prev,
+        speciality: "",
+        selDoctorId: "",
+        selSession: ""
+      }));
+      return;
+    }
+    const primary = appointments[0];
+    setFormData((prev) => ({
+      ...prev,
+      speciality: primary.speciality,
+      selDoctorId: primary.selDoctorId,
+      selSession: primary.selSession
+    }));
+  }, [appointments]);
+
+  
+  const addAppointmentRow = () => {
+    setAppointments((prev) => [
+      ...prev,
+      {
+        id: nextAppointmentId,
+        speciality: "",
+        selDoctorId: "",
+        selSession: ""
+      }
+    ]);
+    setNextAppointmentId((prev) => prev + 1);
+  };
+
+  const removeAppointmentRow = (id) => {
+    setAppointments((prev) => {
+      if (prev.length === 1) {
+        return prev;
+      }
+      return prev.filter((appointment) => appointment.id !== id);
+    });
+    setDoctorDataMap((prev) => {
+      const updated = { ...prev };
+      delete updated[id];
+      return updated;
+    });
+  };
+
+  const handleSpecialityChange = (id, value) => {
+    setAppointments((prev) =>
+      prev.map((appointment) =>
+        appointment.id === id
+          ? { ...appointment, speciality: value, selDoctorId: "", selSession: "" }
+          : appointment
+      )
+    );
+    if (value) {
+      fetchDoctor(value, id);
+    } else {
+      setDoctorDataMap((prev) => {
+        const updated = { ...prev };
+        delete updated[id];
+        return updated;
+      });
+    }
+  };
+
+  const handleDoctorChange = (id, value, specialityId) => {
+    setAppointments((prev) =>
+      prev.map((appointment) =>
+        appointment.id === id
+          ? { ...appointment, selDoctorId: value, selSession: "" }
+          : appointment
+      )
+    );
+    if (value && specialityId) {
+      fetchSession(value, specialityId);
+    }
+  };
+
+  const handleSessionChange = (id, value) => {
+    setAppointments((prev) =>
+      prev.map((appointment) =>
+        appointment.id === id ? { ...appointment, selSession: value } : appointment
+      )
+    );
   };
   async function fetchGenderData() {
     setLoading(true);
@@ -668,30 +763,52 @@ const PatientRegistration = () => {
       console.log(new Date(Date.now()).toJSON())
 
       try {
-        //debugger
+        setLoading(true);
         const data = await postRequest(`${PATIENT_REGISTRATION}`, requestData);
-        if (data.status === 200 && Array.isArray(data.response)) {
-          Swal.fire("Patient Registration Successful")
+        if (data.status === 200) {
+          Swal.fire({
+            icon: "success",
+            title: "Patient Registration Successful",
+            text: "The patient has been registered successfully."
+          }).then(() => {
+            navigate("/PendingForBilling");
+          });
         } else {
-          console.error("Unexpected API response format:", data);
-          setDoctorData([]);
+          Swal.fire({
+            icon: "error",
+            title: "Registration Failed",
+            text: data.message || "Unexpected response received. Please try again."
+          });
         }
       } catch (error) {
         console.error("Error:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Registration Failed",
+          text: "Something went wrong while registering the patient. Please try again."
+        });
+      } finally {
+        setLoading(false);
       }
     }
   };
 
 
 
-  async function fetchDoctor(value) {
+  async function fetchDoctor(value, rowId) {
     try {
       const data = await getRequest(`${DOCTOR_BY_SPECIALITY}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
-        setDoctorData(data.response);
+        setDoctorDataMap((prev) => ({
+          ...prev,
+          [rowId]: data.response
+        }));
       } else {
         console.error("Unexpected API response format:", data);
-        setDoctorData([]);
+        setDoctorDataMap((prev) => ({
+          ...prev,
+          [rowId]: []
+        }));
       }
     } catch (error) {
       console.error("Error fetching Department data:", error);
@@ -700,36 +817,29 @@ const PatientRegistration = () => {
     }
   }
 
-  async function fetchSession(doc) {
-
-    console.log(doc.target.value);
-    if (formData.speciality != '' && doc) {
-      console.log(doc);
-      let timestamp = Date.now();
-      let value = new Date(timestamp).toJSON().split('.')[0].split('T')[0];
-      console.log(value);
-      const data = await getRequest(`${GET_DOCTOR_SESSION}deptId=${formData.speciality}&doctorId=${doc.target.value}&rosterDate=${value}`);
-      if (data.status == 200) {
-        console.log(data.response[0].rosterVal);
-        let sessionVal = [{ key: 0, value: '' }, { key: 1, value: '' }];
-        if (data.response[0].rosterVal == "YY") {
-          sessionVal = [{ key: 0, value: 'Morning' }, { key: 1, value: 'Evening' }]
-        }
-        else if (data.response[0].rosterVal == "NY") {
-          sessionVal = [{ key: 0, value: 'Evening' }]
-        }
-        else if (data.response[0].rosterVal == "YN") {
-          sessionVal = [{ key: 0, value: 'Morning' }]
-        }
-        // setSession(sessionVal);
-      }
-      else {
-        Swal.fire(data.message);
-      }
-
-
+  async function fetchSession(doctorId, deptId) {
+    if (!doctorId || !deptId) {
+      return;
     }
-
+    let timestamp = Date.now();
+    let value = new Date(timestamp).toJSON().split('.')[0].split('T')[0];
+    const data = await getRequest(`${GET_DOCTOR_SESSION}deptId=${deptId}&doctorId=${doctorId}&rosterDate=${value}`);
+    if (data.status == 200) {
+      let sessionVal = [{ key: 0, value: '' }, { key: 1, value: '' }];
+      if (data.response[0].rosterVal == "YY") {
+        sessionVal = [{ key: 0, value: 'Morning' }, { key: 1, value: 'Evening' }]
+      }
+      else if (data.response[0].rosterVal == "NY") {
+        sessionVal = [{ key: 0, value: 'Evening' }]
+      }
+      else if (data.response[0].rosterVal == "YN") {
+        sessionVal = [{ key: 0, value: 'Morning' }]
+      }
+      // setSession(sessionVal);
+    }
+    else {
+      Swal.fire(data.message);
+    }
   }
 
   function calculateAgeFromDOB(dob) {
@@ -1049,7 +1159,7 @@ const PatientRegistration = () => {
                         onChange={(e) => {
                           handleAddChange(e);
                           fetchNokDistrict(e.target.value);
-                        }}>>
+                        }}>
                         <option value="">Select State</option>
                         {nokStateData.map((state) => (
                           <option key={state.id} value={state.id}>
@@ -1238,70 +1348,82 @@ const PatientRegistration = () => {
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header py-3 bg-light border-bottom-1">
-                <h6 className="mb-0 fw-bold">Appointment Details</h6>
+              <div className="card-header py-3 bg-light border-bottom-1 d-flex align-items-center justify-content-between">
+                  <h6 className="mb-0 fw-bold">Appointment Details</h6>
+                  <div className="d-flex gap-2">
+                    <button type="button" className="btn btn-sm btn-outline-primary" onClick={addAppointmentRow}>
+                      + Add
+                    </button>
+                  </div>
               </div>
               <div className="card-body">
                 <form>
-                  <div className="row g-3">
-                    <div className="col-md-4">
-                      <label className="form-label">Speciality</label>
-                      <select className="form-select" name="speciality" value={formData.speciality}
-                        onChange={(e) => {
-                          handleAddChange(e);
-                          fetchDoctor(e.target.value);
-                        }}>
-                        <option value="">Select Speciality</option>
-                        {departmentData.map((department) => (
-                          <option key={department.id} value={department.id}>
-                            {department.departmentName}
-                          </option>))}
-                      </select>
-                    </div>
-                    <div className="col-md-4">
-                      <label className="form-label">Doctor Name</label>
-                      <select className="form-select" name="selDoctorId" value={formData.selDoctorId} onChange={(e) => {
-                        handleAddChange(e);
-                        fetchSession(e);
-                      }}
-                      >
-                        <option value="">Select Doctor</option>
-                        {doctorData.map((doctor) => (
-                          <option key={doctor.id} value={doctor.userId}>
-                            {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""} ${doctor.lastName ? doctor.lastName : ""}`}
-                          </option>))}
-                        {/* Add dynamic options here */}
-                      </select>
-                    </div>
-                    {/*<div className="col-md-4">*/}
-                    {/*  <label className="form-label">Date *</label>*/}
-                    {/*  <input type="date" name="appointmentDate" className="form-control" name="appointmentDate" value={formData.appointmentDate}*/}
-                    {/*         onChange={(e) => {*/}
-                    {/*           handleAddChange(e);*/}
-                    {/*           fetchSession(e.target.value);*/}
-                    {/*         }}*/}
-                    {/*         min={new Date().toISOString().split("T")[0]}*/}
-                    {/*         placeholder="Select Date of Appointment"/>*/}
-                    {/*</div>*/}
-                    <div className="col-md-4">
-                      <label className="form-label">Session</label>
-                      <select className="form-select" name="selSession" value={formData.selSession} onChange={(e) => {
-                        handleAddChange(e);
-                      }}
-                      >
-                        <option value="">Select Session</option>
-                        {session.map((ses) => (
-                          <option key={ses.id} value={ses.id}>
-                            {ses.sessionName}
-                          </option>))}
-                        {/* Add dynamic options here */}
-                      </select>
-                      {/*<select className="form-select">*/}
-                      {/*  <option value="">Select Session</option>*/}
-                      {/*  /!* Add dynamic options here *!/*/}
-                      {/*</select>*/}
-                    </div>
-                  </div>
+                  {appointments.map((appointment, index) => {
+                    const doctorOptions = doctorDataMap[appointment.id] || [];
+                    return (
+                      <div className="row g-3 mb-3" key={`appointment-${appointment.id}`}>
+                        <div className="col-12 d-flex align-items-center justify-content-between">
+                          <h6 className="fw-bold text-muted mb-0">Appointment {index + 1}</h6>
+                          {appointments.length > 1 && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-danger"
+                              onClick={() => removeAppointmentRow(appointment.id)}
+                            >
+                              - Remove
+                            </button>
+                          )}
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label">Speciality</label>
+                          <select
+                            className="form-select"
+                            value={appointment.speciality}
+                            onChange={(e) => handleSpecialityChange(appointment.id, e.target.value)}
+                          >
+                            <option value="">Select Speciality</option>
+                            {departmentData.map((department) => (
+                              <option key={department.id} value={department.id}>
+                                {department.departmentName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label">Doctor Name</label>
+                          <select
+                            className="form-select"
+                            value={appointment.selDoctorId}
+                            onChange={(e) =>
+                              handleDoctorChange(appointment.id, e.target.value, appointment.speciality)
+                            }
+                          >
+                            <option value="">Select Doctor</option>
+                            {doctorOptions.map((doctor) => (
+                              <option key={doctor.id} value={doctor.userId}>
+                                {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""} ${doctor.lastName ? doctor.lastName : ""}`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label">Session</label>
+                          <select
+                            className="form-select"
+                            value={appointment.selSession}
+                            onChange={(e) => handleSessionChange(appointment.id, e.target.value)}
+                          >
+                            <option value="">Select Session</option>
+                            {session.map((ses) => (
+                              <option key={ses.id} value={ses.id}>
+                                {ses.sessionName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </form>
               </div>
             </div>
