@@ -102,7 +102,8 @@ const PendingForResultEntry = () => {
             sample: subTest.sampleName || '',
             result: "",
             units: subTest.unit || '',
-            normal_range: subTest.normalValue || '',
+            // UPDATED: Use fixedValueExpectedResult for comparisonType 'f', otherwise use normalValue
+            normal_range: subTest.comparisonType === 'f' ? (subTest.fixedValueExpectedResult || '') : (subTest.normalValue || ''),
             remarks: "",
             reject: false,
             subInvestigationId: subTest.subInvestigationId || 0,
@@ -110,7 +111,9 @@ const PendingForResultEntry = () => {
             resultType: subTest.resultType || 't',
             comparisonType: subTest.comparisonType || 't',
             dgFixedValueResponseList: subTest.dgFixedValueResponseList || [],
-            normalId: subTest.normalId || null
+            normalId: subTest.normalId || null,
+            // Store the fixedValueExpectedResult for reference
+            fixedValueExpectedResult: subTest.fixedValueExpectedResult || null
           }))
         };
       } else {
