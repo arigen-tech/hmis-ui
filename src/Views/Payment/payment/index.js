@@ -335,7 +335,7 @@ const handlePaymentSuccess = (response, paymentRequest) => {
   console.log("Original BillHeaderId:", paymentRequest.billHeaderId);
 
   setPopupMessage({
-    message: `Payment Successful! ${billNo ? `Bill: ${billNo}` : ''}`,
+    message: `Payment Successful!`,
     type: "success",
     onClose: () => {
       setPopupMessage(null);

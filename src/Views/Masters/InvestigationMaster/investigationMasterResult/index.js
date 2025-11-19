@@ -422,7 +422,7 @@ const InvestigationMasterResult = () => {
                       </div>
                       <div className="card-body">
                         <div className="row mb-4">
-                          <div className="col-md-3">
+                          <div className="col-md-4">
                             <label className="form-label">Department Name</label>
                             <input
                               type="text"
@@ -431,7 +431,7 @@ const InvestigationMasterResult = () => {
                               readOnly
                             />
                           </div>
-                          <div className="col-md-3">
+                          <div className="col-md-4">
                             <label className="form-label">Modality</label>
                             <input
                               type="text"
@@ -440,7 +440,7 @@ const InvestigationMasterResult = () => {
                               readOnly
                             />
                           </div>
-                          <div className="col-md-3">
+                          <div className="col-md-4">
                             <label className="form-label">Investigation Name</label>
                             <input
                               type="text"
@@ -449,7 +449,7 @@ const InvestigationMasterResult = () => {
                               readOnly
                             />
                           </div>
-                          <div className="col-md-3">
+                          {/* <div className="col-md-3">
                             <label className="form-label">Gender Applicable</label>
                             <input
                               type="text"
@@ -457,7 +457,7 @@ const InvestigationMasterResult = () => {
                               value={mapGenderToDisplay(genderApplicable) || "Not specified"}
                               readOnly
                             />
-                          </div>
+                          </div> */}
                         </div>
 
                         <div className="table-responsive">

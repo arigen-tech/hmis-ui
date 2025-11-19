@@ -140,6 +140,7 @@ const SampleValidation = () => {
           // If accepted is checked, ensure rejected is unchecked and vice versa
           if (field === 'accepted' && value === true) {
             updatedInv.rejected = false
+            updatedInv.reason = '' // Clear reason when accepted
           } else if (field === 'rejected' && value === true) {
             updatedInv.accepted = false
           }
@@ -153,13 +154,23 @@ const SampleValidation = () => {
     }
   }
 
-  // NEW FUNCTION: Check if all investigations are accepted
-  const areAllInvestigationsAccepted = () => {
+  // UPDATED FUNCTION: Check if all investigations have a decision (either accepted or rejected)
+  const areAllInvestigationsDecided = () => {
     if (!selectedSample || !selectedSample.investigations || selectedSample.investigations.length === 0) {
       return false;
     }
     
-    return selectedSample.investigations.every(inv => inv.accepted === true);
+    return selectedSample.investigations.every(inv => inv.accepted === true || inv.rejected === true);
+  }
+
+  // NEW FUNCTION: Check if rejected investigations have reasons
+  const doRejectedInvestigationsHaveReasons = () => {
+    if (!selectedSample || !selectedSample.investigations) {
+      return true;
+    }
+    
+    const rejectedInvestigations = selectedSample.investigations.filter(inv => inv.rejected);
+    return rejectedInvestigations.every(inv => inv.reason && inv.reason.trim() !== "");
   }
 
   const showPopup = (message, type = "info") => {
@@ -177,27 +188,27 @@ const SampleValidation = () => {
       try {
         setLoading(true)
 
-        // NEW VALIDATION: Check if all investigations are accepted
-        if (!areAllInvestigationsAccepted()) {
-          showPopup("Please accept ALL investigations before submitting. All rows must have the Accepted checkbox checked.", "warning")
+        // UPDATED VALIDATION: Check if all investigations have a decision
+        if (!areAllInvestigationsDecided()) {
+          showPopup("Please make a decision for ALL investigations. Each row must be either Accepted or Rejected.", "warning")
+          setLoading(false)
+          return
+        }
+
+        // UPDATED VALIDATION: Check if rejected investigations have reasons
+        if (!doRejectedInvestigationsHaveReasons()) {
+          showPopup("Please provide a reason for all rejected investigations.", "warning")
           setLoading(false)
           return
         }
 
         // Prepare the request payload according to your API
-        const requestPayload = selectedSample.investigations
-          .filter(inv => inv.accepted || inv.rejected) // Only include investigations that are either accepted or rejected
-          .map(inv => ({
-            detailId: inv.detailsId, // Using detailsId from your formatted data
-            accepted: inv.accepted // Boolean value from checkbox
-          }))
-
-        // If no investigations are selected for validation, show warning
-        if (requestPayload.length === 0) {
-          showPopup("Please select at least one investigation for validation.", "warning")
-          setLoading(false)
-          return
-        }
+        const requestPayload = selectedSample.investigations.map(inv => ({
+          sampleHeaderId: selectedSample.headerId, // Add sampleHeaderId from the main sample
+          detailId: inv.detailsId, // Using detailsId from your formatted data
+          accepted: inv.accepted, // Boolean value from checkbox
+          reason: inv.rejected ? inv.reason : "" // Include reason only if rejected
+        }))
 
         console.log("Submitting validation payload:", JSON.stringify(requestPayload, null, 2));
 
@@ -250,7 +261,25 @@ const SampleValidation = () => {
       const updatedInvestigations = selectedSample.investigations.map(inv => ({
         ...inv,
         accepted: true,
-        rejected: false
+        rejected: false,
+        reason: '' // Clear reasons when accepting all
+      }))
+      
+      setSelectedSample({ 
+        ...selectedSample, 
+        investigations: updatedInvestigations 
+      })
+    }
+  }
+
+  // NEW FUNCTION: Handle "Reject All" button
+  const handleRejectAll = () => {
+    if (selectedSample) {
+      const updatedInvestigations = selectedSample.investigations.map(inv => ({
+        ...inv,
+        accepted: false,
+        rejected: true,
+        reason: 'Sample not suitable for testing' // Default reason
       }))
       
       setSelectedSample({ 
@@ -328,7 +357,9 @@ const SampleValidation = () => {
     // Calculate acceptance status for the header
     const totalInvestigations = selectedSample.investigations.length;
     const acceptedCount = selectedSample.investigations.filter(inv => inv.accepted).length;
-    const allAccepted = areAllInvestigationsAccepted();
+    const rejectedCount = selectedSample.investigations.filter(inv => inv.rejected).length;
+    const allDecided = areAllInvestigationsDecided();
+    const allRejectedHaveReasons = doRejectedInvestigationsHaveReasons();
 
     return (
       <div className="content-wrapper">
@@ -348,8 +379,8 @@ const SampleValidation = () => {
                   <h4 className="card-title p-2">SAMPLE VALIDATION</h4>
                   <div className="d-flex align-items-center">
                     {/* Acceptance Status Display */}
-                    <div className={`badge ${allAccepted ? 'bg-success' : 'bg-warning'} me-3`}>
-                      {acceptedCount}/{totalInvestigations} Accepted
+                    <div className={`badge ${allDecided && allRejectedHaveReasons ? 'bg-success' : 'bg-warning'} me-3`}>
+                      {acceptedCount} Accepted, {rejectedCount} Rejected / {totalInvestigations} Total
                     </div>
                     <button className="btn btn-secondary" onClick={handleBackToList}>
                       <i className="mdi mdi-arrow-left"></i> Back to List
@@ -495,16 +526,23 @@ const SampleValidation = () => {
                   </div>
                 </div>
 
-                {/* Investigations Table Header with Accept All Button */}
+                {/* Investigations Table Header with Action Buttons */}
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <h5 className="mb-0">INVESTIGATIONS</h5>
-                  <button 
-                    className="btn btn-success btn-sm" 
-                    onClick={handleAcceptAll}
-                    disabled={allAccepted}
-                  >
-                    <i className="mdi mdi-check-all"></i> Accept All
-                  </button>
+                  <div>
+                    <button 
+                      className="btn btn-success btn-sm me-2" 
+                      onClick={handleAcceptAll}
+                    >
+                      <i className="mdi mdi-check-all"></i> Accept All
+                    </button>
+                    <button 
+                      className="btn btn-danger btn-sm" 
+                      onClick={handleRejectAll}
+                    >
+                      <i className="mdi mdi-close-box-multiple"></i> Reject All
+                    </button>
+                  </div>
                 </div>
 
                 {/* Investigations Table */}
@@ -602,6 +640,7 @@ const SampleValidation = () => {
                               value={investigation.reason}
                               onChange={(e) => handleInvestigationChange(investigation.id, "reason", e.target.value)}
                               disabled={!investigation.rejected} // Only enable reason if rejected
+                              placeholder={investigation.rejected ? "Enter rejection reason" : ""}
                             />
                           </td>
                         </tr>
@@ -610,12 +649,27 @@ const SampleValidation = () => {
                   </table>
                 </div>
 
+                {/* Validation Messages */}
+                {!allDecided && (
+                  <div className="alert alert-warning mt-3">
+                    <i className="mdi mdi-alert-circle-outline"></i> 
+                    <strong>Important:</strong> Please make a decision for all investigations. Each row must be either Accepted or Rejected.
+                  </div>
+                )}
+
+                {!allRejectedHaveReasons && (
+                  <div className="alert alert-warning mt-3">
+                    <i className="mdi mdi-alert-circle-outline"></i> 
+                    <strong>Important:</strong> Please provide reasons for all rejected investigations.
+                  </div>
+                )}
+
                 {/* Action Buttons */}
                 <div className="text-end mt-4">
                   <button 
                     className="btn btn-primary me-3" 
                     onClick={handleSubmit} 
-                    disabled={loading || !allAccepted}
+                    disabled={loading || !allDecided || !allRejectedHaveReasons}
                   >
                     <i className="mdi mdi-content-save"></i> SUBMIT
                   </button>
@@ -626,15 +680,6 @@ const SampleValidation = () => {
                     <i className="mdi mdi-arrow-left"></i> BACK
                   </button>
                 </div>
-
-                {/* Submission Requirement Notice */}
-                {/* {!allAccepted && (
-                  <div className="alert alert-warning mt-3">
-                    <i className="mdi mdi-alert-circle-outline"></i> 
-                    <strong>Important:</strong> All investigations must be accepted before submission. 
-                    Please check the "Accepted" checkbox for all rows or use the "Accept All" button.
-                  </div>
-                )} */}
               </div>
             </div>
           </div>

@@ -159,50 +159,54 @@ const PendingForSampleCollection = () => {
   }
 
   const handleSubmit = async () => {
-    if (selectedSample) {
-      try {
-        setLoading(true)
+  if (selectedSample) {
+    try {
+      setLoading(true)
 
-        // Prepare the request payload
-        const requestPayload = {
-          visitId: selectedSample.vistId,
-          orderHdId: selectedSample.orderhdId,
-          sampleCollectionReq: selectedSample.investigations
-            .filter(inv => inv.collected)
-            .map(inv => ({
-              subChargeCodeId: inv.subChargeCodeId,
-              investigationId: inv.investigationId,
-              mainChargeCodeId: inv.mainChargeCodeId,
-              empanelledStatus: inv.empanelled ? "y" : "n",
-              sampleId: inv.sampleId,
-              collectionId: inv.collectionId,
-              collected: "y",
-              remarks: inv.remarks || ""
-            }))
-        }
-
-        console.log("Submitting payload:", JSON.stringify(requestPayload, null, 2));
-
-        // Make the API call
-        const response = await postRequest(`${LAB}/savesamplecollection`, requestPayload)
-
-        if (response.status === 200) {
-          const updatedSamples = samples.map((sample) =>
-            sample.id === selectedSample.id ? selectedSample : sample
-          )
-          setSamples(updatedSamples)
-          showPopup("Sample collection data saved successfully!", "success")
-        } else {
-          throw new Error(response.message || "Failed to save sample collection")
-        }
-      } catch (error) {
-        console.error('Error saving sample collection:', error)
-        showPopup(error.message || "Error saving sample collection data", "error")
-      } finally {
-        setLoading(false)
+      // Prepare the request payload
+      const requestPayload = {
+        visitId: selectedSample.vistId,
+        orderHdId: selectedSample.orderhdId,
+        sampleCollectionReq: selectedSample.investigations
+          .filter(inv => inv.collected)
+          .map(inv => ({
+            subChargeCodeId: inv.subChargeCodeId,
+            investigationId: inv.investigationId,
+            mainChargeCodeId: inv.mainChargeCodeId,
+            empanelledStatus: inv.empanelled ? "y" : "n",
+            sampleId: inv.sampleId,
+            collectionId: inv.collectionId,
+            collected: "y",
+            remarks: inv.remarks || ""
+          }))
       }
+
+      console.log("Submitting payload:", JSON.stringify(requestPayload, null, 2));
+
+      // Make the API call
+      const response = await postRequest(`${LAB}/savesamplecollection`, requestPayload)
+
+      if (response.status === 200) {
+        // Show success message
+        showPopup("Sample collection data saved successfully!", "success")
+        
+        // Refresh the sample list to remove collected items
+        await fetchPendingSamples()
+        
+        // Close the detail view and go back to list
+        setShowDetailView(false)
+        setSelectedSample(null)
+      } else {
+        throw new Error(response.message || "Failed to save sample collection")
+      }
+    } catch (error) {
+      console.error('Error saving sample collection:', error)
+      showPopup(error.message || "Error saving sample collection data", "error")
+    } finally {
+      setLoading(false)
     }
   }
+}
 
   const handleReset = () => {
     if (selectedSample) {
