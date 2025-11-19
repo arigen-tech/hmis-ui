@@ -48,44 +48,44 @@ const SampleValidation = () => {
   };
 
   const formatSampleValidationData = (apiData) => {
-  return apiData.map((item, index) => ({
-    id: index + 1,
-    sample_date_time: formatDateTime(item.collectionTime),
-    order_no: item.orderNo || '',
-    patient_name: item.patientName || '',
-    mobile_no: item.mobileNo || '',
-    age: item.age || '', // Now available in API
-    gender: item.sex || '',
-    modality: item.subChargeCodeName || '', // Use subChargeCodeName for modality
-    doctor_name: '', // Add if available in API
-    order_date: formatDate(item.orderDate),
-    order_time: formatTime(item.collectionTime),
-    department: item.subChargeCodeName || '', // Use subChargeCodeName for department too
-    reg_no: item.patientId ? item.patientId.toString() : '',
-    relation: item.patientRelation || '',
-    collected_by: item.collectedBy || '',
-    clinical_notes: '',
-    headerId: item.headerId || 0, // Add headerId for reference
-    investigations: item.investigations ? item.investigations.map((inv, invIndex) => ({
-      id: invIndex + 1,
-      sr_no: invIndex + 1,
-      diag_no: item.orderNo || '',
-      test_code: inv.testCode || '',
-      test_name: inv.testName || '',
-      sample: inv.sampleName || '', // Now available in API as sampleName
-      quantity: inv.quantity || '1',
-      empanelled_lab: inv.empanelledLab || 'n',
-      date_time: formatDateTime(inv.dateTime),
-      accepted: false, // Default to false
-      rejected: false, // Default to false
-      reason: inv.reason || '',
-      additional_remarks: inv.remarks || '',
-      detailsId: inv.detailsId || 0, // Keep reference for API submission
-      investigationId: inv.investigationId || 0, // Add investigationId
-      sampleId: inv.sampleId || 0 // Add sampleId
-    })) : []
-  }))
-}
+    return apiData.map((item, index) => ({
+      id: index + 1,
+      sample_date_time: formatDateTime(item.collectionTime),
+      order_no: item.orderNo || '',
+      patient_name: item.patientName || '',
+      mobile_no: item.mobileNo || '',
+      age: item.age || '', // Now available in API
+      gender: item.sex || '',
+      modality: item.subChargeCodeName || '', // Use subChargeCodeName for modality
+      doctor_name: '', // Add if available in API
+      order_date: formatDate(item.orderDate),
+      order_time: formatTime(item.collectionTime),
+      department: item.subChargeCodeName || '', // Use subChargeCodeName for department too
+      reg_no: item.patientId ? item.patientId.toString() : '',
+      relation: item.patientRelation || '',
+      collected_by: item.collectedBy || '',
+      clinical_notes: '',
+      headerId: item.headerId || 0, // Add headerId for reference
+      investigations: item.investigations ? item.investigations.map((inv, invIndex) => ({
+        id: invIndex + 1,
+        sr_no: invIndex + 1,
+        diag_no: item.orderNo || '',
+        test_code: inv.testCode || '',
+        test_name: inv.testName || '',
+        sample: inv.sampleName || '', // Now available in API as sampleName
+        quantity: inv.quantity || '1',
+        empanelled_lab: inv.empanelledLab || 'n',
+        date_time: formatDateTime(inv.dateTime),
+        accepted: false, // Default to false
+        rejected: false, // Default to false
+        reason: inv.reason || '',
+        additional_remarks: inv.remarks || '',
+        detailsId: inv.detailsId || 0, // Keep reference for API submission
+        investigationId: inv.investigationId || 0, // Add investigationId
+        sampleId: inv.sampleId || 0 // Add sampleId
+      })) : []
+    }))
+  }
 
   const formatDate = (dateString) => {
     if (!dateString) return new Date().toLocaleDateString('en-GB')
@@ -112,19 +112,19 @@ const SampleValidation = () => {
   }
 
   const handleRowClick = (sample) => {
-  // Create a copy of the sample and set all investigations to accepted by default
-  const sampleWithAcceptedInvestigations = {
-    ...sample,
-    investigations: sample.investigations.map(inv => ({
-      ...inv,
-      accepted: true, // Set accepted to true by default
-      rejected: false // Ensure rejected is false
-    }))
+    // Create a copy of the sample and set all investigations to accepted by default
+    const sampleWithAcceptedInvestigations = {
+      ...sample,
+      investigations: sample.investigations.map(inv => ({
+        ...inv,
+        accepted: true, // Set accepted to true by default
+        rejected: false // Ensure rejected is false
+      }))
+    }
+    
+    setSelectedSample(sampleWithAcceptedInvestigations)
+    setShowDetailView(true)
   }
-  
-  setSelectedSample(sampleWithAcceptedInvestigations)
-  setShowDetailView(true)
-}
 
   const handleBackToList = () => {
     setShowDetailView(false)
@@ -163,16 +163,6 @@ const SampleValidation = () => {
     return selectedSample.investigations.every(inv => inv.accepted === true || inv.rejected === true);
   }
 
-  // NEW FUNCTION: Check if rejected investigations have reasons
-  const doRejectedInvestigationsHaveReasons = () => {
-    if (!selectedSample || !selectedSample.investigations) {
-      return true;
-    }
-    
-    const rejectedInvestigations = selectedSample.investigations.filter(inv => inv.rejected);
-    return rejectedInvestigations.every(inv => inv.reason && inv.reason.trim() !== "");
-  }
-
   const showPopup = (message, type = "info") => {
     setPopupMessage({
       message,
@@ -195,8 +185,12 @@ const SampleValidation = () => {
           return
         }
 
-        // UPDATED VALIDATION: Check if rejected investigations have reasons
-        if (!doRejectedInvestigationsHaveReasons()) {
+        // Validate that rejected investigations have a reason
+        const rejectedWithoutReason = selectedSample.investigations.filter(
+          inv => inv.rejected && (!inv.reason || inv.reason.trim() === '')
+        )
+
+        if (rejectedWithoutReason.length > 0) {
           showPopup("Please provide a reason for all rejected investigations.", "warning")
           setLoading(false)
           return
@@ -204,7 +198,7 @@ const SampleValidation = () => {
 
         // Prepare the request payload according to your API
         const requestPayload = selectedSample.investigations.map(inv => ({
-          sampleHeaderId: selectedSample.headerId, // Add sampleHeaderId from the main sample
+          sampleHeaderId: selectedSample.headerId, // Add headerId from the sample
           detailId: inv.detailsId, // Using detailsId from your formatted data
           accepted: inv.accepted, // Boolean value from checkbox
           reason: inv.rejected ? inv.reason : "" // Include reason only if rejected
@@ -255,14 +249,14 @@ const SampleValidation = () => {
     }
   }
 
-  // NEW FUNCTION: Handle "Accept All" button
+  // UPDATED: Handle "Accept All" button
   const handleAcceptAll = () => {
     if (selectedSample) {
       const updatedInvestigations = selectedSample.investigations.map(inv => ({
         ...inv,
         accepted: true,
         rejected: false,
-        reason: '' // Clear reasons when accepting all
+        reason: '' // Clear any existing reasons
       }))
       
       setSelectedSample({ 
@@ -354,12 +348,11 @@ const SampleValidation = () => {
 
   // Detail View
   if (showDetailView && selectedSample) {
-    // Calculate acceptance status for the header
+    // Calculate decision status for the header
     const totalInvestigations = selectedSample.investigations.length;
     const acceptedCount = selectedSample.investigations.filter(inv => inv.accepted).length;
     const rejectedCount = selectedSample.investigations.filter(inv => inv.rejected).length;
     const allDecided = areAllInvestigationsDecided();
-    const allRejectedHaveReasons = doRejectedInvestigationsHaveReasons();
 
     return (
       <div className="content-wrapper">
@@ -378,9 +371,9 @@ const SampleValidation = () => {
                 <div className="d-flex justify-content-between align-items-center">
                   <h4 className="card-title p-2">SAMPLE VALIDATION</h4>
                   <div className="d-flex align-items-center">
-                    {/* Acceptance Status Display */}
-                    <div className={`badge ${allDecided && allRejectedHaveReasons ? 'bg-success' : 'bg-warning'} me-3`}>
-                      {acceptedCount} Accepted, {rejectedCount} Rejected / {totalInvestigations} Total
+                    {/* Decision Status Display */}
+                    <div className={`badge ${allDecided ? 'bg-success' : 'bg-warning'} me-3`}>
+                      {acceptedCount}A / {rejectedCount}R / {totalInvestigations} Total
                     </div>
                     <button className="btn btn-secondary" onClick={handleBackToList}>
                       <i className="mdi mdi-arrow-left"></i> Back to List
@@ -640,7 +633,7 @@ const SampleValidation = () => {
                               value={investigation.reason}
                               onChange={(e) => handleInvestigationChange(investigation.id, "reason", e.target.value)}
                               disabled={!investigation.rejected} // Only enable reason if rejected
-                              placeholder={investigation.rejected ? "Enter rejection reason" : ""}
+                              placeholder={investigation.rejected ? "Enter rejection reason..." : ""}
                             />
                           </td>
                         </tr>
@@ -649,27 +642,12 @@ const SampleValidation = () => {
                   </table>
                 </div>
 
-                {/* Validation Messages */}
-                {!allDecided && (
-                  <div className="alert alert-warning mt-3">
-                    <i className="mdi mdi-alert-circle-outline"></i> 
-                    <strong>Important:</strong> Please make a decision for all investigations. Each row must be either Accepted or Rejected.
-                  </div>
-                )}
-
-                {!allRejectedHaveReasons && (
-                  <div className="alert alert-warning mt-3">
-                    <i className="mdi mdi-alert-circle-outline"></i> 
-                    <strong>Important:</strong> Please provide reasons for all rejected investigations.
-                  </div>
-                )}
-
                 {/* Action Buttons */}
                 <div className="text-end mt-4">
                   <button 
                     className="btn btn-primary me-3" 
                     onClick={handleSubmit} 
-                    disabled={loading || !allDecided || !allRejectedHaveReasons}
+                    disabled={loading || !allDecided}
                   >
                     <i className="mdi mdi-content-save"></i> SUBMIT
                   </button>
@@ -680,6 +658,15 @@ const SampleValidation = () => {
                     <i className="mdi mdi-arrow-left"></i> BACK
                   </button>
                 </div>
+
+                {/* Submission Requirement Notice */}
+                {!allDecided && (
+                  <div className="alert alert-warning mt-3">
+                    <i className="mdi mdi-alert-circle-outline"></i> 
+                    <strong>Important:</strong> All investigations must have a decision before submission. 
+                    Please check either "Accepted" or "Rejected" for each row.
+                  </div>
+                )}
               </div>
             </div>
           </div>
