@@ -10,10 +10,11 @@ import {
   ALL_GENDER,
   ALL_RELATION,
   DISTRICT_BY_STATE, DOCTOR_BY_SPECIALITY, PATIENT_IMAGE_UPLOAD,
-  STATE_BY_COUNTRY, GET_DOCTOR_SESSION, PATIENT_REGISTRATION, GET_SESSION, HOSPITAL
+  STATE_BY_COUNTRY, GET_DOCTOR_SESSION, PATIENT_REGISTRATION, GET_SESSION, HOSPITAL, MAS_OPD_SERVICE, MAS_SERVICE_CATEGORY
 } from "../../../config/apiConfig";
 import { DEPARTMENT_CODE_OPD } from "../../../config/constants";
 import axios from "axios";
+
 const PatientRegistration = () => {
   const navigate = useNavigate();
   useEffect(() => {
@@ -24,7 +25,9 @@ const PatientRegistration = () => {
     fetchDepartment();
     fetchSesion();
     fetchHospitalDetails();
+    fetchGstConfiguration();
   }, []);
+  
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [genderData, setGenderData] = useState([]);
@@ -42,7 +45,14 @@ const PatientRegistration = () => {
     id: 0,
     speciality: "",
     selDoctorId: "",
-    selSession: ""
+    selSession: "",
+    departmentName: "",
+    doctorName: "",
+    sessionName: "",
+    discount: 0,
+    netAmount: "0.00",
+    gst: "0.00",
+    totalAmount: "0.00"
   }]);
   const [nextAppointmentId, setNextAppointmentId] = useState(1);
   const [formData, setFormData] = useState({
@@ -100,7 +110,6 @@ const PatientRegistration = () => {
     department: "",
     selDoctorId: "",
     selSession: ""
-
   });
   const [image, setImage] = useState(placeholderImage);
   const [isCameraOn, setIsCameraOn] = useState(false);
@@ -108,6 +117,29 @@ const PatientRegistration = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   let stream = null;
+
+  const [gstConfig, setGstConfig] = useState({
+    gstApplicable: false,
+    gstPercent: 0,
+  });
+
+  async function fetchGstConfiguration() {
+    try {
+      const url = `${MAS_SERVICE_CATEGORY}/getGstConfig/1`;
+      const data = await getRequest(url);
+      if (data && data.status === 200 && data.response && typeof data.response.gstApplicable !== "undefined") {
+        setGstConfig({
+          gstApplicable: !!data.response.gstApplicable,
+          gstPercent: Number(data.response.gstPercent) || 0,
+        });
+      } else {
+        setGstConfig({ gstApplicable: false, gstPercent: 0 });
+      }
+    } catch (error) {
+      console.error("GST Fetch Error:", error);
+      setGstConfig({ gstApplicable: false, gstPercent: 0 });
+    }
+  }
 
   const startCamera = async () => {
     try {
@@ -122,6 +154,7 @@ const PatientRegistration = () => {
       console.error("Error accessing camera:", error);
     }
   };
+  
   async function fetchHospitalDetails() {
     try {
       const data = await getRequest(`${HOSPITAL}/${sessionStorage.getItem('hospitalId')}`);
@@ -138,7 +171,6 @@ const PatientRegistration = () => {
       setLoading(false);
     }
   }
-
 
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
@@ -157,18 +189,16 @@ const PatientRegistration = () => {
       stopCamera();
       // //debugger
       confirmUpload(imageData);
-
     }
   };
-
 
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
       videoRef.current.srcObject.getTracks().forEach(track => track.stop());
       setIsCameraOn(false);
     }
-
   };
+  
   const confirmUpload = (imageData) => {
     Swal.fire({
       title: "Confirm Upload",
@@ -185,6 +215,7 @@ const PatientRegistration = () => {
       }
     });
   };
+  
   const uploadImage = async (base64Image) => {
     try {
       // Convert base64 to Blob
@@ -223,9 +254,7 @@ const PatientRegistration = () => {
   const clearPhoto = () => {
     setImage(placeholderImage);
   };
-  // const handleChange = (e) => {
-  //   setFormData({ ...formData, [e.target.name]: e.target.value });
-  // };
+
   function calculateDOBFromAge(age) {
     const today = new Date();
     const birthYear = today.getFullYear() - age;
@@ -233,6 +262,7 @@ const PatientRegistration = () => {
     // Default to today's month and day
     return new Date(birthYear, today.getMonth(), today.getDate()).toISOString().split('T')[0];
   }
+  
   function checkBMI(a, b) {
     //debugger
     if (a === '' || b == '') {
@@ -243,8 +273,8 @@ const PatientRegistration = () => {
     var sub = a / d;
     return (parseFloat(Math.round(sub * 100) / 100).toFixed(2));
   }
+  
   const handleChange = (e) => {
-
     const { name, value } = e.target;
 
     const updatedFormData = { ...formData, [name]: value };
@@ -259,7 +289,6 @@ const PatientRegistration = () => {
     } else if (name == 'height' && formData.weight != undefined) {
       updatedFormData.bmi = checkBMI(formData.weight, value);
     }
-
 
     setFormData(updatedFormData);
     let error = "";
@@ -337,12 +366,12 @@ const PatientRegistration = () => {
     });
   };
 
-
   const handleAddChange = (e) => {
     //debugger
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+  
   useEffect(() => {
     if (appointments.length === 0) {
       setFormData((prev) => ({
@@ -362,7 +391,6 @@ const PatientRegistration = () => {
     }));
   }, [appointments]);
 
-  
   const addAppointmentRow = () => {
     setAppointments((prev) => [
       ...prev,
@@ -370,7 +398,14 @@ const PatientRegistration = () => {
         id: nextAppointmentId,
         speciality: "",
         selDoctorId: "",
-        selSession: ""
+        selSession: "",
+        departmentName: "",
+        doctorName: "",
+        sessionName: "",
+        discount: 0,
+        netAmount: "0.00",
+        gst: "0.00",
+        totalAmount: "0.00"
       }
     ]);
     setNextAppointmentId((prev) => prev + 1);
@@ -391,10 +426,13 @@ const PatientRegistration = () => {
   };
 
   const handleSpecialityChange = (id, value) => {
+    const selectedDepartment = departmentData.find(dept => dept.id == value);
+    const departmentName = selectedDepartment ? selectedDepartment.departmentName : "";
+    
     setAppointments((prev) =>
       prev.map((appointment) =>
         appointment.id === id
-          ? { ...appointment, speciality: value, selDoctorId: "", selSession: "" }
+          ? { ...appointment, speciality: value, selDoctorId: "", selSession: "", departmentName }
           : appointment
       )
     );
@@ -410,10 +448,14 @@ const PatientRegistration = () => {
   };
 
   const handleDoctorChange = (id, value, specialityId) => {
+    const doctorOptions = doctorDataMap[id] || [];
+    const selectedDoctor = doctorOptions.find(doctor => doctor.userId == value);
+    const doctorName = selectedDoctor ? `${selectedDoctor.firstName} ${selectedDoctor.middleName || ''} ${selectedDoctor.lastName || ''}`.trim() : "";
+    
     setAppointments((prev) =>
       prev.map((appointment) =>
         appointment.id === id
-          ? { ...appointment, selDoctorId: value, selSession: "" }
+          ? { ...appointment, selDoctorId: value, selSession: "", doctorName }
           : appointment
       )
     );
@@ -423,12 +465,16 @@ const PatientRegistration = () => {
   };
 
   const handleSessionChange = (id, value) => {
+    const selectedSession = session.find(ses => ses.id == value);
+    const sessionName = selectedSession ? selectedSession.sessionName : "";
+    
     setAppointments((prev) =>
       prev.map((appointment) =>
-        appointment.id === id ? { ...appointment, selSession: value } : appointment
+        appointment.id === id ? { ...appointment, selSession: value, sessionName } : appointment
       )
     );
   };
+  
   async function fetchGenderData() {
     setLoading(true);
 
@@ -445,9 +491,8 @@ const PatientRegistration = () => {
     } finally {
       setLoading(false);
     }
-
-
   };
+  
   async function fetchRelationData() {
     setLoading(true);
 
@@ -465,6 +510,7 @@ const PatientRegistration = () => {
       setLoading(false);
     }
   }
+  
   async function fetchCountryData() {
     setLoading(true);
 
@@ -498,6 +544,7 @@ const PatientRegistration = () => {
       setLoading(false);
     }
   }
+  
   async function fetchSesion() {
     try {
       const data = await getRequest(`${GET_SESSION}1`);
@@ -513,6 +560,7 @@ const PatientRegistration = () => {
       setLoading(false);
     }
   }
+  
   async function fetchDistrict(value) {
     try {
       const data = await getRequest(`${DISTRICT_BY_STATE}${value}`);
@@ -531,7 +579,6 @@ const PatientRegistration = () => {
 
   async function fetchNokStates(value) {
     try {
-
       const data = await getRequest(`${STATE_BY_COUNTRY}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokStateData(data.response);
@@ -561,6 +608,7 @@ const PatientRegistration = () => {
       setLoading(false);
     }
   }
+  
   async function fetchDepartment() {
     try {
       const data = await getRequest(`${ALL_DEPARTMENT}/1`);
@@ -584,6 +632,7 @@ const PatientRegistration = () => {
     console.log(formData);
     sendPatientData();
   }
+  
   const validateForm = () => {
     const requiredFields = ["firstName", "gender", "relation", "dob", "email", "mobileNo"];
     const numericFields = [
@@ -627,7 +676,6 @@ const PatientRegistration = () => {
     numericFields.forEach((field) => {
       const value = formData[field];
       
-
       if (value !== undefined && value !== "") {
         if (field === "age" || field === "patientAge") {
           // Validate correct format like "25Y 10M 2D"
@@ -771,7 +819,43 @@ const PatientRegistration = () => {
             title: "Patient Registration Successful",
             text: "The patient has been registered successfully."
           }).then(() => {
-            navigate("/PendingForBilling");
+            // Navigate to OPDBillingDetails with all appointment data
+            const appointmentsWithBilling = appointments.map(appointment => {
+              const base = parseFloat("500.00") || 0; // Base price is fixed as per existing logic
+              const discountVal = parseFloat(appointment.discount) || 0;
+              const net = Math.max(0, base - discountVal);
+              const gstPercent = gstConfig?.gstApplicable ? gstConfig?.gstPercent : 0;
+              const gstAmount = (net * gstPercent) / 100;
+              const total = net + gstAmount;
+
+              return {
+                ...appointment,
+                basePrice: "500.00", // Fixed base price for now
+                discount: appointment.discount,
+                netAmount: net.toFixed(2),
+                gst: gstAmount.toFixed(2),
+                totalAmount: total.toFixed(2),
+                registrationCost: "100.00",
+                visitType: "New"
+              };
+            });
+
+            navigate("/OPDBillingDetails", {
+              state: {
+                billingData: {
+                  patientName: `${formData.firstName} ${formData.middleName || ''} ${formData.lastName || ''}`.trim(),
+                  mobileNo: formData.mobileNo,
+                  age: formData.age,
+                  patientGender: genderData.find(g => g.id === formData.gender)?.genderName || formData.gender,
+                  relation: relationData.find(r => r.id === formData.relation)?.relationName || formData.relation,
+                  patientAddress1: formData.address1,
+                  patientCity: formData.city,
+                  appointments: appointmentsWithBilling, // Pass the entire array of appointments with billing details
+                  patientId: data.response.patientId || 0,
+                  visitType: "New",
+                }
+              }
+            });
           });
         } else {
           Swal.fire({
@@ -792,8 +876,6 @@ const PatientRegistration = () => {
       }
     }
   };
-
-
 
   async function fetchDoctor(value, rowId) {
     try {
@@ -865,11 +947,6 @@ const PatientRegistration = () => {
 
     return `${years}Y ${months}M ${days}D`;
   }
-
-
-
-
-
 
   return (
     <div className="body d-flex py-3">
@@ -1342,8 +1419,6 @@ const PatientRegistration = () => {
           </div>
         </>)}
 
-
-
         {/* Appointment Details Section */}
         <div className="row mb-3">
           <div className="col-sm-12">
@@ -1447,9 +1522,6 @@ const PatientRegistration = () => {
             </div>
           </div>
         </div>
-
-        {/* Changed By, Date, and Time */}
-
       </div>
     </div>
   );

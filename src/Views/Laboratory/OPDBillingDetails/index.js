@@ -77,6 +77,7 @@ const OPDBillingDetails = () => {
     registrationCost: "",
   });
 
+  const [appointments, setAppointments] = useState([]); // Re-introduce appointments state
   const [isFormValid, setIsFormValid] = useState(false);
 
   //Step 1: Auto-fill details from previous page (location.state)
@@ -88,65 +89,113 @@ const OPDBillingDetails = () => {
     }
 
     const response = location.state.billingData;
-    const billing = Array.isArray(response) ? response[0] : response;
-
-    const mapped = {
-      billingType: billing.billingType || "",
-      billingHeaderId: billing.billingHeaderId || billing.billinghdid || "",
-      patientName: billing.patientName || billing.patientFn || "",
-      mobileNo: billing.mobileNo || billing.patientMobileNumber || "",
-      age: billing.age || billing.patientAge || "",
-      sex: billing.sex || billing.patientGender || "",
-      relation: billing.relation || "",
-      patientId: billing.patientid?.toString() || billing.patientId?.toString() || "",
-      address: billing.address || `${billing.patientAddress1 || ""}, ${billing.patientCity || ""}`,
-      visitDate: billing.visitDate || new Date().toISOString().split("T")[0],
-      doctorName: billing.consultedDoctor || billing.consultedDoctor || "",
-      department: billing.department || "",
-      visitType: billing.visitType || "",
-      visitId: billing.visitId || billing.visitNo || "",
-      room: billing.room || "",
-      opdSession: billing.opdSession || "",
-      tariffPlan: billing.tariffPlan || "",
-      basePrice: billing.basePrice ?? billing.amount ?? "",
-      discount: billing.discount || billing.details?.[0]?.discount || 0,
-      netAmount: "",
-      gst: "",
-      totalAmount: "",
-      registrationCost: billing.registrationCost,
-      visitType: billing.visitType === "N" ? "New" : "Follow-up",
-
-    };
-    const optionalCategoryId = billing.categoryId || null;
+    
+    if (response.appointments && Array.isArray(response.appointments) && response.appointments.length > 0) {
+      setAppointments(response.appointments);
+      const primaryAppointment = response.appointments[0];
+      const mapped = {
+        billingType: "OPD",
+        billingHeaderId: primaryAppointment.billingHeaderId || "",
+        patientName: response.patientName || "",
+        mobileNo: response.mobileNo || "",
+        age: response.age || "",
+        sex: response.patientGender || "",
+        relation: response.relation || "",
+        patientId: response.patientId?.toString() || "",
+        address: `${response.patientAddress1 || ""}, ${response.patientCity || ""}`,
+        visitDate: new Date().toISOString().split("T")[0],
+        doctorName: primaryAppointment.doctorName || "",
+        department: primaryAppointment.departmentName || "",
+        visitType: primaryAppointment.visitType || "New",
+        visitId: primaryAppointment.visitId || "",
+        room: primaryAppointment.room || "",
+        opdSession: primaryAppointment.sessionName || "",
+        tariffPlan: primaryAppointment.tariffPlan || "",
+        basePrice: primaryAppointment.basePrice || "0.00",
+        discount: primaryAppointment.discount || 0,
+        netAmount: primaryAppointment.netAmount || "0.00",
+        gst: primaryAppointment.gst || "0.00",
+        totalAmount: primaryAppointment.totalAmount || "0.00",
+        registrationCost: primaryAppointment.registrationCost || "0.00",
+      };
+      setFormData((prev) => ({ ...prev, ...mapped }));
+    } else {
+      // Existing logic for pending billing if no appointments array is present or empty
+      const billing = Array.isArray(response) ? response[0] : response;
+  
+      const mapped = {
+        billingType: billing.billingType || "",
+        billingHeaderId: billing.billingHeaderId || billing.billinghdid || "",
+        patientName: billing.patientName || billing.patientFn || "",
+        mobileNo: billing.mobileNo || billing.patientMobileNumber || "",
+        age: billing.age || billing.patientAge || "",
+        sex: billing.sex || billing.patientGender || "",
+        relation: billing.relation || "",
+        patientId: billing.patientid?.toString() || billing.patientId?.toString() || "",
+        address: billing.address || `${billing.patientAddress1 || ""}, ${billing.patientCity || ""}`,
+        visitDate: billing.visitDate || new Date().toISOString().split("T")[0],
+        doctorName: billing.consultedDoctor || billing.consultedDoctor || "",
+        department: billing.department || "",
+        visitType: billing.visitType || "",
+        visitId: billing.visitId || billing.visitNo || "",
+        room: billing.room || "",
+        opdSession: billing.opdSession || "",
+        tariffPlan: billing.tariffPlan || "",
+        basePrice: billing.basePrice ?? billing.amount ?? "",
+        discount: billing.discount || billing.details?.[0]?.discount || 0,
+        netAmount: billing.netAmount || "",
+        gst: billing.gst || "",
+        totalAmount: billing.totalAmount || "",
+        registrationCost: billing.registrationCost,
+        visitType: billing.visitType === "N" ? "New" : "Follow-up",
+      };
+      setAppointments([{ // Ensure appointments array is always populated for consistent rendering
+        department: billing.department,
+        consultedDoctor: billing.consultedDoctor,
+        session: billing.opdSession,
+        speciality: billing.departmentId,
+        doctorId: billing.doctorId,
+        sessionId: billing.sessionId,
+        basePrice: billing.basePrice ?? billing.amount ?? "",
+        discount: billing.discount || billing.details?.[0]?.discount || 0,
+        netAmount: billing.netAmount || "",
+        gst: billing.gst || "",
+        totalAmount: billing.totalAmount || "",
+        registrationCost: billing.registrationCost,
+        visitType: billing.visitType === "N" ? "New" : "Follow-up",
+      }]);
+      setFormData((prev) => ({ ...prev, ...mapped }));
+    }
+    
+    const optionalCategoryId = response.categoryId || null;
     fetchGstConfiguration(optionalCategoryId);
-    setFormData((prev) => ({ ...prev, ...mapped }));
   }, [location.state, navigate]);
 
   //Auto-calculate net, GST, and total whenever base or discount changes
-useEffect(() => {
-  const base = parseFloat(formData.basePrice) || 0;
-  const discountVal = parseFloat(formData.discount) || 0;
-  const regCost = formData.visitType === "New" ? Number(formData.registrationCost) || 0: 0;
-
-  const net = Math.max(0, base - discountVal);
-
-  const gstPercent = gstConfig?.gstApplicable ? gstConfig?.gstPercent : 0;
-
-  const gstAmount = (net * gstPercent) / 100;
-  const total = net + gstAmount + regCost;
-
-  setFormData((prev) => ({
-    ...prev,
-    netAmount: net.toFixed(2),
-    gst: gstAmount.toFixed(2),
-    totalAmount: total.toFixed(2),
-  }));
-}, [
-  formData.basePrice,
-  formData.discount,
-  formData.visitType,
-  gstConfig
-]);
+  // useEffect(() => {
+  //   const base = parseFloat(formData.basePrice) || 0;
+  //   const discountVal = parseFloat(formData.discount) || 0;
+  //   const regCost = formData.visitType === "New" ? Number(formData.registrationCost) || 0 : 0;
+  //
+  //   const net = Math.max(0, base - discountVal);
+  //
+  //   const gstPercent = gstConfig?.gstApplicable ? gstConfig?.gstPercent : 0;
+  //
+  //   const gstAmount = (net * gstPercent) / 100;
+  //   const total = net + gstAmount + regCost;
+  //
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     netAmount: net.toFixed(2),
+  //     gst: gstAmount.toFixed(2),
+  //     totalAmount: total.toFixed(2),
+  //   }));
+  // }, [
+  //   formData.basePrice,
+  //   formData.discount,
+  //   formData.visitType,
+  //   gstConfig
+  // ]);
 
 
   //Validate required fields
@@ -316,203 +365,194 @@ useEffect(() => {
                   </div>
                 </div>
 
-                {/* OPD Visit Information Section */}
-                <div className="col-12 mt-4">
-                  <div className="card">
-                    <div className="card-header bg-light">
-                      <h5 className="mb-0">
-                        <i className="mdi mdi-hospital-building"></i> OPD Visit Information
-                      </h5>
-                    </div>
-                    <div className="card-body">
-                      <div className="row">
-                        {/* Visit date, doctor, dept, etc. */}
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Visit Date *</label>
-                          <input
-                            type="date"
-                            className="form-control"
-                            id="visitDate"
-                            onChange={handleInputChange}
-                            value={formData.visitDate}
-                            required
-                            readOnly
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Doctor Name *</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="doctorName"
-                            placeholder="Doctor Name"
-                            onChange={handleInputChange}
-                            value={formData.doctorName}
-                            required
-                            readOnly
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Department</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="department"
-                            placeholder="Department"
-                            onChange={handleInputChange}
-                            value={formData.department}
-                            readOnly
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Visit Type</label>
-                          <select
-                            className="form-select"
-                            id="visitType"
-                            value={formData.visitType}
-                            onChange={handleInputChange}
-                          >
-                            <option value="">Select Visit Type</option>
-                            <option value="New">New</option>
-                            <option value="Follow-up">Follow-up</option>
-                            <option value="Emergency">Emergency</option>
-                          </select>
-                        </div>
-                        {/* <div className="form-group col-md-4 mt-3">
-                          <label>Visit ID</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="visitId"
-                            placeholder="Visit ID"
-                            onChange={handleInputChange}
-                            value={formData.visitId}
-                          />
-                        </div> */}
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Room</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="room"
-                            placeholder="Room"
-                            onChange={handleInputChange}
-                            value={formData.room}
-                          />
-                        </div>
-                        <div className="form-group col-md-12 mt-3">
-                          <label>OPD Session</label>
-                          <select
-                            className="form-select"
-                            id="opdSession"
-                            value={formData.opdSession}
-                            onChange={handleInputChange}
-                          >
-                            <option value="">Select OPD Session</option>
-                            <option value="Morning (9-1 PM)">Morning (9-1 PM)</option>
-                            <option value="Evening (2-6 PM)">Evening (2-6 PM)</option>
-                            <option value="Night (7-11 PM)">Night (7-11 PM)</option>
-                          </select>
-                        </div>
+                {/* Multiple OPD Visit Information Sections based on appointments */}
+                {appointments.map((appointment, index) => (
+                  <div className="col-12 mt-4" key={`appointment-${appointment.id}-${index}`}>
+                    <div className="card">
+                      <div className="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h5 className="mb-0">
+                          <i className="mdi mdi-hospital-building"></i> OPD Visit Information {appointments.length > 1 ? `- Appointment ${index + 1}` : ""}
+                        </h5>
                       </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Billing & Payment Information */}
-                <div className="col-12 mt-4">
-                  <div className="card">
-                    <div className="card-header bg-light">
-                      <h5 className="mb-0">
-                        <i className="mdi mdi-currency-inr"></i> Billing & Payment
-                      </h5>
-                    </div>
-                    <div className="card-body">
-                      <div className="row">
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Tariff Plan</label>
-                          <select
-                            className="form-select"
-                            id="tariffPlan"
-                            value={formData.tariffPlan}
-                            onChange={handleInputChange}
-                          >
-                            <option value="">Select Tariff</option>
-                            <option value="General Tariff">General Tariff</option>
-                            <option value="Premium Tariff">Premium Tariff</option>
-                            <option value="VIP Tariff">VIP Tariff</option>
-                          </select>
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Base Price</label>
-                          <input
-                            type="number"
-                            className="form-control"
-                            id="basePrice"
-                            onChange={handleInputChange}
-                            value={formData.basePrice}
-                            readOnly
-                          />
-                        </div>
-                        {formData.visitType === "New" && (
+                      <div className="card-body">
+                        <div className="row">
                           <div className="form-group col-md-4 mt-3">
-                            <label>Registration Cost</label>
+                            <label>Visit Date *</label>
                             <input
-                              type="text"
+                              type="date"
                               className="form-control"
-                              id="registrationCost"
-                              value={formData.registrationCost}
+                              id={`visitDate-${appointment.id}`}
+                              onChange={handleInputChange}
+                              value={formData.visitDate} // Assuming visitDate is consistent across all appointments, or you might need to manage it per appointment
+                              required
                               readOnly
                             />
                           </div>
-                        )}
-
-
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Discount</label>
-                          <input
-                            type="number"
-                            className="form-control"
-                            id="discount"
-                            onChange={handleInputChange}
-                            value={formData.discount}
-                            readOnly
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Net Amount</label>
-                          <input
-                            type="number"
-                            className="form-control"
-                            id="netAmount"
-                            value={formData.netAmount}
-                            readOnly
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>GST {gstConfig.gstPercent}%</label>
-                          <input
-                            type="number"
-                            className="form-control"
-                            id="gst"
-                            value={formData.gst}
-                            readOnly
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Total Amount</label>
-                          <input
-                            type="number"
-                            className="form-control"
-                            id="totalAmount"
-                            value={formData.totalAmount}
-                            readOnly
-                          />
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Doctor Name *</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id={`doctorName-${appointment.id}`}
+                              placeholder="Doctor Name"
+                              onChange={handleInputChange}
+                              value={appointment.doctorName}
+                              required
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Department</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id={`department-${appointment.id}`}
+                              placeholder="Department"
+                              onChange={handleInputChange}
+                              value={appointment.departmentName}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Visit Type</label>
+                            <select
+                              className="form-select"
+                              id={`visitType-${appointment.id}`}
+                              value={appointment.visitType}
+                              onChange={handleInputChange}
+                              readOnly
+                            >
+                              <option value="">Select Visit Type</option>
+                              <option value="New">New</option>
+                              <option value="Follow-up">Follow-up</option>
+                              <option value="Emergency">Emergency</option>
+                            </select>
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Room</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id={`room-${appointment.id}`}
+                              placeholder="Room"
+                              onChange={handleInputChange}
+                              value={appointment.room || ""}
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>OPD Session</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id={`opdSession-${appointment.id}`}
+                              placeholder="OPD Session"
+                              onChange={handleInputChange}
+                              value={appointment.sessionName}
+                              readOnly
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                ))}
+
+                {/* Multiple Billing & Payment Sections based on appointments */}
+                {appointments.map((appointment, index) => (
+                  <div className="col-12 mt-4" key={`billing-${appointment.id}-${index}`}>
+                    <div className="card">
+                      <div className="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h5 className="mb-0">
+                          <i className="mdi mdi-currency-inr"></i> Billing & Payment {appointments.length > 1 ? `- Appointment ${index + 1}` : ""}
+                        </h5>
+                      </div>
+                      <div className="card-body">
+                        <div className="row">
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Tariff Plan</label>
+                            <select
+                              className="form-select"
+                              id={`tariffPlan-${appointment.id}`}
+                              value={appointment.tariffPlan || ""}
+                              onChange={handleInputChange}
+                              readOnly
+                            >
+                              <option value="">Select Tariff</option>
+                              <option value="General Tariff">General Tariff</option>
+                              <option value="Premium Tariff">Premium Tariff</option>
+                              <option value="VIP Tariff">VIP Tariff</option>
+                            </select>
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Base Price</label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              id={`basePrice-${appointment.id}`}
+                              onChange={handleInputChange}
+                              value={appointment.basePrice}
+                              readOnly
+                            />
+                          </div>
+                          {appointment.visitType === "New" && (
+                            <div className="form-group col-md-4 mt-3">
+                              <label>Registration Cost</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                id={`registrationCost-${appointment.id}`}
+                                value={appointment.registrationCost}
+                                readOnly
+                              />
+                            </div>
+                          )}
+
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Discount</label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              id={`discount-${appointment.id}`}
+                              onChange={handleInputChange}
+                              value={appointment.discount}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Net Amount</label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              id={`netAmount-${appointment.id}`}
+                              value={appointment.netAmount}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>GST {gstConfig.gstPercent}%</label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              id={`gst-${appointment.id}`}
+                              value={appointment.gst}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Total Amount</label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              id={`totalAmount-${appointment.id}`}
+                              value={appointment.totalAmount}
+                              readOnly
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
 
                 {/* Action Buttons */}
                 <div className="form-group col-md-12 d-flex justify-content-end mt-4">
