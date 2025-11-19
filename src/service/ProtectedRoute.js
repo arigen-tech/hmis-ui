@@ -85,6 +85,7 @@ const validRoutes = [
   "/ResultValidation",
   "/UpdateResultValidation",
   "/OpdRecallPatient",
+  "/CreateIndent"
 ];
 
 const NotAuthorized = () => {

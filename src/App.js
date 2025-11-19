@@ -79,6 +79,7 @@ import ResultValidation from './Views/Laboratory/ResultValidation';
 import UpdateResultValidation from './Views/Laboratory/UpdateResultValidation';
 import OpdRRecallPatient from './Views/OPD/OpdRecallPatient';
 import OpdPaymentSuccess from './Views/Payment/OpdPaymentSuccess';
+import IndentCreation from './Views/WardPharmacy/CreateIndent';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -193,6 +194,7 @@ function App() {
                 <Route path="ResultValidation" element={<ResultValidation/>} />
                 <Route path="UpdateResultValidation" element={<UpdateResultValidation/>} />
                 <Route path="OpdRecallPatient" element={<OpdRRecallPatient />} />
+                <Route path="CreateIndent" element={<IndentCreation/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
