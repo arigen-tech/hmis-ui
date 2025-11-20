@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import Popup from "../../../Components/popup"
-import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, MAS_DRUG_MAS } from "../../../config/apiConfig";
+import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, Store_Internal_Indent, MAS_DRUG_MAS } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService"
 
 const IndentCreation = () => {
@@ -14,32 +14,96 @@ const IndentCreation = () => {
   const [indentDate, setIndentDate] = useState(new Date().toISOString().split("T")[0]);
   const [department, setDepartment] = useState("");
   const [departments, setDepartments] = useState([]);
-  const [loggedInDepartment, setLoggedInDepartment] = useState("Store"); // Fixed value for logged-in department
+  const [loggedInDepartment, setLoggedInDepartment] = useState(""); // Will be auto-filled from department ID
 
-  // Dummy data for different department lists
-  const storeDepartments = [
-    { id: 101, name: "Store Dept A" },
-    { id: 102, name: "Store Dept B" },
-  ];
-  const dispensaryDepartments = [
-    { id: 201, name: "Dispensary Dept X" },
-    { id: 202, name: "Dispensary Dept Y" },
-  ];
+  // Drug search state
+  const [allDrugs, setAllDrugs] = useState([]);
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [activeRowIndex, setActiveRowIndex] = useState(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0, width: 0 });
+  const [selectedDrugs, setSelectedDrugs] = useState([]);
 
   const [indentEntries, setIndentEntries] = useState([
-    { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "" }, // Initialize with one empty row
+    { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "" },
   ]);
 
-  // Fetch Departments (modified to fetch all initially)
+  // Validation state
+  const [errors, setErrors] = useState({});
+
+  // Fetch current department by ID
+  const fetchCurrentDepartment = async () => {
+    try {
+      if (!departmentId) {
+        console.warn("No department ID found in session storage");
+        setLoggedInDepartment("Unknown Department");
+        return;
+      }
+
+      const response = await getRequest(`${MAS_DEPARTMENT}/getById/${departmentId}`);
+      console.log("Current Department API Response:", response);
+      
+      if (response && response.data) {
+        // If response has data field with department info
+        setLoggedInDepartment(response.data.departmentName || response.data.name || "Unknown Department");
+      } else if (response && response.response) {
+        // If response has response field with department info
+        setLoggedInDepartment(response.response.departmentName || response.response.name || "Unknown Department");
+      } else {
+        console.warn("Unexpected department response structure:", response);
+        setLoggedInDepartment("Unknown Department");
+      }
+    } catch (err) {
+      console.error("Error fetching current department:", err);
+      setLoggedInDepartment("Error loading department");
+    }
+  };
+
+  // Fetch Departments using fixed-dropdown API
   const fetchDepartments = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_DEPARTMENT}/${hospitalId}`);
-      if (response && Array.isArray(response)) {
-        setDepartments(response); // Store all fetched departments
+      const response = await getRequest(`${Store_Internal_Indent}/fixed-dropdown`);
+      console.log("Departments API Response:", response);
+      
+      if (response && response.response && Array.isArray(response.response)) {
+        setDepartments(response.response);
+      } else if (response && Array.isArray(response)) {
+        setDepartments(response);
+      } else {
+        console.error("Unexpected departments response structure:", response);
+        showPopup("Error: Unexpected departments response format", "error");
       }
     } catch (err) {
       console.error("Error fetching departments:", err);
+      showPopup("Error fetching departments", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch all drugs
+  const fetchAllDrugs = async () => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1/${hospitalId}/${departmentId}`);
+      console.log("Drugs API Response:", response);
+      
+      if (response && response.response && Array.isArray(response.response)) {
+        setAllDrugs(response.response);
+        console.log("Drugs loaded:", response.response.length);
+      } else if (response && Array.isArray(response)) {
+        setAllDrugs(response);
+        console.log("Drugs loaded:", response.length);
+      } else if (response && response.data && Array.isArray(response.data)) {
+        setAllDrugs(response.data);
+        console.log("Drugs loaded:", response.data.length);
+      } else {
+        console.error("Unexpected drugs response structure:", response);
+        showPopup("Error: Unexpected drugs response format", "error");
+      }
+    } catch (err) {
+      console.error("Error fetching drugs:", err);
+      showPopup("Error fetching drugs", "error");
     } finally {
       setLoading(false);
     }
@@ -47,25 +111,159 @@ const IndentCreation = () => {
 
   useEffect(() => {
     fetchDepartments();
+    fetchAllDrugs();
+    fetchCurrentDepartment(); // Fetch current department separately
   }, []);
 
-  // Filter departments based on loggedInDepartment
-  const getFilteredDepartments = () => {
-    if (loggedInDepartment === "Store") {
-      return storeDepartments;
-    } else if (loggedInDepartment === "Dispensary") {
-      return dispensaryDepartments;
-    } else {
-      return departments; // Fallback to all fetched departments if loggedInDepartment is neither Store nor Dispensary
-    }
+  // Filter drugs based on search input
+  const filterDrugsBySearch = (searchTerm) => {
+    if (!searchTerm) return [];
+    
+    return allDrugs.filter(drug => 
+      drug.nomenclature?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      drug.pvmsNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      drug.itemId?.toString().includes(searchTerm)
+    ).slice(0, 10);
   };
 
+  // Handle drug input focus for dropdown positioning
+  const handleDrugInputFocus = (event, index) => {
+    const input = event.target;
+    const rect = input.getBoundingClientRect();
+    
+    setDropdownPosition({
+      x: rect.left + window.scrollX,
+      y: rect.bottom + window.scrollY,
+      width: rect.width
+    });
+    
+    setActiveRowIndex(index);
+    setDropdownVisible(true);
+  };
+
+  // Validate form
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Department validation
+    if (!department) {
+      newErrors.department = "Please select a department";
+    }
+
+    // Date validation
+    if (!indentDate) {
+      newErrors.indentDate = "Indent date is required";
+    }
+
+    // Entries validation
+    indentEntries.forEach((entry, index) => {
+      if (!entry.drugName || !entry.drugCode) {
+        newErrors[`drug_${index}`] = "Please select a drug";
+      }
+      if (!entry.requiredQty || entry.requiredQty <= 0) {
+        newErrors[`qty_${index}`] = "Required quantity must be greater than 0";
+      }
+      if (entry.requiredQty && entry.storesStock && parseFloat(entry.requiredQty) > parseFloat(entry.storesStock)) {
+        newErrors[`stock_${index}`] = "Required quantity cannot exceed available stock";
+      }
+    });
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Check for duplicate drugs
+  const hasDuplicateDrugs = () => {
+    const drugIds = indentEntries
+      .filter(entry => entry.drugId)
+      .map(entry => entry.drugId);
+    
+    const uniqueDrugIds = [...new Set(drugIds)];
+    return drugIds.length !== uniqueDrugIds.length;
+  };
+
+  // Handle drug selection from dropdown
+  const handleDrugSelect = (index, drug) => {
+    // Check if drug is already selected in another row
+    const isDuplicate = selectedDrugs.some(id => id === drug.itemId && indentEntries[index]?.drugId !== drug.itemId);
+    
+    if (isDuplicate) {
+      showPopup("This drug is already added in another row. Please select a different drug.", "warning");
+      return;
+    }
+
+    const newEntries = [...indentEntries];
+    
+    // Calculate stocks based on available data
+    const storesStock = drug.adispQty || drug.availableStock || 0;
+    const wardStock = drug.wardStock || drug.reOrderLevelDispensary || 0;
+    
+    // Update the selected row with drug information
+    newEntries[index] = {
+      ...newEntries[index],
+      drugId: drug.itemId,
+      drugCode: drug.pvmsNo || "",
+      drugName: drug.nomenclature || "",
+      unit: drug.unitAuName || drug.dispUnitName || "",
+      storesStock: storesStock,
+      wardStock: wardStock,
+      drugData: {
+        reOrderLevelStore: drug.reOrderLevelStore,
+        reOrderLevelDispensary: drug.reOrderLevelDispensary,
+        adispQty: drug.adispQty,
+        sectionName: drug.sectionName,
+        itemTypeName: drug.itemTypeName,
+        groupName: drug.groupName,
+        itemClassName: drug.itemClassName
+      }
+    };
+    
+    setIndentEntries(newEntries);
+    
+    // Update selected drugs tracking
+    const newSelectedDrugs = selectedDrugs.filter(id => id !== newEntries[index].drugId);
+    newSelectedDrugs.push(drug.itemId);
+    setSelectedDrugs(newSelectedDrugs);
+    
+    // Clear errors for this row
+    const newErrors = { ...errors };
+    delete newErrors[`drug_${index}`];
+    delete newErrors[`qty_${index}`];
+    delete newErrors[`stock_${index}`];
+    setErrors(newErrors);
+    
+    setDropdownVisible(false);
+    setActiveRowIndex(null);
+  };
+
+  // Handle entry change
   const handleEntryChange = (id, field, value) => {
-    setIndentEntries(entries =>
-      entries.map(entry =>
+    setIndentEntries(prevEntries => {
+      const updatedEntries = prevEntries.map(entry =>
         entry.id === id ? { ...entry, [field]: value } : entry
-      )
-    );
+      );
+
+      // If drug name is being cleared, remove from selected drugs
+      if (field === "drugName" && value === "") {
+        const entry = prevEntries.find(e => e.id === id);
+        if (entry && entry.drugId) {
+          setSelectedDrugs(prevSelected => prevSelected.filter(drugId => drugId !== entry.drugId));
+        }
+      }
+
+      return updatedEntries;
+    });
+
+    // Clear errors when user starts typing
+    const entryIndex = indentEntries.findIndex(entry => entry.id === id);
+    if (entryIndex !== -1) {
+      const newErrors = { ...errors };
+      if (field === "requiredQty") {
+        delete newErrors[`qty_${entryIndex}`];
+        delete newErrors[`stock_${entryIndex}`];
+      }
+      setErrors(newErrors);
+    }
   };
 
   const handleAddRow = () => {
@@ -78,7 +276,23 @@ const IndentCreation = () => {
 
   const handleDeleteRow = (id) => {
     if (indentEntries.length > 1) {
+      // Remove drug from selected drugs if it was selected
+      const entryToDelete = indentEntries.find(entry => entry.id === id);
+      if (entryToDelete && entryToDelete.drugId) {
+        setSelectedDrugs(selectedDrugs.filter(drugId => drugId !== entryToDelete.drugId));
+      }
+      
       setIndentEntries(indentEntries.filter(entry => entry.id !== id));
+      
+      // Clear errors for deleted row
+      const entryIndex = indentEntries.findIndex(entry => entry.id === id);
+      if (entryIndex !== -1) {
+        const newErrors = { ...errors };
+        delete newErrors[`drug_${entryIndex}`];
+        delete newErrors[`qty_${entryIndex}`];
+        delete newErrors[`stock_${entryIndex}`];
+        setErrors(newErrors);
+      }
     } else {
       showPopup("At least one row is required", "warning");
     }
@@ -105,36 +319,40 @@ const IndentCreation = () => {
   };
 
   const handleSave = async () => {
-    if (!department) {
-      showPopup("Please select a department", "warning");
+    // Validate form
+    if (!validateForm()) {
+      showPopup("Please fix the validation errors before saving", "warning");
       return;
     }
 
-    const hasEmptyRows = indentEntries.some(entry =>
-      !entry.drugCode || !entry.drugName || !entry.requiredQty
-    );
-
-    if (hasEmptyRows) {
-      showPopup("Please fill all required fields", "warning");
+    // Check for duplicate drugs
+    if (hasDuplicateDrugs()) {
+      showPopup("Duplicate drugs found. Please remove duplicate entries before saving.", "warning");
       return;
     }
 
     const payload = {
       indentDate: indentDate,
-      departmentId: department,
-      entries: indentEntries,
+      toDeptId: department,
+      items: indentEntries.map(entry => ({
+        itemId: entry.drugId,
+        requestedQty: entry.requiredQty,
+        availableStock: entry.storesStock,
+      })),
     };
 
     try {
       setLoading(true);
-      const response = await postRequest(`${API_HOST}/indent/create`, payload);
+      const response = await postRequest(`${Store_Internal_Indent}/save`, payload);
       showPopup("Indent saved successfully!", "success");
       // Reset form
       setIndentDate(new Date().toISOString().split("T")[0]);
       setDepartment("");
       setIndentEntries([
-        { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "" }, // Reset to one empty row
+        { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "" },
       ]);
+      setSelectedDrugs([]);
+      setErrors({});
     } catch (err) {
       console.error("Error saving indent:", err);
       showPopup("Error saving indent", "error");
@@ -144,37 +362,41 @@ const IndentCreation = () => {
   };
 
   const handleSubmit = async () => {
-    if (!department) {
-      showPopup("Please select a department", "warning");
+    // Validate form
+    if (!validateForm()) {
+      showPopup("Please fix the validation errors before submitting", "warning");
       return;
     }
 
-    const hasEmptyRows = indentEntries.some(entry =>
-      !entry.drugCode || !entry.drugName || !entry.requiredQty
-    );
-
-    if (hasEmptyRows) {
-      showPopup("Please fill all required fields", "warning");
+    // Check for duplicate drugs
+    if (hasDuplicateDrugs()) {
+      showPopup("Duplicate drugs found. Please remove duplicate entries before submitting.", "warning");
       return;
     }
 
     const payload = {
       indentDate: indentDate,
-      departmentId: department,
-      entries: indentEntries,
+      toDeptId: department,
+      items: indentEntries.map(entry => ({
+        itemId: entry.drugId,
+        requestedQty: entry.requiredQty,
+        availableStock: entry.storesStock,
+      })),
       status: "submitted",
     };
 
     try {
       setLoading(true);
-      const response = await postRequest(`${API_HOST}/indent/submit`, payload);
+      const response = await postRequest(`${Store_Internal_Indent}/submit`, payload);
       showPopup("Indent submitted successfully!", "success");
       // Reset form
       setIndentDate(new Date().toISOString().split("T")[0]);
       setDepartment("");
       setIndentEntries([
-        { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "" }, // Reset to one empty row
+        { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "" },
       ]);
+      setSelectedDrugs([]);
+      setErrors({});
     } catch (err) {
       console.error("Error submitting indent:", err);
       showPopup("Error submitting indent", "error");
@@ -182,6 +404,21 @@ const IndentCreation = () => {
       setLoading(false);
     }
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownVisible && !event.target.closest('.dropdown-search-container')) {
+        setDropdownVisible(false);
+        setActiveRowIndex(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [dropdownVisible]);
 
   return (
     <div className="content-wrapper">
@@ -200,31 +437,44 @@ const IndentCreation = () => {
                   <label className="form-label fw-bold">Indent Date</label>
                   <input
                     type="date"
-                    className="form-control"
+                    className={`form-control ${errors.indentDate ? 'is-invalid' : ''}`}
                     value={indentDate}
-                    onChange={(e) => setIndentDate(e.target.value)}
+                    onChange={(e) => {
+                      setIndentDate(e.target.value);
+                      if (errors.indentDate) {
+                        const newErrors = { ...errors };
+                        delete newErrors.indentDate;
+                        setErrors(newErrors);
+                      }
+                    }}
                   />
+                  {errors.indentDate && <div className="invalid-feedback">{errors.indentDate}</div>}
                 </div>
-
 
                 <div className="col-md-3">
                   <label className="form-label fw-bold">Department</label>
                   <select
-                    className="form-select"
+                    className={`form-select ${errors.department ? 'is-invalid' : ''}`}
                     value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    disabled={!loggedInDepartment} // Disable until a logged-in department is selected
+                    onChange={(e) => {
+                      setDepartment(e.target.value);
+                      if (errors.department) {
+                        const newErrors = { ...errors };
+                        delete newErrors.department;
+                        setErrors(newErrors);
+                      }
+                    }}
                   >
                     <option value="">Select</option>
-                    {getFilteredDepartments().map((dept) => (
+                    {departments.map((dept) => (
                       <option key={dept.id} value={dept.id}>
-                        {dept.name}
+                        {dept.departmentName}
                       </option>
                     ))}
                   </select>
+                  {errors.department && <div className="invalid-feedback">{errors.department}</div>}
                 </div>
 
-                 
                 <div className="col-md-3">
                   <label className="form-label fw-bold">Current Department</label>
                   <input
@@ -233,11 +483,11 @@ const IndentCreation = () => {
                     value={loggedInDepartment}
                     readOnly
                     style={{ backgroundColor: "#f5f5f5" }}
+                    placeholder={!loggedInDepartment ? "Loading..." : ""}
                   />
                 </div>
               </div>
 
-            
               {/* Table Section */}
               <div className="table-responsive" style={{ overflowX: "auto" }}>
                 <table className="table table-bordered align-middle">
@@ -256,14 +506,93 @@ const IndentCreation = () => {
                   <tbody>
                     {indentEntries.map((entry, index) => (
                       <tr key={entry.id}>
-                        <td>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Drug Name / Code"
-                            value={entry.drugName}
-                            onChange={(e) => handleEntryChange(entry.id, "drugName", e.target.value)}
-                          />
+                        <td style={{ position: 'relative' }}>
+                          <div className="dropdown-search-container position-relative">
+                            <input
+                              type="text"
+                              className={`form-control ${errors[`drug_${index}`] ? 'is-invalid' : ''}`}
+                              value={entry.drugName}
+                              autoComplete="off"
+                              onChange={(e) => {
+                                handleEntryChange(entry.id, "drugName", e.target.value);
+                                if (e.target.value.trim() !== "") {
+                                  setActiveRowIndex(index);
+                                  setDropdownVisible(true);
+                                } else {
+                                  setDropdownVisible(false);
+                                }
+                              }}
+                              onFocus={(e) => handleDrugInputFocus(e, index)}
+                              placeholder="Enter drug name or code"
+                              style={{ borderRadius: "4px", minWidth: "180px" }}
+                            />
+                            {errors[`drug_${index}`] && (
+                              <div className="invalid-feedback d-block">{errors[`drug_${index}`]}</div>
+                            )}
+
+                            {/* Search Dropdown */}
+                            {dropdownVisible && activeRowIndex === index && entry.drugName.trim() !== "" && (
+                              <ul
+                                className="list-group position-fixed dropdown-list"
+                                style={{
+                                  top: `${dropdownPosition.y}px`,
+                                  left: `${dropdownPosition.x}px`,
+                                  width: `${dropdownPosition.width}px`,
+                                  zIndex: 99999,
+                                  backgroundColor: "#fff",
+                                  border: "1px solid #ccc",
+                                  borderRadius: "4px",
+                                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                                  maxHeight: "250px",
+                                  overflowY: "auto",
+                                }}
+                              >
+                                {filterDrugsBySearch(entry.drugName).length > 0 ? (
+                                  filterDrugsBySearch(entry.drugName).map((drug) => {
+                                    const isSelectedInOtherRow = selectedDrugs.some(
+                                      (id) => id === drug.itemId && indentEntries[index]?.drugId !== drug.itemId
+                                    );
+                                    return (
+                                      <li
+                                        key={drug.itemId}
+                                        className="list-group-item list-group-item-action"
+                                        style={{
+                                          backgroundColor: isSelectedInOtherRow ? "#ffc107" : "#f8f9fa",
+                                          cursor: isSelectedInOtherRow ? "not-allowed" : "pointer",
+                                          padding: "8px 12px",
+                                        }}
+                                        onClick={() => {
+                                          if (!isSelectedInOtherRow) handleDrugSelect(index, drug);
+                                        }}
+                                      >
+                                        <div>
+                                          <strong>{drug.nomenclature}</strong>
+                                          <div
+                                            style={{
+                                              color: "#6c757d",
+                                              fontSize: "0.8rem",
+                                              marginTop: "2px",
+                                            }}
+                                          >
+                                            Code: {drug.pvmsNo} | Stock: {drug.adispQty || 0}
+                                            {isSelectedInOtherRow && (
+                                              <span className="text-success ms-2">
+                                                <i className="fas fa-check-circle me-1"></i> Added
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </li>
+                                    );
+                                  })
+                                ) : (
+                                  <li className="list-group-item text-muted text-center">
+                                    {allDrugs.length === 0 ? "No drugs available" : "No drugs found"}
+                                  </li>
+                                )}
+                              </ul>
+                            )}
+                          </div>
                         </td>
                         <td>
                           <input
@@ -273,16 +602,24 @@ const IndentCreation = () => {
                             value={entry.unit}
                             onChange={(e) => handleEntryChange(entry.id, "unit", e.target.value)}
                             style={{ backgroundColor: "#f5f5f5" }}
+                            readOnly
                           />
                         </td>
                         <td>
                           <input
                             type="number"
-                            className="form-control"
+                            className={`form-control ${errors[`qty_${index}`] || errors[`stock_${index}`] ? 'is-invalid' : ''}`}
                             placeholder="Qty"
                             value={entry.requiredQty}
                             onChange={(e) => handleEntryChange(entry.id, "requiredQty", e.target.value)}
+                            min="1"
                           />
+                          {errors[`qty_${index}`] && (
+                            <div className="invalid-feedback d-block">{errors[`qty_${index}`]}</div>
+                          )}
+                          {errors[`stock_${index}`] && (
+                            <div className="invalid-feedback d-block">{errors[`stock_${index}`]}</div>
+                          )}
                         </td>
                         <td>
                           <input
@@ -292,6 +629,7 @@ const IndentCreation = () => {
                             value={entry.storesStock}
                             onChange={(e) => handleEntryChange(entry.id, "storesStock", e.target.value)}
                             style={{ backgroundColor: "#f5f5f5" }}
+                            readOnly
                           />
                         </td>
                         <td>
@@ -302,6 +640,7 @@ const IndentCreation = () => {
                             value={entry.wardStock}
                             onChange={(e) => handleEntryChange(entry.id, "wardStock", e.target.value)}
                             style={{ backgroundColor: "#f5f5f5" }}
+                            readOnly
                           />
                         </td>
                         <td>
@@ -325,6 +664,7 @@ const IndentCreation = () => {
                           <button
                             className="btn btn-sm btn-danger"
                             onClick={() => handleDeleteRow(entry.id)}
+                            disabled={indentEntries.length <= 1}
                           >
                             <i className="fa fa-minus"></i>
                           </button>
@@ -361,7 +701,7 @@ const IndentCreation = () => {
                   onClick={handleSave}
                   disabled={loading}
                 >
-                  Save
+                  {loading ? "Saving..." : "Save"}
                 </button>
                 <button
                   type="button"
@@ -369,7 +709,7 @@ const IndentCreation = () => {
                   onClick={handleSubmit}
                   disabled={loading}
                 >
-                  Submit
+                  {loading ? "Submitting..." : "Submit"}
                 </button>
               </div>
             </div>
@@ -383,7 +723,7 @@ const IndentCreation = () => {
           type={popupMessage.type}
           onClose={popupMessage.onClose}
         />
-      )}
+      )}  
     </div>
   )
 }

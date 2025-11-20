@@ -158,6 +158,9 @@ export const INVESTIGATION_PACKAGE_Mapping = `/package-investigation-mapping`;
 export const INVESTIGATION_PACKAGE_API = `/investigation-package`;
 export const LAB = `/lab`;
 export const OPD_TEMPLATE = `/opdTemplate`
+export const Store_Internal_Indent = `/storeInternalIndent`
+
+
 
 
 
