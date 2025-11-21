@@ -30,6 +30,11 @@ const IndentCreation = () => {
   // Validation state
   const [errors, setErrors] = useState({});
 
+  // ROL Popup State
+  const [showROLPopup, setShowROLPopup] = useState(false);
+  const [rolItems, setRolItems] = useState([]);
+  const [selectedRolItems, setSelectedRolItems] = useState([]);
+
   // Fetch current department by ID
   const fetchCurrentDepartment = async () => {
     try {
@@ -109,10 +114,33 @@ const IndentCreation = () => {
     }
   };
 
+  // Fetch ROL items - This would typically come from an API
+  const fetchROLItems = async () => {
+    try {
+      setLoading(true);
+      // Mock data for ROL items - replace with actual API call
+      const mockRolItems = [
+        { id: 1, itemName: "Paracetamol 500mg", availableQty: 100, rolQty: 50, selected: false },
+        { id: 2, itemName: "Amoxicillin 250mg", availableQty: 75, rolQty: 30, selected: false },
+        { id: 3, itemName: "Ibuprofen 400mg", availableQty: 60, rolQty: 25, selected: false },
+        { id: 4, itemName: "Vitamin C 100mg", availableQty: 120, rolQty: 40, selected: false },
+        { id: 5, itemName: "Metformin 500mg", availableQty: 90, rolQty: 35, selected: false },
+      ];
+      setRolItems(mockRolItems);
+      console.log("ROL Items fetched:", mockRolItems); // Log the fetched ROL items
+    } catch (err) {
+      console.error("Error fetching ROL items:", err);
+      showPopup("Error fetching ROL items", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchDepartments();
     fetchAllDrugs();
     fetchCurrentDepartment(); // Fetch current department separately
+    fetchROLItems(); // Invoke fetchROLItems here
   }, []);
 
   // Filter drugs based on search input
@@ -308,14 +336,95 @@ const IndentCreation = () => {
     })
   }
 
-  const handleImportROL = () => {
+  // ROL Popup Functions
+  const handleImportROL = async () => {
     console.log("Import from ROL triggered");
-    showPopup("Import from ROL feature coming soon", "info");
+    setShowROLPopup(true);
   };
 
   const handleImportPreviousIndent = () => {
     console.log("Import from Previous Indent triggered");
     showPopup("Import from Previous Indent feature coming soon", "info");
+  };
+
+  // Handle select all checkbox in ROL popup
+  const handleSelectAllROL = (e) => {
+    const isChecked = e.target.checked;
+    const updatedRolItems = rolItems.map(item => ({
+      ...item,
+      selected: isChecked
+    }));
+    setRolItems(updatedRolItems);
+    
+    if (isChecked) {
+      setSelectedRolItems(updatedRolItems.map(item => item.id));
+    } else {
+      setSelectedRolItems([]);
+    }
+  };
+
+  // Handle individual checkbox selection in ROL popup
+  const handleROLItemSelect = (id, isSelected) => {
+    const updatedRolItems = rolItems.map(item =>
+      item.id === id ? { ...item, selected: isSelected } : item
+    );
+    setRolItems(updatedRolItems);
+    
+    const selectedIds = updatedRolItems.filter(item => item.selected).map(item => item.id);
+    setSelectedRolItems(selectedIds);
+  };
+
+  // Import selected ROL items to main table
+  const handleImportROLItems = () => {
+    const selectedItems = rolItems.filter(item => item.selected);
+    
+    if (selectedItems.length === 0) {
+      showPopup("Please select at least one item to import", "warning");
+      return;
+    }
+
+    // Create new entries for selected ROL items
+    const newEntries = selectedItems.map((item, index) => {
+      const newId = Math.max(...indentEntries.map(e => e.id), 0) + index + 1;
+      
+      // Find matching drug from allDrugs to get complete information
+      const matchingDrug = allDrugs.find(drug => 
+        drug.nomenclature?.toLowerCase().includes(item.itemName.toLowerCase())
+      );
+      
+      return {
+        id: newId,
+        drugCode: matchingDrug?.pvmsNo || "",
+        drugName: item.itemName,
+        unit: matchingDrug?.unitAuName || matchingDrug?.dispUnitName || "",
+        requiredQty: item.rolQty,
+        storesStock: item.availableQty,
+        wardStock: matchingDrug?.wardStock || matchingDrug?.reOrderLevelDispensary || 0,
+        reason: "Imported from ROL",
+        drugId: matchingDrug?.itemId,
+        drugData: matchingDrug ? {
+          reOrderLevelStore: matchingDrug.reOrderLevelStore,
+          reOrderLevelDispensary: matchingDrug.reOrderLevelDispensary,
+          adispQty: matchingDrug.adispQty,
+          sectionName: matchingDrug.sectionName,
+          itemTypeName: matchingDrug.itemTypeName,
+          groupName: matchingDrug.groupName,
+          itemClassName: matchingDrug.itemClassName
+        } : undefined
+      };
+    });
+
+    // Add to existing entries
+    setIndentEntries(prevEntries => [...prevEntries, ...newEntries]);
+    
+    // Update selected drugs tracking
+    const newDrugIds = newEntries
+      .filter(entry => entry.drugId)
+      .map(entry => entry.drugId);
+    setSelectedDrugs(prevSelected => [...prevSelected, ...newDrugIds]);
+    
+    setShowROLPopup(false);
+    showPopup(`${selectedItems.length} items imported successfully from ROL`, "success");
   };
 
   const handleSave = async () => {
@@ -716,6 +825,85 @@ const IndentCreation = () => {
           </div>
         </div>
       </div>
+
+      {/* ROL Import Popup */}
+      {showROLPopup && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Import from ROL (Reorder Level)</h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => setShowROLPopup(false)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="table-responsive">
+                  <table className="table table-bordered">
+                    <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
+                      <tr>
+                        <th style={{ width: "60px" }}>S.no</th>
+                        <th>Item Name</th>
+                        <th style={{ width: "120px" }}>Available Qty</th>
+                        <th style={{ width: "120px" }}>ROL Qty</th>
+                        <th style={{ width: "100px", textAlign: "center" }}>
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              onChange={handleSelectAllROL}
+                              checked={rolItems.length > 0 && rolItems.every(item => item.selected)}
+                            />
+                            <label className="form-check-label">Select</label>
+                          </div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rolItems.map((item, index) => (
+                        <tr key={item.id}>
+                          <td>{index + 1}</td>
+                          <td>{item.itemName}</td>
+                          <td>{item.availableQty}</td>
+                          <td>{item.rolQty}</td>
+                          <td style={{ textAlign: "center" }}>
+                            <div className="form-check">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                checked={item.selected || false}
+                                onChange={(e) => handleROLItemSelect(item.id, e.target.checked)}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowROLPopup(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleImportROLItems}
+                >
+                  Import Selected Items
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {popupMessage && (
         <Popup
