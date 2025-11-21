@@ -1,19 +1,23 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import { getRequest, postRequest } from "../../../service/apiService";
-import Swal from "sweetalert2";
 
 import {
-  API_HOST,
   ALL_COUNTRY, ALL_DEPARTMENT,
   ALL_GENDER,
   ALL_RELATION,
-  DISTRICT_BY_STATE, DOCTOR_BY_SPECIALITY, PATIENT_IMAGE_UPLOAD,
-  STATE_BY_COUNTRY, GET_DOCTOR_SESSION, PATIENT_REGISTRATION, GET_SESSION, HOSPITAL, MAS_OPD_SERVICE, MAS_SERVICE_CATEGORY
+  API_HOST,
+  DISTRICT_BY_STATE, DOCTOR_BY_SPECIALITY,
+  GET_DOCTOR_SESSION,
+  GET_SESSION, HOSPITAL,
+  MAS_SERVICE_CATEGORY,
+  PATIENT_IMAGE_UPLOAD,
+  PATIENT_REGISTRATION,
+  STATE_BY_COUNTRY
 } from "../../../config/apiConfig";
 import { DEPARTMENT_CODE_OPD } from "../../../config/constants";
-import axios from "axios";
 
 const PatientRegistration = () => {
   const navigate = useNavigate();
@@ -27,7 +31,7 @@ const PatientRegistration = () => {
     fetchHospitalDetails();
     fetchGstConfiguration();
   }, []);
-  
+
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [genderData, setGenderData] = useState([]);
@@ -123,6 +127,26 @@ const PatientRegistration = () => {
     gstPercent: 0,
   });
 
+  const isFormValid = () => {
+    // Required fields
+    const requiredFields = ["firstName", "gender", "relation", "dob", "email", "mobileNo"];
+
+    for (let field of requiredFields) {
+      if (!formData[field] || formData[field].trim() === "") {
+        return false;
+      }
+    }
+
+    const validAppointment = appointments.some(a =>
+      a.speciality && a.selDoctorId && a.selSession
+    );
+
+    if (!validAppointment) return false;
+
+    return true;
+  };
+
+
   async function fetchGstConfiguration() {
     try {
       const url = `${MAS_SERVICE_CATEGORY}/getGstConfig/1`;
@@ -154,7 +178,7 @@ const PatientRegistration = () => {
       console.error("Error accessing camera:", error);
     }
   };
-  
+
   async function fetchHospitalDetails() {
     try {
       const data = await getRequest(`${HOSPITAL}/${sessionStorage.getItem('hospitalId')}`);
@@ -198,7 +222,7 @@ const PatientRegistration = () => {
       setIsCameraOn(false);
     }
   };
-  
+
   const confirmUpload = (imageData) => {
     Swal.fire({
       title: "Confirm Upload",
@@ -215,7 +239,7 @@ const PatientRegistration = () => {
       }
     });
   };
-  
+
   const uploadImage = async (base64Image) => {
     try {
       // Convert base64 to Blob
@@ -262,7 +286,7 @@ const PatientRegistration = () => {
     // Default to today's month and day
     return new Date(birthYear, today.getMonth(), today.getDate()).toISOString().split('T')[0];
   }
-  
+
   function checkBMI(a, b) {
     //debugger
     if (a === '' || b == '') {
@@ -273,7 +297,7 @@ const PatientRegistration = () => {
     var sub = a / d;
     return (parseFloat(Math.round(sub * 100) / 100).toFixed(2));
   }
-  
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -371,7 +395,7 @@ const PatientRegistration = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
-  
+
   useEffect(() => {
     if (appointments.length === 0) {
       setFormData((prev) => ({
@@ -428,7 +452,7 @@ const PatientRegistration = () => {
   const handleSpecialityChange = (id, value) => {
     const selectedDepartment = departmentData.find(dept => dept.id == value);
     const departmentName = selectedDepartment ? selectedDepartment.departmentName : "";
-    
+
     setAppointments((prev) =>
       prev.map((appointment) =>
         appointment.id === id
@@ -451,30 +475,71 @@ const PatientRegistration = () => {
     const doctorOptions = doctorDataMap[id] || [];
     const selectedDoctor = doctorOptions.find(doctor => doctor.userId == value);
     const doctorName = selectedDoctor ? `${selectedDoctor.firstName} ${selectedDoctor.middleName || ''} ${selectedDoctor.lastName || ''}`.trim() : "";
-    
-    setAppointments((prev) =>
-      prev.map((appointment) =>
-        appointment.id === id
-          ? { ...appointment, selDoctorId: value, selSession: "", doctorName }
-          : appointment
+
+
+    setAppointments(prev =>
+      prev.map(a =>
+        a.id === id ? { ...a, selDoctorId: value, selSession: "", doctorName } : a
       )
     );
-    if (value && specialityId) {
-      fetchSession(value, specialityId);
-    }
+
+
+    checkDoctorValid(id, value, specialityId);
   };
 
-  const handleSessionChange = (id, value) => {
-    const selectedSession = session.find(ses => ses.id == value);
-    const sessionName = selectedSession ? selectedSession.sessionName : "";
-    
-    setAppointments((prev) =>
-      prev.map((appointment) =>
-        appointment.id === id ? { ...appointment, selSession: value, sessionName } : appointment
+
+  const handleSessionChange = (id, value, specialityId, doctorId) => {
+
+    setAppointments(prev =>
+      prev.map(a =>
+        a.id === id ? { ...a, selSession: value } : a
       )
     );
+
+    // Check session validity
+    checkSessionValid(id, doctorId, specialityId, value);
   };
-  
+
+  async function checkDoctorValid(rowId, doctorId, deptId) {
+    let date = new Date().toISOString().split("T")[0];
+
+    const data = await getRequest(
+      `${GET_DOCTOR_SESSION}deptId=${deptId}&doctorId=${doctorId}&rosterDate=${date}&sessionId=`
+    );
+
+    if (data.status !== 200) {
+      Swal.fire(data.message);
+
+
+      setAppointments(prev =>
+        prev.map(a =>
+          a.id === rowId ? { ...a, selDoctorId: "", selSession: "" } : a
+        )
+      );
+    }
+  }
+
+  async function checkSessionValid(rowId, doctorId, deptId, sessionId) {
+    let date = new Date().toISOString().split("T")[0];
+
+    const data = await getRequest(
+      `${GET_DOCTOR_SESSION}deptId=${deptId}&doctorId=${doctorId}&rosterDate=${date}&sessionId=${sessionId}`
+    );
+
+    if (data.status !== 200) {
+      Swal.fire(data.message);
+
+
+      setAppointments(prev =>
+        prev.map(a =>
+          a.id === rowId ? { ...a, selSession: "" } : a
+        )
+      );
+    }
+  }
+
+
+
   async function fetchGenderData() {
     setLoading(true);
 
@@ -492,7 +557,7 @@ const PatientRegistration = () => {
       setLoading(false);
     }
   };
-  
+
   async function fetchRelationData() {
     setLoading(true);
 
@@ -510,7 +575,7 @@ const PatientRegistration = () => {
       setLoading(false);
     }
   }
-  
+
   async function fetchCountryData() {
     setLoading(true);
 
@@ -544,7 +609,7 @@ const PatientRegistration = () => {
       setLoading(false);
     }
   }
-  
+
   async function fetchSesion() {
     try {
       const data = await getRequest(`${GET_SESSION}1`);
@@ -560,7 +625,7 @@ const PatientRegistration = () => {
       setLoading(false);
     }
   }
-  
+
   async function fetchDistrict(value) {
     try {
       const data = await getRequest(`${DISTRICT_BY_STATE}${value}`);
@@ -608,7 +673,7 @@ const PatientRegistration = () => {
       setLoading(false);
     }
   }
-  
+
   async function fetchDepartment() {
     try {
       const data = await getRequest(`${ALL_DEPARTMENT}/1`);
@@ -632,7 +697,7 @@ const PatientRegistration = () => {
     console.log(formData);
     sendPatientData();
   }
-  
+
   const validateForm = () => {
     const requiredFields = ["firstName", "gender", "relation", "dob", "email", "mobileNo"];
     const numericFields = [
@@ -675,7 +740,7 @@ const PatientRegistration = () => {
 
     numericFields.forEach((field) => {
       const value = formData[field];
-      
+
       if (value !== undefined && value !== "") {
         if (field === "age" || field === "patientAge") {
           // Validate correct format like "25Y 10M 2D"
@@ -899,13 +964,13 @@ const PatientRegistration = () => {
     }
   }
 
-  async function fetchSession(doctorId, deptId) {
+  async function fetchSession(doctorId, deptId, sessionId) {
     if (!doctorId || !deptId) {
       return;
     }
     let timestamp = Date.now();
     let value = new Date(timestamp).toJSON().split('.')[0].split('T')[0];
-    const data = await getRequest(`${GET_DOCTOR_SESSION}deptId=${deptId}&doctorId=${doctorId}&rosterDate=${value}`);
+    const data = await getRequest(`${GET_DOCTOR_SESSION}deptId=${deptId}&doctorId=${doctorId}&rosterDate=${value}&sessionId=${sessionId}`);
     if (data.status == 200) {
       let sessionVal = [{ key: 0, value: '' }, { key: 1, value: '' }];
       if (data.response[0].rosterVal == "YY") {
@@ -1424,12 +1489,12 @@ const PatientRegistration = () => {
           <div className="col-sm-12">
             <div className="card shadow mb-3">
               <div className="card-header py-3 bg-light border-bottom-1 d-flex align-items-center justify-content-between">
-                  <h6 className="mb-0 fw-bold">Appointment Details</h6>
-                  <div className="d-flex gap-2">
-                    <button type="button" className="btn btn-sm btn-outline-primary" onClick={addAppointmentRow}>
-                      + Add
-                    </button>
-                  </div>
+                <h6 className="mb-0 fw-bold">Appointment Details</h6>
+                <div className="d-flex gap-2">
+                  <button type="button" className="btn btn-sm btn-outline-primary" onClick={addAppointmentRow}>
+                    + Add
+                  </button>
+                </div>
               </div>
               <div className="card-body">
                 <form>
@@ -1486,7 +1551,15 @@ const PatientRegistration = () => {
                           <select
                             className="form-select"
                             value={appointment.selSession}
-                            onChange={(e) => handleSessionChange(appointment.id, e.target.value)}
+                            disabled={!appointment.selDoctorId}
+                            onChange={(e) =>
+                              handleSessionChange(
+                                appointment.id,
+                                e.target.value,
+                                appointment.speciality,
+                                appointment.selDoctorId
+                              )
+                            }
                           >
                             <option value="">Select Session</option>
                             {session.map((ses) => (
@@ -1512,8 +1585,13 @@ const PatientRegistration = () => {
               <div className="card-body">
                 <div className="row g-3">
                   <div className="mt-4">
-                    <button type="submit" className="btn btn-primary me-2"
-                      onClick={sendRegistrationRequest}>Registration
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
+                      disabled={!isFormValid()}
+                      onClick={sendRegistrationRequest}
+                    >
+                      Registration
                     </button>
                     <button type="reset" className="btn btn-secondary">Reset</button>
                   </div>
