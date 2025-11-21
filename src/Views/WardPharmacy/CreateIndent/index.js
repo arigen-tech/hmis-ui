@@ -46,7 +46,7 @@ const IndentCreation = () => {
 
       const response = await getRequest(`${MAS_DEPARTMENT}/getById/${departmentId}`);
       console.log("Current Department API Response:", response);
-      
+
       if (response && response.data) {
         // If response has data field with department info
         setLoggedInDepartment(response.data.departmentName || response.data.name || "Unknown Department");
@@ -69,7 +69,7 @@ const IndentCreation = () => {
       setLoading(true);
       const response = await getRequest(`${Store_Internal_Indent}/fixed-dropdown`);
       console.log("Departments API Response:", response);
-      
+
       if (response && response.response && Array.isArray(response.response)) {
         setDepartments(response.response);
       } else if (response && Array.isArray(response)) {
@@ -92,7 +92,7 @@ const IndentCreation = () => {
       setLoading(true);
       const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1/${hospitalId}/${departmentId}`);
       console.log("Drugs API Response:", response);
-      
+
       if (response && response.response && Array.isArray(response.response)) {
         setAllDrugs(response.response);
         console.log("Drugs loaded:", response.response.length);
@@ -146,8 +146,8 @@ const IndentCreation = () => {
   // Filter drugs based on search input
   const filterDrugsBySearch = (searchTerm) => {
     if (!searchTerm) return [];
-    
-    return allDrugs.filter(drug => 
+
+    return allDrugs.filter(drug =>
       drug.nomenclature?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       drug.pvmsNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       drug.itemId?.toString().includes(searchTerm)
@@ -158,13 +158,13 @@ const IndentCreation = () => {
   const handleDrugInputFocus = (event, index) => {
     const input = event.target;
     const rect = input.getBoundingClientRect();
-    
+
     setDropdownPosition({
       x: rect.left + window.scrollX,
       y: rect.bottom + window.scrollY,
       width: rect.width
     });
-    
+
     setActiveRowIndex(index);
     setDropdownVisible(true);
   };
@@ -205,7 +205,7 @@ const IndentCreation = () => {
     const drugIds = indentEntries
       .filter(entry => entry.drugId)
       .map(entry => entry.drugId);
-    
+
     const uniqueDrugIds = [...new Set(drugIds)];
     return drugIds.length !== uniqueDrugIds.length;
   };
@@ -214,18 +214,18 @@ const IndentCreation = () => {
   const handleDrugSelect = (index, drug) => {
     // Check if drug is already selected in another row
     const isDuplicate = selectedDrugs.some(id => id === drug.itemId && indentEntries[index]?.drugId !== drug.itemId);
-    
+
     if (isDuplicate) {
       showPopup("This drug is already added in another row. Please select a different drug.", "warning");
       return;
     }
 
     const newEntries = [...indentEntries];
-    
-    // Calculate stocks based on available data
-    const storesStock = drug.adispQty || drug.availableStock || 0;
-    const wardStock = drug.wardStock || drug.reOrderLevelDispensary || 0;
-    
+
+    // Use storestocks and wardstocks directly from the API response
+    const storesStock = drug.storestocks !== null ? drug.storestocks : 0;
+    const wardStock = drug.wardstocks !== null ? drug.wardstocks : 0;
+
     // Update the selected row with drug information
     newEntries[index] = {
       ...newEntries[index],
@@ -239,27 +239,30 @@ const IndentCreation = () => {
         reOrderLevelStore: drug.reOrderLevelStore,
         reOrderLevelDispensary: drug.reOrderLevelDispensary,
         adispQty: drug.adispQty,
+        storestocks: drug.storestocks,
+        wardstocks: drug.wardstocks,
+        dispstocks: drug.dispstocks,
         sectionName: drug.sectionName,
         itemTypeName: drug.itemTypeName,
         groupName: drug.groupName,
         itemClassName: drug.itemClassName
       }
     };
-    
+
     setIndentEntries(newEntries);
-    
+
     // Update selected drugs tracking
     const newSelectedDrugs = selectedDrugs.filter(id => id !== newEntries[index].drugId);
     newSelectedDrugs.push(drug.itemId);
     setSelectedDrugs(newSelectedDrugs);
-    
+
     // Clear errors for this row
     const newErrors = { ...errors };
     delete newErrors[`drug_${index}`];
     delete newErrors[`qty_${index}`];
     delete newErrors[`stock_${index}`];
     setErrors(newErrors);
-    
+
     setDropdownVisible(false);
     setActiveRowIndex(null);
   };
@@ -309,9 +312,9 @@ const IndentCreation = () => {
       if (entryToDelete && entryToDelete.drugId) {
         setSelectedDrugs(selectedDrugs.filter(drugId => drugId !== entryToDelete.drugId));
       }
-      
+
       setIndentEntries(indentEntries.filter(entry => entry.id !== id));
-      
+
       // Clear errors for deleted row
       const entryIndex = indentEntries.findIndex(entry => entry.id === id);
       if (entryIndex !== -1) {
@@ -355,7 +358,7 @@ const IndentCreation = () => {
       selected: isChecked
     }));
     setRolItems(updatedRolItems);
-    
+
     if (isChecked) {
       setSelectedRolItems(updatedRolItems.map(item => item.id));
     } else {
@@ -369,7 +372,7 @@ const IndentCreation = () => {
       item.id === id ? { ...item, selected: isSelected } : item
     );
     setRolItems(updatedRolItems);
-    
+
     const selectedIds = updatedRolItems.filter(item => item.selected).map(item => item.id);
     setSelectedRolItems(selectedIds);
   };
@@ -377,7 +380,7 @@ const IndentCreation = () => {
   // Import selected ROL items to main table
   const handleImportROLItems = () => {
     const selectedItems = rolItems.filter(item => item.selected);
-    
+
     if (selectedItems.length === 0) {
       showPopup("Please select at least one item to import", "warning");
       return;
@@ -386,26 +389,33 @@ const IndentCreation = () => {
     // Create new entries for selected ROL items
     const newEntries = selectedItems.map((item, index) => {
       const newId = Math.max(...indentEntries.map(e => e.id), 0) + index + 1;
-      
+
       // Find matching drug from allDrugs to get complete information
-      const matchingDrug = allDrugs.find(drug => 
+      const matchingDrug = allDrugs.find(drug =>
         drug.nomenclature?.toLowerCase().includes(item.itemName.toLowerCase())
       );
-      
+
+      // Use storestocks and wardstocks directly from the matching drug
+      const storesStock = matchingDrug?.storestocks !== null ? matchingDrug?.storestocks : 0;
+      const wardStock = matchingDrug?.wardstocks !== null ? matchingDrug?.wardstocks : 0;
+
       return {
         id: newId,
         drugCode: matchingDrug?.pvmsNo || "",
         drugName: item.itemName,
         unit: matchingDrug?.unitAuName || matchingDrug?.dispUnitName || "",
         requiredQty: item.rolQty,
-        storesStock: item.availableQty,
-        wardStock: matchingDrug?.wardStock || matchingDrug?.reOrderLevelDispensary || 0,
+        storesStock: storesStock,
+        wardStock: wardStock,
         reason: "Imported from ROL",
         drugId: matchingDrug?.itemId,
         drugData: matchingDrug ? {
           reOrderLevelStore: matchingDrug.reOrderLevelStore,
           reOrderLevelDispensary: matchingDrug.reOrderLevelDispensary,
           adispQty: matchingDrug.adispQty,
+          storestocks: matchingDrug.storestocks,
+          wardstocks: matchingDrug.wardstocks,
+          dispstocks: matchingDrug.dispstocks,
           sectionName: matchingDrug.sectionName,
           itemTypeName: matchingDrug.itemTypeName,
           groupName: matchingDrug.groupName,
@@ -416,13 +426,13 @@ const IndentCreation = () => {
 
     // Add to existing entries
     setIndentEntries(prevEntries => [...prevEntries, ...newEntries]);
-    
+
     // Update selected drugs tracking
     const newDrugIds = newEntries
       .filter(entry => entry.drugId)
       .map(entry => entry.drugId);
     setSelectedDrugs(prevSelected => [...prevSelected, ...newDrugIds]);
-    
+
     setShowROLPopup(false);
     showPopup(`${selectedItems.length} items imported successfully from ROL`, "success");
   };
@@ -440,13 +450,18 @@ const IndentCreation = () => {
       return;
     }
 
+    // Build ISO datetime string (LocalDateTime-compatible)
+    const now = new Date();
+    const indentDateTime = now.toISOString().slice(0, 19); // "2025-11-21T10:23:45"
+
     const payload = {
-      indentDate: indentDate,
-      toDeptId: department,
+      indentMId: null, // Always null for new saves
+      indentDate: indentDateTime,
+      toDeptId: department ? Number(department) : null,
       items: indentEntries.map(entry => ({
-        itemId: entry.drugId,
-        requestedQty: entry.requiredQty,
-        availableStock: entry.storesStock,
+        itemId: Number(entry.drugId),
+        requestedQty: entry.requiredQty ? Number(entry.requiredQty) : 0,
+        availableStock: entry.wardStock ? Number(entry.wardStock) : 0,
       })),
     };
 
@@ -454,6 +469,7 @@ const IndentCreation = () => {
       setLoading(true);
       const response = await postRequest(`${Store_Internal_Indent}/save`, payload);
       showPopup("Indent saved successfully!", "success");
+      
       // Reset form
       setIndentDate(new Date().toISOString().split("T")[0]);
       setDepartment("");
@@ -470,6 +486,7 @@ const IndentCreation = () => {
     }
   };
 
+
   const handleSubmit = async () => {
     // Validate form
     if (!validateForm()) {
@@ -483,21 +500,30 @@ const IndentCreation = () => {
       return;
     }
 
+    // Build ISO datetime string (LocalDateTime-compatible)
+    const now = new Date();
+    const indentDateTime = now.toISOString().slice(0, 19); // "2025-11-21T10:23:45"
+
     const payload = {
-      indentDate: indentDate,
-      toDeptId: department,
+      indentMId: null, // Always null for new submissions
+      indentDate: indentDateTime,
+      toDeptId: department ? Number(department) : null,
       items: indentEntries.map(entry => ({
-        itemId: entry.drugId,
-        requestedQty: entry.requiredQty,
-        availableStock: entry.storesStock,
+        itemId: Number(entry.drugId),
+        requestedQty: entry.requiredQty ? Number(entry.requiredQty) : 0,
+        availableStock: entry.wardStock ? Number(entry.wardStock) : 0,
       })),
-      status: "submitted",
     };
 
     try {
       setLoading(true);
+      console.log("Submitting indent payload:", payload);
+      
       const response = await postRequest(`${Store_Internal_Indent}/submit`, payload);
+      console.log("Submit response:", response);
+      
       showPopup("Indent submitted successfully!", "success");
+
       // Reset form
       setIndentDate(new Date().toISOString().split("T")[0]);
       setDepartment("");
@@ -683,7 +709,7 @@ const IndentCreation = () => {
                                               marginTop: "2px",
                                             }}
                                           >
-                                            Code: {drug.pvmsNo} | Stock: {drug.adispQty || 0}
+                                           
                                             {isSelectedInOtherRow && (
                                               <span className="text-success ms-2">
                                                 <i className="fas fa-check-circle me-1"></i> Added
@@ -734,7 +760,7 @@ const IndentCreation = () => {
                           <input
                             type="number"
                             className="form-control"
-                            placeholder="Stock"
+                            placeholder="Store Stock"
                             value={entry.storesStock}
                             onChange={(e) => handleEntryChange(entry.id, "storesStock", e.target.value)}
                             style={{ backgroundColor: "#f5f5f5" }}
@@ -745,7 +771,7 @@ const IndentCreation = () => {
                           <input
                             type="number"
                             className="form-control"
-                            placeholder="Stock"
+                            placeholder="Ward Stock"
                             value={entry.wardStock}
                             onChange={(e) => handleEntryChange(entry.id, "wardStock", e.target.value)}
                             style={{ backgroundColor: "#f5f5f5" }}
@@ -833,9 +859,9 @@ const IndentCreation = () => {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Import from ROL (Reorder Level)</h5>
-                <button 
-                  type="button" 
-                  className="btn-close" 
+                <button
+                  type="button"
+                  className="btn-close"
                   onClick={() => setShowROLPopup(false)}
                 ></button>
               </div>
@@ -911,7 +937,7 @@ const IndentCreation = () => {
           type={popupMessage.type}
           onClose={popupMessage.onClose}
         />
-      )}  
+      )}
     </div>
   )
 }
