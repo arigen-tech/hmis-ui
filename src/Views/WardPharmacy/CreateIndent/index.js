@@ -854,8 +854,24 @@ const IndentCreation = () => {
 
       {/* ROL Import Popup */}
       {showROLPopup && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
-          <div className="modal-dialog modal-lg">
+        <div
+          className="modal fade show d-block"
+          style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)", zIndex: 10000 }}
+          tabIndex="-1"
+          onClick={() => setShowROLPopup(false)}
+        >
+          <div
+            className="modal-dialog modal-lg"
+            style={{
+              width: "calc(100vw - 310px)",
+              left: "285px",
+              maxWidth: "none",
+              height: "90vh",
+              margin: "5vh auto",
+              position: "fixed",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Import from ROL (Reorder Level)</h5>
@@ -865,7 +881,10 @@ const IndentCreation = () => {
                   onClick={() => setShowROLPopup(false)}
                 ></button>
               </div>
-              <div className="modal-body">
+              <div
+                className="modal-body"
+                style={{ overflowY: "auto", flex: "1 1 auto", maxHeight: "calc(90vh - 120px)" }}
+              >
                 <div className="table-responsive">
                   <table className="table table-bordered">
                     <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
