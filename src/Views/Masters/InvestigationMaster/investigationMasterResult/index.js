@@ -471,6 +471,7 @@ const InvestigationMasterResult = () => {
                                 <th>Unit</th>
                                 <th>Result Type</th>
                                 <th>Comparison Type</th>
+                                <th>Fixed Value Expected Result</th>
                                 <th>Add</th>
                                 <th>Delete</th>
                               </tr>
@@ -478,7 +479,7 @@ const InvestigationMasterResult = () => {
                             <tbody>
                               {subTests.map((test) => (
                                 <tr key={test.id}>
-                                  <td>
+                                  <td style={{ width: "80px" }}>
                                     <input
                                       type="text"
                                       className="form-control"
@@ -530,7 +531,7 @@ const InvestigationMasterResult = () => {
                                       }}
                                     />
                                   </td>
-                                  <td>
+                                  <td style={{ width: "140px" }}>
                                     <select
                                       className="form-select"
                                       value={test.unit}
@@ -587,6 +588,16 @@ const InvestigationMasterResult = () => {
                                     <button className="btn btn-success ms-1" onClick={() => handleGoClick(test.id)}>
                                       Go
                                     </button>
+                                  </td>
+
+                                  <td>
+                                       <input
+                                      type="text"
+                                      className="form-control"
+                                      value=""
+                                     
+                                    />
+
                                   </td>
                                   <td>
                                     <button className="btn btn-success" onClick={handleAddRow}>

@@ -162,49 +162,85 @@ const UpdateResultValidation = () => {
   }
 
   // New function to generate sequential serial numbers
-  const generateSequentialSerialNumbers = (investigations) => {
-    let mainCounter = 1;
-    let processedInvestigations = [];
+  // UPDATED: Generate sequential serial numbers while preserving original order
+const generateSequentialSerialNumbers = (investigations) => {
+  let mainCounter = 1;
+  let processedInvestigations = [];
+  
+  // Sort investigations by their original_si_no to maintain consistent order
+  const sortedInvestigations = [...investigations].sort((a, b) => {
+    // Handle main investigations with numeric original_si_no
+    if (typeof a.original_si_no === 'number' && typeof b.original_si_no === 'number') {
+      return a.original_si_no - b.original_si_no;
+    }
     
-    investigations.forEach((investigation) => {
-      if (investigation.subTests.length === 0) {
-        // Single investigation without sub-tests
-        processedInvestigations.push({
-          ...investigation,
-          si_no: mainCounter.toString(),
-          displayType: 'single'
-        });
-        mainCounter++;
-      } else {
-        // Investigation with sub-tests
-        // Add main investigation row
-        processedInvestigations.push({
-          ...investigation,
-          si_no: mainCounter.toString(),
-          displayType: 'main',
-          isHeader: true
-        });
-        
-        // Add sub-tests with proper numbering
-        investigation.subTests.forEach((subTest, subIndex) => {
-          const subTestNumber = investigation.subTests.length === 1 ? 
-            "" : 
-            `${mainCounter}.${String.fromCharCode(97 + subIndex)}`;
-          
-          processedInvestigations.push({
-            ...subTest,
-            si_no: subTestNumber,
-            displayType: 'subtest',
-            parentId: investigation.id
-          });
-        });
-        
-        mainCounter++;
-      }
-    });
+    // Handle string-based subtest numbers (like "1.a", "1.b", etc.)
+    if (typeof a.original_si_no === 'string' && typeof b.original_si_no === 'string') {
+      return a.original_si_no.localeCompare(b.original_si_no, undefined, { numeric: true });
+    }
     
-    return processedInvestigations;
-  }
+    // Fallback: numeric first, then strings
+    if (typeof a.original_si_no === 'number') return -1;
+    if (typeof b.original_si_no === 'number') return 1;
+    
+    return 0;
+  });
+
+  sortedInvestigations.forEach((investigation) => {
+    if (investigation.subTests && investigation.subTests.length === 0) {
+      // Single investigation without sub-tests
+      processedInvestigations.push({
+        ...investigation,
+        si_no: mainCounter.toString(),
+        displayType: 'single'
+      });
+      mainCounter++;
+    } else if (investigation.subTests && investigation.subTests.length > 0) {
+      // Investigation with sub-tests
+      // Add main investigation row
+      processedInvestigations.push({
+        ...investigation,
+        si_no: mainCounter.toString(),
+        displayType: 'main',
+        isHeader: true
+      });
+      
+      // Sort sub-tests by their original_si_no to maintain order
+      const sortedSubTests = [...investigation.subTests].sort((a, b) => {
+        if (typeof a.original_si_no === 'string' && typeof b.original_si_no === 'string') {
+          return a.original_si_no.localeCompare(b.original_si_no, undefined, { numeric: true });
+        }
+        return 0;
+      });
+      
+      // Add sub-tests with proper numbering
+      sortedSubTests.forEach((subTest, subIndex) => {
+        const subTestNumber = investigation.subTests.length === 1 ? 
+          "" : 
+          `${mainCounter}.${String.fromCharCode(97 + subIndex)}`;
+        
+        processedInvestigations.push({
+          ...subTest,
+          si_no: subTestNumber,
+          displayType: 'subtest',
+          parentId: investigation.id
+        });
+      });
+      
+      mainCounter++;
+    } else {
+      // Fallback for investigations without subTests property
+      processedInvestigations.push({
+        ...investigation,
+        si_no: mainCounter.toString(),
+        displayType: 'single'
+      });
+      mainCounter++;
+    }
+  });
+  
+  return processedInvestigations;
+}
 
   const formatDate = (dateString) => {
     if (!dateString) return new Date().toLocaleDateString('en-GB');
@@ -402,18 +438,18 @@ const UpdateResultValidation = () => {
   }
 
   const handleRowClick = (result) => {
-    // When clicking a row, combine all investigations from all headers
-    const allInvestigations = result.headers.flatMap(header => header.investigations);
-    
-    // Generate sequential serial numbers for all investigations
-    const investigationsWithSequentialNumbers = generateSequentialSerialNumbers(allInvestigations);
-    
-    setSelectedResult({
-      ...result,
-      investigations: investigationsWithSequentialNumbers
-    });
-    setShowDetailView(true);
-  }
+  // When clicking a row, combine all investigations from all headers
+  const allInvestigations = result.headers.flatMap(header => header.investigations);
+  
+  // Generate sequential serial numbers for all investigations with consistent ordering
+  const investigationsWithSequentialNumbers = generateSequentialSerialNumbers(allInvestigations);
+  
+  setSelectedResult({
+    ...result,
+    investigations: investigationsWithSequentialNumbers
+  });
+  setShowDetailView(true);
+}
 
   const handleBackToList = () => {
     setShowDetailView(false)
@@ -483,19 +519,19 @@ const UpdateResultValidation = () => {
     }
   };
 
-  const handleReset = () => {
-    if (selectedResult) {
-      const originalResult = resultList.find((r) => r.id === selectedResult.id)
-      if (originalResult) {
-        const allInvestigations = originalResult.headers.flatMap(header => header.investigations);
-        const investigationsWithSequentialNumbers = generateSequentialSerialNumbers(allInvestigations);
-        setSelectedResult({
-          ...originalResult,
-          investigations: investigationsWithSequentialNumbers
-        });
-      }
+ const handleReset = () => {
+  if (selectedResult) {
+    const originalResult = resultList.find((r) => r.id === selectedResult.id)
+    if (originalResult) {
+      const allInvestigations = originalResult.headers.flatMap(header => header.investigations);
+      const investigationsWithSequentialNumbers = generateSequentialSerialNumbers(allInvestigations);
+      setSelectedResult({
+        ...originalResult,
+        investigations: investigationsWithSequentialNumbers
+      });
     }
   }
+}
 
   const filteredResultList = resultList.filter((item) => {
     const patientNameMatch =
@@ -587,24 +623,33 @@ const UpdateResultValidation = () => {
                         <label className="form-label fw-bold">Patient Name</label>
                         <input type="text" className="form-control" value={selectedResult.patient_name} readOnly />
                       </div>
+
+                       <div className="col-md-4">
+                        <label className="form-label fw-bold">Mobile No.</label>
+                        <input type="text" className="form-control" value={selectedResult.mobile_no} readOnly />
+                      </div>
+
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Relation</label>
                         <input type="text" className="form-control" value={selectedResult.relation} readOnly />
                       </div>
-                      <div className="col-md-4">
+                     
+                    </div>
+                    <div className="row mt-3">
+
+                       <div className="col-md-4">
                         <label className="form-label fw-bold">Age</label>
                         <input type="text" className="form-control" value={selectedResult.age} readOnly />
                       </div>
-                    </div>
-                    <div className="row mt-3">
+
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Gender</label>
                         <input type="text" className="form-control" value={selectedResult.gender} readOnly />
                       </div>
-                      <div className="col-md-4">
+                      {/* <div className="col-md-4">
                         <label className="form-label fw-bold">Mobile No.</label>
                         <input type="text" className="form-control" value={selectedResult.mobile_no} readOnly />
-                      </div>
+                      </div> */}
                     </div>
                     <div className="row mt-3">
                       <div className="col-12">
@@ -628,17 +673,17 @@ const UpdateResultValidation = () => {
                   <div className="card-body">
                     <div className="row">
                       <div className="col-md-4">
-                        <label className="form-label fw-bold">Order Date</label>
-                        <input type="text" className="form-control" value={selectedResult.order_date} readOnly />
+                        <label className="form-label fw-bold">Order Date/Time</label>
+                        <input type="text" className="form-control" value={`${selectedResult.order_date} - ${selectedResult.order_time}`} readOnly />
                       </div>
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Order Number</label>
                         <input type="text" className="form-control" value={selectedResult.order_no} readOnly />
                       </div>
-                      <div className="col-md-4">
+                      {/* <div className="col-md-4">
                         <label className="form-label fw-bold">Order Time</label>
                         <input type="text" className="form-control" value={selectedResult.order_time} readOnly />
-                      </div>
+                      </div> */}
                     </div>
                   </div>
                 </div>
@@ -900,7 +945,7 @@ const UpdateResultValidation = () => {
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
-                          <th>Order Date</th>
+                          <th>Order Date/Time</th>
                           <th>Order No.</th>
                           <th>Patient Name</th>
                           <th>Mobile No</th>
@@ -917,7 +962,7 @@ const UpdateResultValidation = () => {
                               style={{ cursor: "pointer" }}
                               className="table-row-hover"
                             >
-                              <td>{item.order_date}</td>
+                              <td>{`${item.order_date} - ${item.order_time}`}</td>
                               <td>{item.order_no}</td>
                               <td>{item.patient_name}</td>
                               <td>{item.mobile_no}</td>

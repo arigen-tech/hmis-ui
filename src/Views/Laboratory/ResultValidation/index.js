@@ -667,15 +667,6 @@ const ResultValidation = () => {
                         />
                       </div>
                       <div className="col-md-4">
-                        <label className="form-label fw-bold">Relation</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedResult.relation}
-                          readOnly
-                        />
-                      </div>
-                      <div className="col-md-4">
                         <label className="form-label fw-bold">Mobile No.</label>
                         <input
                           type="text"
@@ -684,6 +675,16 @@ const ResultValidation = () => {
                           readOnly
                         />
                       </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">Relation</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={selectedResult.relation}
+                          readOnly
+                        />
+                      </div>
+                      
                       
                     </div>
                     <div className="row mt-3">

@@ -20,9 +20,12 @@ const PendingForResultEntry = () => {
   const itemsPerPage = 5
 
   // Fetch pending result entry data
-  useEffect(() => {
-    fetchPendingResultEntries()
-  }, [])
+useEffect(() => {
+  if (popupMessage === null) {
+    fetchPendingResultEntries();
+  }
+}, [popupMessage]);
+
 
   const fetchPendingResultEntries = async () => {
     try {
@@ -51,6 +54,7 @@ const PendingForResultEntry = () => {
   return apiData.map((item, index) => ({
     id: index + 1,
     order_date: formatDate(item.orderDate),
+    order_time:formatTime(item.orderTime),
     order_no: item.orderNo || '',
     collection_date: formatDate(item.collectedDate),
     collection_time: formatTime(item.collectedTime),
@@ -59,11 +63,14 @@ const PendingForResultEntry = () => {
     department: item.department || '',
     doctor_name: item.doctorName || '',
     modality: item.subChargeCodeName || '',
-    priority: "Priority-3",
+    priority: '',
     age: item.patientAge || '',
     gender: item.patientGender || '',
     clinical_notes: item.clinicalNotes || '',
-    entered_by: item.enteredBy || '',
+    collected_by: item.collectedBy || '',
+    validated_by: item.validatedBy || '',
+    validated_date:formatDate(item.validatedDate)||'',
+    validated_time:formatTime(item.validatedTime)||'',
     patientId: item.patientId || 0,
     subChargeCodeId: item.subChargeCodeId || 0,
     mobile_no: item.patientPhoneNo || '',
@@ -201,8 +208,9 @@ const getSubTestNumber = (mainIndex, subIndex, totalSubTests) => {
     setPopupMessage({
       message,
       type,
-      onClose: () => {
+      onClose: () => {        
         setPopupMessage(null)
+        
       },
     })
   }
@@ -459,7 +467,6 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
 
       if (response.status === 200) {
         showPopup("Results submitted successfully!", "success");
-        await fetchPendingResultEntries();
         setShowDetailView(false);
         setSelectedResult(null);
       } else {
@@ -585,7 +592,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
 
               <div className="card-body">
                 {/* Collection Date */}
-                <div className="row mb-3">
+                {/* <div className="row mb-3">
                   <div className="col-md-3">
                     <label className="form-label fw-bold">Collection Date</label>
                     <input
@@ -595,7 +602,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                       readOnly
                     />
                   </div>
-                </div>
+                </div> */}
 
                 {/* Patient Details */}
                 <div className="card mb-4">
@@ -614,6 +621,15 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                         />
                       </div>
                       <div className="col-md-4">
+                        <label className="form-label fw-bold">Mobile No</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={selectedResult.mobile_no}
+                          readOnly
+                        />
+                      </div>
+                      <div className="col-md-4">
                         <label className="form-label fw-bold">Relation</label>
                         <input
                           type="text"
@@ -622,7 +638,9 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                           readOnly
                         />
                       </div>
-                      <div className="col-md-4">
+                      
+                      
+                      <div className="col-md-4 mt-3">
                         <label className="form-label fw-bold">Age</label>
                         <input
                           type="text"
@@ -631,9 +649,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                           readOnly
                         />
                       </div>
-                    </div>
-                    <div className="row mt-3">
-                      <div className="col-md-4">
+                      <div className="col-md-4 mt-3">
                         <label className="form-label fw-bold">Gender</label>
                         <input
                           type="text"
@@ -642,6 +658,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                           readOnly
                         />
                       </div>
+                    
                     </div>
                     <div className="row mt-3">
                       <div className="col-12">
@@ -660,20 +677,20 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                 {/* Result Entry Details */}
                 <div className="card mb-4">
                   <div className="card-header bg-light">
-                    <h5 className="mb-0">RESULT ENTRY DETAILS</h5>
+                    <h5 className="mb-0">SAMPLE COLLECTION DETAILS</h5>
                   </div>
                   <div className="card-body">
                     <div className="row">
                       <div className="col-md-3">
-                        <label className="form-label fw-bold">Date</label>
+                        <label className="form-label fw-bold"> Collection Date/Time</label>
                         <input
                           type="text"
                           className="form-control"
-                          value={selectedResult.collection_date}
+                          value={`${selectedResult.collection_date} - ${selectedResult.collection_time}`}
                           readOnly
                         />
                       </div>
-                      <div className="col-md-3">
+                      {/* <div className="col-md-3">
                         <label className="form-label fw-bold">Time</label>
                         <input
                           type="text"
@@ -681,16 +698,40 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                           value={selectedResult.collection_time}
                           readOnly
                         />
-                      </div>
+                      </div> */}
                       <div className="col-md-3">
                         <label className="form-label fw-bold">
-                          Entered By <span className="text-danger">*</span>
+                          Collected By
                         </label>
                         <input
                           type="text"
                           className="form-control"
-                          value={selectedResult.entered_by}
-                          onChange={(e) => setSelectedResult({ ...selectedResult, entered_by: e.target.value })}
+                          value={selectedResult.collected_by}
+                          readOnly
+                        />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-bold">
+                          Validate Date/Time 
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={`${selectedResult.validated_date} - ${selectedResult.validated_time}`}
+                          // onChange={(e) => setSelectedResult({ ...selectedResult, validated_time: e.target.value })}
+                          readOnly
+                        />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-bold">
+                          Validated By 
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={selectedResult.validated_by}
+                          // onChange={(e) => setSelectedResult({ ...selectedResult, validated_by: e.target.value })}
+                          readOnly
                         />
                       </div>
                     </div>
@@ -899,9 +940,9 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">PENDING FOR RESULT ENTRY</h4>
-              <button type="button" className="btn btn-success">
+              {/* <button type="button" className="btn btn-success">
                 <i className="mdi mdi-plus"></i> Generate Report
-              </button>
+              </button> */}
             </div>
 
             <div className="card-body">
@@ -985,14 +1026,15 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
-                          <th>Order Date</th>
+                          <th>Order Date/Time</th>
                           <th>Order No.</th>
-                          <th>Collection Date</th>
-                          <th>Collection Time</th>
+                          <th>Collection Date/Time</th>
+                          {/* <th>Collection Time</th> */}
                           <th>Patient Name</th>
                           <th>Relation</th>
+                          <th>Mobile No</th>
                           <th>Department Name</th>
-                          <th>Doctor Name</th>
+                          {/* <th>Doctor Name</th> */}
                           <th>Modality</th>
                           <th>Priority</th>
                         </tr>
@@ -1006,14 +1048,15 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                               style={{ cursor: "pointer" }}
                               className="table-row-hover"
                             >
-                              <td>{item.order_date}</td>
+                              <td>{`${item.order_date} - ${item.order_time}`}</td>
                               <td>{item.order_no}</td>
-                              <td>{item.collection_date}</td>
-                              <td>{item.collection_time}</td>
+                              <td>{<td>{`${item.collection_date} - ${item.collection_time}`}</td>}</td>
+                              {/* <td>{item.collection_time}</td> */}
                               <td>{item.patient_name}</td>
                               <td>{item.relation}</td>
+                              <td>{item.mobile_no}</td>
                               <td>{item.department}</td>
-                              <td>{item.doctor_name}</td>
+                              {/* <td>{item.doctor_name}</td> */}
                               <td>{item.modality}</td>
                               <td>
                                 <span className={`badge ${getPriorityColor(item.priority)}`}>{item.priority}</span>
