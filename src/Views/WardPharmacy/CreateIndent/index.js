@@ -511,7 +511,7 @@ const IndentCreation = () => {
   const handleSubmit = async () => {
     // Validate form
     if (!validateForm()) {
-      showPopup("Please fix the validation errors before submitting", "warning");
+      showPopup("Please fill the Mandatory field  before submitting", "warning");
       return;
     }
 
