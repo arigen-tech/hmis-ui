@@ -1,26 +1,21 @@
 import { useState, useRef, useEffect } from "react"
 import ReactDOM from "react-dom"
+import Popup from "../../../Components/popup"
+import { Store_Internal_Indent, MAS_DRUG_MAS } from "../../../config/apiConfig"
+import { getRequest, postRequest } from "../../../service/apiService"
 
 const IndentViewUpdate = () => {
   const [currentView, setCurrentView] = useState("list")
   const [processing, setProcessing] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [itemOptions, setItemOptions] = useState([])
   const [dtRecord, setDtRecord] = useState([])
-  const [indentEntries, setIndentEntries] = useState([
-    {
-      id: 1,
-      itemCode: "",
-      itemName: "",
-      apu: "",
-      requiredQty: "",
-      availableStock: "",
-      reasonForIndent: "",
-    },
-  ])
+  const [indentEntries, setIndentEntries] = useState([])
   const [popupMessage, setPopupMessage] = useState(null)
   const dropdownClickedRef = useRef(false)
   const [activeItemDropdown, setActiveItemDropdown] = useState(null)
+  const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0, width: 0 })
   const itemInputRefs = useRef({})
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
@@ -28,69 +23,164 @@ const IndentViewUpdate = () => {
   const [pageInput, setPageInput] = useState("")
   const [indentData, setIndentData] = useState([])
   const [filteredIndentData, setFilteredIndentData] = useState([])
+  const [statusFilter, setStatusFilter] = useState("")
+  const [selectedDrugs, setSelectedDrugs] = useState([])
 
-  // Mock data
-  const mockIndentData = [
-    {
-      indentId: 1,
-      indentNo: "00195702025",
-      indentDate: "2025-09-22",
-      createdBy: "Rahul Dev",
-      status: "p",
-      items: [
-        {
-          id: 1,
-          itemCode: "AMLO005",
-          itemName: "Amlodipine 5mg Tablet",
-          apu: "Unit",
-          requiredQty: 15000,
-          availableStock: 780,
-          reasonForIndent: "Limited quantity",
-        },
-        {
-          id: 2,
-          itemCode: "AMOX030",
-          itemName: "Amoxycillin Powder for Oral Suspension IP 125 mg/5 ml",
-          apu: "BOTTLE",
-          requiredQty: 200,
-          availableStock: 0,
-          reasonForIndent: "Insufficient",
-        },
-      ],
-    },
-    {
-      indentId: 2,
-      indentNo: "00031782023",
-      indentDate: "2025-01-05",
-      createdBy: "Rahul Dev",
-      status: "s",
-      items: [
-        {
-          id: 1,
-          itemCode: "AMOX030",
-          itemName: "Amoxycillin Powder for Oral Suspension IP 125 mg/5 ml",
-          apu: "BOTTLE",
-          requiredQty: 200,
-          availableStock: 0,
-          reasonForIndent: "Insufficient",
-        },
-      ],
-    },
-  ]
+  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId")
+  const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId")
 
-  const mockItemOptions = [
-    { id: 1, code: "AMLO005", name: "Amlodipine 5mg Tablet" },
-    { id: 2, code: "AMOX030", name: "Amoxycillin Powder for Oral Suspension IP 125 mg/5 ml" },
-    { id: 3, code: "AMOXCAP", name: "Amoxycillin Cap IP 500 mg" },
-    { id: 4, code: "AZIT250", name: "Azithromycin 250 Tablet" },
-  ]
+  // Dynamic status mapping
+  const getStatusInfo = (status) => {
+    const statusMap = {
+      's': { label: "Draft", badge: "bg-info", textColor: "text-white", editable: true },
+      'S': { label: "Draft", badge: "bg-info", textColor: "text-white", editable: true },
+      'y': { label: "Pending for Approval", badge: "bg-warning", textColor: "text-dark", editable: false },
+      'Y': { label: "Pending for Approval", badge: "bg-warning", textColor: "text-dark", editable: false },
+    };
+
+    return statusMap[status] || { label: status, badge: "bg-secondary", textColor: "text-white", editable: false };
+  }
+
+  // Check if record is editable based on status
+  const isEditable = (record) => {
+    return getStatusInfo(record?.status).editable;
+  }
+
+  // Fetch all indents
+  const fetchIndents = async (status = "") => {
+    try {
+      setLoading(true)
+      let url = `${Store_Internal_Indent}/getallindent`
+      if (status) {
+        const backendStatus = status.toUpperCase();
+        url += `?status=${backendStatus}`
+      }
+
+      console.log("Fetching indents from URL:", url)
+
+      const response = await getRequest(url)
+      console.log("Indents API Full Response:", response)
+
+      let data = []
+      if (response && response.response && Array.isArray(response.response)) {
+        data = response.response
+      } else if (response && Array.isArray(response)) {
+        data = response
+      } else {
+        console.warn("Unexpected response structure, using empty array:", response)
+        data = []
+      }
+
+      console.log("Processed indents data:", data)
+      setIndentData(data)
+      setFilteredIndentData(data)
+
+    } catch (err) {
+      console.error("Error fetching indents:", err)
+      showPopup("Error fetching indents. Please try again.", "error")
+      setIndentData([])
+      setFilteredIndentData([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch all drugs for dropdown
+  const fetchAllDrugs = async () => {
+    try {
+      const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1/${hospitalId}/${departmentId}`)
+      console.log("Drugs API Response:", response)
+
+      if (response && response.response && Array.isArray(response.response)) {
+        const drugs = response.response.map(drug => ({
+          id: drug.itemId,
+          code: drug.pvmsNo || "",
+          name: drug.nomenclature || "",
+          unit: drug.unitAuName || drug.dispUnitName || "",
+          availableStock: drug.wardstocks || 0,
+          storesStock: drug.storestocks || 0
+        }))
+        setItemOptions(drugs)
+      } else if (response && Array.isArray(response)) {
+        const drugs = response.map(drug => ({
+          id: drug.itemId,
+          code: drug.pvmsNo || "",
+          name: drug.nomenclature || "",
+          unit: drug.unitAuName || drug.dispUnitName || "",
+          availableStock: drug.wardstocks || 0,
+          storesStock: drug.storestocks || 0
+        }))
+        setItemOptions(drugs)
+      }
+    } catch (err) {
+      console.error("Error fetching drugs:", err)
+    }
+  }
 
   useEffect(() => {
-    setIndentData(mockIndentData)
-    setFilteredIndentData(mockIndentData)
-    setItemOptions(mockItemOptions)
+    fetchIndents()
+    fetchAllDrugs()
   }, [])
 
+  // Filter drugs based on search input
+  const filterDrugsBySearch = (searchTerm) => {
+    if (!searchTerm) return [];
+
+    return itemOptions.filter(drug =>
+      drug.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      drug.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      drug.id?.toString().includes(searchTerm)
+    ).slice(0, 10);
+  }
+
+  // Handle drug input focus for dropdown positioning
+  const handleDrugInputFocus = (event, index) => {
+    const input = event.target;
+    const rect = input.getBoundingClientRect();
+
+    setDropdownPosition({
+      x: rect.left + window.scrollX,
+      y: rect.bottom + window.scrollY,
+      width: rect.width
+    });
+
+    setActiveItemDropdown(index);
+  }
+
+  // Handle drug selection from dropdown
+  const handleDrugSelect = (index, drug) => {
+    // Check if drug is already selected in another row
+    const isDuplicate = selectedDrugs.some(id => id === drug.id && indentEntries[index]?.itemId !== drug.id);
+
+    if (isDuplicate) {
+      showPopup("This drug is already added in another row. Please select a different drug.", "warning");
+      return;
+    }
+
+    const newEntries = [...indentEntries];
+
+    // Update the selected row with drug information
+    newEntries[index] = {
+      ...newEntries[index],
+      itemId: drug.id,
+      itemCode: drug.code || "",
+      itemName: drug.name || "",
+      apu: drug.unit || "",
+      availableStock: drug.availableStock || 0,
+      storesStock: drug.storesStock || 0
+    };
+
+    setIndentEntries(newEntries);
+
+    // Update selected drugs tracking
+    const newSelectedDrugs = selectedDrugs.filter(id => id !== newEntries[index].itemId);
+    newSelectedDrugs.push(drug.id);
+    setSelectedDrugs(newSelectedDrugs);
+
+    setActiveItemDropdown(null);
+  };
+
+  // Handle search by date range
   const handleSearch = () => {
     if (!fromDate || !toDate) {
       setFilteredIndentData(indentData)
@@ -107,6 +197,15 @@ const IndentViewUpdate = () => {
     setCurrentPage(1)
   }
 
+  // Handle status filter change
+  const handleStatusFilterChange = (e) => {
+    const status = e.target.value
+    setStatusFilter(status)
+    const backendStatus = status ? status.toUpperCase() : "";
+    fetchIndents(backendStatus)
+  }
+
+  // Handle indent entry change
   const handleIndentEntryChange = (index, field, value) => {
     const updatedEntries = [...indentEntries]
 
@@ -114,8 +213,12 @@ const IndentViewUpdate = () => {
       const selectedItem = itemOptions.find((opt) => opt.name === value)
       updatedEntries[index] = {
         ...updatedEntries[index],
+        itemId: selectedItem ? selectedItem.id : "",
         itemName: value,
         itemCode: selectedItem ? selectedItem.code : "",
+        apu: selectedItem ? selectedItem.unit : "",
+        availableStock: selectedItem ? selectedItem.availableStock : "",
+        storesStock: selectedItem ? selectedItem.storesStock : ""
       }
     } else {
       updatedEntries[index] = {
@@ -127,68 +230,121 @@ const IndentViewUpdate = () => {
     setIndentEntries(updatedEntries)
   }
 
+  // Handle edit click
   const handleEditClick = (record, e) => {
     e.stopPropagation()
+
+    console.log("Editing record:", record)
     setSelectedRecord(record)
-    if (!record || !Array.isArray(record.items)) return
 
-    const entries = record.items.map((entry) => ({
-      id: entry.id,
-      itemCode: entry.itemCode,
-      itemName: entry.itemName,
-      apu: entry.apu,
-      requiredQty: entry.requiredQty,
-      availableStock: entry.availableStock,
-      reasonForIndent: entry.reasonForIndent,
-    }))
+    // Initialize entries from the items array in the record
+    let entries = []
 
+    if (record.items && Array.isArray(record.items) && record.items.length > 0) {
+      console.log("Items found:", record.items)
+      entries = record.items.map((item) => ({
+        // Only use the actual indentTId from backend for existing items
+        id: item.indentTId || null,
+        itemId: item.itemId || "",
+        itemCode: item.pvmsNo || "",
+        itemName: item.itemName || "",
+        apu: item.unitAuName || "",
+        requestedQty: item.requestedQty || "",
+        availableStock: item.availableStock || "",
+        storesStock: item.storesStock || "",
+        reasonForIndent: item.reason || "",
+      }))
+
+      // Update selected drugs tracking
+      const drugIds = entries.filter(entry => entry.itemId).map(entry => entry.itemId)
+      setSelectedDrugs(drugIds)
+    } else {
+      console.log("No items found, creating empty entry")
+      // Create empty entry for new items WITHOUT any ID
+      entries = [{
+        id: null,
+        itemId: "",
+        itemCode: "",
+        itemName: "",
+        apu: "",
+        requestedQty: "",
+        availableStock: "",
+        storesStock: "",
+        reasonForIndent: "",
+      }]
+      setSelectedDrugs([])
+    }
+
+    console.log("Setting indent entries:", entries)
     setIndentEntries(entries)
+    setDtRecord([])
     setCurrentView("detail")
   }
 
+  // Handle back to list
   const handleBackToList = () => {
     setCurrentView("list")
     setSelectedRecord(null)
+    setIndentEntries([])
+    setSelectedDrugs([])
+    setDtRecord([])
   }
 
+  // Handle show all
   const handleShowAll = () => {
     setFromDate("")
     setToDate("")
+    setStatusFilter("")
+    fetchIndents()
   }
 
+  // Handle page navigation
   const handlePageNavigation = () => {
     const pageNumber = Number.parseInt(pageInput, 10)
     if (pageNumber > 0 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber)
     } else {
-      alert("Please enter a valid page number.")
+      showPopup("Please enter a valid page number.", "warning")
     }
   }
 
+  // Add new row
   const addNewRow = () => {
     const newEntry = {
       id: null,
+      itemId: "",
       itemCode: "",
       itemName: "",
       apu: "",
-      requiredQty: "",
+      requestedQty: "",
       availableStock: "",
+      storesStock: "",
       reasonForIndent: "",
     }
     setIndentEntries([...indentEntries, newEntry])
   }
 
+  // Remove row
   const removeRow = (index) => {
     if (indentEntries.length > 1) {
       const entryToRemove = indentEntries[index]
-      if (entryToRemove.id) {
+
+      // Remove from selected drugs if it has an itemId
+      if (entryToRemove.itemId) {
+        setSelectedDrugs(selectedDrugs.filter(drugId => drugId !== entryToRemove.itemId))
+      }
+
+      // Only add to deletion list if it's an existing record with numeric ID
+      if (entryToRemove.id && typeof entryToRemove.id === 'number') {
         setDtRecord((prev) => [...prev, entryToRemove.id])
       }
+
       const filteredEntries = indentEntries.filter((_, i) => i !== index)
       setIndentEntries(filteredEntries)
     }
   }
 
+  // Show popup
   const showPopup = (message, type = "info") => {
     setPopupMessage({
       message,
@@ -199,60 +355,72 @@ const IndentViewUpdate = () => {
     })
   }
 
+  // Handle save/submit
   const handleSubmit = async (status) => {
-    const hasEmptyRequiredFields = indentEntries.some(
-      (entry) => !entry.itemCode || !entry.itemName || !entry.requiredQty,
+    // Check if we have at least one valid item
+    const validItems = indentEntries.filter(entry =>
+      entry.itemId && entry.itemName && entry.requestedQty && entry.requestedQty > 0
     )
 
-    if (hasEmptyRequiredFields) {
-      showPopup("Please fill in all required fields (Item, Required Quantity)", "error")
+    if (validItems.length === 0) {
+      showPopup("Please add at least one item with requested quantity", "error")
       return
     }
 
+    // Convert status to uppercase for backend
+    const backendStatus = status.toUpperCase();
+
+
     const payload = {
-      id: selectedRecord.indentId,
-      status: status,
-      deletedT: Array.isArray(dtRecord) && dtRecord.length > 0 ? dtRecord : null,
-      indentEntries: indentEntries
-        .filter((entry) => entry.itemCode || entry.itemName)
-        .map((entry) => ({
-          id: entry.id,
-          itemCode: entry.itemCode,
-          itemName: entry.itemName,
-          apu: entry.apu,
-          requiredQty: entry.requiredQty ? Number(entry.requiredQty) : null,
-          availableStock: entry.availableStock ? Number(entry.availableStock) : null,
-          reasonForIndent: entry.reasonForIndent,
-        })),
+      indentMId: selectedRecord?.indentMId || null,
+      indentDate: selectedRecord?.indentDate || new Date().toISOString().slice(0, 19),
+      toDeptId: selectedRecord?.toDeptId || null,
+      status: backendStatus,
+      deletedT: dtRecord.length > 0 ? dtRecord : [], // Always send as array, even if empty
+      items: validItems.map((entry) => {
+        const itemPayload = {
+          itemId: Number(entry.itemId),
+          requestedQty: entry.requestedQty ? Number(entry.requestedQty) : 0,
+          reason: entry.reasonForIndent || "",
+          availableStock: entry.availableStock ? Number(entry.availableStock) : 0,
+        }
+
+        // ONLY send indentTId if it exists and is a number (existing backend record)
+        if (entry.id && typeof entry.id === 'number') {
+          itemPayload.indentTId = entry.id
+        }
+
+        return itemPayload
+      }),
     }
+
+    console.log("Submitting payload:", JSON.stringify(payload, null, 2))
 
     try {
       setProcessing(true)
-      console.log("Payload to submit:", payload)
-      showPopup("Indent submitted successfully!", "success")
-      handleReset()
+
+      const endpoint = backendStatus === "S" ? "save" : "submit"
+      const response = await postRequest(`${Store_Internal_Indent}/${endpoint}`, payload)
+
+      showPopup(`Indent ${backendStatus === 'S' ? 'saved' : 'submitted'} successfully!`, "success")
+      handleBackToList()
+      fetchIndents()
     } catch (error) {
       console.error("Error submitting indent:", error)
-      showPopup("Error submitting indent. Please try again.", "error")
+      showPopup(`Error ${backendStatus === 'S' ? 'saving' : 'submitting'} indent. Please try again.`, "error")
     } finally {
       setProcessing(false)
     }
   }
 
-  const handleReset = () => {
-    setIndentEntries([
-      {
-        id: 1,
-        itemCode: "",
-        itemName: "",
-        apu: "",
-        requiredQty: "",
-        availableStock: "",
-        reasonForIndent: "",
-      },
-    ])
+  // Format date for display
+  const formatDate = (dateStr) => {
+    if (!dateStr) return ""
+    const date = new Date(dateStr)
+    return date.toLocaleDateString("en-GB")
   }
 
+  // Pagination
   const itemsPerPage = 10
   const currentItems = filteredIndentData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
   const totalPages = Math.ceil(filteredIndentData.length / itemsPerPage)
@@ -294,19 +462,25 @@ const IndentViewUpdate = () => {
     ))
   }
 
-  const statusMap = {
-    s: "Draft",
-    p: "Pending for Approval",
-    r: "Rejected",
-    a: "Approved",
-  }
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (activeItemDropdown !== null && !event.target.closest('.dropdown-search-container')) {
+        setActiveItemDropdown(null);
+      }
+    };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return ""
-    return dateStr.split("T")[0]
-  }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [activeItemDropdown]);
 
+  // Detail View
   if (currentView === "detail") {
+    const statusInfo = getStatusInfo(selectedRecord?.status);
+    const isRecordEditable = isEditable(selectedRecord);
+
     return (
       <div className="content-wrapper">
         <div className="row">
@@ -325,11 +499,7 @@ const IndentViewUpdate = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={
-                        selectedRecord?.indentDate
-                          ? new Date(selectedRecord.indentDate).toLocaleDateString("en-GB")
-                          : ""
-                      }
+                      value={selectedRecord?.indentDate ? formatDate(selectedRecord.indentDate) : ""}
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -354,9 +524,21 @@ const IndentViewUpdate = () => {
                       readOnly
                     />
                   </div>
+                  <div className="col-md-3">
+                    <label className="form-label fw-bold">Status</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={statusInfo.label}
+                      style={{
+                        backgroundColor: "#e9ecef",
+                        fontWeight: "bold"
+                      }}
+                      readOnly
+                    />
+                  </div>
                 </div>
 
-             
                 <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
                   <table className="table table-bordered table-hover align-middle" style={{ minWidth: "1200px" }}>
                     <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
@@ -366,10 +548,11 @@ const IndentViewUpdate = () => {
                         </th>
                         <th style={{ width: "350px", minWidth: "350px" }}>Item Name/Code</th>
                         <th style={{ width: "100px", minWidth: "100px" }}>A/U</th>
-                        <th style={{ width: "120px", minWidth: "120px" }}>Required Quantity</th>
+                        <th style={{ width: "120px", minWidth: "120px" }}>Requested Quantity</th>
                         <th style={{ width: "120px", minWidth: "120px" }}>Available Stock</th>
                         <th style={{ width: "200px", minWidth: "200px" }}>Reason for Indent</th>
-                        {(selectedRecord?.status === "s" || selectedRecord?.status === "r") && (
+                        {/* Show Add/Delete only for editable records (Draft status) */}
+                        {isRecordEditable && (
                           <>
                             <th style={{ width: "60px", minWidth: "60px" }}>Add</th>
                             <th style={{ width: "70px", minWidth: "70px" }}>Delete</th>
@@ -378,187 +561,196 @@ const IndentViewUpdate = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {indentEntries.map((entry, index) => (
-                        <tr key={entry.id || index}>
-                          <td className="text-center fw-bold">{index + 1}</td>
-
-                          <td style={{ position: "relative" }}>
-                            <input
-                              ref={(el) => (itemInputRefs.current[index] = el)}
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={entry.itemName}
-                              onChange={(e) => {
-                                const value = e.target.value
-                                handleIndentEntryChange(index, "itemName", value)
-                                if (value.length > 0) {
-                                  setActiveItemDropdown(index)
-                                } else {
-                                  setActiveItemDropdown(null)
-                                }
-                              }}
-                              placeholder="Item Name/Code"
-                              style={{ minWidth: "320px" }}
-                              autoComplete="off"
-                              onFocus={() => setActiveItemDropdown(index)}
-                              onBlur={() => {
-                                setTimeout(() => {
-                                  if (!dropdownClickedRef.current) {
-                                    setActiveItemDropdown(null)
-                                  }
-                                  dropdownClickedRef.current = false
-                                }, 150)
-                              }}
-                              readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
-                            />
-                            {activeItemDropdown === index &&
-                              (selectedRecord?.status === "s" || selectedRecord?.status === "r") &&
-                              ReactDOM.createPortal(
-                                <ul
-                                  className="list-group position-fixed"
-                                  style={{
-                                    zIndex: 9999,
-                                    maxHeight: 200,
-                                    overflowY: "auto",
-                                    width: "350px",
-                                    top: `${itemInputRefs.current[index]?.getBoundingClientRect().bottom + window.scrollY}px`,
-                                    left: `${itemInputRefs.current[index]?.getBoundingClientRect().left + window.scrollX}px`,
-                                    backgroundColor: "white",
-                                    border: "1px solid #dee2e6",
-                                    borderRadius: "0.375rem",
-                                    boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
-                                  }}
-                                >
-                                  {itemOptions
-                                    .filter(
-                                      (opt) =>
-                                        entry.itemName === "" ||
-                                        opt.name.toLowerCase().includes(entry.itemName.toLowerCase()) ||
-                                        opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
-                                    )
-                                    .map((opt) => (
-                                      <li
-                                        key={opt.id}
-                                        className="list-group-item list-group-item-action"
-                                        style={{ cursor: "pointer" }}
-                                        onMouseDown={(e) => {
-                                          e.preventDefault()
-                                          dropdownClickedRef.current = true
-                                        }}
-                                        onClick={(e) => {
-                                          e.preventDefault()
-                                          e.stopPropagation()
-                                          handleIndentEntryChange(index, "itemName", opt.name)
-                                          setActiveItemDropdown(null)
-                                          dropdownClickedRef.current = false
-                                        }}
-                                      >
-                                        {opt.code} - {opt.name}
-                                      </li>
-                                    ))}
-                                  {itemOptions.filter(
-                                    (opt) =>
-                                      entry.itemName === "" ||
-                                      opt.name.toLowerCase().includes(entry.itemName.toLowerCase()) ||
-                                      opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
-                                  ).length === 0 &&
-                                    entry.itemName !== "" && (
-                                      <li className="list-group-item text-muted">No matches found</li>
-                                    )}
-                                </ul>,
-                                document.body,
-                              )}
+                      {indentEntries.length === 0 ? (
+                        <tr>
+                          <td colSpan={isRecordEditable ? 8 : 6} className="text-center text-muted">
+                            No items found. {isRecordEditable && "Click 'Add' to add items."}
                           </td>
-
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={entry.apu}
-                              onChange={(e) => handleIndentEntryChange(index, "apu", e.target.value)}
-                              placeholder="Unit"
-                              style={{ minWidth: "90px" }}
-                              readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control form-control-sm"
-                              value={entry.requiredQty}
-                              onChange={(e) => handleIndentEntryChange(index, "requiredQty", e.target.value)}
-                              placeholder="0"
-                              min="0"
-                              step="1"
-                              style={{ minWidth: "110px" }}
-                              readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control form-control-sm"
-                              value={entry.availableStock}
-                              onChange={(e) => handleIndentEntryChange(index, "availableStock", e.target.value)}
-                              placeholder="0"
-                              min="0"
-                              step="1"
-                              style={{ minWidth: "110px" }}
-                              readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
-                            />
-                          </td>
-                          <td>
-                            <textarea
-                              className="form-control form-control-sm"
-                              value={entry.reasonForIndent}
-                              onChange={(e) => handleIndentEntryChange(index, "reasonForIndent", e.target.value)}
-                              placeholder="Reason"
-                              style={{ minWidth: "180px", minHeight: "40px" }}
-                              readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
-                            />
-                          </td>
-                          {(selectedRecord?.status === "s" || selectedRecord?.status === "r") && (
-                            <>
-                              <td className="text-center">
-                                <button
-                                  type="button"
-                                  className="btn btn-success btn-sm"
-                                  onClick={addNewRow}
-                                  style={{
-                                    color: "white",
-                                    border: "none",
-                                    width: "35px",
-                                    height: "35px",
-                                  }}
-                                  title="Add Row"
-                                >
-                                  +
-                                </button>
-                              </td>
-                              <td className="text-center">
-                                <button
-                                  type="button"
-                                  className="btn btn-danger btn-sm"
-                                  onClick={() => removeRow(index)}
-                                  disabled={indentEntries.length === 1}
-                                  title="Delete Row"
-                                  style={{
-                                    width: "35px",
-                                    height: "35px",
-                                  }}
-                                >
-                                  −
-                                </button>
-                              </td>
-                            </>
-                          )}
                         </tr>
-                      ))}
+                      ) : (
+                        indentEntries.map((entry, index) => (
+                          <tr key={entry.id || index}>
+                            <td className="text-center fw-bold">{index + 1}</td>
+
+                            <td style={{ position: "relative" }}>
+                              <div className="dropdown-search-container position-relative">
+                                <input
+                                  ref={(el) => (itemInputRefs.current[index] = el)}
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  value={entry.itemName}
+                                  onChange={(e) => {
+                                    const value = e.target.value
+                                    handleIndentEntryChange(index, "itemName", value)
+                                    if (value.length > 0) {
+                                      setActiveItemDropdown(index)
+                                    } else {
+                                      setActiveItemDropdown(null)
+                                    }
+                                  }}
+                                  placeholder="Item Name/Code"
+                                  style={{ minWidth: "320px" }}
+                                  autoComplete="off"
+                                  onFocus={(e) => handleDrugInputFocus(e, index)}
+                                  readOnly={!isRecordEditable}
+                                />
+                                {/* Search Dropdown */}
+                                {activeItemDropdown === index && entry.itemName.trim() !== "" && isRecordEditable && (
+                                  <ul
+                                    className="list-group position-fixed dropdown-list"
+                                    style={{
+                                      top: `${dropdownPosition.y}px`,
+                                      left: `${dropdownPosition.x}px`,
+                                      width: `${dropdownPosition.width}px`,
+                                      zIndex: 99999,
+                                      backgroundColor: "#fff",
+                                      border: "1px solid #ccc",
+                                      borderRadius: "4px",
+                                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                                      maxHeight: "250px",
+                                      overflowY: "auto",
+                                    }}
+                                  >
+                                    {filterDrugsBySearch(entry.itemName).length > 0 ? (
+                                      filterDrugsBySearch(entry.itemName).map((drug) => {
+                                        const isSelectedInOtherRow = selectedDrugs.some(
+                                          (id) => id === drug.id && indentEntries[index]?.itemId !== drug.id
+                                        );
+                                        return (
+                                          <li
+                                            key={drug.id}
+                                            className="list-group-item list-group-item-action"
+                                            style={{
+                                              backgroundColor: isSelectedInOtherRow ? "#ffc107" : "#f8f9fa",
+                                              cursor: isSelectedInOtherRow ? "not-allowed" : "pointer",
+                                              padding: "8px 12px",
+                                            }}
+                                            onClick={() => {
+                                              if (!isSelectedInOtherRow) handleDrugSelect(index, drug);
+                                            }}
+                                          >
+                                            <div>
+                                              <strong>{drug.name}</strong>
+                                              <div
+                                                style={{
+                                                  color: "#6c757d",
+                                                  fontSize: "0.8rem",
+                                                  marginTop: "2px",
+                                                }}
+                                              >
+                                                {drug.code}
+                                                {isSelectedInOtherRow && (
+                                                  <span className="text-success ms-2">
+                                                    <i className="fas fa-check-circle me-1"></i> Added
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </li>
+                                        );
+                                      })
+                                    ) : (
+                                      <li className="list-group-item text-muted text-center">
+                                        {itemOptions.length === 0 ? "No drugs available" : "No drugs found"}
+                                      </li>
+                                    )}
+                                  </ul>
+                                )}
+                              </div>
+                            </td>
+
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control form-control-sm"
+                                value={entry.apu}
+                                onChange={(e) => handleIndentEntryChange(index, "apu", e.target.value)}
+                                placeholder="Unit"
+                                style={{ minWidth: "90px", backgroundColor: "#f5f5f5" }}
+                                readOnly
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={entry.requestedQty}
+                                onChange={(e) => handleIndentEntryChange(index, "requestedQty", e.target.value)}
+                                placeholder="0"
+                                min="0"
+                                step="1"
+                                style={{ minWidth: "110px" }}
+                                readOnly={!isRecordEditable}
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={entry.availableStock}
+                                onChange={(e) => handleIndentEntryChange(index, "availableStock", e.target.value)}
+                                placeholder="0"
+                                min="0"
+                                step="1"
+                                style={{ minWidth: "110px", backgroundColor: "#f5f5f5" }}
+                                readOnly
+                              />
+                            </td>
+                            <td>
+                              <textarea
+                                className="form-control form-control-sm"
+                                value={entry.reasonForIndent}
+                                onChange={(e) => handleIndentEntryChange(index, "reasonForIndent", e.target.value)}
+                                placeholder="Reason"
+                                style={{ minWidth: "180px", minHeight: "40px" }}
+                                readOnly={!isRecordEditable}
+                              />
+                            </td>
+                            {/* Show Add/Delete only for editable records */}
+                            {isRecordEditable && (
+                              <>
+                                <td className="text-center">
+                                  <button
+                                    type="button"
+                                    className="btn btn-success btn-sm"
+                                    onClick={addNewRow}
+                                    style={{
+                                      color: "white",
+                                      border: "none",
+                                      width: "35px",
+                                      height: "35px",
+                                    }}
+                                    title="Add Row"
+                                  >
+                                    +
+                                  </button>
+                                </td>
+                                <td className="text-center">
+                                  <button
+                                    type="button"
+                                    className="btn btn-danger btn-sm"
+                                    onClick={() => removeRow(index)}
+                                    disabled={indentEntries.length === 1}
+                                    title="Delete Row"
+                                    style={{
+                                      width: "35px",
+                                      height: "35px",
+                                    }}
+                                  >
+                                    −
+                                  </button>
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
 
-                {(selectedRecord?.status === "s" || selectedRecord?.status === "r") && (
+                {/* Action buttons based on editability */}
+                {isRecordEditable ? (
                   <div className="d-flex justify-content-end gap-2 mt-4">
                     <button
                       type="button"
@@ -566,25 +758,23 @@ const IndentViewUpdate = () => {
                       onClick={() => handleSubmit("s")}
                       disabled={processing}
                     >
-                      Save
+                      {processing ? "Saving..." : "Save"}
                     </button>
                     <button
                       type="button"
-                      className="btn btn-primary"
-                      onClick={() => handleSubmit("p")}
+                      className="btn btn-warning"
+                      onClick={() => handleSubmit("y")}
                       disabled={processing}
                     >
-                      Submit
+                      {processing ? "Submitting..." : "Submit"}
                     </button>
                     <button type="button" className="btn btn-danger" onClick={handleBackToList}>
                       Cancel
                     </button>
                   </div>
-                )}
-
-                {(selectedRecord?.status === "p" || selectedRecord?.status === "a") && (
+                ) : (
                   <div className="d-flex justify-content-end gap-2 mt-4">
-                    <button type="button" className="btn btn-primary" onClick={() => console.log("Print")}>
+                    <button type="button" className="btn btn-primary" onClick={() => window.print()}>
                       Print
                     </button>
                     <button type="button" className="btn btn-danger" onClick={handleBackToList}>
@@ -596,6 +786,14 @@ const IndentViewUpdate = () => {
             </div>
           </div>
         </div>
+
+        {popupMessage && (
+          <Popup
+            message={popupMessage.message}
+            type={popupMessage.type}
+            onClose={popupMessage.onClose}
+          />
+        )}
       </div>
     )
   }
@@ -629,19 +827,35 @@ const IndentViewUpdate = () => {
                     onChange={(e) => setToDate(e.target.value)}
                   />
                 </div>
+                <div className="col-md-2">
+                  <label className="form-label fw-bold">Status</label>
+                  <select
+                    className="form-select"
+                    value={statusFilter}
+                    onChange={handleStatusFilterChange}
+                  >
+                    <option value="">All Status</option>
+                    <option value="s">Draft</option>
+                    <option value="y">Pending for Approval</option>
+                  </select>
+                </div>
                 <div className="col-md-2 d-flex align-items-end">
-                  <button type="button" className="btn btn-primary me-2" onClick={handleSearch}>
-                    Search
+                  <button
+                    type="button"
+                    className="btn btn-primary me-2"
+                    onClick={handleSearch}
+                    disabled={loading}
+                  >
+                    {loading ? "Searching..." : "Search"}
                   </button>
                 </div>
-                <div className="col-md-6 d-flex justify-content-end align-items-end">
+                <div className="col-md-4 d-flex justify-content-end align-items-end">
                   <button type="button" className="btn btn-primary" onClick={handleShowAll}>
                     Show All
                   </button>
                 </div>
               </div>
 
-            
               <div className="table-responsive">
                 <table className="table table-bordered table-hover align-middle">
                   <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
@@ -656,35 +870,27 @@ const IndentViewUpdate = () => {
                     {currentItems.length === 0 ? (
                       <tr>
                         <td colSpan={4} className="text-center">
-                          No records found.
+                          {loading ? "Loading..." : "No records found."}
                         </td>
                       </tr>
                     ) : (
-                      currentItems.map((item) => (
-                        <tr key={item.indentId} onClick={(e) => handleEditClick(item, e)} style={{ cursor: "pointer" }}>
-                          <td>{formatDate(item.indentDate)}</td>
-                          <td>{item.indentNo}</td>
-                          <td>{item.createdBy}</td>
-                          <td>
-                            <span
-                              className="badge"
-                              style={{
-                                backgroundColor:
-                                  item.status === "p"
-                                    ? "#ffc107"
-                                    : item.status === "s"
-                                      ? "#17a2b8"
-                                      : item.status === "a"
-                                        ? "#28a745"
-                                        : "#dc3545",
-                                color: item.status === "p" ? "#000" : "#fff",
-                              }}
-                            >
-                              {statusMap[item.status] || item.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
+                      currentItems.map((item) => {
+                        const statusInfo = getStatusInfo(item.status);
+                        return (
+                          <tr key={item.indentMId} onClick={(e) => handleEditClick(item, e)} style={{ cursor: "pointer" }}>
+                            <td>{formatDate(item.indentDate)}</td>
+                            <td>{item.indentNo}</td>
+                            <td>{item.createdBy}</td>
+                            <td>
+                              <span
+                                className={`badge ${statusInfo.badge} ${statusInfo.textColor}`}
+                              >
+                                {statusInfo.label}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -717,6 +923,14 @@ const IndentViewUpdate = () => {
           </div>
         </div>
       </div>
+
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
     </div>
   )
 }

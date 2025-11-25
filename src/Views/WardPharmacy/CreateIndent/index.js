@@ -114,23 +114,48 @@ const IndentCreation = () => {
     }
   };
 
-  // Fetch ROL items - This would typically come from an API
+  // Fetch ROL items from API
   const fetchROLItems = async () => {
     try {
       setLoading(true);
-      // Mock data for ROL items - replace with actual API call
-      const mockRolItems = [
-        { id: 1, itemName: "Paracetamol 500mg", availableQty: 100, rolQty: 50, selected: false },
-        { id: 2, itemName: "Amoxicillin 250mg", availableQty: 75, rolQty: 30, selected: false },
-        { id: 3, itemName: "Ibuprofen 400mg", availableQty: 60, rolQty: 25, selected: false },
-        { id: 4, itemName: "Vitamin C 100mg", availableQty: 120, rolQty: 40, selected: false },
-        { id: 5, itemName: "Metformin 500mg", availableQty: 90, rolQty: 35, selected: false },
-      ];
-      setRolItems(mockRolItems);
-      console.log("ROL Items fetched:", mockRolItems); // Log the fetched ROL items
+      const response = await getRequest(`${Store_Internal_Indent}/rol-items`);
+      console.log("ROL Items API Response:", response);
+      
+      if (response && response.response && Array.isArray(response.response)) {
+        const rolItemsData = response.response.map(item => ({
+          id: item.itemId,
+          itemName: item.itemName,
+          availableQty: item.availableQty || 0,
+          rolQty: item.rolQty || 0,
+          selected: false,
+          pvmsNo: item.pvmsNo,
+          unit: item.unit,
+          drugData: {
+            itemId: item.itemId,
+            nomenclature: item.itemName,
+            pvmsNo: item.pvmsNo,
+            unitAuName: item.unit,
+            reOrderLevelStore: item.reOrderLevelStore,
+            reOrderLevelDispensary: item.reOrderLevelDispensary,
+            adispQty: item.adispQty,
+            storeROL: item.storeROL,
+            dispROL: item.dispROL,
+            wardROL: item.wardROL
+          }
+        }));
+        setRolItems(rolItemsData);
+        console.log("Dynamic ROL Items loaded:", rolItemsData.length);
+      } else {
+        console.error("Unexpected ROL items response structure:", response);
+        // Fallback to empty array if API fails
+        setRolItems([]);
+        showPopup("No ROL items found or error fetching ROL data", "info");
+      }
     } catch (err) {
       console.error("Error fetching ROL items:", err);
-      showPopup("Error fetching ROL items", "error");
+      // Fallback to empty array if API fails
+      setRolItems([]);
+      showPopup("Error fetching ROL items from server", "error");
     } finally {
       setLoading(false);
     }
@@ -140,7 +165,7 @@ const IndentCreation = () => {
     fetchDepartments();
     fetchAllDrugs();
     fetchCurrentDepartment(); // Fetch current department separately
-    fetchROLItems(); // Invoke fetchROLItems here
+    // Don't fetch ROL items on initial load, only when Import from ROL is clicked
   }, []);
 
   // Filter drugs based on search input
@@ -222,9 +247,9 @@ const IndentCreation = () => {
 
     const newEntries = [...indentEntries];
 
-    // Use storestocks and wardstocks directly from the API response
-    const storesStock = drug.storestocks !== null ? drug.storestocks : 0;
-    const wardStock = drug.wardstocks !== null ? drug.wardstocks : 0;
+    // Use available stock fields from the API response
+    const storesStock = drug.storestocks !== null && drug.storestocks !== undefined ? drug.storestocks : 0;
+    const wardStock = drug.wardstocks !== null && drug.wardstocks !== undefined ? drug.wardstocks : 0;
 
     // Update the selected row with drug information
     newEntries[index] = {
@@ -342,7 +367,16 @@ const IndentCreation = () => {
   // ROL Popup Functions
   const handleImportROL = async () => {
     console.log("Import from ROL triggered");
-    setShowROLPopup(true);
+    try {
+      setLoading(true);
+      await fetchROLItems(); // Fetch fresh ROL data when popup is opened
+      setShowROLPopup(true);
+    } catch (err) {
+      console.error("Error preparing ROL popup:", err);
+      showPopup("Error loading ROL items", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleImportPreviousIndent = () => {
@@ -390,37 +424,24 @@ const IndentCreation = () => {
     const newEntries = selectedItems.map((item, index) => {
       const newId = Math.max(...indentEntries.map(e => e.id), 0) + index + 1;
 
-      // Find matching drug from allDrugs to get complete information
-      const matchingDrug = allDrugs.find(drug =>
-        drug.nomenclature?.toLowerCase().includes(item.itemName.toLowerCase())
-      );
-
-      // Use storestocks and wardstocks directly from the matching drug
-      const storesStock = matchingDrug?.storestocks !== null ? matchingDrug?.storestocks : 0;
-      const wardStock = matchingDrug?.wardstocks !== null ? matchingDrug?.wardstocks : 0;
+      // Use the drug data from ROL response
+      const drugData = item.drugData || {};
+      
+      // Use available stock from ROL response or default to 0
+      const storesStock = drugData.storestocks !== null && drugData.storestocks !== undefined ? drugData.storestocks : 0;
+      const wardStock = drugData.wardstocks !== null && drugData.wardstocks !== undefined ? drugData.wardstocks : 0;
 
       return {
         id: newId,
-        drugCode: matchingDrug?.pvmsNo || "",
+        drugCode: drugData.pvmsNo || "",
         drugName: item.itemName,
-        unit: matchingDrug?.unitAuName || matchingDrug?.dispUnitName || "",
-        requiredQty: item.rolQty,
+        unit: drugData.unitAuName || drugData.dispUnitName || "",
+        requiredQty: item.rolQty, // Use ROL quantity as required quantity
         storesStock: storesStock,
         wardStock: wardStock,
         reason: "Imported from ROL",
-        drugId: matchingDrug?.itemId,
-        drugData: matchingDrug ? {
-          reOrderLevelStore: matchingDrug.reOrderLevelStore,
-          reOrderLevelDispensary: matchingDrug.reOrderLevelDispensary,
-          adispQty: matchingDrug.adispQty,
-          storestocks: matchingDrug.storestocks,
-          wardstocks: matchingDrug.wardstocks,
-          dispstocks: matchingDrug.dispstocks,
-          sectionName: matchingDrug.sectionName,
-          itemTypeName: matchingDrug.itemTypeName,
-          groupName: matchingDrug.groupName,
-          itemClassName: matchingDrug.itemClassName
-        } : undefined
+        drugId: drugData.itemId,
+        drugData: drugData
       };
     });
 
@@ -461,6 +482,7 @@ const IndentCreation = () => {
       items: indentEntries.map(entry => ({
         itemId: Number(entry.drugId),
         requestedQty: entry.requiredQty ? Number(entry.requiredQty) : 0,
+        reason: entry.reason || "",
         availableStock: entry.wardStock ? Number(entry.wardStock) : 0,
       })),
     };
@@ -486,7 +508,6 @@ const IndentCreation = () => {
     }
   };
 
-
   const handleSubmit = async () => {
     // Validate form
     if (!validateForm()) {
@@ -511,6 +532,7 @@ const IndentCreation = () => {
       items: indentEntries.map(entry => ({
         itemId: Number(entry.drugId),
         requestedQty: entry.requiredQty ? Number(entry.requiredQty) : 0,
+        reason: entry.reason || "",
         availableStock: entry.wardStock ? Number(entry.wardStock) : 0,
       })),
     };
@@ -816,8 +838,9 @@ const IndentCreation = () => {
                   type="button"
                   className="btn btn-success"
                   onClick={handleImportROL}
+                  disabled={loading}
                 >
-                  Import from ROL
+                  {loading ? "Loading..." : "Import from ROL"}
                 </button>
                 <button
                   type="button"
@@ -885,49 +908,56 @@ const IndentCreation = () => {
                 className="modal-body"
                 style={{ overflowY: "auto", flex: "1 1 auto", maxHeight: "calc(90vh - 120px)" }}
               >
-                <div className="table-responsive">
-                  <table className="table table-bordered">
-                    <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
-                      <tr>
-                        <th style={{ width: "60px" }}>S.no</th>
-                        <th>Item Name</th>
-                        <th style={{ width: "120px" }}>Available Qty</th>
-                        <th style={{ width: "120px" }}>ROL Qty</th>
-                        <th style={{ width: "100px", textAlign: "center" }}>
-                          <div className="form-check">
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              onChange={handleSelectAllROL}
-                              checked={rolItems.length > 0 && rolItems.every(item => item.selected)}
-                            />
-                            <label className="form-check-label">Select</label>
-                          </div>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rolItems.map((item, index) => (
-                        <tr key={item.id}>
-                          <td>{index + 1}</td>
-                          <td>{item.itemName}</td>
-                          <td>{item.availableQty}</td>
-                          <td>{item.rolQty}</td>
-                          <td style={{ textAlign: "center" }}>
+                {rolItems.length === 0 ? (
+                  <div className="text-center p-4">
+                    <p>No items found below reorder level.</p>
+                    <p>All items have sufficient stock.</p>
+                  </div>
+                ) : (
+                  <div className="table-responsive">
+                    <table className="table table-bordered">
+                      <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
+                        <tr>
+                          <th style={{ width: "60px" }}>S.no</th>
+                          <th>Item Name</th>
+                          <th style={{ width: "120px" }}>Available Qty</th>
+                          <th style={{ width: "120px" }}>ROL Qty</th>
+                          <th style={{ width: "100px", textAlign: "center" }}>
                             <div className="form-check">
                               <input
                                 className="form-check-input"
                                 type="checkbox"
-                                checked={item.selected || false}
-                                onChange={(e) => handleROLItemSelect(item.id, e.target.checked)}
+                                onChange={handleSelectAllROL}
+                                checked={rolItems.length > 0 && rolItems.every(item => item.selected)}
                               />
+                              <label className="form-check-label">Select</label>
                             </div>
-                          </td>
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {rolItems.map((item, index) => (
+                          <tr key={item.id}>
+                            <td>{index + 1}</td>
+                            <td>{item.itemName}</td>
+                            <td>{item.availableQty}</td>
+                            <td>{item.rolQty}</td>
+                            <td style={{ textAlign: "center" }}>
+                              <div className="form-check">
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  checked={item.selected || false}
+                                  onChange={(e) => handleROLItemSelect(item.id, e.target.checked)}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
               <div className="modal-footer">
                 <button
@@ -941,6 +971,7 @@ const IndentCreation = () => {
                   type="button"
                   className="btn btn-primary"
                   onClick={handleImportROLItems}
+                  disabled={rolItems.length === 0}
                 >
                   Import Selected Items
                 </button>
