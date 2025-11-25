@@ -59,7 +59,8 @@ const SampleValidation = () => {
       modality: item.subChargeCodeName || '', // Use subChargeCodeName for modality
       doctor_name: '', // Add if available in API
       order_date: formatDate(item.orderDate),
-      order_time: formatTime(item.collectionTime),
+      collection_date:formatDate(item.collectionTime),
+      collection_time: formatTime(item.collectionTime),
       department: item.subChargeCodeName || '', // Use subChargeCodeName for department too
       reg_no: item.patientId ? item.patientId.toString() : '',
       relation: item.patientRelation || '',
@@ -73,7 +74,7 @@ const SampleValidation = () => {
         test_code: inv.testCode || '',
         test_name: inv.testName || '',
         sample: inv.sampleName || '', // Now available in API as sampleName
-        quantity: inv.quantity || '1',
+        quantity: inv.quantity ||'',
         empanelled_lab: inv.empanelledLab || 'n',
         date_time: formatDateTime(inv.dateTime),
         accepted: false, // Default to false
@@ -163,12 +164,17 @@ const SampleValidation = () => {
     return selectedSample.investigations.every(inv => inv.accepted === true || inv.rejected === true);
   }
 
-  const showPopup = (message, type = "info") => {
+  // MODIFIED: Added shouldRefreshData parameter
+  const showPopup = (message, type = "info", shouldRefreshData = false) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
         setPopupMessage(null)
+        // Only refresh data if shouldRefreshData is true AND when popup closes
+        if (shouldRefreshData) {
+          fetchPendingValidationSamples()
+        }
       },
     })
   }
@@ -211,13 +217,10 @@ const SampleValidation = () => {
 
         // Handle both JSON and plain text responses
         if (response.status === 200 || response.ok) {
-          // Show success message
-          showPopup("Investigations validated successfully!", "success")
+          // MODIFIED: Show success message with refresh flag - data will refresh ONLY when popup closes
+          showPopup("Investigations validated successfully!", "success", true)
           
-          // Refresh the sample list to remove validated items
-          await fetchPendingValidationSamples()
-          
-          // Close the detail view and go back to list
+          // MODIFIED: Removed immediate refresh - only close the detail view
           setShowDetailView(false)
           setSelectedSample(null)
         } else {
@@ -229,8 +232,8 @@ const SampleValidation = () => {
         if (error.message.includes('JSON') || error.message.includes('Unexpected token')) {
           // This means the API returned plain text instead of JSON
           // But since we got 200 status, we consider it success
-          showPopup("Investigations validated successfully!", "success")
-          await fetchPendingValidationSamples()
+          // MODIFIED: Show success message with refresh flag
+          showPopup("Investigations validated successfully!", "success", true)
           setShowDetailView(false)
           setSelectedSample(null)
         } else {
@@ -249,7 +252,7 @@ const SampleValidation = () => {
     }
   }
 
-  // UPDATED: Handle "Accept All" button
+  // NEW FUNCTION: Handle "Accept All" from column header checkbox
   const handleAcceptAll = () => {
     if (selectedSample) {
       const updatedInvestigations = selectedSample.investigations.map(inv => ({
@@ -266,7 +269,7 @@ const SampleValidation = () => {
     }
   }
 
-  // NEW FUNCTION: Handle "Reject All" button
+  // NEW FUNCTION: Handle "Reject All" from column header checkbox
   const handleRejectAll = () => {
     if (selectedSample) {
       const updatedInvestigations = selectedSample.investigations.map(inv => ({
@@ -281,6 +284,22 @@ const SampleValidation = () => {
         investigations: updatedInvestigations 
       })
     }
+  }
+
+  // NEW FUNCTION: Check if all investigations are accepted
+  const areAllAccepted = () => {
+    if (!selectedSample || !selectedSample.investigations || selectedSample.investigations.length === 0) {
+      return false;
+    }
+    return selectedSample.investigations.every(inv => inv.accepted === true);
+  }
+
+  // NEW FUNCTION: Check if all investigations are rejected
+  const areAllRejected = () => {
+    if (!selectedSample || !selectedSample.investigations || selectedSample.investigations.length === 0) {
+      return false;
+    }
+    return selectedSample.investigations.every(inv => inv.rejected === true);
   }
 
   const filteredSampleList = sampleList.filter((item) => {
@@ -371,10 +390,6 @@ const SampleValidation = () => {
                 <div className="d-flex justify-content-between align-items-center">
                   <h4 className="card-title p-2">SAMPLE VALIDATION</h4>
                   <div className="d-flex align-items-center">
-                    {/* Decision Status Display */}
-                    <div className={`badge ${allDecided ? 'bg-success' : 'bg-warning'} me-3`}>
-                      {acceptedCount}A / {rejectedCount}R / {totalInvestigations} Total
-                    </div>
                     <button className="btn btn-secondary" onClick={handleBackToList}>
                       <i className="mdi mdi-arrow-left"></i> Back to List
                     </button>
@@ -383,46 +398,6 @@ const SampleValidation = () => {
               </div>
 
               <div className="card-body">
-                {/* Order Information Header */}
-                <div className="row mb-4">
-                  <div className="col-md-3">
-                    <label className="form-label fw-bold">Order Date</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedSample.order_date}
-                      readOnly
-                    />
-                  </div>
-                  <div className="col-md-3">
-                    <label className="form-label fw-bold">Order Time</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedSample.order_time}
-                      readOnly
-                    />
-                  </div>
-                  <div className="col-md-3">
-                    <label className="form-label fw-bold">Order No.</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedSample.order_no}
-                      readOnly
-                    />
-                  </div>
-                  <div className="col-md-3">
-                    <label className="form-label fw-bold">Department</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedSample.department}
-                      readOnly
-                    />
-                  </div>
-                </div>
-
                 {/* Patient Details */}
                 <div className="card mb-4">
                   <div className="card-header">
@@ -430,16 +405,7 @@ const SampleValidation = () => {
                   </div>
                   <div className="card-body">
                     <div className="row">
-                      <div className="col-md-3">
-                        <label className="form-label fw-bold">Reg No.</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedSample.reg_no}
-                          readOnly
-                        />
-                      </div>
-                      <div className="col-md-3">
+                      <div className="col-md-4">
                         <label className="form-label fw-bold">Patient Name</label>
                         <input
                           type="text"
@@ -448,16 +414,16 @@ const SampleValidation = () => {
                           readOnly
                         />
                       </div>
-                      <div className="col-md-3">
-                        <label className="form-label fw-bold">Sex</label>
+                       <div className="col-md-4">
+                        <label className="form-label fw-bold">Mobile No.</label>
                         <input
                           type="text"
                           className="form-control"
-                          value={selectedSample.gender}
+                          value={selectedSample.mobile_no}
                           readOnly
                         />
                       </div>
-                      <div className="col-md-3">
+                      <div className="col-md-4">
                         <label className="form-label fw-bold">Relation</label>
                         <input
                           type="text"
@@ -466,51 +432,30 @@ const SampleValidation = () => {
                           readOnly
                         />
                       </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sample Details */}
-                <div className="card mb-4">
-                  <div className="card-header">
-                    <h5 className="mb-0">SAMPLE DETAILS</h5>
-                  </div>
-                  <div className="card-body">
-                    <div className="row">
-                      <div className="col-md-3">
-                        <label className="form-label fw-bold">Date</label>
+                     
+                      <div className="col-md-4 mt-3">
+                        <label className="form-label fw-bold">Age</label>
                         <input
                           type="text"
                           className="form-control"
-                          value={selectedSample.order_date}
+                          value={selectedSample.age}
                           readOnly
                         />
                       </div>
-                      <div className="col-md-3">
-                        <label className="form-label fw-bold">Time</label>
+                      <div className="col-md-4 mt-3">
+                        <label className="form-label fw-bold">Gender</label>
                         <input
                           type="text"
                           className="form-control"
-                          value={selectedSample.order_time}
+                          value={selectedSample.gender}
                           readOnly
                         />
                       </div>
-                      <div className="col-md-3">
-                        <label className="form-label fw-bold">
-                          Collected By <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedSample.collected_by}
-                          readOnly
-                        />
-                      </div>
-                      <div className="col-md-3">
+                      <div className="col-md-12 mt-3" >
                         <label className="form-label fw-bold">Brief Clinical Notes</label>
                         <textarea
                           className="form-control"
-                          rows="1"
+                          rows="2"
                           value={selectedSample.clinical_notes}
                           readOnly
                         ></textarea>
@@ -519,26 +464,40 @@ const SampleValidation = () => {
                   </div>
                 </div>
 
-                {/* Investigations Table Header with Action Buttons */}
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h5 className="mb-0">INVESTIGATIONS</h5>
-                  <div>
-                    <button 
-                      className="btn btn-success btn-sm me-2" 
-                      onClick={handleAcceptAll}
-                    >
-                      <i className="mdi mdi-check-all"></i> Accept All
-                    </button>
-                    <button 
-                      className="btn btn-danger btn-sm" 
-                      onClick={handleRejectAll}
-                    >
-                      <i className="mdi mdi-close-box-multiple"></i> Reject All
-                    </button>
+                {/* Sample Details */}
+                <div className="card mb-4">
+                  <div className="card-header">
+                    <h5 className="mb-0">SAMPLE COLLECTION DETAILS</h5>
+                  </div>
+                  <div className="card-body">
+                    <div className="row">
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">Collection Date/Time</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={`${selectedSample.collection_date} - ${selectedSample.collection_time}`}
+                          readOnly
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">
+                          Collected By
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={selectedSample.collected_by}
+                          readOnly
+                        />
+                      </div>
+                      
+                    </div>
                   </div>
                 </div>
 
                 {/* Investigations Table */}
+                <h5 className="mb-3">INVESTIGATIONS</h5>
                 <div className="table-responsive">
                   <table className="table table-bordered table-hover">
                     <thead className="table-light">
@@ -549,8 +508,42 @@ const SampleValidation = () => {
                         <th>Sample</th>
                         <th>Qty</th>
                         <th>Empanelled Lab</th>
-                        <th>Accepted</th>
-                        <th>Rejected</th>
+                        <th>
+                          <div className="d-flex align-items-center justify-content-center">
+                            <span className="me-2">Accept</span>
+                            <div className="form-check">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                checked={areAllAccepted()}
+                                style={{ width: "20px", height: "20px", border: "2px solid black" }}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    handleAcceptAll();
+                                  }
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </th>
+                        <th>
+                          <div className="d-flex align-items-center justify-content-center">
+                            <span className="me-2">Reject</span>
+                            <div className="form-check">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                checked={areAllRejected()}
+                                style={{ width: "20px", height: "20px", border: "2px solid black" }}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    handleRejectAll();
+                                  }
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </th>
                         <th>Reason</th>
                       </tr>
                     </thead>
@@ -599,7 +592,7 @@ const SampleValidation = () => {
                             />
                           </td>
                           <td>
-                            <div className="form-check">
+                            <div className="form-check d-flex justify-content-center">
                               <input
                                 className="form-check-input"
                                 type="checkbox"
@@ -613,7 +606,7 @@ const SampleValidation = () => {
                             </div>
                           </td>
                           <td>
-                            <div className="form-check">
+                            <div className="form-check d-flex justify-content-center">
                               <input
                                 className="form-check-input"
                                 type="checkbox"
@@ -690,9 +683,6 @@ const SampleValidation = () => {
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">PENDING FOR SAMPLE VALIDATION</h4>
-              <button type="button" className="btn btn-success">
-                <i className="mdi mdi-plus"></i> Generate Report
-              </button>
             </div>
 
             <div className="card-body">
