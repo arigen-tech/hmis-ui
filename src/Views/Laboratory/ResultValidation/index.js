@@ -49,19 +49,21 @@ const ResultValidation = () => {
   const formatValidationData = (apiData) => {
     return apiData.map((item, index) => ({
       id: index + 1,
+      diag_no:item.diagNo||'',
       resultEntryHeaderId: item.resultEntryHeaderId || item.id,
       result_date: formatDate(item.resultDate),
       result_time: formatTime(item.resultTime),
       patient_name: item.patientName || '',
       relation: item.relation || '',
-      department: item.subChargeCodeName || '',
-      doctor_name: "Doctor",
+      department: item.mainChargeCodeName || '',
+      doctor_name: item.doctorName||'',
       modality: item.subChargeCodeName || '',
-      priority: "Priority-3",
+      priority: item.priority||'',
       age: item.patientAge || '',
       gender: item.patientGender || '',
       clinical_notes: "",
       validated_by: item.validatedBy || '',
+      result_entered_by:item.resultEnteredBy||'',
       patientId: item.patientId || 0,
       mobile_no: item.patientPhnNum || '',
 
@@ -619,7 +621,7 @@ const ResultValidation = () => {
               </div>
 
               <div className="card-body">
-                <div className="row mb-3">
+                {/* <div className="row mb-3">
                   <div className="col-md-4">
                     <label className="form-label fw-bold">Result Date</label>
                     <input
@@ -647,7 +649,7 @@ const ResultValidation = () => {
                       readOnly
                     />
                   </div>
-                </div>
+                </div> */}
 
                 <div className="card mb-4">
                   <div className="card-header bg-light">
@@ -674,6 +676,18 @@ const ResultValidation = () => {
                         />
                       </div>
                       <div className="col-md-4">
+                        <label className="form-label fw-bold">Mobile No.</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={selectedResult.mobile_no}
+                          readOnly
+                        />
+                      </div>
+                      
+                    </div>
+                    <div className="row mt-3">
+                       <div className="col-md-4">
                         <label className="form-label fw-bold">Age</label>
                         <input
                           type="text"
@@ -682,9 +696,6 @@ const ResultValidation = () => {
                           readOnly
                         />
                       </div>
-                      
-                    </div>
-                    <div className="row mt-3">
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Gender</label>
                         <input
@@ -694,15 +705,7 @@ const ResultValidation = () => {
                           readOnly
                         />
                       </div>
-                      <div className="col-md-4">
-                        <label className="form-label fw-bold">Mobile No.</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedResult.mobile_no}
-                          readOnly
-                        />
-                      </div>
+                      
                       {/* <div className="col-md-4">
                         <label className="form-label fw-bold">Patient ID</label>
                         <input
@@ -738,36 +741,27 @@ const ResultValidation = () => {
 
                 <div className="card mb-4">
                   <div className="card-header bg-light">
-                    <h5 className="mb-0">VALIDATION DETAILS</h5>
+                    <h5 className="mb-0">RESULT ENTRY DETAILS</h5>
                   </div>
                   <div className="card-body">
                     <div className="row">
                       <div className="col-md-4">
-                        <label className="form-label fw-bold">Validation Date</label>
+                        <label className="form-label fw-bold">Result Entry Date/Time</label>
                         <input
                           type="text"
                           className="form-control"
-                          value={new Date().toLocaleDateString()}
+                          value={`${selectedResult.result_date} - ${selectedResult.result_time}`}
                           readOnly
                         />
                       </div>
+                    
                       <div className="col-md-4">
-                        <label className="form-label fw-bold">Time</label>
+                        <label className="form-label fw-bold">Result Entered By</label>
                         <input
                           type="text"
                           className="form-control"
-                          value={new Date().toLocaleTimeString()}
+                          value={selectedResult.result_entered_by}
                           readOnly
-                        />
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label fw-bold">Validated By</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedResult.validated_by}
-                          onChange={(e) => setSelectedResult({ ...selectedResult, validated_by: e.target.value })}
-                          placeholder="Enter validator name"
                         />
                       </div>
                     </div>
@@ -1018,9 +1012,9 @@ const ResultValidation = () => {
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">RESULT VALIDATION</h4>
-              <button type="button" className="btn btn-success">
+              {/* <button type="button" className="btn btn-success">
                 <i className="mdi mdi-file-document"></i> Generate Report
-              </button>
+              </button> */}
             </div>
 
             <div className="card-body">
@@ -1101,11 +1095,13 @@ const ResultValidation = () => {
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
+
                           <th>Diag No.</th>
-                          <th>Result Date</th>
-                          <th>Result Time</th>
+                          <th>Result Date/Time</th>
+                          {/* <th>Result Time</th> */}
                           <th>Patient Name</th>
                           <th>Relation</th>
+                          <th>Mobile No</th>
                           <th>Department Name</th>
                           <th>Doctor Name</th>
                           <th>Modality</th>
@@ -1121,11 +1117,12 @@ const ResultValidation = () => {
                               style={{ cursor: "pointer" }}
                               className="table-row-hover"
                             >
-                              <td>{item.id}</td>
-                              <td>{item.result_date}</td>
-                              <td>{item.result_time}</td>
+                              <td>{item.diag_no}</td>
+                              <td>{`${item.result_date} - ${item.result_time}`}</td>
+                              {/* <td>{item.result_time}</td> */}
                               <td>{item.patient_name}</td>
                               <td>{item.relation}</td>
+                              <td>{item.mobile_no}</td>
                               <td>{item.department}</td>
                               <td>{item.doctor_name}</td>
                               <td>{item.modality}</td>
