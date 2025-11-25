@@ -115,51 +115,121 @@ const IndentCreation = () => {
   };
 
   // Fetch ROL items from API
-  const fetchROLItems = async () => {
-    try {
-      setLoading(true);
-      const response = await getRequest(`${Store_Internal_Indent}/rol-items`);
-      console.log("ROL Items API Response:", response);
-      
-      if (response && response.response && Array.isArray(response.response)) {
-        const rolItemsData = response.response.map(item => ({
-          id: item.itemId,
-          itemName: item.itemName,
-          availableQty: item.availableQty || 0,
-          rolQty: item.rolQty || 0,
-          selected: false,
+ // Update the ROL items fetch and processing
+const fetchROLItems = async () => {
+  try {
+    setLoading(true);
+    const response = await getRequest(`${Store_Internal_Indent}/rol-items`);
+    console.log("ROL Items API Response:", response);
+    
+    if (response && response.response && Array.isArray(response.response)) {
+      const rolItemsData = response.response.map(item => ({
+        id: item.itemId,
+        itemName: item.itemName,
+        availableQty: item.availableQty || 0,
+        rolQty: item.rolQty || 0,
+        selected: false,
+        pvmsNo: item.pvmsNo,
+        unit: item.unit,
+        // Include stock data from ROL response
+        storeStock: item.storeStock || 0,
+        wardStock: item.wardStock || 0,
+        dispStock: item.dispStock || 0,
+        drugData: {
+          itemId: item.itemId,
+          nomenclature: item.itemName,
           pvmsNo: item.pvmsNo,
-          unit: item.unit,
-          drugData: {
-            itemId: item.itemId,
-            nomenclature: item.itemName,
-            pvmsNo: item.pvmsNo,
-            unitAuName: item.unit,
-            reOrderLevelStore: item.reOrderLevelStore,
-            reOrderLevelDispensary: item.reOrderLevelDispensary,
-            adispQty: item.adispQty,
-            storeROL: item.storeROL,
-            dispROL: item.dispROL,
-            wardROL: item.wardROL
-          }
-        }));
-        setRolItems(rolItemsData);
-        console.log("Dynamic ROL Items loaded:", rolItemsData.length);
-      } else {
-        console.error("Unexpected ROL items response structure:", response);
-        // Fallback to empty array if API fails
-        setRolItems([]);
-        showPopup("No ROL items found or error fetching ROL data", "info");
-      }
-    } catch (err) {
-      console.error("Error fetching ROL items:", err);
-      // Fallback to empty array if API fails
+          unitAuName: item.unit,
+          reOrderLevelStore: item.reOrderLevelStore,
+          reOrderLevelDispensary: item.reOrderLevelDispensary,
+          adispQty: item.adispQty,
+          storeROL: item.storeROL,
+          dispROL: item.dispROL,
+          wardROL: item.wardROL,
+          // Pass stock data to drugData as well for consistency
+          storestocks: item.storeStock || 0,
+          wardstocks: item.wardStock || 0,
+          dispstocks: item.dispStock || 0
+        }
+      }));
+      setRolItems(rolItemsData);
+      console.log("Dynamic ROL Items loaded with stock data:", rolItemsData.length);
+    } else {
+      console.error("Unexpected ROL items response structure:", response);
       setRolItems([]);
-      showPopup("Error fetching ROL items from server", "error");
-    } finally {
-      setLoading(false);
+      showPopup("No ROL items found or error fetching ROL data", "info");
     }
-  };
+  } catch (err) {
+    console.error("Error fetching ROL items:", err);
+    setRolItems([]);
+    showPopup("Error fetching ROL items from server", "error");
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Update the ROL import function to properly set stock fields
+const handleImportROLItems = () => {
+  const selectedItems = rolItems.filter(item => item.selected);
+
+  if (selectedItems.length === 0) {
+    showPopup("Please select at least one item to import", "warning");
+    return;
+  }
+
+  // Create new entries for selected ROL items
+  const newEntries = selectedItems.map((item, index) => {
+    const newId = index + 1;
+
+    // Use stock data directly from ROL response
+    const storesStock = item.storeStock !== null && item.storeStock !== undefined ? item.storeStock : 0;
+    const wardStock = item.wardStock !== null && item.wardStock !== undefined ? item.wardStock : 0;
+
+    return {
+      id: newId,
+      drugCode: item.pvmsNo || "",
+      drugName: item.itemName,
+      unit: item.unit || "",
+      requiredQty: item.rolQty,
+      storesStock: storesStock,
+      wardStock: wardStock,
+      reason: "",
+      drugId: item.itemId,
+      drugData: {
+        itemId: item.itemId,
+        nomenclature: item.itemName,
+        pvmsNo: item.pvmsNo,
+        unitAuName: item.unit,
+        storestocks: storesStock,
+        wardstocks: wardStock
+      }
+    };
+  });
+
+  // Check if we have only the default empty row
+  const hasOnlyDefaultRow = indentEntries.length === 1 && 
+    (!indentEntries[0].drugName || indentEntries[0].drugName.trim() === "");
+
+  if (hasOnlyDefaultRow) {
+    // Replace the default row with imported items
+    setIndentEntries(newEntries);
+  } else {
+    // Add to existing rows
+    const nextId = Math.max(...indentEntries.map(e => e.id), 0) + 1;
+    const entriesWithNewIds = newEntries.map((entry, index) => ({
+      ...entry,
+      id: nextId + index
+    }));
+    setIndentEntries([...indentEntries, ...entriesWithNewIds]);
+  }
+
+  // Update selected drugs tracking
+  const newDrugIds = newEntries.map(entry => entry.drugId);
+  setSelectedDrugs(prev => [...prev, ...newDrugIds]);
+
+  setShowROLPopup(false);
+  showPopup(`${selectedItems.length} items imported successfully from ROL`, "success");
+};
 
   useEffect(() => {
     fetchDepartments();
@@ -411,52 +481,7 @@ const IndentCreation = () => {
     setSelectedRolItems(selectedIds);
   };
 
-  // Import selected ROL items to main table
-  const handleImportROLItems = () => {
-    const selectedItems = rolItems.filter(item => item.selected);
-
-    if (selectedItems.length === 0) {
-      showPopup("Please select at least one item to import", "warning");
-      return;
-    }
-
-    // Create new entries for selected ROL items
-    const newEntries = selectedItems.map((item, index) => {
-      const newId = Math.max(...indentEntries.map(e => e.id), 0) + index + 1;
-
-      // Use the drug data from ROL response
-      const drugData = item.drugData || {};
-      
-      // Use available stock from ROL response or default to 0
-      const storesStock = drugData.storestocks !== null && drugData.storestocks !== undefined ? drugData.storestocks : 0;
-      const wardStock = drugData.wardstocks !== null && drugData.wardstocks !== undefined ? drugData.wardstocks : 0;
-
-      return {
-        id: newId,
-        drugCode: drugData.pvmsNo || "",
-        drugName: item.itemName,
-        unit: drugData.unitAuName || drugData.dispUnitName || "",
-        requiredQty: item.rolQty, // Use ROL quantity as required quantity
-        storesStock: storesStock,
-        wardStock: wardStock,
-        reason: "Imported from ROL",
-        drugId: drugData.itemId,
-        drugData: drugData
-      };
-    });
-
-    // Add to existing entries
-    setIndentEntries(prevEntries => [...prevEntries, ...newEntries]);
-
-    // Update selected drugs tracking
-    const newDrugIds = newEntries
-      .filter(entry => entry.drugId)
-      .map(entry => entry.drugId);
-    setSelectedDrugs(prevSelected => [...prevSelected, ...newDrugIds]);
-
-    setShowROLPopup(false);
-    showPopup(`${selectedItems.length} items imported successfully from ROL`, "success");
-  };
+  
 
   const handleSave = async () => {
     // Validate form
