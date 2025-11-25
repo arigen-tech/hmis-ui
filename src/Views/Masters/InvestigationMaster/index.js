@@ -713,6 +713,39 @@ const InvestigationMaster = () => {
                               </select>
                             </div>
                           </div>
+
+
+<div className="col-md-4">
+  <div className="mb-2">
+    <label className="form-label fw-bold mb-1">
+      Methodology <span className="text-danger">*</span>
+     </label>
+    <select
+      className="form-select"
+      name=""
+    >
+      <option value="">Select Methodology </option>
+      
+    </select>
+  </div>
+</div>
+
+<div className="col-md-4">
+  <div className="mb-2">
+    <label className="form-label fw-bold mb-1">
+      Category <span className="text-danger">*</span>
+     </label>
+    <select
+      className="form-select"
+      name=""
+    >
+      <option value="">Select Category </option>
+      
+    </select>
+  </div>
+</div>
+
+
                           <div className="col-md-4">
   <div className="mb-2">
     <label className="form-label fw-bold mb-1">
@@ -735,6 +768,9 @@ const InvestigationMaster = () => {
     </select>
   </div>
 </div>
+
+
+
 
                           <div className="col-md-4">
                             <div className="mb-2">
