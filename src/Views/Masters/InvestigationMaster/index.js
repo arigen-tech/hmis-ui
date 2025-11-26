@@ -103,8 +103,8 @@ const InvestigationMaster = () => {
             getRequest(`${MAS_DG_SAMPLE}/getAll/1`),
             getRequest(`${DG_MAS_COLLECTION}/getAll/1`),
             getRequest(`${DG_UOM}/getAll/1`),
-            getRequest(`${DG_MAS_INVESTIGATION_METHODOLOGY}`),
-            getRequest(`${DG_MAS_INVESTIGATION_CATEGORY}`),
+            getRequest(`${DG_MAS_INVESTIGATION_METHODOLOGY}/findAll`),
+            getRequest(`${DG_MAS_INVESTIGATION_CATEGORY}/findAll`),
           ])
 
         // Set investigations data

@@ -45,8 +45,8 @@ export const MAS_ITEM_CATEGORY = `${MASTERS}/masItemCategory`;
 export const MAS_DRUG_MAS = `${MASTERS}/masStoreItem`;
 export const MAS_HSN = `${MASTERS}/masHSN`;
 export const DG_MAS_COLLECTION = `${MASTERS}/DgMasCollection`;
-export const DG_MAS_INVESTIGATION_CATEGORY=`${MASTERS}/masInvestigationCategory/findAll`;
-export const DG_MAS_INVESTIGATION_METHODOLOGY=`${MASTERS}/masInvestigationMethodology/findAll`;
+export const DG_MAS_INVESTIGATION_CATEGORY=`${MASTERS}/masInvestigationCategory`;
+export const DG_MAS_INVESTIGATION_METHODOLOGY=`${MASTERS}/masInvestigationMethodology`;
 
 
 
