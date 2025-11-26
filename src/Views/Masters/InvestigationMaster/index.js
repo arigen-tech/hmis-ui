@@ -10,6 +10,8 @@ import {
   MAS_MAIN_CHARGE_CODE,
   MAS_SUB_CHARGE_CODE,
   DG_MAS_COLLECTION,
+  DG_MAS_INVESTIGATION_CATEGORY,
+  DG_MAS_INVESTIGATION_METHODOLOGY,
 } from "../../../config/apiConfig"
 
 const InvestigationMaster = () => {
@@ -29,6 +31,10 @@ const InvestigationMaster = () => {
     sampleName: "",
     containerId: "",
     containerName: "",
+    categoryId:"",
+    categoryName:"",
+    methodId:"",
+    methodName:"",
     uomId: "",
     uomName: "",
     resultType: "Select",
@@ -54,6 +60,8 @@ const InvestigationMaster = () => {
     samples: [],
     containers: [],
     uoms: [],
+    categories:[],
+    methodologies:[],
   })
   const [popupMessage, setPopupMessage] = useState(null)
 
@@ -87,7 +95,7 @@ const InvestigationMaster = () => {
         setLoading(true)
 
         // Fetch all data in parallel
-        const [investigationsRes, departmentsRes, modalitiesRes, samplesRes, containersRes, uomsRes] =
+        const [investigationsRes, departmentsRes, modalitiesRes, samplesRes, containersRes, uomsRes,methodologiesRes,categoriesRes] =
           await Promise.all([
             getRequest(`${MAS_INVESTIGATION}/getAll/0`),
             getRequest(`${MAS_MAIN_CHARGE_CODE}/getAll/1`),
@@ -95,6 +103,8 @@ const InvestigationMaster = () => {
             getRequest(`${MAS_DG_SAMPLE}/getAll/1`),
             getRequest(`${DG_MAS_COLLECTION}/getAll/1`),
             getRequest(`${DG_UOM}/getAll/1`),
+            getRequest(`${DG_MAS_INVESTIGATION_METHODOLOGY}`),
+            getRequest(`${DG_MAS_INVESTIGATION_CATEGORY}`),
           ])
 
         // Set investigations data
@@ -133,6 +143,16 @@ const InvestigationMaster = () => {
               id: uom.id,
               name: uom.name,
             })) || [],
+            methodologies:
+            methodologiesRes?.response?.map((method) => ({
+              id: method.methodId,
+              name: method.methodName,
+            })) || [],
+            categories:
+            categoriesRes?.response?.map((category) => ({
+              id: category.categoryId,
+              name: category.categoryName,
+            })) || [],
         })
       } catch (error) {
         console.error("Error fetching data:", error)
@@ -165,6 +185,8 @@ const InvestigationMaster = () => {
       sample: dropdownOptions.samples,
       container: dropdownOptions.containers,
       uom: dropdownOptions.uoms,
+      methodology: dropdownOptions.methodologies,
+      category:dropdownOptions.categories,
     }
 
     const options = optionsMap[prefix] || []
@@ -212,6 +234,10 @@ const InvestigationMaster = () => {
       sampleName: "",
       containerId: "",
       containerName: "",
+      categoryId:"",
+    categoryName:"",
+    methodId:"",
+    methodName:"",
       uomId: "",
       uomName: "",
       resultType: "Select",
@@ -301,6 +327,10 @@ const InvestigationMaster = () => {
       sampleName: investigation.sampleName || "",
       containerId: investigation.collectionId || "",
       containerName: investigation.collectionName || "",
+      methodId:investigation.methodId||'',
+      methodName:investigation.methodName||'',
+      categoryId:investigation.categoryId||'',
+      categoryName:investigation.categoryName||'',
       uomId: investigation.uomId || "",
       uomName: investigation.uomName || "",
       resultType: mapInvestigationTypeToResultType(investigation.investigationType) || "Select",
@@ -337,6 +367,8 @@ const InvestigationMaster = () => {
       subChargeCodeId: Number.parseInt(formData.modalityId) || 0,
       sampleId: Number.parseInt(formData.sampleId) || 0,
       collectionId: Number.parseInt(formData.containerId) || 0,
+      methodId:Number.parseInt(formData.methodId)||0,
+      categoryId:Number.parseInt(formData.categoryId)||0,
       // For Multiple result type, UOM can be null, for others it's required
       uomId: formData.resultType === "Multiple" ? 
         (formData.uomId ? Number.parseInt(formData.uomId) : null) : 
@@ -431,6 +463,18 @@ const InvestigationMaster = () => {
     showPopup("Gender Applicable is required", "error")
     return false
   }
+  if (!formData.methodId) {
+    showPopup("Investigation Methodology is required", "error")
+    return false
+  }
+  if (!formData.categoryId) {
+    showPopup("Investigation Category is required", "error")
+    return false
+  }
+  if (!formData.containerId) {
+    showPopup("Container is required", "error")
+    return false
+  }
   return true
 }
 
@@ -450,6 +494,8 @@ const InvestigationMaster = () => {
         sampleId: formData.sampleId,
         uomId: formData.uomId,
         collectionId: formData.containerId,
+        methodId:formData.methodId,
+        categoryId:formData.categoryId,
         genderApplicable: formData.genderApplicable
       }
     })
@@ -722,9 +768,16 @@ const InvestigationMaster = () => {
      </label>
     <select
       className="form-select"
-      name=""
+      name="methodId"
+      value={formData.methodId}
+      onChange={handleInputChange}
     >
       <option value="">Select Methodology </option>
+      {dropdownOptions.methodologies.map((cont)=>(
+        <option key={cont.id} value={cont.id}>
+          {cont.name}
+        </option>
+      ))}
       
     </select>
   </div>
@@ -737,9 +790,16 @@ const InvestigationMaster = () => {
      </label>
     <select
       className="form-select"
-      name=""
+      name="categoryId"
+      value={formData.categoryId}
+      onChange={handleInputChange}
     >
       <option value="">Select Category </option>
+      {dropdownOptions.categories.map((cont)=>(
+        <option key={cont.id} value={cont.id}>
+          {cont.name}
+        </option>
+      ))}
       
     </select>
   </div>

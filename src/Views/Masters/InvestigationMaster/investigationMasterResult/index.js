@@ -19,6 +19,8 @@ const InvestigationMasterResult = () => {
     subChargeCodeId,
     sampleId,
     uomId,
+    methodId,
+    categoryId,
     containerId,
     mainChargeCodeName,
     subChargeCodeName,
@@ -101,11 +103,12 @@ const InvestigationMasterResult = () => {
         id: subInv.subInvestigationId || index + 1,
         printOrder: subInv.orderNo || index + 1,
         autoComplete: subInv.subInvestigationCode || "",
-        enterable: subInv.subInvestigationName || "",
+        enterable: subInv.subInvestigationName || '',
         loinc: "",
-        unit: getUnitName(subInv.uomId) || "mg/dl",
-        resultType: mapResultType(subInv.resultType) || "Single Parameter",
-        comparisonType: mapComparisonType(subInv.comparisonType) || "None",
+        unit: getUnitName(subInv.uomId) || '',
+        resultType: mapResultType(subInv.resultType) || '',
+        comparisonType: mapComparisonType(subInv.comparisonType) ||'',
+        fixedValueExpectedResult:subInv.fixedValueExpectedResult || '',
         // Store original API data for reference
         originalData: subInv,
         // Store existing fixed and normal values
@@ -136,6 +139,7 @@ const InvestigationMasterResult = () => {
           unit: uomOptions[0]?.name || "mg/dl",
           resultType: "Single Parameter",
           comparisonType: "None",
+          fixedValueExpectedResult:'',
           fixedValues: [],
           normalValues: []
         }
@@ -175,6 +179,11 @@ const InvestigationMasterResult = () => {
     return uom ? uom.id : uomOptions[0]?.id || 1
   }
 
+  // Helper function to check if fixed value expected result should be enabled
+  const isFixedValueExpectedResultEnabled = (comparisonType) => {
+    return comparisonType === "Fixed Value";
+  }
+
   const handleAddRow = () => {
     const newId = subTests.length > 0 ? Math.max(...subTests.map((test) => test.id)) + 1 : 1
     const newPrintOrder = subTests.length > 0 ? Math.max(...subTests.map((test) => test.printOrder)) + 1 : 1
@@ -190,6 +199,7 @@ const InvestigationMasterResult = () => {
         unit: uomOptions[0]?.name || "mg/dl",
         resultType: "Single Parameter",
         comparisonType: "None",
+        fixedValueExpectedResult:'',
         fixedValues: [],
         normalValues: []
       },
@@ -224,6 +234,8 @@ const InvestigationMasterResult = () => {
         subChargeCodeId: subChargeCodeId,
         sampleId: sampleId,
         collectionId: collectionId,
+        methodId:methodId,
+        categoryId:categoryId,
         genderApplicable: genderCode, // Add gender applicable field
         masInvestReq: subTests.map(test => {
           // Prepare fixed values
@@ -250,6 +262,7 @@ const InvestigationMasterResult = () => {
             subInvestigationName: test.enterable || "",
             resultType: getApiResultType(test.resultType),
             comparisonType: getApiComparisonType(test.comparisonType),
+            fixedValueExpectedResult:test.fixedValueExpectedResult || '',
             mainChargeCodeId: mainChargeCodeId,
             subChargeCodeId: subChargeCodeId,
             uomId: getUomIdFromName(test.unit),
@@ -591,13 +604,26 @@ const InvestigationMasterResult = () => {
                                   </td>
 
                                   <td>
-                                       <input
+                                    <input
                                       type="text"
                                       className="form-control"
-                                      value=""
-                                     
+                                      value={test.fixedValueExpectedResult}
+                                      onChange={(e) => {
+                                        const updatedTests = subTests.map((t) =>
+                                          t.id === test.id ? { ...t, fixedValueExpectedResult: e.target.value } : t,
+                                        )
+                                        setSubTests(updatedTests)
+                                      }}
+                                      disabled={!isFixedValueExpectedResultEnabled(test.comparisonType)}
+                                      style={{
+                                        backgroundColor: isFixedValueExpectedResultEnabled(test.comparisonType) 
+                                          ? 'white' 
+                                          : '#e9ecef',
+                                        cursor: isFixedValueExpectedResultEnabled(test.comparisonType) 
+                                          ? 'text' 
+                                          : 'not-allowed'
+                                      }}
                                     />
-
                                   </td>
                                   <td>
                                     <button className="btn btn-success" onClick={handleAddRow}>
