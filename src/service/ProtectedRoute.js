@@ -89,7 +89,8 @@ const validRoutes = [
   "/ViewUpdateIndent",
   "/PendingIndentApproval",
   "/InvestigationMethodologyMaster",
-  "/TrackIndent"
+  "/TrackIndent",
+  "/InvestigationCategoryMaster",
 ];
 
 const NotAuthorized = () => {
