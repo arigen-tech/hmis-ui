@@ -85,6 +85,7 @@ import PendingIndent from './Views/WardPharmacy/PendingIndent';
 import InvestigationMethodology from './Views/Masters/InvestigationMethodologyMaster';
 import TrackIndent from './Views/WardPharmacy/TrackIndent';
 import InvestigationCategoryMaster from './Views/Masters/InvestigationCategoryMaster';
+import IndentIssue from './Views/WardPharmacy/IndentIssue';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -205,6 +206,7 @@ function App() {
                 <Route path="InvestigationMethodologyMaster" element={<InvestigationMethodology/>} />
                 <Route path="TrackIndent" element={<TrackIndent/>} />
                 <Route path="InvestigationCategoryMaster" element={<InvestigationCategoryMaster/>} />
+                <Route path="IndentIssue" element={<IndentIssue/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>

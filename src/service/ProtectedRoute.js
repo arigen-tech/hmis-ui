@@ -91,6 +91,7 @@ const validRoutes = [
   "/InvestigationMethodologyMaster",
   "/TrackIndent",
   "/InvestigationCategoryMaster",
+  "/IndentIssue",
 ];
 
 const NotAuthorized = () => {
