@@ -51,10 +51,7 @@ const IndentViewUpdate = () => {
     try {
       setLoading(true)
       let url = `${Store_Internal_Indent}/getallindent`
-      if (status) {
-        const backendStatus = status.toUpperCase();
-        url += `?status=${backendStatus}`
-      }
+     
 
       console.log("Fetching indents from URL:", url)
 

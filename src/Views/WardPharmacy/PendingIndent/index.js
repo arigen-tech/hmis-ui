@@ -1,26 +1,21 @@
 import { useState, useRef, useEffect } from "react"
 import ReactDOM from "react-dom"
+import Popup from "../../../Components/popup"
+import { Store_Internal_Indent, MAS_DRUG_MAS } from "../../../config/apiConfig"
+import { getRequest, postRequest } from "../../../service/apiService"
 
-const IndentViewUpdate = () => {
+const PendingIndentApproval = () => {
   const [currentView, setCurrentView] = useState("list")
   const [processing, setProcessing] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [itemOptions, setItemOptions] = useState([])
   const [dtRecord, setDtRecord] = useState([])
-  const [indentEntries, setIndentEntries] = useState([
-    {
-      id: 1,
-      itemCode: "",
-      itemName: "",
-      apu: "",
-      requiredQty: "",
-      availableStock: "",
-      reasonForIndent: "",
-    },
-  ])
+  const [indentEntries, setIndentEntries] = useState([])
   const [popupMessage, setPopupMessage] = useState(null)
   const dropdownClickedRef = useRef(false)
   const [activeItemDropdown, setActiveItemDropdown] = useState(null)
+  const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0, width: 0 })
   const itemInputRefs = useRef({})
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
@@ -31,52 +26,133 @@ const IndentViewUpdate = () => {
   const [action, setAction] = useState("")
   const [remarks, setRemarks] = useState("")
 
-  // Mock data
-  const mockIndentData = [
-    {
-      indentId: 1,
-      indentNo: "24242892639",
-      indentDate: "2025-09-22",
-      submissionDateTime: "2025-09-22T14:30:00",
-      createdBy: "Anurag Sharma",
-      department: "Pharmacy",
-      status: "p",
-      items: [
-        {
-          id: 1,
-          itemCode: "AMLO005",
-          itemName: "Amlodipine 5mg Tablet",
-          apu: "Unit",
-          requiredQty: 15000,
-          availableStock: 780,
-          reasonForIndent: "Limited quantity",
-        },
-        {
-          id: 2,
-          itemCode: "AMOX030",
-          itemName: "Amoxycillin Powder for Oral Suspension IP 125 mg/5 ml",
-          apu: "BOTTLE",
-          requiredQty: 200,
-          availableStock: 0,
-          reasonForIndent: "Insufficient",
-        },
-      ],
-    },
-  ]
+  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId")
+  const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId")
 
-  const mockItemOptions = [
-    { id: 1, code: "AMLO005", name: "Amlodipine 5mg Tablet" },
-    { id: 2, code: "AMOX030", name: "Amoxycillin Powder for Oral Suspension IP 125 mg/5 ml" },
-    { id: 3, code: "AMOXCAP", name: "Amoxycillin Cap IP 500 mg" },
-    { id: 4, code: "AZIT250", name: "Azithromycin 250 Tablet" },
-  ]
+  // Status mapping
+  const statusMap = {
+    's': { label: "Draft", badge: "bg-info", textColor: "text-white" },
+    'S': { label: "Draft", badge: "bg-info", textColor: "text-white" },
+    'y': { label: "Pending for Approval", badge: "bg-warning", textColor: "text-dark" },
+    'Y': { label: "Pending for Approval", badge: "bg-warning", textColor: "text-dark" },
+    'aa': { label: "Approved", badge: "bg-success", textColor: "text-white" },
+    'AA': { label: "Approved", badge: "bg-success", textColor: "text-white" },
+    'rr': { label: "Rejected", badge: "bg-danger", textColor: "text-white" },
+    'RR': { label: "Rejected", badge: "bg-danger", textColor: "text-white" },
+  }
+
+  // Fetch pending indents (status 'Y')
+  const fetchPendingIndents = async () => {
+    try {
+      setLoading(true)
+      const url = `${Store_Internal_Indent}/getallindentforpending`
+
+      console.log("Fetching pending indents from URL:", url)
+
+      const response = await getRequest(url)
+      console.log("Pending Indents API Full Response:", response)
+
+      let data = []
+      if (response && response.response && Array.isArray(response.response)) {
+        data = response.response
+      } else if (response && Array.isArray(response)) {
+        data = response
+      } else {
+        console.warn("Unexpected response structure, using empty array:", response)
+        data = []
+      }
+
+      console.log("Processed pending indents data:", data)
+      setIndentData(data)
+      setFilteredIndentData(data)
+
+    } catch (err) {
+      console.error("Error fetching pending indents:", err)
+      showPopup("Error fetching pending indents. Please try again.", "error")
+      setIndentData([])
+      setFilteredIndentData([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch all drugs for dropdown with current stock
+  const fetchAllDrugs = async () => {
+    try {
+      const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1/${hospitalId}/${departmentId}`)
+      console.log("Drugs API Response:", response)
+
+      if (response && response.response && Array.isArray(response.response)) {
+        const drugs = response.response.map(drug => ({
+          id: drug.itemId,
+          code: drug.pvmsNo || "",
+          name: drug.nomenclature || "",
+          unit: drug.unitAuName || drug.dispUnitName || "",
+          availableStock: drug.wardstocks || drug.storestocks || 0, // Use available stock
+          storesStock: drug.storestocks || 0
+        }))
+        setItemOptions(drugs)
+        console.log("Loaded drugs with stock:", drugs)
+      } else if (response && Array.isArray(response)) {
+        const drugs = response.map(drug => ({
+          id: drug.itemId,
+          code: drug.pvmsNo || "",
+          name: drug.nomenclature || "",
+          unit: drug.unitAuName || drug.dispUnitName || "",
+          availableStock: drug.wardstocks || drug.storestocks || 0,
+          storesStock: drug.storestocks || 0
+        }))
+        setItemOptions(drugs)
+        console.log("Loaded drugs with stock:", drugs)
+      }
+    } catch (err) {
+      console.error("Error fetching drugs:", err)
+    }
+  }
+
+  // Fetch current stock for specific item
+  const fetchCurrentStock = async (itemId, deptId) => {
+    try {
+      // You might need to create an API endpoint for this
+      const response = await getRequest(`${MAS_DRUG_MAS}/stock/${itemId}/${deptId}`)
+      return response?.currentStock || 0
+    } catch (err) {
+      console.error("Error fetching current stock:", err)
+      return 0
+    }
+  }
 
   useEffect(() => {
-    setIndentData(mockIndentData)
-    setFilteredIndentData(mockIndentData)
-    setItemOptions(mockItemOptions)
+    fetchPendingIndents()
+    fetchAllDrugs()
   }, [])
 
+  // Filter drugs based on search input
+  const filterDrugsBySearch = (searchTerm) => {
+    if (!searchTerm) return [];
+
+    return itemOptions.filter(drug =>
+      drug.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      drug.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      drug.id?.toString().includes(searchTerm)
+    ).slice(0, 10);
+  }
+
+  // Handle drug input focus for dropdown positioning
+  const handleDrugInputFocus = (event, index) => {
+    const input = event.target;
+    const rect = input.getBoundingClientRect();
+
+    setDropdownPosition({
+      x: rect.left + window.scrollX,
+      y: rect.bottom + window.scrollY,
+      width: rect.width
+    });
+
+    setActiveItemDropdown(index);
+  }
+
+  // Handle search by date range
   const handleSearch = () => {
     if (!fromDate || !toDate) {
       setFilteredIndentData(indentData)
@@ -93,93 +169,83 @@ const IndentViewUpdate = () => {
     setCurrentPage(1)
   }
 
-  const handleIndentEntryChange = (index, field, value) => {
-    const updatedEntries = [...indentEntries]
+  // Handle edit click - UPDATED to fetch current stock
+  const handleEditClick = async (record, e) => {
+    e.stopPropagation()
 
-    if (field === "itemName") {
-      const selectedItem = itemOptions.find((opt) => opt.name === value)
-      updatedEntries[index] = {
-        ...updatedEntries[index],
-        itemName: value,
-        itemCode: selectedItem ? selectedItem.code : "",
-      }
+    console.log("Viewing record:", record)
+    setSelectedRecord(record)
+
+    // Initialize entries from the items array in the record
+    let entries = []
+
+    if (record.items && Array.isArray(record.items) && record.items.length > 0) {
+      console.log("Items found:", record.items)
+      
+      // Create entries with current stock data
+      entries = await Promise.all(
+        record.items.map(async (item) => {
+          // Try to get current stock from drug list first
+          const drugInfo = itemOptions.find(drug => drug.id === item.itemId)
+          let currentStock = drugInfo?.availableStock || 0
+          
+          // If not found in drug list, use the availableStock from backend
+          if (!currentStock && item.availableStock) {
+            currentStock = item.availableStock
+          }
+          
+          return {
+            id: item.indentTId || null,
+            itemId: item.itemId || "",
+            itemCode: item.pvmsNo || "",
+            itemName: item.itemName || "",
+            apu: item.unitAuName || "",
+            requestedQty: item.requestedQty || "",
+            availableStock: currentStock, // Use current stock
+            storesStock: item.storesStock || "",
+            reasonForIndent: item.reason || "",
+          }
+        })
+      )
     } else {
-      updatedEntries[index] = {
-        ...updatedEntries[index],
-        [field]: value,
-      }
+      console.log("No items found")
+      entries = []
     }
 
-    setIndentEntries(updatedEntries)
-  }
-
-  const handleEditClick = (record, e) => {
-    e.stopPropagation()
-    setSelectedRecord(record)
-    if (!record || !Array.isArray(record.items)) return
-
-    const entries = record.items.map((entry) => ({
-      id: entry.id,
-      itemCode: entry.itemCode,
-      itemName: entry.itemName,
-      apu: entry.apu,
-      requiredQty: entry.requiredQty,
-      availableStock: entry.availableStock,
-      reasonForIndent: entry.reasonForIndent,
-    }))
-
+    console.log("Setting indent entries with current stock:", entries)
     setIndentEntries(entries)
     setAction("")
     setRemarks("")
     setCurrentView("detail")
   }
 
+  // Handle back to list
   const handleBackToList = () => {
     setCurrentView("list")
     setSelectedRecord(null)
+    setIndentEntries([])
     setAction("")
     setRemarks("")
   }
 
+  // Handle show all
   const handleShowAll = () => {
     setFromDate("")
     setToDate("")
     setFilteredIndentData(indentData)
   }
 
+  // Handle page navigation
   const handlePageNavigation = () => {
     const pageNumber = Number.parseInt(pageInput, 10)
     if (pageNumber > 0 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber)
     } else {
-      alert("Please enter a valid page number.")
+      showPopup("Please enter a valid page number.", "warning")
     }
   }
 
-  const addNewRow = () => {
-    const newEntry = {
-      id: null,
-      itemCode: "",
-      itemName: "",
-      apu: "",
-      requiredQty: "",
-      availableStock: "",
-      reasonForIndent: "",
-    }
-    setIndentEntries([...indentEntries, newEntry])
-  }
-
-  const removeRow = (index) => {
-    if (indentEntries.length > 1) {
-      const entryToRemove = indentEntries[index]
-      if (entryToRemove.id) {
-        setDtRecord((prev) => [...prev, entryToRemove.id])
-      }
-      const filteredEntries = indentEntries.filter((_, i) => i !== index)
-      setIndentEntries(filteredEntries)
-    }
-  }
-
+  // Show popup
   const showPopup = (message, type = "info") => {
     setPopupMessage({
       message,
@@ -190,56 +256,92 @@ const IndentViewUpdate = () => {
     })
   }
 
+  // Handle approval/rejection
   const handleSubmit = async () => {
-    const hasEmptyRequiredFields = indentEntries.some(
-      (entry) => !entry.itemCode || !entry.itemName || !entry.requiredQty,
-    )
-
-    if (hasEmptyRequiredFields) {
-      showPopup("Please fill in all required fields (Item, Required Quantity)", "error")
-      return
-    }
-
+    // Validate action selection
     if (!action) {
       showPopup("Please select an action (Approved or Rejected)", "error")
       return
     }
+
+    // Validate remarks
     if (!remarks.trim()) {
       showPopup("Remarks are mandatory", "error")
       return
     }
 
+    // Determine the new status based on action
+    const newStatus = action === "approved" ? "AA" : "RR"
+
     const payload = {
-      id: selectedRecord.indentId,
+      indentMId: selectedRecord?.indentMId,
       action: action,
       remarks: remarks,
-      deletedT: Array.isArray(dtRecord) && dtRecord.length > 0 ? dtRecord : null,
-      indentEntries: indentEntries
-        .filter((entry) => entry.itemCode || entry.itemName)
-        .map((entry) => ({
-          id: entry.id,
-          itemCode: entry.itemCode,
-          itemName: entry.itemName,
-          apu: entry.apu,
-          requiredQty: entry.requiredQty ? Number(entry.requiredQty) : null,
-          availableStock: entry.availableStock ? Number(entry.availableStock) : null,
-          reasonForIndent: entry.reasonForIndent,
-        })),
+      status: newStatus,
+      deletedT: dtRecord.length > 0 ? dtRecord : [],
+      items: indentEntries
+        .filter(entry => entry.itemId && entry.itemName)
+        .map((entry) => {
+          const itemPayload = {
+            itemId: Number(entry.itemId),
+            requestedQty: entry.requestedQty ? Number(entry.requestedQty) : 0,
+            reason: entry.reasonForIndent || "",
+            availableStock: entry.availableStock ? Number(entry.availableStock) : 0,
+          }
+
+          // Only send indentTId if it exists and is a number
+          if (entry.id && typeof entry.id === 'number') {
+            itemPayload.indentTId = entry.id
+          }
+
+          return itemPayload
+        }),
     }
+
+    console.log("Submitting approval payload:", JSON.stringify(payload, null, 2))
 
     try {
       setProcessing(true)
-      console.log("Payload to submit:", payload)
-      showPopup("Indent submitted successfully!", "success")
+
+      // Call approval API endpoint
+      const response = await postRequest(`${Store_Internal_Indent}/approve`, payload)
+
+      showPopup(`Indent ${action} successfully!`, "success")
+      
+      // Refresh the list and go back
       handleBackToList()
+      fetchPendingIndents()
+      
     } catch (error) {
-      console.error("Error submitting indent:", error)
-      showPopup("Error submitting indent. Please try again.", "error")
+      console.error("Error processing indent:", error)
+      showPopup(`Error processing indent. Please try again.`, "error")
     } finally {
       setProcessing(false)
     }
   }
 
+  // Format date for display
+  const formatDate = (dateStr) => {
+    if (!dateStr) return ""
+    const date = new Date(dateStr)
+    return date.toLocaleDateString("en-GB")
+  }
+
+  // Format date time for display
+  const formatDateTime = (dateTimeStr) => {
+    if (!dateTimeStr) return ""
+    const date = new Date(dateTimeStr)
+    return date.toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    })
+  }
+
+  // Pagination
   const itemsPerPage = 10
   const currentItems = filteredIndentData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
   const totalPages = Math.ceil(filteredIndentData.length / itemsPerPage)
@@ -281,32 +383,24 @@ const IndentViewUpdate = () => {
     ))
   }
 
-  const statusMap = {
-    s: "Draft",
-    p: "Pending for Approval",
-    r: "Rejected",
-    a: "Approved",
-  }
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (activeItemDropdown !== null && !event.target.closest('.dropdown-search-container')) {
+        setActiveItemDropdown(null);
+      }
+    };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return ""
-    return dateStr.split("T")[0]
-  }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [activeItemDropdown]);
 
-  const formatDateTime = (dateTimeStr) => {
-    if (!dateTimeStr) return ""
-    const date = new Date(dateTimeStr)
-    return date.toLocaleString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    })
-  }
-
+  // Detail View - UPDATED to show available stock
   if (currentView === "detail") {
+    const statusInfo = statusMap[selectedRecord?.status] || { label: "Unknown", badge: "bg-secondary", textColor: "text-white" };
+
     return (
       <div className="content-wrapper">
         <div className="row">
@@ -325,11 +419,7 @@ const IndentViewUpdate = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={
-                        selectedRecord?.indentDate
-                          ? new Date(selectedRecord.indentDate).toLocaleDateString("en-GB")
-                          : ""
-                      }
+                      value={selectedRecord?.indentDate ? formatDate(selectedRecord.indentDate) : ""}
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -345,7 +435,7 @@ const IndentViewUpdate = () => {
                     />
                   </div>
                   <div className="col-md-3">
-                    <label className="form-label fw-bold">Submitted By</label>
+                    <label className="form-label fw-bold">Created By</label>
                     <input
                       type="text"
                       className="form-control"
@@ -359,7 +449,7 @@ const IndentViewUpdate = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={formatDateTime(selectedRecord?.submissionDateTime)}
+                      value={formatDateTime(selectedRecord?.submissionDateTime || selectedRecord?.createdDate)}
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -375,180 +465,73 @@ const IndentViewUpdate = () => {
                         </th>
                         <th style={{ width: "350px", minWidth: "350px" }}>Item Name/Code</th>
                         <th style={{ width: "100px", minWidth: "100px" }}>A/U</th>
-                        <th style={{ width: "120px", minWidth: "120px" }}>Required Quantity</th>
+                        <th style={{ width: "120px", minWidth: "120px" }}>Requested Quantity</th>
                         <th style={{ width: "120px", minWidth: "120px" }}>Available Stock</th>
                         <th style={{ width: "200px", minWidth: "200px" }}>Reason for Indent</th>
-                        <th style={{ width: "60px", minWidth: "60px" }}>Add</th>
-                        <th style={{ width: "70px", minWidth: "70px" }}>Delete</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {indentEntries.map((entry, index) => (
-                        <tr key={entry.id || index}>
-                          <td className="text-center fw-bold">{index + 1}</td>
-
-                          <td style={{ position: "relative" }}>
-                            <input
-                              ref={(el) => (itemInputRefs.current[index] = el)}
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={entry.itemName}
-                              onChange={(e) => {
-                                const value = e.target.value
-                                handleIndentEntryChange(index, "itemName", value)
-                                if (value.length > 0) {
-                                  setActiveItemDropdown(index)
-                                } else {
-                                  setActiveItemDropdown(null)
-                                }
-                              }}
-                              placeholder="Item Name/Code"
-                              style={{ minWidth: "320px" }}
-                              autoComplete="off"
-                              onFocus={() => setActiveItemDropdown(index)}
-                              onBlur={() => {
-                                setTimeout(() => {
-                                  if (!dropdownClickedRef.current) {
-                                    setActiveItemDropdown(null)
-                                  }
-                                  dropdownClickedRef.current = false
-                                }, 150)
-                              }}
-                            />
-                            {activeItemDropdown === index &&
-                              ReactDOM.createPortal(
-                                <ul
-                                  className="list-group position-fixed"
-                                  style={{
-                                    zIndex: 9999,
-                                    maxHeight: 200,
-                                    overflowY: "auto",
-                                    width: "350px",
-                                    top: `${itemInputRefs.current[index]?.getBoundingClientRect().bottom + window.scrollY}px`,
-                                    left: `${itemInputRefs.current[index]?.getBoundingClientRect().left + window.scrollX}px`,
-                                    backgroundColor: "white",
-                                    border: "1px solid #dee2e6",
-                                    borderRadius: "0.375rem",
-                                    boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
-                                  }}
-                                >
-                                  {itemOptions
-                                    .filter(
-                                      (opt) =>
-                                        entry.itemName === "" ||
-                                        opt.name.toLowerCase().includes(entry.itemName.toLowerCase()) ||
-                                        opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
-                                    )
-                                    .map((opt) => (
-                                      <li
-                                        key={opt.id}
-                                        className="list-group-item list-group-item-action"
-                                        style={{ cursor: "pointer" }}
-                                        onMouseDown={(e) => {
-                                          e.preventDefault()
-                                          dropdownClickedRef.current = true
-                                        }}
-                                        onClick={(e) => {
-                                          e.preventDefault()
-                                          e.stopPropagation()
-                                          handleIndentEntryChange(index, "itemName", opt.name)
-                                          setActiveItemDropdown(null)
-                                          dropdownClickedRef.current = false
-                                        }}
-                                      >
-                                        {opt.code} - {opt.name}
-                                      </li>
-                                    ))}
-                                  {itemOptions.filter(
-                                    (opt) =>
-                                      entry.itemName === "" ||
-                                      opt.name.toLowerCase().includes(entry.itemName.toLowerCase()) ||
-                                      opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
-                                  ).length === 0 &&
-                                    entry.itemName !== "" && (
-                                      <li className="list-group-item text-muted">No matches found</li>
-                                    )}
-                                </ul>,
-                                document.body,
-                              )}
-                          </td>
-
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={entry.apu}
-                              onChange={(e) => handleIndentEntryChange(index, "apu", e.target.value)}
-                              placeholder="Unit"
-                              style={{ minWidth: "90px" }}
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control form-control-sm"
-                              value={entry.requiredQty}
-                              onChange={(e) => handleIndentEntryChange(index, "requiredQty", e.target.value)}
-                              placeholder="0"
-                              min="0"
-                              step="1"
-                              style={{ minWidth: "110px" }}
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control form-control-sm"
-                              value={entry.availableStock}
-                              onChange={(e) => handleIndentEntryChange(index, "availableStock", e.target.value)}
-                              placeholder="0"
-                              min="0"
-                              step="1"
-                              style={{ minWidth: "110px" }}
-                            />
-                          </td>
-                          <td>
-                            <textarea
-                              className="form-control form-control-sm"
-                              value={entry.reasonForIndent}
-                              onChange={(e) => handleIndentEntryChange(index, "reasonForIndent", e.target.value)}
-                              placeholder="Reason"
-                              style={{ minWidth: "180px", minHeight: "40px" }}
-                            />
-                          </td>
-                          <td className="text-center">
-                            <button
-                              type="button"
-                              className="btn btn-success btn-sm"
-                              onClick={addNewRow}
-                              style={{
-                                color: "white",
-                                border: "none",
-                                width: "35px",
-                                height: "35px",
-                              }}
-                              title="Add Row"
-                            >
-                              +
-                            </button>
-                          </td>
-                          <td className="text-center">
-                            <button
-                              type="button"
-                              className="btn btn-danger btn-sm"
-                              onClick={() => removeRow(index)}
-                              disabled={indentEntries.length === 1}
-                              title="Delete Row"
-                              style={{
-                                width: "35px",
-                                height: "35px",
-                              }}
-                            >
-                              −
-                            </button>
+                      {indentEntries.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="text-center text-muted">
+                            No items found.
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        indentEntries.map((entry, index) => (
+                          <tr key={entry.id || index}>
+                            <td className="text-center fw-bold">{index + 1}</td>
+                            <td>
+                              <div className="d-flex flex-column">
+                                <strong>{entry.itemName}</strong>
+                                <small className="text-muted">{entry.itemCode}</small>
+                              </div>
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control form-control-sm"
+                                value={entry.apu}
+                                style={{ minWidth: "90px", backgroundColor: "#f5f5f5" }}
+                                readOnly
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={entry.requestedQty}
+                                style={{ minWidth: "110px", backgroundColor: "#f5f5f5" }}
+                                readOnly
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={entry.availableStock || 0}
+                                style={{ 
+                                  minWidth: "110px", 
+                                  backgroundColor: entry.availableStock > 0 ? "#f5f5f5" : "#ffe6e6",
+                                  color: entry.availableStock === 0 ? "#dc3545" : "inherit"
+                                }}
+                                readOnly
+                              />
+                              {entry.availableStock === 0 && (
+                                <small className="text-danger">Out of stock</small>
+                              )}
+                            </td>
+                            <td>
+                              <textarea
+                                className="form-control form-control-sm"
+                                value={entry.reasonForIndent}
+                                style={{ minWidth: "180px", minHeight: "40px", backgroundColor: "#f5f5f5" }}
+                                readOnly
+                              />
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -558,7 +541,11 @@ const IndentViewUpdate = () => {
                     <label className="form-label fw-bold">
                       Action<span className="text-danger">*</span>
                     </label>
-                    <select className="form-select" value={action} onChange={(e) => setAction(e.target.value)}>
+                    <select 
+                      className="form-select" 
+                      value={action} 
+                      onChange={(e) => setAction(e.target.value)}
+                    >
                       <option value="">Select</option>
                       <option value="approved">Approved</option>
                       <option value="rejected">Rejected</option>
@@ -579,8 +566,13 @@ const IndentViewUpdate = () => {
                 </div>
 
                 <div className="d-flex justify-content-end gap-2 mt-4">
-                  <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={processing}>
-                    Submit
+                  <button 
+                    type="button" 
+                    className="btn btn-primary" 
+                    onClick={handleSubmit} 
+                    disabled={processing || !action || !remarks.trim()}
+                  >
+                    {processing ? "Processing..." : "Submit"}
                   </button>
                   <button type="button" className="btn btn-danger" onClick={handleBackToList}>
                     Close
@@ -590,6 +582,14 @@ const IndentViewUpdate = () => {
             </div>
           </div>
         </div>
+
+        {popupMessage && (
+          <Popup
+            message={popupMessage.message}
+            type={popupMessage.type}
+            onClose={popupMessage.onClose}
+          />
+        )}
       </div>
     )
   }
@@ -604,8 +604,36 @@ const IndentViewUpdate = () => {
               <h4 className="card-title p-2 mb-0">Pending For Indent Approval</h4>
             </div>
             <div className="card-body">
-              <div className="row mb-4 justify-content-end">
-                <div className="col-md-12 d-flex justify-content-end">
+              <div className="row mb-4">
+                <div className="col-md-2">
+                  <label className="form-label fw-bold">From Date</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                  />
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label fw-bold">To Date</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                  />
+                </div>
+                <div className="col-md-2 d-flex align-items-end">
+                  <button
+                    type="button"
+                    className="btn btn-primary me-2"
+                    onClick={handleSearch}
+                    disabled={loading}
+                  >
+                    {loading ? "Searching..." : "Search"}
+                  </button>
+                </div>
+                <div className="col-md-6 d-flex justify-content-end align-items-end">
                   <button type="button" className="btn btn-primary" onClick={handleShowAll}>
                     Show All
                   </button>
@@ -618,7 +646,8 @@ const IndentViewUpdate = () => {
                     <tr>
                       <th>Indent Date</th>
                       <th>Indent No</th>
-                      <th>Department</th>
+                      <th>From Department</th>
+                      <th>To Department</th>
                       <th>Created By</th>
                       <th>Status</th>
                     </tr>
@@ -626,37 +655,30 @@ const IndentViewUpdate = () => {
                   <tbody>
                     {currentItems.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="text-center">
-                          No records found.
+                        <td colSpan={6} className="text-center">
+                          {loading ? "Loading..." : "No pending indents found."}
                         </td>
                       </tr>
                     ) : (
-                      currentItems.map((item) => (
-                        <tr key={item.indentId} onClick={(e) => handleEditClick(item, e)} style={{ cursor: "pointer" }}>
-                          <td>{formatDate(item.indentDate)}</td>
-                          <td>{item.indentNo}</td>
-                          <td>{item.department}</td>
-                          <td>{item.createdBy}</td>
-                          <td>
-                            <span
-                              className="badge"
-                              style={{
-                                backgroundColor:
-                                  item.status === "p"
-                                    ? "#ffc107"
-                                    : item.status === "s"
-                                      ? "#17a2b8"
-                                      : item.status === "a"
-                                        ? "#28a745"
-                                        : "#dc3545",
-                                color: item.status === "p" ? "#000" : "#fff",
-                              }}
-                            >
-                              {statusMap[item.status] || item.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
+                      currentItems.map((item) => {
+                        const statusInfo = statusMap[item.status] || { label: "Unknown", badge: "bg-secondary", textColor: "text-white" };
+                        return (
+                          <tr key={item.indentMId} onClick={(e) => handleEditClick(item, e)} style={{ cursor: "pointer" }}>
+                            <td>{formatDate(item.indentDate)}</td>
+                            <td>{item.indentNo}</td>
+                            <td>{item.fromDeptName}</td>
+                            <td>{item.toDeptName}</td>
+                            <td>{item.createdBy}</td>
+                            <td>
+                              <span
+                                className={`badge ${statusInfo.badge} ${statusInfo.textColor}`}
+                              >
+                                {statusInfo.label}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -689,8 +711,16 @@ const IndentViewUpdate = () => {
           </div>
         </div>
       </div>
+
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
     </div>
   )
 }
 
-export default IndentViewUpdate
+export default PendingIndentApproval
