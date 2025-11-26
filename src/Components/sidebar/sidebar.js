@@ -148,7 +148,7 @@ const Sidebar = () => {
                   data-bs-toggle="collapse"
                 />
               </Link>
-              <ul className="sub-menu collapse show" id={collapseId}>
+              <ul className="sub-menu collapse " id={collapseId}>
                 {renderMenuItems(item.children, `${parentId}-${index}`)}
               </ul>
             </>
