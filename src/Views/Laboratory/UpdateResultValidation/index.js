@@ -47,7 +47,18 @@ const UpdateResultValidation = () => {
     // Group by orderHdId to merge multiple headers
     const orderMap = new Map();
 
-    apiData.forEach((order) => {
+    // Sort API data by orderHdId and resultEntryHeaderId to maintain order
+    const sortedApiData = [...apiData].sort((a, b) => {
+      if (a.orderHdId !== b.orderHdId) {
+        return a.orderHdId - b.orderHdId;
+      }
+      // Sort headers within the same order by resultEntryHeaderId
+      const aHeaderId = a.resultEntryUpdateHeaderResponses?.[0]?.resultEntryHeaderId || 0;
+      const bHeaderId = b.resultEntryUpdateHeaderResponses?.[0]?.resultEntryHeaderId || 0;
+      return aHeaderId - bHeaderId;
+    });
+
+    sortedApiData.forEach((order) => {
       const orderHdId = order.orderHdId;
       
       if (!orderMap.has(orderHdId)) {
@@ -73,70 +84,84 @@ const UpdateResultValidation = () => {
       // Add all headers for this order
       const currentOrder = orderMap.get(orderHdId);
       if (order.resultEntryUpdateHeaderResponses) {
-        order.resultEntryUpdateHeaderResponses.forEach((header) => {
-          currentOrder.headers.push({
+        // Sort headers by resultEntryHeaderId
+        const sortedHeaders = [...order.resultEntryUpdateHeaderResponses].sort((a, b) => 
+          a.resultEntryHeaderId - b.resultEntryHeaderId
+        );
+
+        sortedHeaders.forEach((header) => {
+          const headerWithSortedInvestigations = {
             resultEntryHeaderId: header.resultEntryHeaderId,
             investigations: header.resultEntryUpdateInvestigationResponseList ? 
-              header.resultEntryUpdateInvestigationResponseList.map((inv, invIndex) => {
-                const hasSubTests = inv.entryUpdateSubInvestigationResponses && inv.entryUpdateSubInvestigationResponses.length > 0;
+              // Sort investigations by resultEntryDetailsId to maintain order
+              [...header.resultEntryUpdateInvestigationResponseList]
+                .sort((a, b) => a.resultEntryDetailsId - b.resultEntryDetailsId)
+                .map((inv, invIndex) => {
+                  const hasSubTests = inv.entryUpdateSubInvestigationResponses && inv.entryUpdateSubInvestigationResponses.length > 0;
 
-                if (hasSubTests) {
-                  return {
-                    id: `${header.resultEntryHeaderId}-${invIndex + 1}`,
-                    original_si_no: invIndex + 1,
-                    resultEntryDetailsId: inv.resultEntryDetailsId,
-                    diag_no: inv.diagNo || '',
-                    investigation: inv.investigationName || '',
-                    sample: inv.sampleName || '',
-                    result: inv.result || "",
-                    units: inv.unit || '',
-                    normal_range: inv.normalValue || '',
-                    remarks: inv.remarks || "",
-                    inRange: inv.inRange !== undefined ? inv.inRange : null,
-                    comparisonType: inv.comparisonType || "",
-                    fixedId: inv.fixedId || null,
-                    fixedDropdownValues: inv.fixedDropdownValues || [],
-                    headerId: header.resultEntryHeaderId,
-                    subTests: inv.entryUpdateSubInvestigationResponses.map((subTest, subIndex) => ({
-                      id: `${header.resultEntryHeaderId}-${invIndex + 1}.${subIndex + 1}`,
-                      original_si_no: getSubTestNumber(invIndex + 1, subIndex, inv.entryUpdateSubInvestigationResponses.length),
-                      resultEntryDetailsId: subTest.resultEntryDetailsId,
-                      diag_no: "---",
-                      investigation: subTest.subInvestigationName || '',
-                      sample: subTest.sampleName || '',
-                      result: subTest.result || "",
-                      units: subTest.unit || '',
-                      normal_range: subTest.normalValue || '',
-                      remarks: subTest.remarks || "",
-                      inRange: subTest.inRange !== undefined ? subTest.inRange : null,
-                      comparisonType: subTest.comparisonType || "",
-                      fixedId: subTest.fixedId || null,
-                      fixedDropdownValues: subTest.fixedDropdownValues || [],
+                  if (hasSubTests) {
+                    // Sort sub-tests by resultEntryDetailsId
+                    const sortedSubTests = [...inv.entryUpdateSubInvestigationResponses]
+                      .sort((a, b) => a.resultEntryDetailsId - b.resultEntryDetailsId)
+                      .map((subTest, subIndex) => ({
+                        id: `${header.resultEntryHeaderId}-${inv.resultEntryDetailsId}-${subTest.resultEntryDetailsId}`,
+                        original_si_no: getSubTestNumber(invIndex + 1, subIndex, inv.entryUpdateSubInvestigationResponses.length),
+                        resultEntryDetailsId: subTest.resultEntryDetailsId,
+                        diag_no: "---",
+                        investigation: subTest.subInvestigationName || '',
+                        sample: subTest.sampleName || '',
+                        result: subTest.result || "",
+                        units: subTest.unit || '',
+                        normal_range: subTest.normalValue || '',
+                        remarks: subTest.remarks || "",
+                        inRange: subTest.inRange !== undefined ? subTest.inRange : null,
+                        comparisonType: subTest.comparisonType || "",
+                        fixedId: subTest.fixedId || null,
+                        fixedDropdownValues: subTest.fixedDropdownValues || [],
+                        headerId: header.resultEntryHeaderId,
+                      }));
+
+                    return {
+                      id: `${header.resultEntryHeaderId}-${inv.resultEntryDetailsId}`,
+                      original_si_no: invIndex + 1,
+                      resultEntryDetailsId: inv.resultEntryDetailsId,
+                      diag_no: inv.diagNo || '',
+                      investigation: inv.investigationName || '',
+                      sample: inv.sampleName || '',
+                      result: inv.result || "",
+                      units: inv.unit || '',
+                      normal_range: inv.normalValue || '',
+                      remarks: inv.remarks || "",
+                      inRange: inv.inRange !== undefined ? inv.inRange : null,
+                      comparisonType: inv.comparisonType || "",
+                      fixedId: inv.fixedId || null,
+                      fixedDropdownValues: inv.fixedDropdownValues || [],
                       headerId: header.resultEntryHeaderId,
-                    }))
-                  };
-                } else {
-                  return {
-                    id: `${header.resultEntryHeaderId}-${invIndex + 1}`,
-                    original_si_no: invIndex + 1,
-                    resultEntryDetailsId: inv.resultEntryDetailsId,
-                    diag_no: inv.diagNo || '',
-                    investigation: inv.investigationName || '',
-                    sample: inv.sampleName || '',
-                    result: inv.result || "",
-                    units: inv.unit || '',
-                    normal_range: inv.normalValue || '',
-                    remarks: inv.remarks || "",
-                    inRange: inv.inRange !== undefined ? inv.inRange : null,
-                    comparisonType: inv.comparisonType || "",
-                    fixedId: inv.fixedId || null,
-                    fixedDropdownValues: inv.fixedDropdownValues || [],
-                    headerId: header.resultEntryHeaderId,
-                    subTests: []
-                  };
-                }
-              }) : []
-          });
+                      subTests: sortedSubTests
+                    };
+                  } else {
+                    return {
+                      id: `${header.resultEntryHeaderId}-${inv.resultEntryDetailsId}`,
+                      original_si_no: invIndex + 1,
+                      resultEntryDetailsId: inv.resultEntryDetailsId,
+                      diag_no: inv.diagNo || '',
+                      investigation: inv.investigationName || '',
+                      sample: inv.sampleName || '',
+                      result: inv.result || "",
+                      units: inv.unit || '',
+                      normal_range: inv.normalValue || '',
+                      remarks: inv.remarks || "",
+                      inRange: inv.inRange !== undefined ? inv.inRange : null,
+                      comparisonType: inv.comparisonType || "",
+                      fixedId: inv.fixedId || null,
+                      fixedDropdownValues: inv.fixedDropdownValues || [],
+                      headerId: header.resultEntryHeaderId,
+                      subTests: []
+                    };
+                  }
+                }) : []
+          };
+          currentOrder.headers.push(headerWithSortedInvestigations);
         });
       }
     });
@@ -144,6 +169,8 @@ const UpdateResultValidation = () => {
     // Convert map to array and flatten investigations for display
     return Array.from(orderMap.values()).map(order => ({
       ...order,
+      // Sort headers by resultEntryHeaderId
+      headers: order.headers.sort((a, b) => a.resultEntryHeaderId - b.resultEntryHeaderId),
       // For list view, we just need basic info
       investigationCount: order.headers.reduce((count, header) => 
         count + (header.investigations ? header.investigations.length : 0), 0
@@ -161,86 +188,73 @@ const UpdateResultValidation = () => {
     }
   }
 
-  // New function to generate sequential serial numbers
-  // UPDATED: Generate sequential serial numbers while preserving original order
-const generateSequentialSerialNumbers = (investigations) => {
-  let mainCounter = 1;
-  let processedInvestigations = [];
-  
-  // Sort investigations by their original_si_no to maintain consistent order
-  const sortedInvestigations = [...investigations].sort((a, b) => {
-    // Handle main investigations with numeric original_si_no
-    if (typeof a.original_si_no === 'number' && typeof b.original_si_no === 'number') {
-      return a.original_si_no - b.original_si_no;
-    }
+  // UPDATED: Generate sequential serial numbers while preserving original order based on IDs
+  const generateSequentialSerialNumbers = (investigations) => {
+    let mainCounter = 1;
+    let processedInvestigations = [];
     
-    // Handle string-based subtest numbers (like "1.a", "1.b", etc.)
-    if (typeof a.original_si_no === 'string' && typeof b.original_si_no === 'string') {
-      return a.original_si_no.localeCompare(b.original_si_no, undefined, { numeric: true });
-    }
-    
-    // Fallback: numeric first, then strings
-    if (typeof a.original_si_no === 'number') return -1;
-    if (typeof b.original_si_no === 'number') return 1;
-    
-    return 0;
-  });
+    // Sort investigations by headerId and resultEntryDetailsId to maintain consistent order
+    const sortedInvestigations = [...investigations].sort((a, b) => {
+      // First sort by headerId
+      if (a.headerId !== b.headerId) {
+        return a.headerId - b.headerId;
+      }
+      // Then sort by resultEntryDetailsId within the same header
+      return a.resultEntryDetailsId - b.resultEntryDetailsId;
+    });
 
-  sortedInvestigations.forEach((investigation) => {
-    if (investigation.subTests && investigation.subTests.length === 0) {
-      // Single investigation without sub-tests
-      processedInvestigations.push({
-        ...investigation,
-        si_no: mainCounter.toString(),
-        displayType: 'single'
-      });
-      mainCounter++;
-    } else if (investigation.subTests && investigation.subTests.length > 0) {
-      // Investigation with sub-tests
-      // Add main investigation row
-      processedInvestigations.push({
-        ...investigation,
-        si_no: mainCounter.toString(),
-        displayType: 'main',
-        isHeader: true
-      });
-      
-      // Sort sub-tests by their original_si_no to maintain order
-      const sortedSubTests = [...investigation.subTests].sort((a, b) => {
-        if (typeof a.original_si_no === 'string' && typeof b.original_si_no === 'string') {
-          return a.original_si_no.localeCompare(b.original_si_no, undefined, { numeric: true });
-        }
-        return 0;
-      });
-      
-      // Add sub-tests with proper numbering
-      sortedSubTests.forEach((subTest, subIndex) => {
-        const subTestNumber = investigation.subTests.length === 1 ? 
-          "" : 
-          `${mainCounter}.${String.fromCharCode(97 + subIndex)}`;
-        
+    sortedInvestigations.forEach((investigation) => {
+      if (investigation.subTests && investigation.subTests.length === 0) {
+        // Single investigation without sub-tests
         processedInvestigations.push({
-          ...subTest,
-          si_no: subTestNumber,
-          displayType: 'subtest',
-          parentId: investigation.id
+          ...investigation,
+          si_no: mainCounter.toString(),
+          displayType: 'single'
         });
-      });
-      
-      mainCounter++;
-    } else {
-      // Fallback for investigations without subTests property
-      processedInvestigations.push({
-        ...investigation,
-        si_no: mainCounter.toString(),
-        displayType: 'single'
-      });
-      mainCounter++;
-    }
-  });
-  
-  return processedInvestigations;
-}
+        mainCounter++;
+      } else if (investigation.subTests && investigation.subTests.length > 0) {
+        // Investigation with sub-tests
+        // Add main investigation row
+        processedInvestigations.push({
+          ...investigation,
+          si_no: mainCounter.toString(),
+          displayType: 'main',
+          isHeader: true
+        });
+        
+        // Sort sub-tests by resultEntryDetailsId to maintain order
+        const sortedSubTests = [...investigation.subTests].sort((a, b) => 
+          a.resultEntryDetailsId - b.resultEntryDetailsId
+        );
+        
+        // Add sub-tests with proper numbering
+        sortedSubTests.forEach((subTest, subIndex) => {
+          const subTestNumber = investigation.subTests.length === 1 ? 
+            "" : 
+            `${mainCounter}.${String.fromCharCode(97 + subIndex)}`;
+          
+          processedInvestigations.push({
+            ...subTest,
+            si_no: subTestNumber,
+            displayType: 'subtest',
+            parentId: investigation.id
+          });
+        });
+        
+        mainCounter++;
+      } else {
+        // Fallback for investigations without subTests property
+        processedInvestigations.push({
+          ...investigation,
+          si_no: mainCounter.toString(),
+          displayType: 'single'
+        });
+        mainCounter++;
+      }
+    });
+    
+    return processedInvestigations;
+  }
 
   const formatDate = (dateString) => {
     if (!dateString) return new Date().toLocaleDateString('en-GB');
@@ -438,18 +452,18 @@ const generateSequentialSerialNumbers = (investigations) => {
   }
 
   const handleRowClick = (result) => {
-  // When clicking a row, combine all investigations from all headers
-  const allInvestigations = result.headers.flatMap(header => header.investigations);
-  
-  // Generate sequential serial numbers for all investigations with consistent ordering
-  const investigationsWithSequentialNumbers = generateSequentialSerialNumbers(allInvestigations);
-  
-  setSelectedResult({
-    ...result,
-    investigations: investigationsWithSequentialNumbers
-  });
-  setShowDetailView(true);
-}
+    // When clicking a row, combine all investigations from all headers
+    const allInvestigations = result.headers.flatMap(header => header.investigations);
+    
+    // Generate sequential serial numbers for all investigations with consistent ordering based on IDs
+    const investigationsWithSequentialNumbers = generateSequentialSerialNumbers(allInvestigations);
+    
+    setSelectedResult({
+      ...result,
+      investigations: investigationsWithSequentialNumbers
+    });
+    setShowDetailView(true);
+  }
 
   const handleBackToList = () => {
     setShowDetailView(false)
@@ -483,11 +497,16 @@ const generateSequentialSerialNumbers = (investigations) => {
           }
         });
 
+        // Sort detail requests by resultEntryDetailsId to maintain order
+        const sortedDetailRequests = resultUpdateDetailRequests.sort((a, b) => 
+          a.resultEntryDetailsId - b.resultEntryDetailsId
+        );
+
         // Create payload according to your API structure
         const requestPayload = {
           orderHdId: selectedResult.orderHdId,
           resultEntryHeaderId: header.resultEntryHeaderId,
-          resultUpdateDetailRequests: resultUpdateDetailRequests
+          resultUpdateDetailRequests: sortedDetailRequests
         };
 
         console.log("Submitting update request for header:", header.resultEntryHeaderId, requestPayload);
@@ -519,19 +538,19 @@ const generateSequentialSerialNumbers = (investigations) => {
     }
   };
 
- const handleReset = () => {
-  if (selectedResult) {
-    const originalResult = resultList.find((r) => r.id === selectedResult.id)
-    if (originalResult) {
-      const allInvestigations = originalResult.headers.flatMap(header => header.investigations);
-      const investigationsWithSequentialNumbers = generateSequentialSerialNumbers(allInvestigations);
-      setSelectedResult({
-        ...originalResult,
-        investigations: investigationsWithSequentialNumbers
-      });
+  const handleReset = () => {
+    if (selectedResult) {
+      const originalResult = resultList.find((r) => r.id === selectedResult.id)
+      if (originalResult) {
+        const allInvestigations = originalResult.headers.flatMap(header => header.investigations);
+        const investigationsWithSequentialNumbers = generateSequentialSerialNumbers(allInvestigations);
+        setSelectedResult({
+          ...originalResult,
+          investigations: investigationsWithSequentialNumbers
+        });
+      }
     }
   }
-}
 
   const filteredResultList = resultList.filter((item) => {
     const patientNameMatch =
@@ -646,10 +665,6 @@ const generateSequentialSerialNumbers = (investigations) => {
                         <label className="form-label fw-bold">Gender</label>
                         <input type="text" className="form-control" value={selectedResult.gender} readOnly />
                       </div>
-                      {/* <div className="col-md-4">
-                        <label className="form-label fw-bold">Mobile No.</label>
-                        <input type="text" className="form-control" value={selectedResult.mobile_no} readOnly />
-                      </div> */}
                     </div>
                     <div className="row mt-3">
                       <div className="col-12">
@@ -680,10 +695,6 @@ const generateSequentialSerialNumbers = (investigations) => {
                         <label className="form-label fw-bold">Order Number</label>
                         <input type="text" className="form-control" value={selectedResult.order_no} readOnly />
                       </div>
-                      {/* <div className="col-md-4">
-                        <label className="form-label fw-bold">Order Time</label>
-                        <input type="text" className="form-control" value={selectedResult.order_time} readOnly />
-                      </div> */}
                     </div>
                   </div>
                 </div>
