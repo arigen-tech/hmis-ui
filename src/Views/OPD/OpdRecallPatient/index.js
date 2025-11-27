@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import placeholderImage from "../../../assets/images/placeholder.jpg"
-import OTDashboard from "./OTDashboard"
-import InvestigationModal from "./InvestigationModal"
-import TreatmentModal from "./TreatmentModal"
-
+import OTDashboard from "../GeneralMedicineWaitingList/OTDashboard"
+import InvestigationModal from "../GeneralMedicineWaitingList/InvestigationModal"
+import TreatmentModal from "../GeneralMedicineWaitingList/TreatmentModal"
+import { OPD_PATIENT, OPD_TEMPLATE, MAS_FREQUENCY, MAS_DRUG_MAS, DRUG_TYPE, ITEM_CLASS, MAS_INVESTIGATION, MASTERS } from "../../../config/apiConfig";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import LoadingScreen from "../../../Components/Loading/index";
+import Popup from "../../../Components/popup/index";
+import DuplicatePopup from "../GeneralMedicineWaitingList/DuplicatePopup";
 const OpdRRecallPatient = () => {
   const [waitingList, setWaitingList] = useState([
     {
@@ -22,18 +26,393 @@ const OpdRRecallPatient = () => {
     },
   ])
 
-  const [searchFilters, setSearchFilters] = useState({
-    mobileNumber: "",
-    patientName: "",
-    date: "",
-  })
-
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
   const [showDetailView, setShowDetailView] = useState(false)
   const [selectedPatient, setSelectedPatient] = useState(null)
   const [showOtCalendarModal, setShowOtCalendarModal] = useState(false)
   const [showCurrentMedicationModal, setShowCurrentMedicationModal] = useState(false)
+  const [selectedTreatmentTemplateIds, setSelectedTreatmentTemplateIds] = useState(new Set());
+  const [removedInvestigationIds, setRemovedInvestigationIds] = useState([]);
+  const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null);
+  const drugNameDropdownClickedRef = useRef(false);
+  const tableContainerRef = useRef(null);
+  const [drugCodeOptions, setDrugCodeOptions] = useState([]);
+  const [removedTreatmentIds, setRemovedTreatmentIds] = useState([]);
+  const [removeIcdIds, setRemoveIcdIds] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedTreatmentTemplateId, setSelectedTreatmentTemplateId] = useState("Select..");
+  const [usedTemplateIds, setUsedTemplateIds] = useState(new Set());
+  const [recallPatientOpd, setRecallPatientOpd] = useState([]);
+  const [opdTemplateData, setOpdTemplateData] = useState([]);
+  const [allFrequencies, setAllFrequencies] = useState([])
+  const today = new Date().toISOString().split("T")[0];
+  const [loading, setLoading] = useState(false);
+  const [popup, setPopup] = useState("");
+  const [masICDData, setMasICDData] = useState([]);
+  const [popupMessage, setPopupMessage] = useState("");
+  const [formData, setFormData] = useState({
+    height: "",
+    weight: "",
+    temperature: "",
+    systolicBP: "",
+    diastolicBP: "",
+    pulse: "",
+    bmi: "",
+    rr: "",
+    spo2: "",
+    patientSymptoms: "",
+    clinicalExamination: "",
+    pastHistory: "",
+    familyHistory: "",
+    mlcCase: false,
+  })
+  const [workingDiagnosis, setWorkingDiagnosis] = useState("")
+  const [duplicateItems, setDuplicateItems] = useState([]);
+  const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
+  const [diagnosisItems, setDiagnosisItems] = useState([
+    {
+      id: null,
+      icdDiagId: "",
+      icdDiagnosis: "",
+      communicableDisease: false,
+      infectiousDisease: false,
+    },
+  ])
+
+  const [searchFilters, setSearchFilters] = useState({
+    mobileNumber: "",
+    patientName: "",
+    date: today,
+  });
+
+
+  const handleSearch = async () => {
+    // console.log("recall api data: ", recallPatientOpd);
+    await fetchOpdPatientData();
+  };
+
+  useEffect(() => {
+    if (activeDrugNameDropdown !== null) {
+      const container = tableContainerRef.current;
+      const inputEl = document.getElementById(`drug-name-${activeDrugNameDropdown}`);
+      const dropdownHeight = 200;
+
+      if (container && inputEl) {
+        const inputRect = inputEl.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+
+        if (inputRect.bottom + dropdownHeight > containerRect.bottom) {
+          container.scrollTop += (inputRect.bottom + dropdownHeight) - containerRect.bottom + 10;
+        }
+      }
+    }
+  }, [activeDrugNameDropdown]);
+
+  // console.log("opdTemplateData", opdTemplateData)
+
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+        if (onCloseCallback) onCloseCallback();
+      },
+    });
+  };
+
+  const handleReset = () => {
+    const today = new Date().toISOString().split("T")[0];
+
+    setSearchFilters({
+      mobileNumber: "",
+      patientName: "",
+      date: today,
+    });
+
+    fetchOpdPatientData();
+  };
+
+  // console.log("selectedPatient", selectedPatient)
+
+  const fetchOpdPatientData = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+
+      if (searchFilters.mobileNumber) params.append("mobile", searchFilters.mobileNumber);
+      if (searchFilters.patientName) params.append("name", searchFilters.patientName);
+      if (searchFilters.date) params.append("visitDate", searchFilters.date);
+
+      const data = await getRequest(`${OPD_PATIENT}/recallVisit?${params.toString()}`);
+
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setRecallPatientOpd(data.response);
+      } else {
+        setRecallPatientOpd([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Doctor data:", error);
+    } finally {
+      setLoading(false);    // ensures loader hides
+    }
+  };
+
+  const fetchOpdTemplateData = async () => {
+    try {
+
+      const data = await getRequest(`${OPD_TEMPLATE}/getAll/1`);
+
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setOpdTemplateData(data.response);
+      } else {
+        setOpdTemplateData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Doctor data:", error);
+    }
+  };
+
+  const fetchMasICDData = async () => {
+    try {
+      const data = await getRequest(`${MASTERS}/masIcd/all?flag=0&page=0&size=100`);
+
+      if (data.status === 200 && data.response?.content) {
+        setMasICDData(data.response.content);
+      } else {
+        setMasICDData([]);
+      }
+
+    } catch (error) {
+      console.error("Error fetching ICD data:", error);
+    }
+  };
+
+
+  const fetchAllFrequencies = async () => {
+    try {
+      const response = await getRequest(`${MAS_FREQUENCY}/getAll/1`)
+      // console.log("Frequency API Response:", response);
+
+      if (response && response.response) {
+        setAllFrequencies(response.response)
+        // console.log("Frequencies loaded:", response.response);
+      } else {
+        console.warn("No frequencies found in response")
+        setAllFrequencies([])
+      }
+    } catch (error) {
+      console.error("Error fetching frequencies:", error)
+      setAllFrequencies([])
+    }
+  }
+
+  const fatchDrugCodeOptions = async () => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${MAS_DRUG_MAS}/getAllBySectionOnly/1`);
+      if (response && response.response) {
+        setDrugCodeOptions(response.response);
+      }
+    } catch (err) {
+      console.error("Error fetching drug options:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOpdPatientData();
+    fetchOpdTemplateData();
+    fetchAllFrequencies();
+    fatchDrugCodeOptions();
+    fetchMasICDData();
+  }, []);
+
+
+
+
+const handleClearAllTreatmentTemplates = () => {
+  setSelectedTreatmentTemplateIds(new Set());
+
+  setTreatmentItems(prev => {
+    const updated = prev.filter(item => {
+      const tpl = (item.templateId ?? "").trim();
+
+      // 1️⃣ Keep DB items (but clear templateId later)
+      if (item.treatmentId !== null) return true;
+
+      // 2️⃣ Keep manual items (templateId empty)
+      if (tpl === "") return true;
+
+      // 3️⃣ Remove template-generated items
+      return false;
+    })
+    .map(item => {
+      // Clear templateId only for DB items
+      if (item.treatmentId !== null) {
+        return { ...item, templateId: "" };
+      }
+      return item;
+    });
+
+    // If nothing left → add empty row
+    if (updated.length === 0) {
+      return [
+        {
+          treatmentId: null,
+          drugId: "",
+          drugName: "",
+          dispUnit: "",
+          dosage: "",
+          frequency: "",
+          days: "",
+          total: "",
+          instruction: "",
+          stock: "",
+          templateId: ""
+        }
+      ];
+    }
+
+    return updated;
+  });
+};
+
+
+
+
+  // REMOVE a single treatment template
+  const handleRemoveTreatmentTemplateItems = (templateId) => {
+    setTreatmentItems(prev =>
+      prev
+        .map(item => {
+          if (!item.templateId) return item;
+
+          // Convert to array
+          const ids = item.templateId
+            .split(",")
+            .filter(id => id !== String(templateId));
+
+          // CASE 1: treatmentId exists → KEEP row but update templateId
+          if (item.treatmentId != null) {
+            return {
+              ...item,
+              templateId: ids.join(",")
+            };
+          }
+
+          // CASE 2: no treatmentId & some templateIds left → update only
+          if (ids.length > 0) {
+            return {
+              ...item,
+              templateId: ids.join(",")
+            };
+          }
+
+          // CASE 3: no treatmentId & no templateIds left → REMOVE row
+          return null;
+        })
+        .filter(item => item !== null)
+    );
+
+    // remove template from selected list
+    setSelectedTreatmentTemplateIds(prev => {
+      const updated = new Set(prev);
+      updated.delete(templateId);
+      return updated;
+    });
+  };
+
+
+  const isOnlyDefaultTreatmentRow = (items) => {
+    return (
+      items.length === 1 &&
+      !items[0].treatmentId &&
+      !items[0].drugId &&
+      !items[0].drugName &&
+      !items[0].dosage &&
+      !items[0].frequency &&
+      !items[0].days
+    );
+  };
+
+  const handleUpdateRecallPatient = async (e) => {
+    e.preventDefault();
+
+    if (isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
+
+      if (!selectedPatient.visitId) {
+        alert("Recall ID missing!");
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log("list obj", diagnosisItems)
+
+      const icdObjList = diagnosisItems.map(item => ({
+        id: item.id,
+        icdId: item.icdDiagId ?? null,
+        icdDiagName: item.icdDiagnosis || ""
+      }));
+
+      const icdDiagnosisStr = diagnosisItems
+        .map(item => item.icdDiagnosis?.trim())
+        .filter(v => v?.length > 0)
+        .join(",");
+
+      const payload = {
+        ...formData,
+        mlcCase: formData.mlcCase ? "y" : "n",
+        workingDiagnosis,
+        icdDiagnosis: icdDiagnosisStr,
+        icdObj: icdObjList,
+        treatments: treatmentItems,
+        investigations: investigationItems,
+        removeIcdIds,
+        removedTreatmentIds,
+        removedInvestigationIds,
+        opdPatientId: selectedPatient.opdPatientId,
+        patientId: selectedPatient.patientId,
+        visitId: selectedPatient.visitId,
+        departmentId: selectedPatient.deptId,
+        hospitalId: selectedPatient.hospitalId ?? null,
+        doctorId: selectedPatient.docterId
+      };
+
+      // console.log("UPDATE PAYLOAD =", payload);
+
+      const response = await putRequest(`${OPD_PATIENT}/update-recall-patient`, payload);
+
+      if (response?.status === 200 || response?.success === true) {
+        showPopup(
+          "Recall patient updated successfully!",
+          "success",
+          () => handleBackWithFatch()
+        );
+
+      } else {
+        alert("Updated but unexpected response received.");
+      }
+
+    } catch (error) {
+      console.error("Update Error:", error);
+      showPopup("Failed to update. Please try again.", "error");
+
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBackWithFatch = async () => {
+    handleBackToList();
+    handleSearch();
+  };
+
 
   // Modal states - UPDATED
   const [showInvestigationModal, setShowInvestigationModal] = useState(false)
@@ -77,20 +456,7 @@ const OpdRRecallPatient = () => {
 
   const [selectedHistoryType, setSelectedHistoryType] = useState("")
 
-  const [formData, setFormData] = useState({
-    height: "",
-    weight: "",
-    temperature: "",
-    systolicBP: "",
-    diastolicBP: "",
-    pulse: "",
-    bmi: "",
-    rr: "",
-    spo2: "",
-    patientSymptoms: "",
-    clinicalExamination: "",
-    mlcCase: false,
-  })
+
 
   const [errors, setErrors] = useState({})
 
@@ -102,7 +468,15 @@ const OpdRRecallPatient = () => {
   const [selectedTemplate, setSelectedTemplate] = useState("Select..")
   const [templateName, setTemplateName] = useState("")
   const getToday = () => new Date().toISOString().split("T")[0]
-  const [investigationItems, setInvestigationItems] = useState([{ name: "", date: getToday() }])
+  const [investigationItems, setInvestigationItems] = useState([
+    {
+      id: null,
+      investigationId: "",
+      templateIds: [],
+      name: "",
+      date: getToday()
+    }
+  ]);
   const [updateTemplateSelection, setUpdateTemplateSelection] = useState("Select..")
   const [templateType, setTemplateType] = useState("")
   const [dropdownVisible, setDropdownVisible] = useState(false)
@@ -113,15 +487,7 @@ const OpdRRecallPatient = () => {
   })
   const [dropdownWidth, setDropdownWidth] = useState(0)
 
-  const [workingDiagnosis, setWorkingDiagnosis] = useState("")
 
-  const [diagnosisItems, setDiagnosisItems] = useState([
-    {
-      icdDiagnosis: "",
-      communicableDisease: false,
-      infectiousDisease: false,
-    },
-  ])
 
   const [templates, setTemplates] = useState(["Blood Test Template", "Cardiac Template", "Diabetes Template"])
   const [treatmentAdviceTemplates, setTreatmentAdviceTemplates] = useState([
@@ -134,36 +500,21 @@ const OpdRRecallPatient = () => {
 
   const [treatmentItems, setTreatmentItems] = useState([
     {
-      drugName: "Diclofenac Sodium Tab. IP 50 mg[D168]",
-      dispUnit: "Tab",
-      dosage: "1",
-      frequency: "BID",
-      days: "5",
-      total: "10",
+      treatmentId: null,
+      drugId: "",
+      drugName: "",
+      dispUnit: "",
+      dosage: "",
+      frequency: "",
+      days: "",
+      total: "",
       instruction: "",
       stock: "",
-    },
-    {
-      drugName: "TAB CETIRIZINE 10 MG[D00162]",
-      dispUnit: "Tab",
-      dosage: "1",
-      frequency: "OD",
-      days: "5",
-      total: "5",
-      instruction: "",
-      stock: "",
-    },
-    {
-      drugName: "Ferrous Sulphate with Folic Acid Tab. [D00078]",
-      dispUnit: "Tab",
-      dosage: "1",
-      frequency: "OD",
-      days: "15",
-      total: "15",
-      instruction: "",
-      stock: "",
-    },
-  ])
+      templateId: "",
+    }
+  ]);
+
+  console.log("investigationTemplates", treatmentItems)
 
   const [nipItems, setNipItems] = useState([
     {
@@ -229,20 +580,20 @@ const OpdRRecallPatient = () => {
   const [admissionNotes, setAdmissionNotes] = useState("")
 
   // Referral state - UPDATED
-const [referralData, setReferralData] = useState({
-  isReferred: "No",
-  referTo: "",
-  referralType: "Internal", 
-  referralScope: "Internal",
-  referralDate: getToday(),
-  empanel: false,
-  currentPriorityNo: "",
-  select: "",
-  noOfDays: "",
-  treatmentType: "OPD",
-  referredFor: "",
-  hospital: "",
-})
+  const [referralData, setReferralData] = useState({
+    isReferred: "No",
+    referTo: "",
+    referralType: "Internal",
+    referralScope: "Internal",
+    referralDate: getToday(),
+    empanel: false,
+    currentPriorityNo: "",
+    select: "",
+    noOfDays: "",
+    treatmentType: "OPD",
+    referredFor: "",
+    hospital: "",
+  })
 
   const [departmentData, setDepartmentData] = useState([
     {
@@ -276,66 +627,12 @@ const [referralData, setReferralData] = useState({
     },
   ])
 
-  const [selectedBloodTestTemplate, setSelectedBloodTestTemplate] = useState("Select..")
+  const [selectedBloodTestTemplate, setSelectedBloodTestTemplate] = useState("");
 
   const itemsPerPage = 10
 
   // NEW: Track selected templates to prevent duplicates
   const [selectedTemplateIds, setSelectedTemplateIds] = useState(new Set())
-
-  // Mock data for OPD Recall List
-  const [recallPatients, setRecallPatients] = useState([
-    {
-      id: 1,
-      patientName: "Sanjay vama",
-      age: "30 Years",
-      gender: "MALE",
-      department: "GENERAL OPD",
-      mobileNo: "6268851060",
-      doctor: "Subhash Singh",
-      typeOfPatient: "emergency",
-    },
-    {
-      id: 2,
-      patientName: "Shiv shashar",
-      age: "55 Years",
-      gender: "MALE",
-      department: "GENERAL OPD",
-      mobileNo: "9399135503",
-      doctor: "Subhash Singh",
-      typeOfPatient: "emergency",
-    },
-    {
-      id: 3,
-      patientName: "Raj whinnahama",
-      age: "50 Years",
-      gender: "MALE",
-      department: "GENERAL OPD",
-      mobileNo: "9302838966",
-      doctor: "Subhash Singh",
-      typeOfPatient: "emergency",
-    },
-    {
-      id: 4,
-      patientName: "Oropadush sharma",
-      age: "45 Years",
-      gender: "MALE",
-      department: "GENERAL OPD",
-      mobileNo: "9991502711",
-      doctor: "Subhash Singh",
-      typeOfPatient: "emergency",
-    },
-    {
-      id: 5,
-      patientName: "Shivam yakar",
-      age: "21 Years",
-      gender: "MALE",
-      department: "GENERAL OPD",
-      mobileNo: "6266209741",
-      doctor: "Subhash Singh",
-      typeOfPatient: "emergency",
-    },
-  ])
 
   // Modal handlers - UPDATED
   const handleOpenInvestigationModal = (type = "create") => {
@@ -412,28 +709,12 @@ const [referralData, setReferralData] = useState({
   const fetchInvestigationTemplates = async (flag = 1) => {
     try {
       setInvestigationTemplateLoading(true)
-      // Mock data for templates
-      const mockTemplates = [
-        {
-          templateId: 1,
-          opdTemplateName: "Blood Test Template",
-          opdTemplateCode: "BT001",
-          investigationResponseList: [
-            { investigationId: 1, investigationName: "Complete Blood Count" },
-            { investigationId: 2, investigationName: "Blood Glucose" }
-          ]
-        },
-        {
-          templateId: 2,
-          opdTemplateName: "Cardiac Template", 
-          opdTemplateCode: "CT001",
-          investigationResponseList: [
-            { investigationId: 3, investigationName: "ECG" },
-            { investigationId: 4, investigationName: "Echocardiogram" }
-          ]
-        }
-      ]
-      setInvestigationTemplates(mockTemplates)
+      const response = await getRequest(`${OPD_TEMPLATE}/getAllTemplateInvestigations/${flag}`)
+      if (response && response.response) {
+        setInvestigationTemplates(response.response)
+      } else {
+        setInvestigationTemplates([])
+      }
     } catch (error) {
       console.error("Error fetching investigation templates:", error)
       setInvestigationTemplates([])
@@ -444,47 +725,22 @@ const [referralData, setReferralData] = useState({
 
   const fetchAllInvestigations = async () => {
     try {
-      // Mock data for investigations
-      const mockInvestigations = [
-        {
-          investigationId: 1,
-          investigationName: "Complete Blood Count",
-          mainChargeCodeId: 1,
-          mainChargeCodeName: "Laboratory",
-          subChargeCodeName: "Hematology"
-        },
-        {
-          investigationId: 2,
-          investigationName: "Blood Glucose",
-          mainChargeCodeId: 1, 
-          mainChargeCodeName: "Laboratory",
-          subChargeCodeName: "Biochemistry"
-        },
-        {
-          investigationId: 3,
-          investigationName: "ECG",
-          mainChargeCodeId: 2,
-          mainChargeCodeName: "Cardiology", 
-          subChargeCodeName: "Diagnostic"
-        },
-        {
-          investigationId: 4,
-          investigationName: "X-Ray Chest",
-          mainChargeCodeId: 3,
-          mainChargeCodeName: "Radiology",
-          subChargeCodeName: "Imaging"
-        }
-      ]
-      setAllInvestigations(mockInvestigations)
-      extractInvestigationTypes(mockInvestigations)
+      const response = await getRequest(`${MAS_INVESTIGATION}/getAll/1`)
+      if (response && response.response) {
+        setAllInvestigations(response.response)
+        extractInvestigationTypes(response.response)
+      } else {
+        setAllInvestigations([])
+      }
     } catch (error) {
       console.error("Error fetching investigations:", error)
       setAllInvestigations([])
     }
   }
 
+
   const filterInvestigationsByMainChargeCode = () => {
-    console.log("Filtering investigations by type:", investigationType)
+    // console.log("Filtering investigations by type:", investigationType)
 
     if (!investigationType || allInvestigations.length === 0) {
       setFilteredInvestigationsByType([])
@@ -492,11 +748,11 @@ const [referralData, setReferralData] = useState({
     }
 
     const selectedType = investigationTypes.find(type => type.value === investigationType)
-    console.log("Selected type for filtering:", selectedType)
+    // console.log("Selected type for filtering:", selectedType)
 
     if (selectedType) {
       const filtered = allInvestigations.filter(inv => inv.mainChargeCodeId === selectedType.id)
-      console.log(`Filtered ${filtered.length} investigations for type:`, selectedType.name)
+      // console.log(`Filtered ${filtered.length} investigations for type:`, selectedType.name)
       setFilteredInvestigationsByType(filtered)
     } else {
       setFilteredInvestigationsByType([])
@@ -521,80 +777,170 @@ const [referralData, setReferralData] = useState({
 
   // UPDATED: Handle template selection to accumulate items
   const handleInvestigationTemplateSelect = (template) => {
-    const templateId = template.templateId
+    const templateId = template.templateId;
 
-    // Check if template is already selected
     if (selectedTemplateIds.has(templateId)) {
-      alert("This template is already selected")
-      setSelectedInvestigationTemplate("Select..")
-      return
+      alert("This template is already selected");
+      setSelectedInvestigationTemplate("Select..");
+      return;
     }
 
-    setSelectedInvestigationTemplate(templateId)
+    setSelectedTemplateIds(prev => new Set([...prev, templateId]));
+    setSelectedInvestigationTemplate(templateId);
 
-    // Add template to selected templates set
-    setSelectedTemplateIds(prev => new Set([...prev, templateId]))
+    if (!template.investigationResponseList) return;
 
-    if (template.investigationResponseList && template.investigationResponseList.length > 0) {
-      const newItems = template.investigationResponseList.map(item => ({
-        name: item.investigationName || `Investigation #${item.investigationId}`,
-        date: getToday(),
-        investigationId: item.investigationId,
-        templateSource: template.opdTemplateName // Track which template this came from
-      }))
+    let duplicateItemsBuffer = []; // <-- temporary store
 
-      // Add new items to existing items, avoiding duplicates
-      setInvestigationItems(prev => {
-        const existingIds = new Set(prev.map(item => item.investigationId))
-        const uniqueNewItems = newItems.filter(item => !existingIds.has(item.investigationId))
-        return [...prev.filter(item => item.name !== ""), ...uniqueNewItems]
-      })
-    }
+    setInvestigationItems(prev => {
+      const updated = [...prev];
+      const existingMap = new Map(prev.map(item => [item.investigationId, item]));
 
-    // Reset dropdown to "Select.." for next selection
+      template.investigationResponseList.forEach(item => {
+        const existing = existingMap.get(item.investigationId);
+
+        if (existing) {
+          // duplicate
+          if (!existing.templateIds.includes(templateId)) {
+            existing.templateIds = [...existing.templateIds, templateId];
+          }
+
+          // push clean data
+          duplicateItemsBuffer.push({
+            investigationId: item.investigationId,
+            investigationName: existing.name ?? item.investigationName
+          });
+
+        } else {
+          // new
+          updated.push({
+            id: null,
+            name: item.investigationName ?? `Investigation #${item.investigationId}`,
+            date: getToday(),
+            investigationId: item.investigationId,
+            templateSource: template.opdTemplateName,
+            templateIds: [templateId]
+          });
+        }
+      });
+
+      // return final investigation list
+      return updated;
+    });
+
+    // Run popup handler AFTER state update
     setTimeout(() => {
-      setSelectedInvestigationTemplate("Select..")
-    }, 100)
-  }
+      // remove duplicates
+      const unique = Array.from(
+        new Map(duplicateItemsBuffer.map(d => [d.investigationId, d])).values()
+      );
 
-  // NEW: Function to clear all selected templates and items
-  const handleClearAllTemplates = () => {
-    setSelectedTemplateIds(new Set())
-    setInvestigationItems([{ name: "", date: getToday() }])
-  }
+      if (unique.length > 0) {
+        setDuplicateItems(unique);
+        setShowDuplicatePopup(true);
+      }
+
+      setSelectedInvestigationTemplate("Select..");
+
+    }, 50); // slight delay ensures buffer has updated values
+  };
+
+  console.log("DuplicateItems", duplicateItems)
+  console.log("ShowDuplicatePopup", showDuplicatePopup)
+
+
+const handleClearAllTemplates = () => {
+  setSelectedTemplateIds(new Set());
+
+  setInvestigationItems(prevItems => {
+    return prevItems.filter(item => {
+      const ids = item.templateIds ?? []; 
+
+      if (item.id !== null) return true;
+
+      if (ids.length === 0) return true;
+
+      return false;
+    });
+  });
+};
+
+
 
   // NEW: Function to remove specific template items
   const handleRemoveTemplateItems = (templateId) => {
-    const template = investigationTemplates.find(t => t.templateId == templateId)
-    if (!template) return
-
-    // Remove items from this template
-    setInvestigationItems(prev =>
-      prev.filter(item =>
-        !template.investigationResponseList?.some(templateItem =>
-          templateItem.investigationId === item.investigationId
-        )
-      )
-    )
-
-    // Remove template from selected set
     setSelectedTemplateIds(prev => {
-      const newSet = new Set(prev)
-      newSet.delete(templateId)
-      return newSet
-    })
-  }
+      const newSet = new Set(prev);
+      newSet.delete(templateId);
+      return newSet;
+    });
+
+    setInvestigationItems(prev => {
+      return prev
+        .map(item => {
+          // Remove this template ID from the item
+          const newTemplateIds = item.templateIds?.filter(id => id !== templateId) || [];
+
+          return {
+            ...item,
+            templateIds: newTemplateIds
+          };
+        })
+        .filter(item => {
+          // CASE 1: No template IDs left AND created from template (id === null) → remove
+          if (item.templateIds.length === 0 && item.id === null) return false;
+
+          // CASE 2: No template IDs left BUT item has DB id → keep, as user saved previously
+          return true;
+        });
+    });
+  };
+
 
   const handleInvestigationSelect = (index, investigation) => {
-    const newItems = [...investigationItems]
+
+    // ---- CHECK DUPLICATE IN FULL LIST ----
+    const duplicate = investigationItems.find(
+      (item, idx) =>
+        idx !== index && item.investigationId === investigation.investigationId
+    );
+
+    if (duplicate) {
+      // Show popup with duplicate item
+      setDuplicateItems([
+        {
+          investigationId: investigation.investigationId,
+          investigationName: investigation.investigationName
+        }
+      ]);
+
+      setShowDuplicatePopup(true);
+
+      // Reset the row input
+      const newItems = [...investigationItems];
+      newItems[index] = {
+        ...newItems[index],
+        name: "",
+        investigationId: null,
+      };
+
+      setInvestigationItems(newItems);
+      setActiveInvestigationRowIndex(null);
+      return;
+    }
+
+    // ---- NO DUPLICATE → UPDATE ROW ----
+    const newItems = [...investigationItems];
     newItems[index] = {
       ...newItems[index],
       name: investigation.investigationName,
-      investigationId: investigation.investigationId
-    }
-    setInvestigationItems(newItems)
-    setActiveInvestigationRowIndex(null)
-  }
+      investigationId: investigation.investigationId,
+    };
+
+    setInvestigationItems(newItems);
+    setActiveInvestigationRowIndex(null);
+  };
+
 
   // Referral handlers - UPDATED
   const handleReferralChange = (field, value) => {
@@ -632,25 +978,25 @@ const [referralData, setReferralData] = useState({
   // ADD THESE USEEFFECT HOOKS
 
   // DEBUGGING: Add this at the top of your component to see what's happening
-  console.log("Component render - investigationType:", investigationType, "investigationTypes:", investigationTypes)
+  // console.log("Component render - investigationType:", investigationType, "investigationTypes:", investigationTypes)
 
   useEffect(() => {
     if (showDetailView && selectedPatient) {
-      console.log("Fetching investigation data...")
+      // console.log("Fetching investigation data...")
       fetchInvestigationTemplates()
       fetchAllInvestigations()
     }
   }, [showDetailView, selectedPatient])
 
   useEffect(() => {
-    console.log("All investigations loaded:", allInvestigations.length)
+    // console.log("All investigations loaded:", allInvestigations.length)
     if (allInvestigations.length > 0) {
       extractInvestigationTypes(allInvestigations)
     }
   }, [allInvestigations])
 
   useEffect(() => {
-    console.log("Investigation types updated:", investigationTypes)
+    // console.log("Investigation types updated:", investigationTypes)
     if (investigationTypes.length > 0) {
       // FORCE SELECT LABORATORY
       const labType = investigationTypes.find(type =>
@@ -659,17 +1005,17 @@ const [referralData, setReferralData] = useState({
       )
 
       if (labType && investigationType !== labType.value) {
-        console.log("Setting default to Laboratory:", labType)
+        // console.log("Setting default to Laboratory:", labType)
         setInvestigationType(labType.value)
       } else if (investigationTypes.length > 0 && !investigationType) {
-        console.log("Setting to first type:", investigationTypes[0])
+        // console.log("Setting to first type:", investigationTypes[0])
         setInvestigationType(investigationTypes[0].value)
       }
     }
   }, [investigationTypes])
 
   useEffect(() => {
-    console.log("Investigation type changed to:", investigationType)
+    // console.log("Investigation type changed to:", investigationType)
     filterInvestigationsByMainChargeCode()
   }, [investigationType])
 
@@ -681,27 +1027,147 @@ const [referralData, setReferralData] = useState({
     setCurrentPage(1)
   }
 
-  const handleSearch = () => {
-    console.log("Searching with filters:", searchFilters)
-  }
 
-  const handleReset = () => {
-    setSearchFilters({
-      mobileNumber: "",
-      patientName: "",
-      date: "",
-    })
-    setCurrentPage(1)
-  }
+  console.log("investigationItems", investigationItems)
+
 
   const handleRowClick = (patient) => {
     setSelectedPatient(patient)
+    setFormData({
+      height: patient.height || "",
+      weight: patient.weight || "",
+      temperature: patient.temperature || "",
+      systolicBP: patient.bpSystolic || "",
+      diastolicBP: patient.bpDiastolic || "",
+      pulse: patient.pulse || "",
+      bmi: patient.bmi || "",
+      rr: patient.rr || "",
+      spo2: patient.spo2 || "",
+      patientSymptoms: patient.patientSignsSymptoms || "",
+      clinicalExamination: patient.clinicalExamination || "",
+      pastHistory: patient.pastMedicalHistory || "",
+      familyHistory: patient.familyHistory || "",
+      mlcCase: patient.mlcFlag === "y" ? true : false,
+    });
+    setWorkingDiagnosis(patient?.workingDiag || "")
+    setDiagnosisItems(
+      patient.icdDiag && patient.icdDiag.length > 0
+        ? patient.icdDiag.map(item => ({
+          id: item.id ?? null,
+          icdDiagId: item.icdId ?? "",
+          icdDiagnosis: item.icdDiagName ?? "",
+          communicableDisease: false,
+          infectiousDisease: false,
+        }))
+        : [
+          {
+            id: null,
+            icdDiagId: "",
+            icdDiagnosis: "",
+            communicableDisease: false,
+            infectiousDisease: false,
+          }
+        ]
+    );
+
+    const allDtItems =
+      patient.dgOrderHdList && patient.dgOrderHdList.length > 0
+        ? patient.dgOrderHdList.flatMap(hd =>
+          hd.dgOrderDts.map(dt => ({
+            id: dt.dgOrderDtId || "",
+            name: dt.investigationName || "",
+            date: dt.appointmentDate || getToday(),
+            investigationId: dt.investigationId
+          }))
+        )
+        : [
+          {
+            id: "",
+            name: "",
+            date: getToday(),
+          }
+        ];
+
+    setInvestigationItems(allDtItems);
+
+    setTreatmentItems(
+      patient.patientPrescriptionDts && patient.patientPrescriptionDts.length > 0
+        ? patient.patientPrescriptionDts.map(item => ({
+
+          treatmentId: item.prescriptionDtId,
+          drugId: item.itemId,
+          drugName: item.itemName,
+          dispUnit: item.depUnit,
+          dosage: item.dosage,
+          frequency: item.frequencyId,
+          days: item.days,
+          total: item.total,
+          instruction: item.instraction,
+          stock: item.stocks,
+        }))
+        : [
+          {
+            treatmentId: null,
+            drugId: "",
+            drugName: "",
+            dispUnit: "",
+            dosage: "",
+            frequency: "",
+            days: "",
+            total: "",
+            instruction: "",
+            stock: "",
+          }
+        ]
+    );
+
     setShowDetailView(true)
   }
 
   const handleBackToList = () => {
     setShowDetailView(false)
     setSelectedPatient(null)
+    setFormData({
+      height: "",
+      weight: "",
+      temperature: "",
+      systolicBP: "",
+      diastolicBP: "",
+      pulse: "",
+      bmi: "",
+      rr: "",
+      spo2: "",
+      patientSymptoms: "",
+      clinicalExamination: "",
+      pastHistory: "",
+      familyHistory: "",
+      mlcCase: false,
+    });
+    setDiagnosisItems([
+      {
+        id: null,
+        icdDiagId: "",
+        icdDiagnosis: "",
+        communicableDisease: false,
+        infectiousDisease: false,
+      }
+    ]);
+    setWorkingDiagnosis("")
+    setInvestigationItems([{ id: "", name: "", date: getToday() }]);
+    setTreatmentItems([
+      {
+        treatmentId: null,
+        drugId: "",
+        drugName: "",
+        dispUnit: "",
+        dosage: "",
+        frequency: "",
+        days: "",
+        total: "",
+        instruction: "",
+        stock: "",
+      }
+    ]);
     setExpandedSections({
       personalDetails: false,
       clinicalHistory: false,
@@ -717,8 +1183,9 @@ const [referralData, setReferralData] = useState({
       additionalAdvice: false,
     })
     setSelectedHistoryType("")
-    // Clear templates when going back to list
+    setRemovedInvestigationIds([])
     setSelectedTemplateIds(new Set())
+    setSelectedTreatmentTemplateIds(new Set())
   }
 
   const toggleSection = (section) => {
@@ -753,9 +1220,6 @@ const [referralData, setReferralData] = useState({
     }
   }
 
-  const handleSubmit = () => {
-    console.log("Form submitted")
-  }
 
   const handleResetForm = () => {
     setFormData({
@@ -782,6 +1246,7 @@ const [referralData, setReferralData] = useState({
     setWaitingList(updatedList)
   }
 
+
   const handleClose = (patientId) => {
     const updatedList = waitingList.filter((patient) => patient.id !== patientId)
     setWaitingList(updatedList)
@@ -799,13 +1264,20 @@ const [referralData, setReferralData] = useState({
   }
 
   const handleAddInvestigationItem = () => {
-    setInvestigationItems((prev) => [...prev, { name: "", date: getToday() }])
+    setInvestigationItems((prev) => [...prev, { id: null, templateIds:[], name: "", date: getToday() }])
   }
 
   const handleRemoveInvestigationItem = (index) => {
-    const newItems = investigationItems.filter((_, i) => i !== index)
-    setInvestigationItems(newItems)
-  }
+    const itemToRemove = investigationItems[index];
+
+    if (itemToRemove.id !== null) {
+      setRemovedInvestigationIds(prev => [...prev, itemToRemove.id]);
+    }
+
+    const updatedItems = investigationItems.filter((_, i) => i !== index);
+    setInvestigationItems(updatedItems);
+  };
+
 
   const handleInvestigationItemChange = (index, field, value) => {
     const newItems = [...investigationItems]
@@ -843,6 +1315,8 @@ const [referralData, setReferralData] = useState({
     setDiagnosisItems([
       ...diagnosisItems,
       {
+        id: null,
+        icdDiagId: "",
         icdDiagnosis: "",
         communicableDisease: false,
         infectiousDisease: false,
@@ -851,43 +1325,204 @@ const [referralData, setReferralData] = useState({
   }
 
   const handleRemoveDiagnosisItem = (index) => {
-    const newItems = diagnosisItems.filter((_, i) => i !== index)
-    setDiagnosisItems(newItems)
-  }
+    const itemToRemove = diagnosisItems[index];
+
+    if (itemToRemove?.id != null) {
+      setRemoveIcdIds((prev) => [...prev, itemToRemove.id]);
+    }
+
+    const newItems = diagnosisItems.filter((_, i) => i !== index);
+    setDiagnosisItems(newItems);
+  };
+
+
+  console.log("masICDData", masICDData)
 
   const handleDiagnosisChange = (index, field, value) => {
-    const newItems = [...diagnosisItems]
-    newItems[index] = { ...newItems[index], [field]: value }
-    setDiagnosisItems(newItems)
-  }
+    const newItems = [...diagnosisItems];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setDiagnosisItems(newItems);
+  };
+
 
   const handleAddTreatmentItem = () => {
     setTreatmentItems([
       ...treatmentItems,
       {
+        treatmentId: null,
+        drugIdId: "",
         drugName: "",
-        dispUnit: "Tab",
+        dispUnit: "",
         dosage: "",
-        frequency: "OD",
+        frequency: "",
         days: "",
         total: "",
         instruction: "",
         stock: "",
       },
-    ])
-  }
+    ]);
+  };
+
 
   const handleRemoveTreatmentItem = (index) => {
-    if (treatmentItems.length === 1) return
-    const newItems = treatmentItems.filter((_, i) => i !== index)
-    setTreatmentItems(newItems)
-  }
+    if (treatmentItems.length === 1) return;
+
+    const removedItem = treatmentItems[index];
+
+    if (removedItem.treatmentId) {
+      setRemovedTreatmentIds((prev) => [...prev, removedItem.treatmentId]);
+    }
+
+    const newItems = treatmentItems.filter((_, i) => i !== index);
+    setTreatmentItems(newItems);
+  };
+
+
+
+  const handleTreatmentTemplateSelect = (templateId) => {
+    if (!templateId || templateId === "Select..") return;
+
+    if (selectedTreatmentTemplateIds.has(templateId)) return;
+
+    const template = opdTemplateData.find(t => t.templateId == templateId);
+    if (!template || !template.treatments) return;
+
+    setTreatmentItems(prevList => {
+      const updatedList = [...prevList];
+      const existingDrugIds = updatedList.map(i => i.drugId);
+
+      const duplicateItems = [];
+      const newItemsToAdd = [];
+
+      template.treatments.forEach(t => {
+        if (existingDrugIds.includes(t.itemId)) {
+          duplicateItems.push(t);
+
+          // ➕ ADD TEMPLATE-ID to existing row
+          updatedList.forEach(row => {
+            if (row.drugId === t.itemId) {
+              const oldIds = row.templateId ? row.templateId.split(",") : [];
+
+              if (!oldIds.includes(String(templateId))) {
+                row.templateId = [...oldIds, String(templateId)].join(",");
+              }
+            }
+          });
+
+        } else {
+          newItemsToAdd.push(t);
+        }
+      });
+
+      // POPUP FOR DUPLICATE DRUGS
+      if (duplicateItems.length > 0) {
+        setDuplicateItems(duplicateItems);
+        setShowDuplicatePopup(true);
+      }
+
+      // ADD ONLY NEW ITEMS
+      const formattedNew = newItemsToAdd.map(t => ({
+        treatmentId: null,
+        drugId: t.itemId,
+        drugName: t.itemName,
+        dispUnit: t.dispU ?? "",
+        dosage: t.dosage ?? "",
+        frequency: t.frequencyId ?? "",
+        days: t.noOfDays ?? "",
+        total: t.total ?? "",
+        instruction: t.instruction ?? "",
+        stock: t.stocks ?? "",
+        templateId: String(templateId)    // IMPORTANT
+      }));
+
+      if (isOnlyDefaultTreatmentRow(updatedList)) {
+        return formattedNew;
+      }
+
+      return [...updatedList, ...formattedNew];
+    });
+
+    setSelectedTreatmentTemplateIds(prev => new Set([...prev, templateId]));
+    setSelectedTreatmentTemplateId("Select..");
+  };
+
+  console.log("diagnosisItems", diagnosisItems)
+
+  const calculateTotal = (item) => {
+    if (!item.dosage || !item.days || !item.frequency || !item.itemClassName) {
+      return "";
+    }
+
+    const dosage = parseFloat(item.dosage) || 0;
+    const days = parseFloat(item.days) || 0;
+
+    const selectedFrequency = allFrequencies.find(
+      f => f.frequencyId === Number(item.frequency)
+    );
+    const frequencyMultiplier = selectedFrequency ? Number(selectedFrequency.feq) : 1;
+
+    // Convert string like "TABLET" into its class ID (1)
+    let itemClassId = item.itemClassName;
+
+    if (typeof itemClassId === "string") {
+      itemClassId = ITEM_CLASS[item.itemClassName] || null;
+    } else {
+      itemClassId = Number(itemClassId);
+    }
+
+    if (!itemClassId) {
+      return ""; // invalid class
+    }
+
+    let total = 0;
+
+    // SOLID ITEMS (TABLET / CAPSULE)
+    if (DRUG_TYPE.SOLID.includes(itemClassId)) {
+      total = Math.ceil(dosage * frequencyMultiplier * days);
+    }
+    // LIQUID ITEMS (SYRUP, DROPS...)
+    else if (DRUG_TYPE.LIQUID.includes(itemClassId)) {
+      if (item.aDispQty && item.aDispQty > 0) {
+        total = Math.ceil((dosage * frequencyMultiplier * days) / item.aDispQty);
+      } else {
+        total = Math.ceil(dosage * frequencyMultiplier * days);
+      }
+    }
+    // DEFAULT
+    else {
+      total = 1;
+    }
+
+    return total.toString();
+  };
+
+
 
   const handleTreatmentChange = (index, field, value) => {
-    const newItems = [...treatmentItems]
-    newItems[index] = { ...newItems[index], [field]: value }
-    setTreatmentItems(newItems)
-  }
+    const updated = [...treatmentItems];
+
+    updated[index] = {
+      ...updated[index],
+      [field]: value
+    };
+
+    const fieldsToRecalculate = [
+      "dosage",
+      "days",
+      "frequency",
+      "itemClassName",
+      "aDispQty"
+    ];
+
+    if (fieldsToRecalculate.includes(field)) {
+      updated[index].total = calculateTotal(updated[index]);
+    }
+
+    setTreatmentItems(updated);
+  };
+
+
+
 
   const handleNipSearchChange = (value) => {
     setNipSearchInput(value)
@@ -1048,16 +1683,8 @@ const [referralData, setReferralData] = useState({
     setSurgeryItems(newItems)
   }
 
-  const filteredList = recallPatients.filter((item) => {
-    const matchesMobile = searchFilters.mobileNumber === "" || 
-      item.mobileNo.includes(searchFilters.mobileNumber)
-    const matchesPatient = searchFilters.patientName === "" ||
-      item.patientName.toLowerCase().includes(searchFilters.patientName.toLowerCase())
-    return matchesMobile && matchesPatient
-  })
-
-  const filteredTotalPages = Math.ceil(filteredList.length / itemsPerPage)
-  const currentItems = filteredList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const filteredTotalPages = Math.ceil(recallPatientOpd.length / itemsPerPage)
+  const currentItems = recallPatientOpd.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const handlePageNavigation = () => {
     const pageNumber = Number.parseInt(pageInput, 10)
@@ -1130,6 +1757,19 @@ const [referralData, setReferralData] = useState({
                   </button>
                 </div>
               </div>
+              {popupMessage && (
+                <Popup
+                  message={popupMessage.message}
+                  type={popupMessage.type}
+                  onClose={popupMessage.onClose}
+                />
+              )}
+
+              <DuplicatePopup
+                show={showDuplicatePopup}
+                duplicates={duplicateItems}
+                onClose={() => setShowDuplicatePopup(false)}
+              />
 
               <div className="mb-3 card" style={{ border: "none" }}>
                 <div className="card-header py-3">
@@ -1148,6 +1788,7 @@ const [referralData, setReferralData] = useState({
                             id="mobileNo"
                             name="mobileNo"
                             className="form-control"
+                            value={selectedPatient?.mobileNo}
                             maxLength={10}
                             placeholder="Enter Mobile Number"
                             readOnly
@@ -1160,6 +1801,7 @@ const [referralData, setReferralData] = useState({
                           <input
                             type="text"
                             id="gender"
+                            value={selectedPatient?.gender}
                             name="gender"
                             className="form-control"
                             placeholder="Select"
@@ -1173,6 +1815,7 @@ const [referralData, setReferralData] = useState({
                           <input
                             type="text"
                             id="relation"
+                            value={selectedPatient?.relation}
                             name="relation"
                             className="form-control"
                             placeholder="Select"
@@ -1186,6 +1829,7 @@ const [referralData, setReferralData] = useState({
                           <input
                             type="text"
                             id="dob"
+                            value={selectedPatient?.dob}
                             name="dob"
                             className="form-control"
                             placeholder="dd/mm/yyyy"
@@ -1196,7 +1840,7 @@ const [referralData, setReferralData] = useState({
                           <label className="form-label" htmlFor="age">
                             Age
                           </label>
-                          <input type="text" id="age" name="age" className="form-control" placeholder="Enter Age" readOnly />
+                          <input type="text" id="age" value={selectedPatient?.age} name="age" className="form-control" placeholder="Enter Age" readOnly />
                         </div>
                       </div>
                     </div>
@@ -1294,6 +1938,8 @@ const [referralData, setReferralData] = useState({
                                 className="form-control"
                                 rows={3}
                                 name="pastHistory"
+                                value={formData.pastHistory}
+                                onChange={handleChange}
                                 placeholder="Enter Past History"
                               ></textarea>
                             </div>
@@ -1303,6 +1949,8 @@ const [referralData, setReferralData] = useState({
                                 className="form-control"
                                 rows={3}
                                 name="FamilyHistory"
+                                value={formData.familyHistory}
+                                onChange={handleChange}
                                 placeholder="Enter Family History"
                               ></textarea>
                             </div>
@@ -1492,7 +2140,7 @@ const [referralData, setReferralData] = useState({
                         <input
                           type="text"
                           className="form-control"
-                          style={{ width: "200px" }}
+                          style={{ width: "400px" }}
                           value={workingDiagnosis}
                           onChange={(e) => setWorkingDiagnosis(e.target.value)}
                           placeholder="Enter working diagnosis"
@@ -1514,14 +2162,54 @@ const [referralData, setReferralData] = useState({
                             {diagnosisItems.map((item, index) => (
                               <tr key={index}>
                                 <td>
-                                  <input
-                                    type="text"
+                                  <select
                                     className="form-control"
-                                    value={item.icdDiagnosis}
-                                    onChange={(e) => handleDiagnosisChange(index, "icdDiagnosis", e.target.value)}
-                                    placeholder="Enter ICD diagnosis"
-                                  />
+                                    value={item.icdDiagId}
+                                    onChange={(e) => {
+                                      const icdId = String(e.target.value);
+
+                                      const selectedICD = masICDData.find(
+                                        (i) => String(i.icdId) === icdId
+                                      );
+
+                                      if (!selectedICD) return;
+
+                                      const alreadyExists = diagnosisItems.some(
+                                        (item, idx) => String(item.icdDiagId) === String(icdId) && idx !== index
+                                      );
+
+                                      if (alreadyExists) {
+                                        setDuplicateItems([{ icdDiagnosis: selectedICD.icdName }]);
+                                        setShowDuplicatePopup(true);
+                                        return;
+                                      }
+
+                                      setDiagnosisItems((prev) => {
+                                        const updated = [...prev];
+                                        updated[index] = {
+                                          ...updated[index],
+                                          icdDiagId: Number(icdId),
+                                          icdDiagnosis: selectedICD.icdName,
+                                        };
+                                        return updated;
+                                      });
+                                    }}
+
+
+                                  >
+                                    <option value="">-- Select ICD --</option>
+
+                                    {masICDData.map((icd) => (
+                                      <option key={icd.icdId} value={icd.icdId}>
+                                        {icd.icdCode} - {icd.icdName}
+                                      </option>
+                                    ))}
+                                  </select>
+
+
                                 </td>
+
+
                                 <td className="text-center">
                                   <input
                                     type="checkbox"
@@ -1589,7 +2277,7 @@ const [referralData, setReferralData] = useState({
                                     className="btn btn-sm btn-outline-danger"
                                     onClick={handleClearAllTemplates}
                                   >
-                                    Clear All
+                                    Clear All Templates
                                   </button>
                                 </div>
                               </div>
@@ -1686,7 +2374,7 @@ const [referralData, setReferralData] = useState({
                                       value={type.value}
                                       checked={investigationType === type.value}
                                       onChange={(e) => {
-                                        console.log("Radio button selected:", e.target.value)
+                                        // console.log("Radio button selected:", e.target.value)
                                         setInvestigationType(e.target.value)
                                       }}
                                     />
@@ -1822,6 +2510,7 @@ const [referralData, setReferralData] = useState({
                                   >
                                     −
                                   </button>
+
                                 </td>
                               </tr>
                             ))}
@@ -1840,25 +2529,90 @@ const [referralData, setReferralData] = useState({
                     onClick={() => toggleSection("treatment")}
                   >
                     <h6 className="mb-0 fw-bold">Treatment</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.treatment ? "−" : "+"}</span>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.treatment ? "−" : "+"}
+                    </span>
                   </div>
+
                   {expandedSections.treatment && (
                     <div className="card-body">
-                      <div className="row g-3 mb-3">
-                        <div className="col-md-4">
+
+                      {/* Selected Templates Display */}
+                      {selectedTreatmentTemplateIds.size > 0 && (
+                        <div className="row mb-3">
+                          <div className="col-12">
+                            <div className="card">
+                              <div className="card-header py-2 bg-light">
+                                <div className="d-flex justify-content-between align-items-center">
+                                  <h6 className="mb-0 fw-bold">Selected Templates</h6>
+
+                                  <button
+                                    className="btn btn-sm btn-outline-danger"
+                                    onClick={handleClearAllTreatmentTemplates}
+                                  >
+                                    Clear All Templates
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="card-body">
+                                <div className="d-flex flex-wrap gap-2">
+                                  {Array.from(selectedTreatmentTemplateIds).map((templateId) => {
+                                    const template = opdTemplateData.find(t => t.templateId == templateId)
+                                    return template ? (
+                                      <span key={templateId} className="badge bg-primary d-flex align-items-center gap-1">
+                                        {template.opdTemplateName}
+                                        <button
+                                          type="button"
+                                          className="btn-close btn-close-white"
+                                          style={{ fontSize: "0.7rem" }}
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            handleRemoveTreatmentTemplateItems(templateId)
+                                          }}
+                                          aria-label="Remove template"
+                                        ></button>
+                                      </span>
+                                    ) : null
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Template Dropdown + Create/Update Buttons */}
+                      <div className="row mb-3 align-items-center">
+                        <div className="col-md-2">
                           <label className="form-label fw-bold">Template</label>
+                        </div>
+
+                        <div className="col-md-4">
                           <select
                             className="form-select"
-                            value={selectedBloodTestTemplate}
-                            onChange={(e) => setSelectedBloodTestTemplate(e.target.value)}
+                            value={selectedTreatmentTemplateId}
+                            onChange={(e) => handleTreatmentTemplateSelect(e.target.value)}
                           >
                             <option value="Select..">Select..</option>
-                            <option value="Blood Test Template">Blood Test Template</option>
+
+                            {opdTemplateData.map((item) => (
+                              <option
+                                key={item.templateId}
+                                value={item.templateId}
+                                disabled={selectedTreatmentTemplateIds.has(item.templateId)}
+                              >
+                                {item.opdTemplateName}
+                                {selectedTreatmentTemplateIds.has(item.templateId) ? " (Already Added)" : ""}
+                              </option>
+                            ))}
                           </select>
+
                         </div>
-                        <div className="col-md-8 d-flex align-items-end gap-2">
+
+                        <div className="col-md-6">
                           <button
-                            className="btn btn-primary"
+                            className="btn btn-primary me-2"
                             onClick={() => handleOpenTreatmentModal("create")}
                           >
                             Create Template
@@ -1869,143 +2623,234 @@ const [referralData, setReferralData] = useState({
                           >
                             Update Template
                           </button>
-                          <button className="btn btn-primary" onClick={handleOpenCurrentMedicationModal}>
+                          <button
+                            className="btn btn-primary ms-2"
+                            onClick={handleOpenCurrentMedicationModal}
+                          >
                             Current Medication
                           </button>
                         </div>
                       </div>
 
-                      <div className="table-responsive">
+                      {/* Treatment Table */}
+                      <div className="table-responsive" ref={tableContainerRef}>
                         <table className="table table-bordered">
                           <thead style={{ backgroundColor: "#b0c4de" }}>
                             <tr>
-                              <th style={{ minWidth: 370 }}>Drugs Name/Drugs Code</th>
-                              <th className="text-center" style={{ minWidth: 100, maxWidth: 140 }}>
-                                Disp. Unit
-                              </th>
-                              <th className="text-center" style={{ minWidth: 50, maxWidth: 80 }}>
-                                Dosage
-                              </th>
-                              <th className="text-center" style={{ minWidth: 120, maxWidth: 180 }}>
-                                Frequency
-                              </th>
-                              <th className="text-center" style={{ minWidth: 80, maxWidth: 100 }}>
-                                Days
-                              </th>
-                              <th className="text-center" style={{ minWidth: 80, maxWidth: 100 }}>
-                                Total
-                              </th>
-                              <th className="text-center" style={{ minWidth: 10 }}>
-                                Instruction
-                              </th>
-                              <th className="text-center" style={{ minWidth: 85 }}>
-                                Stock
-                              </th>
-                              <th className="text-center" style={{ minWidth: 10 }}>
-                                Add
-                              </th>
-                              <th className="text-center" style={{ minWidth: 10 }}>
-                                Delete
-                              </th>
+                              <th style={{ width: "350px" }}>Drug Name</th>
+                              <th style={{ width: "90px" }} className="text-center">Disp. Unit</th>
+                              <th style={{ width: "70px" }} className="text-center">Dosage</th>
+                              <th style={{ width: "120px" }} className="text-center">Frequency</th>
+                              <th style={{ width: "70px" }} className="text-center">Days</th>
+                              <th style={{ width: "70px" }} className="text-center">Total</th>
+                              <th style={{ width: "130px" }} className="text-center">Instruction</th>
+                              <th style={{ width: "100px" }} className="text-center">Stock</th>
+                              <th style={{ width: "60px" }} className="text-center">Add</th>
+                              <th style={{ width: "60px" }} className="text-center">Delete</th>
                             </tr>
                           </thead>
+
+
                           <tbody>
                             {treatmentItems.map((row, index) => (
                               <tr key={index}>
-                                <td>
+                                <td style={{ position: "relative" }}>
+                                  <input
+                                    id={`drug-name-${index}`}
+                                    type="text"
+                                    className="form-control form-control-sm"
+                                    value={row.drugName}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      handleTreatmentChange(index, "drugName", value);
+
+                                      if (value.length > 0) {
+                                        setActiveDrugNameDropdown(index);
+                                      } else {
+                                        setActiveDrugNameDropdown(null);
+                                      }
+                                    }}
+                                    placeholder="Drug Name"
+                                    style={{ width: "100%" }}
+                                    autoComplete="off"
+                                    onFocus={() => setActiveDrugNameDropdown(index)}
+                                    onBlur={() => {
+                                      setTimeout(() => {
+                                        if (!drugNameDropdownClickedRef.current) {
+                                          setActiveDrugNameDropdown(null);
+                                        }
+                                        drugNameDropdownClickedRef.current = false;
+                                      }, 150);
+                                    }}
+                                  />
+
+                                  {activeDrugNameDropdown === index && (
+                                    <ul
+                                      className="list-group"
+                                      style={{
+                                        position: "absolute",
+                                        top: "100%",
+                                        left: 0,
+                                        width: "100%",
+                                        maxHeight: "130px",
+                                        overflowY: "auto",
+                                        backgroundColor: "white",
+                                        border: "1px solid #dee2e6",
+                                        borderRadius: "0.375rem",
+                                        zIndex: 9999,
+                                        boxShadow: "0 0.5rem 1rem rgba(0,0,0,0.15)",
+                                      }}
+                                    >
+                                      {drugCodeOptions
+                                        .filter((opt) =>
+                                          opt.nomenclature.toLowerCase().includes(row.drugName.toLowerCase())
+                                        )
+                                        .map((opt) => (
+                                          <li
+                                            key={opt.itemId}
+                                            className="list-group-item list-group-item-action"
+                                            style={{ cursor: "pointer" }}
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              drugNameDropdownClickedRef.current = true;
+                                            }}
+                                            onClick={() => {
+                                              const isDuplicate = treatmentItems.some(
+                                                (item, i) => item.drugId === opt.itemId && i !== index
+                                              );
+
+                                              if (isDuplicate) {
+                                                setDuplicateItems([opt]);
+                                                setShowDuplicatePopup(true);
+                                                return;
+                                              }
+
+                                              const updatedRows = treatmentItems.map((r, i) => {
+                                                if (i === index) {
+                                                  const updatedItem = {
+                                                    ...r,
+                                                    drugName: opt.nomenclature,
+                                                    dispUnit: opt.dispUnitName,
+                                                    drugId: opt.itemId,
+                                                    itemClassName: opt.itemClassName,
+                                                    aDispQty: opt.adispQty ?? 0
+                                                  };
+
+                                                  updatedItem.total = calculateTotal(updatedItem);
+                                                  return updatedItem;
+                                                }
+                                                return r;
+                                              });
+
+                                              setTreatmentItems(updatedRows);
+                                              setActiveDrugNameDropdown(null);
+                                              drugNameDropdownClickedRef.current = false;
+                                            }}
+
+
+                                          >
+                                            <strong>{opt.nomenclature}</strong> — {opt.pvmsNo}
+                                          </li>
+                                        ))}
+
+                                      {drugCodeOptions.filter((opt) =>
+                                        opt.nomenclature.toLowerCase().includes(row.drugName.toLowerCase())
+                                      ).length === 0 &&
+                                        row.drugName !== "" && (
+                                          <li className="list-group-item text-muted">No matches found</li>
+                                        )}
+                                    </ul>
+                                  )}
+                                </td>
+
+                                <td style={{ width: "90px" }}>
                                   <input
                                     type="text"
                                     className="form-control"
-                                    style={{ fontSize: "1.125rem" }}
-                                    value={row.drugName}
-                                    onChange={(e) => handleTreatmentChange(index, "drugName", e.target.value)}
-                                    placeholder="Enter drug name or code"
-                                  />
-                                </td>
-                                <td>
-                                  <select
-                                    className="form-select"
-                                    style={{ fontSize: "1.05rem" }}
                                     value={row.dispUnit}
-                                    onChange={(e) => handleTreatmentChange(index, "dispUnit", e.target.value)}
-                                  >
-                                    <option value="Tab">Tab</option>
-                                    <option value="Cap">Cap</option>
-                                    <option value="Syr">Syr</option>
-                                  </select>
+                                    onChange={(e) =>
+                                      handleTreatmentChange(index, "dispUnit", e.target.value)
+                                    }
+                                    readOnly
+                                  />
                                 </td>
-                                <td>
+
+                                <td style={{ width: "70px" }}>
                                   <input
                                     type="number"
                                     className="form-control"
-                                    style={{ fontSize: "0.75rem" }}
                                     value={row.dosage}
-                                    onChange={(e) => handleTreatmentChange(index, "dosage", e.target.value)}
-                                    placeholder="1"
+                                    onChange={(e) =>
+                                      handleTreatmentChange(index, "dosage", e.target.value)
+                                    }
                                   />
                                 </td>
-                                <td>
+
+                                <td style={{ width: "120px" }}>
                                   <select
                                     className="form-select"
-                                    style={{ fontSize: "1.125rem" }}
                                     value={row.frequency}
-                                    onChange={(e) => handleTreatmentChange(index, "frequency", e.target.value)}
+                                    onChange={(e) =>
+                                      handleTreatmentChange(index, "frequency", e.target.value)
+                                    }
                                   >
-                                    <option value="OD">OD</option>
-                                    <option value="BID">BID</option>
-                                    <option value="TID">TID</option>
-                                    <option value="QID">QID</option>
-                                    <option value="HS">HS</option>
-                                    <option value="SOS">SOS</option>
+                                    <option value="">Select..</option>
+                                    {allFrequencies.map((f) => (
+                                      <option key={f.frequencyId} value={f.frequencyId}>
+                                        {f.frequencyName}
+                                      </option>
+                                    ))}
                                   </select>
                                 </td>
-                                <td>
+
+                                <td style={{ width: "70px" }}>
                                   <input
                                     type="number"
                                     className="form-control"
-                                    style={{ fontSize: "0.875rem" }}
                                     value={row.days}
-                                    onChange={(e) => handleTreatmentChange(index, "days", e.target.value)}
-                                    placeholder="0"
+                                    onChange={(e) =>
+                                      handleTreatmentChange(index, "days", e.target.value)
+                                    }
                                   />
                                 </td>
-                                <td>
+
+                                <td style={{ width: "70px" }}>
                                   <input
                                     type="number"
                                     className="form-control"
-                                    style={{ fontSize: "0.875rem" }}
                                     value={row.total}
-                                    onChange={(e) => handleTreatmentChange(index, "total", e.target.value)}
-                                    placeholder="0"
+                                    onChange={(e) =>
+                                      handleTreatmentChange(index, "total", e.target.value)
+                                    }
                                   />
                                 </td>
-                                <td>
+
+                                <td style={{ width: "140px" }}>
                                   <select
                                     className="form-select"
                                     value={row.instruction}
-                                    onChange={(e) => handleTreatmentChange(index, "instruction", e.target.value)}
+                                    onChange={(e) =>
+                                      handleTreatmentChange(index, "instruction", e.target.value)
+                                    }
                                   >
                                     <option value="">Select...</option>
                                     <option value="After Meal">After Meal</option>
                                     <option value="Before Meal">Before Meal</option>
+                                    <option value="With Food">With Food</option>
                                   </select>
                                 </td>
 
-                                <td>
-                                  <input
-                                    type="number"
-                                    className="form-control"
-                                    style={{ fontSize: "0.875rem" }}
-                                    placeholder="0"
-                                  />
+                                <td style={{ width: "100px" }}>
+                                  <input type="number" className="form-control" value={row.stock} readOnly />
                                 </td>
 
-                                <td className="text-center">
+                                <td style={{ width: "60px" }} className="text-center">
                                   <button className="btn btn-sm btn-success" onClick={handleAddTreatmentItem}>
                                     +
                                   </button>
                                 </td>
-                                <td className="text-center">
+
+                                <td style={{ width: "60px" }} className="text-center">
                                   <button
                                     className="btn btn-sm btn-danger"
                                     onClick={() => handleRemoveTreatmentItem(index)}
@@ -2015,6 +2860,7 @@ const [referralData, setReferralData] = useState({
                                   </button>
                                 </td>
                               </tr>
+
                             ))}
                           </tbody>
                         </table>
@@ -2022,6 +2868,7 @@ const [referralData, setReferralData] = useState({
                     </div>
                   )}
                 </div>
+
 
                 {/* NIP Section */}
                 <div className="card mb-3">
@@ -2765,357 +3612,356 @@ const [referralData, setReferralData] = useState({
                   )}
                 </div>
 
-                {/* Referral Section - UPDATED BASED ON SCREENSHOTS */}
-                {/* Referral Section - UPDATED BASED ON SCREENSHOTS */}
-<div className="card mb-3">
-  <div
-    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
-    style={{ cursor: "pointer" }}
-    onClick={() => toggleSection("referral")}
-  >
-    <h6 className="mb-0 fw-bold">Referral</h6>
-    <span style={{ fontSize: "18px" }}>{expandedSections.referral ? "−" : "+"}</span>
-  </div>
-  {expandedSections.referral && (
-    <div className="card-body">
-      <div className="row mb-3">
-        <div className="col-md-2">
-          <label className="form-label fw-bold">Referral</label>
-          <div className="d-flex gap-3">
-            <div className="form-check">
-              <input
-                className="form-check-input"
-                type="radio"
-                name="isReferred"
-                id="referralNo"
-                value="No"
-                checked={referralData.isReferred === "No"}
-                onChange={(e) => handleReferralChange("isReferred", e.target.value)}
-              />
-              <label className="form-check-label" htmlFor="referralNo">
-                No
-              </label>
-            </div>
-            <div className="form-check">
-              <input
-                className="form-check-input"
-                type="radio"
-                name="isReferred"
-                id="referralYes"
-                value="Yes"
-                checked={referralData.isReferred === "Yes"}
-                onChange={(e) => handleReferralChange("isReferred", e.target.value)}
-              />
-              <label className="form-check-label" htmlFor="referralYes">
-                Yes
-              </label>
-            </div>
-          </div>
-        </div>
 
-        {referralData.isReferred === "Yes" && (
-          <>
-            <div className="col-md-2">
-              <label className="form-label fw-bold">Refer To</label>
-              <select
-                className="form-select"
-                value={referralData.referTo}
-                onChange={(e) => handleReferralChange("referTo", e.target.value)}
-              >
-                <option value="">Select...</option>
-                <option value="Internal">Internal</option>
-                <option value="Empanel">Empanel</option>
-                <option value="Both">Both</option>
-              </select>
-            </div>
-
-            <div className="col-md-2">
-              <label className="form-label fw-bold">Refer Date:</label>
-              <input
-                type="date"
-                className="form-control"
-                value={referralData.referralDate}
-                onChange={(e) => handleReferralChange("referralDate", e.target.value)}
-              />
-            </div>
-          </>
-        )}
-      </div>
-
-      {referralData.isReferred === "Yes" && (
-        <>
-          {/* INTERNAL REFERRAL */}
-          {referralData.referTo === "Internal" && (
-            <>
-              <div className="row mb-3">
-                <div className="col-md-2">
-                  <label className="form-label fw-bold">Current Priority No.</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={referralData.currentPriorityNo}
-                    onChange={(e) => handleReferralChange("currentPriorityNo", e.target.value)}
-                    placeholder="Enter priority no"
-                  />
-                </div>
-              </div>
-
-              <hr className="my-4" />
-
-              <div className="row mb-3">
-                <div className="col-12">
-                  <h6 className="fw-bold mb-3">Department</h6>
-                  <div className="table-responsive">
-                    <table className="table table-bordered">
-                      <thead style={{ backgroundColor: "#b0c4de" }}>
-                        <tr>
-                          <th style={{ width: "10%" }}>Select</th>
-                          <th style={{ width: "70%" }}>Doctor</th>
-                          <th style={{ width: "10%" }}>Add</th>
-                          <th style={{ width: "10%" }}>Delete</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {departmentData.map((item, index) => (
-                          <tr key={index}>
-                            <td className="text-center">
+                <div className="card mb-3">
+                  <div
+                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("referral")}
+                  >
+                    <h6 className="mb-0 fw-bold">Referral</h6>
+                    <span style={{ fontSize: "18px" }}>{expandedSections.referral ? "−" : "+"}</span>
+                  </div>
+                  {expandedSections.referral && (
+                    <div className="card-body">
+                      <div className="row mb-3">
+                        <div className="col-md-2">
+                          <label className="form-label fw-bold">Referral</label>
+                          <div className="d-flex gap-3">
+                            <div className="form-check">
                               <input
-                                type="checkbox"
                                 className="form-check-input"
-                                checked={item.selected}
-                                onChange={(e) => handleDepartmentChange(index, "selected", e.target.checked)}
+                                type="radio"
+                                name="isReferred"
+                                id="referralNo"
+                                value="No"
+                                checked={referralData.isReferred === "No"}
+                                onChange={(e) => handleReferralChange("isReferred", e.target.value)}
                               />
-                            </td>
-                            <td>
+                              <label className="form-check-label" htmlFor="referralNo">
+                                No
+                              </label>
+                            </div>
+                            <div className="form-check">
+                              <input
+                                className="form-check-input"
+                                type="radio"
+                                name="isReferred"
+                                id="referralYes"
+                                value="Yes"
+                                checked={referralData.isReferred === "Yes"}
+                                onChange={(e) => handleReferralChange("isReferred", e.target.value)}
+                              />
+                              <label className="form-check-label" htmlFor="referralYes">
+                                Yes
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+
+                        {referralData.isReferred === "Yes" && (
+                          <>
+                            <div className="col-md-2">
+                              <label className="form-label fw-bold">Refer To</label>
                               <select
                                 className="form-select"
-                                value={item.doctor}
-                                onChange={(e) => handleDepartmentChange(index, "doctor", e.target.value)}
+                                value={referralData.referTo}
+                                onChange={(e) => handleReferralChange("referTo", e.target.value)}
                               >
-                                <option value="Select">Select</option>
-                                <option value="Dr. Smith">Dr. Smith</option>
-                                <option value="Dr. Johnson">Dr. Johnson</option>
-                                <option value="Dr. Williams">Dr. Williams</option>
-                                <option value="Dr. Brown">Dr. Brown</option>
+                                <option value="">Select...</option>
+                                <option value="Internal">Internal</option>
+                                <option value="Empanel">Empanel</option>
+                                <option value="Both">Both</option>
                               </select>
-                            </td>
-                            <td className="text-center">
-                              <button className="btn btn-sm btn-success" onClick={handleAddDepartment}>
-                                +
-                              </button>
-                            </td>
-                            <td className="text-center">
-                              <button
-                                className="btn btn-sm btn-danger"
-                                onClick={() => handleRemoveDepartment(index)}
-                                disabled={departmentData.length === 1}
-                              >
-                                −
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
+                            </div>
 
-          {/* EMPANEL REFERRAL */}
-          {referralData.referTo === "Empanel" && (
-            <>
-              <div className="row mb-3">
-                <div className="col-md-2">
-                  <label className="form-label fw-bold">Hospital *</label>
-                  <select
-                    className="form-select"
-                    value={referralData.hospital}
-                    onChange={(e) => handleReferralChange("hospital", e.target.value)}
-                  >
-                    <option value="">Select...</option>
-                    <option value="Hospital A">Hospital A</option>
-                    <option value="Hospital B">Hospital B</option>
-                    <option value="Hospital C">Hospital C</option>
-                  </select>
-                </div>
-                <div className="col-md-2">
-                  <label className="form-label fw-bold">No. of Days</label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    value={referralData.noOfDays}
-                    onChange={(e) => handleReferralChange("noOfDays", e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="col-md-2">
-                  <label className="form-label fw-bold">Treatment Type *</label>
-                  <select
-                    className="form-select"
-                    value={referralData.treatmentType}
-                    onChange={(e) => handleReferralChange("treatmentType", e.target.value)}
-                  >
-                    <option value="OPD">OPD</option>
-                    <option value="IPD">IPD</option>
-                  </select>
-                </div>
-                <div className="col-md-2">
-                  <label className="form-label fw-bold">Referred For*</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={referralData.referredFor}
-                    onChange={(e) => handleReferralChange("referredFor", e.target.value)}
-                    placeholder="Referred for"
-                  />
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* BOTH REFERRAL */}
-          {referralData.referTo === "Both" && (
-            <>
-              <div className="row mb-3">
-                <div className="col-md-2">
-                  <label className="form-label fw-bold">Current Priority No.</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={referralData.currentPriorityNo}
-                    onChange={(e) => handleReferralChange("currentPriorityNo", e.target.value)}
-                    placeholder="Enter priority no"
-                  />
-                </div>
-                <div className="col-md-2">
-                  <label className="form-label fw-bold">Hospital *</label>
-                  <select
-                    className="form-select"
-                    value={referralData.hospital}
-                    onChange={(e) => handleReferralChange("hospital", e.target.value)}
-                  >
-                    <option value="">Select...</option>
-                    <option value="Hospital A">Hospital A</option>
-                    <option value="Hospital B">Hospital B</option>
-                    <option value="Hospital C">Hospital C</option>
-                  </select>
-                </div>
-                <div className="col-md-2">
-                  <label className="form-label fw-bold">No. of Days</label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    value={referralData.noOfDays}
-                    onChange={(e) => handleReferralChange("noOfDays", e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="col-md-2">
-                  <label className="form-label fw-bold">Treatment Type *</label>
-                  <select
-                    className="form-select"
-                    value={referralData.treatmentType}
-                    onChange={(e) => handleReferralChange("treatmentType", e.target.value)}
-                  >
-                    <option value="OPD">OPD</option>
-                    <option value="IPD">IPD</option>
-                  </select>
-                </div>
-                <div className="col-md-2">
-                  <label className="form-label fw-bold">Referred For*</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={referralData.referredFor}
-                    onChange={(e) => handleReferralChange("referredFor", e.target.value)}
-                    placeholder="Referred for"
-                  />
-                </div>
-              </div>
-
-              <hr className="my-4" />
-
-              <div className="row mb-3">
-                <div className="col-12">
-                  <h6 className="fw-bold mb-3">Department</h6>
-                  <div className="table-responsive">
-                    <table className="table table-bordered">
-                      <thead style={{ backgroundColor: "#b0c4de" }}>
-                        <tr>
-                          <th style={{ width: "10%" }}>Select</th>
-                          <th style={{ width: "70%" }}>Doctor</th>
-                          <th style={{ width: "10%" }}>Add</th>
-                          <th style={{ width: "10%" }}>Delete</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {departmentData.map((item, index) => (
-                          <tr key={index}>
-                            <td className="text-center">
+                            <div className="col-md-2">
+                              <label className="form-label fw-bold">Refer Date:</label>
                               <input
-                                type="checkbox"
-                                className="form-check-input"
-                                checked={item.selected}
-                                onChange={(e) => handleDepartmentChange(index, "selected", e.target.checked)}
+                                type="date"
+                                className="form-control"
+                                value={referralData.referralDate}
+                                onChange={(e) => handleReferralChange("referralDate", e.target.value)}
                               />
-                            </td>
-                            <td>
-                              <select
-                                className="form-select"
-                                value={item.doctor}
-                                onChange={(e) => handleDepartmentChange(index, "doctor", e.target.value)}
-                              >
-                                <option value="Select">Select</option>
-                                <option value="Dr. Smith">Dr. Smith</option>
-                                <option value="Dr. Johnson">Dr. Johnson</option>
-                                <option value="Dr. Williams">Dr. Williams</option>
-                                <option value="Dr. Brown">Dr. Brown</option>
-                              </select>
-                            </td>
-                            <td className="text-center">
-                              <button className="btn btn-sm btn-success" onClick={handleAddDepartment}>
-                                +
-                              </button>
-                            </td>
-                            <td className="text-center">
-                              <button
-                                className="btn btn-sm btn-danger"
-                                onClick={() => handleRemoveDepartment(index)}
-                                disabled={departmentData.length === 1}
-                              >
-                                −
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
+                            </div>
+                          </>
+                        )}
+                      </div>
 
-          {/* REFERRAL NOTES (COMMON FOR ALL TYPES) */}
-          <div className="row">
-            <div className="col-12">
-              <h6 className="fw-bold mb-3">Referral Notes</h6>
-              <textarea
-                className="form-control"
-                rows={4}
-                value={referralNotes}
-                onChange={(e) => setReferralNotes(e.target.value)}
-                placeholder="Enter referral notes"
-              ></textarea>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  )}
-</div>
+                      {referralData.isReferred === "Yes" && (
+                        <>
+                          {/* INTERNAL REFERRAL */}
+                          {referralData.referTo === "Internal" && (
+                            <>
+                              <div className="row mb-3">
+                                <div className="col-md-2">
+                                  <label className="form-label fw-bold">Current Priority No.</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={referralData.currentPriorityNo}
+                                    onChange={(e) => handleReferralChange("currentPriorityNo", e.target.value)}
+                                    placeholder="Enter priority no"
+                                  />
+                                </div>
+                              </div>
+
+                              <hr className="my-4" />
+
+                              <div className="row mb-3">
+                                <div className="col-12">
+                                  <h6 className="fw-bold mb-3">Department</h6>
+                                  <div className="table-responsive">
+                                    <table className="table table-bordered">
+                                      <thead style={{ backgroundColor: "#b0c4de" }}>
+                                        <tr>
+                                          <th style={{ width: "10%" }}>Select</th>
+                                          <th style={{ width: "70%" }}>Doctor</th>
+                                          <th style={{ width: "10%" }}>Add</th>
+                                          <th style={{ width: "10%" }}>Delete</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {departmentData.map((item, index) => (
+                                          <tr key={index}>
+                                            <td className="text-center">
+                                              <input
+                                                type="checkbox"
+                                                className="form-check-input"
+                                                checked={item.selected}
+                                                onChange={(e) => handleDepartmentChange(index, "selected", e.target.checked)}
+                                              />
+                                            </td>
+                                            <td>
+                                              <select
+                                                className="form-select"
+                                                value={item.doctor}
+                                                onChange={(e) => handleDepartmentChange(index, "doctor", e.target.value)}
+                                              >
+                                                <option value="Select">Select</option>
+                                                <option value="Dr. Smith">Dr. Smith</option>
+                                                <option value="Dr. Johnson">Dr. Johnson</option>
+                                                <option value="Dr. Williams">Dr. Williams</option>
+                                                <option value="Dr. Brown">Dr. Brown</option>
+                                              </select>
+                                            </td>
+                                            <td className="text-center">
+                                              <button className="btn btn-sm btn-success" onClick={handleAddDepartment}>
+                                                +
+                                              </button>
+                                            </td>
+                                            <td className="text-center">
+                                              <button
+                                                className="btn btn-sm btn-danger"
+                                                onClick={() => handleRemoveDepartment(index)}
+                                                disabled={departmentData.length === 1}
+                                              >
+                                                −
+                                              </button>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          {/* EMPANEL REFERRAL */}
+                          {referralData.referTo === "Empanel" && (
+                            <>
+                              <div className="row mb-3">
+                                <div className="col-md-2">
+                                  <label className="form-label fw-bold">Hospital *</label>
+                                  <select
+                                    className="form-select"
+                                    value={referralData.hospital}
+                                    onChange={(e) => handleReferralChange("hospital", e.target.value)}
+                                  >
+                                    <option value="">Select...</option>
+                                    <option value="Hospital A">Hospital A</option>
+                                    <option value="Hospital B">Hospital B</option>
+                                    <option value="Hospital C">Hospital C</option>
+                                  </select>
+                                </div>
+                                <div className="col-md-2">
+                                  <label className="form-label fw-bold">No. of Days</label>
+                                  <input
+                                    type="number"
+                                    className="form-control"
+                                    value={referralData.noOfDays}
+                                    onChange={(e) => handleReferralChange("noOfDays", e.target.value)}
+                                    placeholder="0"
+                                  />
+                                </div>
+                                <div className="col-md-2">
+                                  <label className="form-label fw-bold">Treatment Type *</label>
+                                  <select
+                                    className="form-select"
+                                    value={referralData.treatmentType}
+                                    onChange={(e) => handleReferralChange("treatmentType", e.target.value)}
+                                  >
+                                    <option value="OPD">OPD</option>
+                                    <option value="IPD">IPD</option>
+                                  </select>
+                                </div>
+                                <div className="col-md-2">
+                                  <label className="form-label fw-bold">Referred For*</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={referralData.referredFor}
+                                    onChange={(e) => handleReferralChange("referredFor", e.target.value)}
+                                    placeholder="Referred for"
+                                  />
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          {/* BOTH REFERRAL */}
+                          {referralData.referTo === "Both" && (
+                            <>
+                              <div className="row mb-3">
+                                <div className="col-md-2">
+                                  <label className="form-label fw-bold">Current Priority No.</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={referralData.currentPriorityNo}
+                                    onChange={(e) => handleReferralChange("currentPriorityNo", e.target.value)}
+                                    placeholder="Enter priority no"
+                                  />
+                                </div>
+                                <div className="col-md-2">
+                                  <label className="form-label fw-bold">Hospital *</label>
+                                  <select
+                                    className="form-select"
+                                    value={referralData.hospital}
+                                    onChange={(e) => handleReferralChange("hospital", e.target.value)}
+                                  >
+                                    <option value="">Select...</option>
+                                    <option value="Hospital A">Hospital A</option>
+                                    <option value="Hospital B">Hospital B</option>
+                                    <option value="Hospital C">Hospital C</option>
+                                  </select>
+                                </div>
+                                <div className="col-md-2">
+                                  <label className="form-label fw-bold">No. of Days</label>
+                                  <input
+                                    type="number"
+                                    className="form-control"
+                                    value={referralData.noOfDays}
+                                    onChange={(e) => handleReferralChange("noOfDays", e.target.value)}
+                                    placeholder="0"
+                                  />
+                                </div>
+                                <div className="col-md-2">
+                                  <label className="form-label fw-bold">Treatment Type *</label>
+                                  <select
+                                    className="form-select"
+                                    value={referralData.treatmentType}
+                                    onChange={(e) => handleReferralChange("treatmentType", e.target.value)}
+                                  >
+                                    <option value="OPD">OPD</option>
+                                    <option value="IPD">IPD</option>
+                                  </select>
+                                </div>
+                                <div className="col-md-2">
+                                  <label className="form-label fw-bold">Referred For*</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={referralData.referredFor}
+                                    onChange={(e) => handleReferralChange("referredFor", e.target.value)}
+                                    placeholder="Referred for"
+                                  />
+                                </div>
+                              </div>
+
+                              <hr className="my-4" />
+
+                              <div className="row mb-3">
+                                <div className="col-12">
+                                  <h6 className="fw-bold mb-3">Department</h6>
+                                  <div className="table-responsive">
+                                    <table className="table table-bordered">
+                                      <thead style={{ backgroundColor: "#b0c4de" }}>
+                                        <tr>
+                                          <th style={{ width: "10%" }}>Select</th>
+                                          <th style={{ width: "70%" }}>Doctor</th>
+                                          <th style={{ width: "10%" }}>Add</th>
+                                          <th style={{ width: "10%" }}>Delete</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {departmentData.map((item, index) => (
+                                          <tr key={index}>
+                                            <td className="text-center">
+                                              <input
+                                                type="checkbox"
+                                                className="form-check-input"
+                                                checked={item.selected}
+                                                onChange={(e) => handleDepartmentChange(index, "selected", e.target.checked)}
+                                              />
+                                            </td>
+                                            <td>
+                                              <select
+                                                className="form-select"
+                                                value={item.doctor}
+                                                onChange={(e) => handleDepartmentChange(index, "doctor", e.target.value)}
+                                              >
+                                                <option value="Select">Select</option>
+                                                <option value="Dr. Smith">Dr. Smith</option>
+                                                <option value="Dr. Johnson">Dr. Johnson</option>
+                                                <option value="Dr. Williams">Dr. Williams</option>
+                                                <option value="Dr. Brown">Dr. Brown</option>
+                                              </select>
+                                            </td>
+                                            <td className="text-center">
+                                              <button className="btn btn-sm btn-success" onClick={handleAddDepartment}>
+                                                +
+                                              </button>
+                                            </td>
+                                            <td className="text-center">
+                                              <button
+                                                className="btn btn-sm btn-danger"
+                                                onClick={() => handleRemoveDepartment(index)}
+                                                disabled={departmentData.length === 1}
+                                              >
+                                                −
+                                              </button>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          {/* REFERRAL NOTES (COMMON FOR ALL TYPES) */}
+                          <div className="row">
+                            <div className="col-12">
+                              <h6 className="fw-bold mb-3">Referral Notes</h6>
+                              <textarea
+                                className="form-control"
+                                rows={4}
+                                value={referralNotes}
+                                onChange={(e) => setReferralNotes(e.target.value)}
+                                placeholder="Enter referral notes"
+                              ></textarea>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
                 {["followUp", "doctorRemark"].map((section) => (
                   <div key={section} className="card mb-3">
                     <div
@@ -3137,9 +3983,24 @@ const [referralData, setReferralData] = useState({
                 ))}
 
                 <div className="text-center mt-4">
-                  <button className="btn btn-primary me-3" onClick={handleSubmit}>
-                    <i className="mdi mdi-content-save"></i> SUBMIT
+                  <button
+                    type="button"
+                    className="btn btn-primary me-3"
+                    onClick={handleUpdateRecallPatient}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <i className="mdi mdi-loading mdi-spin"></i> PROCESSING...
+                      </>
+                    ) : (
+                      <>
+                        <i className="mdi mdi-content-save"></i> SUBMIT
+                      </>
+                    )}
                   </button>
+
+
                   <button className="btn btn-secondary me-3" onClick={handleResetForm}>
                     <i className="mdi mdi-refresh"></i> RESET
                   </button>
@@ -3158,7 +4019,7 @@ const [referralData, setReferralData] = useState({
           onClose={handleCloseInvestigationModal}
           templateType={investigationModalType}
           onTemplateSaved={(template) => {
-            console.log("Template saved:", template)
+            // console.log("Template saved:", template)
             fetchInvestigationTemplates()
           }}
         />
@@ -3168,7 +4029,7 @@ const [referralData, setReferralData] = useState({
           onClose={handleCloseTreatmentModal}
           templateType={treatmentModalType}
           onTemplateSaved={(template) => {
-            console.log("Treatment template saved:", template)
+            // console.log("Treatment template saved:", template)
           }}
         />
 
@@ -3386,6 +4247,9 @@ const [referralData, setReferralData] = useState({
                 <h4 className="card-title p-2 mb-0">OPD Recall List</h4>
               </div>
             </div>
+
+
+            {loading && <LoadingScreen />}
             <div className="card-body">
               {/* Search Filters Section */}
               <div className="card mb-3">
@@ -3440,7 +4304,7 @@ const [referralData, setReferralData] = useState({
 
               {/* Results Count */}
               <div className="mb-3">
-                <h6 className="text-muted">{filteredList.length} matches</h6>
+                <h6 className="text-muted">{recallPatientOpd.length} matches</h6>
               </div>
 
               {/* Patients Table */}
@@ -3459,18 +4323,18 @@ const [referralData, setReferralData] = useState({
                   </thead>
                   <tbody>
                     {currentItems.map((item) => (
-                      <tr 
-                        key={item.id} 
-                        onClick={() => handleRowClick(item)} 
+                      <tr
+                        key={item.visitId}
+                        onClick={() => handleRowClick(item)}
                         style={{ cursor: "pointer" }}
                       >
                         <td>{item.patientName}</td>
                         <td>{item.age}</td>
                         <td>{item.gender}</td>
-                        <td>{item.department}</td>
+                        <td>{item.deptName}</td>
                         <td>{item.mobileNo}</td>
-                        <td>{item.doctor}</td>
-                        <td>{item.typeOfPatient}</td>
+                        <td>{item.docterName}</td>
+                        <td>{item?.typeOfPatient || " "}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -3481,7 +4345,7 @@ const [referralData, setReferralData] = useState({
               <nav className="d-flex justify-content-between align-items-center mt-3">
                 <div>
                   <span>
-                    Page {currentPage} of {filteredTotalPages} | Total Records: {filteredList.length}
+                    Page {currentPage} of {filteredTotalPages} | Total Records: {recallPatientOpd.length}
                   </span>
                 </div>
                 <ul className="pagination mb-0">

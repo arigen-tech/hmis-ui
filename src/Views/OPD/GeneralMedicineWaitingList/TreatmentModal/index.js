@@ -290,6 +290,8 @@ const TreatmentModal = ({
       return "";
     }
 
+    console.log("show for calculate", item)
+
     const dosage = parseFloat(item.dosage) || 0;
     const days = parseFloat(item.days) || 0;
 
