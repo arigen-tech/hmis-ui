@@ -520,11 +520,13 @@ const IndentIssue = () => {
         <div
            style={{
             width: "calc(100vw - 310px)",
+            backgroundColor: "white",
             left: "285px",
-            maxWidth: "none",
-            height: "90vh",
+            maxWidth: "90%",
+            maxHeight: "80vh",
             margin: "5vh auto",
             position: "fixed",
+            padding: "20px",
           }}
           onClick={(e) => e.stopPropagation()}
         >
