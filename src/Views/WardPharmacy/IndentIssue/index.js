@@ -518,14 +518,13 @@ const IndentIssue = () => {
         onClick={() => setShowPreviousIssues(false)}
       >
         <div
-          style={{
-            backgroundColor: "white",
-            padding: "20px",
-            borderRadius: "8px",
-            maxWidth: "800px",
-            width: "90%",
-            maxHeight: "80vh",
-            overflow: "auto",
+           style={{
+            width: "calc(100vw - 310px)",
+            left: "285px",
+            maxWidth: "none",
+            height: "90vh",
+            margin: "5vh auto",
+            position: "fixed",
           }}
           onClick={(e) => e.stopPropagation()}
         >
