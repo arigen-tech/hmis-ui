@@ -74,7 +74,8 @@ useEffect(() => {
     patientId: item.patientId || 0,
     subChargeCodeId: item.subChargeCodeId || 0,
     mobile_no: item.patientPhoneNo || '',
-    
+
+    visitId:item.visitId,
     // NEW FIELDS FOR SUBMIT API
     relationId: item.relationId || 0,
     mainChargeCodeId: item.mainChargeCodeId || 0,
@@ -338,6 +339,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
         subChargeCodeId: selectedResult.subChargeCodeId,
         clinicalNotes: selectedResult.clinical_notes || "Clinical Notes",
         sampleCollectionHeaderId: selectedResult.sampleCollectionHeaderId,
+        visitId:selectedResult.visitId,
         patientId: selectedResult.patientId, // Added patientId
         investigationList: selectedResult.investigations.map((inv) => {
           const resultEntryDetails = [];
