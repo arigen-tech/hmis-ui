@@ -13,6 +13,7 @@ const ResultValidation = () => {
     mobileNo: "",
   })
   const [popupMessage, setPopupMessage] = useState(null)
+  const [confirmationPopup, setConfirmationPopup] = useState(null);
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
   const [selectedResult, setSelectedResult] = useState(null)
@@ -452,6 +453,25 @@ const ResultValidation = () => {
       return;
     }
 
+    // Show first confirmation popup
+    setConfirmationPopup({
+      message: "Do you want to continue with validation?",
+      onConfirm: async () => {
+        // User confirmed - proceed with validation
+        setConfirmationPopup(null);
+        await processValidation();
+      },
+      onCancel: () => {
+        // User cancelled - just close the popup
+        setConfirmationPopup(null);
+      },
+      confirmText: "Yes",
+      cancelText: "No",
+      type: "primary"
+    });
+  };
+
+  const processValidation = async () => {
     setLoading(true);
 
     try {
@@ -501,12 +521,17 @@ const ResultValidation = () => {
       const response = await putRequest(`${LAB}/validate`, requestPayload);
 
       if (response.status === 200) {
-        showPopup("Results validated successfully!", "success");
-        await fetchUnvalidatedResults();
-        setShowDetailView(false);
-        setSelectedResult(null);
-        setMasterValidate(false);
-        setMasterReject(false);
+        // Show success confirmation popup
+        setConfirmationPopup({
+          message: "Results validated successfully!",
+          onConfirm: () => {
+            // User confirmed success - proceed with cleanup
+            setConfirmationPopup(null);
+            handleValidationSuccess();
+          },
+          confirmText: "OK",
+          type: "success"
+        });
       } else {
         showPopup(response.message || "Failed to validate results", "error");
       }
@@ -516,6 +541,15 @@ const ResultValidation = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleValidationSuccess = async () => {
+    // Refresh the unvalidated results list
+    await fetchUnvalidatedResults();
+    setShowDetailView(false);
+    setSelectedResult(null);
+    setMasterValidate(false);
+    setMasterReject(false);
   };
 
   const getPriorityColor = (priority) => {
@@ -607,6 +641,62 @@ const ResultValidation = () => {
             onClose={popupMessage.onClose}
           />
         )}
+
+        {confirmationPopup && (
+          <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title">
+                    {confirmationPopup.type === 'success' ? 'Success' : 'Confirmation'}
+                  </h5>
+                  <button 
+                    type="button" 
+                    className="btn-close" 
+                    onClick={confirmationPopup.onCancel}
+                  ></button>
+                </div>
+                <div className="modal-body">
+                  <div className="d-flex align-items-center">
+                    <div className="me-3">
+                      {confirmationPopup.type === 'success' ? (
+                        <i className="mdi mdi-check-circle-outline text-success" style={{ fontSize: '24px' }}></i>
+                      ) : (
+                        <i className="mdi mdi-alert-circle-outline text-warning" style={{ fontSize: '24px' }}></i>
+                      )}
+                    </div>
+                    <div>
+                      <p className="mb-0">{confirmationPopup.message}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  {confirmationPopup.cancelText && (
+                    <button 
+                      type="button" 
+                      className="btn btn-secondary" 
+                      onClick={confirmationPopup.onCancel}
+                    >
+                      {confirmationPopup.cancelText}
+                    </button>
+                  )}
+                  <button 
+                    type="button" 
+                    className={`btn ${
+                      confirmationPopup.type === 'success' ? 'btn-success' : 
+                      confirmationPopup.type === 'warning' ? 'btn-warning' : 
+                      confirmationPopup.type === 'danger' ? 'btn-danger' : 'btn-primary'
+                    }`} 
+                    onClick={confirmationPopup.onConfirm}
+                  >
+                    {confirmationPopup.confirmText || "Yes"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {loading && <LoadingScreen />}
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
@@ -621,36 +711,6 @@ const ResultValidation = () => {
               </div>
 
               <div className="card-body">
-                {/* <div className="row mb-3">
-                  <div className="col-md-4">
-                    <label className="form-label fw-bold">Result Date</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedResult.result_date}
-                      readOnly
-                    />
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label fw-bold">Time</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedResult.result_time}
-                      readOnly
-                    />
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label fw-bold">Result Entered By</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value="Lab Technician"
-                      readOnly
-                    />
-                  </div>
-                </div> */}
-
                 <div className="card mb-4">
                   <div className="card-header bg-light">
                     <h5 className="mb-0">PATIENT DETAILS</h5>
@@ -684,8 +744,6 @@ const ResultValidation = () => {
                           readOnly
                         />
                       </div>
-                      
-                      
                     </div>
                     <div className="row mt-3">
                        <div className="col-md-4">
@@ -706,25 +764,6 @@ const ResultValidation = () => {
                           readOnly
                         />
                       </div>
-                      
-                      {/* <div className="col-md-4">
-                        <label className="form-label fw-bold">Patient ID</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedResult.patientId}
-                          readOnly
-                        />
-                      </div> */}
-                      {/* <div className="col-md-4">
-                        <label className="form-label fw-bold">Order No.</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedResult.id}
-                          readOnly
-                        />
-                      </div> */}
                     </div>
                     <div className="row mt-3">
                       <div className="col-12">
@@ -923,7 +962,6 @@ const ResultValidation = () => {
                                     {renderResultInput(subTest, true, investigation.id)}
                                   </td>
                                   <td>
-                                    {/* FIXED: This should be for units, not result display */}
                                     <input
                                       type="text"
                                       className="form-control border-0 bg-transparent"
@@ -1013,9 +1051,6 @@ const ResultValidation = () => {
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">RESULT VALIDATION</h4>
-              {/* <button type="button" className="btn btn-success">
-                <i className="mdi mdi-file-document"></i> Generate Report
-              </button> */}
             </div>
 
             <div className="card-body">
@@ -1096,10 +1131,8 @@ const ResultValidation = () => {
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
-
                           <th>Diag No.</th>
                           <th>Result Date/Time</th>
-                          {/* <th>Result Time</th> */}
                           <th>Patient Name</th>
                           <th>Relation</th>
                           <th>Mobile No</th>
@@ -1120,7 +1153,6 @@ const ResultValidation = () => {
                             >
                               <td>{item.diag_no}</td>
                               <td>{`${item.result_date} - ${item.result_time}`}</td>
-                              {/* <td>{item.result_time}</td> */}
                               <td>{item.patient_name}</td>
                               <td>{item.relation}</td>
                               <td>{item.mobile_no}</td>
