@@ -453,25 +453,6 @@ const ResultValidation = () => {
       return;
     }
 
-    // Show first confirmation popup
-    setConfirmationPopup({
-      message: "Do you want to continue with validation?",
-      onConfirm: async () => {
-        // User confirmed - proceed with validation
-        setConfirmationPopup(null);
-        await processValidation();
-      },
-      onCancel: () => {
-        // User cancelled - just close the popup
-        setConfirmationPopup(null);
-      },
-      confirmText: "Yes",
-      cancelText: "No",
-      type: "primary"
-    });
-  };
-
-  const processValidation = async () => {
     setLoading(true);
 
     try {
@@ -521,15 +502,23 @@ const ResultValidation = () => {
       const response = await putRequest(`${LAB}/validate`, requestPayload);
 
       if (response.status === 200) {
-        // Show success confirmation popup
+        // Show print confirmation popup after successful validation
         setConfirmationPopup({
-          message: "Results validated successfully!",
+          message: "Validation has been done successfully! Do you want to print?",
           onConfirm: () => {
-            // User confirmed success - proceed with cleanup
+            // User wants to print
+    handleValidationSuccess();
+
+            setConfirmationPopup(null);
+            handlePrintAndCleanup();
+          },
+          onCancel: () => {
+            // User doesn't want to print, just cleanup
             setConfirmationPopup(null);
             handleValidationSuccess();
           },
-          confirmText: "OK",
+          confirmText: "Yes",
+          cancelText: "No",
           type: "success"
         });
       } else {
@@ -541,6 +530,16 @@ const ResultValidation = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePrintAndCleanup = () => {
+    // Handle print functionality here
+    console.log("Printing results for:", selectedResult);
+    
+    // You can add your print logic here
+    // For example: window.print() or generate a PDF report
+    
+    // Then proceed with cleanup
   };
 
   const handleValidationSuccess = async () => {
