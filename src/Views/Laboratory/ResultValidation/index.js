@@ -515,7 +515,6 @@ const ResultValidation = () => {
           onCancel: () => {
             // User doesn't want to print, just cleanup
             setConfirmationPopup(null);
-            handleValidationSuccess();
           },
           confirmText: "Yes",
           cancelText: "No",
@@ -669,7 +668,7 @@ const ResultValidation = () => {
                     </div>
                   </div>
                 </div>
-                <div className="modal-footer">
+                <div className="modal-footer justify-content-center">
                   {confirmationPopup.cancelText && (
                     <button 
                       type="button" 
