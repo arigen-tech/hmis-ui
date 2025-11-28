@@ -38,7 +38,7 @@ const InvestigationModal = ({
             resetForm()
             fetchTemplates()
             fetchAllInvestigations()
-            
+
             if (templateType === "edit" && selectedTemplate) {
                 setSelectedTemplateId(selectedTemplate.templateId)
                 loadTemplateData(selectedTemplate)
@@ -169,16 +169,17 @@ const InvestigationModal = ({
                 return {
                     investigationId: item.investigationId,
                     displayValue: investigation ? investigation.investigationName : `Investigation #${item.investigationId}`,
-                    date: getToday()
+                    date: getToday(),
+                    templateInvestigationId: item.templateInvestigationId // Store this for updates
                 }
             })
             setInvestigationItems(items)
             setSelectedInvestigations(template.investigationResponseList.map(item => item.investigationId))
         } else {
-            setInvestigationItems([{ 
-                displayValue: "", 
-                date: getToday(), 
-                investigationId: null 
+            setInvestigationItems([{
+                displayValue: "",
+                date: getToday(),
+                investigationId: null
             }])
             setSelectedInvestigations([])
         }
@@ -188,10 +189,10 @@ const InvestigationModal = ({
         setTemplateName("")
         setTemplateCode("")
         setInvestigationType(investigationTypes[0]?.value || "")
-        setInvestigationItems([{ 
-            displayValue: "", 
-            date: getToday(), 
-            investigationId: null 
+        setInvestigationItems([{
+            displayValue: "",
+            date: getToday(),
+            investigationId: null
         }])
         setSelectedInvestigations([])
         setSelectedTemplateId("")
@@ -229,26 +230,32 @@ const InvestigationModal = ({
         const investigationIdAlreadyInOtherRow = selectedInvestigations.some(
             id => id === investigation.investigationId && investigationItems[index]?.investigationId !== investigation.investigationId
         )
-        
+
         if (investigationIdAlreadyInOtherRow) {
             showPopup("This investigation is already added to the template", "error")
             return
         }
 
         const newItems = [...investigationItems]
+
+        // Preserve existing templateInvestigationId if this investigation was already in the template
+        const existingItem = newItems.find(item => item.investigationId === investigation.investigationId)
+        const existingTemplateInvestigationId = existingItem ? existingItem.templateInvestigationId : null
+
         newItems[index] = {
             ...newItems[index],
             displayValue: investigation.investigationName,
-            investigationId: investigation.investigationId
+            investigationId: investigation.investigationId,
+            templateInvestigationId: existingTemplateInvestigationId // Preserve existing ID if any
         }
         setInvestigationItems(newItems)
-        
-        // Update selectedInvestigations - remove old one from this row if exists, add new one
+
+        // Update selectedInvestigations
         setSelectedInvestigations(prev => {
             const withoutCurrent = prev.filter(id => id !== investigationItems[index]?.investigationId)
             return [...withoutCurrent, investigation.investigationId]
         })
-        
+
         setActiveRowIndex(null)
     }
 
@@ -256,7 +263,7 @@ const InvestigationModal = ({
     const isTemplateNameDuplicate = () => {
         // Skip duplicate check for edit operations
         if (templateType === 'edit') return false
-        
+
         return templates.some(template =>
             template.opdTemplateName.toLowerCase() === templateName.trim().toLowerCase()
         )
@@ -266,7 +273,7 @@ const InvestigationModal = ({
     const isTemplateCodeDuplicate = () => {
         // Skip duplicate check for edit operations
         if (templateType === 'edit') return false
-        
+
         return templates.some(template =>
             template.opdTemplateCode.toLowerCase() === templateCode.trim().toLowerCase()
         )
@@ -304,45 +311,91 @@ const InvestigationModal = ({
                 }
             }
 
-            const requestData = {
-                opdTemplateName: templateName.trim(),
-                opdTemplateCode: templateCode.trim(),
-                investigationRequestList: selectedInvestigations.map(invId => ({
-                    templateInvestigationId: 0,
-                    investigationId: invId
-                })),
-                treatments: []
-            }
-
-            let response
+            // For CREATE operation
             if (templateType === "create") {
-                response = await postRequest(`${OPD_TEMPLATE}/create-opdTemplate`, requestData)
-            } else if (templateType === "edit") {
+                const requestData = {
+                    opdTemplateName: templateName.trim(),
+                    opdTemplateCode: templateCode.trim(),
+                    investigationRequestList: selectedInvestigations.map(invId => ({
+                        templateInvestigationId: 0,
+                        investigationId: invId
+                    })),
+                    treatments: []
+                }
+
+                const response = await postRequest(`${OPD_TEMPLATE}/create-opdTemplate`, requestData)
+
+                if (response && response.status === 200) {
+                    showPopup("Template created successfully!", "success")
+                    resetForm()
+                    if (onTemplateSaved) {
+                        onTemplateSaved(response.response)
+                    }
+                } else {
+                    throw new Error(response?.message || "Failed to save template")
+                }
+            }
+            // For UPDATE operation - use the correct structure
+            else if (templateType === "edit") {
                 const templateId = selectedTemplate ? selectedTemplate.templateId : selectedTemplateId
                 if (!templateId) {
                     showPopup("Please select a template to update", "error")
                     return
                 }
-                response = await putRequest(
+
+                // Get the current template to find existing investigation mappings
+                const currentTemplate = selectedTemplate || templates.find(t => t.templateId == templateId)
+
+                // Create a map of investigationId to templateInvestigationId from existing template
+                const existingInvestigationMap = new Map()
+                if (currentTemplate?.investigationResponseList) {
+                    currentTemplate.investigationResponseList.forEach(item => {
+                        existingInvestigationMap.set(item.investigationId, item.templateInvestigationId)
+                    })
+                }
+
+                // Prepare opdTempInvest array with correct templateInvestigationId
+                const opdTempInvest = selectedInvestigations.map(invId => {
+                    const existingTemplateInvestigationId = existingInvestigationMap.get(invId)
+
+                    return {
+                        templateInvestigationId: existingTemplateInvestigationId || null, // Use null for new investigations, not 0
+                        investigationId: parseInt(invId)
+                    }
+                })
+
+                // Find investigations that were removed (for deletedTempIvs)
+                const deletedTempIvs = []
+                if (currentTemplate?.investigationResponseList) {
+                    currentTemplate.investigationResponseList.forEach(item => {
+                        if (!selectedInvestigations.includes(item.investigationId)) {
+                            deletedTempIvs.push(item.templateInvestigationId)
+                        }
+                    })
+                }
+
+                const requestData = {
+                    templateId: parseInt(templateId),
+                    opdTempInvest: opdTempInvest,
+                    deletedTempIvs: deletedTempIvs
+                }
+
+                console.log("Update Request Data:", requestData) // For debugging
+
+                const response = await putRequest(
                     `${OPD_TEMPLATE}/update-opdTemplate/${templateId}`,
                     requestData
                 )
-            }
 
-            if (response && response.status === 200) {
-                showPopup(
-                    `Template ${templateType === 'create' ? 'created' : 'updated'} successfully!`,
-                    "success"
-                )
-                // Don't call onClose here - let the user see the success message
-                // Reset the form for potential new entries
-                resetForm()
-                // Call the callback to notify parent component but don't close modal
-                if (onTemplateSaved) {
-                    onTemplateSaved(response.response)
+                if (response && response.status === 200) {
+                    showPopup("Template updated successfully!", "success")
+                    resetForm()
+                    if (onTemplateSaved) {
+                        onTemplateSaved(response.response)
+                    }
+                } else {
+                    throw new Error(response?.message || "Failed to update template")
                 }
-            } else {
-                throw new Error(response?.message || "Failed to save template")
             }
         } catch (error) {
             console.error("Error saving template:", error)
@@ -467,8 +520,8 @@ const InvestigationModal = ({
                             </div>
                         )}
 
-                        
-                        
+
+
 
                         {/* Template Name and Code */}
                         <div className="row mb-4">
@@ -598,9 +651,9 @@ const InvestigationModal = ({
                                                                                 <li
                                                                                     key={investigation.investigationId}
                                                                                     className="list-group-item list-group-item-action"
-                                                                                    style={{ 
-                                                                                        backgroundColor: isSelectedInOtherRow ? '#ffc107' : "#e3e8e6", 
-                                                                                        cursor: isSelectedInOtherRow ? 'not-allowed' : 'pointer' 
+                                                                                    style={{
+                                                                                        backgroundColor: isSelectedInOtherRow ? '#ffc107' : "#e3e8e6",
+                                                                                        cursor: isSelectedInOtherRow ? 'not-allowed' : 'pointer'
                                                                                     }}
                                                                                     onClick={() => {
                                                                                         if (!isSelectedInOtherRow) {
@@ -626,8 +679,8 @@ const InvestigationModal = ({
                                                                         })
                                                                     ) : (
                                                                         <li className="list-group-item text-muted text-center">
-                                                                            {allInvestigations.length === 0 ? 
-                                                                                'No investigations available' : 
+                                                                            {allInvestigations.length === 0 ?
+                                                                                'No investigations available' :
                                                                                 'No investigations found'
                                                                             }
                                                                         </li>
