@@ -51,6 +51,7 @@ const TreatmentModal = ({
   const [selectedDrugs, setSelectedDrugs] = useState([])
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0, width: 0, height: 0 });
+  const [dataLoaded, setDataLoaded] = useState(false); // Track if data is fully loaded
 
   const handleDrugInputFocus = (event, index) => {
     const rect = event.target.getBoundingClientRect();
@@ -75,128 +76,175 @@ const TreatmentModal = ({
     return () => window.removeEventListener("click", handleClickOutside);
   }, []);
 
-  // Fetch initial data
+  // Fetch initial data - ONLY ONCE when modal opens
   useEffect(() => {
     if (show) {
-      resetForm()
-      fetchTemplates()
-      fetchAllDrugs()
-      fetchAllFrequencies()
-
-      if (templateType === "edit" && selectedTemplate) {
-        setSelectedTemplateId(selectedTemplate.templateId)
-        loadTemplateData(selectedTemplate)
-      }
+      resetForm();
+      // Fetch all data first
+      const fetchData = async () => {
+        setLoading(true);
+        try {
+          await Promise.all([
+            fetchTemplates(),
+            fetchAllDrugs(),
+            fetchAllFrequencies()
+          ]);
+          setDataLoaded(true);
+          
+          // After data is loaded, load template if needed
+          if (templateType === "edit" && selectedTemplate) {
+            setSelectedTemplateId(selectedTemplate.templateId);
+            loadTemplateData(selectedTemplate);
+          }
+        } catch (error) {
+          console.error("Error fetching data:", error);
+          showPopup("Failed to load data", "error");
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      fetchData();
     }
-  }, [show, templateType, selectedTemplate])
+  }, [show, templateType]);
 
   // Load template data when template is selected from dropdown
   useEffect(() => {
-    if (templateType === 'edit' && selectedTemplateId && templates.length > 0 && !selectedTemplate) {
-      const template = templates.find(t => t.templateId == selectedTemplateId)
+    if (templateType === 'edit' && selectedTemplateId && templates.length > 0 && !selectedTemplate && dataLoaded) {
+      const template = templates.find(t => t.templateId == selectedTemplateId);
       if (template) {
-        loadTemplateData(template)
+        loadTemplateData(template);
       }
     }
-  }, [selectedTemplateId, templates, templateType, selectedTemplate])
+  }, [selectedTemplateId, templates, templateType, selectedTemplate, dataLoaded]);
+
+  // Reload template data when drugs/frequencies become available
+  useEffect(() => {
+    if (templateType === "edit" && selectedTemplateId && templates.length > 0 && dataLoaded) {
+      const template = templates.find(t => t.templateId == selectedTemplateId);
+      if (template) {
+        console.log("Reloading template data with available drugs/frequencies");
+        loadTemplateData(template);
+      }
+    }
+  }, [allDrugs, allFrequencies, selectedTemplateId, templateType, templates, dataLoaded]);
 
   const fetchTemplates = async (flag = 1) => {
     try {
-      setLoading(true);
       const response = await getRequest(`${OPD_TEMPLATE}/getAll/${flag}`);
       if (response && response.response) {
         setTemplates(response.response);
+        return true;
       } else {
         showPopup("No templates found", "warning");
+        return false;
       }
     } catch (error) {
       console.error("Error fetching templates:", error);
       showPopup("Failed to load templates", "error");
-    } finally {
-      setLoading(false);
+      return false;
     }
   };
 
   const fetchAllDrugs = async () => {
     try {
-      setLoading(true)
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAllBySectionOnly/1`)
+      const response = await getRequest(`${MAS_DRUG_MAS}/getAllBySectionOnly/1`);
       if (response && response.response) {
-        // Map API response - store BOTH the numeric ID and the string name
-        const mappedDrugs = response.response.map(drug => {
-          console.log("Drug mapping:", {
-            itemId: drug.itemId,
-            nomenclature: drug.nomenclature,
-            dispUnit: drug.dispUnit,
-            dispUnitName: drug.dispUnitName,
-            itemClassId: drug.itemClassId,
-            adispQty: drug.adispQty
-          })
-          return {
-            id: drug.itemId,
-            name: drug.nomenclature,
-            code: drug.pvmsNo,
-            dispUnitName: drug.dispUnitName,
-            dispUnitId: drug.dispUnit,
-            itemClassId: drug.itemClassId,
-            adispQty: drug.adispQty,
-            // Keep original fields
-            itemId: drug.itemId,
-            nomenclature: drug.nomenclature,
-            pvmsNo: drug.pvmsNo,
-            ...drug
-          }
-        })
-        setAllDrugs(mappedDrugs)
-        console.log("Drugs loaded successfully:", mappedDrugs)
+        // Map API response - ensure consistent ID mapping
+        const mappedDrugs = response.response.map(drug => ({
+          id: drug.itemId,
+          itemId: drug.itemId,
+          drugId: drug.itemId,
+          name: drug.nomenclature,
+          code: drug.pvmsNo,
+          dispUnitName: drug.dispUnitName,
+          dispUnitId: drug.dispUnit,
+          itemClassId: drug.itemClassId,
+          adispQty: drug.adispQty,
+          nomenclature: drug.nomenclature,
+          pvmsNo: drug.pvmsNo,
+          ...drug
+        }));
+        setAllDrugs(mappedDrugs);
+        console.log("Drugs loaded successfully:", mappedDrugs.length, "drugs");
+        return true;
       } else {
-        console.warn("No drugs found in response")
-        setAllDrugs([])
+        console.warn("No drugs found in response");
+        setAllDrugs([]);
+        return false;
       }
     } catch (error) {
-      console.error("Error fetching drugs:", error)
-      showPopup("Failed to load drugs", "error")
-      setAllDrugs([])
-    } finally {
-      setLoading(false)
+      console.error("Error fetching drugs:", error);
+      showPopup("Failed to load drugs", "error");
+      setAllDrugs([]);
+      return false;
     }
-  }
+  };
 
   const fetchAllFrequencies = async () => {
     try {
-      setLoading(true)
-      const response = await getRequest(`${MAS_FREQUENCY}/getAll/1`)
-      console.log("Frequency API Response:", response);
-
+      const response = await getRequest(`${MAS_FREQUENCY}/getAll/1`);
       if (response && response.response) {
-        setAllFrequencies(response.response)
-        console.log("Frequencies loaded:", response.response);
+        setAllFrequencies(response.response);
+        console.log("Frequencies loaded:", response.response.length);
+        return true;
       } else {
-        console.warn("No frequencies found in response")
-        setAllFrequencies([])
+        console.warn("No frequencies found in response");
+        setAllFrequencies([]);
+        return false;
       }
     } catch (error) {
-      console.error("Error fetching frequencies:", error)
-      showPopup("Failed to load frequencies", "error")
-      setAllFrequencies([])
-    } finally {
-      setLoading(false)
+      console.error("Error fetching frequencies:", error);
+      showPopup("Failed to load frequencies", "error");
+      setAllFrequencies([]);
+      return false;
     }
-  }
+  };
 
   const loadTemplateData = (template) => {
-    setTemplateName(template.opdTemplateName || "")
-    setTemplateCode(template.opdTemplateCode || "")
+    if (!dataLoaded) {
+      console.log("Data not loaded yet, skipping template load");
+      return;
+    }
+
+    setTemplateName(template.opdTemplateName || "");
+    setTemplateCode(template.opdTemplateCode || "");
 
     if (template.treatments && template.treatments.length > 0) {
       const items = template.treatments.map(item => {
-        const drug = allDrugs.find(d => d.id === item.itemId)
-        const frequency = allFrequencies.find(f => f.frequencyId === item.frequencyId)
+        // Find drug - use multiple possible properties for compatibility
+        const drug = allDrugs.find(d => 
+          d.id === item.itemId || 
+          d.itemId === item.itemId ||
+          d.drugId === item.itemId
+        );
+        
+        // Find frequency
+        const frequency = allFrequencies.find(f => f.frequencyId === item.frequencyId);
+
+        console.log("Loading template item:", {
+          itemId: item.itemId,
+          foundDrug: drug ? drug.name : 'NOT FOUND',
+          drugName: drug ? drug.name : null,
+          allDrugsCount: allDrugs.length
+        });
+
+        // If drug not found, try to find it by name in the template data
+        let finalDrugName = "";
+        if (drug) {
+          finalDrugName = drug.name;
+        } else if (item.itemName) {
+          // Use the itemName from template if drug not found in allDrugs
+          finalDrugName = item.itemName;
+        } else {
+          // Last resort: show ID but not "Loading..."
+          finalDrugName = `Drug (ID: ${item.itemId})`;
+        }
 
         return {
-          drugName: drug ? drug.name : `Drug #${item.itemId}`,
+          drugName: finalDrugName,
           drugId: item.itemId,
-          dispUnit: drug ? drug.dispUnitName : "",
+          dispUnit: drug ? drug.dispUnitName : (item.dispU || ""),
           dosage: item.dosage || "",
           frequency: frequency ? frequency.frequencyName : "OD",
           frequencyId: item.frequencyId,
@@ -206,10 +254,22 @@ const TreatmentModal = ({
           stock: "",
           itemClassId: drug ? drug.itemClassId : null,
           adispQty: drug ? drug.adispQty : null,
-        }
-      })
-      setTreatmentItems(items)
-      setSelectedDrugs(template.treatments.map(item => item.itemId))
+        };
+      });
+      
+      setTreatmentItems(items);
+      
+      // Extract selected drug IDs
+      const drugIds = template.treatments
+        .map(item => item.itemId)
+        .filter(id => id !== null);
+      setSelectedDrugs(drugIds);
+      
+      console.log("Template loaded successfully:", {
+        templateName: template.opdTemplateName,
+        itemsCount: items.length,
+        selectedDrugs: drugIds
+      });
     } else {
       setTreatmentItems([{
         drugName: "",
@@ -224,14 +284,14 @@ const TreatmentModal = ({
         stock: "",
         itemClassId: null,
         adispQty: null,
-      }])
-      setSelectedDrugs([])
+      }]);
+      setSelectedDrugs([]);
     }
-  }
+  };
 
   const resetForm = () => {
-    setTemplateName("")
-    setTemplateCode("")
+    setTemplateName("");
+    setTemplateCode("");
     setTreatmentItems([{
       drugName: "",
       drugId: null,
@@ -245,12 +305,13 @@ const TreatmentModal = ({
       stock: "",
       itemClassId: null,
       adispQty: null,
-    }])
-    setSelectedDrugs([])
-    setSelectedTemplateId("")
-    setActiveRowIndex(null)
-    setDropdownVisible(false)
-  }
+    }]);
+    setSelectedDrugs([]);
+    setSelectedTemplateId("");
+    setActiveRowIndex(null);
+    setDropdownVisible(false);
+    setDataLoaded(false);
+  };
 
   const handleAddTreatmentItem = () => {
     setTreatmentItems([
@@ -269,28 +330,26 @@ const TreatmentModal = ({
         itemClassId: null,
         adispQty: null,
       },
-    ])
-  }
+    ]);
+  };
 
   const handleRemoveTreatmentItem = (index) => {
-    if (treatmentItems.length === 1) return
-    const newItems = treatmentItems.filter((_, i) => i !== index)
-    setTreatmentItems(newItems)
+    if (treatmentItems.length === 1) return;
+    const newItems = treatmentItems.filter((_, i) => i !== index);
+    setTreatmentItems(newItems);
 
     if (treatmentItems[index].drugId) {
       setSelectedDrugs(prev =>
         prev.filter(id => id !== treatmentItems[index].drugId)
-      )
+      );
     }
-  }
+  };
 
   // Calculate total based on itemClassId and adispQty
   const calculateTotal = (item) => {
     if (!item.dosage || !item.days || !item.frequencyId || item.itemClassId === null) {
       return "";
     }
-
-    console.log("show for calculate", item)
 
     const dosage = parseFloat(item.dosage) || 0;
     const days = parseFloat(item.days) || 0;
@@ -336,26 +395,26 @@ const TreatmentModal = ({
 
   const filterDrugsBySearch = (searchQuery) => {
     if (!searchQuery.trim()) {
-      return allDrugs.slice(0, 5)
+      return allDrugs.slice(0, 5);
     }
 
     const filtered = allDrugs.filter(drug =>
       drug.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       drug.code?.toLowerCase().includes(searchQuery.toLowerCase())
-    ).slice(0, 5)
+    ).slice(0, 5);
 
-    return filtered
-  }
+    return filtered;
+  };
 
   const handleDrugSelect = (index, drug) => {
     // Check if this drug is already selected in a DIFFERENT row
     const drugAlreadyInOtherRow = selectedDrugs.some(
       id => id === drug.id && treatmentItems[index]?.drugId !== drug.id
-    )
+    );
 
     if (drugAlreadyInOtherRow) {
-      showPopup("This drug is already added to the template", "error")
-      return
+      showPopup("This drug is already added to the template", "error");
+      return;
     }
 
     const newItems = [...treatmentItems];
@@ -382,7 +441,7 @@ const TreatmentModal = ({
 
     setDropdownVisible(false);
     setActiveRowIndex(null);
-  }
+  };
 
   const handleFrequencySelect = (index, frequencyId) => {
     const frequency = allFrequencies.find(f => f.frequencyId === frequencyId);
@@ -400,62 +459,62 @@ const TreatmentModal = ({
 
       setTreatmentItems(newItems);
     }
-  }
+  };
 
   // Only check for duplicates during CREATE operation
   const isTemplateNameDuplicate = () => {
-    if (templateType === 'edit') return false
+    if (templateType === 'edit') return false;
     return templates.some(template =>
       template.opdTemplateName.toLowerCase() === templateName.trim().toLowerCase()
-    )
-  }
+    );
+  };
 
   // Only check for duplicates during CREATE operation
   const isTemplateCodeDuplicate = () => {
-    if (templateType === 'edit') return false
+    if (templateType === 'edit') return false;
     return templates.some(template =>
       template.opdTemplateCode.toLowerCase() === templateCode.trim().toLowerCase()
-    )
-  }
+    );
+  };
 
   const handleSaveTemplate = async () => {
     if (!templateName.trim() || !templateCode.trim()) {
-      showPopup("Please fill in template name and code", "error")
-      return
+      showPopup("Please fill in template name and code", "error");
+      return;
     }
 
     if (selectedDrugs.length === 0) {
-      showPopup("Please add at least one treatment item", "error")
-      return
+      showPopup("Please add at least one treatment item", "error");
+      return;
     }
 
-    const uniqueDrugs = [...new Set(selectedDrugs)]
+    const uniqueDrugs = [...new Set(selectedDrugs)];
     if (uniqueDrugs.length !== selectedDrugs.length) {
-      showPopup("Duplicate drugs found. Please remove duplicates before saving.", "error")
-      return
+      showPopup("Duplicate drugs found. Please remove duplicates before saving.", "error");
+      return;
     }
 
     // Validate all required fields
     for (let i = 0; i < treatmentItems.length; i++) {
-      const item = treatmentItems[i]
+      const item = treatmentItems[i];
       if (!item.drugId || !item.dosage || !item.days || !item.frequencyId) {
-        showPopup(`Please fill all required fields in row ${i + 1}`, "error")
-        return
+        showPopup(`Please fill all required fields in row ${i + 1}`, "error");
+        return;
       }
     }
 
     try {
-      setLoading(true)
+      setLoading(true);
 
       // Only validate duplicates for create operation
       if (templateType === "create") {
         if (isTemplateNameDuplicate()) {
-          showPopup("Template name already exists. Please use a different name.", "error")
-          return
+          showPopup("Template name already exists. Please use a different name.", "error");
+          return;
         }
         if (isTemplateCodeDuplicate()) {
-          showPopup("Template code already exists. Please use a different code.", "error")
-          return
+          showPopup("Template code already exists. Please use a different code.", "error");
+          return;
         }
       }
 
@@ -471,77 +530,77 @@ const TreatmentModal = ({
           frequencyId: item.frequencyId,
           itemId: item.drugId
         }))
-      }
+      };
 
-      let response
+      let response;
       if (templateType === "create") {
-        response = await postRequest(`${OPD_TEMPLATE}/save`, requestData)
+        response = await postRequest(`${OPD_TEMPLATE}/save`, requestData);
       } else if (templateType === "edit") {
-        const templateId = selectedTemplate ? selectedTemplate.templateId : selectedTemplateId
+        const templateId = selectedTemplate ? selectedTemplate.templateId : selectedTemplateId;
         if (!templateId) {
-          showPopup("Please select a template to update", "error")
-          return
+          showPopup("Please select a template to update", "error");
+          return;
         }
         response = await putRequest(
           `${OPD_TEMPLATE}/updateOpdTemplateTreatment/${templateId}`,
           requestData
-        )
+        );
       }
 
       if (response && response.status === 200) {
         showPopup(
           `Template ${templateType === 'create' ? 'created' : 'updated'} successfully!`,
           "success"
-        )
-        resetForm()
+        );
+        resetForm();
         if (onTemplateSaved) {
-          onTemplateSaved(response.response)
+          onTemplateSaved(response.response);
         }
       } else {
-        throw new Error(response?.message || "Failed to save template")
+        throw new Error(response?.message || "Failed to save template");
       }
     } catch (error) {
-      console.error("Error saving template:", error)
+      console.error("Error saving template:", error);
       if (error.response?.data?.message?.includes('duplicate') ||
         error.message?.includes('duplicate') ||
         error.response?.data?.message?.includes('already exists')) {
         showPopup(
           "Template name or code already exists. Please use different values.",
           "error"
-        )
+        );
       } else {
         showPopup(
           `Failed to ${templateType === 'create' ? 'create' : 'update'} template: ${error.message}`,
           "error"
-        )
+        );
       }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleResetTemplate = () => {
-    resetForm()
-  }
+    resetForm();
+  };
 
   const showPopup = (message, type = 'info') => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null)
+        setPopupMessage(null);
       }
-    })
-  }
+    });
+  };
 
   const handleCloseModal = () => {
     if (popupMessage) {
-      setPopupMessage(null)
+      setPopupMessage(null);
     }
-    onClose()
-  }
+    onClose();
+  };
 
-  if (!show) return null
+  if (!show) return null;
 
   return (
     <div className="modal fade show d-block" style={{
@@ -608,14 +667,22 @@ const TreatmentModal = ({
                     value={selectedTemplateId}
                     onChange={(e) => setSelectedTemplateId(e.target.value)}
                     style={{ borderRadius: '4px' }}
+                    disabled={!dataLoaded}
                   >
                     <option value="">Select Template</option>
-                    {templates.map(template => (
-                      <option key={template.templateId} value={template.templateId}>
-                        {template.opdTemplateName} ({template.opdTemplateCode})
-                      </option>
-                    ))}
+                    {!dataLoaded ? (
+                      <option value="" disabled>Loading templates...</option>
+                    ) : (
+                      templates.map(template => (
+                        <option key={template.templateId} value={template.templateId}>
+                          {template.opdTemplateName} ({template.opdTemplateCode})
+                        </option>
+                      ))
+                    )}
                   </select>
+                  {!dataLoaded && (
+                    <div className="text-info small mt-1">Loading templates...</div>
+                  )}
                 </div>
               </div>
             )}
@@ -631,6 +698,7 @@ const TreatmentModal = ({
                   onChange={(e) => setTemplateName(e.target.value)}
                   placeholder="Enter template name"
                   style={{ borderRadius: '4px' }}
+                  disabled={!dataLoaded}
                 />
                 {templateType === 'create' && isTemplateNameDuplicate() && (
                   <div className="text-danger small mt-1">Template name already exists</div>
@@ -645,6 +713,7 @@ const TreatmentModal = ({
                   onChange={(e) => setTemplateCode(e.target.value)}
                   placeholder="Enter template code"
                   style={{ borderRadius: '4px' }}
+                  disabled={!dataLoaded}
                 />
                 {templateType === 'create' && isTemplateCodeDuplicate() && (
                   <div className="text-danger small mt-1">Template code already exists</div>
@@ -653,9 +722,8 @@ const TreatmentModal = ({
             </div>
 
             {/* Treatment Table */}
-<div className="table-responsive" style={{ overflowX: 'auto', maxWidth: '100%' }}>
-  <table className="table table-bordered" style={{ width: '100%' }}>
-
+            <div className="table-responsive" style={{ overflowX: 'auto', maxWidth: '100%' }}>
+              <table className="table table-bordered" style={{ width: '100%' }}>
                 <thead className="table-light">
                   <tr>
                     <th style={{ minWidth: 370 }}>DRUGS NAME/DRUGS CODE</th>
@@ -665,7 +733,6 @@ const TreatmentModal = ({
                     <th style={{ minWidth: '12px', maxWidth: '12px' }}>DAYS</th>
                     <th style={{ minWidth: '80px' }}>TOTAL</th>
                     <th style={{ minWidth: '70px' }}>INSTRUCTION</th>
-                    {/* <th style={{ minWidth: '80px' }}>STOCK</th> */}
                     <th style={{ minWidth: '40px' }}>ADD</th>
                     <th style={{ minWidth: '40px' }}>DELETE</th>
                   </tr>
@@ -698,12 +765,25 @@ const TreatmentModal = ({
                               }
                             }}
                             onFocus={(e) => handleDrugInputFocus(e, index)}
-                            placeholder="Enter drug name or code"
-                            style={{ borderRadius: "4px", minWidth: "180px" }}
+                            placeholder={!dataLoaded ? "Loading drugs..." : "Enter drug name or code"}
+                            style={{ 
+                              borderRadius: "4px", 
+                              minWidth: "180px",
+                              backgroundColor: !dataLoaded ? '#f8f9fa' : 'white'
+                            }}
+                            disabled={!dataLoaded}
                           />
+                          
+                          {!dataLoaded && (
+                            <div className="position-absolute top-50 end-0 translate-middle-y me-2">
+                              <div className="spinner-border spinner-border-sm text-primary" role="status">
+                                <span className="visually-hidden">Loading...</span>
+                              </div>
+                            </div>
+                          )}
 
                           {/* Search Dropdown using Portal */}
-                          {dropdownVisible && activeRowIndex === index && row.drugName.trim() !== "" && (
+                          {dropdownVisible && activeRowIndex === index && row.drugName.trim() !== "" && dataLoaded && (
                             <Portal>
                               <ul
                                 className="list-group position-fixed dropdown-list"
@@ -747,7 +827,7 @@ const TreatmentModal = ({
                                               marginTop: "2px",
                                             }}
                                           >
-                                            
+                                            {drug.code}
                                             {isSelectedInOtherRow && (
                                               <span className="text-success ms-2">
                                                 <i className="fas fa-check-circle me-1"></i> Added
@@ -789,6 +869,7 @@ const TreatmentModal = ({
                           onChange={(e) => handleTreatmentChange(index, "dosage", e.target.value)}
                           placeholder="1"
                           style={{ borderRadius: '4px', minwidth: '12px', maxWidth: '102px' }}
+                          disabled={!dataLoaded}
                         />
                       </td>
 
@@ -799,6 +880,7 @@ const TreatmentModal = ({
                           value={row.frequencyId || ""}
                           onChange={(e) => handleFrequencySelect(index, parseInt(e.target.value))}
                           style={{ borderRadius: '4px', minWidth: '90px' }}
+                          disabled={!dataLoaded}
                         >
                           <option value="">Select Frequency...</option>
                           {allFrequencies.map(freq => (
@@ -818,6 +900,7 @@ const TreatmentModal = ({
                           onChange={(e) => handleTreatmentChange(index, "days", e.target.value)}
                           placeholder="0"
                           style={{ borderRadius: '4px', minWidth: '60px', maxWidth: '60px' }}
+                          disabled={!dataLoaded}
                         />
                       </td>
 
@@ -836,6 +919,7 @@ const TreatmentModal = ({
                             maxWidth: '90px',
                             backgroundColor: (row.drugId && row.dosage && row.days && row.frequencyId) ? '#f8f9fa' : 'white'
                           }}
+                          disabled={!dataLoaded}
                         />
                       </td>
 
@@ -846,6 +930,7 @@ const TreatmentModal = ({
                           value={row.instruction}
                           onChange={(e) => handleTreatmentChange(index, "instruction", e.target.value)}
                           style={{ borderRadius: '4px', minWidth: '70px' }}
+                          disabled={!dataLoaded}
                         >
                           <option value="">Select Instruction...</option>
                           <option value="After Meal">After Meal</option>
@@ -854,23 +939,12 @@ const TreatmentModal = ({
                         </select>
                       </td>
 
-                      {/* Stock */}
-                      {/* <td>
-                        <input
-                          type="number"
-                          className="form-control"
-                          value={row.stock}
-                          onChange={(e) => handleTreatmentChange(index, "stock", e.target.value)}
-                          placeholder="0"
-                          style={{ borderRadius: '4px', minWidth: '70px' }}
-                        />
-                      </td> */}
-
                       {/* Add Button */}
                       <td className="text-center align-middle">
                         <button
                           className="btn btn-success btn-sm"
                           onClick={handleAddTreatmentItem}
+                          disabled={!dataLoaded}
                           style={{
                             borderRadius: '4px',
                             width: '35px',
@@ -890,7 +964,7 @@ const TreatmentModal = ({
                         <button
                           className="btn btn-danger btn-sm"
                           onClick={() => handleRemoveTreatmentItem(index)}
-                          disabled={treatmentItems.length === 1}
+                          disabled={treatmentItems.length === 1 || !dataLoaded}
                           style={{
                             borderRadius: '4px',
                             width: '35px',
@@ -917,7 +991,7 @@ const TreatmentModal = ({
                   <button
                     className="btn btn-primary px-4"
                     onClick={handleSaveTemplate}
-                    disabled={loading || !templateName.trim() || !templateCode.trim() || selectedDrugs.length === 0 || (templateType === 'create' && (isTemplateNameDuplicate() || isTemplateCodeDuplicate())) || (templateType === 'edit' && !selectedTemplateId && !selectedTemplate)}
+                    disabled={loading || !templateName.trim() || !templateCode.trim() || selectedDrugs.length === 0 || (templateType === 'create' && (isTemplateNameDuplicate() || isTemplateCodeDuplicate())) || (templateType === 'edit' && !selectedTemplateId && !selectedTemplate) || !dataLoaded}
                     style={{ borderRadius: '4px' }}
                   >
                     {loading ? 'SAVING...' : templateType === 'create' ? 'SAVE' : 'UPDATE'}
@@ -925,7 +999,7 @@ const TreatmentModal = ({
                   <button
                     className="btn btn-secondary px-4"
                     onClick={handleResetTemplate}
-                    disabled={loading}
+                    disabled={loading || !dataLoaded}
                     style={{ borderRadius: '4px' }}
                   >
                     RESET
@@ -954,7 +1028,7 @@ const TreatmentModal = ({
         />
       )}
     </div>
-  )
-}
+  );
+};
 
-export default TreatmentModal
+export default TreatmentModal;
