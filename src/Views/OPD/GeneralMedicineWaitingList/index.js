@@ -2107,10 +2107,11 @@ const GeneralMedicineWaitingList = () => {
                         <input
                           type="text"
                           className="form-control"
-                          style={{ width: "200px" }}
+                          style={{ width: "400px" }}
                           value={workingDiagnosis}
                           onChange={(e) => setWorkingDiagnosis(e.target.value)}
                           placeholder="Enter working diagnosis"
+                          maxLength={40}
                         />
                       </div>
 
@@ -4252,6 +4253,7 @@ const GeneralMedicineWaitingList = () => {
                         className="form-control"
                         value={searchFilters.employeeNo}
                         onChange={(e) => handleFilterChange("employeeNo", e.target.value)}
+                        maxLength={20}
                       />
                     </div>
 
@@ -4262,6 +4264,7 @@ const GeneralMedicineWaitingList = () => {
                         className="form-control"
                         value={searchFilters.patientName}
                         onChange={(e) => handleFilterChange("patientName", e.target.value)}
+                        maxLength={30}
                       />
                     </div>
 

@@ -233,52 +233,52 @@ const OpdRRecallPatient = () => {
 
 
 
-const handleClearAllTreatmentTemplates = () => {
-  setSelectedTreatmentTemplateIds(new Set());
+  const handleClearAllTreatmentTemplates = () => {
+    setSelectedTreatmentTemplateIds(new Set());
 
-  setTreatmentItems(prev => {
-    const updated = prev.filter(item => {
-      const tpl = (item.templateId ?? "").trim();
+    setTreatmentItems(prev => {
+      const updated = prev.filter(item => {
+        const tpl = (item.templateId ?? "").trim();
 
-      // 1️⃣ Keep DB items (but clear templateId later)
-      if (item.treatmentId !== null) return true;
+        // 1️⃣ Keep DB items (but clear templateId later)
+        if (item.treatmentId !== null) return true;
 
-      // 2️⃣ Keep manual items (templateId empty)
-      if (tpl === "") return true;
+        // 2️⃣ Keep manual items (templateId empty)
+        if (tpl === "") return true;
 
-      // 3️⃣ Remove template-generated items
-      return false;
-    })
-    .map(item => {
-      // Clear templateId only for DB items
-      if (item.treatmentId !== null) {
-        return { ...item, templateId: "" };
+        // 3️⃣ Remove template-generated items
+        return false;
+      })
+        .map(item => {
+          // Clear templateId only for DB items
+          if (item.treatmentId !== null) {
+            return { ...item, templateId: "" };
+          }
+          return item;
+        });
+
+      // If nothing left → add empty row
+      if (updated.length === 0) {
+        return [
+          {
+            treatmentId: null,
+            drugId: "",
+            drugName: "",
+            dispUnit: "",
+            dosage: "",
+            frequency: "",
+            days: "",
+            total: "",
+            instruction: "",
+            stock: "",
+            templateId: ""
+          }
+        ];
       }
-      return item;
+
+      return updated;
     });
-
-    // If nothing left → add empty row
-    if (updated.length === 0) {
-      return [
-        {
-          treatmentId: null,
-          drugId: "",
-          drugName: "",
-          dispUnit: "",
-          dosage: "",
-          frequency: "",
-          days: "",
-          total: "",
-          instruction: "",
-          stock: "",
-          templateId: ""
-        }
-      ];
-    }
-
-    return updated;
-  });
-};
+  };
 
 
 
@@ -849,21 +849,21 @@ const handleClearAllTreatmentTemplates = () => {
   console.log("ShowDuplicatePopup", showDuplicatePopup)
 
 
-const handleClearAllTemplates = () => {
-  setSelectedTemplateIds(new Set());
+  const handleClearAllTemplates = () => {
+    setSelectedTemplateIds(new Set());
 
-  setInvestigationItems(prevItems => {
-    return prevItems.filter(item => {
-      const ids = item.templateIds ?? []; 
+    setInvestigationItems(prevItems => {
+      return prevItems.filter(item => {
+        const ids = item.templateIds ?? [];
 
-      if (item.id !== null) return true;
+        if (item.id !== null) return true;
 
-      if (ids.length === 0) return true;
+        if (ids.length === 0) return true;
 
-      return false;
+        return false;
+      });
     });
-  });
-};
+  };
 
 
 
@@ -1026,6 +1026,18 @@ const handleClearAllTemplates = () => {
     }))
     setCurrentPage(1)
   }
+
+  const handleMobileChange = (e) => {
+    let value = e.target.value.replace(/\D/g, "");
+
+    if (value.length > 10) value = value.slice(0, 10);
+
+    if (value.length > 0 && value.length < 10) {
+      console.error("Mobile number must be 10 digits");
+    }
+    handleFilterChange("mobileNumber", value);
+  };
+
 
 
   console.log("investigationItems", investigationItems)
@@ -1264,7 +1276,7 @@ const handleClearAllTemplates = () => {
   }
 
   const handleAddInvestigationItem = () => {
-    setInvestigationItems((prev) => [...prev, { id: null, templateIds:[], name: "", date: getToday() }])
+    setInvestigationItems((prev) => [...prev, { id: null, templateIds: [], name: "", date: getToday() }])
   }
 
   const handleRemoveInvestigationItem = (index) => {
@@ -2144,6 +2156,7 @@ const handleClearAllTemplates = () => {
                           value={workingDiagnosis}
                           onChange={(e) => setWorkingDiagnosis(e.target.value)}
                           placeholder="Enter working diagnosis"
+                          maxLength={40}
                         />
                       </div>
 
@@ -4261,11 +4274,12 @@ const handleClearAllTemplates = () => {
                         type="text"
                         className="form-control"
                         value={searchFilters.mobileNumber}
-                        onChange={(e) => handleFilterChange("mobileNumber", e.target.value)}
+                        onChange={(e) => handleMobileChange(e)}
                         placeholder="Mobile Number"
                         maxLength={10}
                       />
                     </div>
+
                     <div className="col-md-3">
                       <label className="form-label fw-bold">Patient Name</label>
                       <input
@@ -4274,6 +4288,7 @@ const handleClearAllTemplates = () => {
                         value={searchFilters.patientName}
                         onChange={(e) => handleFilterChange("patientName", e.target.value)}
                         placeholder="Patient Name"
+                        maxLength={30}
                       />
                     </div>
                     <div className="col-md-3">
