@@ -1191,9 +1191,23 @@ const GeneralMedicineWaitingList = () => {
 
 
   // CLOSE BUTTON
-  const handleClose = (patientId) => {
-    setWaitingList(prev => prev.filter((patient) => patient.id !== patientId));
+  const handleClose = async (visitId) => {
+    try {
+      const response = await putRequest(
+        `${OPD_PATIENT}/changeStatusForClose/${visitId}/x`
+      );
+
+      if (response?.status === 200) {
+        showPopup("Update successfully.", "success");
+        handleSearch();
+      } else {
+        showPopup("Failed to update. Please try again.", "error");
+      }
+    } catch (error) {
+      showPopup("Failed to update. Please try again.", "error");
+    }
   };
+
 
   const handleCreateTemplate = () => {
     setShowCreateTemplateModal(true)
@@ -4348,7 +4362,7 @@ const GeneralMedicineWaitingList = () => {
                             className="btn btn-danger btn-sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleClose(item.id);
+                              handleClose(item.visitId);
                             }}
                           >
                             CLOSE

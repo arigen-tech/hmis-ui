@@ -94,7 +94,8 @@ const validRoutes = [
   "/IndentIssue",
   "/IndentApproval",
   "/MedicineIssueRegister",
-  "/IssueReferenceReport"
+  "/IssueReferenceReport",
+  "/PatientWaitingList",
   
 ];
 
