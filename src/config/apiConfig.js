@@ -1,6 +1,13 @@
 // export const API_HOST = 'https://103.133.215.182:8445';
-export const API_HOST = 'http://localhost:8080';
+
+//  export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://192.168.1.8:8080';
+
+// export const API_HOST = 'http://localhost:8080';
+export const API_HOST = 'http://103.133.215.182:8081/hims';
+
+// export const API_HOST = 'http://192.168.1.8:8080';
+
 
 
 
