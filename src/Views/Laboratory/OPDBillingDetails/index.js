@@ -1,15 +1,59 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
+import { MAS_SERVICE_CATEGORY } from "../../../config/apiConfig";
+import { getRequest } from "../../../service/apiService";
+
+
+
 
 const OPDBillingDetails = () => {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Sample patient data - in real app, this would come from API
-  // (No longer used, but kept for reference)
-  // const [patientData] = useState([...])
+  const [gstConfig, setGstConfig] = useState({
+    gstApplicable: false,
+    gstPercent: 0,
+  });
 
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, patientId: null, newStatus: false })
+  async function fetchGstConfiguration(optionalCategoryId) {
+    try {
+      optionalCategoryId = 1;
+      const url = `${MAS_SERVICE_CATEGORY}/getGstConfig/1` +
+        (optionalCategoryId ? `?categoryId=${optionalCategoryId}` : "");
+
+      const data = await getRequest(url);
+      console.log("GST:", gstConfig);
+      if (
+        data &&
+        data.status === 200 &&
+        data.response &&
+        typeof data.response.gstApplicable !== "undefined"
+      ) {
+        setGstConfig({
+          gstApplicable: !!data.response.gstApplicable,
+          gstPercent: Number(data.response.gstPercent) || 0,
+        });
+      } else {
+        setGstConfig({ gstApplicable: false, gstPercent: 0 });
+      }
+    } catch (error) {
+      console.error("GST Fetch Error:", error);
+      setGstConfig({ gstApplicable: false, gstPercent: 0 });
+    }
+  }
+
+  //Confirm dialog for activate/deactivate (optional)
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    patientId: null,
+    newStatus: false,
+  });
+
+  //Form data for all OPD fields
   const [formData, setFormData] = useState({
+    billingType: "",
+    billingHeaderId: "",
     patientName: "",
     mobileNo: "",
     age: "",
@@ -30,53 +74,187 @@ const OPDBillingDetails = () => {
     netAmount: "",
     gst: "",
     totalAmount: "",
-  })
-  const [isFormValid, setIsFormValid] = useState(false)
+    registrationCost: "",
+  });
 
+  const [appointments, setAppointments] = useState([]); // Re-introduce appointments state
+  const [isFormValid, setIsFormValid] = useState(false);
+
+  //Step 1: Auto-fill details from previous page (location.state)
+  useEffect(() => {
+    if (!location.state || !location.state.billingData) {
+      console.log("No billingData passed. Redirecting back to pending list.");
+      navigate("/PendingForBilling");
+      return;
+    }
+
+    const response = location.state.billingData;
+    
+    if (response.appointments && Array.isArray(response.appointments) && response.appointments.length > 0) {
+      setAppointments(response.appointments);
+      const primaryAppointment = response.appointments[0];
+      const mapped = {
+        billingType: "OPD",
+        billingHeaderId: primaryAppointment.billingHeaderId || "",
+        patientName: response.patientName || "",
+        mobileNo: response.mobileNo || "",
+        age: response.age || "",
+        sex: response.patientGender || "",
+        relation: response.relation || "",
+        patientId: response.patientId?.toString() || "",
+        address: `${response.patientAddress1 || ""}, ${response.patientCity || ""}`,
+        visitDate: new Date().toISOString().split("T")[0],
+        doctorName: primaryAppointment.doctorName || "",
+        department: primaryAppointment.departmentName || "",
+        visitType: primaryAppointment.visitType || "New",
+        visitId: primaryAppointment.visitId || "",
+        room: primaryAppointment.room || "",
+        opdSession: primaryAppointment.sessionName || "",
+        tariffPlan: primaryAppointment.tariffPlan || "",
+        basePrice: primaryAppointment.basePrice || "0.00",
+        discount: primaryAppointment.discount || 0,
+        netAmount: primaryAppointment.netAmount || "0.00",
+        gst: primaryAppointment.gst || "0.00",
+        totalAmount: primaryAppointment.totalAmount || "0.00",
+        registrationCost: primaryAppointment.registrationCost || "0.00",
+      };
+      setFormData((prev) => ({ ...prev, ...mapped }));
+    } else {
+      // Existing logic for pending billing if no appointments array is present or empty
+      const billing = Array.isArray(response) ? response[0] : response;
+  
+      const mapped = {
+        billingType: billing.billingType || "",
+        billingHeaderId: billing.billingHeaderId || billing.billinghdid || "",
+        patientName: billing.patientName || billing.patientFn || "",
+        mobileNo: billing.mobileNo || billing.patientMobileNumber || "",
+        age: billing.age || billing.patientAge || "",
+        sex: billing.sex || billing.patientGender || "",
+        relation: billing.relation || "",
+        patientId: billing.patientid?.toString() || billing.patientId?.toString() || "",
+        address: billing.address || `${billing.patientAddress1 || ""}, ${billing.patientCity || ""}`,
+        visitDate: billing.visitDate || new Date().toISOString().split("T")[0],
+        doctorName: billing.consultedDoctor || billing.consultedDoctor || "",
+        department: billing.department || "",
+        visitType: billing.visitType || "",
+        visitId: billing.visitId || billing.visitNo || "",
+        room: billing.room || "",
+        opdSession: billing.opdSession || "",
+        tariffPlan: billing.tariffPlan || "",
+        basePrice: billing.basePrice ?? billing.amount ?? "",
+        discount: billing.discount || billing.details?.[0]?.discount || 0,
+        netAmount: billing.netAmount || "",
+        gst: billing.gst || "",
+        totalAmount: billing.totalAmount || "",
+        registrationCost: billing.registrationCost,
+        visitType: billing.visitType === "N" ? "New" : "Follow-up",
+      };
+      setAppointments([{ // Ensure appointments array is always populated for consistent rendering
+        department: billing.department,
+        consultedDoctor: billing.consultedDoctor,
+        session: billing.opdSession,
+        speciality: billing.departmentId,
+        doctorId: billing.doctorId,
+        sessionId: billing.sessionId,
+        basePrice: billing.basePrice ?? billing.amount ?? "",
+        discount: billing.discount || billing.details?.[0]?.discount || 0,
+        netAmount: billing.netAmount || "",
+        gst: billing.gst || "",
+        totalAmount: billing.totalAmount || "",
+        registrationCost: billing.registrationCost,
+        visitType: billing.visitType === "N" ? "New" : "Follow-up",
+      }]);
+      setFormData((prev) => ({ ...prev, ...mapped }));
+    }
+    
+    const optionalCategoryId = response.categoryId || null;
+    fetchGstConfiguration(optionalCategoryId);
+  }, [location.state, navigate]);
+
+  //Auto-calculate net, GST, and total whenever base or discount changes
+  // useEffect(() => {
+  //   const base = parseFloat(formData.basePrice) || 0;
+  //   const discountVal = parseFloat(formData.discount) || 0;
+  //   const regCost = formData.visitType === "New" ? Number(formData.registrationCost) || 0 : 0;
+  //
+  //   const net = Math.max(0, base - discountVal);
+  //
+  //   const gstPercent = gstConfig?.gstApplicable ? gstConfig?.gstPercent : 0;
+  //
+  //   const gstAmount = (net * gstPercent) / 100;
+  //   const total = net + gstAmount + regCost;
+  //
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     netAmount: net.toFixed(2),
+  //     gst: gstAmount.toFixed(2),
+  //     totalAmount: total.toFixed(2),
+  //   }));
+  // }, [
+  //   formData.basePrice,
+  //   formData.discount,
+  //   formData.visitType,
+  //   gstConfig
+  // ]);
+
+
+  //Validate required fields
+  useEffect(() => {
+    const valid =
+      !!formData.patientName &&
+      !!formData.mobileNo &&
+
+      !!formData.visitDate &&
+      !!formData.doctorName;
+    setIsFormValid(valid);
+  }, [formData.patientName, formData.mobileNo, formData.visitDate, formData.doctorName]);
+
+  //Step 4: Handle input change
+  const handleInputChange = (e) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({ ...prev, [id]: value }));
+  };
+
+  //Step 5: Handle Save (Navigate to payment)
   const handleSave = (e) => {
-    e.preventDefault()
-    if (!isFormValid) return
+    e.preventDefault();
+    if (!isFormValid) {
+      Swal.fire("Missing", "Please fill required fields", "warning");
+      return;
+    }
 
-    // Here you would typically save to database
-    console.log("Saving patient data:", formData)
-    alert("Patient billing details saved successfully!")
-    navigate("/PendingForBilling")
-  }
+    navigate("/payment", {
+      state: {
+        billingType: formData.billingType,
+        amount: parseFloat(formData.totalAmount) || 0,
+        patientId: formData.patientId,
+        opdData: formData,
+        billingHeaderId: formData.billingHeaderId
+      },
+    });
+  };
 
+  // Step 6: Handle Back Button
+  const handleBack = () => {
+    navigate("/PendingForBilling");
+  };
+
+  // Step 7: Optional - Confirm Dialog Handlers
   const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, patientId: id, newStatus })
-  }
+    setConfirmDialog({ isOpen: true, patientId: id, newStatus });
+  };
 
   const handleConfirm = (confirmed) => {
     if (confirmed && confirmDialog.patientId !== null) {
-      // Update patient status
-      console.log("Status updated for patient:", confirmDialog.patientId)
-      alert(`Patient status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`)
+      alert(
+        `Patient status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+        } successfully!`
+      );
     }
-    setConfirmDialog({ isOpen: false, patientId: null, newStatus: null })
-  }
+    setConfirmDialog({ isOpen: false, patientId: null, newStatus: null });
+  };
 
-  const handleInputChange = (e) => {
-    const { id, value } = e.target
-    setFormData((prevData) => ({ ...prevData, [id]: value }))
-
-    const updatedFormData = { ...formData, [id]: value }
-    setIsFormValid(
-      !!updatedFormData.patientName &&
-        !!updatedFormData.mobileNo &&
-        !!updatedFormData.age &&
-        !!updatedFormData.sex &&
-        !!updatedFormData.visitDate &&
-        !!updatedFormData.doctorName,
-    )
-  }
-
-  const handleBack = () => {
-    navigate("/PendingForBilling")
-  }
-
-  // Always show the form, no patient lookup or blocking state
-
+  // Step 8: Render UI
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -88,11 +266,9 @@ const OPDBillingDetails = () => {
                 <i className="mdi mdi-arrow-left"></i> Back to Pending List
               </button>
             </div>
+
             <div className="card-body">
               <form className="forms row" onSubmit={handleSave}>
-                {/* Patient Status Section */}
-               
-
                 {/* Patient Details Section */}
                 <div className="col-12 mt-4">
                   <div className="card">
@@ -103,64 +279,50 @@ const OPDBillingDetails = () => {
                     </div>
                     <div className="card-body">
                       <div className="row">
+                        {[
+                          ["Patient Name", "patientName", "text", true, true],
+                          ["Age", "age", "patientAge", "text", false, true],
+                          ["Mobile No.", "mobileNo", "text", true, true],
+                        ].map(([label, id, type, required, readOnly]) => (
+                          <div className="form-group col-md-4 mt-3" key={id}>
+                            <label>
+                              {label} {required && <span className="text-danger">*</span>}
+                            </label>
+                            <input
+                              type={type}
+                              className="form-control"
+                              id={id}
+                              placeholder={label}
+                              onChange={handleInputChange}
+                              value={formData[id]}
+                              required={required}
+                              readOnly
+                            />
+                          </div>
+                        ))}
+
                         <div className="form-group col-md-4 mt-3">
-                          <label>
-                            Patient Name <span className="text-danger">*</span>
-                          </label>
+                          <label>Sex</label>
                           <input
                             type="text"
                             className="form-control"
-                            id="patientName"
-                            placeholder="Patient Name"
+                            id="sex"
+                            placeholder="Relation"
                             onChange={handleInputChange}
-                            value={formData.patientName}
-                            required
+                            value={formData.sex}
+                            readOnly
                           />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>
-                            Age <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="number"
-                            className="form-control"
-                            id="age"
-                            placeholder="Age"
-                            onChange={handleInputChange}
-                            value={formData.age}
-                            required
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>
-                            Mobile No. <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="mobileNo"
-                            placeholder="Mobile Number"
-                            onChange={handleInputChange}
-                            value={formData.mobileNo}
-                            required
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>
-                            Sex <span className="text-danger">*</span>
-                          </label>
-                          <select
+                          {/* <select
                             className="form-select"
                             id="sex"
                             value={formData.sex}
                             onChange={handleInputChange}
-                            required
                           >
                             <option value="">Select Sex</option>
                             <option value="Male">Male</option>
                             <option value="Female">Female</option>
                             <option value="Other">Other</option>
-                          </select>
+                          </select> */}
                         </div>
                         <div className="form-group col-md-4 mt-3">
                           <label>Relation</label>
@@ -171,6 +333,7 @@ const OPDBillingDetails = () => {
                             placeholder="Relation"
                             onChange={handleInputChange}
                             value={formData.relation}
+                            readOnly
                           />
                         </div>
                         <div className="form-group col-md-4 mt-3">
@@ -182,6 +345,7 @@ const OPDBillingDetails = () => {
                             placeholder="Patient ID"
                             onChange={handleInputChange}
                             value={formData.patientId}
+                            readOnly
                           />
                         </div>
                         <div className="form-group col-md-12 mt-3">
@@ -193,6 +357,7 @@ const OPDBillingDetails = () => {
                             onChange={handleInputChange}
                             value={formData.address}
                             rows="2"
+                            readOnly
                           />
                         </div>
                       </div>
@@ -200,198 +365,196 @@ const OPDBillingDetails = () => {
                   </div>
                 </div>
 
-                {/* OPD Visit Information Section */}
-                <div className="col-12 mt-4">
-                  <div className="card">
-                    <div className="card-header bg-light">
-                      <h5 className="mb-0">
-                        <i className="mdi mdi-hospital-building"></i> OPD Visit Information
-                      </h5>
-                    </div>
-                    <div className="card-body">
-                      <div className="row">
-                        <div className="form-group col-md-4 mt-3">
-                          <label>
-                            Visit Date <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="date"
-                            className="form-control"
-                            id="visitDate"
-                            onChange={handleInputChange}
-                            value={formData.visitDate}
-                            required
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>
-                            Doctor Name <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="doctorName"
-                            placeholder="Doctor Name"
-                            onChange={handleInputChange}
-                            value={formData.doctorName}
-                            required
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Department</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="department"
-                            placeholder="Department"
-                            onChange={handleInputChange}
-                            value={formData.department}
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Visit Type</label>
-                          <select
-                            className="form-select"
-                            id="visitType"
-                            value={formData.visitType}
-                            onChange={handleInputChange}
-                          >
-                            <option value="">Select Visit Type</option>
-                            <option value="New">New</option>
-                            <option value="Follow-up">Follow-up</option>
-                            <option value="Emergency">Emergency</option>
-                          </select>
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Visit ID</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="visitId"
-                            placeholder="Visit ID"
-                            onChange={handleInputChange}
-                            value={formData.visitId}
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Room</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="room"
-                            placeholder="Room"
-                            onChange={handleInputChange}
-                            value={formData.room}
-                          />
-                        </div>
-                        <div className="form-group col-md-12 mt-3">
-                          <label>OPD Session</label>
-                          <select
-                            className="form-select"
-                            id="opdSession"
-                            value={formData.opdSession}
-                            onChange={handleInputChange}
-                          >
-                            <option value="">Select OPD Session</option>
-                            <option value="Morning (9-1 PM)">Morning (9-1 PM)</option>
-                            <option value="Evening (2-6 PM)">Evening (2-6 PM)</option>
-                            <option value="Night (7-11 PM)">Night (7-11 PM)</option>
-                          </select>
+                {/* Multiple OPD Visit Information Sections based on appointments */}
+                {appointments.map((appointment, index) => (
+                  <div className="col-12 mt-4" key={`appointment-${appointment.id}-${index}`}>
+                    <div className="card">
+                      <div className="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h5 className="mb-0">
+                          <i className="mdi mdi-hospital-building"></i> OPD Visit Information {appointments.length > 1 ? `- Appointment ${index + 1}` : ""}
+                        </h5>
+                      </div>
+                      <div className="card-body">
+                        <div className="row">
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Visit Date *</label>
+                            <input
+                              type="date"
+                              className="form-control"
+                              id={`visitDate-${appointment.id}`}
+                              onChange={handleInputChange}
+                              value={formData.visitDate} // Assuming visitDate is consistent across all appointments, or you might need to manage it per appointment
+                              required
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Doctor Name *</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id={`doctorName-${appointment.id}`}
+                              placeholder="Doctor Name"
+                              onChange={handleInputChange}
+                              value={appointment.doctorName}
+                              required
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Department</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id={`department-${appointment.id}`}
+                              placeholder="Department"
+                              onChange={handleInputChange}
+                              value={appointment.departmentName}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Visit Type</label>
+                            <select
+                              className="form-select"
+                              id={`visitType-${appointment.id}`}
+                              value={appointment.visitType}
+                              onChange={handleInputChange}
+                              readOnly
+                            >
+                              <option value="">Select Visit Type</option>
+                              <option value="New">New</option>
+                              <option value="Follow-up">Follow-up</option>
+                              <option value="Emergency">Emergency</option>
+                            </select>
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Room</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id={`room-${appointment.id}`}
+                              placeholder="Room"
+                              onChange={handleInputChange}
+                              value={appointment.room || ""}
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>OPD Session</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id={`opdSession-${appointment.id}`}
+                              placeholder="OPD Session"
+                              onChange={handleInputChange}
+                              value={appointment.sessionName}
+                              readOnly
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                ))}
 
-                {/* Billing & Payment Information Section */}
-                <div className="col-12 mt-4">
-                  <div className="card">
-                    <div className="card-header bg-light">
-                      <h5 className="mb-0">
-                        <i className="mdi mdi-currency-inr"></i> Billing & Payment Information
-                      </h5>
-                    </div>
-                    <div className="card-body">
-                      <div className="row">
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Tariff Plan</label>
-                          <select
-                            className="form-select"
-                            id="tariffPlan"
-                            value={formData.tariffPlan}
-                            onChange={handleInputChange}
-                          >
-                            <option value="">Select Tariff Plan</option>
-                            <option value="General Tariff">General Tariff</option>
-                            <option value="Premium Tariff">Premium Tariff</option>
-                            <option value="VIP Tariff">VIP Tariff</option>
-                          </select>
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Base Price</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="form-control"
-                            id="basePrice"
-                            placeholder="Base Price"
-                            onChange={handleInputChange}
-                            value={formData.basePrice}
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Discount (%)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="form-control"
-                            id="discount"
-                            placeholder="Discount Percentage"
-                            onChange={handleInputChange}
-                            value={formData.discount}
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Net Amount</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="form-control"
-                            id="netAmount"
-                            placeholder="Net Amount"
-                            onChange={handleInputChange}
-                            value={formData.netAmount}
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>GST (18%)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="form-control"
-                            id="gst"
-                            placeholder="GST Amount"
-                            onChange={handleInputChange}
-                            value={formData.gst}
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Total Amount</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="form-control"
-                            id="totalAmount"
-                            placeholder="Total Amount"
-                            onChange={handleInputChange}
-                            value={formData.totalAmount}
-                          />
+                {/* Multiple Billing & Payment Sections based on appointments */}
+                {appointments.map((appointment, index) => (
+                  <div className="col-12 mt-4" key={`billing-${appointment.id}-${index}`}>
+                    <div className="card">
+                      <div className="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h5 className="mb-0">
+                          <i className="mdi mdi-currency-inr"></i> Billing & Payment {appointments.length > 1 ? `- Appointment ${index + 1}` : ""}
+                        </h5>
+                      </div>
+                      <div className="card-body">
+                        <div className="row">
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Tariff Plan</label>
+                            <select
+                              className="form-select"
+                              id={`tariffPlan-${appointment.id}`}
+                              value={appointment.tariffPlan || ""}
+                              onChange={handleInputChange}
+                              readOnly
+                            >
+                              <option value="">Select Tariff</option>
+                              <option value="General Tariff">General Tariff</option>
+                              <option value="Premium Tariff">Premium Tariff</option>
+                              <option value="VIP Tariff">VIP Tariff</option>
+                            </select>
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Base Price</label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              id={`basePrice-${appointment.id}`}
+                              onChange={handleInputChange}
+                              value={appointment.basePrice}
+                              readOnly
+                            />
+                          </div>
+                          {appointment.visitType === "New" && (
+                            <div className="form-group col-md-4 mt-3">
+                              <label>Registration Cost</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                id={`registrationCost-${appointment.id}`}
+                                value={appointment.registrationCost}
+                                readOnly
+                              />
+                            </div>
+                          )}
+
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Discount</label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              id={`discount-${appointment.id}`}
+                              onChange={handleInputChange}
+                              value={appointment.discount}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Net Amount</label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              id={`netAmount-${appointment.id}`}
+                              value={appointment.netAmount}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>GST {gstConfig.gstPercent}%</label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              id={`gst-${appointment.id}`}
+                              value={appointment.gst}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Total Amount</label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              id={`totalAmount-${appointment.id}`}
+                              value={appointment.totalAmount}
+                              readOnly
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                ))}
 
+                {/* Action Buttons */}
                 <div className="form-group col-md-12 d-flex justify-content-end mt-4">
                   <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                     Pay Now
@@ -402,27 +565,41 @@ const OPDBillingDetails = () => {
                 </div>
               </form>
 
+              {/* Confirm Dialog */}
               {confirmDialog.isOpen && (
                 <div className="modal d-block" tabIndex="-1" role="dialog">
                   <div className="modal-dialog" role="document">
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="close" onClick={() => handleConfirm(false)}>
+                        <button
+                          type="button"
+                          className="close"
+                          onClick={() => handleConfirm(false)}
+                        >
                           <span>&times;</span>
                         </button>
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} {" "}
+                          Are you sure you want to{" "}
+                          {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
                           <strong>{formData.patientName || "this patient"}</strong>?
                         </p>
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => handleConfirm(false)}
+                        >
                           No
                         </button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => handleConfirm(true)}
+                        >
                           Yes
                         </button>
                       </div>
@@ -435,7 +612,7 @@ const OPDBillingDetails = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default OPDBillingDetails
+export default OPDBillingDetails;

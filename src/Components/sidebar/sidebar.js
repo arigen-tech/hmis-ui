@@ -1,6 +1,4 @@
-"use client"
-
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import "./sidebar.css"
 import { Link, useLocation } from "react-router-dom"
 import { getRequest } from "../../service/apiService"
@@ -68,6 +66,7 @@ const getIconClass = (name) => iconMap[name] || "icofont-ui-folder"
 const Sidebar = () => {
   const [loading, setLoading] = useState(false)
   const [menuData, setMenuData] = useState([])
+  const [searchText, setSearchText] = useState("")
   const location = useLocation()
 
   const rolesId = localStorage.getItem("roleId") || sessionStorage.getItem("roleId")
@@ -83,26 +82,20 @@ const Sidebar = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setMenuData(data.response)
 
-        // Flatten the nested URLs
+        // Flatten URLs
         const extractUrls = (items) => {
           const urls = []
           for (const item of items) {
-            if (item.url && item.url !== "#") {
-              urls.push(item.url)
-            }
-            if (item.children && item.children.length > 0) {
-              urls.push(...extractUrls(item.children))
-            }
+            if (item.url && item.url !== "#") urls.push(item.url)
+            if (item.children?.length) urls.push(...extractUrls(item.children))
           }
           return urls
         }
 
-        const allowedUrls = extractUrls(data.response)
-
-        sessionStorage.setItem("allowedUrls", JSON.stringify(allowedUrls))
+        sessionStorage.setItem("allowedUrls", JSON.stringify(extractUrls(data.response)))
       } else {
-        console.error("Unexpected API response format:", data)
         setMenuData([])
+        console.error("Unexpected API response:", data)
       }
     } catch (error) {
       console.error("Error fetching Menu data:", error)
@@ -113,7 +106,25 @@ const Sidebar = () => {
 
   const isActive = (path) => location.pathname === path
 
-  const renderMenuItems = (items, level = 0, parentId = "") => {
+  // ✅ Recursive filtering for search
+  const filterMenu = (items, searchText) => {
+    if (!searchText.trim()) return items
+    return items
+      .map((item) => {
+        const matches = item.name.toLowerCase().includes(searchText.toLowerCase())
+        const filteredChildren = item.children ? filterMenu(item.children, searchText) : []
+        if (matches || filteredChildren.length > 0) {
+          return { ...item, children: filteredChildren }
+        }
+        return null
+      })
+      .filter(Boolean)
+  }
+
+  // ✅ UseMemo to avoid unnecessary re-renders
+  const filteredMenu = useMemo(() => filterMenu(menuData, searchText), [menuData, searchText])
+
+  const renderMenuItems = (items, parentId = "") => {
     return items.map((item, index) => {
       const hasChildren = item.children && item.children.length > 0
       const collapseId = `collapse-${parentId}-${index}`
@@ -131,12 +142,14 @@ const Sidebar = () => {
                 <i className={`${getIconClass(item.name)} fs-5`} />
                 <span>{item.name}</span>
                 <span
-                  className={`arrow icofont-rounded-down ms-auto text-end fs-5 ${hasChildren ? "collapse-arrow" : ""}`}
+                  className={`arrow icofont-rounded-down ms-auto text-end fs-5 ${
+                    hasChildren ? "collapse-arrow" : ""
+                  }`}
                   data-bs-toggle="collapse"
                 />
               </Link>
-              <ul className="sub-menu collapse" id={collapseId}>
-                {renderMenuItems(item.children, level + 1, `${parentId}-${index}`)}
+              <ul className="sub-menu collapse " id={collapseId}>
+                {renderMenuItems(item.children, `${parentId}-${index}`)}
               </ul>
             </>
           ) : (
@@ -149,8 +162,6 @@ const Sidebar = () => {
       )
     })
   }
-
-  const [searchText, setSearchText] = useState("")
 
   return (
     <div className="sidebar px-4 py-4 py-md-5 me-0 ms-1">
@@ -166,15 +177,11 @@ const Sidebar = () => {
           className="position-sticky"
           style={{ top: 0, zIndex: 1020, background: "inherit", paddingTop: "0.75rem", paddingBottom: "0.75rem" }}
         >
-          <label htmlFor="sidebar-search" className="visually-hidden">
-            Search
-          </label>
           <input
             id="sidebar-search"
             type="search"
             className="form-control"
             placeholder="Search..."
-            aria-label="Search"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
@@ -188,7 +195,13 @@ const Sidebar = () => {
                   <div className="skeleton-text bg-custom rounded w-75"></div>
                 </li>
               ))
-            : renderMenuItems(menuData)}
+            : filteredMenu.length > 0
+            ? renderMenuItems(filteredMenu)
+            : !loading && (
+                <li className="text-center text-muted mt-3">
+                  <i className="icofont-search-document fs-4 me-2"></i> No matching results
+                </li>
+              )}
         </ul>
 
         <button type="button" className="btn btn-link sidebar-mini-btn text-light">

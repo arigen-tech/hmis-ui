@@ -15,18 +15,25 @@ const PendingForSampleCollection = () => {
   const [selectedSample, setSelectedSample] = useState(null)
   const [showDetailView, setShowDetailView] = useState(false)
   const [popupMessage, setPopupMessage] = useState(null)
+  const [shouldRefresh, setShouldRefresh] = useState(false) // New state to control refresh
 
   const itemsPerPage = 10
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", shouldRefreshData = false) => {
     setPopupMessage({
       message,
       type,
-      onClose: () => setPopupMessage(null)
+      onClose: () => {
+        setPopupMessage(null)
+        // Only refresh data if shouldRefreshData is true AND when popup closes
+        if (shouldRefreshData) {
+          fetchPendingSamples()
+        }
+      }
     })
   }
 
-  // Fetch pending samples data
+  // Fetch pending samples data - only on initial mount and when shouldRefresh changes
   useEffect(() => {
     fetchPendingSamples()
     fetchContainerOptions()
@@ -37,10 +44,10 @@ const PendingForSampleCollection = () => {
       setLoading(true);
       const data = await getRequest(`${LAB}/pending-samples`);
 
-      console.log("Raw API Response:", data); // Debugging - check if IDs exist here
+      console.log("Raw API Response:", data);
 
       if (data.status === 200 && data.response) {
-        console.log("First sample item:", data.response[0]); // Debugging
+        console.log("First sample item:", data.response[0]);
         const groupedData = groupInvestigationsByPatient(data.response);
         setSamples(groupedData);
       } else {
@@ -83,6 +90,7 @@ const PendingForSampleCollection = () => {
         grouped[patientKey] = {
           id: counter++,
           reqDate: formatDate(item.reqDate),
+          reqTime: item.orderTime,
           ReqNo: item.orderNo || '',
           patientName: item.patientName || '',
           relation: item.relation || '',
@@ -107,14 +115,14 @@ const PendingForSampleCollection = () => {
         siNo: grouped[patientKey].investigations.length + 1,
         investigation: item.investigation || '',
         sample: item.sample || '',
-        container: item.collection || '', // Changed from item.collection
+        container: item.collection || '',
         collected: true,
         empanelled: false,
         remarks: '',
         appointment: false,
         subChargeCodeId: item.subChargeCodeId || 0,
         investigationId: item.investigationId || 0,
-        mainChargeCodeId: item.mainChargcodeId || 0, // Changed from mainChargeCodeId to mainChargcodeId
+        mainChargeCodeId: item.mainChargcodeId || 0,
         sampleId: item.sampleId || 0,
         collectionId: item.collectionId || 0
       })
@@ -187,11 +195,12 @@ const PendingForSampleCollection = () => {
         const response = await postRequest(`${LAB}/savesamplecollection`, requestPayload)
 
         if (response.status === 200) {
-          const updatedSamples = samples.map((sample) =>
-            sample.id === selectedSample.id ? selectedSample : sample
-          )
-          setSamples(updatedSamples)
-          showPopup("Sample collection data saved successfully!", "success")
+          // Show success message with refresh flag - data will refresh ONLY when popup closes
+          showPopup("Sample collection data saved successfully!", "success", true)
+          
+          // Close the detail view and go back to list immediately
+          setShowDetailView(false)
+          setSelectedSample(null)
         } else {
           throw new Error(response.message || "Failed to save sample collection")
         }
@@ -282,6 +291,7 @@ const PendingForSampleCollection = () => {
     }
   }
 
+  // Rest of your JSX remains the same...
   if (showDetailView && selectedSample) {
     return (
       <div className="content-wrapper">
@@ -305,46 +315,6 @@ const PendingForSampleCollection = () => {
                 </div>
               </div>
               <div className="card-body">
-                {/* Sample Collection Header */}
-                <div className="row mb-4">
-                  <div className="col-md-3">
-                    <label className="form-label fw-bold">Req Date</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedSample.reqDate}
-                      onChange={(e) => setSelectedSample({ ...selectedSample, reqDate: e.target.value })}
-                    />
-                  </div>
-                  <div className="col-md-3">
-                    <label className="form-label fw-bold">Req Time</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedSample.reqTime}
-                      onChange={(e) => setSelectedSample({ ...selectedSample, reqTime: e.target.value })}
-                    />
-                  </div>
-                  <div className="col-md-3">
-                    <label className="form-label fw-bold">Req No.</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedSample.ReqNo || ''}
-                      onChange={(e) => setSelectedSample({ ...selectedSample, ReqNo: e.target.value })}
-                    />
-                  </div>
-                  <div className="col-md-3">
-                    <label className="form-label fw-bold">Department</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedSample.department}
-                      onChange={(e) => setSelectedSample({ ...selectedSample, department: e.target.value })}
-                    />
-                  </div>
-                </div>
-
                 {/* Patient Details */}
                 <div className="card mb-4">
                   <div className="card-header">
@@ -357,8 +327,17 @@ const PendingForSampleCollection = () => {
                         <input
                           type="text"
                           className="form-control"
+                          readOnly
                           value={selectedSample.patientName}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, patientName: e.target.value })}
+                        />
+                      </div>
+                       <div className="col-md-4">
+                        <label className="form-label fw-bold">Mobile No.</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          readOnly
+                          value={selectedSample.mobile}
                         />
                       </div>
                       <div className="col-md-4">
@@ -366,37 +345,19 @@ const PendingForSampleCollection = () => {
                         <input
                           type="text"
                           className="form-control"
+                          readOnly
                           value={selectedSample.relation}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, relation: e.target.value })}
-                        />
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label fw-bold">Mobile No.</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedSample.mobile}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, mobile: e.target.value })}
                         />
                       </div>
                     </div>
                     <div className="row mt-3">
-                      {/* <div className="col-md-4">
-                        <label className="form-label fw-bold">Name</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedSample.name}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, name: e.target.value })}
-                        />
-                      </div> */}
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Age</label>
                         <input
                           type="text"
                           className="form-control"
+                          readOnly
                           value={selectedSample.age}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, age: e.target.value })}
                         />
                       </div>
                       <div className="col-md-4">
@@ -404,73 +365,13 @@ const PendingForSampleCollection = () => {
                         <input
                           type="text"
                           className="form-control"
+                          readOnly
                           value={selectedSample.gender}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, gender: e.target.value })}
                         />
                       </div>
                     </div>
                   </div>
                 </div>
-
-                {/* Sample Details */}
-                {/* <div className="card mb-4">
-                  <div className="card-header">
-                    <h5 className="mb-0">SAMPLE DETAILS</h5>
-                  </div>
-                  <div className="card-body">
-                    <div className="row">
-                      <div className="col-md-3">
-                        <label className="form-label fw-bold">Date</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedSample.reqDate}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, reqDate: e.target.value })}
-                        />
-                      </div>
-                      <div className="col-md-3">
-                        <label className="form-label fw-bold">Time</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedSample.reqTime}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, reqTime: e.target.value })}
-                        />
-                      </div>
-                      <div className="col-md-3">
-                        <label className="form-label fw-bold">
-                          Accepted By <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedSample.acceptedBy}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, acceptedBy: e.target.value })}
-                        />
-                      </div>
-                      <div className="col-md-3">
-                        <label className="form-label fw-bold">Diagnostic No.</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedSample.reqNo}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, reqNo: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    <div className="row mt-3">
-                      <div className="col-12">
-                        <label className="form-label fw-bold">Clinical Notes</label>
-                        <textarea
-                          className="form-control"
-                          rows="3"
-                          value={selectedSample.clinicalNotes}
-                          onChange={(e) => setSelectedSample({ ...selectedSample, clinicalNotes: e.target.value })}
-                        ></textarea>
-                      </div>
-                    </div>
-                  </div>
-                </div> */}
 
                 {/* Investigations Table */}
                 <div className="table-responsive">
@@ -659,7 +560,6 @@ const PendingForSampleCollection = () => {
                           <th>Req Date</th>
                           <th>Patient Name</th>
                           <th>Relation</th>
-                          <th>Name</th>
                           <th>Age</th>
                           <th>Gender</th>
                           <th>Mobile No.</th>
@@ -680,7 +580,6 @@ const PendingForSampleCollection = () => {
                               <td>{item.reqDate}</td>
                               <td>{item.patientName}</td>
                               <td>{item.relation}</td>
-                              <td>{item.name}</td>
                               <td>{item.age}</td>
                               <td>{item.gender}</td>
                               <td>{item.mobile}</td>

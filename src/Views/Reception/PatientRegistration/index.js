@@ -1,19 +1,26 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import { getRequest, postRequest } from "../../../service/apiService";
-import Swal from "sweetalert2";
 
 import {
-  API_HOST,
   ALL_COUNTRY, ALL_DEPARTMENT,
   ALL_GENDER,
   ALL_RELATION,
-  DISTRICT_BY_STATE, DOCTOR_BY_SPECIALITY, PATIENT_IMAGE_UPLOAD,
-  STATE_BY_COUNTRY, GET_DOCTOR_SESSION, PATIENT_REGISTRATION, GET_SESSION, HOSPITAL
+  API_HOST,
+  DISTRICT_BY_STATE, DOCTOR_BY_SPECIALITY,
+  GET_DOCTOR_SESSION,
+  GET_SESSION, HOSPITAL,
+  MAS_SERVICE_CATEGORY,
+  PATIENT_IMAGE_UPLOAD,
+  PATIENT_REGISTRATION,
+  STATE_BY_COUNTRY
 } from "../../../config/apiConfig";
 import { DEPARTMENT_CODE_OPD } from "../../../config/constants";
-import axios from "axios";
+
 const PatientRegistration = () => {
+  const navigate = useNavigate();
   useEffect(() => {
     // Fetching gender data (simulated API response)
     fetchGenderData();
@@ -22,7 +29,9 @@ const PatientRegistration = () => {
     fetchDepartment();
     fetchSesion();
     fetchHospitalDetails();
+    fetchGstConfiguration();
   }, []);
+
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [genderData, setGenderData] = useState([]);
@@ -34,64 +43,77 @@ const PatientRegistration = () => {
   const [districtData, setDistrictData] = useState([]);
   const [nokDistrictData, setNokDistrictData] = useState([]);
   const [departmentData, setDepartmentData] = useState([]);
-  const [doctorData, setDoctorData] = useState([]);
+  const [doctorDataMap, setDoctorDataMap] = useState({});
   const [session, setSession] = useState([]);
+  const [appointments, setAppointments] = useState([{
+    id: 0,
+    speciality: "",
+    selDoctorId: "",
+    selSession: "",
+    departmentName: "",
+    doctorName: "",
+    sessionName: "",
+    discount: 0,
+    netAmount: "0.00",
+    gst: "0.00",
+    totalAmount: "0.00"
+  }]);
+  const [nextAppointmentId, setNextAppointmentId] = useState(1);
   const [formData, setFormData] = useState({
-    imageurl: undefined,
-    firstName: undefined,
-    middleName: undefined,
-    lastName: undefined,
-    mobileNo: undefined,
-    gender: undefined,
-    relation: undefined,
-    dob: undefined,
-    age: undefined,
-    email: undefined,
-    address1: undefined,
-    address2: undefined,
-    country: undefined,
-    state: undefined,
-    district: undefined,
-    city: undefined,
-    pinCode: undefined,
-    nokFirstName: undefined,
-    nokMiddleName: undefined,
-    nokLastName: undefined,
-    nokEmail: undefined,
-    nokMobile: undefined,
-    nokAddress1: undefined,
-    nokAddress2: undefined,
-    nokCountry: undefined,
-    nokState: undefined,
-    nokDistrict: undefined,
-    nokCity: undefined,
-    nokPinCode: undefined,
-    emergencyFirstName: undefined,
-    emergencyLastName: undefined,
-    emergencyMobile: undefined,
-    height: undefined,
-    weight: undefined,
-    temperature: undefined,
-    systolicBP: undefined,
-    diastolicBP: undefined,
-    pulse: undefined,
-    bmi: undefined,
-    rr: undefined,
-    spo2: undefined,
-    speciality: undefined,
-    doctor: undefined,
-    session: undefined,
-    appointmentDate: undefined,
-    maritalStatus: undefined,
-    religion: undefined,
-    emergencyRelationId: undefined,
-    nokRelation: undefined,
-    idealWeight: undefined,
-    varation: undefined,
-    department: undefined,
-    selDoctorId: undefined,
-    selSession: undefined
-
+    imageurl: "",
+    firstName: "",
+    middleName: "",
+    lastName: "",
+    mobileNo: "",
+    gender: "",
+    relation: "",
+    dob: "",
+    age: "",
+    email: "",
+    address1: "",
+    address2: "",
+    country: "",
+    state: "",
+    district: "",
+    city: "",
+    pinCode: "",
+    nokFirstName: "",
+    nokMiddleName: "",
+    nokLastName: "",
+    nokEmail: "",
+    nokMobile: "",
+    nokAddress1: "",
+    nokAddress2: "",
+    nokCountry: "",
+    nokState: "",
+    nokDistrict: "",
+    nokCity: "",
+    nokPinCode: "",
+    emergencyFirstName: "",
+    emergencyLastName: "",
+    emergencyMobile: "",
+    height: "",
+    weight: "",
+    temperature: "",
+    systolicBP: "",
+    diastolicBP: "",
+    pulse: "",
+    bmi: "",
+    rr: "",
+    spo2: "",
+    speciality: "",
+    doctor: "",
+    session: "",
+    appointmentDate: "",
+    maritalStatus: "",
+    religion: "",
+    emergencyRelationId: "",
+    nokRelation: "",
+    idealWeight: "",
+    varation: "",
+    department: "",
+    selDoctorId: "",
+    selSession: ""
   });
   const [image, setImage] = useState(placeholderImage);
   const [isCameraOn, setIsCameraOn] = useState(false);
@@ -99,6 +121,49 @@ const PatientRegistration = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   let stream = null;
+
+  const [gstConfig, setGstConfig] = useState({
+    gstApplicable: false,
+    gstPercent: 0,
+  });
+
+  const isFormValid = () => {
+    // Required fields
+    const requiredFields = ["firstName", "gender", "relation", "dob", "email", "mobileNo"];
+
+    for (let field of requiredFields) {
+      if (!formData[field] || formData[field].trim() === "") {
+        return false;
+      }
+    }
+
+    const validAppointment = appointments.some(a =>
+      a.speciality && a.selDoctorId && a.selSession
+    );
+
+    if (!validAppointment) return false;
+
+    return true;
+  };
+
+
+  async function fetchGstConfiguration() {
+    try {
+      const url = `${MAS_SERVICE_CATEGORY}/getGstConfig/1`;
+      const data = await getRequest(url);
+      if (data && data.status === 200 && data.response && typeof data.response.gstApplicable !== "undefined") {
+        setGstConfig({
+          gstApplicable: !!data.response.gstApplicable,
+          gstPercent: Number(data.response.gstPercent) || 0,
+        });
+      } else {
+        setGstConfig({ gstApplicable: false, gstPercent: 0 });
+      }
+    } catch (error) {
+      console.error("GST Fetch Error:", error);
+      setGstConfig({ gstApplicable: false, gstPercent: 0 });
+    }
+  }
 
   const startCamera = async () => {
     try {
@@ -113,6 +178,7 @@ const PatientRegistration = () => {
       console.error("Error accessing camera:", error);
     }
   };
+
   async function fetchHospitalDetails() {
     try {
       const data = await getRequest(`${HOSPITAL}/${sessionStorage.getItem('hospitalId')}`);
@@ -130,7 +196,6 @@ const PatientRegistration = () => {
     }
   }
 
-
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
@@ -146,20 +211,18 @@ const PatientRegistration = () => {
 
       setImage(imageData);
       stopCamera();
-      debugger;
+      // //debugger
       confirmUpload(imageData);
-
     }
   };
-
 
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
       videoRef.current.srcObject.getTracks().forEach(track => track.stop());
       setIsCameraOn(false);
     }
-
   };
+
   const confirmUpload = (imageData) => {
     Swal.fire({
       title: "Confirm Upload",
@@ -176,6 +239,7 @@ const PatientRegistration = () => {
       }
     });
   };
+
   const uploadImage = async (base64Image) => {
     try {
       // Convert base64 to Blob
@@ -214,9 +278,7 @@ const PatientRegistration = () => {
   const clearPhoto = () => {
     setImage(placeholderImage);
   };
-  // const handleChange = (e) => {
-  //   setFormData({ ...formData, [e.target.name]: e.target.value });
-  // };
+
   function calculateDOBFromAge(age) {
     const today = new Date();
     const birthYear = today.getFullYear() - age;
@@ -224,8 +286,9 @@ const PatientRegistration = () => {
     // Default to today's month and day
     return new Date(birthYear, today.getMonth(), today.getDate()).toISOString().split('T')[0];
   }
+
   function checkBMI(a, b) {
-    debugger;
+    //debugger
     if (a === '' || b == '') {
       return;
     }
@@ -234,8 +297,8 @@ const PatientRegistration = () => {
     var sub = a / d;
     return (parseFloat(Math.round(sub * 100) / 100).toFixed(2));
   }
-  const handleChange = (e) => {
 
+  const handleChange = (e) => {
     const { name, value } = e.target;
 
     const updatedFormData = { ...formData, [name]: value };
@@ -250,7 +313,6 @@ const PatientRegistration = () => {
     } else if (name == 'height' && formData.weight != undefined) {
       updatedFormData.bmi = checkBMI(formData.weight, value);
     }
-
 
     setFormData(updatedFormData);
     let error = "";
@@ -328,12 +390,156 @@ const PatientRegistration = () => {
     });
   };
 
-
   const handleAddChange = (e) => {
-    debugger;
+    //debugger
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+
+  useEffect(() => {
+    if (appointments.length === 0) {
+      setFormData((prev) => ({
+        ...prev,
+        speciality: "",
+        selDoctorId: "",
+        selSession: ""
+      }));
+      return;
+    }
+    const primary = appointments[0];
+    setFormData((prev) => ({
+      ...prev,
+      speciality: primary.speciality,
+      selDoctorId: primary.selDoctorId,
+      selSession: primary.selSession
+    }));
+  }, [appointments]);
+
+  const addAppointmentRow = () => {
+    setAppointments((prev) => [
+      ...prev,
+      {
+        id: nextAppointmentId,
+        speciality: "",
+        selDoctorId: "",
+        selSession: "",
+        departmentName: "",
+        doctorName: "",
+        sessionName: "",
+        discount: 0,
+        netAmount: "0.00",
+        gst: "0.00",
+        totalAmount: "0.00"
+      }
+    ]);
+    setNextAppointmentId((prev) => prev + 1);
+  };
+
+  const removeAppointmentRow = (id) => {
+    setAppointments((prev) => {
+      if (prev.length === 1) {
+        return prev;
+      }
+      return prev.filter((appointment) => appointment.id !== id);
+    });
+    setDoctorDataMap((prev) => {
+      const updated = { ...prev };
+      delete updated[id];
+      return updated;
+    });
+  };
+
+  const handleSpecialityChange = (id, value) => {
+    const selectedDepartment = departmentData.find(dept => dept.id == value);
+    const departmentName = selectedDepartment ? selectedDepartment.departmentName : "";
+
+    setAppointments((prev) =>
+      prev.map((appointment) =>
+        appointment.id === id
+          ? { ...appointment, speciality: value, selDoctorId: "", selSession: "", departmentName }
+          : appointment
+      )
+    );
+    if (value) {
+      fetchDoctor(value, id);
+    } else {
+      setDoctorDataMap((prev) => {
+        const updated = { ...prev };
+        delete updated[id];
+        return updated;
+      });
+    }
+  };
+
+  const handleDoctorChange = (id, value, specialityId) => {
+    const doctorOptions = doctorDataMap[id] || [];
+    const selectedDoctor = doctorOptions.find(doctor => doctor.userId == value);
+    const doctorName = selectedDoctor ? `${selectedDoctor.firstName} ${selectedDoctor.middleName || ''} ${selectedDoctor.lastName || ''}`.trim() : "";
+
+
+    setAppointments(prev =>
+      prev.map(a =>
+        a.id === id ? { ...a, selDoctorId: value, selSession: "", doctorName } : a
+      )
+    );
+
+
+    checkDoctorValid(id, value, specialityId);
+  };
+
+
+  const handleSessionChange = (id, value, specialityId, doctorId) => {
+
+    setAppointments(prev =>
+      prev.map(a =>
+        a.id === id ? { ...a, selSession: value } : a
+      )
+    );
+
+    // Check session validity
+    checkSessionValid(id, doctorId, specialityId, value);
+  };
+
+  async function checkDoctorValid(rowId, doctorId, deptId) {
+    let date = new Date().toISOString().split("T")[0];
+
+    const data = await getRequest(
+      `${GET_DOCTOR_SESSION}deptId=${deptId}&doctorId=${doctorId}&rosterDate=${date}&sessionId=`
+    );
+
+    if (data.status !== 200) {
+      Swal.fire(data.message);
+
+
+      setAppointments(prev =>
+        prev.map(a =>
+          a.id === rowId ? { ...a, selDoctorId: "", selSession: "" } : a
+        )
+      );
+    }
+  }
+
+  async function checkSessionValid(rowId, doctorId, deptId, sessionId) {
+    let date = new Date().toISOString().split("T")[0];
+
+    const data = await getRequest(
+      `${GET_DOCTOR_SESSION}deptId=${deptId}&doctorId=${doctorId}&rosterDate=${date}&sessionId=${sessionId}`
+    );
+
+    if (data.status !== 200) {
+      Swal.fire(data.message);
+
+
+      setAppointments(prev =>
+        prev.map(a =>
+          a.id === rowId ? { ...a, selSession: "" } : a
+        )
+      );
+    }
+  }
+
+
+
   async function fetchGenderData() {
     setLoading(true);
 
@@ -350,9 +556,8 @@ const PatientRegistration = () => {
     } finally {
       setLoading(false);
     }
-
-
   };
+
   async function fetchRelationData() {
     setLoading(true);
 
@@ -370,6 +575,7 @@ const PatientRegistration = () => {
       setLoading(false);
     }
   }
+
   async function fetchCountryData() {
     setLoading(true);
 
@@ -403,6 +609,7 @@ const PatientRegistration = () => {
       setLoading(false);
     }
   }
+
   async function fetchSesion() {
     try {
       const data = await getRequest(`${GET_SESSION}1`);
@@ -418,6 +625,7 @@ const PatientRegistration = () => {
       setLoading(false);
     }
   }
+
   async function fetchDistrict(value) {
     try {
       const data = await getRequest(`${DISTRICT_BY_STATE}${value}`);
@@ -436,7 +644,6 @@ const PatientRegistration = () => {
 
   async function fetchNokStates(value) {
     try {
-
       const data = await getRequest(`${STATE_BY_COUNTRY}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokStateData(data.response);
@@ -466,6 +673,7 @@ const PatientRegistration = () => {
       setLoading(false);
     }
   }
+
   async function fetchDepartment() {
     try {
       const data = await getRequest(`${ALL_DEPARTMENT}/1`);
@@ -489,6 +697,7 @@ const PatientRegistration = () => {
     console.log(formData);
     sendPatientData();
   }
+
   const validateForm = () => {
     const requiredFields = ["firstName", "gender", "relation", "dob", "email", "mobileNo"];
     const numericFields = [
@@ -531,10 +740,22 @@ const PatientRegistration = () => {
 
     numericFields.forEach((field) => {
       const value = formData[field];
-      if (value != undefined && value !== "" && (isNaN(value) || Number(value) < 0)) {
-        debugger;
-        newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} must be a non-negative number.`;
-        valid = false;
+
+      if (value !== undefined && value !== "") {
+        if (field === "age" || field === "patientAge") {
+          // Validate correct format like "25Y 10M 2D"
+          const agePattern = /^\d+Y\s\d+M\s\d+D$/;
+          if (!agePattern.test(value)) {
+            newErrors[field] = "Age must be in format '25Y 10M 2D'.";
+            valid = false;
+          }
+        } else {
+          // Validate numeric fields
+          if (isNaN(value) || Number(value) < 0) {
+            newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} must be a non-negative number.`;
+            valid = false;
+          }
+        }
       }
       if ((field === "age" || requiredFields.includes(field)) && Number(value) <= 0) {
         newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} must be greater than 0.`;
@@ -648,37 +869,93 @@ const PatientRegistration = () => {
           iniDoctorId: 0,
         },
       };
-      debugger;
+      //debugger
       if (isNaN(requestData.visit.doctorId))
         requestData.visit = null;
       // requestData.opdPatientDetail=null;
       console.log(new Date(Date.now()).toJSON())
 
       try {
-        debugger;
+        setLoading(true);
         const data = await postRequest(`${PATIENT_REGISTRATION}`, requestData);
-        if (data.status === 200 && Array.isArray(data.response)) {
-          Swal.fire("Patient Registration Successful")
+        if (data.status === 200) {
+          Swal.fire({
+            icon: "success",
+            title: "Patient Registration Successful",
+            text: "The patient has been registered successfully."
+          }).then(() => {
+            // Navigate to OPDBillingDetails with all appointment data
+            const appointmentsWithBilling = appointments.map(appointment => {
+              const base = parseFloat("500.00") || 0; // Base price is fixed as per existing logic
+              const discountVal = parseFloat(appointment.discount) || 0;
+              const net = Math.max(0, base - discountVal);
+              const gstPercent = gstConfig?.gstApplicable ? gstConfig?.gstPercent : 0;
+              const gstAmount = (net * gstPercent) / 100;
+              const total = net + gstAmount;
+
+              return {
+                ...appointment,
+                basePrice: "500.00", // Fixed base price for now
+                discount: appointment.discount,
+                netAmount: net.toFixed(2),
+                gst: gstAmount.toFixed(2),
+                totalAmount: total.toFixed(2),
+                registrationCost: "100.00",
+                visitType: "New"
+              };
+            });
+
+            navigate("/OPDBillingDetails", {
+              state: {
+                billingData: {
+                  patientName: `${formData.firstName} ${formData.middleName || ''} ${formData.lastName || ''}`.trim(),
+                  mobileNo: formData.mobileNo,
+                  age: formData.age,
+                  patientGender: genderData.find(g => g.id === formData.gender)?.genderName || formData.gender,
+                  relation: relationData.find(r => r.id === formData.relation)?.relationName || formData.relation,
+                  patientAddress1: formData.address1,
+                  patientCity: formData.city,
+                  appointments: appointmentsWithBilling, // Pass the entire array of appointments with billing details
+                  patientId: data.response.patientId || 0,
+                  visitType: "New",
+                }
+              }
+            });
+          });
         } else {
-          console.error("Unexpected API response format:", data);
-          setDoctorData([]);
+          Swal.fire({
+            icon: "error",
+            title: "Registration Failed",
+            text: data.message || "Unexpected response received. Please try again."
+          });
         }
       } catch (error) {
         console.error("Error:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Registration Failed",
+          text: "Something went wrong while registering the patient. Please try again."
+        });
+      } finally {
+        setLoading(false);
       }
     }
   };
 
-
-
-  async function fetchDoctor(value) {
+  async function fetchDoctor(value, rowId) {
     try {
       const data = await getRequest(`${DOCTOR_BY_SPECIALITY}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
-        setDoctorData(data.response);
+        setDoctorDataMap((prev) => ({
+          ...prev,
+          [rowId]: data.response
+        }));
       } else {
         console.error("Unexpected API response format:", data);
-        setDoctorData([]);
+        setDoctorDataMap((prev) => ({
+          ...prev,
+          [rowId]: []
+        }));
       }
     } catch (error) {
       console.error("Error fetching Department data:", error);
@@ -687,36 +964,29 @@ const PatientRegistration = () => {
     }
   }
 
-  async function fetchSession(doc) {
-
-    console.log(doc.target.value);
-    if (formData.speciality != '' && doc) {
-      console.log(doc);
-      let timestamp = Date.now();
-      let value = new Date(timestamp).toJSON().split('.')[0].split('T')[0];
-      console.log(value);
-      const data = await getRequest(`${GET_DOCTOR_SESSION}deptId=${formData.speciality}&doctorId=${doc.target.value}&rosterDate=${value}`);
-      if (data.status == 200) {
-        console.log(data.response[0].rosterVal);
-        let sessionVal = [{ key: 0, value: '' }, { key: 1, value: '' }];
-        if (data.response[0].rosterVal == "YY") {
-          sessionVal = [{ key: 0, value: 'Morning' }, { key: 1, value: 'Evening' }]
-        }
-        else if (data.response[0].rosterVal == "NY") {
-          sessionVal = [{ key: 0, value: 'Evening' }]
-        }
-        else if (data.response[0].rosterVal == "YN") {
-          sessionVal = [{ key: 0, value: 'Morning' }]
-        }
-        // setSession(sessionVal);
-      }
-      else {
-        Swal.fire(data.message);
-      }
-
-
+  async function fetchSession(doctorId, deptId, sessionId) {
+    if (!doctorId || !deptId) {
+      return;
     }
-
+    let timestamp = Date.now();
+    let value = new Date(timestamp).toJSON().split('.')[0].split('T')[0];
+    const data = await getRequest(`${GET_DOCTOR_SESSION}deptId=${deptId}&doctorId=${doctorId}&rosterDate=${value}&sessionId=${sessionId}`);
+    if (data.status == 200) {
+      let sessionVal = [{ key: 0, value: '' }, { key: 1, value: '' }];
+      if (data.response[0].rosterVal == "YY") {
+        sessionVal = [{ key: 0, value: 'Morning' }, { key: 1, value: 'Evening' }]
+      }
+      else if (data.response[0].rosterVal == "NY") {
+        sessionVal = [{ key: 0, value: 'Evening' }]
+      }
+      else if (data.response[0].rosterVal == "YN") {
+        sessionVal = [{ key: 0, value: 'Morning' }]
+      }
+      // setSession(sessionVal);
+    }
+    else {
+      Swal.fire(data.message);
+    }
   }
 
   function calculateAgeFromDOB(dob) {
@@ -742,11 +1012,6 @@ const PatientRegistration = () => {
 
     return `${years}Y ${months}M ${days}D`;
   }
-
-
-
-
-
 
   return (
     <div className="body d-flex py-3">
@@ -1036,7 +1301,7 @@ const PatientRegistration = () => {
                         onChange={(e) => {
                           handleAddChange(e);
                           fetchNokDistrict(e.target.value);
-                        }}>>
+                        }}>
                         <option value="">Select State</option>
                         {nokStateData.map((state) => (
                           <option key={state.id} value={state.id}>
@@ -1219,76 +1484,94 @@ const PatientRegistration = () => {
           </div>
         </>)}
 
-
-
         {/* Appointment Details Section */}
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header py-3 bg-light border-bottom-1">
+              <div className="card-header py-3 bg-light border-bottom-1 d-flex align-items-center justify-content-between">
                 <h6 className="mb-0 fw-bold">Appointment Details</h6>
+                <div className="d-flex gap-2">
+                  <button type="button" className="btn btn-sm btn-outline-primary" onClick={addAppointmentRow}>
+                    + Add
+                  </button>
+                </div>
               </div>
               <div className="card-body">
                 <form>
-                  <div className="row g-3">
-                    <div className="col-md-4">
-                      <label className="form-label">Speciality</label>
-                      <select className="form-select" name="speciality" value={formData.speciality}
-                        onChange={(e) => {
-                          handleAddChange(e);
-                          fetchDoctor(e.target.value);
-                        }}>
-                        <option value="">Select Speciality</option>
-                        {departmentData.map((department) => (
-                          <option key={department.id} value={department.id}>
-                            {department.departmentName}
-                          </option>))}
-                      </select>
-                    </div>
-                    <div className="col-md-4">
-                      <label className="form-label">Doctor Name</label>
-                      <select className="form-select" name="selDoctorId" value={formData.selDoctorId} onChange={(e) => {
-                        handleAddChange(e);
-                        fetchSession(e);
-                      }}
-                      >
-                        <option value="">Select Doctor</option>
-                        {doctorData.map((doctor) => (
-                          <option key={doctor.id} value={doctor.userId}>
-                            {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""} ${doctor.lastName ? doctor.lastName : ""}`}
-                          </option>))}
-                        {/* Add dynamic options here */}
-                      </select>
-                    </div>
-                    {/*<div className="col-md-4">*/}
-                    {/*  <label className="form-label">Date *</label>*/}
-                    {/*  <input type="date" name="appointmentDate" className="form-control" name="appointmentDate" value={formData.appointmentDate}*/}
-                    {/*         onChange={(e) => {*/}
-                    {/*           handleAddChange(e);*/}
-                    {/*           fetchSession(e.target.value);*/}
-                    {/*         }}*/}
-                    {/*         min={new Date().toISOString().split("T")[0]}*/}
-                    {/*         placeholder="Select Date of Appointment"/>*/}
-                    {/*</div>*/}
-                    <div className="col-md-4">
-                      <label className="form-label">Session</label>
-                      <select className="form-select" name="selSession" value={formData.selSession} onChange={(e) => {
-                        handleAddChange(e);
-                      }}
-                      >
-                        <option value="">Select Session</option>
-                        {session.map((ses) => (
-                          <option key={ses.id} value={ses.id}>
-                            {ses.sessionName}
-                          </option>))}
-                        {/* Add dynamic options here */}
-                      </select>
-                      {/*<select className="form-select">*/}
-                      {/*  <option value="">Select Session</option>*/}
-                      {/*  /!* Add dynamic options here *!/*/}
-                      {/*</select>*/}
-                    </div>
-                  </div>
+                  {appointments.map((appointment, index) => {
+                    const doctorOptions = doctorDataMap[appointment.id] || [];
+                    return (
+                      <div className="row g-3 mb-3" key={`appointment-${appointment.id}`}>
+                        <div className="col-12 d-flex align-items-center justify-content-between">
+                          <h6 className="fw-bold text-muted mb-0">Appointment {index + 1}</h6>
+                          {appointments.length > 1 && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-danger"
+                              onClick={() => removeAppointmentRow(appointment.id)}
+                            >
+                              - Remove
+                            </button>
+                          )}
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label">Speciality</label>
+                          <select
+                            className="form-select"
+                            value={appointment.speciality}
+                            onChange={(e) => handleSpecialityChange(appointment.id, e.target.value)}
+                          >
+                            <option value="">Select Speciality</option>
+                            {departmentData.map((department) => (
+                              <option key={department.id} value={department.id}>
+                                {department.departmentName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label">Doctor Name</label>
+                          <select
+                            className="form-select"
+                            value={appointment.selDoctorId}
+                            onChange={(e) =>
+                              handleDoctorChange(appointment.id, e.target.value, appointment.speciality)
+                            }
+                          >
+                            <option value="">Select Doctor</option>
+                            {doctorOptions.map((doctor) => (
+                              <option key={doctor.id} value={doctor.userId}>
+                                {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""} ${doctor.lastName ? doctor.lastName : ""}`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label">Session</label>
+                          <select
+                            className="form-select"
+                            value={appointment.selSession}
+                            disabled={!appointment.selDoctorId}
+                            onChange={(e) =>
+                              handleSessionChange(
+                                appointment.id,
+                                e.target.value,
+                                appointment.speciality,
+                                appointment.selDoctorId
+                              )
+                            }
+                          >
+                            <option value="">Select Session</option>
+                            {session.map((ses) => (
+                              <option key={ses.id} value={ses.id}>
+                                {ses.sessionName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </form>
               </div>
             </div>
@@ -1302,8 +1585,13 @@ const PatientRegistration = () => {
               <div className="card-body">
                 <div className="row g-3">
                   <div className="mt-4">
-                    <button type="submit" className="btn btn-primary me-2"
-                      onClick={sendRegistrationRequest}>Registration
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
+                      disabled={!isFormValid()}
+                      onClick={sendRegistrationRequest}
+                    >
+                      Registration
                     </button>
                     <button type="reset" className="btn btn-secondary">Reset</button>
                   </div>
@@ -1312,9 +1600,6 @@ const PatientRegistration = () => {
             </div>
           </div>
         </div>
-
-        {/* Changed By, Date, and Time */}
-
       </div>
     </div>
   );

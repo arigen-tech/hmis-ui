@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import LoadingScreen from "../../../Components/Loading"
-import { LAB } from "../../../config/apiConfig"
 import { getRequest } from "../../../service/apiService"
+import { LAB } from "../../../config/apiConfig"
 
-const PendingForBilling = () => {
+const PatientwiseBilldatails = () => {
   const navigate = useNavigate()
   const [patientList, setPatientList] = useState([])
-  const [searchQuery, setSearchQuery] = useState("")
+  const [nameSearch, setNameSearch] = useState("")
+  const [contactSearch, setContactSearch] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
   const [isLoading, setIsLoading] = useState(true)
@@ -35,10 +36,7 @@ const PendingForBilling = () => {
           department: item.department || "N/A",
           amount: item.amount || 0,
           billingStatus: item.billingStatus === "p" ? "Pending" : "Pending",
-          fullData: item,
-          registrationCost: item.registrationCost,
-          visitType:item.visitType,
-          // Store the complete record including details array
+          fullData: item, // Store the complete record including details array
         }))
 
         setPatientList(mappedData)
@@ -55,55 +53,29 @@ const PendingForBilling = () => {
     fetchPendingBilling()
   }, [])
 
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value)
+  const handleNameSearchChange = (e) => {
+    setNameSearch(e.target.value)
+    setCurrentPage(1)
+  }
+
+  const handleContactSearchChange = (e) => {
+    setContactSearch(e.target.value)
     setCurrentPage(1)
   }
 
   const filteredPatientList = patientList.filter(
     (item) =>
-      item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.mobileNo.includes(searchQuery) ||
-      item.consultedDoctor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.department.toLowerCase().includes(searchQuery.toLowerCase()),
+      item.patientName.toLowerCase().includes(nameSearch.toLowerCase()) &&
+      item.mobileNo.includes(contactSearch)
   )
 
   const filteredTotalPages = Math.ceil(filteredPatientList.length / itemsPerPage)
   const currentItems = filteredPatientList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
-  const handlePendingClick = (patientData) => {
-    const getNavigationRoute = (billingType) => {
-      switch (billingType.toLowerCase()) {
-        case "laboratory services":
-        case "lab":
-          return "/LabBillingDetails"
-        case "opd":
-        case "opd services":
-        case "consultation":
-        case "consultation services":
-          return "/OPDBillingDetails";
-        case "ipd":
-        case "ipd services":
-          return "/IPDBillingDetails"
-        case "pharmacy":
-        case "pharmacy services":
-          return "/PharmacyBillingDetails"
-        case "radiology":
-        case "radiology services":
-          return "/RadiologyBillingDetails"
-        default:
-          return "/LabBillingDetails"
-      }
-    }
-
-    const route = getNavigationRoute(patientData.billingType)
-
-    // Use the detailed data that's already available from the initial API call
-    navigate(route, {
-      state: {
-        billingData: patientData.fullData, // Pass the complete record with details
-      },
-    })
+  const handleBillingDetailClick = (patientData) => {
+    // Removed navigation to keep the user on the same page
+    console.log("Billing detail clicked for:", patientData)
+    // You can add modal or other functionality here instead of navigation
   }
 
   const handlePageNavigation = () => {
@@ -167,23 +139,36 @@ const PendingForBilling = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title p-2">Pending For Billing</h4>
+              <h4 className="card-title p-2">Patient wise Bill Details</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
+                <div className="d-flex me-4">
+                  <div className="input-group me-2">
                     <input
-                      type="search"
+                      type="text"
                       className="form-control"
-                      placeholder="Search"
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
+                      placeholder="Search by Name"
+                      aria-label="Search by Name"
+                      value={nameSearch}
+                      onChange={handleNameSearchChange}
                     />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
+                    <span className="input-group-text">
+                      <i className="fa fa-user"></i>
                     </span>
                   </div>
-                </form>
+                  <div className="input-group">
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Search by Contact"
+                      aria-label="Search by Contact"
+                      value={contactSearch}
+                      onChange={handleContactSearchChange}
+                    />
+                    <span className="input-group-text">
+                      <i className="fa fa-phone"></i>
+                    </span>
+                  </div>
+                </div>
                 <button type="button" className="btn btn-success me-2">
                   <i className="mdi mdi-plus"></i> Generate Report
                 </button>
@@ -214,15 +199,14 @@ const PendingForBilling = () => {
                     <thead className="table-light">
                       <tr>
                         <th>Patient Name</th>
-                        <th>Mobile No.</th>
+                        <th>Contact No.</th>
                         <th>Age</th>
                         <th>Sex</th>
                         <th>Relation</th>
                         <th>Billing Type</th>
-                        <th>Consulted Doctor</th>
                         <th>Department</th>
                         <th>Amount</th>
-                        <th>Billing Status</th>
+                        <th>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -236,22 +220,32 @@ const PendingForBilling = () => {
                           <td>
                             <span className="badge bg-info">{item.billingType}</span>
                           </td>
-                          <td>{item.consultedDoctor}</td>
                           <td>{item.department}</td>
                           <td>₹{typeof item.amount === "number" ? item.amount.toFixed(2) : item.amount}</td>
                           <td>
                             <button
-                              className="btn btn-warning btn-sm"
-                              onClick={() => handlePendingClick(item)}
+                              className="btn btn-primary btn-sm"
+                              onClick={() => handleBillingDetailClick(item)}
                               style={{
                                 cursor: "pointer",
-                                border: "none",
-                                background: "transparent",
-                                color: "#ff6b35",
-                                textDecoration: "underline",
+                                padding: "0.375rem 0.75rem",
+                                fontSize: "0.875rem",
+                                borderRadius: "0.25rem",
+                                border: "1px solid #007bff",
+                                backgroundColor: "#007bff",
+                                color: "white",
+                                transition: "all 0.2s ease-in-out"
+                              }}
+                              onMouseOver={(e) => {
+                                e.target.style.backgroundColor = "#0056b3";
+                                e.target.style.borderColor = "#0056b3";
+                              }}
+                              onMouseOut={(e) => {
+                                e.target.style.backgroundColor = "#007bff";
+                                e.target.style.borderColor = "#007bff";
                               }}
                             >
-                              {item.billingStatus}
+                              Billing Detail
                             </button>
                           </td>
                         </tr>
@@ -314,4 +308,4 @@ const PendingForBilling = () => {
   )
 }
 
-export default PendingForBilling
+export default PatientwiseBilldatails

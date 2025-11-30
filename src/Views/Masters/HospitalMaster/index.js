@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import Popup from "../../../Components/popup"
-import { MAS_HOSPITAL, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT } from "../../../config/apiConfig"
+import { useEffect, useState } from "react"
 import LoadingScreen from "../../../Components/Loading"
-import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import Popup from "../../../Components/popup"
+import { MAS_COUNTRY, MAS_DISTRICT, MAS_HOSPITAL, MAS_STATE } from "../../../config/apiConfig"
+import { getRequest, postRequest, putRequest } from "../../../service/apiService"
 
 const HospitalMaster = () => {
   const [hospitals, setHospitals] = useState([])
@@ -30,6 +30,7 @@ const HospitalMaster = () => {
     regCostApplicable: "",
     appCostApplicable: "",
     preConsultationAvailable: "",
+    registrationCost:"",
   })
   const [searchQuery, setSearchQuery] = useState("")
   const [showForm, setShowForm] = useState(false)
@@ -364,6 +365,7 @@ const HospitalMaster = () => {
           contactNumber2: formData.contactNumber2,
           email: formData.email,
           regCostApplicable: regCostValue,
+          registrationCost: formData.regCostApplicable === "Yes" ? Number(formData.registrationCost) || 0 : 0,
           appCostApplicable: appCostValue,
           preConsultationAvailable: preConsultationValue,
           status: editingHospital.status,
@@ -390,9 +392,11 @@ const HospitalMaster = () => {
           contactNumber2: formData.contactNumber2,
           email: formData.email,
           regCostApplicable: regCostValue,
+          registrationCost: formData.regCostApplicable === "Yes" ? Number(formData.registrationCost) || 0 : 0,
           appCostApplicable: appCostValue,
           preConsultationAvailable: preConsultationValue,
           status: "y",
+
         })
 
         if (response && response.response) {
@@ -831,23 +835,52 @@ const HospitalMaster = () => {
                           maxLength={EMAIL_MAX_LENGTH}
                         />
                       </div>
-                      <div className="col-md-6">
-                        <label htmlFor="regCostApplicable" className="form-label">
-                          Registration Cost <span className="text-danger">*</span>
-                        </label>
-                        <select
-                          className="form-control"
-                          id="regCostApplicable"
-                          name="regCostApplicable"
-                          value={formData.regCostApplicable}
-                          onChange={handleInputChange}
-                          required
-                        >
-                          <option value="">Select</option>
-                          <option value="Yes">Yes</option>
-                          <option value="No">No</option>
-                        </select>
-                      </div>
+                      {/* Registration Cost */}
+                  <div className="col-md-6">
+                    <label htmlFor="regCostApplicable" className="form-label">
+                      Registration Cost <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      className="form-control"
+                      id="regCostApplicable"
+                      name="regCostApplicable"
+                      value={formData.regCostApplicable}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">Select</option>
+                      <option value="Yes">Yes</option>
+                      <option value="No">No</option>
+                    </select>
+                  </div>
+                  {/* Registration Cost Amount (visible only when Yes) */}
+                  {formData.regCostApplicable === "Yes" && (
+                    <div className="col-md-6">
+                      <label htmlFor="registrationCost" className="form-label">
+                        Registration Cost Amount <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        id="registrationCost"
+                        name="registrationCost"
+                        value={formData.registrationCost || ""}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          if (value === "" || (/^\d*\.?\d*$/.test(value) && parseFloat(value) >= 0)) {
+                            setFormData((prev) => ({
+                              ...prev,
+                              registrationCost: value,
+                            }))
+                          }
+                        }}
+                        placeholder="Enter registration amount"
+                        min="0"
+                        required
+                      />
+                    </div>
+                  )}
+
                       <div className="col-md-6">
                         <label htmlFor="appCostApplicable" className="form-label">
                           Appointment Cost <span className="text-danger">*</span>

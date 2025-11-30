@@ -1,157 +1,56 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import Popup from "../../../Components/popup"
+import { useEffect, useState } from "react";
+import Popup from "../../../Components/popup";
+import { GET_WAITING_LIST } from "../../../config/apiConfig";
+import { getRequest } from "../../../service/apiService"; // You missed this import earlier
 
 const OpdWaitingList = () => {
+  const [visits, setVisits] = useState([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageInput, setPageInput] = useState("")
+  const [popupMessage, setPopupMessage] = useState(null)
+  const itemsPerPage = 5
+
   const setLoading = (b) => {}
 
-  // Mock data to replace API calls
-  const mockVisits = [
-    {
-      id: 1,
-      patient: {
-        id: 1,
-        patientFn: "John",
-        patientMn: "Michael",
-        patientLn: "Doe",
-        patientAge: 35,
-        patientGender: { genderName: "Male" },
-        patientMobileNumber: "9876543210",
-      },
-      department: {
-        id: 1,
-        departmentName: "Cardiology",
-      },
-      typeOfPatient: "OPD",
-      doctor: {
-        userId: 1,
-        employee: {
-          firstName: "Dr. Sarah",
-          middleName: "Jane",
-          lastName: "Smith",
-        },
-      },
-      visitDate: "2024-01-15",
-      startTime: "2024-01-15T09:00:00",
-      endTime: "2024-01-15T09:30:00",
-    },
-    {
-      id: 2,
-      patient: {
-        id: 2,
-        patientFn: "Jane",
-        patientMn: null,
-        patientLn: "Wilson",
-        patientAge: 28,
-        patientGender: { genderName: "Female" },
-        patientMobileNumber: "9876543211",
-      },
-      department: {
-        id: 2,
-        departmentName: "Neurology",
-      },
-      typeOfPatient: "Emergency",
-      doctor: {
-        userId: 2,
-        employee: {
-          firstName: "Dr. Robert",
-          middleName: null,
-          lastName: "Johnson",
-        },
-      },
-      visitDate: "2024-01-15",
-      startTime: "2024-01-15T10:00:00",
-      endTime: "2024-01-15T10:30:00",
-    },
-    {
-      id: 3,
-      patient: {
-        id: 3,
-        patientFn: "Mike",
-        patientMn: "David",
-        patientLn: "Brown",
-        patientAge: 42,
-        patientGender: { genderName: "Male" },
-        patientMobileNumber: "9876543212",
-      },
-      department: {
-        id: 3,
-        departmentName: "Orthopedics",
-      },
-      typeOfPatient: "OPD",
-      doctor: {
-        userId: 3,
-        employee: {
-          firstName: "Dr. Emily",
-          middleName: "Rose",
-          lastName: "Davis",
-        },
-      },
-      visitDate: "2024-01-15",
-      startTime: "2024-01-15T11:00:00",
-      endTime: "2024-01-15T11:30:00",
-    },
-    {
-      id: 4,
-      patient: {
-        id: 4,
-        patientFn: "Lisa",
-        patientMn: null,
-        patientLn: "Anderson",
-        patientAge: 31,
-        patientGender: { genderName: "Female" },
-        patientMobileNumber: "9876543213",
-      },
-      department: {
-        id: 4,
-        departmentName: "Dermatology",
-      },
-      typeOfPatient: "OPD",
-      doctor: {
-        userId: 4,
-        employee: {
-          firstName: "Dr. Mark",
-          middleName: "Anthony",
-          lastName: "Taylor",
-        },
-      },
-      visitDate: "2024-01-15",
-      startTime: "2024-01-15T14:00:00",
-      endTime: "2024-01-15T14:30:00",
-    },
-  ]
-
-  async function fetchPendingPreconsultation() {
+  // Fetch waiting list from backend API
+  async function fetchWaitingList() {
     try {
-      // Simulate API call with mock data
-      setVisits(mockVisits)
+      const data = await getRequest(`${GET_WAITING_LIST}`)
+      if (data.status === 200 && Array.isArray(data.response)) {
+        console.log("Waiting List:", data.response)
+        setVisits(data.response)
+      } else {
+        console.error("Unexpected API response format:", data)
+      }
     } catch (error) {
-      console.error("Error fetching Department data:", error)
+      console.error("Error fetching waiting list:", error)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    // Fetching gender data (simulated API response)
-    fetchPendingPreconsultation()
+    fetchWaitingList()
   }, [])
 
-  const [visits, setVisits] = useState([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
-  const itemsPerPage = 3
-  const [popupMessage, setPopupMessage] = useState(null)
+  // Search filter
+  const filteredVisits = visits.filter((v) =>
+    v.patient.patientFn.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    v.patient.patientLn.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    v.department.departmentName.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const filteredTotalPages = Math.ceil(filteredVisits.length / itemsPerPage)
+  const currentItems = filteredVisits.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
       message,
       type,
-      onClose: () => {
-        setPopupMessage(null)
-      },
+      onClose: () => setPopupMessage(null),
     })
   }
 
@@ -159,9 +58,6 @@ const OpdWaitingList = () => {
     setSearchQuery(e.target.value)
     setCurrentPage(1)
   }
-
-  const filteredTotalPages = Math.ceil(visits.length / itemsPerPage)
-  const currentItems = visits.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const handleClose = (patient) => {
     showPopup(`Patient ${patient.patient.patientFn} ${patient.patient.patientLn} has been closed.`, "info")
@@ -172,7 +68,7 @@ const OpdWaitingList = () => {
   }
 
   const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10)
+    const pageNumber = parseInt(pageInput, 10)
     if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
       setCurrentPage(pageNumber)
     } else {
@@ -222,8 +118,8 @@ const OpdWaitingList = () => {
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            <div className="card-header ">
-              <h4 className="card-title p-2">OPD Pre-consultation</h4>
+            <div className="card-header">
+              <h4 className="card-title p-2">OPD Waiting List</h4>
               <div className="d-flex justify-content-end align-items-spacearound mt-3">
                 <div className="d-flex align-items-center">
                   <form className="d-inline-block searchform me-4" role="search">
@@ -232,11 +128,10 @@ const OpdWaitingList = () => {
                         type="search"
                         className="form-control"
                         placeholder="Search"
-                        aria-label="Search"
                         value={searchQuery}
                         onChange={handleSearchChange}
                       />
-                      <span className="input-group-text" id="search-icon">
+                      <span className="input-group-text">
                         <i className="fa fa-search"></i>
                       </span>
                     </div>
@@ -247,6 +142,7 @@ const OpdWaitingList = () => {
                 </div>
               </div>
             </div>
+
             <div className="card-body">
               <div className="table-responsive packagelist">
                 <table className="table table-bordered table-hover align-middle">
@@ -263,29 +159,41 @@ const OpdWaitingList = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {visits.map((item) => (
-                      <tr key={item.id}>
-                        <td>{`${item.patient.patientFn} ${item.patient.patientMn != null ? item.patient.patientMn : ""} ${item.patient.patientLn != null ? item.patient.patientLn : ""}`}</td>
-                        <td>{item.patient.patientAge}</td>
-                        <td>{item.patient.patientGender.genderName}</td>
-                        <td>{item.department.departmentName}</td>
-                        <td>{item.patient.patientMobileNumber}</td>
-                        <td>{`${item.doctor.employee.firstName} ${item.doctor.employee.middleName != null ? item.doctor.employee.middleName : ""} ${item.doctor.employee.lastName != null ? item.doctor.employee.middleName : ""}`}</td>
-                        <td>{`${item.startTime.substring(11, 16)} - ${item.endTime.substring(11, 16)}`}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-secondary me-2"
-                            onClick={() => handleClose(item)}
-                          >
-                            Close
-                          </button>
-                          <button type="button" className="btn btn-sm btn-primary" onClick={() => handleRelease(item)}>
-                            Release
-                          </button>
+                    {currentItems.length > 0 ? (
+                      currentItems.map((item) => (
+                        <tr key={item.id}>
+                          <td>{`${item.patient.patientFn} ${item.patient.patientMn || ""} ${item.patient.patientLn || ""}`}</td>
+                          <td>{item.patient.patientAge}</td>
+                          <td>{item.patient.patientGender.genderName}</td>
+                          <td>{item.department.departmentName}</td>
+                          <td>{item.patient.patientMobileNumber}</td>
+                          <td>{`${item.doctor.employee.firstName} ${item.doctor.employee.middleName || ""} ${item.doctor.employee.lastName || ""}`}</td>
+                          <td>{`${item.startTime?.substring(11, 16)} - ${item.endTime?.substring(11, 16)}`}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-secondary me-2"
+                              onClick={() => handleClose(item)}
+                            >
+                              Close
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-primary"
+                              onClick={() => handleRelease(item)}
+                            >
+                              Release
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="8" className="text-center">
+                          No records found.
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -293,7 +201,7 @@ const OpdWaitingList = () => {
               <nav className="d-flex justify-content-between align-items-center mt-3">
                 <div>
                   <span>
-                    Page {currentPage} of {filteredTotalPages} | Total Records: {visits.length}
+                    Page {currentPage} of {filteredTotalPages} | Total Records: {filteredVisits.length}
                   </span>
                 </div>
                 <ul className="pagination mb-0">
@@ -336,7 +244,10 @@ const OpdWaitingList = () => {
           </div>
         </div>
       </div>
-      {popupMessage && <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />}
+
+      {popupMessage && (
+        <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
+      )}
     </div>
   )
 }

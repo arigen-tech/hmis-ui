@@ -80,6 +80,23 @@ const validRoutes = [
   "/PhysicalStockTakingRegister",
   "/OpeningBalanceRegister",
   "/GeneralMedicineWaitingList",
+  "/SampleMaster",
+  "/PatientwiseBilldatails",
+  "/ResultValidation",
+  "/UpdateResultValidation",
+  "/OpdRecallPatient",
+  "/CreateIndent",
+  "/ViewUpdateIndent",
+  "/PendingIndentApproval",
+  "/InvestigationMethodologyMaster",
+  "/TrackIndent",
+  "/InvestigationCategoryMaster",
+  "/IndentIssue",
+  "/IndentApproval",
+  "/MedicineIssueRegister",
+  "/IssueReferenceReport",
+  "/PatientWaitingList",
+  
 ];
 
 const NotAuthorized = () => {

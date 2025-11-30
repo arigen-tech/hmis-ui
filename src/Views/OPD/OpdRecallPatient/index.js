@@ -1,57 +1,194 @@
 import { useState, useEffect, useRef } from "react"
 import placeholderImage from "../../../assets/images/placeholder.jpg"
-import OTDashboard from "./OTDashboard"
-import InvestigationModal from "./InvestigationModal"
-import TreatmentModal from "./TreatmentModal"
-import { OPD_TEMPLATE, MAS_INVESTIGATION, OPD_PATIENT, MAS_DRUG_MAS, DRUG_TYPE, ITEM_CLASS, MAS_OPD_SESSION, DOCTOR, MASTERS, MAS_FREQUENCY } from "../../../config/apiConfig"
+import OTDashboard from "../GeneralMedicineWaitingList/OTDashboard"
+import InvestigationModal from "../GeneralMedicineWaitingList/InvestigationModal"
+import TreatmentModal from "../GeneralMedicineWaitingList/TreatmentModal"
+import { OPD_PATIENT, OPD_TEMPLATE, MAS_FREQUENCY, MAS_DRUG_MAS, DRUG_TYPE, ITEM_CLASS, MAS_INVESTIGATION, MASTERS } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import LoadingScreen from "../../../Components/Loading/index";
-import Popup from "../../../Components/popup";
+import Popup from "../../../Components/popup/index";
 import DuplicatePopup from "../GeneralMedicineWaitingList/DuplicatePopup";
+const OpdRRecallPatient = () => {
+  const [waitingList, setWaitingList] = useState([
+    {
+      id: 1,
+      tokenNo: "GM-1",
+      employeeNo: "33503",
+      patientName: "BHANUPRAKASH K R",
+      relation: "Husband",
+      designation: "MEDICAL SUPTD.",
+      name: "DR. NIRMALA D",
+      age: "47 Years",
+      gender: "Male",
+      opdType: "Normal OPD",
+      priority: "Priority-1",
+      status: "waiting",
+    },
+  ])
 
-const GeneralMedicineWaitingList = () => {
-  const [waitingList, setWaitingList] = useState([])
-  const [loading, setLoading] = useState(false);
-  const [doctorData, setDoctorData] = useState([]);
-  const [sessionData, setSessionData] = useState([]);
-  const [masICDData, setMasICDData] = useState([]);
-  const [duplicateItems, setDuplicateItems] = useState([]);
-  const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
-  const [popupMessage, setPopupMessage] = useState("");
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageInput, setPageInput] = useState("")
+  const [showDetailView, setShowDetailView] = useState(false)
+  const [selectedPatient, setSelectedPatient] = useState(null)
+  const [showOtCalendarModal, setShowOtCalendarModal] = useState(false)
+  const [showCurrentMedicationModal, setShowCurrentMedicationModal] = useState(false)
   const [selectedTreatmentTemplateIds, setSelectedTreatmentTemplateIds] = useState(new Set());
-  const [opdTemplateData, setOpdTemplateData] = useState([]);
-  const [selectedTreatmentTemplateId, setSelectedTreatmentTemplateId] = useState("Select..");
-  const tableContainerRef = useRef(null);
+  const [removedInvestigationIds, setRemovedInvestigationIds] = useState([]);
   const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null);
   const drugNameDropdownClickedRef = useRef(false);
+  const tableContainerRef = useRef(null);
   const [drugCodeOptions, setDrugCodeOptions] = useState([]);
-  const [allFrequencies, setAllFrequencies] = useState([])
+  const [removedTreatmentIds, setRemovedTreatmentIds] = useState([]);
+  const [removeIcdIds, setRemoveIcdIds] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const isOnlyDefaultTreatmentRow = (items) => {
-    return (
-      items.length === 1 &&
-      !items[0].treatmentId &&
-      !items[0].drugId &&
-      !items[0].drugName &&
-      !items[0].dosage &&
-      !items[0].frequency &&
-      !items[0].days
-    );
+  const [selectedTreatmentTemplateId, setSelectedTreatmentTemplateId] = useState("Select..");
+  const [usedTemplateIds, setUsedTemplateIds] = useState(new Set());
+  const [recallPatientOpd, setRecallPatientOpd] = useState([]);
+  const [opdTemplateData, setOpdTemplateData] = useState([]);
+  const [allFrequencies, setAllFrequencies] = useState([])
+  const today = new Date().toISOString().split("T")[0];
+  const [loading, setLoading] = useState(false);
+  const [popup, setPopup] = useState("");
+  const [masICDData, setMasICDData] = useState([]);
+  const [popupMessage, setPopupMessage] = useState("");
+  const [formData, setFormData] = useState({
+    height: "",
+    weight: "",
+    temperature: "",
+    systolicBP: "",
+    diastolicBP: "",
+    pulse: "",
+    bmi: "",
+    rr: "",
+    spo2: "",
+    patientSymptoms: "",
+    clinicalExamination: "",
+    pastHistory: "",
+    familyHistory: "",
+    mlcCase: false,
+  })
+  const [workingDiagnosis, setWorkingDiagnosis] = useState("")
+  const [duplicateItems, setDuplicateItems] = useState([]);
+  const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
+  const [diagnosisItems, setDiagnosisItems] = useState([
+    {
+      id: null,
+      icdDiagId: "",
+      icdDiagnosis: "",
+      communicableDisease: false,
+      infectiousDisease: false,
+    },
+  ])
+
+  const [searchFilters, setSearchFilters] = useState({
+    mobileNumber: "",
+    patientName: "",
+    date: today,
+  });
+
+
+  const handleSearch = async () => {
+    // console.log("recall api data: ", recallPatientOpd);
+    await fetchOpdPatientData();
   };
 
-  const fatchDrugCodeOptions = async () => {
-    try {
-      setLoading(true);
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAllBySectionOnly/1`);
-      if (response && response.response) {
-        setDrugCodeOptions(response.response);
+  useEffect(() => {
+    if (activeDrugNameDropdown !== null) {
+      const container = tableContainerRef.current;
+      const inputEl = document.getElementById(`drug-name-${activeDrugNameDropdown}`);
+      const dropdownHeight = 200;
+
+      if (container && inputEl) {
+        const inputRect = inputEl.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+
+        if (inputRect.bottom + dropdownHeight > containerRect.bottom) {
+          container.scrollTop += (inputRect.bottom + dropdownHeight) - containerRect.bottom + 10;
+        }
       }
-    } catch (err) {
-      console.error("Error fetching drug options:", err);
+    }
+  }, [activeDrugNameDropdown]);
+
+  // console.log("opdTemplateData", opdTemplateData)
+
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+        if (onCloseCallback) onCloseCallback();
+      },
+    });
+  };
+
+  const handleReset = () => {
+    const today = new Date().toISOString().split("T")[0];
+
+    setSearchFilters({
+      mobileNumber: "",
+      patientName: "",
+      date: today,
+    });
+
+    fetchOpdPatientData();
+  };
+
+  // console.log("selectedPatient", selectedPatient)
+
+  const fetchOpdPatientData = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+
+      if (searchFilters.mobileNumber) params.append("mobile", searchFilters.mobileNumber);
+      if (searchFilters.patientName) params.append("name", searchFilters.patientName);
+      if (searchFilters.date) params.append("visitDate", searchFilters.date);
+
+      const data = await getRequest(`${OPD_PATIENT}/recallVisit?${params.toString()}`);
+
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setRecallPatientOpd(data.response);
+      } else {
+        setRecallPatientOpd([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Doctor data:", error);
     } finally {
-      setLoading(false);
+      setLoading(false);    // ensures loader hides
     }
   };
+
+  const fetchOpdTemplateData = async () => {
+    try {
+
+      const data = await getRequest(`${OPD_TEMPLATE}/getAll/1`);
+
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setOpdTemplateData(data.response);
+      } else {
+        setOpdTemplateData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Doctor data:", error);
+    }
+  };
+
+  const fetchMasICDData = async () => {
+    try {
+      const data = await getRequest(`${MASTERS}/masIcd/all?flag=0&page=0&size=100`);
+
+      if (data.status === 200 && data.response?.content) {
+        setMasICDData(data.response.content);
+      } else {
+        setMasICDData([]);
+      }
+
+    } catch (error) {
+      console.error("Error fetching ICD data:", error);
+    }
+  };
+
 
   const fetchAllFrequencies = async () => {
     try {
@@ -71,95 +208,211 @@ const GeneralMedicineWaitingList = () => {
     }
   }
 
-  const fetchMasICDData = async () => {
+  const fatchDrugCodeOptions = async () => {
     try {
-      const data = await getRequest(`${MASTERS}/masIcd/all?flag=0&page=0&size=100`);
-
-      if (data.status === 200 && data.response?.content) {
-        setMasICDData(data.response.content);
-      } else {
-        setMasICDData([]);
+      setLoading(true);
+      const response = await getRequest(`${MAS_DRUG_MAS}/getAllBySectionOnly/1`);
+      if (response && response.response) {
+        setDrugCodeOptions(response.response);
       }
-
-    } catch (error) {
-      console.error("Error fetching ICD data:", error);
-    }
-  };
-
-  const fetchOpdTemplateData = async () => {
-    try {
-
-      const data = await getRequest(`${OPD_TEMPLATE}/getAll/1`);
-
-      if (data.status === 200 && Array.isArray(data.response)) {
-        setOpdTemplateData(data.response);
-      } else {
-        setOpdTemplateData([]);
-      }
-    } catch (error) {
-      console.error("Error fetching Doctor data:", error);
-    }
-  };
-
-  const fetchDoctorData = async () => {
-    setLoading(true);
-    try {
-      const data = await getRequest(`${DOCTOR}/allDoctor/list`);
-      if (data.status === 200 && Array.isArray(data.response)) {
-        setDoctorData(data.response);
-      } else {
-        console.error("Unexpected API response format:", data);
-        setDoctorData([]);
-      }
-    } catch (error) {
-      console.error("Error fetching Doctor data:", error);
+    } catch (err) {
+      console.error("Error fetching drug options:", err);
     } finally {
       setLoading(false);
     }
   };
-
-  const fetchSessionData = async () => {
-    setLoading(true);
-    try {
-      const data = await getRequest(`${MAS_OPD_SESSION}/getAll/1`);
-      if (data.status === 200 && Array.isArray(data.response)) {
-        setSessionData(data.response);
-      } else {
-        console.error("Unexpected API response format:", data);
-        setSessionData([]);
-      }
-    } catch (error) {
-      console.error("Error fetching Session data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-
 
   useEffect(() => {
-    fetchDoctorData();
-    fetchSessionData();
-    fetchMasICDData();
+    fetchOpdPatientData();
     fetchOpdTemplateData();
-    fatchDrugCodeOptions();
     fetchAllFrequencies();
+    fatchDrugCodeOptions();
+    fetchMasICDData();
   }, []);
 
-  const [searchFilters, setSearchFilters] = useState({
-    doctorList: "Dr. G. Pradhan",
-    session: "Select",
-    employeeNo: "",
-    patientName: "",
-  })
 
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
-  const [showDetailView, setShowDetailView] = useState(false)
-  const [selectedPatient, setSelectedPatient] = useState(null)
-  const [showOtCalendarModal, setShowOtCalendarModal] = useState(false)
-  const [showCurrentMedicationModal, setShowCurrentMedicationModal] = useState(false)
+
+
+  const handleClearAllTreatmentTemplates = () => {
+    setSelectedTreatmentTemplateIds(new Set());
+
+    setTreatmentItems(prev => {
+      const updated = prev.filter(item => {
+        const tpl = (item.templateId ?? "").trim();
+
+        // 1️⃣ Keep DB items (but clear templateId later)
+        if (item.treatmentId !== null) return true;
+
+        // 2️⃣ Keep manual items (templateId empty)
+        if (tpl === "") return true;
+
+        // 3️⃣ Remove template-generated items
+        return false;
+      })
+        .map(item => {
+          // Clear templateId only for DB items
+          if (item.treatmentId !== null) {
+            return { ...item, templateId: "" };
+          }
+          return item;
+        });
+
+      // If nothing left → add empty row
+      if (updated.length === 0) {
+        return [
+          {
+            treatmentId: null,
+            drugId: "",
+            drugName: "",
+            dispUnit: "",
+            dosage: "",
+            frequency: "",
+            days: "",
+            total: "",
+            instruction: "",
+            stock: "",
+            templateId: ""
+          }
+        ];
+      }
+
+      return updated;
+    });
+  };
+
+
+
+
+  // REMOVE a single treatment template
+  const handleRemoveTreatmentTemplateItems = (templateId) => {
+    setTreatmentItems(prev =>
+      prev
+        .map(item => {
+          if (!item.templateId) return item;
+
+          // Convert to array
+          const ids = item.templateId
+            .split(",")
+            .filter(id => id !== String(templateId));
+
+          // CASE 1: treatmentId exists → KEEP row but update templateId
+          if (item.treatmentId != null) {
+            return {
+              ...item,
+              templateId: ids.join(",")
+            };
+          }
+
+          // CASE 2: no treatmentId & some templateIds left → update only
+          if (ids.length > 0) {
+            return {
+              ...item,
+              templateId: ids.join(",")
+            };
+          }
+
+          // CASE 3: no treatmentId & no templateIds left → REMOVE row
+          return null;
+        })
+        .filter(item => item !== null)
+    );
+
+    // remove template from selected list
+    setSelectedTreatmentTemplateIds(prev => {
+      const updated = new Set(prev);
+      updated.delete(templateId);
+      return updated;
+    });
+  };
+
+
+  const isOnlyDefaultTreatmentRow = (items) => {
+    return (
+      items.length === 1 &&
+      !items[0].treatmentId &&
+      !items[0].drugId &&
+      !items[0].drugName &&
+      !items[0].dosage &&
+      !items[0].frequency &&
+      !items[0].days
+    );
+  };
+
+  const handleUpdateRecallPatient = async (e) => {
+    e.preventDefault();
+
+    if (isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
+
+      if (!selectedPatient.visitId) {
+        alert("Recall ID missing!");
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log("list obj", diagnosisItems)
+
+      const icdObjList = diagnosisItems.map(item => ({
+        id: item.id,
+        icdId: item.icdDiagId ?? null,
+        icdDiagName: item.icdDiagnosis || ""
+      }));
+
+      const icdDiagnosisStr = diagnosisItems
+        .map(item => item.icdDiagnosis?.trim())
+        .filter(v => v?.length > 0)
+        .join(",");
+
+      const payload = {
+        ...formData,
+        mlcCase: formData.mlcCase ? "y" : "n",
+        workingDiagnosis,
+        icdDiagnosis: icdDiagnosisStr,
+        icdObj: icdObjList,
+        treatments: treatmentItems,
+        investigations: investigationItems,
+        removeIcdIds,
+        removedTreatmentIds,
+        removedInvestigationIds,
+        opdPatientId: selectedPatient.opdPatientId,
+        patientId: selectedPatient.patientId,
+        visitId: selectedPatient.visitId,
+        departmentId: selectedPatient.deptId,
+        hospitalId: selectedPatient.hospitalId ?? null,
+        doctorId: selectedPatient.docterId
+      };
+
+      // console.log("UPDATE PAYLOAD =", payload);
+
+      const response = await putRequest(`${OPD_PATIENT}/update-recall-patient`, payload);
+
+      if (response?.status === 200 || response?.success === true) {
+        showPopup(
+          "Recall patient updated successfully!",
+          "success",
+          () => handleBackWithFatch()
+        );
+
+      } else {
+        alert("Updated but unexpected response received.");
+      }
+
+    } catch (error) {
+      console.error("Update Error:", error);
+      showPopup("Failed to update. Please try again.", "error");
+
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBackWithFatch = async () => {
+    handleBackToList();
+    handleSearch();
+  };
+
 
   // Modal states - UPDATED
   const [showInvestigationModal, setShowInvestigationModal] = useState(false)
@@ -203,22 +456,7 @@ const GeneralMedicineWaitingList = () => {
 
   const [selectedHistoryType, setSelectedHistoryType] = useState("")
 
-  const [formData, setFormData] = useState({
-    height: "",
-    weight: "",
-    temperature: "",
-    systolicBP: "",
-    diastolicBP: "",
-    pulse: "",
-    bmi: "",
-    rr: "",
-    spo2: "",
-    patientSymptoms: "",
-    clinicalExamination: "",
-    pastHistory: "",
-    familyHistory: "",
-    mlcCase: false,
-  })
+
 
   const [errors, setErrors] = useState({})
 
@@ -232,6 +470,7 @@ const GeneralMedicineWaitingList = () => {
   const getToday = () => new Date().toISOString().split("T")[0]
   const [investigationItems, setInvestigationItems] = useState([
     {
+      id: null,
       investigationId: "",
       templateIds: [],
       name: "",
@@ -248,16 +487,7 @@ const GeneralMedicineWaitingList = () => {
   })
   const [dropdownWidth, setDropdownWidth] = useState(0)
 
-  const [workingDiagnosis, setWorkingDiagnosis] = useState("")
 
-  const [diagnosisItems, setDiagnosisItems] = useState([
-    {
-      icdDiagId: "",
-      icdDiagnosis: "",
-      communicableDisease: false,
-      infectiousDisease: false,
-    },
-  ])
 
   const [templates, setTemplates] = useState(["Blood Test Template", "Cardiac Template", "Diabetes Template"])
   const [treatmentAdviceTemplates, setTreatmentAdviceTemplates] = useState([
@@ -283,6 +513,8 @@ const GeneralMedicineWaitingList = () => {
       templateId: "",
     }
   ]);
+
+  console.log("investigationTemplates", treatmentItems)
 
   const [nipItems, setNipItems] = useState([
     {
@@ -395,7 +627,7 @@ const GeneralMedicineWaitingList = () => {
     },
   ])
 
-  const [selectedBloodTestTemplate, setSelectedBloodTestTemplate] = useState("Select..")
+  const [selectedBloodTestTemplate, setSelectedBloodTestTemplate] = useState("");
 
   const itemsPerPage = 10
 
@@ -506,8 +738,9 @@ const GeneralMedicineWaitingList = () => {
     }
   }
 
+
   const filterInvestigationsByMainChargeCode = () => {
-    console.log("Filtering investigations by type:", investigationType)
+    // console.log("Filtering investigations by type:", investigationType)
 
     if (!investigationType || allInvestigations.length === 0) {
       setFilteredInvestigationsByType([])
@@ -515,11 +748,11 @@ const GeneralMedicineWaitingList = () => {
     }
 
     const selectedType = investigationTypes.find(type => type.value === investigationType)
-    console.log("Selected type for filtering:", selectedType)
+    // console.log("Selected type for filtering:", selectedType)
 
     if (selectedType) {
       const filtered = allInvestigations.filter(inv => inv.mainChargeCodeId === selectedType.id)
-      console.log(`Filtered ${filtered.length} investigations for type:`, selectedType.name)
+      // console.log(`Filtered ${filtered.length} investigations for type:`, selectedType.name)
       setFilteredInvestigationsByType(filtered)
     } else {
       setFilteredInvestigationsByType([])
@@ -542,29 +775,10 @@ const GeneralMedicineWaitingList = () => {
     return filtered
   }
 
-
-  useEffect(() => {
-    if (activeDrugNameDropdown !== null) {
-      const container = tableContainerRef.current;
-      const inputEl = document.getElementById(`drug-name-${activeDrugNameDropdown}`);
-      const dropdownHeight = 200;
-
-      if (container && inputEl) {
-        const inputRect = inputEl.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-
-        if (inputRect.bottom + dropdownHeight > containerRect.bottom) {
-          container.scrollTop += (inputRect.bottom + dropdownHeight) - containerRect.bottom + 10;
-        }
-      }
-    }
-  }, [activeDrugNameDropdown]);
-
   // UPDATED: Handle template selection to accumulate items
   const handleInvestigationTemplateSelect = (template) => {
     const templateId = template.templateId;
 
-    // Prevent duplicate template selection
     if (selectedTemplateIds.has(templateId)) {
       alert("This template is already selected");
       setSelectedInvestigationTemplate("Select..");
@@ -576,21 +790,11 @@ const GeneralMedicineWaitingList = () => {
 
     if (!template.investigationResponseList) return;
 
-    let duplicateItemsBuffer = [];
+    let duplicateItemsBuffer = []; // <-- temporary store
 
     setInvestigationItems(prev => {
-      let updated = [...prev];
-
-      // 🟢 REMOVE EMPTY DEFAULT ITEM ON FIRST USE
-      if (
-        updated.length === 1 &&
-        !updated[0].investigationId &&
-        !updated[0].name
-      ) {
-        updated = [];
-      }
-
-      const existingMap = new Map(updated.map(item => [item.investigationId, item]));
+      const updated = [...prev];
+      const existingMap = new Map(prev.map(item => [item.investigationId, item]));
 
       template.investigationResponseList.forEach(item => {
         const existing = existingMap.get(item.investigationId);
@@ -601,14 +805,16 @@ const GeneralMedicineWaitingList = () => {
             existing.templateIds = [...existing.templateIds, templateId];
           }
 
+          // push clean data
           duplicateItemsBuffer.push({
             investigationId: item.investigationId,
             investigationName: existing.name ?? item.investigationName
           });
 
         } else {
-          // new investigation
+          // new
           updated.push({
+            id: null,
             name: item.investigationName ?? `Investigation #${item.investigationId}`,
             date: getToday(),
             investigationId: item.investigationId,
@@ -618,11 +824,13 @@ const GeneralMedicineWaitingList = () => {
         }
       });
 
+      // return final investigation list
       return updated;
     });
 
-    // After updating state, check duplicates
+    // Run popup handler AFTER state update
     setTimeout(() => {
+      // remove duplicates
       const unique = Array.from(
         new Map(duplicateItemsBuffer.map(d => [d.investigationId, d])).values()
       );
@@ -633,18 +841,33 @@ const GeneralMedicineWaitingList = () => {
       }
 
       setSelectedInvestigationTemplate("Select..");
-    }, 50);
+
+    }, 50); // slight delay ensures buffer has updated values
   };
 
-  // NEW: Function to clear all selected templates and items
+  console.log("DuplicateItems", duplicateItems)
+  console.log("ShowDuplicatePopup", showDuplicatePopup)
+
+
   const handleClearAllTemplates = () => {
     setSelectedTemplateIds(new Set());
 
-    setInvestigationItems(prev =>
-      prev.filter(item => (item.templateIds ?? []).length === 0)
-    );
+    setInvestigationItems(prevItems => {
+      return prevItems.filter(item => {
+        const ids = item.templateIds ?? [];
+
+        if (item.id !== null) return true;
+
+        if (ids.length === 0) return true;
+
+        return false;
+      });
+    });
   };
 
+
+
+  // NEW: Function to remove specific template items
   const handleRemoveTemplateItems = (templateId) => {
     setSelectedTemplateIds(prev => {
       const newSet = new Set(prev);
@@ -652,30 +875,25 @@ const GeneralMedicineWaitingList = () => {
       return newSet;
     });
 
-    setInvestigationItems(prev =>
-      prev
+    setInvestigationItems(prev => {
+      return prev
         .map(item => {
-          const originalTemplateIds = item.templateIds ?? [];
-
-          // Manual item → keep unchanged
-          if (originalTemplateIds.length === 0) {
-            return item;
-          }
+          // Remove this template ID from the item
+          const newTemplateIds = item.templateIds?.filter(id => id !== templateId) || [];
 
           return {
             ...item,
-            templateIds: originalTemplateIds.filter(id => id !== templateId),
+            templateIds: newTemplateIds
           };
         })
         .filter(item => {
-          const ids = item.templateIds ?? [];
+          // CASE 1: No template IDs left AND created from template (id === null) → remove
+          if (item.templateIds.length === 0 && item.id === null) return false;
 
-          // Remove template-created items (had templateIds before) but now ids = []
-          if (ids.length === 0 && item.templateSource) return false;
-
+          // CASE 2: No template IDs left BUT item has DB id → keep, as user saved previously
           return true;
-        })
-    );
+        });
+    });
   };
 
 
@@ -751,48 +969,6 @@ const GeneralMedicineWaitingList = () => {
     ])
   }
 
-  const handleRemoveTreatmentTemplateItems = (templateId) => {
-    setTreatmentItems(prev =>
-      prev
-        .map(item => {
-          if (!item.templateId) return item;
-
-          // Convert to array
-          const ids = item.templateId
-            .split(",")
-            .filter(id => id !== String(templateId));
-
-          // CASE 1: treatmentId exists → KEEP row but update templateId
-          if (item.treatmentId != null) {
-            return {
-              ...item,
-              templateId: ids.join(",")
-            };
-          }
-
-          // CASE 2: no treatmentId & some templateIds left → update only
-          if (ids.length > 0) {
-            return {
-              ...item,
-              templateId: ids.join(",")
-            };
-          }
-
-          // CASE 3: no treatmentId & no templateIds left → REMOVE row
-          return null;
-        })
-        .filter(item => item !== null)
-    );
-
-    // remove template from selected list
-    setSelectedTreatmentTemplateIds(prev => {
-      const updated = new Set(prev);
-      updated.delete(templateId);
-      return updated;
-    });
-  };
-
-
   const handleRemoveDepartment = (index) => {
     if (departmentData.length === 1) return
     const newData = departmentData.filter((_, i) => i !== index)
@@ -802,25 +978,25 @@ const GeneralMedicineWaitingList = () => {
   // ADD THESE USEEFFECT HOOKS
 
   // DEBUGGING: Add this at the top of your component to see what's happening
-  console.log("Component render - investigationType:", investigationType, "investigationTypes:", investigationTypes)
+  // console.log("Component render - investigationType:", investigationType, "investigationTypes:", investigationTypes)
 
   useEffect(() => {
     if (showDetailView && selectedPatient) {
-      console.log("Fetching investigation data...")
+      // console.log("Fetching investigation data...")
       fetchInvestigationTemplates()
       fetchAllInvestigations()
     }
   }, [showDetailView, selectedPatient])
 
   useEffect(() => {
-    console.log("All investigations loaded:", allInvestigations.length)
+    // console.log("All investigations loaded:", allInvestigations.length)
     if (allInvestigations.length > 0) {
       extractInvestigationTypes(allInvestigations)
     }
   }, [allInvestigations])
 
   useEffect(() => {
-    console.log("Investigation types updated:", investigationTypes)
+    // console.log("Investigation types updated:", investigationTypes)
     if (investigationTypes.length > 0) {
       // FORCE SELECT LABORATORY
       const labType = investigationTypes.find(type =>
@@ -829,17 +1005,17 @@ const GeneralMedicineWaitingList = () => {
       )
 
       if (labType && investigationType !== labType.value) {
-        console.log("Setting default to Laboratory:", labType)
+        // console.log("Setting default to Laboratory:", labType)
         setInvestigationType(labType.value)
       } else if (investigationTypes.length > 0 && !investigationType) {
-        console.log("Setting to first type:", investigationTypes[0])
+        // console.log("Setting to first type:", investigationTypes[0])
         setInvestigationType(investigationTypes[0].value)
       }
     }
   }, [investigationTypes])
 
   useEffect(() => {
-    console.log("Investigation type changed to:", investigationType)
+    // console.log("Investigation type changed to:", investigationType)
     filterInvestigationsByMainChargeCode()
   }, [investigationType])
 
@@ -851,59 +1027,159 @@ const GeneralMedicineWaitingList = () => {
     setCurrentPage(1)
   }
 
-  const handleSearch = async () => {
-    console.log("Searching with filters:", searchFilters);
+  const handleMobileChange = (e) => {
+    let value = e.target.value.replace(/\D/g, "");
 
-    const payload = {
-      doctorId: Number(searchFilters.doctorList) || null,
-      sessionId: Number(searchFilters.session) || null,
-      employeeNo: searchFilters.employeeNo?.trim() || null,
-      patientName: searchFilters.patientName?.trim() || null
-    };
+    if (value.length > 10) value = value.slice(0, 10);
 
-    try {
-      setLoading(true);
-      const data = await postRequest(`${OPD_PATIENT}/activeVisit/search`, payload);
-
-      if (data.status === 200 && Array.isArray(data.response)) {
-        setWaitingList(data.response);
-      } else {
-        setWaitingList([]);
-      }
-    } catch (error) {
-      console.error("Search API Error:", error);
-    } finally {
-      setLoading(false);
+    if (value.length > 0 && value.length < 10) {
+      console.error("Mobile number must be 10 digits");
     }
+    handleFilterChange("mobileNumber", value);
   };
 
 
-  const handleReset = () => {
-    setSearchFilters({
-      doctorList: "",
-      session: "",
-      employeeNo: "",
-      patientName: "",
-    });
 
-  };
+  console.log("investigationItems", investigationItems)
 
 
   const handleRowClick = (patient) => {
     setSelectedPatient(patient)
+    setFormData({
+      height: patient.height || "",
+      weight: patient.weight || "",
+      temperature: patient.temperature || "",
+      systolicBP: patient.bpSystolic || "",
+      diastolicBP: patient.bpDiastolic || "",
+      pulse: patient.pulse || "",
+      bmi: patient.bmi || "",
+      rr: patient.rr || "",
+      spo2: patient.spo2 || "",
+      patientSymptoms: patient.patientSignsSymptoms || "",
+      clinicalExamination: patient.clinicalExamination || "",
+      pastHistory: patient.pastMedicalHistory || "",
+      familyHistory: patient.familyHistory || "",
+      mlcCase: patient.mlcFlag === "y" ? true : false,
+    });
+    setWorkingDiagnosis(patient?.workingDiag || "")
+    setDiagnosisItems(
+      patient.icdDiag && patient.icdDiag.length > 0
+        ? patient.icdDiag.map(item => ({
+          id: item.id ?? null,
+          icdDiagId: item.icdId ?? "",
+          icdDiagnosis: item.icdDiagName ?? "",
+          communicableDisease: false,
+          infectiousDisease: false,
+        }))
+        : [
+          {
+            id: null,
+            icdDiagId: "",
+            icdDiagnosis: "",
+            communicableDisease: false,
+            infectiousDisease: false,
+          }
+        ]
+    );
+
+    const allDtItems =
+      patient.dgOrderHdList && patient.dgOrderHdList.length > 0
+        ? patient.dgOrderHdList.flatMap(hd =>
+          hd.dgOrderDts.map(dt => ({
+            id: dt.dgOrderDtId || "",
+            name: dt.investigationName || "",
+            date: dt.appointmentDate || getToday(),
+            investigationId: dt.investigationId
+          }))
+        )
+        : [
+          {
+            id: "",
+            name: "",
+            date: getToday(),
+          }
+        ];
+
+    setInvestigationItems(allDtItems);
+
+    setTreatmentItems(
+      patient.patientPrescriptionDts && patient.patientPrescriptionDts.length > 0
+        ? patient.patientPrescriptionDts.map(item => ({
+
+          treatmentId: item.prescriptionDtId,
+          drugId: item.itemId,
+          drugName: item.itemName,
+          dispUnit: item.depUnit,
+          dosage: item.dosage,
+          frequency: item.frequencyId,
+          days: item.days,
+          total: item.total,
+          instruction: item.instraction,
+          stock: item.stocks,
+        }))
+        : [
+          {
+            treatmentId: null,
+            drugId: "",
+            drugName: "",
+            dispUnit: "",
+            dosage: "",
+            frequency: "",
+            days: "",
+            total: "",
+            instruction: "",
+            stock: "",
+          }
+        ]
+    );
+
     setShowDetailView(true)
   }
 
-  console.log("setSelectedPatient", selectedPatient)
-
   const handleBackToList = () => {
-    // Hide detail page
-    setShowDetailView(false);
-
-    // Clear selected patient
-    setSelectedPatient(null);
-
-    // Reset expand sections
+    setShowDetailView(false)
+    setSelectedPatient(null)
+    setFormData({
+      height: "",
+      weight: "",
+      temperature: "",
+      systolicBP: "",
+      diastolicBP: "",
+      pulse: "",
+      bmi: "",
+      rr: "",
+      spo2: "",
+      patientSymptoms: "",
+      clinicalExamination: "",
+      pastHistory: "",
+      familyHistory: "",
+      mlcCase: false,
+    });
+    setDiagnosisItems([
+      {
+        id: null,
+        icdDiagId: "",
+        icdDiagnosis: "",
+        communicableDisease: false,
+        infectiousDisease: false,
+      }
+    ]);
+    setWorkingDiagnosis("")
+    setInvestigationItems([{ id: "", name: "", date: getToday() }]);
+    setTreatmentItems([
+      {
+        treatmentId: null,
+        drugId: "",
+        drugName: "",
+        dispUnit: "",
+        dosage: "",
+        frequency: "",
+        days: "",
+        total: "",
+        instruction: "",
+        stock: "",
+      }
+    ]);
     setExpandedSections({
       personalDetails: false,
       clinicalHistory: false,
@@ -917,52 +1193,12 @@ const GeneralMedicineWaitingList = () => {
       doctorRemark: false,
       surgeryAdvice: false,
       additionalAdvice: false,
-    });
-
-    setSelectedHistoryType("");
-
-    // Reset template selections
-    setSelectedTemplateIds(new Set());
-    setSelectedTreatmentTemplateIds(new Set());   // 🔥 MISSING earlier (important)
-
-    // Reset diagnosis
-    setDiagnosisItems([
-      {
-        icdDiagId: "",
-        icdDiagnosis: "",
-        communicableDisease: false,
-        infectiousDisease: false,
-      },
-    ]);
-
-    setWorkingDiagnosis("");
-
-    // Reset investigations / treatments
-    setInvestigationItems([]);
-    setTreatmentItems([]);
-
-    // Reset form
-    setFormData({
-      height: "",
-      weight: "",
-      temperature: "",
-      systolicBP: "",
-      diastolicBP: "",
-      pulse: "",
-      bmi: "",
-      rr: "",
-      spo2: "",
-      patientSymptoms: "",
-      clinicalExamination: "",
-      mlcCase: false,
-      pastMedicalHistory: "",
-      familyHistory: "",
-      presentComplaints: "",
-    });
-
-    setErrors({});
-  };
-
+    })
+    setSelectedHistoryType("")
+    setRemovedInvestigationIds([])
+    setSelectedTemplateIds(new Set())
+    setSelectedTreatmentTemplateIds(new Set())
+  }
 
   const toggleSection = (section) => {
     setExpandedSections((prev) => ({
@@ -997,125 +1233,6 @@ const GeneralMedicineWaitingList = () => {
   }
 
 
-  const showPopup = (message, type = "info", onCloseCallback = null) => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => {
-        setPopupMessage(null);
-        if (onCloseCallback) onCloseCallback();
-      },
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (isSubmitting) return;
-
-    try {
-      setIsSubmitting(true);
-      // ICD Diagnoses
-      const icdDiagList = diagnosisItems.map(item => ({
-        icdId: item.icdDiagId ?? null,
-        icdDiagName: item.icdDiagnosis || ""
-      }));
-
-      // Investigations mapping → backend format
-      const investigationList = investigationItems.map(item => ({
-        id: item.investigationId,
-        investigationName: item.name,
-        investigationDate: item.date
-      }));
-
-      console.log("inv items", investigationItems)
-
-      // Treatment mapping → backend format
-      const treatmentList = treatmentItems.map(item => ({
-        itemId: item.drugId,
-        dosage: item.dosage,
-        frequency: item.frequency,
-        days: item.days,
-        total: item.total,
-        instraction: item.instruction
-      }));
-
-
-      console.log("treatmentItems", treatmentItems)
-
-      const payload = {
-        // ===== Vital =====
-        height: formData.height,
-        idealWeight: formData.idealWeight || null,
-        weight: formData.weight,
-        pulse: formData.pulse,
-        temperature: formData.temperature,
-        rr: formData.rr,
-        bmi: formData.bmi,
-        spo2: formData.spo2,
-        bpSystolic: formData.systolicBP,
-        bpDiastolic: formData.diastolicBP,
-        mlcFlag: formData.mlcCase ? "y" : "n",
-
-        // ===== Diagnosis =====
-        workingDiag: workingDiagnosis,
-        icdDiag: icdDiagList,
-
-        // ===== Clinical History =====
-        pastMedicalHistory: formData.pastMedicalHistory ?? null,
-        familyHistory: formData.familyHistory ?? null,
-        presentComplaints: formData.patientSymptoms ?? null,
-        patientSignsSymptoms: formData.patientSymptoms ?? null,
-        clinicalExamination: formData.clinicalExamination ?? null,
-        pastMedicalHistory: formData.pastHistory ?? null,
-
-        // ===== Investigation =====
-        labFlag: "y",
-        radioFlag: "n",
-        investigation: investigationList,
-
-        // ===== Treatment =====
-        treatment: treatmentList,
-
-        // ===== Mapping IDs =====
-        patientId: selectedPatient.patientId,
-        visitId: selectedPatient.visitId,
-        departmentId: selectedPatient.deptId,
-        hospitalId: selectedPatient.hospitalId,
-        doctorId: selectedPatient.docterId
-      };
-
-      const response = await postRequest(`${OPD_PATIENT}/patient-details`, payload);
-
-      if (response?.status === 200 || response?.success === true) {
-        showPopup(
-          "Recall patient updated successfully!",
-          "success",
-
-        );
-        handleResetForm();
-        setShowDetailView(false);
-        setWaitingList([]);
-
-
-      } else {
-        alert("Updated but unexpected response received.");
-      }
-
-      console.log("Final Payload =", payload);
-
-    } catch (error) {
-      console.error("Update Error:", error);
-      showPopup("Failed to update. Please try again.", "error");
-    } finally {
-      setIsSubmitting(false);
-    }
-
-
-  };
-
-
-
   const handleResetForm = () => {
     setFormData({
       height: "",
@@ -1130,84 +1247,22 @@ const GeneralMedicineWaitingList = () => {
       patientSymptoms: "",
       clinicalExamination: "",
       mlcCase: false,
-      pastMedicalHistory: "",
-      familyHistory: "",
-      presentComplaints: "",
-      pastHistory: "",
-    });
-
-    // Reset diagnosis
-    setDiagnosisItems([
-      {
-        icdDiagId: "",
-        icdDiagnosis: "",
-        communicableDisease: false,
-        infectiousDisease: false,
-      },
-    ]);
-
-
-    // Important resets
-    setSelectedTreatmentTemplateIds(new Set());
-    setSelectedTemplateIds(new Set());
-
-    setWorkingDiagnosis("");
-    setInvestigationItems([]);
-    setTreatmentItems([]);
-    setErrors({});
-  };
-
+    })
+    setErrors({})
+  }
 
   const handleRelease = (patientId) => {
-    setWaitingList((prevList) => {
-      // Copy the list to avoid mutation
-      const updatedList = [...prevList];
-
-      // Find index of clicked item
-      const index = updatedList.findIndex((item) => item.id === patientId);
-      if (index === -1) return prevList;
-
-      // Take out that item
-      const itemToMove = { ...updatedList[index], visitStatus: "released" };
-
-      // Remove from current position
-      updatedList.splice(index, 1);
-
-      // Add to LAST position
-      updatedList.push(itemToMove);
-
-      // ---- Keep pagination stable ----
-      const totalPagesNow = Math.ceil(updatedList.length / itemsPerPage);
-      const firstIndexOfPage = (currentPage - 1) * itemsPerPage;
-
-      // If current page becomes empty → go to previous page
-      if (firstIndexOfPage >= updatedList.length && currentPage > 1) {
-        setCurrentPage(currentPage - 1);
-      }
-
-      return updatedList;
-    });
-  };
+    const updatedList = waitingList.map((patient) =>
+      patient.id === patientId ? { ...patient, status: "released" } : patient,
+    )
+    setWaitingList(updatedList)
+  }
 
 
-  // CLOSE BUTTON
-  const handleClose = async (visitId) => {
-    try {
-      const response = await putRequest(
-        `${OPD_PATIENT}/changeStatusForClose/${visitId}/x`
-      );
-
-      if (response?.status === 200) {
-        showPopup("Update successfully.", "success");
-        handleSearch();
-      } else {
-        showPopup("Failed to update. Please try again.", "error");
-      }
-    } catch (error) {
-      showPopup("Failed to update. Please try again.", "error");
-    }
-  };
-
+  const handleClose = (patientId) => {
+    const updatedList = waitingList.filter((patient) => patient.id !== patientId)
+    setWaitingList(updatedList)
+  }
 
   const handleCreateTemplate = () => {
     setShowCreateTemplateModal(true)
@@ -1221,13 +1276,20 @@ const GeneralMedicineWaitingList = () => {
   }
 
   const handleAddInvestigationItem = () => {
-    setInvestigationItems((prev) => [...prev, { name: "", date: getToday() }])
+    setInvestigationItems((prev) => [...prev, { id: null, templateIds: [], name: "", date: getToday() }])
   }
 
   const handleRemoveInvestigationItem = (index) => {
-    const newItems = investigationItems.filter((_, i) => i !== index)
-    setInvestigationItems(newItems)
-  }
+    const itemToRemove = investigationItems[index];
+
+    if (itemToRemove.id !== null) {
+      setRemovedInvestigationIds(prev => [...prev, itemToRemove.id]);
+    }
+
+    const updatedItems = investigationItems.filter((_, i) => i !== index);
+    setInvestigationItems(updatedItems);
+  };
+
 
   const handleInvestigationItemChange = (index, field, value) => {
     const newItems = [...investigationItems]
@@ -1265,6 +1327,7 @@ const GeneralMedicineWaitingList = () => {
     setDiagnosisItems([
       ...diagnosisItems,
       {
+        id: null,
         icdDiagId: "",
         icdDiagnosis: "",
         communicableDisease: false,
@@ -1274,9 +1337,18 @@ const GeneralMedicineWaitingList = () => {
   }
 
   const handleRemoveDiagnosisItem = (index) => {
-    const newItems = diagnosisItems.filter((_, i) => i !== index)
-    setDiagnosisItems(newItems)
-  }
+    const itemToRemove = diagnosisItems[index];
+
+    if (itemToRemove?.id != null) {
+      setRemoveIcdIds((prev) => [...prev, itemToRemove.id]);
+    }
+
+    const newItems = diagnosisItems.filter((_, i) => i !== index);
+    setDiagnosisItems(newItems);
+  };
+
+
+  console.log("masICDData", masICDData)
 
   const handleDiagnosisChange = (index, field, value) => {
     const newItems = [...diagnosisItems];
@@ -1284,22 +1356,109 @@ const GeneralMedicineWaitingList = () => {
     setDiagnosisItems(newItems);
   };
 
+
   const handleAddTreatmentItem = () => {
     setTreatmentItems([
       ...treatmentItems,
       {
+        treatmentId: null,
+        drugIdId: "",
         drugName: "",
-        dispUnit: "Tab",
+        dispUnit: "",
         dosage: "",
-        frequency: "OD",
+        frequency: "",
         days: "",
         total: "",
         instruction: "",
         stock: "",
-        treatmentId: "",
       },
-    ])
-  }
+    ]);
+  };
+
+
+  const handleRemoveTreatmentItem = (index) => {
+    if (treatmentItems.length === 1) return;
+
+    const removedItem = treatmentItems[index];
+
+    if (removedItem.treatmentId) {
+      setRemovedTreatmentIds((prev) => [...prev, removedItem.treatmentId]);
+    }
+
+    const newItems = treatmentItems.filter((_, i) => i !== index);
+    setTreatmentItems(newItems);
+  };
+
+
+
+  const handleTreatmentTemplateSelect = (templateId) => {
+    if (!templateId || templateId === "Select..") return;
+
+    if (selectedTreatmentTemplateIds.has(templateId)) return;
+
+    const template = opdTemplateData.find(t => t.templateId == templateId);
+    if (!template || !template.treatments) return;
+
+    setTreatmentItems(prevList => {
+      const updatedList = [...prevList];
+      const existingDrugIds = updatedList.map(i => i.drugId);
+
+      const duplicateItems = [];
+      const newItemsToAdd = [];
+
+      template.treatments.forEach(t => {
+        if (existingDrugIds.includes(t.itemId)) {
+          duplicateItems.push(t);
+
+          // ➕ ADD TEMPLATE-ID to existing row
+          updatedList.forEach(row => {
+            if (row.drugId === t.itemId) {
+              const oldIds = row.templateId ? row.templateId.split(",") : [];
+
+              if (!oldIds.includes(String(templateId))) {
+                row.templateId = [...oldIds, String(templateId)].join(",");
+              }
+            }
+          });
+
+        } else {
+          newItemsToAdd.push(t);
+        }
+      });
+
+      // POPUP FOR DUPLICATE DRUGS
+      if (duplicateItems.length > 0) {
+        setDuplicateItems(duplicateItems);
+        setShowDuplicatePopup(true);
+      }
+
+      // ADD ONLY NEW ITEMS
+      const formattedNew = newItemsToAdd.map(t => ({
+        treatmentId: null,
+        drugId: t.itemId,
+        drugName: t.itemName,
+        dispUnit: t.dispU ?? "",
+        dosage: t.dosage ?? "",
+        frequency: t.frequencyId ?? "",
+        days: t.noOfDays ?? "",
+        total: t.total ?? "",
+        instruction: t.instruction ?? "",
+        stock: t.stocks ?? "",
+        templateId: String(templateId)    // IMPORTANT
+      }));
+
+      if (isOnlyDefaultTreatmentRow(updatedList)) {
+        return formattedNew;
+      }
+
+      return [...updatedList, ...formattedNew];
+    });
+
+    setSelectedTreatmentTemplateIds(prev => new Set([...prev, templateId]));
+    setSelectedTreatmentTemplateId("Select..");
+  };
+
+  console.log("diagnosisItems", diagnosisItems)
 
   const calculateTotal = (item) => {
     if (!item.dosage || !item.days || !item.frequency || !item.itemClassName) {
@@ -1349,11 +1508,7 @@ const GeneralMedicineWaitingList = () => {
     return total.toString();
   };
 
-  const handleRemoveTreatmentItem = (index) => {
-    if (treatmentItems.length === 1) return
-    const newItems = treatmentItems.filter((_, i) => i !== index)
-    setTreatmentItems(newItems)
-  }
+
 
   const handleTreatmentChange = (index, field, value) => {
     const updated = [...treatmentItems];
@@ -1377,6 +1532,9 @@ const GeneralMedicineWaitingList = () => {
 
     setTreatmentItems(updated);
   };
+
+
+
 
   const handleNipSearchChange = (value) => {
     setNipSearchInput(value)
@@ -1453,60 +1611,6 @@ const GeneralMedicineWaitingList = () => {
     handleCloseModal()
   }
 
-  const handleClearAllTreatmentTemplates = () => {
-    setSelectedTreatmentTemplateIds(new Set());
-
-    setTreatmentItems(prev => {
-      const updated = prev
-        .map(item => {
-          const templateList = (item.templateId ?? "").trim();
-
-          // CASE 1: treatmentId exists → KEEP but clear templateId
-          if (item.treatmentId != null) {
-            return {
-              ...item,
-              templateId: ""
-            };
-          }
-
-          // CASE 2: New UI row (treatmentId null)
-          // - If templateId was "" → this is manual item → KEEP
-          if (templateList === "") {
-            return {
-              ...item,
-              templateId: ""
-            };
-          }
-
-          // CASE 3: treatmentId null + templateIds exist → REMOVE (auto-generated from template)
-          return null;
-        })
-        .filter(item => item !== null);
-
-      // If everything removed → add a default empty row
-      if (updated.length === 0) {
-        return [
-          {
-            treatmentId: null,
-            drugId: "",
-            drugName: "",
-            dispUnit: "",
-            dosage: "",
-            frequency: "",
-            days: "",
-            total: "",
-            instruction: "",
-            stock: "",
-            templateId: ""
-          }
-        ];
-      }
-
-      return updated;
-    });
-  };
-
-
   const handleAddProcedureCareItem = () => {
     setProcedureCareItems([
       ...procedureCareItems,
@@ -1542,74 +1646,6 @@ const GeneralMedicineWaitingList = () => {
       },
     ])
   }
-
-  const handleTreatmentTemplateSelect = (templateId) => {
-    if (!templateId || templateId === "Select..") return;
-
-    if (selectedTreatmentTemplateIds.has(templateId)) return;
-
-    const template = opdTemplateData.find(t => t.templateId == templateId);
-    if (!template || !template.treatments) return;
-
-    setTreatmentItems(prevList => {
-      const updatedList = [...prevList];
-      const existingDrugIds = updatedList.map(i => i.drugId);
-
-      const duplicateItems = [];
-      const newItemsToAdd = [];
-
-      template.treatments.forEach(t => {
-        if (existingDrugIds.includes(t.itemId)) {
-          duplicateItems.push(t);
-
-          // ➕ ADD TEMPLATE-ID to existing row
-          updatedList.forEach(row => {
-            if (row.drugId === t.itemId) {
-              const oldIds = row.templateId ? row.templateId.split(",") : [];
-
-              if (!oldIds.includes(String(templateId))) {
-                row.templateId = [...oldIds, String(templateId)].join(",");
-              }
-            }
-          });
-
-        } else {
-          newItemsToAdd.push(t);
-        }
-      });
-
-      // POPUP FOR DUPLICATE DRUGS
-      if (duplicateItems.length > 0) {
-        setDuplicateItems(duplicateItems);
-        setShowDuplicatePopup(true);
-      }
-
-      // ADD ONLY NEW ITEMS
-      const formattedNew = newItemsToAdd.map(t => ({
-        treatmentId: null,
-        drugId: t.itemId,
-        drugName: t.itemName,
-        dispUnit: t.dispU ?? "",
-        dosage: t.dosage ?? "",
-        frequency: t.frequencyId ?? "",
-        days: t.noOfDays ?? "",
-        total: t.total ?? "",
-        instruction: t.instruction ?? "",
-        stock: t.stocks ?? "",
-        templateId: String(templateId)    // IMPORTANT
-      }));
-
-      if (isOnlyDefaultTreatmentRow(updatedList)) {
-        return formattedNew;
-      }
-
-      return [...updatedList, ...formattedNew];
-    });
-
-    setSelectedTreatmentTemplateIds(prev => new Set([...prev, templateId]));
-    setSelectedTreatmentTemplateId("Select..");
-  };
-
 
   const handleRemovePhysiotherapyItem = (index) => {
     if (physiotherapyItems.length === 1) return
@@ -1659,45 +1695,38 @@ const GeneralMedicineWaitingList = () => {
     setSurgeryItems(newItems)
   }
 
-  const totalPages = Math.ceil(waitingList.length / itemsPerPage);
+  const filteredTotalPages = Math.ceil(recallPatientOpd.length / itemsPerPage)
+  const currentItems = recallPatientOpd.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
-  const currentItems = waitingList.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  // HANDLE PAGE INPUT
   const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10);
-    if (pageNumber > 0 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
+    const pageNumber = Number.parseInt(pageInput, 10)
+    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
+      setCurrentPage(pageNumber)
     }
-  };
+  }
 
-  // PAGINATION BUTTONS
   const renderPagination = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
-
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    const pageNumbers = []
+    const maxVisiblePages = 5
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
+    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1)
 
     if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+      startPage = Math.max(1, endPage - maxVisiblePages + 1)
     }
 
     if (startPage > 1) {
-      pageNumbers.push(1);
-      if (startPage > 2) pageNumbers.push("...");
+      pageNumbers.push(1)
+      if (startPage > 2) pageNumbers.push("...")
     }
 
     for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i);
+      pageNumbers.push(i)
     }
 
-    if (endPage < totalPages) {
-      if (endPage < totalPages - 1) pageNumbers.push("...");
-      pageNumbers.push(totalPages);
+    if (endPage < filteredTotalPages) {
+      if (endPage < filteredTotalPages - 1) pageNumbers.push("...")
+      pageNumbers.push(filteredTotalPages)
     }
 
     return pageNumbers.map((number, index) => (
@@ -1710,18 +1739,21 @@ const GeneralMedicineWaitingList = () => {
           <span className="page-link disabled">{number}</span>
         )}
       </li>
-    ));
-  };
+    ))
+  }
 
-  // PRIORITY COLOR
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case "Priority-1": return "bg-danger text-white";
-      case "Priority-2": return "bg-warning text-dark";
-      case "Priority-3": return "bg-success text-white";
-      default: return "bg-secondary text-white";
+      case "Priority-1":
+        return "bg-danger text-white"
+      case "Priority-2":
+        return "bg-warning text-dark"
+      case "Priority-3":
+        return "bg-success text-white"
+      default:
+        return "bg-secondary text-white"
     }
-  };
+  }
 
   if (showDetailView && selectedPatient) {
     return (
@@ -1737,7 +1769,6 @@ const GeneralMedicineWaitingList = () => {
                   </button>
                 </div>
               </div>
-
               {popupMessage && (
                 <Popup
                   message={popupMessage.message}
@@ -1768,8 +1799,8 @@ const GeneralMedicineWaitingList = () => {
                             type="text"
                             id="mobileNo"
                             name="mobileNo"
-                            value={selectedPatient.mobileNo || ""}
                             className="form-control"
+                            value={selectedPatient?.mobileNo}
                             maxLength={10}
                             placeholder="Enter Mobile Number"
                             readOnly
@@ -1782,8 +1813,8 @@ const GeneralMedicineWaitingList = () => {
                           <input
                             type="text"
                             id="gender"
+                            value={selectedPatient?.gender}
                             name="gender"
-                            value={selectedPatient.gender || ""}
                             className="form-control"
                             placeholder="Select"
                             readOnly
@@ -1796,7 +1827,7 @@ const GeneralMedicineWaitingList = () => {
                           <input
                             type="text"
                             id="relation"
-                            value={selectedPatient.relation || ""}
+                            value={selectedPatient?.relation}
                             name="relation"
                             className="form-control"
                             placeholder="Select"
@@ -1810,7 +1841,7 @@ const GeneralMedicineWaitingList = () => {
                           <input
                             type="text"
                             id="dob"
-                            value={selectedPatient.dob || ""}
+                            value={selectedPatient?.dob}
                             name="dob"
                             className="form-control"
                             placeholder="dd/mm/yyyy"
@@ -1821,7 +1852,7 @@ const GeneralMedicineWaitingList = () => {
                           <label className="form-label" htmlFor="age">
                             Age
                           </label>
-                          <input type="text" id="age" name="age" value={selectedPatient.age || ""} className="form-control" placeholder="Enter Age" readOnly />
+                          <input type="text" id="age" value={selectedPatient?.age} name="age" className="form-control" placeholder="Enter Age" readOnly />
                         </div>
                       </div>
                     </div>
@@ -1917,10 +1948,10 @@ const GeneralMedicineWaitingList = () => {
                               <label className="form-label fw-bold">Past History</label>
                               <textarea
                                 className="form-control"
-                                value={formData.pastHistory}
-                                onChange={handleChange}
                                 rows={3}
                                 name="pastHistory"
+                                value={formData.pastHistory}
+                                onChange={handleChange}
                                 placeholder="Enter Past History"
                               ></textarea>
                             </div>
@@ -1929,9 +1960,9 @@ const GeneralMedicineWaitingList = () => {
                               <textarea
                                 className="form-control"
                                 rows={3}
+                                name="FamilyHistory"
                                 value={formData.familyHistory}
                                 onChange={handleChange}
-                                name="familyHistory"
                                 placeholder="Enter Family History"
                               ></textarea>
                             </div>
@@ -2190,6 +2221,8 @@ const GeneralMedicineWaitingList = () => {
 
 
                                 </td>
+
+
                                 <td className="text-center">
                                   <input
                                     type="checkbox"
@@ -2354,7 +2387,7 @@ const GeneralMedicineWaitingList = () => {
                                       value={type.value}
                                       checked={investigationType === type.value}
                                       onChange={(e) => {
-                                        console.log("Radio button selected:", e.target.value)
+                                        // console.log("Radio button selected:", e.target.value)
                                         setInvestigationType(e.target.value)
                                       }}
                                     />
@@ -2490,6 +2523,7 @@ const GeneralMedicineWaitingList = () => {
                                   >
                                     −
                                   </button>
+
                                 </td>
                               </tr>
                             ))}
@@ -2847,6 +2881,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
 
                 {/* NIP Section */}
                 <div className="card mb-3">
@@ -3590,8 +3625,7 @@ const GeneralMedicineWaitingList = () => {
                   )}
                 </div>
 
-                {/* Referral Section - UPDATED BASED ON SCREENSHOTS */}
-                {/* Referral Section - UPDATED BASED ON SCREENSHOTS */}
+
                 <div className="card mb-3">
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
@@ -3962,8 +3996,13 @@ const GeneralMedicineWaitingList = () => {
                 ))}
 
                 <div className="text-center mt-4">
-                  <button className="btn btn-primary me-3" onClick={handleSubmit} disabled={isSubmitting} type="button">
-                    <i className="mdi mdi-content-save"></i> SUBMIT {isSubmitting ? (
+                  <button
+                    type="button"
+                    className="btn btn-primary me-3"
+                    onClick={handleUpdateRecallPatient}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
                       <>
                         <i className="mdi mdi-loading mdi-spin"></i> PROCESSING...
                       </>
@@ -3973,14 +4012,14 @@ const GeneralMedicineWaitingList = () => {
                       </>
                     )}
                   </button>
+
+
                   <button className="btn btn-secondary me-3" onClick={handleResetForm}>
                     <i className="mdi mdi-refresh"></i> RESET
                   </button>
-
                   <button className="btn btn-secondary" onClick={handleBackToList}>
                     <i className="mdi mdi-arrow-left"></i> BACK
                   </button>
-
                 </div>
               </div>
             </div>
@@ -3993,7 +4032,7 @@ const GeneralMedicineWaitingList = () => {
           onClose={handleCloseInvestigationModal}
           templateType={investigationModalType}
           onTemplateSaved={(template) => {
-            console.log("Template saved:", template)
+            // console.log("Template saved:", template)
             fetchInvestigationTemplates()
           }}
         />
@@ -4003,7 +4042,7 @@ const GeneralMedicineWaitingList = () => {
           onClose={handleCloseTreatmentModal}
           templateType={treatmentModalType}
           onTemplateSaved={(template) => {
-            console.log("Treatment template saved:", template)
+            // console.log("Treatment template saved:", template)
           }}
         />
 
@@ -4210,6 +4249,7 @@ const GeneralMedicineWaitingList = () => {
     )
   }
 
+  // Main OPD Recall List view
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -4217,57 +4257,26 @@ const GeneralMedicineWaitingList = () => {
           <div className="card form-card">
             <div className="card-header">
               <div className="d-flex justify-content-between align-items-center">
-                <h4 className="card-title p-2 mb-0">GENERAL MEDICINE WAITING LIST</h4>
-                <div className="d-flex gap-2">
-                  <button className="btn btn-primary">OPEN TOKEN DISPLAY</button>
-                  <button className="btn btn-secondary btn-sm">CLOSE TOKEN DISPLAY</button>
-                </div>
+                <h4 className="card-title p-2 mb-0">OPD Recall List</h4>
               </div>
-              {loading && <LoadingScreen />}
             </div>
+
+
+            {loading && <LoadingScreen />}
             <div className="card-body">
+              {/* Search Filters Section */}
               <div className="card mb-3">
                 <div className="card-body">
                   <div className="row g-3 align-items-end">
-
                     <div className="col-md-3">
-                      <label className="form-label fw-bold">Doctor List</label>
-                      <select
-                        className="form-select"
-                        value={searchFilters.doctorList}
-                        onChange={(e) => handleFilterChange("doctorList", e.target.value)}
-                      >
-                        <option value="">Select</option>
-                        {doctorData.map((d) => (
-                          <option key={d.userId} value={d.userId}>
-                            {[d.firstName, d.middleName, d.lastName].filter(Boolean).join(" ")}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="col-md-2">
-                      <label className="form-label fw-bold">Session</label>
-                      <select
-                        className="form-select"
-                        value={searchFilters.session}
-                        onChange={(e) => handleFilterChange("session", e.target.value)}
-                      >
-                        <option value="">Select</option>
-                        {sessionData.map((s) => (
-                          <option key={s.id} value={s.id}>{s.sessionName}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="col-md-2">
-                      <label className="form-label fw-bold">Employee No.</label>
+                      <label className="form-label fw-bold">Mobile No.</label>
                       <input
                         type="text"
                         className="form-control"
-                        value={searchFilters.employeeNo}
-                        onChange={(e) => handleFilterChange("employeeNo", e.target.value)}
-                        maxLength={20}
+                        value={searchFilters.mobileNumber}
+                        onChange={(e) => handleMobileChange(e)}
+                        placeholder="Mobile Number"
+                        maxLength={10}
                       />
                     </div>
 
@@ -4278,117 +4287,82 @@ const GeneralMedicineWaitingList = () => {
                         className="form-control"
                         value={searchFilters.patientName}
                         onChange={(e) => handleFilterChange("patientName", e.target.value)}
+                        placeholder="Patient Name"
                         maxLength={30}
                       />
                     </div>
-
-                    <div className="col-md-2 d-flex gap-2">
-                      <button type="button" className="btn btn-primary w-100" onClick={handleSearch}>
-                        SEARCH
-                      </button>
-                      <button type="button" className="btn btn-secondary w-100" onClick={handleReset}>
-                        RESET
-                      </button>
+                    <div className="col-md-3">
+                      <label className="form-label fw-bold">Date</label>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={searchFilters.date}
+                        onChange={(e) => handleFilterChange("date", e.target.value)}
+                      />
                     </div>
-
+                    <div className="col-md-3">
+                      <label className="form-label fw-bold" style={{ visibility: "hidden" }}>
+                        DUALWYYYY
+                      </label>
+                      <div className="d-flex gap-2">
+                        <button type="button" className="btn btn-primary" onClick={handleSearch}>
+                          Search
+                        </button>
+                        <button type="button" className="btn btn-secondary" onClick={handleReset}>
+                          Reset
+                        </button>
+                      </div>
+                    </div>
                   </div>
-
                 </div>
               </div>
 
+              {/* Results Count */}
+              <div className="mb-3">
+                <h6 className="text-muted">{recallPatientOpd.length} matches</h6>
+              </div>
+
+              {/* Patients Table */}
               <div className="table-responsive">
                 <table className="table table-bordered table-hover align-middle">
                   <thead className="table-light">
                     <tr>
-                      <th>S.N.</th>
-                      <th>Token No.</th>
-                      <th>Employee No.</th>
                       <th>Patient Name</th>
-                      <th>Relation</th>
                       <th>Age</th>
                       <th>Gender</th>
-                      <th>OPD Type</th>
-                      <th>Action</th>
-                      <th>Action</th>
+                      <th>Department</th>
+                      <th>Mobile No.</th>
+                      <th>Doctor</th>
+                      <th>Type Of Patient</th>
                     </tr>
                   </thead>
-
                   <tbody>
-                    {currentItems.map((item, index) => (
+                    {currentItems.map((item) => (
                       <tr
-                        key={item.id}
+                        key={item.visitId}
                         onClick={() => handleRowClick(item)}
                         style={{ cursor: "pointer" }}
                       >
-                        {/* SERIAL NUMBER */}
-                        <td>
-                          {(currentPage - 1) * itemsPerPage + index + 1}
-                        </td>
-
-                        <td>
-                          <span className={`badge ${getPriorityColor(item.priority)}`}>
-                            {item.tokenNo}
-                          </span>
-                        </td>
-
-                        <td>{item.employeeNo}</td>
-
                         <td>{item.patientName}</td>
-
-                        <td>{item.relation}</td>
-
                         <td>{item.age}</td>
-
                         <td>{item.gender}</td>
-
-                        <td>{item.opdType}</td>
-
-                        {/* RELEASE BUTTON */}
-                        <td>
-                          <button
-                            className="btn btn-primary btn-sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRelease(item.id);
-                            }}
-                          >
-                            RELEASE
-                          </button>
-                        </td>
-
-                        {/* CLOSE BUTTON */}
-                        <td>
-                          <button
-                            className="btn btn-danger btn-sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleClose(item.visitId);
-                            }}
-                          >
-                            CLOSE
-                          </button>
-                        </td>
+                        <td>{item.deptName}</td>
+                        <td>{item.mobileNo}</td>
+                        <td>{item.docterName}</td>
+                        <td>{item?.typeOfPatient || " "}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-
-
               </div>
 
-              <div className="d-flex mb-3 mt-3">
-                <span className="badge bg-danger me-2">Priority-1</span>
-                <span className="badge bg-warning text-dark me-2">Priority-2</span>
-                <span className="badge bg-success">Priority-3</span>
-              </div>
-
+              {/* Pagination */}
               <nav className="d-flex justify-content-between align-items-center mt-3">
                 <div>
                   <span>
-                    Page {currentPage} of {totalPages} | Total Records: {waitingList.length}
+                    Page {currentPage} of {filteredTotalPages} | Total Records: {recallPatientOpd.length}
                   </span>
                 </div>
-
                 <ul className="pagination mb-0">
                   <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
                     <button
@@ -4399,25 +4373,22 @@ const GeneralMedicineWaitingList = () => {
                       « Previous
                     </button>
                   </li>
-
                   {renderPagination()}
-
-                  <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                  <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
                     <button
                       className="page-link"
                       onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
+                      disabled={currentPage === filteredTotalPages}
                     >
                       Next »
                     </button>
                   </li>
                 </ul>
-
                 <div className="d-flex align-items-center">
                   <input
                     type="number"
                     min={1}
-                    max={totalPages}
+                    max={filteredTotalPages}
                     value={pageInput}
                     onChange={(e) => setPageInput(e.target.value)}
                     placeholder="Go to page"
@@ -4429,7 +4400,6 @@ const GeneralMedicineWaitingList = () => {
                   </button>
                 </div>
               </nav>
-
             </div>
           </div>
         </div>
@@ -4438,4 +4408,4 @@ const GeneralMedicineWaitingList = () => {
   )
 }
 
-export default GeneralMedicineWaitingList
+export default OpdRRecallPatient

@@ -73,6 +73,24 @@ import PendingForResultEntry from './Views/Laboratory/PendingForResultEntry';
 import PhysicalStockTakingRegister from './Views/Dispensary/PhysicalStockRegister';
 import OpeningBalanceRegister from './Views/Dispensary/OpeningBalanceRegister';
 import GeneralMedicineWaitingList from './Views/OPD/GeneralMedicineWaitingList';
+import SampleMaster from './Views/Masters/SampleMaster';
+import PatientwiseBilldatails from './Views/Masters/PatientwiseBilldatails';
+import ResultValidation from './Views/Laboratory/ResultValidation';
+import UpdateResultValidation from './Views/Laboratory/UpdateResultValidation';
+import OpdRRecallPatient from './Views/OPD/OpdRecallPatient';
+import OpdPaymentSuccess from './Views/Payment/OpdPaymentSuccess';
+import IndentCreation from './Views/WardPharmacy/CreateIndent';
+import ViewUpdateIndent from './Views/WardPharmacy/View Update Indent';
+import PendingIndent from './Views/WardPharmacy/PendingIndent';
+import InvestigationMethodology from './Views/Masters/InvestigationMethodologyMaster';
+import TrackIndent from './Views/WardPharmacy/TrackIndent';
+import InvestigationCategoryMaster from './Views/Masters/InvestigationCategoryMaster';
+import IndentIssue from './Views/WardPharmacy/IndentIssue';
+import IndentApproval from './Views/WardPharmacy/IndentApproval';
+import MedicineIssueRegister from './Views/WardPharmacy/IndentIssueReport';
+import IssueReferenceReport from './Views/WardPharmacy/IssueRefReport';
+import PatientWaitingList from './Views/OPD/GeneralMedicineWaitingList/DisplayTokenPatient';
+
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -103,7 +121,7 @@ function App() {
                 <Route path="investigation-multiple-results" element={<InvestigationMasterResult/>} />
                 <Route path="payment" element={<PaymentPage />} />
                 <Route path="lab-payment-success" element={<LabPaymentSuccess/>} />
-
+                <Route path="opd-payment-success" element={<OpdPaymentSuccess/>} />
 
             {/* Protected Routes */}
             <Route element={<ProtectedRoute />}>
@@ -181,6 +199,22 @@ function App() {
                 <Route path="PhysicalStockTakingRegister" element={<PhysicalStockTakingRegister/>} />
                 <Route path="OpeningBalanceRegister" element={<OpeningBalanceRegister/>} />
                 <Route path="GeneralMedicineWaitingList" element={<GeneralMedicineWaitingList/>} />
+                <Route path="SampleMaster" element={<SampleMaster/>} />
+                <Route path="PatientwiseBilldatails" element={<PatientwiseBilldatails/>} />
+                <Route path="ResultValidation" element={<ResultValidation/>} />
+                <Route path="UpdateResultValidation" element={<UpdateResultValidation/>} />
+                <Route path="OpdRecallPatient" element={<OpdRRecallPatient />} />
+                <Route path="CreateIndent" element={<IndentCreation/>} />
+                <Route path="ViewUpdateIndent" element={<ViewUpdateIndent/>} />
+                <Route path="PendingIndentApproval" element={<PendingIndent/>} />
+                <Route path="InvestigationMethodologyMaster" element={<InvestigationMethodology/>} />
+                <Route path="TrackIndent" element={<TrackIndent/>} />
+                <Route path="InvestigationCategoryMaster" element={<InvestigationCategoryMaster/>} />
+                <Route path="IndentIssue" element={<IndentIssue/>} />
+                <Route path="IndentApproval" element={<IndentApproval/>} />
+                                <Route path="PatientWaitingList" element={<PatientWaitingList/>} />
+                <Route path="MedicineIssueRegister" element={<MedicineIssueRegister/>} />
+                <Route path="IssueReferenceReport" element={<IssueReferenceReport/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
