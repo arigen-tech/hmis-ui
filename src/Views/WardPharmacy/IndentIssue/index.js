@@ -667,27 +667,41 @@ const IndentIssue = () => {
                 </div>
 
                 <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
-                  <table className="table table-bordered table-hover align-middle" style={{ minWidth: "2000px" }}>
+                  <table className="table table-bordered table-hover align-middle" >
                     <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
-                      <tr>
-                        <th className="text-center" style={{ width: "60px", minWidth: "60px" }}>
-                          S.No.
-                        </th>
-                        <th style={{ width: "300px", minWidth: "300px" }}>Item Name/Code</th>
-                        <th style={{ width: "80px", minWidth: "80px" }}>A/U</th>
-                        <th style={{ width: "100px", minWidth: "100px" }}>Batch No.</th>
-                        <th style={{ width: "100px", minWidth: "100px" }}>DOM</th>
-                        <th style={{ width: "100px", minWidth: "100px" }}>DOE</th>
-                        <th style={{ width: "120px", minWidth: "120px" }}>Qty Demanded</th>
-                        <th style={{ width: "120px", minWidth: "120px" }}>Approved Qty</th>
-                        <th style={{ width: "120px", minWidth: "120px" }}>Qty Issued</th>
-                        <th style={{ width: "140px", minWidth: "140px" }}>Balance After Issue</th>
-                        <th style={{ width: "120px", minWidth: "120px" }}>Batch Stock</th>
-                        <th style={{ width: "130px", minWidth: "130px" }}>Available Stock</th>
-                        <th style={{ width: "130px", minWidth: "130px" }}>Previous Issued Qty</th>
-                        <th style={{ width: "60px", minWidth: "60px" }}>Add</th>
-                        <th style={{ width: "70px", minWidth: "70px" }}>Delete</th>
-                      </tr>
+                    <tr>
+  <th className="text-center" style={{ width: "40px" }}>S.No.</th>
+
+  {/* Increased width for better readability */}
+  <th style={{ width: "400px", minWidth:"400px" }}>Item Name/<br/>Code</th>
+
+  <th style={{ width: "80px",minWidth:"80px", textAlign: "center" }}>A/U</th>
+
+  <th style={{ width: "120px",minWidth:"120px", whiteSpace: "normal", lineHeight: "1.2" }}>Batch<br/>No.</th>
+
+  <th style={{ width: "80px", whiteSpace: "normal", lineHeight: "1.2" }}>DOM</th>
+
+  <th style={{ width: "80px", whiteSpace: "normal", lineHeight: "1.2" }}>DOE</th>
+
+  <th style={{ width: "90px", whiteSpace: "normal", lineHeight: "1.2" }}>Qty<br/>Demanded</th>
+
+  <th style={{ width: "90px", whiteSpace: "normal", lineHeight: "1.2" }}>Approved<br/>Qty</th>
+
+  <th style={{ width: "90px", whiteSpace: "normal", lineHeight: "1.2" }}>Qty<br/>Issued</th>
+
+  <th style={{ width: "110px", whiteSpace: "normal", lineHeight: "1.2" }}>Balance<br/>After Issue</th>
+
+  <th style={{ width: "90px", whiteSpace: "normal", lineHeight: "1.2" }}>Batch Stock</th>
+
+  <th style={{ width: "100px", whiteSpace: "normal", lineHeight: "1.2" }}>Available<br/>Stock</th>
+
+  <th style={{ width: "100px", whiteSpace: "normal", lineHeight: "1.2" }}>Previous<br/>Issued Qty</th>
+
+  <th style={{ width: "40px", textAlign: "center" }}>Add</th>
+  <th style={{ width: "50px", textAlign: "center" }}>Delete</th>
+</tr>
+
+
                     </thead>
                     <tbody>
                       {indentEntries.map((entry, index) => (
@@ -710,7 +724,6 @@ const IndentIssue = () => {
                                 }
                               }}
                               placeholder="Item Name/Code"
-                              style={{ minWidth: "280px" }}
                               autoComplete="off"
                               onFocus={() => setActiveItemDropdown(index)}
                               onBlur={() => {
@@ -730,7 +743,6 @@ const IndentIssue = () => {
                                     zIndex: 9999,
                                     maxHeight: 200,
                                     overflowY: "auto",
-                                    width: "350px",
                                     top: `${itemInputRefs.current[index]?.getBoundingClientRect().bottom + window.scrollY}px`,
                                     left: `${itemInputRefs.current[index]?.getBoundingClientRect().left + window.scrollX}px`,
                                     backgroundColor: "white",
@@ -787,7 +799,6 @@ const IndentIssue = () => {
                               value={entry.apu}
                               onChange={(e) => handleIndentEntryChange(index, "apu", e.target.value)}
                               placeholder="Unit"
-                              style={{ minWidth: "70px" }}
                             />
                           </td>
 
@@ -807,7 +818,6 @@ const IndentIssue = () => {
                                 }
                               }}
                               placeholder="Batch"
-                              style={{ minWidth: "90px" }}
                               autoComplete="off"
                               onFocus={() => entry.itemCode && setActiveBatchDropdown(index)}
                               onBlur={() => {
@@ -829,7 +839,6 @@ const IndentIssue = () => {
                                     zIndex: 9999,
                                     maxHeight: 200,
                                     overflowY: "auto",
-                                    width: "250px",
                                     top: `${batchInputRefs.current[index]?.getBoundingClientRect().bottom + window.scrollY}px`,
                                     left: `${batchInputRefs.current[index]?.getBoundingClientRect().left + window.scrollX}px`,
                                     backgroundColor: "white",
@@ -886,7 +895,6 @@ const IndentIssue = () => {
                               className="form-control form-control-sm"
                               value={entry.dom}
                               onChange={(e) => handleIndentEntryChange(index, "dom", e.target.value)}
-                              style={{ minWidth: "90px" }}
                             />
                           </td>
 
@@ -896,7 +904,6 @@ const IndentIssue = () => {
                               className="form-control form-control-sm"
                               value={entry.doe}
                               onChange={(e) => handleIndentEntryChange(index, "doe", e.target.value)}
-                              style={{ minWidth: "90px" }}
                             />
                           </td>
 
@@ -908,7 +915,6 @@ const IndentIssue = () => {
                               onChange={(e) => handleIndentEntryChange(index, "qtyDemanded", e.target.value)}
                               placeholder="0"
                               min="0"
-                              style={{ minWidth: "110px" }}
                             />
                           </td>
 
@@ -920,7 +926,6 @@ const IndentIssue = () => {
                               onChange={(e) => handleIndentEntryChange(index, "approvedQty", e.target.value)}
                               placeholder="0"
                               min="0"
-                              style={{ minWidth: "110px" }}
                             />
                           </td>
 
@@ -932,7 +937,6 @@ const IndentIssue = () => {
                               onChange={(e) => handleIndentEntryChange(index, "qtyIssued", e.target.value)}
                               placeholder="0"
                               min="0"
-                              style={{ minWidth: "110px" }}
                             />
                           </td>
 
@@ -943,7 +947,7 @@ const IndentIssue = () => {
                               value={entry.balanceAfterIssue}
                               placeholder="0"
                               readOnly
-                              style={{ minWidth: "130px", backgroundColor: "#f8f9fa" }}
+                              style={{ backgroundColor: "#f8f9fa" }}
                             />
                           </td>
 
@@ -954,7 +958,7 @@ const IndentIssue = () => {
                               value={entry.batchStock}
                               placeholder="0"
                               readOnly
-                              style={{ minWidth: "110px", backgroundColor: "#f8f9fa" }}
+                              style={{  backgroundColor: "#f8f9fa" }}
                             />
                           </td>
 
@@ -965,7 +969,7 @@ const IndentIssue = () => {
                               value={entry.availableStock}
                               placeholder="0"
                               readOnly
-                              style={{ minWidth: "120px", backgroundColor: "#f8f9fa" }}
+                              style={{  backgroundColor: "#f8f9fa" }}
                             />
                           </td>
 
@@ -974,7 +978,6 @@ const IndentIssue = () => {
                               type="button"
                               className="btn btn-info btn-sm"
                               onClick={() => handleViewPreviousIssues(entry)}
-                              style={{ minWidth: "120px" }}
                             >
                               View
                             </button>
@@ -988,7 +991,6 @@ const IndentIssue = () => {
                               style={{
                                 color: "white",
                                 border: "none",
-                                width: "35px",
                                 height: "35px",
                               }}
                               title="Add Row"
@@ -1004,7 +1006,6 @@ const IndentIssue = () => {
                               disabled={indentEntries.length === 1}
                               title="Delete Row"
                               style={{
-                                width: "35px",
                                 height: "35px",
                               }}
                             >
