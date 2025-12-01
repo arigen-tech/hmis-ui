@@ -708,16 +708,41 @@ const IndentCreation = () => {
               <div className="table-responsive" style={{ overflowX: "auto" }}>
                 <table className="table table-bordered align-middle">
                   <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
-                    <tr>
-                      <th style={{ width: "200px", minWidth: "200px" }}>Drug Name / Drug Code</th>
-                      <th style={{ width: "100px", minWidth: "100px" }}>A/U</th>
-                      <th style={{ width: "150px", minWidth: "150px" }}>Required Quantity</th>
-                      <th style={{ width: "150px", minWidth: "150px" }}>Stores Available Stock</th>
-                      <th style={{ width: "150px", minWidth: "150px" }}>Ward Pharmacy Stock</th>
-                      <th style={{ width: "200px", minWidth: "200px" }}>Reason for Indent</th>
-                      <th style={{ width: "80px", minWidth: "80px", textAlign: "center" }}>Add</th>
-                      <th style={{ width: "80px", minWidth: "80px", textAlign: "center" }}>Delete</th>
-                    </tr>
+                   <tr>
+  <th style={{ width: "300px", minWidth: "300px" }}>
+    Drug Name / Drug Code
+  </th>
+
+  <th style={{ width: "70px", minWidth: "70px" }}>
+    A/U
+  </th>
+
+  <th style={{ width: "110px", minWidth: "110px", whiteSpace: "normal", lineHeight: "1.2" }}>
+    <span>Required</span><br />
+    <span>Quantity</span>
+  </th>
+
+  <th style={{ width: "150px", minWidth: "150px" }}>
+    Stores Available Stock
+  </th>
+
+  <th style={{ width: "150px", minWidth: "150px" }}>
+    Ward Pharmacy Stock
+  </th>
+
+  <th style={{ width: "160px", minWidth: "160px" }}>
+    Reason for Indent
+  </th>
+
+  <th style={{ width: "80px", minWidth: "80px", textAlign: "center" }}>
+    Add
+  </th>
+
+  <th style={{ width: "80px", minWidth: "80px", textAlign: "center" }}>
+    Delete
+  </th>
+</tr>
+
                   </thead>
                   <tbody>
                     {indentEntries.map((entry, index) => (

@@ -42,10 +42,10 @@ const PendingIndentApproval = () => {
   }
 
   // Fetch pending indents (status 'Y')
-  const fetchPendingIndents = async () => {
+  const fetchPendingIndents = async (departmentId) => {
     try {
       setLoading(true)
-      const url = `${Store_Internal_Indent}/getallindentforpending`
+      const url = `${Store_Internal_Indent}/getallindentforpending?deptId=${departmentId}`
 
       console.log("Fetching pending indents from URL:", url)
 
@@ -122,10 +122,11 @@ const PendingIndentApproval = () => {
     }
   }
 
-  useEffect(() => {
-    fetchPendingIndents()
-    fetchAllDrugs()
-  }, [])
+ useEffect(() => {
+  fetchPendingIndents(departmentId)
+  fetchAllDrugs()
+}, [departmentId])
+
 
   // Filter drugs based on search input
   const filterDrugsBySearch = (searchTerm) => {
@@ -310,7 +311,7 @@ const PendingIndentApproval = () => {
       
       // Refresh the list and go back
       handleBackToList()
-      fetchPendingIndents()
+      fetchPendingIndents(departmentId)
       
     } catch (error) {
       console.error("Error processing indent:", error)
