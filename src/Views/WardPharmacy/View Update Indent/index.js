@@ -564,25 +564,63 @@ const IndentViewUpdate = () => {
                 </div>
 
                 <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
-                  <table className="table table-bordered table-hover align-middle" style={{ minWidth: "1200px" }}>
+                  <table className="table table-bordered table-hover align-middle" >
                     <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
-                      <tr>
-                        <th className="text-center" style={{ width: "60px", minWidth: "60px" }}>
-                          S.No.
-                        </th>
-                        <th style={{ width: "350px", minWidth: "350px" }}>Item Name/Code</th>
-                        <th style={{ width: "100px", minWidth: "100px" }}>A/U</th>
-                        <th style={{ width: "120px", minWidth: "120px" }}>Requested Quantity</th>
-                        <th style={{ width: "120px", minWidth: "120px" }}>Available Stock</th>
-                        <th style={{ width: "200px", minWidth: "200px" }}>Reason for Indent</th>
-                        {/* Show Add/Delete only for editable records (Draft status) */}
-                        {isRecordEditable && (
-                          <>
-                            <th style={{ width: "60px", minWidth: "60px" }}>Add</th>
-                            <th style={{ width: "70px", minWidth: "70px" }}>Delete</th>
-                          </>
-                        )}
-                      </tr>
+            <tr>
+  <th
+    className="text-center"
+    style={{ width: "20px" }}
+  >
+    S.No.
+  </th>
+
+  <th style={{ width: "350px" }}>
+    Item Name/Code
+  </th>
+
+  <th style={{ width: "35px" }}>
+    A/U
+  </th>
+
+  <th
+    style={{
+      width: "35px",
+      whiteSpace: "normal",
+      lineHeight: "1.1",
+      textAlign: "center"
+    }}
+  >
+    Req <br /> Qty
+  </th>
+
+  <th
+    style={{
+      width: "20px",            // reduced from 25px → 20px
+      whiteSpace: "normal",
+      lineHeight: "1.1",
+      textAlign: "center"
+    }}
+  >
+    Avl <br /> Stk
+  </th>
+
+  <th style={{ width: "100px" }}>   {/* increased from 70px → 100px */}
+    Reason for Indent
+  </th>
+
+  {isRecordEditable && (
+    <>
+      <th style={{ width: "60px" }}>Add</th>
+      <th style={{ width: "70px" }}>Delete</th>
+    </>
+  )}
+</tr>
+
+
+
+
+
+
                     </thead>
                     <tbody>
                       {indentEntries.length === 0 ? (
@@ -703,7 +741,6 @@ const IndentViewUpdate = () => {
                                 value={entry.apu}
                                 onChange={(e) => handleIndentEntryChange(index, "apu", e.target.value)}
                                 placeholder="Unit"
-                                style={{ minWidth: "90px", backgroundColor: "#f5f5f5" }}
                                 readOnly
                               />
                             </td>
@@ -716,7 +753,6 @@ const IndentViewUpdate = () => {
                                 placeholder="0"
                                 min="0"
                                 step="1"
-                                style={{ minWidth: "110px" }}
                                 readOnly={!isRecordEditable}
                               />
                             </td>
@@ -729,7 +765,7 @@ const IndentViewUpdate = () => {
                                 placeholder="0"
                                 min="0"
                                 step="1"
-                                style={{ minWidth: "110px", backgroundColor: "#f5f5f5" }}
+                                style={{  backgroundColor: "#f5f5f5" }}
                                 readOnly
                               />
                             </td>
@@ -739,7 +775,6 @@ const IndentViewUpdate = () => {
                                 value={entry.reasonForIndent}
                                 onChange={(e) => handleIndentEntryChange(index, "reasonForIndent", e.target.value)}
                                 placeholder="Reason"
-                                style={{ minWidth: "180px", minHeight: "40px" }}
                                 readOnly={!isRecordEditable}
                               />
                             </td>
@@ -754,7 +789,6 @@ const IndentViewUpdate = () => {
                                     style={{
                                       color: "white",
                                       border: "none",
-                                      width: "35px",
                                       height: "35px",
                                     }}
                                     title="Add Row"
@@ -770,7 +804,6 @@ const IndentViewUpdate = () => {
                                     disabled={indentEntries.length === 1}
                                     title="Delete Row"
                                     style={{
-                                      width: "35px",
                                       height: "35px",
                                     }}
                                   >
