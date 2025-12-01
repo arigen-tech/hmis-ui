@@ -25,6 +25,7 @@ const InvestigationMasterResult = () => {
     mainChargeCodeName,
     subChargeCodeName,
     collectionId,
+    interpretation,
     genderApplicable // Add genderApplicable from location state
   } = location.state || {}
 
@@ -236,6 +237,7 @@ const InvestigationMasterResult = () => {
         collectionId: collectionId,
         methodId:methodId,
         categoryId:categoryId,
+        interpretation:interpretation,
         genderApplicable: genderCode, // Add gender applicable field
         masInvestReq: subTests.map(test => {
           // Prepare fixed values

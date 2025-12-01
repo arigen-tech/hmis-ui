@@ -47,6 +47,7 @@ const InvestigationMaster = () => {
     pandemic: false,
     pandemicCases: "",
     status: "n",
+    interpretation:"",
   })
   const [subInvestigations, setSubInvestigations] = useState([])
   const [confirmDialog, setConfirmDialog] = useState({
@@ -250,6 +251,7 @@ const InvestigationMaster = () => {
       pandemic: false,
       pandemicCases: "",
       status: "n",
+      interpretation:"",
     })
     setSelectedInvestigation(null)
     setSubInvestigations([])
@@ -343,6 +345,7 @@ const InvestigationMaster = () => {
       pandemic: false,
       pandemicCases: "",
       status: investigation.status || "n",
+      interpretation:investigation.interpretation,
     })
 
     // Store sub-investigation data
@@ -381,6 +384,7 @@ const InvestigationMaster = () => {
       confidential: formData.confidential ? "y" : "n",
       status: formData.status,
       genderApplicable: genderCode,
+      interpretation:formData.interpretation,
       // Include additional fields that might be required
       appearInDischargeSummary: selectedInvestigation?.appearInDischargeSummary || null,
       testOrderNo: selectedInvestigation?.testOrderNo || null,
@@ -496,7 +500,8 @@ const InvestigationMaster = () => {
         collectionId: formData.containerId,
         methodId:formData.methodId,
         categoryId:formData.categoryId,
-        genderApplicable: formData.genderApplicable
+        genderApplicable: formData.genderApplicable,
+        interpretation:formData.interpretation,
       }
     })
   }
@@ -986,9 +991,13 @@ const InvestigationMaster = () => {
                       Interpretation
                     </label>
                     <textarea
+                    type="text"
+                      name="interpretation"
                       className="form-control"
                       placeholder="Enter Interpretation"
                       rows="3"
+                      value={formData.interpretation}
+                      onChange={handleInputChange}
                     />
                   </div>
                          
