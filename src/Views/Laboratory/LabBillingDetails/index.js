@@ -29,15 +29,13 @@ const LabBillingDetails = () => {
   const [investigationItems, setInvestigationItems] = useState([])
   const [packageItems, setPackageItems] = useState([])
 
-  // Add GST configuration state - same as lab registration
   const [gstConfig, setGstConfig] = useState({
     gstApplicable: true,
-    gstPercent: 0, // default fallback
+    gstPercent: 0,
   })
 
   const [gstConfigLoaded, setGstConfigLoaded] = useState(false)
 
-  // Add GST configuration fetch function - same as lab registration
   async function fetchGstConfiguration() {
     try {
       console.log("=== FETCHING GST CONFIGURATION ===")
@@ -53,7 +51,6 @@ const LabBillingDetails = () => {
         setGstConfig(gstConfiguration)
       } else {
         console.warn("Invalid GST API response, disabling GST:", data)
-        // If API fails or returns invalid data, disable GST completely
         setGstConfig({
           gstApplicable: false,
           gstPercent: 0,
@@ -61,7 +58,6 @@ const LabBillingDetails = () => {
       }
     } catch (error) {
       console.error("Error fetching GST configuration:", error)
-      // On error, disable GST completely
       setGstConfig({
         gstApplicable: false,
         gstPercent: 0,
@@ -72,20 +68,17 @@ const LabBillingDetails = () => {
   }
 
   useEffect(() => {
-    // Fetch GST configuration on component mount
     fetchGstConfiguration()
   }, [])
 
   useEffect(() => {
     if (location.state && location.state.billingData) {
-      // Handle both single object and array response
       const responseData = location.state.billingData
       const billingData = Array.isArray(responseData) ? responseData[0] : responseData
       const details = billingData.details || []
       console.log("=== BILLING DATA ===", billingData)
       console.log("=== BILLING DETAILS ===", details)
 
-      // Extract investigations and packages from details
       const investigations = details
         .filter((item) => item.investigationId !== null && item.investigationId !== undefined)
         .map((item) => ({
@@ -108,7 +101,6 @@ const LabBillingDetails = () => {
       setInvestigationItems(investigations)
       setPackageItems(packages)
 
-      // Format patient data - Fixed patientId mapping
       const patientData = {
         billingType: billingData.billingType || "",
         patientName: billingData.patientName || "",
@@ -116,23 +108,19 @@ const LabBillingDetails = () => {
         age: billingData.age || "",
         sex: billingData.sex || "",
         relation: billingData.relation || "",
-        patientId: billingData.patientid?.toString() || billingData.patientId?.toString() || "", // Fixed: Convert to string
+        patientId: billingData.patientid?.toString() || billingData.patientId?.toString() || "",
         address: billingData.address || "",
       }
 
-      // ✅ FIXED: Format rows from the details array with proper ID mapping
       const formattedRows = details.map((item, index) => {
         const isPackage = item.packageId !== null && item.packageId !== undefined
         const isInvestigation = item.investigationId !== null && item.investigationId !== undefined
 
-        // ✅ CRITICAL FIX: Properly extract and validate item IDs
         const investigationId = item.investigationId
         const packageId = item.packageId
 
-        // ✅ Use the actual ID from the source (investigationId or packageId)
         const itemId = isPackage ? packageId : investigationId
 
-        // ✅ Validate that we have a valid item ID
         const validItemId = itemId !== null && itemId !== undefined && itemId !== 0
 
         console.log(`Row ${index} ID Mapping:`, {
@@ -161,23 +149,20 @@ const LabBillingDetails = () => {
           type: isPackage ? "package" : "investigation",
           investigationId: investigationId,
           packageId: packageId,
-          itemId: itemId, // ✅ Use the actual ID from source data
+          itemId: itemId,
           itemDetails: item,
-          hasValidId: validItemId, // ✅ Add validation flag for debugging
+          hasValidId: validItemId,
         }
       })
 
-      // ✅ Check for rows with invalid IDs
       const rowsWithInvalidIds = formattedRows.filter(row => !row.hasValidId)
       if (rowsWithInvalidIds.length > 0) {
         console.warn(`⚠️ Found ${rowsWithInvalidIds.length} rows with invalid IDs:`, rowsWithInvalidIds)
       }
 
-      // Determine the type based on the items
       const hasPackages = formattedRows.some((row) => row.type === "package")
       const hasInvestigations = formattedRows.some((row) => row.type === "investigation")
 
-      // Set type based on what's available, prefer investigation if mixed
       let defaultType = "investigation"
       if (hasPackages && !hasInvestigations) {
         defaultType = "package"
@@ -196,10 +181,8 @@ const LabBillingDetails = () => {
         type: defaultType,
       })
 
-      // Set all rows as checked by default
       setCheckedRows(new Array(formattedRows.length).fill(true))
 
-      // Validate form based on the data we have
       const isValid = !!(patientData.patientName && patientData.mobileNo && patientData.age && patientData.sex)
       setIsFormValid(isValid)
       setIsLoading(false)
@@ -274,7 +257,7 @@ const LabBillingDetails = () => {
   }
 
   const isLastRowComplete = () => {
-    if (formData.rows.length === 0) return true // Allow adding first row
+    if (formData.rows.length === 0) return true
     const lastRow = formData.rows[formData.rows.length - 1]
     return (
       lastRow.name &&
@@ -290,7 +273,6 @@ const LabBillingDetails = () => {
     )
   }
 
-  // Enhanced payment calculation function - completely dynamic GST
   const calculatePaymentBreakdown = () => {
     console.log("=== CALCULATING PAYMENT BREAKDOWN ===")
     console.log("Current GST Config:", gstConfig)
@@ -308,7 +290,6 @@ const LabBillingDetails = () => {
 
     const totalNetAmount = totalOriginalAmount - totalDiscountAmount
 
-    // Only calculate GST if configuration is loaded and GST is applicable
     const totalGstAmount =
       gstConfig.gstApplicable && gstConfig.gstPercent > 0
         ? checkedItems.reduce((total, item) => {
@@ -331,8 +312,8 @@ const LabBillingDetails = () => {
       totalNetAmount: totalNetAmount.toFixed(2),
       totalGstAmount: totalGstAmount.toFixed(2),
       finalAmount: finalAmount.toFixed(2),
-      gstPercent: gstConfig.gstPercent || 0, // Use actual GST percent or 0
-      gstApplicable: gstConfig.gstApplicable || false, // Use actual GST applicable or false
+      gstPercent: gstConfig.gstPercent || 0,
+      gstApplicable: gstConfig.gstApplicable || false,
       itemCount: checkedItems.length,
     }
 
@@ -349,7 +330,6 @@ const LabBillingDetails = () => {
   try {
     setIsLoading(true)
 
-    // Validate checked rows
     const hasCheckedItems = formData.rows.some((row, index) => checkedRows[index])
     if (!hasCheckedItems) {
       Swal.fire("Error!", "Please select at least one investigation or package.", "error")
@@ -357,7 +337,6 @@ const LabBillingDetails = () => {
       return
     }
 
-    // Check for any invalid rows with no itemId
     const invalidRow = formData.rows.find((row, index) => checkedRows[index] && !row.itemId)
     if (invalidRow) {
       Swal.fire(
@@ -391,14 +370,11 @@ const LabBillingDetails = () => {
       return
     }
 
-    // ✅ CRITICAL FIX: Check if we already have a valid billing header ID
     let billingHeaderId = data?.billinghdid
 
-    // ✅ ONLY register if NO billing header exists AND we have valid items
     if (!billingHeaderId) {
       console.log("❌ No existing billing header found. Checking if registration is needed...")
 
-      // ✅ Validate that we have items with valid IDs before attempting registration
       const itemsWithValidIds = formData.rows.filter(row =>
         row.itemId && row.itemId !== null && row.itemId !== undefined && row.itemId !== 0
       )
@@ -415,7 +391,6 @@ const LabBillingDetails = () => {
       }
 
       try {
-        // ✅ REGISTER ONLY IF NO EXISTING BILLING HEADER
         const allItemsForRegistration = itemsWithValidIds.map((row) => {
           console.log(`Registration - Row: ${row.name}, ItemId: ${row.itemId}, Type: ${row.type}`)
 
@@ -460,7 +435,6 @@ const LabBillingDetails = () => {
           throw new Error(registrationResponse?.message || "Registration failed.")
         }
 
-        // ✅ Extract billing header ID from response
         billingHeaderId =
           registrationResponse?.response?.billinghdId ||
           registrationResponse?.response?.billinghdid ||
@@ -487,16 +461,15 @@ const LabBillingDetails = () => {
         return
       }
     } else {
-      // ✅ USE EXISTING BILLING HEADER - NO REGISTRATION
+
       console.log("✓ USING EXISTING Billing Header ID:", billingHeaderId)
       console.log("🚫 SKIPPING REGISTRATION - Using existing billing header")
     }
 
-    // ✅ Calculate payment based on SELECTED items only
+
     const paymentBreakdown = calculatePaymentBreakdown()
     const totalFinalAmount = Number.parseFloat(paymentBreakdown.finalAmount)
 
-    // ✅ Extract CHECKED items for payment
     const selectedItemsForPayment = formData.rows
       .filter((row, index) => checkedRows[index] && row.itemId)
       .map((row) => ({
@@ -508,7 +481,6 @@ const LabBillingDetails = () => {
     console.log("Selected items for payment:", selectedItemsForPayment)
     console.log("Total selected items:", selectedItemsForPayment.length)
 
-    // ✅ CRITICAL: Validate that we have selected items
     if (selectedItemsForPayment.length === 0) {
       Swal.fire("Error!", "Please select at least one investigation or package for payment.", "error")
       setIsLoading(false)
@@ -567,11 +539,10 @@ const LabBillingDetails = () => {
             investigationandPackegBillStatus: selectedItemsForPayment,
             paymentBreakdown: paymentBreakdown,
             billingHeaderId: billingHeaderId,
-            // ✅ CRITICAL: Tell payment page whether this is existing or new billing
-            wasRegistered: !data?.billinghdid, // true if NEW, false if EXISTING
+            billingType: "Laboratory Services",
+            wasRegistered: !data?.billinghdid,
             originalOrderHdId: data?.orderhdid,
             originalBillingData: data,
-            // ✅ ADDITIONAL DEBUG INFO
             billingHeaderSource: data?.billinghdid ? 'pending_api' : 'new_registration'
           },
         })

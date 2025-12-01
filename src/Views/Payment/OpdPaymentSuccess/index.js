@@ -1,54 +1,60 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { ALL_REPORTS } from "../../../config/apiConfig";
+
 const OpdPaymentSuccess = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { amount = 0, paymentResponse } = location.state || {};
-  const billNo = paymentResponse?.response?.billNo;
-  const paymentStatus = paymentResponse?.response?.paymentStatus;
+  const {
+    amount = 0,
+    paymentResponse,
+    billHeaderIds = [],
+  } = location.state || {};
 
-  const handleDownloadReceipt = async () => {
-    if (!billNo || !paymentStatus) {
-      console.error("Missing bill number or payment status for receipt download.");
+  const billPayments = paymentResponse?.response?.billPayments || [];
+
+  const handleDownloadSingle = async (visitId, billHeaderId) => {
+    if (!visitId) {
+      alert("Visit ID missing for receipt.");
       return;
     }
 
     try {
-      // ✅ Use exactly the returned status from backend!
-      const url = `${ALL_REPORTS}/opdReport?visit=427`;
+      const url = `${ALL_REPORTS}/opdReport?visit=${visitId}`;
 
-      console.log("Download URL:", url);
+      console.log("Downloading:", url);
 
       const response = await fetch(url, {
         method: "GET",
-        headers: {
-          Accept: "application/pdf",
-        },
+        headers: { Accept: "application/pdf" },
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to download receipt.");
-      }
+      if (!response.ok) throw new Error("Failed to download receipt");
 
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
 
       const link = document.createElement("a");
       link.href = downloadUrl;
-      link.download = `OpdReceipt_${billNo}.pdf`;
+      link.download = `OPD_Receipt_${billHeaderId}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(downloadUrl);
+
     } catch (error) {
       console.error(error);
       alert("Failed to download receipt.");
     }
   };
 
+  const handleDownloadAll = async () => {
+    for (const bp of billPayments) {
+      await handleDownloadSingle(bp.visitId, bp.billHeaderId);
+    }
+  };
 
-  const handleBackToRegistration = () => {
+  const handleBack = () => {
     navigate("/PendingForBilling");
   };
 
@@ -64,7 +70,7 @@ const OpdPaymentSuccess = () => {
         </div>
 
         <div className="row">
-          <div className="col-md-8 mx-auto">
+          <div className="col-md-10 mx-auto">
             <div className="card">
               <div className="card-body text-center">
                 <div className="mb-4">
@@ -72,49 +78,49 @@ const OpdPaymentSuccess = () => {
                 </div>
 
                 <h4 className="mb-3">Payment Successful!</h4>
+
                 <p className="text-muted mb-4">
-                  Your payment of ₹{amount.toFixed(2)} has been processed successfully.
+                  Total Payment of <strong>₹{amount.toFixed(2)}</strong> has been processed successfully.
                 </p>
 
                 <div className="bg-light p-3 rounded mb-4">
-                  <h5 className="mb-3">Payment Details</h5>
-                  <div className="row justify-content-center">
-                    <div className="col-sm-6">
-                      {/* <p className="mb-2">
-                        <strong>Bill No:</strong> {billNo || "N/A"}
-                      </p> */}
-                      {/* <p className="mb-2">
-                        <strong>Payment Status:</strong> {paymentStatus || "N/A"}
-                      </p> */}
-                      <p className="mb-2">
-                        <strong>Amount Paid:</strong> ₹{amount.toFixed(2)}
-                      </p>
+                  <h5 className="mb-3">OPD Appointment Payments</h5>
+
+                  {billPayments.map((bp, index) => (
+                    <div key={index} className="border rounded p-3 mb-3 text-start">
+                      <p className="mb-1"><strong>Appointment #{index + 1}</strong></p>
+                      <p className="mb-1">Bill Header ID: {bp.billHeaderId}</p>
+                      <p className="mb-1">Visit ID: {bp.visitId}</p>
+                      <p className="mb-1">Amount Paid: ₹{bp.netAmount.toFixed(2)}</p>
+
+                      <button
+                        className="btn btn-primary btn-sm mt-2"
+                        onClick={() => handleDownloadSingle(bp.visitId, bp.billHeaderId)}
+                      >
+                        Download Receipt
+                      </button>
                     </div>
-                  </div>
+                  ))}
                 </div>
 
                 <div className="d-flex justify-content-center gap-3">
-                  <button
-                    className="btn btn-primary d-flex align-items-center gap-2"
-                    onClick={handleDownloadReceipt}
-                  >
-                    Download Receipt
+                  <button className="btn btn-success" onClick={handleDownloadAll}>
+                    Download All Receipts
                   </button>
-                  <button
-                    className="btn btn-secondary d-flex align-items-center gap-2"
-                    onClick={handleBackToRegistration}
-                  >
+
+                  <button className="btn btn-secondary" onClick={handleBack}>
                     Back to Billing Page
                   </button>
                 </div>
+
               </div>
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );
 };
 
 export default OpdPaymentSuccess;
-  

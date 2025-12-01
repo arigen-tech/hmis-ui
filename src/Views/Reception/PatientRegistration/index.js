@@ -767,6 +767,23 @@ const PatientRegistration = () => {
     return valid;
   };
 
+  const visitList = appointments.map(appt => ({
+    id: 0,
+    tokenNo: 0,
+    visitStatus: "NEW",
+    visitDate: new Date(Date.now()).toJSON(),
+    departmentId: Number(appt.speciality),
+    doctorId: Number(appt.selDoctorId),
+    doctorName: appt.doctorName || "",
+    sessionId: Number(appt.selSession),
+    hospitalId: Number(sessionStorage.getItem('hospitalId')),
+    priority: 0,
+    billingStatus: "Pending",
+    patientId: 0,
+    iniDoctorId: 0
+  }));
+
+
   const sendPatientData = async () => {
     if (validateForm()) {
       const requestData = {
@@ -852,77 +869,65 @@ const PatientRegistration = () => {
           doctorId: 0,
           lastChgBy: "string"
         },
-        visit: {
-          id: 0,
-          tokenNo: 0,
-          visitStatus: "string",
-          // visitDate: new Date(Date.now()).toJSON().split('.')[0],
-          visitDate: new Date(Date.now()).toJSON(),
-          departmentId: Number(formData.speciality),
-          doctorId: Number(formData.selDoctorId),
-          doctorName: "",
-          hospitalId: sessionStorage.getItem('hospitalId'),
-          sessionId: Number(formData.selSession),
-          billingStatus: "string",
-          priority: 0,
-          patientId: 0,
-          iniDoctorId: 0,
-        },
+        visit: visitList,
       };
       //debugger
-      if (isNaN(requestData.visit.doctorId))
-        requestData.visit = null;
-      // requestData.opdPatientDetail=null;
-      console.log(new Date(Date.now()).toJSON())
+      // Filter out invalid visits (doctor/session empty)
+      requestData.visits = visitList.filter(v =>
+        !isNaN(v.doctorId) && v.doctorId > 0 && !isNaN(v.departmentId)
+      );
+
+      if (requestData.visits.length === 0) {
+        requestData.visits = null; // or []
+      }
+
 
       try {
         setLoading(true);
         const data = await postRequest(`${PATIENT_REGISTRATION}`, requestData);
         if (data.status === 200) {
+          const resp = data.response.opdBillingPatientResponse;
+
+          // Show success popup
           Swal.fire({
+            title: "Patient Registered Successfully!",
+            html: `
+    <p><strong>${resp.patientName}</strong> has been registered successfully.</p>
+    <p>Do you want to proceed to billing?</p>
+  `,
             icon: "success",
-            title: "Patient Registration Successful",
-            text: "The patient has been registered successfully."
-          }).then(() => {
-            // Navigate to OPDBillingDetails with all appointment data
-            const appointmentsWithBilling = appointments.map(appointment => {
-              const base = parseFloat("500.00") || 0; // Base price is fixed as per existing logic
-              const discountVal = parseFloat(appointment.discount) || 0;
-              const net = Math.max(0, base - discountVal);
-              const gstPercent = gstConfig?.gstApplicable ? gstConfig?.gstPercent : 0;
-              const gstAmount = (net * gstPercent) / 100;
-              const total = net + gstAmount;
+            showCancelButton: true,
+            confirmButtonText: "Proceed to Billing",
+            cancelButtonText: "Close",
+            allowOutsideClick: false,
+          }).then((result) => {
+            if (result.isConfirmed) {
+              navigate("/OPDBillingDetails", {
+                state: {
+                  billingData: {
+                    patientId: resp.patientid,
+                    patientName: resp.patientName,
+                    mobileNo: resp.mobileNo,
+                    age: resp.age,
+                    sex: resp.sex,
+                    relation: resp.relation,
+                    address: resp.address,
 
-              return {
-                ...appointment,
-                basePrice: "500.00", // Fixed base price for now
-                discount: appointment.discount,
-                netAmount: net.toFixed(2),
-                gst: gstAmount.toFixed(2),
-                totalAmount: total.toFixed(2),
-                registrationCost: "100.00",
-                visitType: "New"
-              };
-            });
+                    appointments: resp.appointments,
+                    details: resp.details,
 
-            navigate("/OPDBillingDetails", {
-              state: {
-                billingData: {
-                  patientName: `${formData.firstName} ${formData.middleName || ''} ${formData.lastName || ''}`.trim(),
-                  mobileNo: formData.mobileNo,
-                  age: formData.age,
-                  patientGender: genderData.find(g => g.id === formData.gender)?.genderName || formData.gender,
-                  relation: relationData.find(r => r.id === formData.relation)?.relationName || formData.relation,
-                  patientAddress1: formData.address1,
-                  patientCity: formData.city,
-                  appointments: appointmentsWithBilling, // Pass the entire array of appointments with billing details
-                  patientId: data.response.patientId || 0,
-                  visitType: "New",
+                    billingHeaderIds: resp.appointments.map(a => a.billingHdId)
+                  }
                 }
-              }
-            });
+              });
+            } if (result.dismiss === Swal.DismissReason.cancel) {
+              window.location.reload();
+            }
           });
-        } else {
+
+
+        }
+        else {
           Swal.fire({
             icon: "error",
             title: "Registration Failed",

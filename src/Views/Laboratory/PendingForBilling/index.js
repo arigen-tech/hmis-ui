@@ -22,24 +22,68 @@ const PendingForBilling = () => {
       const response = await getRequest(`${LAB}/pending`)
 
       if (response && response.response) {
-        const mappedData = response.response.map((item) => ({
-          id: item.billinghdid, // Use billinghdid as the unique identifier
-          patientId: item.patientid, // Store patientid separately
-          patientName: item.patientName || "N/A",
-          mobileNo: item.mobileNo || "N/A",
-          age: item.age || "N/A",
-          sex: item.sex || "N/A",
-          relation: item.relation || "N/A",
-          billingType: item.billingType || "N/A",
-          consultedDoctor: item.consultedDoctor || "N/A",
-          department: item.department || "N/A",
-          amount: item.amount || 0,
-          billingStatus: item.billingStatus === "p" ? "Pending" : "Pending",
-          fullData: item,
-          registrationCost: item.registrationCost,
-          visitType:item.visitType,
-          // Store the complete record including details array
-        }))
+        const mappedData = response.response.map((item) => {
+          // Determine billing type and source
+          const isConsultation = item.billinghdid !== null && item.billingType === "Consultation Services"
+          const isLabRadiology = item.orderhdid !== null && item.billinghdid === null
+
+          // Get first appointment data if available
+          const firstAppointment = item.appointments?.[0] || {}
+
+          // Normalize visit type
+          const getVisitTypeLabel = (visitType) => {
+            if (!visitType) return "New"
+            if (visitType === "N") return "New"
+            if (visitType === "F") return "Follow-up"
+            return visitType
+          }
+
+          return {
+            id: item.billinghdid || item.orderhdid,
+            patientId: item.patientid,
+            patientName: item.patientName || "N/A",
+            mobileNo: item.mobileNo || "N/A",
+            age: item.age || "N/A",
+            sex: item.sex || "N/A",
+            relation: item.relation || "N/A",
+            address: item.address || "",
+
+            // Billing type handling
+            billingType: isLabRadiology
+              ? "Laboratory Services"
+              : (item.billingType || "N/A"),
+
+            // Doctor and department - prioritize appointment data
+            consultedDoctor: firstAppointment.consultedDoctor || item.consultedDoctor || "N/A",
+            department: firstAppointment.department || item.department || "N/A",
+
+            // Amount and status
+            amount: item.amount || 0,
+            billingStatus: item.billingStatus === "n" || item.orderhdPaymentStatus === "n"
+              ? "Pending"
+              : "Completed",
+
+            // Visit information
+            visitType: getVisitTypeLabel(firstAppointment.visitType || item.visitType),
+            tokenNo: firstAppointment.tokenNo || item.tokenNo || null,
+            visitDate: firstAppointment.visitDate || item.visitDate || null,
+            sessionName: firstAppointment.sessionName || item.sessionName || null,
+
+            // Registration cost - use top-level value
+            registrationCost: Number(item.registrationCost || 0),
+
+            // Original data
+            appointments: item.appointments || [],
+            details: item.details || [],
+            flag: item.flag,
+            source: item.source,
+            billinghdid: item.billinghdid,
+            orderhdid: item.orderhdid,
+
+            // Store complete original data
+            fullData: item
+          }
+        })
 
         setPatientList(mappedData)
       }
@@ -73,35 +117,42 @@ const PendingForBilling = () => {
 
   const handlePendingClick = (patientData) => {
     const getNavigationRoute = (billingType) => {
-      switch (billingType.toLowerCase()) {
-        case "laboratory services":
-        case "lab":
-          return "/LabBillingDetails"
-        case "opd":
-        case "opd services":
-        case "consultation":
-        case "consultation services":
-          return "/OPDBillingDetails";
-        case "ipd":
-        case "ipd services":
-          return "/IPDBillingDetails"
-        case "pharmacy":
-        case "pharmacy services":
-          return "/PharmacyBillingDetails"
-        case "radiology":
-        case "radiology services":
-          return "/RadiologyBillingDetails"
-        default:
-          return "/LabBillingDetails"
+      const type = billingType.toLowerCase()
+
+      if (type.includes("laboratory") || type.includes("lab")) {
+        return "/LabBillingDetails"
       }
+      if (type.includes("opd") || type.includes("consultation")) {
+        return "/OPDBillingDetails"
+      }
+      if (type.includes("ipd")) {
+        return "/IPDBillingDetails"
+      }
+      if (type.includes("pharmacy")) {
+        return "/PharmacyBillingDetails"
+      }
+      if (type.includes("radiology")) {
+        return "/RadiologyBillingDetails"
+      }
+
+      // Default fallback
+      return "/LabBillingDetails"
     }
 
     const route = getNavigationRoute(patientData.billingType)
 
-    // Use the detailed data that's already available from the initial API call
+    // Pass the complete data structure
     navigate(route, {
       state: {
-        billingData: patientData.fullData, // Pass the complete record with details
+        billingData: {
+          ...patientData.fullData,
+          // Add normalized fields for easier access
+          normalizedVisitType: patientData.visitType,
+          normalizedDoctor: patientData.consultedDoctor,
+          normalizedDepartment: patientData.department,
+          billingHeaderIds:
+            patientData.appointments?.map(a => a.billingHdId).filter(id => id) || []
+        },
       },
     })
   }
