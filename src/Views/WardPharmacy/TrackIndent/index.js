@@ -289,16 +289,40 @@ const TrackIndent = () => {
 
 
                 <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
-                  <table className="table table-bordered table-hover align-middle" style={{ minWidth: "1400px" }}>
+                  <table className="table table-bordered table-hover align-middle" >
                     <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
-                      <tr>
-                        <th style={{ width: "350px", minWidth: "350px" }}>Drug Name/Drug Code</th>
-                        <th style={{ width: "100px", minWidth: "100px" }}>A/U</th>
-                        <th style={{ width: "150px", minWidth: "150px" }}>Qty Requested</th>
-                        <th style={{ width: "150px", minWidth: "150px" }}>Approved Qty</th>
-                        <th style={{ width: "150px", minWidth: "150px" }}>Received Qty</th>
-                        <th style={{ width: "250px", minWidth: "250px" }}>Reason for Indent</th>
-                      </tr>
+                    <tr>
+  {/* BIG column */}
+  <th style={{ width: "400px", minWidth: "350px" }}>
+    Drug Name / Drug Code
+  </th>
+
+  {/* VERY SMALL column */}
+  <th style={{ width: "60px", minWidth: "50px", textAlign: "center" }}>
+    A/U
+  </th>
+
+  {/* SMALL column */}
+  <th style={{ width: "80px", minWidth: "70px", textAlign: "center" }}>
+    Qty Requested
+  </th>
+
+  {/* SMALL column */}
+  <th style={{ width: "80px", minWidth: "70px", textAlign: "center" }}>
+    Approved Qty
+  </th>
+
+  {/* SMALL column */}
+  <th style={{ width: "80px", minWidth: "70px", textAlign: "center" }}>
+    Received Qty
+  </th>
+
+  {/* LARGE column (unchanged) */}
+  <th style={{ width: "250px", minWidth: "250px" }}>
+    Reason for Indent
+  </th>
+</tr>
+
                     </thead>
                     <tbody>
                       {selectedIndent?.items && selectedIndent.items.length > 0 ? (
@@ -309,7 +333,7 @@ const TrackIndent = () => {
                                 type="text"
                                 className="form-control form-control-sm"
                                 value={item.drugName}
-                                style={{ minWidth: "330px", backgroundColor: "#e9ecef" }}
+                                style={{  backgroundColor: "#e9ecef" }}
                                 readOnly
                               />
                             </td>
@@ -318,7 +342,7 @@ const TrackIndent = () => {
                                 type="text"
                                 className="form-control form-control-sm"
                                 value={item.apu}
-                                style={{ minWidth: "90px", backgroundColor: "#e9ecef" }}
+                                style={{ backgroundColor: "#e9ecef" }}
                                 readOnly
                               />
                             </td>
@@ -327,7 +351,7 @@ const TrackIndent = () => {
                                 type="number"
                                 className="form-control form-control-sm"
                                 value={item.qtyRequested}
-                                style={{ minWidth: "130px", backgroundColor: "#e9ecef" }}
+                                style={{ backgroundColor: "#e9ecef" }}
                                 readOnly
                               />
                             </td>
@@ -336,7 +360,7 @@ const TrackIndent = () => {
                                 type="number"
                                 className="form-control form-control-sm"
                                 value={item.approvedQty}
-                                style={{ minWidth: "130px", backgroundColor: "#e9ecef" }}
+                                style={{  backgroundColor: "#e9ecef" }}
                                 readOnly
                               />
                             </td>
@@ -347,7 +371,6 @@ const TrackIndent = () => {
                                 value={item.receivedQty}
                                 onClick={() => handleReceivedQtyClick(item)}
                                 style={{
-                                  minWidth: "130px",
                                   color: "#0066cc",
                                   fontWeight: "600",
                                   cursor: "pointer",
@@ -360,7 +383,7 @@ const TrackIndent = () => {
                               <textarea
                                 className="form-control form-control-sm"
                                 value={item.reasonForIndent}
-                                style={{ minWidth: "230px", minHeight: "40px", backgroundColor: "#e9ecef" }}
+                                style={{  minHeight: "40px", backgroundColor: "#e9ecef" }}
                                 readOnly
                               />
                             </td>
