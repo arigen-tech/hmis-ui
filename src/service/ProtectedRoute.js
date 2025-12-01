@@ -92,7 +92,11 @@ const validRoutes = [
   "/TrackIndent",
   "/InvestigationCategoryMaster",
   "/IndentIssue",
-  "/IndentApproval"
+  "/IndentApproval",
+  "/MedicineIssueRegister",
+  "/IssueReferenceReport",
+  "/PatientWaitingList",
+  
 ];
 
 const NotAuthorized = () => {

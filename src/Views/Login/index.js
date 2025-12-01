@@ -151,9 +151,23 @@ const Login = () => {
                 <div className="col-lg-6 d-flex justify-content-center align-items-center border-0 rounded-lg auth-h100">
                   <div className="w-100 p-3 p-md-5 card border-0 bg-theme text-light" style={{ maxWidth: "32rem" }}>
                     <form className="row g-1 p-2 p-md-3" onSubmit={handleLogin}>
-                      <div className="col-12 text-center mb-5">
+                      {/* <div className="col-12 text-center mb-5">
                         <h1>Sign in</h1>
+                      </div> */}
+
+                      <div className="col-12 text-center mb-5">
+                        <h1 className="d-inline-block me-2">Sign in</h1>
+                        <button
+                          type="button"
+                          className="btn btn-light btn-sm p-0 border-0"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="right"
+                          title="Now Release Version 1.0 — Under Testing"
+                        >
+                          <i className="bi bi-info-circle text-primary fs-4"></i>
+                        </button>
                       </div>
+
 
                       <div className="col-12">
                         <div className="mb-1">
@@ -173,7 +187,7 @@ const Login = () => {
                         </div>
                       </div>
 
-                     
+
 
                       <div className="col-12">
                         <div className="mb-1">
@@ -208,7 +222,7 @@ const Login = () => {
                       </div>
 
 
-                       <div className="col-12">
+                      <div className="col-12">
                         <div className="mb-1">
                           <label className="form-label" style={{ fontSize: "0.95rem" }}>
                             Department <span className="text-danger">*</span>
@@ -233,7 +247,7 @@ const Login = () => {
                       </div>
                       <div className="form-label">
                         <span className="d-flex justify-content-between align-items-right">
-                          
+
                           <a href="/forgot-password">Forgot Password?</a>
                         </span>
                       </div>

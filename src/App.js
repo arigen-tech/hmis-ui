@@ -87,6 +87,9 @@ import TrackIndent from './Views/WardPharmacy/TrackIndent';
 import InvestigationCategoryMaster from './Views/Masters/InvestigationCategoryMaster';
 import IndentIssue from './Views/WardPharmacy/IndentIssue';
 import IndentApproval from './Views/WardPharmacy/IndentApproval';
+import MedicineIssueRegister from './Views/WardPharmacy/IndentIssueReport';
+import IssueReferenceReport from './Views/WardPharmacy/IssueRefReport';
+import PatientWaitingList from './Views/OPD/GeneralMedicineWaitingList/DisplayTokenPatient';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -209,6 +212,9 @@ function App() {
                 <Route path="InvestigationCategoryMaster" element={<InvestigationCategoryMaster/>} />
                 <Route path="IndentIssue" element={<IndentIssue/>} />
                 <Route path="IndentApproval" element={<IndentApproval/>} />
+                                <Route path="PatientWaitingList" element={<PatientWaitingList/>} />
+                <Route path="MedicineIssueRegister" element={<MedicineIssueRegister/>} />
+                <Route path="IssueReferenceReport" element={<IssueReferenceReport/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
