@@ -46,6 +46,26 @@ const IndentViewUpdate = () => {
     return getStatusInfo(record?.status).editable;
   }
 
+  // Helper function to get display value with drug code in unique format
+  const getDrugDisplayValue = (drugName, drugCode) => {
+    if (!drugName && !drugCode) return "";
+    if (drugName && drugCode) {
+      return `${drugName} [${drugCode}]`;
+    }
+    return drugName || drugCode;
+  };
+
+  // Helper function to extract drug name from display value (for search)
+  const extractDrugName = (displayValue) => {
+    if (!displayValue) return "";
+    // Remove the code part in brackets for searching
+    const bracketIndex = displayValue.lastIndexOf('[');
+    if (bracketIndex > -1) {
+      return displayValue.substring(0, bracketIndex).trim();
+    }
+    return displayValue;
+  };
+
   // Fetch all indents
   const fetchIndents = async (status = "") => {
     try {
@@ -207,11 +227,18 @@ const IndentViewUpdate = () => {
     const updatedEntries = [...indentEntries]
 
     if (field === "itemName") {
-      const selectedItem = itemOptions.find((opt) => opt.name === value)
+      const displayValue = value;
+      const drugName = extractDrugName(displayValue);
+      
+      const selectedItem = itemOptions.find((opt) => 
+        opt.name.toLowerCase().includes(drugName.toLowerCase()) ||
+        opt.code.toLowerCase().includes(drugName.toLowerCase())
+      );
+      
       updatedEntries[index] = {
         ...updatedEntries[index],
         itemId: selectedItem ? selectedItem.id : "",
-        itemName: value,
+        itemName: selectedItem ? selectedItem.name : drugName,
         itemCode: selectedItem ? selectedItem.code : "",
         apu: selectedItem ? selectedItem.unit : "",
         availableStock: selectedItem ? selectedItem.availableStock : "",
@@ -575,14 +602,15 @@ const IndentViewUpdate = () => {
                                   ref={(el) => (itemInputRefs.current[index] = el)}
                                   type="text"
                                   className="form-control form-control-sm"
-                                  value={entry.itemName}
+                                  value={getDrugDisplayValue(entry.itemName, entry.itemCode)}
                                   onChange={(e) => {
-                                    const value = e.target.value
-                                    handleIndentEntryChange(index, "itemName", value)
-                                    if (value.length > 0) {
-                                      setActiveItemDropdown(index)
+                                    const displayValue = e.target.value;
+                                    const drugName = extractDrugName(displayValue);
+                                    handleIndentEntryChange(index, "itemName", displayValue);
+                                    if (drugName.trim() !== "") {
+                                      setActiveItemDropdown(index);
                                     } else {
-                                      setActiveItemDropdown(null)
+                                      setActiveItemDropdown(null);
                                     }
                                   }}
                                   placeholder="Item Name/Code"
@@ -592,7 +620,9 @@ const IndentViewUpdate = () => {
                                   readOnly={!isRecordEditable}
                                 />
                                 {/* Search Dropdown */}
-                                {activeItemDropdown === index && entry.itemName.trim() !== "" && isRecordEditable && (
+                                {activeItemDropdown === index && 
+                                 extractDrugName(getDrugDisplayValue(entry.itemName, entry.itemCode)).trim() !== "" && 
+                                 isRecordEditable && (
                                   <ul
                                     className="list-group position-fixed dropdown-list"
                                     style={{
@@ -608,8 +638,8 @@ const IndentViewUpdate = () => {
                                       overflowY: "auto",
                                     }}
                                   >
-                                    {filterDrugsBySearch(entry.itemName).length > 0 ? (
-                                      filterDrugsBySearch(entry.itemName).map((drug) => {
+                                    {filterDrugsBySearch(extractDrugName(getDrugDisplayValue(entry.itemName, entry.itemCode))).length > 0 ? (
+                                      filterDrugsBySearch(extractDrugName(getDrugDisplayValue(entry.itemName, entry.itemCode))).map((drug) => {
                                         const isSelectedInOtherRow = selectedDrugs.some(
                                           (id) => id === drug.id && indentEntries[index]?.itemId !== drug.id
                                         );
@@ -633,11 +663,21 @@ const IndentViewUpdate = () => {
                                                   color: "#6c757d",
                                                   fontSize: "0.8rem",
                                                   marginTop: "2px",
+                                                  display: "flex",
+                                                  justifyContent: "space-between",
+                                                  alignItems: "center"
                                                 }}
                                               >
-                                                {drug.code}
+                                                <div>
+                                                  <span className="badge bg-info me-1" style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>
+                                                    <i className="fas fa-hashtag me-1"></i>{drug.code}
+                                                  </span>
+                                                  <span className="badge bg-secondary" style={{ fontSize: "0.75rem" }}>
+                                                    ID: {drug.id}
+                                                  </span>
+                                                </div>
                                                 {isSelectedInOtherRow && (
-                                                  <span className="text-success ms-2">
+                                                  <span className="text-success">
                                                     <i className="fas fa-check-circle me-1"></i> Added
                                                   </span>
                                                 )}
