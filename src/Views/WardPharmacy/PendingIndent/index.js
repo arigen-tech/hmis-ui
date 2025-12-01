@@ -458,18 +458,50 @@ const PendingIndentApproval = () => {
                 </div>
 
                 <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
-                  <table className="table table-bordered table-hover align-middle" style={{ minWidth: "1200px" }}>
+                  <table className="table table-bordered table-hover align-middle" >
                     <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
-                      <tr>
-                        <th className="text-center" style={{ width: "60px", minWidth: "60px" }}>
-                          S.No.
-                        </th>
-                        <th style={{ width: "350px", minWidth: "350px" }}>Item Name/Code</th>
-                        <th style={{ width: "100px", minWidth: "100px" }}>A/U</th>
-                        <th style={{ width: "120px", minWidth: "120px" }}>Requested Quantity</th>
-                        <th style={{ width: "120px", minWidth: "120px" }}>Available Stock</th>
-                        <th style={{ width: "200px", minWidth: "200px" }}>Reason for Indent</th>
-                      </tr>
+                    <tr>
+  <th className="text-center" style={{ width: "50px", minWidth: "50px" }}>
+    S.No.
+  </th>
+
+  <th style={{ width: "350px", minWidth: "300px" }}>
+    Item Name/Code
+  </th>
+
+  <th style={{ width: "60px", minWidth: "50px", textAlign: "center" }}>
+    A/U
+  </th>
+
+  <th
+    style={{
+      width: "40px",
+      minWidth: "40px",
+      whiteSpace: "normal",
+      lineHeight: "1.1",
+      textAlign: "center"
+    }}
+  >
+    Req<br/>Qty
+  </th>
+
+  <th
+    style={{
+      width: "60px",
+      minWidth: "60px",
+      whiteSpace: "normal",
+      lineHeight: "1.1",
+      textAlign: "center"
+    }}
+  >
+    Avl<br/>Stk
+  </th>
+
+  <th style={{ width: "200px", minWidth: "180px" }}>
+    Reason for Indent
+  </th>
+</tr>
+
                     </thead>
                     <tbody>
                       {indentEntries.length === 0 ? (
@@ -493,7 +525,7 @@ const PendingIndentApproval = () => {
                                 type="text"
                                 className="form-control form-control-sm"
                                 value={entry.apu}
-                                style={{ minWidth: "90px", backgroundColor: "#f5f5f5" }}
+                                style={{  backgroundColor: "#f5f5f5" }}
                                 readOnly
                               />
                             </td>
@@ -502,7 +534,7 @@ const PendingIndentApproval = () => {
                                 type="number"
                                 className="form-control form-control-sm"
                                 value={entry.requestedQty}
-                                style={{ minWidth: "110px", backgroundColor: "#f5f5f5" }}
+                                style={{ backgroundColor: "#f5f5f5" }}
                                 readOnly
                               />
                             </td>
@@ -512,7 +544,6 @@ const PendingIndentApproval = () => {
                                 className="form-control form-control-sm"
                                 value={entry.availableStock || 0}
                                 style={{ 
-                                  minWidth: "110px", 
                                   backgroundColor: entry.availableStock > 0 ? "#f5f5f5" : "#ffe6e6",
                                   color: entry.availableStock === 0 ? "#dc3545" : "inherit"
                                 }}
@@ -526,7 +557,7 @@ const PendingIndentApproval = () => {
                               <textarea
                                 className="form-control form-control-sm"
                                 value={entry.reasonForIndent}
-                                style={{ minWidth: "180px", minHeight: "40px", backgroundColor: "#f5f5f5" }}
+                                style={{ minHeight: "40px", backgroundColor: "#f5f5f5" }}
                                 readOnly
                               />
                             </td>
