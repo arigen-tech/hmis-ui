@@ -981,6 +981,18 @@ const InvestigationMaster = () => {
                               />
                             </div>
                           </div>
+                          <div className="col-md-8 mt-4">
+                    <label className="form-label mb-2 fw-bold">
+                      Interpretation
+                    </label>
+                    <textarea
+                      className="form-control"
+                      placeholder="Enter Interpretation"
+                      rows="3"
+                    />
+                  </div>
+                         
+                                            
 
                           <div className="col-12 text-end mt-2 mb-3">
                             <button className="btn btn-success me-2" onClick={handleSubmit} disabled={loading}>
