@@ -956,18 +956,7 @@ const IndentIssue = () => {
                 </div>
 
                 <div className="d-flex justify-content-end gap-2 mt-4">
-                  <button
-                    type="button"
-                    className="btn btn-info"
-                    onClick={() => {
-                      console.log("DEBUG - Current entries:", indentEntries);
-                      console.log("DEBUG - Selected record items:", selectedRecord?.items);
-                      console.log("DEBUG - First item batches:", selectedRecord?.items[0]?.batches);
-                      console.log("DEBUG - Batch options:", batchOptions);
-                    }}
-                  >
-                    Debug
-                  </button>
+                
                   <button
                     type="button"
                     className="btn btn-warning"
