@@ -82,6 +82,8 @@ const IndentIssue = () => {
     const allItems = [];
     const batchMap = {};
     
+    console.log("Processing indent data for batch options:", indentData);
+    
     indentData.forEach(indent => {
       if (indent.items && Array.isArray(indent.items)) {
         indent.items.forEach(item => {
@@ -98,17 +100,20 @@ const IndentIssue = () => {
           // Extract batch options for this item
           if (item.batches && Array.isArray(item.batches)) {
             const itemCode = item.pvmsNo || `ITEM_${item.itemId}`;
+            console.log(`Processing batches for item ${itemCode}:`, item.batches);
+            
             batchMap[itemCode] = item.batches.map(batch => ({
               batchNo: batch.batchNo,
               dom: batch.manufactureDate,
               doe: batch.expiryDate,
-              stock: batch.batchstock || 0
+              stock: batch.batchstock || 0  // CORRECT: Using batchstock from backend
             }));
           }
         });
       }
     });
     
+    console.log("Batch map created:", batchMap);
     setItemOptions(allItems);
     setBatchOptions(batchMap);
   }, [indentData]);
@@ -142,14 +147,16 @@ const IndentIssue = () => {
       }
     } else if (field === "batchNo") {
       const selectedBatch = batchOptions[updatedEntries[index].itemCode]?.find((b) => b.batchNo === value)
+      console.log("Selected batch:", selectedBatch, "for item:", updatedEntries[index].itemCode);
       if (selectedBatch) {
         updatedEntries[index] = {
           ...updatedEntries[index],
           batchNo: value,
           dom: selectedBatch.dom,
           doe: selectedBatch.doe,
-          batchStock: selectedBatch.stock,
+          batchStock: selectedBatch.stock || 0,
         }
+        console.log("Updated entry with batchStock:", selectedBatch.stock);
       }
     } else if (field === "qtyIssued") {
       const qtyIssued = Number(value) || 0
@@ -178,6 +185,8 @@ const IndentIssue = () => {
       // Get the first batch as default
       const defaultBatch = item.batches && item.batches.length > 0 ? item.batches[0] : null;
       
+      console.log("Default batch for item:", item.itemName, defaultBatch);
+      
       return {
         id: item.indentTId || null,
         itemId: item.itemId || "",
@@ -191,13 +200,13 @@ const IndentIssue = () => {
         doe: defaultBatch ? defaultBatch.expiryDate : "",
         qtyIssued: item.issuedQty || 0,
         balanceAfterIssue: (item.approvedQty || 0) - (item.issuedQty || 0),
-        batchStock: defaultBatch ? defaultBatch.batchstock : 0, // FIXED: Using batchstock from backend
+        batchStock: defaultBatch ? defaultBatch.batchstock : 0, // FIX: Using batchstock from backend
         availableStock: item.availableStock || 0,
         previousIssuedQty: 0,
       }
     })
 
-    console.log("Setting indent entries:", entries)
+    console.log("Setting indent entries - checking batchStock:", entries);
     setIndentEntries(entries)
     setIssueType("")
     setCurrentView("detail")
@@ -352,6 +361,27 @@ const IndentIssue = () => {
   }
 
   const handleViewPreviousIssues = (entry) => {
+    // Mock data for Previous Issues
+    const mockPreviousIssues = [
+      {
+        issueDate: "2024-10-15",
+        indentNo: "00112233",
+        qtyIssued: 150,
+        batchNo: "BATCH001",
+      },
+      {
+        issueDate: "2024-09-20",
+        indentNo: "00112234",
+        qtyIssued: 200,
+        batchNo: "BATCH002",
+      },
+      {
+        issueDate: "2024-08-10",
+        indentNo: "00112235",
+        qtyIssued: 100,
+        batchNo: "BATCH001",
+      },
+    ]
     setPreviousIssuesData(mockPreviousIssues)
     setShowPreviousIssues(true)
   }
@@ -372,45 +402,6 @@ const IndentIssue = () => {
       minute: "2-digit",
       hour12: true,
     })
-  }
-
-  // Mock data (keeping your original mock data structure)
-  const mockPreviousIssues = [
-    {
-      issueDate: "2024-10-15",
-      indentNo: "00112233",
-      qtyIssued: 150,
-      batchNo: "BATCH001",
-    },
-    {
-      issueDate: "2024-09-20",
-      indentNo: "00112234",
-      qtyIssued: 200,
-      batchNo: "BATCH002",
-    },
-    {
-      issueDate: "2024-08-10",
-      indentNo: "00112235",
-      qtyIssued: 100,
-      batchNo: "BATCH001",
-    },
-  ]
-
-  // Mock batch options (keeping your original structure)
-  const mockBatchOptions = {
-    D264: [
-      { batchNo: "EX2873", dom: "2024-01-09", doe: "2025-12-31", stock: 5 },
-      { batchNo: "EX2874", dom: "2024-02-15", doe: "2026-02-15", stock: 20 },
-      { batchNo: "EX2875", dom: "2024-03-20", doe: "2026-03-20", stock: 50 },
-    ],
-    D0136: [
-      { batchNo: "PUP2400", dom: "2024-01-12", doe: "2026-11-30", stock: 25000 },
-      { batchNo: "PUP2401", dom: "2024-02-10", doe: "2026-12-31", stock: 15000 },
-    ],
-    AMLO005: [
-      { batchNo: "BATCH001", dom: "2024-03-15", doe: "2026-03-15", stock: 1000 },
-      { batchNo: "BATCH002", dom: "2024-04-20", doe: "2026-04-20", stock: 1500 },
-    ],
   }
 
   const itemsPerPage = 10
@@ -634,7 +625,7 @@ const IndentIssue = () => {
                         <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Approved<br />Qty</th>
                         <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Qty<br />Issued</th>
                         <th style={{ width: "110px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Balance<br />After Issue</th>
-                        <th style={{ width: "220px", whiteSpace: "normal", padding: "0", lineHeight: "1" }}>Batch Stock</th>
+                        <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Batch Stock</th>
                         <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Available<br />Stock</th>
                         <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Previous<br />Issued Qty</th>
                         <th style={{ width: "40px", textAlign: "center" }}>Add</th>
@@ -738,7 +729,7 @@ const IndentIssue = () => {
                               className="form-control form-control-sm"
                               value={entry.apu}
                               onChange={(e) => handleIndentEntryChange(index, "apu", e.target.value)}
-                              placeholder=""
+                              placeholder="Unit"
                               disabled
                             />
                           </td>
@@ -902,7 +893,7 @@ const IndentIssue = () => {
                             <input
                               type="number"
                               className="form-control form-control-sm"
-                              value={entry.batchstock}
+                              value={entry.batchStock}
                               placeholder="0"
                               readOnly
                             />
@@ -964,6 +955,18 @@ const IndentIssue = () => {
                 </div>
 
                 <div className="d-flex justify-content-end gap-2 mt-4">
+                  <button
+                    type="button"
+                    className="btn btn-info"
+                    onClick={() => {
+                      console.log("DEBUG - Current entries:", indentEntries);
+                      console.log("DEBUG - Selected record items:", selectedRecord?.items);
+                      console.log("DEBUG - First item batches:", selectedRecord?.items[0]?.batches);
+                      console.log("DEBUG - Batch options:", batchOptions);
+                    }}
+                  >
+                    Debug
+                  </button>
                   <button
                     type="button"
                     className="btn btn-warning"
