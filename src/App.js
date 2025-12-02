@@ -92,6 +92,7 @@ import IssueReferenceReport from './Views/WardPharmacy/IssueRefReport';
 import PatientWaitingList from './Views/OPD/GeneralMedicineWaitingList/DisplayTokenPatient';
 import CareLevelMaster from './Views/Masters/CareLevelMaster';
 import WardCategoryMaster from './Views/Masters/WardCategoryMaster';
+import WardManagementMaster from './Views/Masters/WardManagementMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -219,6 +220,7 @@ function App() {
                 <Route path="IssueReferenceReport" element={<IssueReferenceReport/>} />
                 <Route path="CareLevelMaster" element={<CareLevelMaster/>} />
                 <Route path="WardCategoryMaster" element={<WardCategoryMaster/>} />
+                <Route path="WardManagementMaster" element={<WardManagementMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>

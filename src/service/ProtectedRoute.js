@@ -98,6 +98,7 @@ const validRoutes = [
   "/PatientWaitingList",
   "/CareLevelMaster",
   "/WardCategoryMaster",
+  "/WardManagementMaster",
 
   
 ];
