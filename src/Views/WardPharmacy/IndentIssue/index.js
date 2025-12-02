@@ -625,7 +625,7 @@ const IndentIssue = () => {
                         <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Approved<br />Qty</th>
                         <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Qty<br />Issued</th>
                         <th style={{ width: "110px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Balance<br />After Issue</th>
-                        <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Batch Stock</th>
+                        <th style={{ width: "120px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Batch Stock</th>
                         <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Available<br />Stock</th>
                         <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Previous<br />Issued Qty</th>
                         <th style={{ width: "40px", textAlign: "center" }}>Add</th>
@@ -893,6 +893,7 @@ const IndentIssue = () => {
                             <input
                               type="number"
                               className="form-control form-control-sm"
+                              style={{width: "80px"}}
                               value={entry.batchStock}
                               placeholder="0"
                               readOnly
