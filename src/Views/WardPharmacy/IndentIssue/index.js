@@ -664,7 +664,30 @@ const IndentIssue = () => {
                       readOnly
                     />
                   </div>
+                    <div className="col-md-3">
+                    <label className="form-label fw-bold">Issued Date/Time</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder=""
+                      style={{ backgroundColor: "#e9ecef" }}
+                      readOnly
+                    />
+                  </div>
+
+                  <div className="col-md-3">
+                    <label className="form-label fw-bold">Issued By</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder=""
+                      style={{ backgroundColor: "#e9ecef" }}
+                      readOnly
+                    />
+                  </div>
                 </div>
+
+                
 
                 <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
                   <table className="table table-bordered table-hover align-middle text-center" >
@@ -803,6 +826,8 @@ const IndentIssue = () => {
                               value={entry.apu}
                               onChange={(e) => handleIndentEntryChange(index, "apu", e.target.value)}
                               placeholder="Unit"
+                              disabled
+
                             />
                           </td>
 
@@ -812,6 +837,8 @@ const IndentIssue = () => {
                               type="text"
                               className="form-control form-control-sm"
                               value={entry.batchNo}
+                              disabled
+
                               onChange={(e) => {
                                 const value = e.target.value
                                 handleIndentEntryChange(index, "batchNo", value)
@@ -850,6 +877,7 @@ const IndentIssue = () => {
                                     borderRadius: "0.375rem",
                                     boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
                                   }}
+
                                 >
                                   {batchOptions[entry.itemCode]
                                     .filter(
@@ -900,6 +928,8 @@ const IndentIssue = () => {
                               style={{ width: "100px", padding: "0" }}     
                               value={entry.dom}
                               onChange={(e) => handleIndentEntryChange(index, "dom", e.target.value)}
+                              disabled
+
                             />
                           </td>
 
@@ -910,6 +940,8 @@ const IndentIssue = () => {
                               style={{ width: "100px", padding: "0" }}     
                               value={entry.doe}
                               onChange={(e) => handleIndentEntryChange(index, "doe", e.target.value)}
+                              disabled
+
                             />
                           </td>
 
@@ -920,6 +952,8 @@ const IndentIssue = () => {
                               value={entry.qtyDemanded}
                               onChange={(e) => handleIndentEntryChange(index, "qtyDemanded", e.target.value)}
                               placeholder="0"
+                              disabled
+
                               min="0"
                             />
                           </td>
@@ -928,6 +962,7 @@ const IndentIssue = () => {
                             <input
                               type="number"
                               className="form-control form-control-sm"
+                              disabled
 
                               value={entry.approvedQty}
                               onChange={(e) => handleIndentEntryChange(index, "approvedQty", e.target.value)}
@@ -940,7 +975,6 @@ const IndentIssue = () => {
                             <input
                               type="number"
                               className="form-control form-control-sm"
-                              style={{  padding: "0" }}     
 
 
                               value={entry.qtyIssued}
@@ -957,7 +991,6 @@ const IndentIssue = () => {
                               value={entry.balanceAfterIssue}
 
                               placeholder="0"
-                              readOnly
                               style={{ backgroundColor: "#f8f9fa" }}
                             />
                           </td>
@@ -967,10 +1000,9 @@ const IndentIssue = () => {
                               type="number"
                               className="form-control form-control-sm"
                               value={entry.batchStock}
-
+                              
                               placeholder="0"
-                              readOnly
-                              style={{  backgroundColor: "#f8f9fa" }}
+                              disabled
                             />
                           </td>
 
@@ -981,8 +1013,7 @@ const IndentIssue = () => {
                               value={entry.availableStock}
 
                               placeholder="0"
-                              readOnly
-                              style={{  backgroundColor: "#f8f9fa" }}
+                              disabled
                             />
                           </td>
 
