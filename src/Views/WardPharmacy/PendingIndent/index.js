@@ -229,6 +229,34 @@ const PendingIndentApproval = () => {
     setRemarks("")
   }
 
+   // Add new row
+  const addNewRow = () => {
+    const newEntry = {
+      id: null,
+      itemId: "",
+      itemCode: "",
+      itemName: "",
+      apu: "",
+      requestedQty: "",
+      availableStock: "",
+      storesStock: "",
+      reasonForIndent: "",
+    }
+    setIndentEntries([...indentEntries, newEntry])
+  }
+
+  // Remove row
+  const removeRow = (index) => {
+    if (indentEntries.length > 1) {
+      const entryToRemove = indentEntries[index]
+      if (entryToRemove.id) {
+        setDtRecord((prev) => [...prev, entryToRemove.id])
+      }
+      const filteredEntries = indentEntries.filter((_, i) => i !== index)
+      setIndentEntries(filteredEntries)
+    }
+  }
+
   // Handle show all
   const handleShowAll = () => {
     setFromDate("")
@@ -398,7 +426,7 @@ const PendingIndentApproval = () => {
     };
   }, [activeItemDropdown]);
 
-  // Detail View - UPDATED to show available stock
+  // Detail View - UPDATED to show available stock and with Add/Remove buttons
   if (currentView === "detail") {
     const statusInfo = statusMap[selectedRecord?.status] || { label: "Unknown", badge: "bg-secondary", textColor: "text-white" };
 
@@ -469,20 +497,8 @@ const PendingIndentApproval = () => {
     Item Name/Code
   </th>
 
-  <th style={{ width: "60px", minWidth: "50px", textAlign: "center" }}>
+  <th style={{ width: "80px", minWidth: "80px", textAlign: "center" }}>
     A/U
-  </th>
-
-  <th
-    style={{
-      width: "40px",
-      minWidth: "40px",
-      whiteSpace: "normal",
-      lineHeight: "1.1",
-      textAlign: "center"
-    }}
-  >
-    Req<br/>Qty
   </th>
 
   <th
@@ -494,11 +510,31 @@ const PendingIndentApproval = () => {
       textAlign: "center"
     }}
   >
+    Req<br/>Qty
+  </th>
+
+  <th
+    style={{
+      width: "70px",
+      minWidth: "70px",
+      whiteSpace: "normal",
+      lineHeight: "1.1",
+      textAlign: "center"
+    }}
+  >
     Avl<br/>Stk
   </th>
 
   <th style={{ width: "200px", minWidth: "180px" }}>
     Reason for Indent
+  </th>
+
+  <th style={{ width: "50px", textAlign: "center" }}>
+    Add
+  </th>
+  
+  <th style={{ width: "50px", textAlign: "center" }}>
+    Remove
   </th>
 </tr>
 
@@ -506,7 +542,7 @@ const PendingIndentApproval = () => {
                     <tbody>
                       {indentEntries.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="text-center text-muted">
+                          <td colSpan={8} className="text-center text-muted">
                             No items found.
                           </td>
                         </tr>
@@ -549,9 +585,7 @@ const PendingIndentApproval = () => {
                                 }}
                                 readOnly
                               />
-                              {entry.availableStock === 0 && (
-                                <small className="text-danger">Out of stock</small>
-                              )}
+                              
                             </td>
                             <td>
                               <textarea
@@ -560,6 +594,34 @@ const PendingIndentApproval = () => {
                                 style={{ minHeight: "40px", backgroundColor: "#f5f5f5" }}
                                 readOnly
                               />
+                            </td>
+                            <td className="text-center">
+                              <button
+                                type="button"
+                                className="btn btn-success btn-sm"
+                                onClick={addNewRow}
+                                style={{
+                                  color: "white",
+                                  border: "none",
+                                  height: "35px",
+                                }}
+                                title="Add Row"
+                              >
+                                +
+                              </button>
+                            </td>
+                            <td className="text-center">
+                              <button
+                                type="button"
+                                onClick={()=> removeRow(index)}
+                                className="btn btn-danger btn-sm"
+                                style={{
+                                  height: "35px",
+                                }}
+                                title="Delete Row"
+                              >
+                                −
+                              </button>
                             </td>
                           </tr>
                         ))
