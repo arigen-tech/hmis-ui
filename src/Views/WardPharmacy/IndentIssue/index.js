@@ -923,7 +923,7 @@ const IndentIssue = () => {
 
                           <td>
                             <input
-                              type="date"
+                              type="text"
                               className="form-control form-control-sm"
                               style={{ width: "100px", padding: "0" }}     
                               value={entry.dom}
@@ -935,7 +935,7 @@ const IndentIssue = () => {
 
                           <td>
                             <input
-                              type="date"
+                              type="text"
                               className="form-control form-control-sm"
                               style={{ width: "100px", padding: "0" }}     
                               value={entry.doe}
