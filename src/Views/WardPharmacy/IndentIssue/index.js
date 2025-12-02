@@ -1,12 +1,16 @@
 import { useState, useRef, useEffect } from "react"
 import ReactDOM from "react-dom"
+import Popup from "../../../Components/popup"
+import { Store_Internal_Indent } from "../../../config/apiConfig"
+import { getRequest, postRequest } from "../../../service/apiService"
 
 const IndentIssue = () => {
   const [currentView, setCurrentView] = useState("list")
   const [processing, setProcessing] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [itemOptions, setItemOptions] = useState([])
-  const [batchOptions, setBatchOptions] = useState([])
+  const [batchOptions, setBatchOptions] = useState({})
   const [dtRecord, setDtRecord] = useState([])
   const [indentEntries, setIndentEntries] = useState([])
   const [popupMessage, setPopupMessage] = useState(null)
@@ -25,187 +29,89 @@ const IndentIssue = () => {
   const [showPreviousIssues, setShowPreviousIssues] = useState(false)
   const [previousIssuesData, setPreviousIssuesData] = useState([])
 
-  // Mock data for Indent Issue List
-  const mockIndentData = [
-    {
-      indentId: 1,
-      indentNo: "00178592025",
-      indentDate: "2025-11-07",
-      submissionDateTime: "2025-11-07T10:30:00",
-      approvalDateTime: "2025-11-08T14:20:00",
-      department: "0",
-      createdBy: "Anurag Sharma",
-      approvedBy: "Store Manager",
-      status: "Pending for issue",
-      items: [
-        {
-          id: 1,
-          itemCode: "D264",
-          itemName: "Hydrogen Peroxide Solution IP 6%",
-          apu: "ML",
-          qtyDemanded: 2,
-          approvedQty: 2,
-          batchNo: "EX2873",
-          dom: "2024-01-09",
-          doe: "2025-12-31",
-          qtyIssued: 0,
-          balanceAfterIssue: 2,
-          batchStock: 5,
-          availableStock: 75,
-          previousIssuedQty: 0,
-        },
-        {
-          id: 2,
-          itemCode: "D273",
-          itemName: "IBUPROFEN SUSPENSION 100MG/5ML",
-          apu: "ML",
-          qtyDemanded: 5,
-          approvedQty: 5,
-          batchNo: "",
-          dom: "",
-          doe: "",
-          qtyIssued: 0,
-          balanceAfterIssue: 5,
-          batchStock: 0,
-          availableStock: 0,
-          previousIssuedQty: 0,
-        },
-        {
-          id: 3,
-          itemCode: "D0136",
-          itemName: "PANTOPRAZOLE TABLET",
-          apu: "Tab",
-          qtyDemanded: 300,
-          approvedQty: 300,
-          batchNo: "PUP2400",
-          dom: "2024-01-12",
-          doe: "2026-11-30",
-          qtyIssued: 0,
-          balanceAfterIssue: 300,
-          batchStock: 25000,
-          availableStock: 25990,
-          previousIssuedQty: 0,
-        },
-      ],
-    },
-    {
-      indentId: 2,
-      indentNo: "00128872024",
-      indentDate: "2024-10-17",
-      submissionDateTime: "2024-10-17T09:15:00",
-      approvalDateTime: "2024-10-18T11:45:00",
-      department: "05",
-      createdBy: "Shashikala Roy",
-      approvedBy: "Store Manager",
-      status: "Pending for issue",
-      items: [
-        {
-          id: 4,
-          itemCode: "AMLO005",
-          itemName: "Amlodipine 5mg Tablet",
-          apu: "Unit",
-          qtyDemanded: 500,
-          approvedQty: 500,
-          batchNo: "BATCH001",
-          dom: "2024-03-15",
-          doe: "2026-03-15",
-          qtyIssued: 0,
-          balanceAfterIssue: 500,
-          batchStock: 1000,
-          availableStock: 2500,
-          previousIssuedQty: 0,
-        },
-      ],
-    },
-    {
-      indentId: 3,
-      indentNo: "00111222024",
-      indentDate: "2024-07-09",
-      submissionDateTime: "2024-07-09T13:20:00",
-      approvalDateTime: "2024-07-10T10:30:00",
-      department: "09",
-      createdBy: "Rajesh Kumar",
-      approvedBy: "Store Manager",
-      status: "Partially Issue",
-      items: [],
-    },
-    {
-      indentId: 4,
-      indentNo: "00106892024",
-      indentDate: "2024-06-13",
-      submissionDateTime: "2024-06-13T08:45:00",
-      approvalDateTime: "2024-06-14T16:20:00",
-      department: "10",
-      createdBy: "Priya Singh",
-      approvedBy: "Store Manager",
-      status: "Pending for issue",
-      items: [],
-    },
-    {
-      indentId: 5,
-      indentNo: "00101602024",
-      indentDate: "2024-05-13",
-      submissionDateTime: "2024-05-13T11:30:00",
-      approvalDateTime: "2024-05-14T09:15:00",
-      department: "15",
-      createdBy: "Amit Patel",
-      approvedBy: "Store Manager",
-      status: "Pending for issue",
-      items: [],
-    },
-  ]
+  const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId")
 
-  const mockItemOptions = [
-    { id: 1, code: "D264", name: "Hydrogen Peroxide Solution IP 6%" },
-    { id: 2, code: "D273", name: "IBUPROFEN SUSPENSION 100MG/5ML" },
-    { id: 3, code: "D0136", name: "PANTOPRAZOLE TABLET" },
-    { id: 4, code: "AMLO005", name: "Amlodipine 5mg Tablet" },
-    { id: 5, code: "AMOX030", name: "Amoxycillin Powder for Oral Suspension IP 125 mg/5 ml" },
-  ]
+  // Fetch pending indents for issue department
+  const fetchPendingIndentsForIssue = async (deptId) => {
+    try {
+      if (!deptId) {
+        console.error("deptId is missing. Cannot fetch pending indents.");
+        showPopup("Department not found. Please login again.", "error");
+        return;
+      }
 
-  const mockBatchOptions = {
-    D264: [
-      { batchNo: "EX2873", dom: "2024-01-09", doe: "2025-12-31", stock: 5 },
-      { batchNo: "EX2874", dom: "2024-02-15", doe: "2026-02-15", stock: 20 },
-      { batchNo: "EX2875", dom: "2024-03-20", doe: "2026-03-20", stock: 50 },
-    ],
-    D0136: [
-      { batchNo: "PUP2400", dom: "2024-01-12", doe: "2026-11-30", stock: 25000 },
-      { batchNo: "PUP2401", dom: "2024-02-10", doe: "2026-12-31", stock: 15000 },
-    ],
-    AMLO005: [
-      { batchNo: "BATCH001", dom: "2024-03-15", doe: "2026-03-15", stock: 1000 },
-      { batchNo: "BATCH002", dom: "2024-04-20", doe: "2026-04-20", stock: 1500 },
-    ],
-  }
+      setLoading(true);
 
-  const mockPreviousIssues = [
-    {
-      issueDate: "2024-10-15",
-      indentNo: "00112233",
-      qtyIssued: 150,
-      batchNo: "BATCH001",
-    },
-    {
-      issueDate: "2024-09-20",
-      indentNo: "00112234",
-      qtyIssued: 200,
-      batchNo: "BATCH002",
-    },
-    {
-      issueDate: "2024-08-10",
-      indentNo: "00112235",
-      qtyIssued: 100,
-      batchNo: "BATCH001",
-    },
-  ]
+      const url = `${Store_Internal_Indent}/getallindentforissue?deptId=${deptId}`;
+
+      console.log("Fetching indents for issue from URL:", url);
+
+      const response = await getRequest(url);
+      console.log("Indents for Issue API Full Response:", response);
+
+      let data = [];
+      if (response && response.response && Array.isArray(response.response)) {
+        data = response.response;
+      } else if (response && Array.isArray(response)) {
+        data = response;
+      } else {
+        console.warn("Unexpected response structure, using empty array:", response);
+        data = [];
+      }
+
+      console.log("Processed indents data for issue:", data);
+      setIndentData(data);
+      setFilteredIndentData(data);
+
+    } catch (err) {
+      console.error("Error fetching indents for issue:", err);
+      showPopup("Error fetching indents. Please try again.", "error");
+      setIndentData([]);
+      setFilteredIndentData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setIndentData(mockIndentData)
-    setFilteredIndentData(mockIndentData)
-    setItemOptions(mockItemOptions)
-    setBatchOptions(mockBatchOptions)
-  }, [])
+    fetchPendingIndentsForIssue(departmentId);
+  }, [departmentId]);
+
+  useEffect(() => {
+    // Extract all items from indents for dropdown options
+    const allItems = [];
+    const batchMap = {};
+    
+    indentData.forEach(indent => {
+      if (indent.items && Array.isArray(indent.items)) {
+        indent.items.forEach(item => {
+          if (!allItems.some(existing => existing.itemId === item.itemId)) {
+            allItems.push({
+              id: item.itemId,
+              code: item.pvmsNo || `ITEM_${item.itemId}`,
+              name: item.itemName || "",
+              unit: item.unitAuName || "",
+              availableStock: item.availableStock || 0
+            });
+          }
+          
+          // Extract batch options for this item
+          if (item.batches && Array.isArray(item.batches)) {
+            const itemCode = item.pvmsNo || `ITEM_${item.itemId}`;
+            batchMap[itemCode] = item.batches.map(batch => ({
+              batchNo: batch.batchNo,
+              dom: batch.manufactureDate,
+              doe: batch.expiryDate,
+              stock: batch.batchstock || 0
+            }));
+          }
+        });
+      }
+    });
+    
+    setItemOptions(allItems);
+    setBatchOptions(batchMap);
+  }, [indentData]);
 
   const handleSearch = () => {
     if (!fromDate || !toDate) {
@@ -232,6 +138,7 @@ const IndentIssue = () => {
         ...updatedEntries[index],
         itemName: value,
         itemCode: selectedItem ? selectedItem.code : "",
+        itemId: selectedItem ? selectedItem.id : ""
       }
     } else if (field === "batchNo") {
       const selectedBatch = batchOptions[updatedEntries[index].itemCode]?.find((b) => b.batchNo === value)
@@ -267,23 +174,30 @@ const IndentIssue = () => {
     setSelectedRecord(record)
     if (!record || !Array.isArray(record.items)) return
 
-    const entries = record.items.map((entry) => ({
-      id: entry.id,
-      itemCode: entry.itemCode,
-      itemName: entry.itemName,
-      apu: entry.apu,
-      qtyDemanded: entry.qtyDemanded,
-      approvedQty: entry.approvedQty,
-      batchNo: entry.batchNo,
-      dom: entry.dom,
-      doe: entry.doe,
-      qtyIssued: entry.qtyIssued,
-      balanceAfterIssue: entry.balanceAfterIssue,
-      batchStock: entry.batchStock,
-      availableStock: entry.availableStock,
-      previousIssuedQty: entry.previousIssuedQty,
-    }))
+    const entries = record.items.map((item) => {
+      // Get the first batch as default
+      const defaultBatch = item.batches && item.batches.length > 0 ? item.batches[0] : null;
+      
+      return {
+        id: item.indentTId || null,
+        itemId: item.itemId || "",
+        itemCode: item.pvmsNo || `ITEM_${item.itemId}`,
+        itemName: item.itemName || "",
+        apu: item.unitAuName || "",
+        qtyDemanded: item.requestedQty || 0,
+        approvedQty: item.approvedQty || 0,
+        batchNo: defaultBatch ? defaultBatch.batchNo : "",
+        dom: defaultBatch ? defaultBatch.manufactureDate : "",
+        doe: defaultBatch ? defaultBatch.expiryDate : "",
+        qtyIssued: item.issuedQty || 0,
+        balanceAfterIssue: (item.approvedQty || 0) - (item.issuedQty || 0),
+        batchStock: defaultBatch ? defaultBatch.batchstock : 0, // FIXED: Using batchstock from backend
+        availableStock: item.availableStock || 0,
+        previousIssuedQty: 0,
+      }
+    })
 
+    console.log("Setting indent entries:", entries)
     setIndentEntries(entries)
     setIssueType("")
     setCurrentView("detail")
@@ -293,6 +207,7 @@ const IndentIssue = () => {
     setCurrentView("list")
     setSelectedRecord(null)
     setIssueType("")
+    setIndentEntries([])
   }
 
   const handleShowAll = () => {
@@ -313,6 +228,7 @@ const IndentIssue = () => {
   const addNewRow = () => {
     const newEntry = {
       id: null,
+      itemId: "",
       itemCode: "",
       itemName: "",
       apu: "",
@@ -325,7 +241,7 @@ const IndentIssue = () => {
       balanceAfterIssue: "",
       batchStock: "",
       availableStock: "",
-      previousIssuedQty: "",
+      previousIssuedQty: 0,
     }
     setIndentEntries([...indentEntries, newEntry])
   }
@@ -354,7 +270,6 @@ const IndentIssue = () => {
   const validateSubmission = () => {
     const errors = []
 
-    // Check if all items have required fields
     indentEntries.forEach((entry, index) => {
       if (!entry.itemCode || !entry.itemName) {
         errors.push(`Row ${index + 1}: Item Name/Code is required`)
@@ -398,7 +313,7 @@ const IndentIssue = () => {
     }
 
     const payload = {
-      indentId: selectedRecord.indentId,
+      indentId: selectedRecord?.indentMId,
       issueType: issueType,
       deletedT: Array.isArray(dtRecord) && dtRecord.length > 0 ? dtRecord : null,
       indentEntries: indentEntries
@@ -415,6 +330,9 @@ const IndentIssue = () => {
           doe: entry.doe,
           qtyIssued: entry.qtyIssued ? Number(entry.qtyIssued) : null,
           balanceAfterIssue: entry.balanceAfterIssue ? Number(entry.balanceAfterIssue) : null,
+          batchStock: entry.batchStock ? Number(entry.batchStock) : null,
+          availableStock: entry.availableStock ? Number(entry.availableStock) : null,
+          previousIssuedQty: entry.previousIssuedQty ? Number(entry.previousIssuedQty) : null,
         })),
     }
 
@@ -436,6 +354,63 @@ const IndentIssue = () => {
   const handleViewPreviousIssues = (entry) => {
     setPreviousIssuesData(mockPreviousIssues)
     setShowPreviousIssues(true)
+  }
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return ""
+    return dateStr.split("T")[0]
+  }
+
+  const formatDateTime = (dateTimeStr) => {
+    if (!dateTimeStr) return ""
+    const date = new Date(dateTimeStr)
+    return date.toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    })
+  }
+
+  // Mock data (keeping your original mock data structure)
+  const mockPreviousIssues = [
+    {
+      issueDate: "2024-10-15",
+      indentNo: "00112233",
+      qtyIssued: 150,
+      batchNo: "BATCH001",
+    },
+    {
+      issueDate: "2024-09-20",
+      indentNo: "00112234",
+      qtyIssued: 200,
+      batchNo: "BATCH002",
+    },
+    {
+      issueDate: "2024-08-10",
+      indentNo: "00112235",
+      qtyIssued: 100,
+      batchNo: "BATCH001",
+    },
+  ]
+
+  // Mock batch options (keeping your original structure)
+  const mockBatchOptions = {
+    D264: [
+      { batchNo: "EX2873", dom: "2024-01-09", doe: "2025-12-31", stock: 5 },
+      { batchNo: "EX2874", dom: "2024-02-15", doe: "2026-02-15", stock: 20 },
+      { batchNo: "EX2875", dom: "2024-03-20", doe: "2026-03-20", stock: 50 },
+    ],
+    D0136: [
+      { batchNo: "PUP2400", dom: "2024-01-12", doe: "2026-11-30", stock: 25000 },
+      { batchNo: "PUP2401", dom: "2024-02-10", doe: "2026-12-31", stock: 15000 },
+    ],
+    AMLO005: [
+      { batchNo: "BATCH001", dom: "2024-03-15", doe: "2026-03-15", stock: 1000 },
+      { batchNo: "BATCH002", dom: "2024-04-20", doe: "2026-04-20", stock: 1500 },
+    ],
   }
 
   const itemsPerPage = 10
@@ -479,24 +454,6 @@ const IndentIssue = () => {
     ))
   }
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return ""
-    return dateStr.split("T")[0]
-  }
-
-  const formatDateTime = (dateTimeStr) => {
-    if (!dateTimeStr) return ""
-    const date = new Date(dateTimeStr)
-    return date.toLocaleString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    })
-  }
-
   // Previous Issues Modal
   const PreviousIssuesModal = () => {
     if (!showPreviousIssues) return null
@@ -518,7 +475,7 @@ const IndentIssue = () => {
         onClick={() => setShowPreviousIssues(false)}
       >
         <div
-           style={{
+          style={{
             width: "calc(100vw - 310px)",
             backgroundColor: "white",
             left: "285px",
@@ -564,35 +521,11 @@ const IndentIssue = () => {
       <div className="content-wrapper">
         <PreviousIssuesModal />
         {popupMessage && (
-          <div
-            style={{
-              position: "fixed",
-              top: "20px",
-              right: "20px",
-              zIndex: 10001,
-              backgroundColor: popupMessage.type === "error" ? "#dc3545" : "#28a745",
-              color: "white",
-              padding: "15px 20px",
-              borderRadius: "5px",
-              boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
-              whiteSpace: "pre-line",
-            }}
-          >
-            {popupMessage.message}
-            <button
-              onClick={popupMessage.onClose}
-              style={{
-                marginLeft: "15px",
-                background: "transparent",
-                border: "none",
-                color: "white",
-                fontSize: "18px",
-                cursor: "pointer",
-              }}
-            >
-              ×
-            </button>
-          </div>
+          <Popup
+            message={popupMessage.message}
+            type={popupMessage.type}
+            onClose={popupMessage.onClose}
+          />
         )}
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
@@ -600,7 +533,7 @@ const IndentIssue = () => {
               <div
                 className="card-header d-flex justify-content-between align-items-center"
               >
-                <h4 className="card-title p-2 mb-0">Indent Issue ({selectedRecord?.department || "Store"})</h4>
+                <h4 className="card-title p-2 mb-0">Indent Issue ({selectedRecord?.toDeptName || "Store"})</h4>
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -646,7 +579,7 @@ const IndentIssue = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={formatDateTime(selectedRecord?.submissionDateTime)}
+                      value={formatDateTime(selectedRecord?.indentDate)}
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -659,12 +592,12 @@ const IndentIssue = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={formatDateTime(selectedRecord?.approvalDateTime)}
+                      value={formatDateTime(selectedRecord?.approvedDate)}
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
                   </div>
-                    <div className="col-md-3">
+                  <div className="col-md-3">
                     <label className="form-label fw-bold">Issued Date/Time</label>
                     <input
                       type="text"
@@ -687,51 +620,32 @@ const IndentIssue = () => {
                   </div>
                 </div>
 
-                
-
                 <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
-                  <table className="table table-bordered table-hover align-middle text-center" >
+                  <table className="table table-bordered table-hover align-middle text-center">
                     <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
-                    <tr>
-  <th className="text-center" style={{ width: "20px", padding: "0" }}>S.No.</th>
-
-  {/* Increased width for better readability */}
-  <th style={{ width: "400px",padding: "0", padding: "0", minWidth:"400px" }}>Item Name/<br/>Code</th>
-
-  <th style={{ width: "60px",minWidth:"60px",padding: "0",  textAlign: "center" }}>A/U</th>
-
-  <th style={{ width: "100px",minWidth:"100px", whiteSpace: "normal",padding: "0",  lineHeight: "1.2" }}>Batch<br/>No.</th>
-
-  <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1" }}>DOM</th>
-
-  <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1" }}>DOE</th>
-
-  <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Qty<br/>Demanded</th>
-
-  <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Approved<br/>Qty</th>
-
-  <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Qty<br/>Issued</th>
-
-  <th style={{ width: "110px", whiteSpace: "normal",padding: "1",  lineHeight: "1.2" }}>Balance<br/>After Issue</th>
-
-  <th style={{ width: "90px", whiteSpace: "normal",padding: "1",  lineHeight: "1.2" }}>Batch Stock</th>
-
-  <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Available<br/>Stock</th>
-
-  <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Previous<br/>Issued Qty</th>
-
-  <th style={{ width: "40px", textAlign: "center" }}>Add</th>
-  <th style={{ width: "50px", textAlign: "center" }}>Delete</th>
-</tr>
-
-
+                      <tr>
+                        <th className="text-center" style={{ width: "20px", padding: "0" }}>S.No.</th>
+                        <th style={{ width: "400px", padding: "0", minWidth: "400px" }}>Item Name/<br />Code</th>
+                        <th style={{ width: "60px", minWidth: "60px", padding: "0", textAlign: "center" }}>A/U</th>
+                        <th style={{ width: "100px", minWidth: "100px", whiteSpace: "normal", padding: "0", lineHeight: "1.2" }}>Batch<br />No.</th>
+                        <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1" }}>DOM</th>
+                        <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1" }}>DOE</th>
+                        <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Qty<br />Demanded</th>
+                        <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Approved<br />Qty</th>
+                        <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Qty<br />Issued</th>
+                        <th style={{ width: "110px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Balance<br />After Issue</th>
+                        <th style={{ width: "220px", whiteSpace: "normal", padding: "0", lineHeight: "1" }}>Batch Stock</th>
+                        <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Available<br />Stock</th>
+                        <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Previous<br />Issued Qty</th>
+                        <th style={{ width: "40px", textAlign: "center" }}>Add</th>
+                        <th style={{ width: "50px", textAlign: "center" }}>Delete</th>
+                      </tr>
                     </thead>
                     <tbody>
                       {indentEntries.map((entry, index) => (
                         <tr key={entry.id || index}>
-                          <td  className="text-center fw-bold"
-                              style={{  padding: "0",  width: "20px" }}     
-                          
+                          <td className="text-center fw-bold"
+                            style={{ padding: "0", width: "20px" }}
                           >{index + 1}</td>
 
                           <td style={{ position: "relative" }}>
@@ -739,7 +653,6 @@ const IndentIssue = () => {
                               ref={(el) => (itemInputRefs.current[index] = el)}
                               type="text"
                               className="form-control form-control-sm"
-                              
                               value={entry.itemName}
                               onChange={(e) => {
                                 const value = e.target.value
@@ -825,9 +738,8 @@ const IndentIssue = () => {
                               className="form-control form-control-sm"
                               value={entry.apu}
                               onChange={(e) => handleIndentEntryChange(index, "apu", e.target.value)}
-                              placeholder="Unit"
+                              placeholder=""
                               disabled
-
                             />
                           </td>
 
@@ -837,8 +749,6 @@ const IndentIssue = () => {
                               type="text"
                               className="form-control form-control-sm"
                               value={entry.batchNo}
-                              disabled
-
                               onChange={(e) => {
                                 const value = e.target.value
                                 handleIndentEntryChange(index, "batchNo", value)
@@ -877,7 +787,6 @@ const IndentIssue = () => {
                                     borderRadius: "0.375rem",
                                     boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
                                   }}
-
                                 >
                                   {batchOptions[entry.itemCode]
                                     .filter(
@@ -925,11 +834,10 @@ const IndentIssue = () => {
                             <input
                               type="text"
                               className="form-control form-control-sm"
-                              style={{ width: "100px", padding: "0" }}     
-                              value={entry.dom}
+                              style={{ width: "100px", padding: "0" }}
+                              value={formatDate(entry.dom)}
                               onChange={(e) => handleIndentEntryChange(index, "dom", e.target.value)}
-                              disabled
-
+                              readOnly
                             />
                           </td>
 
@@ -937,11 +845,10 @@ const IndentIssue = () => {
                             <input
                               type="text"
                               className="form-control form-control-sm"
-                              style={{ width: "100px", padding: "0" }}     
-                              value={entry.doe}
+                              style={{ width: "100px", padding: "0" }}
+                              value={formatDate(entry.doe)}
                               onChange={(e) => handleIndentEntryChange(index, "doe", e.target.value)}
-                              disabled
-
+                              readOnly
                             />
                           </td>
 
@@ -952,8 +859,7 @@ const IndentIssue = () => {
                               value={entry.qtyDemanded}
                               onChange={(e) => handleIndentEntryChange(index, "qtyDemanded", e.target.value)}
                               placeholder="0"
-                              disabled
-
+                              readOnly
                               min="0"
                             />
                           </td>
@@ -962,11 +868,10 @@ const IndentIssue = () => {
                             <input
                               type="number"
                               className="form-control form-control-sm"
-                              disabled
-
                               value={entry.approvedQty}
                               onChange={(e) => handleIndentEntryChange(index, "approvedQty", e.target.value)}
                               placeholder="0"
+                              readOnly
                               min="0"
                             />
                           </td>
@@ -975,8 +880,6 @@ const IndentIssue = () => {
                             <input
                               type="number"
                               className="form-control form-control-sm"
-
-
                               value={entry.qtyIssued}
                               onChange={(e) => handleIndentEntryChange(index, "qtyIssued", e.target.value)}
                               placeholder="0"
@@ -989,9 +892,9 @@ const IndentIssue = () => {
                               type="number"
                               className="form-control form-control-sm"
                               value={entry.balanceAfterIssue}
-
                               placeholder="0"
                               style={{ backgroundColor: "#f8f9fa" }}
+                              readOnly
                             />
                           </td>
 
@@ -999,10 +902,9 @@ const IndentIssue = () => {
                             <input
                               type="number"
                               className="form-control form-control-sm"
-                              value={entry.batchStock}
-                              
+                              value={entry.batchstock}
                               placeholder="0"
-                              disabled
+                              readOnly
                             />
                           </td>
 
@@ -1011,9 +913,8 @@ const IndentIssue = () => {
                               type="number"
                               className="form-control form-control-sm"
                               value={entry.availableStock}
-
                               placeholder="0"
-                              disabled
+                              readOnly
                             />
                           </td>
 
@@ -1022,10 +923,8 @@ const IndentIssue = () => {
                               type="button"
                               className="btn btn-info btn-sm"
                               onClick={() => handleViewPreviousIssues(entry)}
-                              
                             >
-                              <i class="bi bi-info-circle"></i>
-
+                              <i className="bi bi-info-circle"></i>
                             </button>
                           </td>
 
@@ -1089,8 +988,6 @@ const IndentIssue = () => {
                     Back
                   </button>
                 </div>
-
-                  
               </div>
             </div>
           </div>
@@ -1103,35 +1000,11 @@ const IndentIssue = () => {
     <div className="content-wrapper">
       <PreviousIssuesModal />
       {popupMessage && (
-        <div
-          style={{
-            position: "fixed",
-            top: "20px",
-            right: "20px",
-            zIndex: 10001,
-            backgroundColor: popupMessage.type === "error" ? "#dc3545" : "#28a745",
-            color: "white",
-            padding: "15px 20px",
-            borderRadius: "5px",
-            boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
-            whiteSpace: "pre-line",
-          }}
-        >
-          {popupMessage.message}
-          <button
-            onClick={popupMessage.onClose}
-            style={{
-              marginLeft: "15px",
-              background: "transparent",
-              border: "none",
-              color: "white",
-              fontSize: "18px",
-              cursor: "pointer",
-            }}
-          >
-            ×
-          </button>
-        </div>
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
       )}
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
@@ -1181,8 +1054,6 @@ const IndentIssue = () => {
                 </div>
               </div>
 
-             
-
               <div className="table-responsive">
                 <table className="table table-bordered table-hover align-middle">
                   <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
@@ -1199,31 +1070,22 @@ const IndentIssue = () => {
                     {currentItems.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="text-center">
-                          No records found.
+                          {loading ? "Loading..." : "No records found."}
                         </td>
                       </tr>
                     ) : (
                       currentItems.map((item) => (
-                        <tr key={item.indentId} onClick={(e) => handleEditClick(item, e)} style={{ cursor: "pointer" }}>
-                          <td>{item.department}</td>
+                        <tr key={item.indentMId} onClick={(e) => handleEditClick(item, e)} style={{ cursor: "pointer" }}>
+                          <td>{item.fromDeptName}</td>
                           <td>{item.indentNo}</td>
                           <td>{formatDate(item.indentDate)}</td>
-                          <td>{formatDateTime(item.submissionDateTime)}</td>
-                          <td>{formatDateTime(item.approvalDateTime)}</td>
+                          <td>{formatDateTime(item.indentDate)}</td>
+                          <td>{formatDateTime(item.approvedDate)}</td>
                           <td>
                             <span
-                              className="badge"
-                              style={{
-                                backgroundColor:
-                                  item.status === "Pending for issue"
-                                    ? "#ffc107"
-                                    : item.status === "Partially Issue"
-                                      ? "#17a2b8"
-                                      : "#28a745",
-                                color: item.status === "Pending for issue" ? "#000" : "#fff",
-                              }}
+                              className="badge bg-warning text-dark"
                             >
-                              {item.status}
+                              Pending for issue
                             </span>
                           </td>
                         </tr>
