@@ -917,7 +917,6 @@ const IndentIssue = () => {
                             <input
                               type="number"
                               className="form-control form-control-sm"
-                              style={{  padding: "0" }}     
                               value={entry.qtyDemanded}
                               onChange={(e) => handleIndentEntryChange(index, "qtyDemanded", e.target.value)}
                               placeholder="0"
@@ -929,7 +928,6 @@ const IndentIssue = () => {
                             <input
                               type="number"
                               className="form-control form-control-sm"
-                              style={{  padding: "0" }}     
 
                               value={entry.approvedQty}
                               onChange={(e) => handleIndentEntryChange(index, "approvedQty", e.target.value)}
@@ -993,7 +991,6 @@ const IndentIssue = () => {
                               type="button"
                               className="btn btn-info btn-sm"
                               onClick={() => handleViewPreviousIssues(entry)}
-                              style={{  padding: "0" }}     
                               
                             >
                               <i class="bi bi-info-circle"></i>
