@@ -1090,19 +1090,7 @@ const IndentIssue = () => {
                   </button>
                 </div>
 
-                {issueType && (
-                  <div className="d-flex justify-content-end mt-3">
-                    <button
-                      type="button"
-                      className="btn btn-success"
-                      onClick={handleSubmit}
-                      disabled={processing}
-                      style={{ minWidth: "120px" }}
-                    >
-                      {processing ? "Processing..." : "Submit"}
-                    </button>
-                  </div>
-                )}
+                  
               </div>
             </div>
           </div>
