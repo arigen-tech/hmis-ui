@@ -667,35 +667,35 @@ const IndentIssue = () => {
                 </div>
 
                 <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
-                  <table className="table table-bordered table-hover align-middle" >
+                  <table className="table table-bordered table-hover align-middle text-center" >
                     <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
                     <tr>
-  <th className="text-center" style={{ width: "40px" }}>S.No.</th>
+  <th className="text-center" style={{ width: "20px", padding: "0" }}>S.No.</th>
 
   {/* Increased width for better readability */}
-  <th style={{ width: "400px", minWidth:"400px" }}>Item Name/<br/>Code</th>
+  <th style={{ width: "400px",padding: "0", padding: "0", minWidth:"400px" }}>Item Name/<br/>Code</th>
 
-  <th style={{ width: "80px",minWidth:"80px", textAlign: "center" }}>A/U</th>
+  <th style={{ width: "60px",minWidth:"60px",padding: "0",  textAlign: "center" }}>A/U</th>
 
-  <th style={{ width: "120px",minWidth:"120px", whiteSpace: "normal", lineHeight: "1.2" }}>Batch<br/>No.</th>
+  <th style={{ width: "100px",minWidth:"100px", whiteSpace: "normal",padding: "0",  lineHeight: "1.2" }}>Batch<br/>No.</th>
 
-  <th style={{ width: "80px", whiteSpace: "normal", lineHeight: "1.2" }}>DOM</th>
+  <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1" }}>DOM</th>
 
-  <th style={{ width: "80px", whiteSpace: "normal", lineHeight: "1.2" }}>DOE</th>
+  <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1" }}>DOE</th>
 
-  <th style={{ width: "90px", whiteSpace: "normal", lineHeight: "1.2" }}>Qty<br/>Demanded</th>
+  <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Qty<br/>Demanded</th>
 
-  <th style={{ width: "90px", whiteSpace: "normal", lineHeight: "1.2" }}>Approved<br/>Qty</th>
+  <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Approved<br/>Qty</th>
 
-  <th style={{ width: "90px", whiteSpace: "normal", lineHeight: "1.2" }}>Qty<br/>Issued</th>
+  <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Qty<br/>Issued</th>
 
-  <th style={{ width: "110px", whiteSpace: "normal", lineHeight: "1.2" }}>Balance<br/>After Issue</th>
+  <th style={{ width: "110px", whiteSpace: "normal",padding: "1",  lineHeight: "1.2" }}>Balance<br/>After Issue</th>
 
-  <th style={{ width: "90px", whiteSpace: "normal", lineHeight: "1.2" }}>Batch Stock</th>
+  <th style={{ width: "90px", whiteSpace: "normal",padding: "1",  lineHeight: "1.2" }}>Batch Stock</th>
 
-  <th style={{ width: "100px", whiteSpace: "normal", lineHeight: "1.2" }}>Available<br/>Stock</th>
+  <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Available<br/>Stock</th>
 
-  <th style={{ width: "100px", whiteSpace: "normal", lineHeight: "1.2" }}>Previous<br/>Issued Qty</th>
+  <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Previous<br/>Issued Qty</th>
 
   <th style={{ width: "40px", textAlign: "center" }}>Add</th>
   <th style={{ width: "50px", textAlign: "center" }}>Delete</th>
@@ -706,13 +706,17 @@ const IndentIssue = () => {
                     <tbody>
                       {indentEntries.map((entry, index) => (
                         <tr key={entry.id || index}>
-                          <td className="text-center fw-bold">{index + 1}</td>
+                          <td  className="text-center fw-bold"
+                              style={{  padding: "0",  width: "20px" }}     
+                          
+                          >{index + 1}</td>
 
                           <td style={{ position: "relative" }}>
                             <input
                               ref={(el) => (itemInputRefs.current[index] = el)}
                               type="text"
                               className="form-control form-control-sm"
+                              
                               value={entry.itemName}
                               onChange={(e) => {
                                 const value = e.target.value
@@ -893,6 +897,7 @@ const IndentIssue = () => {
                             <input
                               type="date"
                               className="form-control form-control-sm"
+                              style={{ width: "100px", padding: "0" }}     
                               value={entry.dom}
                               onChange={(e) => handleIndentEntryChange(index, "dom", e.target.value)}
                             />
@@ -902,6 +907,7 @@ const IndentIssue = () => {
                             <input
                               type="date"
                               className="form-control form-control-sm"
+                              style={{ width: "100px", padding: "0" }}     
                               value={entry.doe}
                               onChange={(e) => handleIndentEntryChange(index, "doe", e.target.value)}
                             />
@@ -911,6 +917,7 @@ const IndentIssue = () => {
                             <input
                               type="number"
                               className="form-control form-control-sm"
+                              style={{  padding: "0" }}     
                               value={entry.qtyDemanded}
                               onChange={(e) => handleIndentEntryChange(index, "qtyDemanded", e.target.value)}
                               placeholder="0"
@@ -922,6 +929,8 @@ const IndentIssue = () => {
                             <input
                               type="number"
                               className="form-control form-control-sm"
+                              style={{  padding: "0" }}     
+
                               value={entry.approvedQty}
                               onChange={(e) => handleIndentEntryChange(index, "approvedQty", e.target.value)}
                               placeholder="0"
@@ -933,6 +942,9 @@ const IndentIssue = () => {
                             <input
                               type="number"
                               className="form-control form-control-sm"
+                              style={{  padding: "0" }}     
+
+
                               value={entry.qtyIssued}
                               onChange={(e) => handleIndentEntryChange(index, "qtyIssued", e.target.value)}
                               placeholder="0"
@@ -945,6 +957,7 @@ const IndentIssue = () => {
                               type="number"
                               className="form-control form-control-sm"
                               value={entry.balanceAfterIssue}
+
                               placeholder="0"
                               readOnly
                               style={{ backgroundColor: "#f8f9fa" }}
@@ -956,6 +969,7 @@ const IndentIssue = () => {
                               type="number"
                               className="form-control form-control-sm"
                               value={entry.batchStock}
+
                               placeholder="0"
                               readOnly
                               style={{  backgroundColor: "#f8f9fa" }}
@@ -967,6 +981,7 @@ const IndentIssue = () => {
                               type="number"
                               className="form-control form-control-sm"
                               value={entry.availableStock}
+
                               placeholder="0"
                               readOnly
                               style={{  backgroundColor: "#f8f9fa" }}
@@ -978,8 +993,11 @@ const IndentIssue = () => {
                               type="button"
                               className="btn btn-info btn-sm"
                               onClick={() => handleViewPreviousIssues(entry)}
+                              style={{  padding: "0" }}     
+                              
                             >
-                              View
+                              <i class="bi bi-info-circle"></i>
+
                             </button>
                           </td>
 
