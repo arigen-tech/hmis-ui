@@ -93,6 +93,7 @@ import PatientWaitingList from './Views/OPD/GeneralMedicineWaitingList/DisplayTo
 import CareLevelMaster from './Views/Masters/CareLevelMaster';
 import WardCategoryMaster from './Views/Masters/WardCategoryMaster';
 import WardManagementMaster from './Views/Masters/WardManagementMaster';
+import RoomCategoryMaster from'./Views/Masters/RoomCategoryMaster';  
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -221,6 +222,7 @@ function App() {
                 <Route path="CareLevelMaster" element={<CareLevelMaster/>} />
                 <Route path="WardCategoryMaster" element={<WardCategoryMaster/>} />
                 <Route path="WardManagementMaster" element={<WardManagementMaster/>} />
+                <Route path="RoomCategoryMaster"element={<RoomCategoryMaster/>}/>
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
