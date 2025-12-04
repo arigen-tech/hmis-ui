@@ -62,6 +62,7 @@ const Login = () => {
           jwtToken,
           refreshToken,
           username,
+          userId,
           roleId,
           jwtTokenExpiry,
           hospitalId,
@@ -81,6 +82,7 @@ const Login = () => {
           localStorage.setItem("token", jwtToken);
           localStorage.setItem("refreshToken", refreshToken);
           localStorage.setItem("username", username);
+          localStorage.setItem("userId", userId);
           localStorage.setItem("roleId", roleId);
           localStorage.setItem("AuthValidation", validTime);
           localStorage.setItem("isTokenValid", isTokenValid);
@@ -90,6 +92,7 @@ const Login = () => {
           sessionStorage.setItem("token", jwtToken);
           sessionStorage.setItem("refreshToken", refreshToken);
           sessionStorage.setItem("username", username);
+          localStorage.setItem("userId", userId);
           sessionStorage.setItem("roleId", roleId);
           sessionStorage.setItem("AuthValidation", validTime);
           sessionStorage.setItem("isTokenValid", isTokenValid);
