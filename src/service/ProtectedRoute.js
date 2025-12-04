@@ -100,6 +100,8 @@ const validRoutes = [
   "/WardCategoryMaster",
   "/WardManagementMaster",
   "/RoomCategoryMaster",
+  "/RoomMasterScreen",
+  "/BedManagement",
 
   
 ];
