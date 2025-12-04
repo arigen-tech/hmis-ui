@@ -799,10 +799,8 @@ const DrugMaster = () => {
                                             <input
                                                 type="text"
                                                 className="form-control"
-                                                name="reorderLevelStore"
-                                                placeholder="Re-order Level-Store"
-                                                value={formData.reorderLevelStore}
-                                                onChange={handleInputChange}
+                                                name="reorderLevelWard"
+                                                placeholder="Re-order Level-Ward"
                                             />
                                         </div>
 
