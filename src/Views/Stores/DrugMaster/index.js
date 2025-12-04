@@ -795,6 +795,18 @@ const DrugMaster = () => {
                                         </div>
 
                                         <div className="form-group col-md-4 mt-3">
+                                            <label>Re-order Level-Ward</label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                name="reorderLevelStore"
+                                                placeholder="Re-order Level-Store"
+                                                value={formData.reorderLevelStore}
+                                                onChange={handleInputChange}
+                                            />
+                                        </div>
+
+                                        <div className="form-group col-md-4 mt-3">
                                             <label>HSN Code</label>
                                             <select
                                                 className="form-select"
