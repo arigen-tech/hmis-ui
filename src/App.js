@@ -96,6 +96,7 @@ import WardManagementMaster from './Views/Masters/WardManagementMaster';
 import RoomCategoryMaster from'./Views/Masters/RoomCategoryMaster'; 
 import RoomMasterScreen from'./Views/Masters/RoomMasterScreen';
 import BedManagement from'./Views/Masters/BedManagementMaster';
+import BedStatusMaster from'./Views/Masters/BedStatusMaster';
 
 
 
@@ -228,6 +229,7 @@ function App() {
                 <Route path="RoomCategoryMaster"element={<RoomCategoryMaster/>}/>
                 <Route path="RoomMasterScreen"element={<RoomMasterScreen/>}/>
                 <Route path="BedManagement"element={<BedManagement/>}/>
+                <Route path="BedStatusMaster"element={<BedStatusMaster/>}/>
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>

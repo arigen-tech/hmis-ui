@@ -184,6 +184,22 @@ const RoomCategoryMaster = () => {
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Room Category Master</h4>
+              <div className="d-flex justify-content-between align-items-center">
+                <form className="d-inline-block searchform me-4" role="search">
+                  <div className="input-group searchinput">
+                    <input
+                      type="search"
+                      className="form-control"
+                      placeholder="Search ward name, category, or care level..."
+                      aria-label="Search"
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                    />
+                    <span className="input-group-text" id="search-icon">
+                      <i className="fa fa-search"></i>
+                    </span>
+                  </div>
+                </form>
 
               <div className="d-flex align-items-center">
                 {!showForm ? (
@@ -210,6 +226,9 @@ const RoomCategoryMaster = () => {
                   </button>
                 )}
               </div>
+              </div>
+              
+              
             </div>
 
             <div className="card-body">
@@ -218,15 +237,7 @@ const RoomCategoryMaster = () => {
               ) : !showForm ? (
                 <>
                   {/* Search */}
-                  <div className="d-flex justify-content-end mb-3">
-                    <input
-                      type="text"
-                      className="form-control w-25"
-                      placeholder="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                  </div>
+                 
 
                   {/* Table */}
                   <div className="table-responsive">
