@@ -102,6 +102,9 @@ const validRoutes = [
   "/RoomCategoryMaster",
   "/RoomMasterScreen",
   "/BedManagement",
+  "/FamilyHistoryMaster",
+  "/ProcedureMaster",
+  "/ProcedureTypeMaster"
 
   
 ];

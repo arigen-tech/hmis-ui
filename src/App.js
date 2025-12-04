@@ -97,6 +97,9 @@ import RoomCategoryMaster from'./Views/Masters/RoomCategoryMaster';
 import RoomMasterScreen from'./Views/Masters/RoomMasterScreen';
 import BedManagement from'./Views/Masters/BedManagementMaster';
 
+import FamilyHistoryMaster from './Views/Masters/FamilyHistoryMaster';
+import ProcedureMaster from './Views/Masters/ProcedureMaster';
+import ProcedureTypeMaster from './Views/Masters/ProcedureTypeMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -228,6 +231,9 @@ function App() {
                 <Route path="RoomCategoryMaster"element={<RoomCategoryMaster/>}/>
                 <Route path="RoomMasterScreen"element={<RoomMasterScreen/>}/>
                 <Route path="BedManagement"element={<BedManagement/>}/>
+                <Route path="FamilyHistoryMaster" element={<FamilyHistoryMaster/>} />
+                <Route path="/ProcedureMaster" element={<ProcedureMaster/>} />
+                <Route path="/ProcedureTypeMaster" element={<ProcedureTypeMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
