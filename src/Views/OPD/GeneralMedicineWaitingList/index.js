@@ -148,9 +148,9 @@ const GeneralMedicineWaitingList = () => {
   }, []);
 
   const [searchFilters, setSearchFilters] = useState({
-    doctorList: "Dr. G. Pradhan",
-    session: "Select",
-    employeeNo: "",
+    doctorList: "",
+    session: "",
+    mobileNo: "",
     patientName: "",
   })
 
@@ -851,31 +851,70 @@ const GeneralMedicineWaitingList = () => {
     setCurrentPage(1)
   }
 
-  const handleSearch = async () => {
-    console.log("Searching with filters:", searchFilters);
+  const userId =
+  localStorage.getItem("userId") ||
+  sessionStorage.getItem("userId");
 
-    const payload = {
-      doctorId: Number(searchFilters.doctorList) || null,
-      sessionId: Number(searchFilters.session) || null,
-      employeeNo: searchFilters.employeeNo?.trim() || null,
-      patientName: searchFilters.patientName?.trim() || null
-    };
 
-    try {
-      setLoading(true);
-      const data = await postRequest(`${OPD_PATIENT}/activeVisit/search`, payload);
+useEffect(() => {
+  if (userId) {
+    setSearchFilters((prev) => ({
+      ...prev,
+      doctorList: userId,       
+    }));
+  }
+}, [userId]);
 
-      if (data.status === 200 && Array.isArray(data.response)) {
-        setWaitingList(data.response);
-      } else {
-        setWaitingList([]);
-      }
-    } catch (error) {
-      console.error("Search API Error:", error);
-    } finally {
-      setLoading(false);
-    }
+useEffect(() => {
+  if (searchFilters.doctorList) {
+    handleSearch();
+  }
+}, [searchFilters.doctorList]);
+
+
+
+const handleSearch = async () => {
+  const userId =
+    localStorage.getItem("userId") ||
+    sessionStorage.getItem("userId");
+
+  if (!userId) return;   
+
+   if (!searchFilters.doctorList) {
+    alert("Doctor is required");
+    return;  
+  }
+
+  setFormData((prev) => ({
+    ...prev,
+    doctorList: userId,
+  }));
+
+  const payload = {
+    doctorId: Number(searchFilters.doctorList) || Number(userId) || null,
+    sessionId: Number(searchFilters.session) || null,
+    mobileNo: searchFilters.mobileNo?.trim() || null,
+    patientName: searchFilters.patientName?.trim() || null,
   };
+
+  try {
+    setLoading(true);
+
+    const data = await postRequest(`${OPD_PATIENT}/activeVisit/search`, payload);
+
+    if (data.status === 200 && Array.isArray(data.response)) {
+      setWaitingList(data.response);
+    } else {
+      setWaitingList([]);
+    }
+  } catch (error) {
+    console.error("Search API Error:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
 
 
   const handleReset = () => {
@@ -888,11 +927,34 @@ const GeneralMedicineWaitingList = () => {
 
   };
 
+  const updateVisitStatus = async (visitId, visitDate, doctorId) => {
+    try {
+      const response = await putRequest(
+        `/patient/update-status?visitId=${visitId}&visitDate=${visitDate}&doctorId=${doctorId}`
+      );
 
-  const handleRowClick = (patient) => {
-    setSelectedPatient(patient)
-    setShowDetailView(true)
-  }
+      console.log("Status Updated:", response);
+      return response;
+
+    } catch (error) {
+      console.error("Error updating status:", error);
+    }
+  };
+
+
+
+  const handleRowClick = async (patient) => {
+
+    await updateVisitStatus(
+      patient.visitId,
+      patient.visitDate,
+      patient.docterId
+    );
+
+    setSelectedPatient(patient);
+    setShowDetailView(true);
+  };
+
 
   console.log("setSelectedPatient", selectedPatient)
 
@@ -982,19 +1044,44 @@ const GeneralMedicineWaitingList = () => {
     setSelectedHistoryType(historyType)
   }
 
+  function calculateBMI(weight, height) {
+    if (!weight || !height) return "";
+
+    const heightInMeters = height / 100;
+    const bmi = weight / (heightInMeters * heightInMeters);
+
+    return bmi.toFixed(2);
+  }
+
+
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }))
+    const { name, value, type, checked } = e.target;
+
+    setFormData((prev) => {
+      const updated = {
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      };
+
+      // Auto-calculate BMI
+      if ((name === "weight" || name === "height") &&
+        updated.height !== "" &&
+        updated.weight !== "") {
+        updated.bmi = calculateBMI(updated.weight, updated.height);
+      }
+
+      return updated;
+    });
+
+    // Clear field error
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,
         [name]: "",
-      }))
+      }));
     }
-  }
+  };
+
 
 
   const showPopup = (message, type = "info", onCloseCallback = null) => {
@@ -2051,6 +2138,7 @@ const GeneralMedicineWaitingList = () => {
                             name="bmi"
                             value={formData.bmi}
                             onChange={handleChange}
+                            readOnly
                           />
                           <span className="input-group-text">kg/m²</span>
                           {errors.bmi && <div className="invalid-feedback d-block">{errors.bmi}</div>}
@@ -4218,10 +4306,7 @@ const GeneralMedicineWaitingList = () => {
             <div className="card-header">
               <div className="d-flex justify-content-between align-items-center">
                 <h4 className="card-title p-2 mb-0">GENERAL MEDICINE WAITING LIST</h4>
-                <div className="d-flex gap-2">
-                  <button className="btn btn-primary">OPEN TOKEN DISPLAY</button>
-                  <button className="btn btn-secondary btn-sm">CLOSE TOKEN DISPLAY</button>
-                </div>
+
               </div>
               {loading && <LoadingScreen />}
             </div>
@@ -4231,7 +4316,7 @@ const GeneralMedicineWaitingList = () => {
                   <div className="row g-3 align-items-end">
 
                     <div className="col-md-3">
-                      <label className="form-label fw-bold">Doctor List</label>
+                      <label className="form-label fw-bold">Doctor List <span>*</span></label>
                       <select
                         className="form-select"
                         value={searchFilters.doctorList}
@@ -4261,12 +4346,12 @@ const GeneralMedicineWaitingList = () => {
                     </div>
 
                     <div className="col-md-2">
-                      <label className="form-label fw-bold">Employee No.</label>
+                      <label className="form-label fw-bold">Mobile No.</label>
                       <input
                         type="text"
                         className="form-control"
-                        value={searchFilters.employeeNo}
-                        onChange={(e) => handleFilterChange("employeeNo", e.target.value)}
+                        value={searchFilters.mobileNo}
+                        onChange={(e) => handleFilterChange("mobileNo", e.target.value)}
                         maxLength={20}
                       />
                     </div>
