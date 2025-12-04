@@ -14,6 +14,7 @@ const OPDBillingDetails = () => {
   });
 
   const [formData, setFormData] = useState({
+    patientUhid:"",
     billingType: "",
     billingHeaderId: "",
     patientName: "",
@@ -151,6 +152,7 @@ const OPDBillingDetails = () => {
       billingType: data.billingType || "Consultation Services",
       billingHeaderIds: Array.isArray(data.billingHeaderIds)? data.billingHeaderIds: [data.billingHeaderIds],
       registrationCost: topLevelRegCost,
+      patientUhid:data.patientUhid,
     });
   }, [location.state, navigate]);
 
@@ -311,7 +313,7 @@ const OPDBillingDetails = () => {
                         </div>
                         <div className="form-group col-md-4 mt-3">
                           <label>Patient ID</label>
-                          <input type="text" className="form-control" id="patientId" value={formData.patientId} readOnly />
+                          <input type="text" className="form-control" id="patientId" value={formData.patientUhid} readOnly />
                         </div>
                         <div className="form-group col-md-12 mt-3">
                           <label>Address</label>
