@@ -173,9 +173,7 @@ export const LAB = `/lab`;
 export const OPD_TEMPLATE = `/opdTemplate`
 export const Store_Internal_Indent = `/storeInternalIndent`
 
-
-
-
+export const MAS_WARD_CATEGORY =`${MASTERS}/masWardCategory`;
 
 export const ITEM_CLASS = {
   TABLET: 1,
@@ -190,3 +188,6 @@ export const DRUG_TYPE = {
   SOLID: [ITEM_CLASS.TABLET, ITEM_CLASS.CAPSULE],
   LIQUID: [ITEM_CLASS.EARDROPS, ITEM_CLASS.LIQUID, ITEM_CLASS.EYEEARDROPS, ITEM_CLASS.SYRUP]
 };
+
+//For Department Master showing that ward category dropdown on the basis of Department Type as Ward
+export const WARD_ID=10;
