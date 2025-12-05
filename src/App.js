@@ -97,6 +97,7 @@ import RoomCategoryMaster from'./Views/Masters/RoomCategoryMaster';
 import RoomMasterScreen from'./Views/Masters/RoomMasterScreen';
 import BedManagement from'./Views/Masters/BedManagementMaster';
 import BedStatusMaster from'./Views/Masters/BedStatusMaster';
+import BedTypeMaster from'./Views/Masters/BedTypeMaster';
 
 import FamilyHistoryMaster from './Views/Masters/FamilyHistoryMaster';
 import ProcedureMaster from './Views/Masters/ProcedureMaster';
@@ -236,6 +237,7 @@ function App() {
                 <Route path="FamilyHistoryMaster" element={<FamilyHistoryMaster/>} />
                 <Route path="/ProcedureMaster" element={<ProcedureMaster/>} />
                 <Route path="/ProcedureTypeMaster" element={<ProcedureTypeMaster/>} />
+                <Route path="/BedTypeMaster" element={<BedTypeMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>

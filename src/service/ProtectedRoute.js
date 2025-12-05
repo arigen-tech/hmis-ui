@@ -105,7 +105,8 @@ const validRoutes = [
   "/BedStatusMaster",
   "/FamilyHistoryMaster",
   "/ProcedureMaster",
-  "/ProcedureTypeMaster"
+  "/ProcedureTypeMaster",
+  "/BedTypeMaster",
 
   
 ];
