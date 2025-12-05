@@ -1,73 +1,11 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import { MAS_BED_STATUS } from "../../../config/apiConfig";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 
 const BedStatusMaster = () => {
-  // Sample mock data
-  const initialBedStatusData = [
-    {
-      id: 1,
-      statusName: "Available",
-      status: "y",
-      lastUpdated: "2024-01-15 10:30:00"
-    },
-    {
-      id: 2,
-      statusName: "Occupied",
-      status: "y",
-      lastUpdated: "2024-01-10 14:20:00"
-    },
-    {
-      id: 3,
-      statusName: "Under Maintenance",
-      status: "y",
-      lastUpdated: "2024-01-05 09:15:00"
-    },
-    {
-      id: 4,
-      statusName: "Reserved",
-      status: "y",
-      lastUpdated: "2024-01-20 16:45:00"
-    },
-    {
-      id: 5,
-      statusName: "Cleaning",
-      status: "y",
-      lastUpdated: "2024-01-18 11:10:00"
-    },
-    {
-      id: 6,
-      statusName: "Out of Service",
-      status: "n",
-      lastUpdated: "2024-01-12 13:25:00"
-    },
-    {
-      id: 7,
-      statusName: "Quarantine",
-      status: "y",
-      lastUpdated: "2024-01-08 15:40:00"
-    },
-    {
-      id: 8,
-      statusName: "Ready for Admission",
-      status: "y",
-      lastUpdated: "2024-01-22 08:55:00"
-    },
-    {
-      id: 9,
-      statusName: "Discharge Pending",
-      status: "y",
-      lastUpdated: "2024-01-16 12:30:00"
-    },
-    {
-      id: 10,
-      statusName: "Blocked",
-      status: "n",
-      lastUpdated: "2024-01-14 10:05:00"
-    }
-  ];
-
-  const [bedStatusData, setBedStatusData] = useState(initialBedStatusData);
+  const [bedStatusData, setBedStatusData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ 
     isOpen: false, 
@@ -89,6 +27,55 @@ const BedStatusMaster = () => {
   const [pageInput, setPageInput] = useState("1");
 
   const STATUS_NAME_MAX_LENGTH = 50;
+
+  // Function to format date as dd-MM-YYYY
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    
+    try {
+      const date = new Date(dateString);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return "N/A";
+      }
+      
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+      const year = date.getFullYear();
+      
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "N/A";
+    }
+  };
+
+  // Fetch bed status data
+  const fetchBedStatusData = async (flag = 0) => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${MAS_BED_STATUS}/getAll/${flag}`);
+      if (response && response.response) {
+        const mappedData = response.response.map(item => ({
+          id: item.bedStatusId,
+          statusName: item.bedStatusName,
+          status: item.status,
+          lastUpdated: formatDate(item.lastUpdateDate)
+        }));
+        setBedStatusData(mappedData);
+      }
+    } catch (err) {
+      console.error("Error fetching bed status data:", err);
+      showPopup("Failed to load bed status data", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBedStatusData(0);
+  }, []);
 
   // Filter data based on search query
   const filteredBedStatusData = bedStatusData.filter(status =>
@@ -139,50 +126,39 @@ const BedStatusMaster = () => {
     try {
       setLoading(true);
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      // Check for duplicates
+      const isDuplicate = bedStatusData.some(
+        (status) =>
+          status.statusName.toLowerCase() === formData.statusName.toLowerCase() &&
+          (!editingStatus || editingStatus.id !== status.id)
+      );
+
+      if (isDuplicate) {
+        showPopup("Bed Status with the same name already exists!", "error");
+        setLoading(false);
+        return;
+      }
+
       if (editingStatus) {
         // Update existing status
-        const updatedData = bedStatusData.map(item =>
-          item.id === editingStatus.id 
-            ? { 
-                ...item, 
-                statusName: formData.statusName,
-                lastUpdated: new Date().toLocaleString('en-IN', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false
-                }).replace(',', '')
-              }
-            : item
-        );
-        
-        setBedStatusData(updatedData);
-        showPopup("Bed status updated successfully!", "success");
+        const response = await putRequest(`${MAS_BED_STATUS}/update/${editingStatus.id}`, {
+          bedStatusName: formData.statusName,
+        });
+
+        if (response && response.status === 200) {
+          fetchBedStatusData();
+          showPopup("Bed status updated successfully!", "success");
+        }
       } else {
         // Add new status
-        const newStatus = {
-          id: bedStatusData.length + 1,
-          statusName: formData.statusName,
-          status: "y",
-          lastUpdated: new Date().toLocaleString('en-IN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
-          }).replace(',', '')
-        };
-        
-        setBedStatusData([...bedStatusData, newStatus]);
-        showPopup("New bed status added successfully!", "success");
+        const response = await postRequest(`${MAS_BED_STATUS}/create`, {
+          bedStatusName: formData.statusName,
+        });
+
+        if (response && response.status === 200) {
+          fetchBedStatusData();
+          showPopup("New bed status added successfully!", "success");
+        }
       }
       
       setEditingStatus(null);
@@ -190,7 +166,7 @@ const BedStatusMaster = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving bed status data:", err);
-      showPopup(`Failed to save changes: ${err.message}`, "error");
+      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
     } finally {
       setLoading(false);
     }
@@ -215,32 +191,28 @@ const BedStatusMaster = () => {
       try {
         setLoading(true);
         
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const updatedData = bedStatusData.map((status) =>
-          status.id === confirmDialog.statusId 
-            ? { 
-                ...status, 
-                status: confirmDialog.newStatus,
-                lastUpdated: new Date().toLocaleString('en-IN', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false
-                }).replace(',', '')
-              } 
-            : status
+        const response = await putRequest(
+          `${MAS_BED_STATUS}/status/${confirmDialog.statusId}?status=${confirmDialog.newStatus}`
         );
-        
-        setBedStatusData(updatedData);
-        showPopup(`Bed status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+
+        if (response && response.response) {
+          // Update local state with formatted date
+          setBedStatusData((prevData) =>
+            prevData.map((status) =>
+              status.id === confirmDialog.statusId 
+                ? { 
+                    ...status, 
+                    status: confirmDialog.newStatus,
+                    lastUpdated: formatDate(new Date().toISOString())
+                  } 
+                : status
+            )
+          );
+          showPopup(`Bed status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+        }
       } catch (err) {
         console.error("Error updating bed status:", err);
-        showPopup(`Failed to update status: ${err.message}`, "error");
+        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
       } finally {
         setLoading(false);
       }
@@ -257,7 +229,7 @@ const BedStatusMaster = () => {
     setSearchQuery("");
     setCurrentPage(1);
     setPageInput("1");
-    showPopup("Data refreshed!", "success");
+    fetchBedStatusData(); // Refresh from API
   };
 
   const handlePageNavigation = () => {
@@ -534,14 +506,15 @@ const BedStatusMaster = () => {
                     <button 
                       type="submit" 
                       className="btn btn-primary me-2" 
-                      disabled={!isFormValid}
+                      disabled={!isFormValid || loading}
                     >
-                      {editingStatus ? 'Update' : 'Save'}
+                      {loading ? "Saving..." : (editingStatus ? 'Update' : 'Save')}
                     </button>
                     <button 
                       type="button" 
                       className="btn btn-danger" 
                       onClick={() => setShowForm(false)}
+                      disabled={loading}
                     >
                       Cancel
                     </button>
@@ -563,22 +536,24 @@ const BedStatusMaster = () => {
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)} aria-label="Close"></button>
+                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)} aria-label="Close" disabled={loading}></button>
                       </div>
                       <div className="modal-body">
                         <p>
                           Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
                           <strong> {bedStatusData.find(status => status.id === confirmDialog.statusId)?.statusName}</strong> status?
                         </p>
-                        <p className="text-muted">
+                        {/* <p className="text-muted">
                           {confirmDialog.newStatus === "y" 
                             ? "This will make the bed status available for use." 
                             : "This will hide the bed status from selection."}
-                        </p>
+                        </p> */}
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>Cancel</button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Confirm</button>
+                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)} disabled={loading}>Cancel</button>
+                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)} disabled={loading}>
+                          {loading ? "Processing..." : "Confirm"}
+                        </button>
                       </div>
                     </div>
                   </div>
