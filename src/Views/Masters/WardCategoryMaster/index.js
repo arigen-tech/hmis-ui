@@ -1,97 +1,11 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import { MAS_WARD_CATEGORY } from "../../../config/apiConfig";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 
 const WardCategoryMaster = () => {
-  // Sample mock data
-  const initialWardCategoryData = [
-    {
-      id: 1,
-      categoryName: "General Ward",
-      description: "Standard ward with basic facilities",
-      status: "y",
-      lastUpdated: "2024-01-15 10:30:00"
-    },
-    {
-      id: 2,
-      categoryName: "Private Ward",
-      description: "Private room with attached bathroom",
-      status: "y",
-      lastUpdated: "2024-01-10 14:20:00"
-    },
-    {
-      id: 3,
-      categoryName: "ICU - Intensive Care Unit",
-      description: "Critical care unit with life support systems",
-      status: "y",
-      lastUpdated: "2024-01-05 09:15:00"
-    },
-    {
-      id: 4,
-      categoryName: "CCU - Cardiac Care Unit",
-      description: "Specialized care for cardiac patients",
-      status: "y",
-      lastUpdated: "2024-01-20 16:45:00"
-    },
-    {
-      id: 5,
-      categoryName: "Pediatric Ward",
-      description: "Special ward for children",
-      status: "y",
-      lastUpdated: "2024-01-18 11:10:00"
-    },
-    {
-      id: 6,
-      categoryName: "Maternity Ward",
-      description: "For expectant and new mothers",
-      status: "n",
-      lastUpdated: "2024-01-12 13:25:00"
-    },
-    {
-      id: 7,
-      categoryName: "Orthopedic Ward",
-      description: "Special care for bone and joint patients",
-      status: "y",
-      lastUpdated: "2024-01-08 15:40:00"
-    },
-    {
-      id: 8,
-      categoryName: "Neuro Ward",
-      description: "Neurological care unit",
-      status: "y",
-      lastUpdated: "2024-01-22 08:55:00"
-    },
-    {
-      id: 9,
-      categoryName: "Oncology Ward",
-      description: "Cancer treatment and care",
-      status: "y",
-      lastUpdated: "2024-01-16 12:30:00"
-    },
-    {
-      id: 10,
-      categoryName: "Psychiatric Ward",
-      description: "Mental health care facility",
-      status: "n",
-      lastUpdated: "2024-01-14 10:05:00"
-    },
-    {
-      id: 11,
-      categoryName: "Isolation Ward",
-      description: "For contagious disease patients",
-      status: "y",
-      lastUpdated: "2024-01-19 14:50:00"
-    },
-    {
-      id: 12,
-      categoryName: "VIP Suite",
-      description: "Luxury suite with premium amenities",
-      status: "y",
-      lastUpdated: "2024-01-21 09:25:00"
-    }
-  ];
-
-  const [wardCategoryData, setWardCategoryData] = useState(initialWardCategoryData);
+  const [wardCategoryData, setWardCategoryData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ 
     isOpen: false, 
@@ -116,10 +30,62 @@ const WardCategoryMaster = () => {
   const CATEGORY_NAME_MAX_LENGTH = 100;
   const DESCRIPTION_MAX_LENGTH = 500;
 
+  // Function to format date as dd-MM-YYYY
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    
+    try {
+      const date = new Date(dateString);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return "N/A";
+      }
+      
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+      const year = date.getFullYear();
+      
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "N/A";
+    }
+  };
+
+  // Fetch ward category data
+  const fetchWardCategoryData = async (flag = 0) => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${MAS_WARD_CATEGORY}/getAll/${flag}`);
+      if (response && response.response) {
+        const mappedData = response.response.map(item => ({
+          id: item.categoryId,
+          categoryName: item.categoryName,
+          description: item.description,
+          status: item.status,
+          lastUpdated: formatDate(item.lastUpdateDate),
+          createdBy: item.createdBy,
+          lastUpdatedBy: item.LastUpdatedBy
+        }));
+        setWardCategoryData(mappedData);
+      }
+    } catch (err) {
+      console.error("Error fetching ward category data:", err);
+      showPopup("Failed to load ward category data", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchWardCategoryData(0);
+  }, []);
+
   // Filter data based on search query
   const filteredWardCategoryData = wardCategoryData.filter(category =>
     category.categoryName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    category.description.toLowerCase().includes(searchQuery.toLowerCase())
+    (category.description && category.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   // Calculate pagination values
@@ -159,7 +125,7 @@ const WardCategoryMaster = () => {
     setEditingCategory(category);
     setFormData({
       categoryName: category.categoryName,
-      description: category.description,
+      description: category.description || "",
     });
     setShowForm(true);
   };
@@ -171,52 +137,41 @@ const WardCategoryMaster = () => {
     try {
       setLoading(true);
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      // Check for duplicates
+      const isDuplicate = wardCategoryData.some(
+        (category) =>
+          category.categoryName.toLowerCase() === formData.categoryName.toLowerCase() &&
+          (!editingCategory || editingCategory.id !== category.id)
+      );
+
+      if (isDuplicate) {
+        showPopup("Ward Category with the same name already exists!", "error");
+        setLoading(false);
+        return;
+      }
+
       if (editingCategory) {
         // Update existing ward category
-        const updatedData = wardCategoryData.map(item =>
-          item.id === editingCategory.id 
-            ? { 
-                ...item, 
-                categoryName: formData.categoryName,
-                description: formData.description,
-                lastUpdated: new Date().toLocaleString('en-IN', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false
-                }).replace(',', '')
-              }
-            : item
-        );
-        
-        setWardCategoryData(updatedData);
-        showPopup("Ward category updated successfully!", "success");
-      } else {
-        // Add new ward category
-        const newCategory = {
-          id: wardCategoryData.length + 1,
+        const response = await putRequest(`${MAS_WARD_CATEGORY}/update/${editingCategory.id}`, {
           categoryName: formData.categoryName,
           description: formData.description,
-          status: "y",
-          lastUpdated: new Date().toLocaleString('en-IN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
-          }).replace(',', '')
-        };
-        
-        setWardCategoryData([...wardCategoryData, newCategory]);
-        showPopup("New ward category added successfully!", "success");
+        });
+
+        if (response && response.status === 200) {
+          fetchWardCategoryData();
+          showPopup("Ward category updated successfully!", "success");
+        }
+      } else {
+        // Add new ward category
+        const response = await postRequest(`${MAS_WARD_CATEGORY}/create`, {
+          categoryName: formData.categoryName,
+          description: formData.description,
+        });
+
+        if (response && response.status === 201) {
+          fetchWardCategoryData();
+          showPopup("New ward category added successfully!", "success");
+        }
       }
       
       setEditingCategory(null);
@@ -224,7 +179,7 @@ const WardCategoryMaster = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving ward category data:", err);
-      showPopup(`Failed to save changes: ${err.message}`, "error");
+      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
     } finally {
       setLoading(false);
     }
@@ -249,32 +204,28 @@ const WardCategoryMaster = () => {
       try {
         setLoading(true);
         
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const updatedData = wardCategoryData.map((category) =>
-          category.id === confirmDialog.categoryId 
-            ? { 
-                ...category, 
-                status: confirmDialog.newStatus,
-                lastUpdated: new Date().toLocaleString('en-IN', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false
-                }).replace(',', '')
-              } 
-            : category
+        const response = await putRequest(
+          `${MAS_WARD_CATEGORY}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
         );
-        
-        setWardCategoryData(updatedData);
-        showPopup(`Ward category ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+
+        if (response && response.response) {
+          // Update local state with formatted date
+          setWardCategoryData((prevData) =>
+            prevData.map((category) =>
+              category.id === confirmDialog.categoryId 
+                ? { 
+                    ...category, 
+                    status: confirmDialog.newStatus,
+                    lastUpdated: formatDate(new Date().toISOString())
+                  } 
+                : category
+            )
+          );
+          showPopup(`Ward category ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+        }
       } catch (err) {
         console.error("Error updating ward category status:", err);
-        showPopup(`Failed to update status: ${err.message}`, "error");
+        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
       } finally {
         setLoading(false);
       }
@@ -291,7 +242,7 @@ const WardCategoryMaster = () => {
     setSearchQuery("");
     setCurrentPage(1);
     setPageInput("1");
-    showPopup("Data refreshed!", "success");
+    fetchWardCategoryData(); // Refresh from API
   };
 
   const handlePageNavigation = () => {
@@ -446,7 +397,7 @@ const WardCategoryMaster = () => {
                             <tr key={category.id}>
                               <td>{category.categoryName}</td>
                               <td className="text-truncate" style={{ maxWidth: "300px" }} title={category.description}>
-                                {category.description}
+                                {category.description || "N/A"}
                               </td>
                               <td>
                                 <div className="form-check form-switch">
@@ -588,14 +539,15 @@ const WardCategoryMaster = () => {
                     <button 
                       type="submit" 
                       className="btn btn-primary me-2" 
-                      disabled={!isFormValid}
+                      disabled={!isFormValid || loading}
                     >
-                      {editingCategory ? 'Update' : 'Save'}
+                      {loading ? "Saving..." : (editingCategory ? 'Update' : 'Save')}
                     </button>
                     <button 
                       type="button" 
                       className="btn btn-danger" 
                       onClick={() => setShowForm(false)}
+                      disabled={loading}
                     >
                       Cancel
                     </button>
@@ -617,22 +569,24 @@ const WardCategoryMaster = () => {
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)} aria-label="Close"></button>
+                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)} aria-label="Close" disabled={loading}></button>
                       </div>
                       <div className="modal-body">
                         <p>
                           Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
                           <strong> {wardCategoryData.find(category => category.id === confirmDialog.categoryId)?.categoryName}</strong>?
                         </p>
-                        <p className="text-muted">
+                        {/* <p className="text-muted">
                           {confirmDialog.newStatus === "y" 
                             ? "This will make the ward category available for selection." 
                             : "This will hide the ward category from selection."}
-                        </p>
+                        </p> */}
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>Cancel</button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Confirm</button>
+                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)} disabled={loading}>Cancel</button>
+                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)} disabled={loading}>
+                          {loading ? "Processing..." : "Confirm"}
+                        </button>
                       </div>
                     </div>
                   </div>
