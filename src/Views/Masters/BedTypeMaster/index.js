@@ -1,83 +1,11 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import { MAS_BED_TYPE } from "../../../config/apiConfig";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 
 const BedTypeMaster = () => {
-  // Sample mock data
-  const initialBedTypeData = [
-    {
-      id: 1,
-      bedTypeName: "ICU Bed",
-      description: "Intensive Care Unit bed for critical patients",
-      status: "y",
-      lastUpdated: "2024-01-15 10:30:00"
-    },
-    {
-      id: 2,
-      bedTypeName: "General Ward Bed",
-      description: "Standard hospital bed for general patients",
-      status: "y",
-      lastUpdated: "2024-01-10 14:20:00"
-    },
-    {
-      id: 3,
-      bedTypeName: "Private Room Bed",
-      description: "Premium bed in private room with amenities",
-      status: "y",
-      lastUpdated: "2024-01-05 09:15:00"
-    },
-    {
-      id: 4,
-      bedTypeName: "Pediatric Bed",
-      description: "Special bed designed for children",
-      status: "y",
-      lastUpdated: "2024-01-20 16:45:00"
-    },
-    {
-      id: 5,
-      bedTypeName: "Maternity Bed",
-      description: "Bed for pregnant women and new mothers",
-      status: "y",
-      lastUpdated: "2024-01-18 11:10:00"
-    },
-    {
-      id: 6,
-      bedTypeName: "Isolation Bed",
-      description: "Bed for patients with contagious diseases",
-      status: "n",
-      lastUpdated: "2024-01-12 13:25:00"
-    },
-    {
-      id: 7,
-      bedTypeName: "Post-Operative Bed",
-      description: "Bed for patients recovering from surgery",
-      status: "y",
-      lastUpdated: "2024-01-08 15:40:00"
-    },
-    {
-      id: 8,
-      bedTypeName: "Emergency Bed",
-      description: "Bed reserved for emergency department patients",
-      status: "y",
-      lastUpdated: "2024-01-22 08:55:00"
-    },
-    {
-      id: 9,
-      bedTypeName: "VIP Bed",
-      description: "Luxury bed with premium facilities",
-      status: "y",
-      lastUpdated: "2024-01-16 12:30:00"
-    },
-    {
-      id: 10,
-      bedTypeName: "Recovery Bed",
-      description: "Bed for patients in recovery phase",
-      status: "n",
-      lastUpdated: "2024-01-14 10:05:00"
-    }
-  ];
-
-  const [bedTypeData, setBedTypeData] = useState(initialBedTypeData);
+  const [bedTypeData, setBedTypeData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ 
     isOpen: false, 
@@ -102,10 +30,62 @@ const BedTypeMaster = () => {
   const BED_TYPE_NAME_MAX_LENGTH = 50;
   const DESCRIPTION_MAX_LENGTH = 200;
 
+  // Function to format date as dd-MM-YYYY
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    
+    try {
+      const date = new Date(dateString);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return "N/A";
+      }
+      
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+      const year = date.getFullYear();
+      
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "N/A";
+    }
+  };
+
+  // Fetch bed type data
+  const fetchBedTypeData = async (flag = 0) => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${MAS_BED_TYPE}/getAll/${flag}`);
+      if (response && response.response) {
+        const mappedData = response.response.map(item => ({
+          id: item.bedTypeId,
+          bedTypeName: item.bedTypeName,
+          description: item.description,
+          status: item.status,
+          lastUpdated: formatDate(item.lastUpdateDate),
+          createdBy: item.createdBy,
+          lastUpdatedBy: item.lastUpdatedBy
+        }));
+        setBedTypeData(mappedData);
+      }
+    } catch (err) {
+      console.error("Error fetching bed type data:", err);
+      showPopup("Failed to load bed type data", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBedTypeData(0);
+  }, []);
+
   // Filter data based on search query
   const filteredBedTypeData = bedTypeData.filter(type =>
     type.bedTypeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    type.description.toLowerCase().includes(searchQuery.toLowerCase())
+    (type.description && type.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   // Calculate pagination values
@@ -128,7 +108,11 @@ const BedTypeMaster = () => {
   // Validate form whenever formData changes
   useEffect(() => {
     const validateForm = () => {
-      return formData.bedTypeName.trim() !== "" && formData.description.trim() !== "";
+      const { bedTypeName, description } = formData;
+      return (
+        bedTypeName.trim() !== "" && 
+        description.trim() !== ""
+      );
     };
     setIsFormValid(validateForm());
   }, [formData]);
@@ -141,7 +125,7 @@ const BedTypeMaster = () => {
     setEditingType(type);
     setFormData({
       bedTypeName: type.bedTypeName,
-      description: type.description
+      description: type.description || ""
     });
     setShowForm(true);
   };
@@ -153,52 +137,41 @@ const BedTypeMaster = () => {
     try {
       setLoading(true);
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      // Check for duplicates
+      const isDuplicate = bedTypeData.some(
+        (type) =>
+          type.bedTypeName.toLowerCase() === formData.bedTypeName.toLowerCase() &&
+          (!editingType || editingType.id !== type.id)
+      );
+
+      if (isDuplicate) {
+        showPopup("Bed Type with the same name already exists!", "error");
+        setLoading(false);
+        return;
+      }
+
       if (editingType) {
         // Update existing bed type
-        const updatedData = bedTypeData.map(item =>
-          item.id === editingType.id 
-            ? { 
-                ...item, 
-                bedTypeName: formData.bedTypeName,
-                description: formData.description,
-                lastUpdated: new Date().toLocaleString('en-IN', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false
-                }).replace(',', '')
-              }
-            : item
-        );
-        
-        setBedTypeData(updatedData);
-        showPopup("Bed type updated successfully!", "success");
-      } else {
-        // Add new bed type
-        const newType = {
-          id: bedTypeData.length + 1,
+        const response = await putRequest(`${MAS_BED_TYPE}/update/${editingType.id}`, {
           bedTypeName: formData.bedTypeName,
           description: formData.description,
-          status: "y",
-          lastUpdated: new Date().toLocaleString('en-IN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
-          }).replace(',', '')
-        };
-        
-        setBedTypeData([...bedTypeData, newType]);
-        showPopup("New bed type added successfully!", "success");
+        });
+
+        if (response && response.status === 200) {
+          fetchBedTypeData();
+          showPopup("Bed type updated successfully!", "success");
+        }
+      } else {
+        // Add new bed type
+        const response = await postRequest(`${MAS_BED_TYPE}/create`, {
+          bedTypeName: formData.bedTypeName,
+          description: formData.description,
+        });
+
+        if (response && response.status === 200) {
+          fetchBedTypeData();
+          showPopup("New bed type added successfully!", "success");
+        }
       }
       
       setEditingType(null);
@@ -206,7 +179,7 @@ const BedTypeMaster = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving bed type data:", err);
-      showPopup(`Failed to save changes: ${err.message}`, "error");
+      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
     } finally {
       setLoading(false);
     }
@@ -231,32 +204,28 @@ const BedTypeMaster = () => {
       try {
         setLoading(true);
         
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const updatedData = bedTypeData.map((type) =>
-          type.id === confirmDialog.typeId 
-            ? { 
-                ...type, 
-                status: confirmDialog.newStatus,
-                lastUpdated: new Date().toLocaleString('en-IN', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false
-                }).replace(',', '')
-              } 
-            : type
+        const response = await putRequest(
+          `${MAS_BED_TYPE}/status/${confirmDialog.typeId}?status=${confirmDialog.newStatus}`
         );
-        
-        setBedTypeData(updatedData);
-        showPopup(`Bed type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+
+        if (response && response.response) {
+          // Update local state with formatted date
+          setBedTypeData((prevData) =>
+            prevData.map((type) =>
+              type.id === confirmDialog.typeId 
+                ? { 
+                    ...type, 
+                    status: confirmDialog.newStatus,
+                    lastUpdated: formatDate(new Date().toISOString())
+                  } 
+                : type
+            )
+          );
+          showPopup(`Bed type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+        }
       } catch (err) {
         console.error("Error updating bed type status:", err);
-        showPopup(`Failed to update status: ${err.message}`, "error");
+        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
       } finally {
         setLoading(false);
       }
@@ -273,7 +242,7 @@ const BedTypeMaster = () => {
     setSearchQuery("");
     setCurrentPage(1);
     setPageInput("1");
-    showPopup("Data refreshed!", "success");
+    fetchBedTypeData(); // Refresh from API
   };
 
   const handlePageNavigation = () => {
@@ -427,7 +396,7 @@ const BedTypeMaster = () => {
                           currentItems.map((type) => (
                             <tr key={type.id}>
                               <td>{type.bedTypeName}</td>
-                              <td>{type.description}</td>
+                              <td>{type.description || "N/A"}</td>
                               <td>
                                 <div className="form-check form-switch">
                                   <input
@@ -570,14 +539,15 @@ const BedTypeMaster = () => {
                     <button 
                       type="submit" 
                       className="btn btn-primary me-2" 
-                      disabled={!isFormValid}
+                      disabled={!isFormValid || loading}
                     >
-                      {editingType ? 'Update' : 'Save'}
+                      {loading ? "Saving..." : (editingType ? 'Update' : 'Save')}
                     </button>
                     <button 
                       type="button" 
                       className="btn btn-danger" 
                       onClick={() => setShowForm(false)}
+                      disabled={loading}
                     >
                       Cancel
                     </button>
@@ -599,22 +569,24 @@ const BedTypeMaster = () => {
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)} aria-label="Close"></button>
+                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)} aria-label="Close" disabled={loading}></button>
                       </div>
                       <div className="modal-body">
                         <p>
                           Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
                           <strong> {bedTypeData.find(type => type.id === confirmDialog.typeId)?.bedTypeName}</strong> bed type?
                         </p>
-                        <p className="text-muted">
+                        {/* <p className="text-muted">
                           {confirmDialog.newStatus === "y" 
                             ? "This will make the bed type available for use." 
                             : "This will hide the bed type from selection."}
-                        </p>
+                        </p> */}
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>Cancel</button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Confirm</button>
+                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)} disabled={loading}>Cancel</button>
+                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)} disabled={loading}>
+                          {loading ? "Processing..." : "Confirm"}
+                        </button>
                       </div>
                     </div>
                   </div>

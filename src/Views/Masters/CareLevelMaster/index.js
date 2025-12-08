@@ -1,97 +1,11 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import { MAS_CARE_LEVEL } from "../../../config/apiConfig";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 
 const CareLevelMaster = () => {
-  // Sample mock data
-  const initialCareLevelData = [
-    {
-      id: 1,
-      careLevelName: "Level 1 - Basic Care",
-      description: "Basic assistance with daily activities",
-      status: "y",
-      lastUpdated: "2024-01-15 10:30:00"
-    },
-    {
-      id: 2,
-      careLevelName: "Level 2 - Intermediate Care",
-      description: "Moderate assistance with medical supervision",
-      status: "y",
-      lastUpdated: "2024-01-10 14:20:00"
-    },
-    {
-      id: 3,
-      careLevelName: "Level 3 - Advanced Care",
-      description: "Complex medical care with 24/7 monitoring",
-      status: "n",
-      lastUpdated: "2024-01-05 09:15:00"
-    },
-    {
-      id: 4,
-      careLevelName: "Palliative Care",
-      description: "End-of-life care and comfort measures",
-      status: "y",
-      lastUpdated: "2024-01-20 16:45:00"
-    },
-    {
-      id: 5,
-      careLevelName: "Respite Care",
-      description: "Temporary care for primary caregivers",
-      status: "y",
-      lastUpdated: "2024-01-18 11:10:00"
-    },
-    {
-      id: 6,
-      careLevelName: "Rehabilitation Care",
-      description: "Therapy and recovery-focused care",
-      status: "y",
-      lastUpdated: "2024-01-12 13:25:00"
-    },
-    {
-      id: 7,
-      careLevelName: "Memory Care",
-      description: "Specialized care for dementia patients",
-      status: "n",
-      lastUpdated: "2024-01-08 15:40:00"
-    },
-    {
-      id: 8,
-      careLevelName: "Post-Operative Care",
-      description: "Care after surgical procedures",
-      status: "y",
-      lastUpdated: "2024-01-22 08:55:00"
-    },
-    {
-      id: 9,
-      careLevelName: "Chronic Disease Management",
-      description: "Long-term management of chronic conditions",
-      status: "y",
-      lastUpdated: "2024-01-16 12:30:00"
-    },
-    {
-      id: 10,
-      careLevelName: "Pediatric Care",
-      description: "Specialized care for children",
-      status: "y",
-      lastUpdated: "2024-01-14 10:05:00"
-    },
-    {
-      id: 11,
-      careLevelName: "Geriatric Care",
-      description: "Elderly-specific care services",
-      status: "y",
-      lastUpdated: "2024-01-19 14:50:00"
-    },
-    {
-      id: 12,
-      careLevelName: "Home Health Care",
-      description: "Medical care provided at patient's home",
-      status: "y",
-      lastUpdated: "2024-01-21 09:25:00"
-    }
-  ];
-
-  const [careLevelData, setCareLevelData] = useState(initialCareLevelData);
+  const [careLevelData, setCareLevelData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ 
     isOpen: false, 
@@ -116,10 +30,60 @@ const CareLevelMaster = () => {
   const CARE_LEVEL_NAME_MAX_LENGTH = 100;
   const DESCRIPTION_MAX_LENGTH = 500;
 
+  // Function to format date as dd-MM-YYYY
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    
+    try {
+      const date = new Date(dateString);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return "N/A";
+      }
+      
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+      const year = date.getFullYear();
+      
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "N/A";
+    }
+  };
+
+  // Fetch care level data
+  const fetchCareLevelData = async (flag = 0) => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${MAS_CARE_LEVEL}/getAll/${flag}`);
+      if (response && response.response) {
+        const mappedData = response.response.map(item => ({
+          id: item.careId,
+          careLevelName: item.careLevelName,
+          description: item.description,
+          status: item.status,
+          lastUpdated: formatDate(item.lastUpdateDate)
+        }));
+        setCareLevelData(mappedData);
+      }
+    } catch (err) {
+      console.error("Error fetching care level data:", err);
+      showPopup("Failed to load care level data", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCareLevelData(0);
+  }, []);
+
   // Filter data based on search query
   const filteredCareLevelData = careLevelData.filter(careLevel =>
     careLevel.careLevelName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    careLevel.description.toLowerCase().includes(searchQuery.toLowerCase())
+    (careLevel.description && careLevel.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   // Calculate pagination values
@@ -139,6 +103,18 @@ const CareLevelMaster = () => {
     setPageInput(currentPage.toString());
   }, [currentPage]);
 
+  // Validate form whenever formData changes
+  useEffect(() => {
+    const validateForm = () => {
+      const { careLevelName, description } = formData;
+      return (
+        careLevelName.trim() !== "" &&
+        description.trim() !== ""
+      );
+    };
+    setIsFormValid(validateForm());
+  }, [formData]);
+
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
   };
@@ -147,9 +123,8 @@ const CareLevelMaster = () => {
     setEditingCareLevel(careLevel);
     setFormData({
       careLevelName: careLevel.careLevelName,
-      description: careLevel.description
+      description: careLevel.description || "",
     });
-    setIsFormValid(true);
     setShowForm(true);
   };
 
@@ -160,52 +135,41 @@ const CareLevelMaster = () => {
     try {
       setLoading(true);
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      // Check for duplicates
+      const isDuplicate = careLevelData.some(
+        (careLevel) =>
+          careLevel.careLevelName.toLowerCase() === formData.careLevelName.toLowerCase() &&
+          (!editingCareLevel || editingCareLevel.id !== careLevel.id)
+      );
+
+      if (isDuplicate) {
+        showPopup("Care Level with the same name already exists!", "error");
+        setLoading(false);
+        return;
+      }
+
       if (editingCareLevel) {
         // Update existing care level
-        const updatedData = careLevelData.map(item =>
-          item.id === editingCareLevel.id 
-            ? { 
-                ...item, 
-                careLevelName: formData.careLevelName,
-                description: formData.description,
-                lastUpdated: new Date().toLocaleString('en-IN', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false
-                }).replace(',', '')
-              }
-            : item
-        );
-        
-        setCareLevelData(updatedData);
-        showPopup("Care level updated successfully!", "success");
-      } else {
-        // Add new care level
-        const newCareLevel = {
-          id: careLevelData.length + 1,
+        const response = await putRequest(`${MAS_CARE_LEVEL}/update/${editingCareLevel.id}`, {
           careLevelName: formData.careLevelName,
           description: formData.description,
-          status: "y",
-          lastUpdated: new Date().toLocaleString('en-IN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
-          }).replace(',', '')
-        };
-        
-        setCareLevelData([...careLevelData, newCareLevel]);
-        showPopup("New care level added successfully!", "success");
+        });
+
+        if (response && response.status === 200) {
+          fetchCareLevelData();
+          showPopup("Care level updated successfully!", "success");
+        }
+      } else {
+        // Add new care level
+        const response = await postRequest(`${MAS_CARE_LEVEL}/create`, {
+          careLevelName: formData.careLevelName,
+          description: formData.description,
+        });
+
+        if (response && response.status === 200) {
+          fetchCareLevelData();
+          showPopup("New care level added successfully!", "success");
+        }
       }
       
       setEditingCareLevel(null);
@@ -213,7 +177,7 @@ const CareLevelMaster = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving care level data:", err);
-      showPopup(`Failed to save changes: ${err.message}`, "error");
+      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
     } finally {
       setLoading(false);
     }
@@ -238,32 +202,28 @@ const CareLevelMaster = () => {
       try {
         setLoading(true);
         
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const updatedData = careLevelData.map((careLevel) =>
-          careLevel.id === confirmDialog.careLevelId 
-            ? { 
-                ...careLevel, 
-                status: confirmDialog.newStatus,
-                lastUpdated: new Date().toLocaleString('en-IN', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false
-                }).replace(',', '')
-              } 
-            : careLevel
+        const response = await putRequest(
+          `${MAS_CARE_LEVEL}/update-status/${confirmDialog.careLevelId}?status=${confirmDialog.newStatus}`
         );
-        
-        setCareLevelData(updatedData);
-        showPopup(`Care level ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+
+        if (response && response.response) {
+          // Update local state with formatted date
+          setCareLevelData((prevData) =>
+            prevData.map((careLevel) =>
+              careLevel.id === confirmDialog.careLevelId 
+                ? { 
+                    ...careLevel, 
+                    status: confirmDialog.newStatus,
+                    lastUpdated: formatDate(new Date().toISOString())
+                  } 
+                : careLevel
+            )
+          );
+          showPopup(`Care level ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+        }
       } catch (err) {
         console.error("Error updating care level status:", err);
-        showPopup(`Failed to update status: ${err.message}`, "error");
+        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
       } finally {
         setLoading(false);
       }
@@ -274,20 +234,13 @@ const CareLevelMaster = () => {
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prevData) => ({ ...prevData, [id]: value }));
-    
-    // Validate form
-    if (id === "careLevelName") {
-      setIsFormValid(value.trim() !== "" && formData.description.trim() !== "");
-    } else if (id === "description") {
-      setIsFormValid(value.trim() !== "" && formData.careLevelName.trim() !== "");
-    }
   };
 
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
     setPageInput("1");
-    showPopup("Data refreshed!", "success");
+    fetchCareLevelData(); // Refresh from API
   };
 
   const handlePageNavigation = () => {
@@ -399,7 +352,6 @@ const CareLevelMaster = () => {
                         onClick={() => {
                           setEditingCareLevel(null);
                           setFormData({ careLevelName: "", description: "" });
-                          setIsFormValid(false);
                           setShowForm(true);
                         }}
                       >
@@ -443,7 +395,7 @@ const CareLevelMaster = () => {
                             <tr key={careLevel.id}>
                               <td>{careLevel.careLevelName}</td>
                               <td className="text-truncate" style={{ maxWidth: "300px" }} title={careLevel.description}>
-                                {careLevel.description}
+                                {careLevel.description || "N/A"}
                               </td>
                               <td>
                                 <div className="form-check form-switch">
@@ -585,14 +537,15 @@ const CareLevelMaster = () => {
                     <button 
                       type="submit" 
                       className="btn btn-primary me-2" 
-                      disabled={!isFormValid}
+                      disabled={!isFormValid || loading}
                     >
-                      {editingCareLevel ? 'Update' : 'Save'}
+                      {loading ? "Saving..." : (editingCareLevel ? 'Update' : 'Save')}
                     </button>
                     <button 
                       type="button" 
                       className="btn btn-danger" 
                       onClick={() => setShowForm(false)}
+                      disabled={loading}
                     >
                       Cancel
                     </button>
@@ -614,22 +567,24 @@ const CareLevelMaster = () => {
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)} aria-label="Close"></button>
+                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)} aria-label="Close" disabled={loading}></button>
                       </div>
                       <div className="modal-body">
                         <p>
                           Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
                           <strong> {careLevelData.find(careLevel => careLevel.id === confirmDialog.careLevelId)?.careLevelName}</strong>?
                         </p>
-                        <p className="text-muted">
+                        {/* <p className="text-muted">
                           {confirmDialog.newStatus === "y" 
                             ? "This will make the care level available for selection." 
                             : "This will hide the care level from selection."}
-                        </p>
+                        </p> */}
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>Cancel</button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Confirm</button>
+                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)} disabled={loading}>Cancel</button>
+                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)} disabled={loading}>
+                          {loading ? "Processing..." : "Confirm"}
+                        </button>
                       </div>
                     </div>
                   </div>

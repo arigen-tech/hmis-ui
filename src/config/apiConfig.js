@@ -194,3 +194,5 @@ export const WARD_ID=10;
 export const MAS_ROOM_CATEGORY=`${MASTERS}/mas-room-category`
 export const MAS_BED_STATUS = `${MASTERS}/mas-bed-status`;
 export const MAS_WARD_CATEGORY =`${MASTERS}/masWardCategory`;
+export const MAS_CARE_LEVEL = `${MASTERS}/mas-care-level`;
+export const MAS_BED_TYPE = `${MASTERS}/masBedType`;

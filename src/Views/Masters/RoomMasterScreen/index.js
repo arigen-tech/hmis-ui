@@ -524,7 +524,7 @@ const RoomMasterScreen = () => {
                     </select>
                   </div>
                   
-                  <div className="form-group col-md-4">
+                  <div className="form-group col-md-4 mt-3">
                     <label>Beds <span className="text-danger">*</span></label>
                     <input
                       type="number"
