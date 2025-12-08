@@ -90,7 +90,7 @@ const IndentCreation = () => {
   const fetchAllDrugs = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1/${hospitalId}/${departmentId}`);
+      const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1`);
       console.log("Drugs API Response:", response);
 
       if (response && response.response && Array.isArray(response.response)) {

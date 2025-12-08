@@ -1,34 +1,32 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
-import { MAS_WARD_CATEGORY } from "../../../config/apiConfig";
+import { MAS_BED_STATUS } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 
-const WardCategoryMaster = () => {
-  const [wardCategoryData, setWardCategoryData] = useState([]);
+const BedStatusMaster = () => {
+  const [bedStatusData, setBedStatusData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ 
     isOpen: false, 
-    categoryId: null, 
+    statusId: null, 
     newStatus: false 
   });
   
   const [formData, setFormData] = useState({
-    categoryName: "",
-    description: "",
+    statusName: "",
   });
   
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null);
+  const [editingStatus, setEditingStatus] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
   const [pageInput, setPageInput] = useState("1");
 
-  const CATEGORY_NAME_MAX_LENGTH = 100;
-  const DESCRIPTION_MAX_LENGTH = 500;
+  const STATUS_NAME_MAX_LENGTH = 50;
 
   // Function to format date as dd-MM-YYYY
   const formatDate = (dateString) => {
@@ -53,46 +51,42 @@ const WardCategoryMaster = () => {
     }
   };
 
-  // Fetch ward category data
-  const fetchWardCategoryData = async (flag = 0) => {
+  // Fetch bed status data
+  const fetchBedStatusData = async (flag = 0) => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_WARD_CATEGORY}/getAll/${flag}`);
+      const response = await getRequest(`${MAS_BED_STATUS}/getAll/${flag}`);
       if (response && response.response) {
         const mappedData = response.response.map(item => ({
-          id: item.categoryId,
-          categoryName: item.categoryName,
-          description: item.description,
+          id: item.bedStatusId,
+          statusName: item.bedStatusName,
           status: item.status,
-          lastUpdated: formatDate(item.lastUpdateDate),
-          createdBy: item.createdBy,
-          lastUpdatedBy: item.LastUpdatedBy
+          lastUpdated: formatDate(item.lastUpdateDate)
         }));
-        setWardCategoryData(mappedData);
+        setBedStatusData(mappedData);
       }
     } catch (err) {
-      console.error("Error fetching ward category data:", err);
-      showPopup("Failed to load ward category data", "error");
+      console.error("Error fetching bed status data:", err);
+      showPopup("Failed to load bed status data", "error");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchWardCategoryData(0);
+    fetchBedStatusData(0);
   }, []);
 
   // Filter data based on search query
-  const filteredWardCategoryData = wardCategoryData.filter(category =>
-    category.categoryName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (category.description && category.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredBedStatusData = bedStatusData.filter(status =>
+    status.statusName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Calculate pagination values
-  const totalPages = Math.ceil(filteredWardCategoryData.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredBedStatusData.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredWardCategoryData.slice(indexOfFirstItem, indexOfLastItem);
+  const currentItems = filteredBedStatusData.slice(indexOfFirstItem, indexOfLastItem);
 
   // Reset to page 1 when search changes
   useEffect(() => {
@@ -108,11 +102,7 @@ const WardCategoryMaster = () => {
   // Validate form whenever formData changes
   useEffect(() => {
     const validateForm = () => {
-      const { categoryName, description } = formData;
-      return (
-        categoryName.trim() !== "" &&
-        description.trim() !== ""
-      );
+      return formData.statusName.trim() !== "";
     };
     setIsFormValid(validateForm());
   }, [formData]);
@@ -121,11 +111,10 @@ const WardCategoryMaster = () => {
     setSearchQuery(e.target.value);
   };
 
-  const handleEdit = (category) => {
-    setEditingCategory(category);
+  const handleEdit = (status) => {
+    setEditingStatus(status);
     setFormData({
-      categoryName: category.categoryName,
-      description: category.description || "",
+      statusName: status.statusName,
     });
     setShowForm(true);
   };
@@ -138,47 +127,45 @@ const WardCategoryMaster = () => {
       setLoading(true);
       
       // Check for duplicates
-      const isDuplicate = wardCategoryData.some(
-        (category) =>
-          category.categoryName.toLowerCase() === formData.categoryName.toLowerCase() &&
-          (!editingCategory || editingCategory.id !== category.id)
+      const isDuplicate = bedStatusData.some(
+        (status) =>
+          status.statusName.toLowerCase() === formData.statusName.toLowerCase() &&
+          (!editingStatus || editingStatus.id !== status.id)
       );
 
       if (isDuplicate) {
-        showPopup("Ward Category with the same name already exists!", "error");
+        showPopup("Bed Status with the same name already exists!", "error");
         setLoading(false);
         return;
       }
 
-      if (editingCategory) {
-        // Update existing ward category
-        const response = await putRequest(`${MAS_WARD_CATEGORY}/update/${editingCategory.id}`, {
-          categoryName: formData.categoryName,
-          description: formData.description,
+      if (editingStatus) {
+        // Update existing status
+        const response = await putRequest(`${MAS_BED_STATUS}/update/${editingStatus.id}`, {
+          bedStatusName: formData.statusName,
         });
 
         if (response && response.status === 200) {
-          fetchWardCategoryData();
-          showPopup("Ward category updated successfully!", "success");
+          fetchBedStatusData();
+          showPopup("Bed status updated successfully!", "success");
         }
       } else {
-        // Add new ward category
-        const response = await postRequest(`${MAS_WARD_CATEGORY}/create`, {
-          categoryName: formData.categoryName,
-          description: formData.description,
+        // Add new status
+        const response = await postRequest(`${MAS_BED_STATUS}/create`, {
+          bedStatusName: formData.statusName,
         });
 
-        if (response && response.status === 201) {
-          fetchWardCategoryData();
-          showPopup("New ward category added successfully!", "success");
+        if (response && response.status === 200) {
+          fetchBedStatusData();
+          showPopup("New bed status added successfully!", "success");
         }
       }
       
-      setEditingCategory(null);
-      setFormData({ categoryName: "", description: "" });
+      setEditingStatus(null);
+      setFormData({ statusName: "" });
       setShowForm(false);
     } catch (err) {
-      console.error("Error saving ward category data:", err);
+      console.error("Error saving bed status data:", err);
       showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
     } finally {
       setLoading(false);
@@ -196,41 +183,41 @@ const WardCategoryMaster = () => {
   };
   
   const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, categoryId: id, newStatus });
+    setConfirmDialog({ isOpen: true, statusId: id, newStatus });
   };
 
   const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.categoryId !== null) {
+    if (confirmed && confirmDialog.statusId !== null) {
       try {
         setLoading(true);
         
         const response = await putRequest(
-          `${MAS_WARD_CATEGORY}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
+          `${MAS_BED_STATUS}/status/${confirmDialog.statusId}?status=${confirmDialog.newStatus}`
         );
 
         if (response && response.response) {
           // Update local state with formatted date
-          setWardCategoryData((prevData) =>
-            prevData.map((category) =>
-              category.id === confirmDialog.categoryId 
+          setBedStatusData((prevData) =>
+            prevData.map((status) =>
+              status.id === confirmDialog.statusId 
                 ? { 
-                    ...category, 
+                    ...status, 
                     status: confirmDialog.newStatus,
                     lastUpdated: formatDate(new Date().toISOString())
                   } 
-                : category
+                : status
             )
           );
-          showPopup(`Ward category ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+          showPopup(`Bed status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
         }
       } catch (err) {
-        console.error("Error updating ward category status:", err);
+        console.error("Error updating bed status:", err);
         showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
       } finally {
         setLoading(false);
       }
     }
-    setConfirmDialog({ isOpen: false, categoryId: null, newStatus: null });
+    setConfirmDialog({ isOpen: false, statusId: null, newStatus: null });
   };
 
   const handleInputChange = (e) => {
@@ -242,7 +229,7 @@ const WardCategoryMaster = () => {
     setSearchQuery("");
     setCurrentPage(1);
     setPageInput("1");
-    fetchWardCategoryData(); // Refresh from API
+    fetchBedStatusData(); // Refresh from API
   };
 
   const handlePageNavigation = () => {
@@ -327,14 +314,14 @@ const WardCategoryMaster = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title">Ward Category Master</h4>
+              <h4 className="card-title">Bed Status Master</h4>
               <div className="d-flex justify-content-between align-items-center">
                 <form className="d-inline-block searchform me-4" role="search">
                   <div className="input-group searchinput">
                     <input
                       type="search"
                       className="form-control"
-                      placeholder="Search ward category..."
+                      placeholder="Search bed status..."
                       aria-label="Search"
                       value={searchQuery}
                       onChange={handleSearchChange}
@@ -352,8 +339,8 @@ const WardCategoryMaster = () => {
                         type="button" 
                         className="btn btn-success me-2"
                         onClick={() => {
-                          setEditingCategory(null);
-                          setFormData({ categoryName: "", description: "" });
+                          setEditingStatus(null);
+                          setFormData({ statusName: "" });
                           setShowForm(true);
                         }}
                       >
@@ -384,8 +371,7 @@ const WardCategoryMaster = () => {
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
-                          <th>Ward Category Name</th>
-                          <th>Description</th>
+                          <th>Bed Status Name</th>
                           <th>Status</th>
                           <th>Last Updated</th>
                           <th>Edit</th>
@@ -393,35 +379,32 @@ const WardCategoryMaster = () => {
                       </thead>
                       <tbody>
                         {currentItems.length > 0 ? (
-                          currentItems.map((category) => (
-                            <tr key={category.id}>
-                              <td>{category.categoryName}</td>
-                              <td className="text-truncate" style={{ maxWidth: "300px" }} title={category.description}>
-                                {category.description || "N/A"}
-                              </td>
+                          currentItems.map((status) => (
+                            <tr key={status.id}>
+                              <td>{status.statusName}</td>
                               <td>
                                 <div className="form-check form-switch">
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={category.status === "y"}
-                                    onChange={() => handleSwitchChange(category.id, category.status === "y" ? "n" : "y")}
-                                    id={`switch-${category.id}`}
+                                    checked={status.status === "y"}
+                                    onChange={() => handleSwitchChange(status.id, status.status === "y" ? "n" : "y")}
+                                    id={`switch-${status.id}`}
                                   />
                                   <label
                                     className="form-check-label px-0"
-                                    htmlFor={`switch-${category.id}`}
+                                    htmlFor={`switch-${status.id}`}
                                   >
-                                    {category.status === "y" ? 'Active' : 'Inactive'}
+                                    {status.status === "y" ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
-                              <td>{category.lastUpdated}</td>
+                              <td>{status.lastUpdated}</td>
                               <td>
                                 <button
                                   className="btn btn-sm btn-success me-2"
-                                  onClick={() => handleEdit(category)}
-                                  disabled={category.status !== "y"}
+                                  onClick={() => handleEdit(status)}
+                                  disabled={status.status !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -430,18 +413,18 @@ const WardCategoryMaster = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="5" className="text-center">No ward category data found</td>
+                            <td colSpan="4" className="text-center">No bed status data found</td>
                           </tr>
                         )}
                       </tbody>
                     </table>
                   </div>
                   
-                  {filteredWardCategoryData.length > 0 && (
+                  {filteredBedStatusData.length > 0 && (
                     <nav className="d-flex justify-content-between align-items-center mt-3">
                       <div>
                         <span className="text-muted">
-                          Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredWardCategoryData.length)} of {filteredWardCategoryData.length} entries
+                          Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredBedStatusData.length)} of {filteredBedStatusData.length} entries
                         </span>
                       </div>
                       
@@ -502,46 +485,30 @@ const WardCategoryMaster = () => {
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="form-group col-md-6">
-                    <label>Ward Category Name <span className="text-danger">*</span></label>
+                    <label>Bed Status Name <span className="text-danger">*</span></label>
                     <input
                       type="text"
                       className="form-control mt-1"
-                      id="categoryName"
-                      name="categoryName"
-                      placeholder="Enter ward category name"
-                      value={formData.categoryName}
+                      id="statusName"
+                      name="statusName"
+                      placeholder="Enter bed status name (e.g., Available, Occupied)"
+                      value={formData.statusName}
                       onChange={handleInputChange}
-                      maxLength={CATEGORY_NAME_MAX_LENGTH}
+                      maxLength={STATUS_NAME_MAX_LENGTH}
                       required
                     />
                     <small className="text-muted">
-                      {formData.categoryName.length}/{CATEGORY_NAME_MAX_LENGTH} characters
+                      {formData.statusName.length}/{STATUS_NAME_MAX_LENGTH} characters
                     </small>
                   </div>
-                  <div className="form-group col-md-6">
-                    <label>Description <span className="text-danger">*</span></label>
-                    <textarea
-                      className="form-control mt-1"
-                      id="description"
-                      name="description"
-                      placeholder="Enter description"
-                      value={formData.description}
-                      onChange={handleInputChange}
-                      rows="3"
-                      maxLength={DESCRIPTION_MAX_LENGTH}
-                      required
-                    />
-                    <small className="text-muted">
-                      {formData.description.length}/{DESCRIPTION_MAX_LENGTH} characters
-                    </small>
-                  </div>
+                  
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
                     <button 
                       type="submit" 
                       className="btn btn-primary me-2" 
                       disabled={!isFormValid || loading}
                     >
-                      {loading ? "Saving..." : (editingCategory ? 'Update' : 'Save')}
+                      {loading ? "Saving..." : (editingStatus ? 'Update' : 'Save')}
                     </button>
                     <button 
                       type="button" 
@@ -574,12 +541,12 @@ const WardCategoryMaster = () => {
                       <div className="modal-body">
                         <p>
                           Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
-                          <strong> {wardCategoryData.find(category => category.id === confirmDialog.categoryId)?.categoryName}</strong>?
+                          <strong> {bedStatusData.find(status => status.id === confirmDialog.statusId)?.statusName}</strong> status?
                         </p>
                         {/* <p className="text-muted">
                           {confirmDialog.newStatus === "y" 
-                            ? "This will make the ward category available for selection." 
-                            : "This will hide the ward category from selection."}
+                            ? "This will make the bed status available for use." 
+                            : "This will hide the bed status from selection."}
                         </p> */}
                       </div>
                       <div className="modal-footer">
@@ -600,4 +567,4 @@ const WardCategoryMaster = () => {
   );
 };
 
-export default WardCategoryMaster;
+export default BedStatusMaster;

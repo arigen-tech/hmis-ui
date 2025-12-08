@@ -1,4 +1,3 @@
-import React from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import PageNotFound from '../Components/PageNotFound/PageNotFound';
 
@@ -100,6 +99,14 @@ const validRoutes = [
   "/WardCategoryMaster",
   "/WardManagementMaster",
   "/RoomCategoryMaster",
+  "/RoomMasterScreen",
+  "/BedManagement",
+  "/BedStatusMaster",
+  "/FamilyHistoryMaster",
+  "/ProcedureMaster",
+  "/ProcedureTypeMaster",
+  "/BedTypeMaster",
+  "/PatientAdmission",
 
   
 ];

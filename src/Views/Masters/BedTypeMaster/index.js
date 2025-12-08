@@ -1,98 +1,118 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
-import { MAS_WARD_CATEGORY } from "../../../config/apiConfig";
-import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 
-const WardCategoryMaster = () => {
-  const [wardCategoryData, setWardCategoryData] = useState([]);
+const BedTypeMaster = () => {
+  // Sample mock data
+  const initialBedTypeData = [
+    {
+      id: 1,
+      bedTypeName: "ICU Bed",
+      description: "Intensive Care Unit bed for critical patients",
+      status: "y",
+      lastUpdated: "2024-01-15 10:30:00"
+    },
+    {
+      id: 2,
+      bedTypeName: "General Ward Bed",
+      description: "Standard hospital bed for general patients",
+      status: "y",
+      lastUpdated: "2024-01-10 14:20:00"
+    },
+    {
+      id: 3,
+      bedTypeName: "Private Room Bed",
+      description: "Premium bed in private room with amenities",
+      status: "y",
+      lastUpdated: "2024-01-05 09:15:00"
+    },
+    {
+      id: 4,
+      bedTypeName: "Pediatric Bed",
+      description: "Special bed designed for children",
+      status: "y",
+      lastUpdated: "2024-01-20 16:45:00"
+    },
+    {
+      id: 5,
+      bedTypeName: "Maternity Bed",
+      description: "Bed for pregnant women and new mothers",
+      status: "y",
+      lastUpdated: "2024-01-18 11:10:00"
+    },
+    {
+      id: 6,
+      bedTypeName: "Isolation Bed",
+      description: "Bed for patients with contagious diseases",
+      status: "n",
+      lastUpdated: "2024-01-12 13:25:00"
+    },
+    {
+      id: 7,
+      bedTypeName: "Post-Operative Bed",
+      description: "Bed for patients recovering from surgery",
+      status: "y",
+      lastUpdated: "2024-01-08 15:40:00"
+    },
+    {
+      id: 8,
+      bedTypeName: "Emergency Bed",
+      description: "Bed reserved for emergency department patients",
+      status: "y",
+      lastUpdated: "2024-01-22 08:55:00"
+    },
+    {
+      id: 9,
+      bedTypeName: "VIP Bed",
+      description: "Luxury bed with premium facilities",
+      status: "y",
+      lastUpdated: "2024-01-16 12:30:00"
+    },
+    {
+      id: 10,
+      bedTypeName: "Recovery Bed",
+      description: "Bed for patients in recovery phase",
+      status: "n",
+      lastUpdated: "2024-01-14 10:05:00"
+    }
+  ];
+
+  const [bedTypeData, setBedTypeData] = useState(initialBedTypeData);
   const [loading, setLoading] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ 
     isOpen: false, 
-    categoryId: null, 
+    typeId: null, 
     newStatus: false 
   });
   
   const [formData, setFormData] = useState({
-    categoryName: "",
-    description: "",
+    bedTypeName: "",
+    description: ""
   });
   
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null);
+  const [editingType, setEditingType] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
   const [pageInput, setPageInput] = useState("1");
 
-  const CATEGORY_NAME_MAX_LENGTH = 100;
-  const DESCRIPTION_MAX_LENGTH = 500;
-
-  // Function to format date as dd-MM-YYYY
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    
-    try {
-      const date = new Date(dateString);
-      
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
-        return "N/A";
-      }
-      
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-      const year = date.getFullYear();
-      
-      return `${day}/${month}/${year}`;
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return "N/A";
-    }
-  };
-
-  // Fetch ward category data
-  const fetchWardCategoryData = async (flag = 0) => {
-    try {
-      setLoading(true);
-      const response = await getRequest(`${MAS_WARD_CATEGORY}/getAll/${flag}`);
-      if (response && response.response) {
-        const mappedData = response.response.map(item => ({
-          id: item.categoryId,
-          categoryName: item.categoryName,
-          description: item.description,
-          status: item.status,
-          lastUpdated: formatDate(item.lastUpdateDate),
-          createdBy: item.createdBy,
-          lastUpdatedBy: item.LastUpdatedBy
-        }));
-        setWardCategoryData(mappedData);
-      }
-    } catch (err) {
-      console.error("Error fetching ward category data:", err);
-      showPopup("Failed to load ward category data", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchWardCategoryData(0);
-  }, []);
+  const BED_TYPE_NAME_MAX_LENGTH = 50;
+  const DESCRIPTION_MAX_LENGTH = 200;
 
   // Filter data based on search query
-  const filteredWardCategoryData = wardCategoryData.filter(category =>
-    category.categoryName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (category.description && category.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredBedTypeData = bedTypeData.filter(type =>
+    type.bedTypeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    type.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Calculate pagination values
-  const totalPages = Math.ceil(filteredWardCategoryData.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredBedTypeData.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredWardCategoryData.slice(indexOfFirstItem, indexOfLastItem);
+  const currentItems = filteredBedTypeData.slice(indexOfFirstItem, indexOfLastItem);
 
   // Reset to page 1 when search changes
   useEffect(() => {
@@ -108,11 +128,7 @@ const WardCategoryMaster = () => {
   // Validate form whenever formData changes
   useEffect(() => {
     const validateForm = () => {
-      const { categoryName, description } = formData;
-      return (
-        categoryName.trim() !== "" &&
-        description.trim() !== ""
-      );
+      return formData.bedTypeName.trim() !== "" && formData.description.trim() !== "";
     };
     setIsFormValid(validateForm());
   }, [formData]);
@@ -121,11 +137,11 @@ const WardCategoryMaster = () => {
     setSearchQuery(e.target.value);
   };
 
-  const handleEdit = (category) => {
-    setEditingCategory(category);
+  const handleEdit = (type) => {
+    setEditingType(type);
     setFormData({
-      categoryName: category.categoryName,
-      description: category.description || "",
+      bedTypeName: type.bedTypeName,
+      description: type.description
     });
     setShowForm(true);
   };
@@ -137,49 +153,60 @@ const WardCategoryMaster = () => {
     try {
       setLoading(true);
       
-      // Check for duplicates
-      const isDuplicate = wardCategoryData.some(
-        (category) =>
-          category.categoryName.toLowerCase() === formData.categoryName.toLowerCase() &&
-          (!editingCategory || editingCategory.id !== category.id)
-      );
-
-      if (isDuplicate) {
-        showPopup("Ward Category with the same name already exists!", "error");
-        setLoading(false);
-        return;
-      }
-
-      if (editingCategory) {
-        // Update existing ward category
-        const response = await putRequest(`${MAS_WARD_CATEGORY}/update/${editingCategory.id}`, {
-          categoryName: formData.categoryName,
-          description: formData.description,
-        });
-
-        if (response && response.status === 200) {
-          fetchWardCategoryData();
-          showPopup("Ward category updated successfully!", "success");
-        }
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      if (editingType) {
+        // Update existing bed type
+        const updatedData = bedTypeData.map(item =>
+          item.id === editingType.id 
+            ? { 
+                ...item, 
+                bedTypeName: formData.bedTypeName,
+                description: formData.description,
+                lastUpdated: new Date().toLocaleString('en-IN', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: false
+                }).replace(',', '')
+              }
+            : item
+        );
+        
+        setBedTypeData(updatedData);
+        showPopup("Bed type updated successfully!", "success");
       } else {
-        // Add new ward category
-        const response = await postRequest(`${MAS_WARD_CATEGORY}/create`, {
-          categoryName: formData.categoryName,
+        // Add new bed type
+        const newType = {
+          id: bedTypeData.length + 1,
+          bedTypeName: formData.bedTypeName,
           description: formData.description,
-        });
-
-        if (response && response.status === 201) {
-          fetchWardCategoryData();
-          showPopup("New ward category added successfully!", "success");
-        }
+          status: "y",
+          lastUpdated: new Date().toLocaleString('en-IN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+          }).replace(',', '')
+        };
+        
+        setBedTypeData([...bedTypeData, newType]);
+        showPopup("New bed type added successfully!", "success");
       }
       
-      setEditingCategory(null);
-      setFormData({ categoryName: "", description: "" });
+      setEditingType(null);
+      setFormData({ bedTypeName: "", description: "" });
       setShowForm(false);
     } catch (err) {
-      console.error("Error saving ward category data:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      console.error("Error saving bed type data:", err);
+      showPopup(`Failed to save changes: ${err.message}`, "error");
     } finally {
       setLoading(false);
     }
@@ -196,41 +223,45 @@ const WardCategoryMaster = () => {
   };
   
   const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, categoryId: id, newStatus });
+    setConfirmDialog({ isOpen: true, typeId: id, newStatus });
   };
 
   const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.categoryId !== null) {
+    if (confirmed && confirmDialog.typeId !== null) {
       try {
         setLoading(true);
         
-        const response = await putRequest(
-          `${MAS_WARD_CATEGORY}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
+        // Simulate API call delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const updatedData = bedTypeData.map((type) =>
+          type.id === confirmDialog.typeId 
+            ? { 
+                ...type, 
+                status: confirmDialog.newStatus,
+                lastUpdated: new Date().toLocaleString('en-IN', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: false
+                }).replace(',', '')
+              } 
+            : type
         );
-
-        if (response && response.response) {
-          // Update local state with formatted date
-          setWardCategoryData((prevData) =>
-            prevData.map((category) =>
-              category.id === confirmDialog.categoryId 
-                ? { 
-                    ...category, 
-                    status: confirmDialog.newStatus,
-                    lastUpdated: formatDate(new Date().toISOString())
-                  } 
-                : category
-            )
-          );
-          showPopup(`Ward category ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
-        }
+        
+        setBedTypeData(updatedData);
+        showPopup(`Bed type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
       } catch (err) {
-        console.error("Error updating ward category status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        console.error("Error updating bed type status:", err);
+        showPopup(`Failed to update status: ${err.message}`, "error");
       } finally {
         setLoading(false);
       }
     }
-    setConfirmDialog({ isOpen: false, categoryId: null, newStatus: null });
+    setConfirmDialog({ isOpen: false, typeId: null, newStatus: null });
   };
 
   const handleInputChange = (e) => {
@@ -242,7 +273,7 @@ const WardCategoryMaster = () => {
     setSearchQuery("");
     setCurrentPage(1);
     setPageInput("1");
-    fetchWardCategoryData(); // Refresh from API
+    showPopup("Data refreshed!", "success");
   };
 
   const handlePageNavigation = () => {
@@ -327,14 +358,14 @@ const WardCategoryMaster = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title">Ward Category Master</h4>
+              <h4 className="card-title">Bed Type Master</h4>
               <div className="d-flex justify-content-between align-items-center">
                 <form className="d-inline-block searchform me-4" role="search">
                   <div className="input-group searchinput">
                     <input
                       type="search"
                       className="form-control"
-                      placeholder="Search ward category..."
+                      placeholder="Search bed type..."
                       aria-label="Search"
                       value={searchQuery}
                       onChange={handleSearchChange}
@@ -352,8 +383,8 @@ const WardCategoryMaster = () => {
                         type="button" 
                         className="btn btn-success me-2"
                         onClick={() => {
-                          setEditingCategory(null);
-                          setFormData({ categoryName: "", description: "" });
+                          setEditingType(null);
+                          setFormData({ bedTypeName: "", description: "" });
                           setShowForm(true);
                         }}
                       >
@@ -384,7 +415,7 @@ const WardCategoryMaster = () => {
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
-                          <th>Ward Category Name</th>
+                          <th>Bed Type Name</th>
                           <th>Description</th>
                           <th>Status</th>
                           <th>Last Updated</th>
@@ -393,35 +424,33 @@ const WardCategoryMaster = () => {
                       </thead>
                       <tbody>
                         {currentItems.length > 0 ? (
-                          currentItems.map((category) => (
-                            <tr key={category.id}>
-                              <td>{category.categoryName}</td>
-                              <td className="text-truncate" style={{ maxWidth: "300px" }} title={category.description}>
-                                {category.description || "N/A"}
-                              </td>
+                          currentItems.map((type) => (
+                            <tr key={type.id}>
+                              <td>{type.bedTypeName}</td>
+                              <td>{type.description}</td>
                               <td>
                                 <div className="form-check form-switch">
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={category.status === "y"}
-                                    onChange={() => handleSwitchChange(category.id, category.status === "y" ? "n" : "y")}
-                                    id={`switch-${category.id}`}
+                                    checked={type.status === "y"}
+                                    onChange={() => handleSwitchChange(type.id, type.status === "y" ? "n" : "y")}
+                                    id={`switch-${type.id}`}
                                   />
                                   <label
                                     className="form-check-label px-0"
-                                    htmlFor={`switch-${category.id}`}
+                                    htmlFor={`switch-${type.id}`}
                                   >
-                                    {category.status === "y" ? 'Active' : 'Inactive'}
+                                    {type.status === "y" ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
-                              <td>{category.lastUpdated}</td>
+                              <td>{type.lastUpdated}</td>
                               <td>
                                 <button
                                   className="btn btn-sm btn-success me-2"
-                                  onClick={() => handleEdit(category)}
-                                  disabled={category.status !== "y"}
+                                  onClick={() => handleEdit(type)}
+                                  disabled={type.status !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -430,18 +459,18 @@ const WardCategoryMaster = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="5" className="text-center">No ward category data found</td>
+                            <td colSpan="5" className="text-center">No bed type data found</td>
                           </tr>
                         )}
                       </tbody>
                     </table>
                   </div>
                   
-                  {filteredWardCategoryData.length > 0 && (
+                  {filteredBedTypeData.length > 0 && (
                     <nav className="d-flex justify-content-between align-items-center mt-3">
                       <div>
                         <span className="text-muted">
-                          Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredWardCategoryData.length)} of {filteredWardCategoryData.length} entries
+                          Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredBedTypeData.length)} of {filteredBedTypeData.length} entries
                         </span>
                       </div>
                       
@@ -502,52 +531,53 @@ const WardCategoryMaster = () => {
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="form-group col-md-6">
-                    <label>Ward Category Name <span className="text-danger">*</span></label>
+                    <label>Bed Type Name <span className="text-danger">*</span></label>
                     <input
                       type="text"
                       className="form-control mt-1"
-                      id="categoryName"
-                      name="categoryName"
-                      placeholder="Enter ward category name"
-                      value={formData.categoryName}
+                      id="bedTypeName"
+                      name="bedTypeName"
+                      placeholder="Enter bed type name (e.g., ICU Bed, General Ward)"
+                      value={formData.bedTypeName}
                       onChange={handleInputChange}
-                      maxLength={CATEGORY_NAME_MAX_LENGTH}
+                      maxLength={BED_TYPE_NAME_MAX_LENGTH}
                       required
                     />
                     <small className="text-muted">
-                      {formData.categoryName.length}/{CATEGORY_NAME_MAX_LENGTH} characters
+                      {formData.bedTypeName.length}/{BED_TYPE_NAME_MAX_LENGTH} characters
                     </small>
                   </div>
+                  
                   <div className="form-group col-md-6">
                     <label>Description <span className="text-danger">*</span></label>
                     <textarea
                       className="form-control mt-1"
                       id="description"
                       name="description"
-                      placeholder="Enter description"
+                      placeholder="Enter description for bed type"
                       value={formData.description}
                       onChange={handleInputChange}
-                      rows="3"
                       maxLength={DESCRIPTION_MAX_LENGTH}
+                      rows="2"
                       required
                     />
                     <small className="text-muted">
                       {formData.description.length}/{DESCRIPTION_MAX_LENGTH} characters
                     </small>
                   </div>
+                  
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
                     <button 
                       type="submit" 
                       className="btn btn-primary me-2" 
-                      disabled={!isFormValid || loading}
+                      disabled={!isFormValid}
                     >
-                      {loading ? "Saving..." : (editingCategory ? 'Update' : 'Save')}
+                      {editingType ? 'Update' : 'Save'}
                     </button>
                     <button 
                       type="button" 
                       className="btn btn-danger" 
                       onClick={() => setShowForm(false)}
-                      disabled={loading}
                     >
                       Cancel
                     </button>
@@ -569,24 +599,22 @@ const WardCategoryMaster = () => {
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)} aria-label="Close" disabled={loading}></button>
+                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)} aria-label="Close"></button>
                       </div>
                       <div className="modal-body">
                         <p>
                           Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
-                          <strong> {wardCategoryData.find(category => category.id === confirmDialog.categoryId)?.categoryName}</strong>?
+                          <strong> {bedTypeData.find(type => type.id === confirmDialog.typeId)?.bedTypeName}</strong> bed type?
                         </p>
-                        {/* <p className="text-muted">
+                        <p className="text-muted">
                           {confirmDialog.newStatus === "y" 
-                            ? "This will make the ward category available for selection." 
-                            : "This will hide the ward category from selection."}
-                        </p> */}
+                            ? "This will make the bed type available for use." 
+                            : "This will hide the bed type from selection."}
+                        </p>
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)} disabled={loading}>Cancel</button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)} disabled={loading}>
-                          {loading ? "Processing..." : "Confirm"}
-                        </button>
+                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>Cancel</button>
+                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Confirm</button>
                       </div>
                     </div>
                   </div>
@@ -600,4 +628,4 @@ const WardCategoryMaster = () => {
   );
 };
 
-export default WardCategoryMaster;
+export default BedTypeMaster;

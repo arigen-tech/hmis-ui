@@ -175,8 +175,6 @@ export const Store_Internal_Indent = `/storeInternalIndent`
 
 
 
-
-
 export const ITEM_CLASS = {
   TABLET: 1,
   CAPSULE: 2,
@@ -190,3 +188,9 @@ export const DRUG_TYPE = {
   SOLID: [ITEM_CLASS.TABLET, ITEM_CLASS.CAPSULE],
   LIQUID: [ITEM_CLASS.EARDROPS, ITEM_CLASS.LIQUID, ITEM_CLASS.EYEEARDROPS, ITEM_CLASS.SYRUP]
 };
+
+//For Department Master showing that ward category dropdown on the basis of Department Type as Ward
+export const WARD_ID=10;
+export const MAS_ROOM_CATEGORY=`${MASTERS}/mas-room-category`
+export const MAS_BED_STATUS = `${MASTERS}/mas-bed-status`;
+export const MAS_WARD_CATEGORY =`${MASTERS}/masWardCategory`;
