@@ -15,8 +15,10 @@ const GeneralMedicineWaitingList = () => {
   const [doctorData, setDoctorData] = useState([]);
   const [sessionData, setSessionData] = useState([]);
   const [masICDData, setMasICDData] = useState([]);
+  const [opdVitalsData, setOpdVitalsData] = useState([]);
   const [duplicateItems, setDuplicateItems] = useState([]);
   const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
+  const [vitalsAvlaible, setVitalsAvlaible] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
   const [selectedTreatmentTemplateIds, setSelectedTreatmentTemplateIds] = useState(new Set());
   const [opdTemplateData, setOpdTemplateData] = useState([]);
@@ -27,6 +29,14 @@ const GeneralMedicineWaitingList = () => {
   const [drugCodeOptions, setDrugCodeOptions] = useState([]);
   const [allFrequencies, setAllFrequencies] = useState([])
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [icdDropdown, setIcdDropdown] = useState([]);
+  const [page, setPage] = useState(0);
+  const [lastPage, setLastPage] = useState(false);
+  const [search, setSearch] = useState("");
+  const [openDropdown, setOpenDropdown] = useState(null);
+  // Ref to detect click outside
+  const dropdownRef = useRef(null);
+
   const isOnlyDefaultTreatmentRow = (items) => {
     return (
       items.length === 1 &&
@@ -56,11 +66,11 @@ const GeneralMedicineWaitingList = () => {
   const fetchAllFrequencies = async () => {
     try {
       const response = await getRequest(`${MAS_FREQUENCY}/getAll/1`)
-      // console.log("Frequency API Response:", response);
+      // //console.log("Frequency API Response:", response);
 
       if (response && response.response) {
         setAllFrequencies(response.response)
-        // console.log("Frequencies loaded:", response.response);
+        // //console.log("Frequencies loaded:", response.response);
       } else {
         console.warn("No frequencies found in response")
         setAllFrequencies([])
@@ -71,20 +81,93 @@ const GeneralMedicineWaitingList = () => {
     }
   }
 
-  const fetchMasICDData = async () => {
+  const fetchMasICDData = async (page, searchText = "") => {
     try {
-      const data = await getRequest(`${MASTERS}/masIcd/all?flag=0&page=0&size=100`);
+      const data = await getRequest(
+        `${MASTERS}/masIcd/all?flag=0&page=${page}&size=20&search=${encodeURIComponent(searchText)}`
+      );
 
       if (data.status === 200 && data.response?.content) {
-        setMasICDData(data.response.content);
-      } else {
-        setMasICDData([]);
+        return {
+          list: data.response.content,
+          last: data.response.last,
+        };
       }
 
+      return { list: [], last: true };
     } catch (error) {
-      console.error("Error fetching ICD data:", error);
+      console.error("Error fetching ICD:", error);
+      return { list: [], last: true };
     }
   };
+
+  // FIRST PAGE LOAD
+  const loadFirstPage = async (index) => {
+    const searchText = search[index] || "";
+    const result = await fetchMasICDData(0, searchText);
+
+    setIcdDropdown(result.list);
+    setLastPage(result.last);
+    setPage(0);
+  };
+
+  // LOAD MORE FOR INFINITE SCROLL
+  const loadMore = async () => {
+    if (lastPage) return;
+
+    const nextPage = page + 1;
+    const result = await fetchMasICDData(nextPage, search[openDropdown] || "");
+
+    setIcdDropdown((prev) => [...prev, ...result.list]);
+    setLastPage(result.last);
+    setPage(nextPage);
+  };
+
+  // UPDATE SELECTED ICD
+  const updateICD = (selectedICD, index) => {
+    if (!selectedICD) return;
+
+    const exists = diagnosisItems.some(
+      (item, idx) =>
+        String(item.icdDiagId) === String(selectedICD.icdId) && idx !== index
+    );
+
+    if (exists) {
+      setDuplicateItems([{ icdDiagnosis: selectedICD.icdName }]);
+      setShowDuplicatePopup(true);
+      return;
+    }
+
+    setDiagnosisItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        icdDiagId: selectedICD.icdId,
+        icdDiagnosis: selectedICD.icdName,
+      };
+      return updated;
+    });
+
+    // clear search after selecting
+    setSearch((prev) => {
+      const updated = [...prev];
+      updated[index] = "";
+      return updated;
+    });
+  };
+
+  // CLOSE DROPDOWN ON OUTSIDE CLICK
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+
 
   const fetchOpdTemplateData = async () => {
     try {
@@ -100,6 +183,8 @@ const GeneralMedicineWaitingList = () => {
       console.error("Error fetching Doctor data:", error);
     }
   };
+
+  console.log("opdTemplateData", opdTemplateData)
 
   const fetchDoctorData = async () => {
     setLoading(true);
@@ -279,11 +364,11 @@ const GeneralMedicineWaitingList = () => {
       days: "",
       total: "",
       instruction: "",
-      stock: "",
+      stock: "0",
       templateId: "",
     }
   ]);
-
+  console.log("treatmentItems", treatmentItems)
   const [nipItems, setNipItems] = useState([
     {
       nip: "",
@@ -507,7 +592,7 @@ const GeneralMedicineWaitingList = () => {
   }
 
   const filterInvestigationsByMainChargeCode = () => {
-    console.log("Filtering investigations by type:", investigationType)
+    //console.log("Filtering investigations by type:", investigationType)
 
     if (!investigationType || allInvestigations.length === 0) {
       setFilteredInvestigationsByType([])
@@ -515,11 +600,11 @@ const GeneralMedicineWaitingList = () => {
     }
 
     const selectedType = investigationTypes.find(type => type.value === investigationType)
-    console.log("Selected type for filtering:", selectedType)
+    //console.log("Selected type for filtering:", selectedType)
 
     if (selectedType) {
       const filtered = allInvestigations.filter(inv => inv.mainChargeCodeId === selectedType.id)
-      console.log(`Filtered ${filtered.length} investigations for type:`, selectedType.name)
+      //console.log(`Filtered ${filtered.length} investigations for type:`, selectedType.name)
       setFilteredInvestigationsByType(filtered)
     } else {
       setFilteredInvestigationsByType([])
@@ -802,25 +887,25 @@ const GeneralMedicineWaitingList = () => {
   // ADD THESE USEEFFECT HOOKS
 
   // DEBUGGING: Add this at the top of your component to see what's happening
-  console.log("Component render - investigationType:", investigationType, "investigationTypes:", investigationTypes)
+  //console.log("Component render - investigationType:", investigationType, "investigationTypes:", investigationTypes)
 
   useEffect(() => {
     if (showDetailView && selectedPatient) {
-      console.log("Fetching investigation data...")
+      //console.log("Fetching investigation data...")
       fetchInvestigationTemplates()
       fetchAllInvestigations()
     }
   }, [showDetailView, selectedPatient])
 
   useEffect(() => {
-    console.log("All investigations loaded:", allInvestigations.length)
+    //console.log("All investigations loaded:", allInvestigations.length)
     if (allInvestigations.length > 0) {
       extractInvestigationTypes(allInvestigations)
     }
   }, [allInvestigations])
 
   useEffect(() => {
-    console.log("Investigation types updated:", investigationTypes)
+    //console.log("Investigation types updated:", investigationTypes)
     if (investigationTypes.length > 0) {
       // FORCE SELECT LABORATORY
       const labType = investigationTypes.find(type =>
@@ -829,17 +914,17 @@ const GeneralMedicineWaitingList = () => {
       )
 
       if (labType && investigationType !== labType.value) {
-        console.log("Setting default to Laboratory:", labType)
+        //console.log("Setting default to Laboratory:", labType)
         setInvestigationType(labType.value)
       } else if (investigationTypes.length > 0 && !investigationType) {
-        console.log("Setting to first type:", investigationTypes[0])
+        //console.log("Setting to first type:", investigationTypes[0])
         setInvestigationType(investigationTypes[0].value)
       }
     }
   }, [investigationTypes])
 
   useEffect(() => {
-    console.log("Investigation type changed to:", investigationType)
+    //console.log("Investigation type changed to:", investigationType)
     filterInvestigationsByMainChargeCode()
   }, [investigationType])
 
@@ -852,67 +937,67 @@ const GeneralMedicineWaitingList = () => {
   }
 
   const userId =
-  localStorage.getItem("userId") ||
-  sessionStorage.getItem("userId");
-
-
-useEffect(() => {
-  if (userId) {
-    setSearchFilters((prev) => ({
-      ...prev,
-      doctorList: userId,       
-    }));
-  }
-}, [userId]);
-
-useEffect(() => {
-  if (searchFilters.doctorList) {
-    handleSearch();
-  }
-}, [searchFilters.doctorList]);
-
-
-
-const handleSearch = async () => {
-  const userId =
     localStorage.getItem("userId") ||
     sessionStorage.getItem("userId");
 
-  if (!userId) return;   
 
-   if (!searchFilters.doctorList) {
-    alert("Doctor is required");
-    return;  
-  }
-
-  setFormData((prev) => ({
-    ...prev,
-    doctorList: userId,
-  }));
-
-  const payload = {
-    doctorId: Number(searchFilters.doctorList) || Number(userId) || null,
-    sessionId: Number(searchFilters.session) || null,
-    mobileNo: searchFilters.mobileNo?.trim() || null,
-    patientName: searchFilters.patientName?.trim() || null,
-  };
-
-  try {
-    setLoading(true);
-
-    const data = await postRequest(`${OPD_PATIENT}/activeVisit/search`, payload);
-
-    if (data.status === 200 && Array.isArray(data.response)) {
-      setWaitingList(data.response);
-    } else {
-      setWaitingList([]);
+  useEffect(() => {
+    if (userId) {
+      setSearchFilters((prev) => ({
+        ...prev,
+        doctorList: userId,
+      }));
     }
-  } catch (error) {
-    console.error("Search API Error:", error);
-  } finally {
-    setLoading(false);
-  }
-};
+  }, [userId]);
+
+  useEffect(() => {
+    if (searchFilters.doctorList) {
+      handleSearch();
+    }
+  }, [searchFilters.doctorList]);
+
+
+
+  const handleSearch = async () => {
+    const userId =
+      localStorage.getItem("userId") ||
+      sessionStorage.getItem("userId");
+
+    if (!userId) return;
+
+    if (!searchFilters.doctorList) {
+      alert("Doctor is required");
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      doctorList: userId,
+    }));
+
+    const payload = {
+      doctorId: Number(searchFilters.doctorList) || Number(userId) || null,
+      sessionId: Number(searchFilters.session) || null,
+      mobileNo: searchFilters.mobileNo?.trim() || null,
+      patientName: searchFilters.patientName?.trim() || null,
+    };
+
+    try {
+      setLoading(true);
+
+      const data = await postRequest(`${OPD_PATIENT}/activeVisit/search`, payload);
+
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setWaitingList(data.response);
+      } else {
+        setWaitingList([]);
+      }
+    } catch (error) {
+      console.error("Search API Error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
 
@@ -933,13 +1018,36 @@ const handleSearch = async () => {
         `/patient/update-status?visitId=${visitId}&visitDate=${visitDate}&doctorId=${doctorId}`
       );
 
-      console.log("Status Updated:", response);
+      //console.log("Status Updated:", response);
       return response;
 
     } catch (error) {
       console.error("Error updating status:", error);
     }
   };
+
+
+const cheackVitalPresent = async (visitId) => {
+  try {
+    const data = await getRequest(`${OPD_PATIENT}/getOpdByVisit?visitId=${visitId}`);
+
+    if (data?.status === 200 && data?.response) {
+      setOpdVitalsData(data.response);
+      setVitalsAvlaible(true);
+      return;
+    }
+
+    setOpdVitalsData(null);
+    setVitalsAvlaible(false);
+
+  } catch (error) {
+    console.error("Error fetching vital data:", error);
+
+    setOpdVitalsData(null);
+    setVitalsAvlaible(false);
+  }
+};
+
 
 
 
@@ -951,12 +1059,14 @@ const handleSearch = async () => {
       patient.docterId
     );
 
+    cheackVitalPresent(patient.visitId);
+
     setSelectedPatient(patient);
     setShowDetailView(true);
   };
 
 
-  console.log("setSelectedPatient", selectedPatient)
+  //console.log("setSelectedPatient", selectedPatient)
 
   const handleBackToList = () => {
     // Hide detail page
@@ -1115,7 +1225,7 @@ const handleSearch = async () => {
         investigationDate: item.date
       }));
 
-      console.log("inv items", investigationItems)
+      //console.log("inv items", investigationItems)
 
       // Treatment mapping → backend format
       const treatmentList = treatmentItems.map(item => ({
@@ -1128,7 +1238,7 @@ const handleSearch = async () => {
       }));
 
 
-      console.log("treatmentItems", treatmentItems)
+      //console.log("treatmentItems", treatmentItems)
 
       const payload = {
         // ===== Vital =====
@@ -1165,6 +1275,7 @@ const handleSearch = async () => {
         treatment: treatmentList,
 
         // ===== Mapping IDs =====
+        opdPatientDetailId: vitalsAvlaible ? opdVitalsData.opdPatientDetailsId : null,
         patientId: selectedPatient.patientId,
         visitId: selectedPatient.visitId,
         departmentId: selectedPatient.deptId,
@@ -1176,7 +1287,7 @@ const handleSearch = async () => {
 
       if (response?.status === 200 || response?.success === true) {
         showPopup(
-          "Recall patient updated successfully!",
+          "Recall patient Create successfully!",
           "success",
 
         );
@@ -1189,7 +1300,7 @@ const handleSearch = async () => {
         alert("Updated but unexpected response received.");
       }
 
-      console.log("Final Payload =", payload);
+      //console.log("Final Payload =", payload);
 
     } catch (error) {
       console.error("Update Error:", error);
@@ -1376,59 +1487,67 @@ const handleSearch = async () => {
       ...treatmentItems,
       {
         drugName: "",
-        dispUnit: "Tab",
+        dispUnit: "",
         dosage: "",
-        frequency: "OD",
+        frequency: "",
         days: "",
         total: "",
         instruction: "",
-        stock: "",
+        stock: "0",
         treatmentId: "",
       },
     ])
   }
 
   const calculateTotal = (item) => {
-    if (!item.dosage || !item.days || !item.frequency || !item.itemClassName) {
+
+    if (!item.frequency || item.itemClassId == null) {
       return "";
     }
 
-    const dosage = parseFloat(item.dosage) || 0;
-    const days = parseFloat(item.days) || 0;
+    const dosage = Number(item.dosage);
+    const days = Number(item.days);
 
+    // 👉 If dosage or days is zero → return 0
+    if (dosage === 0 || days === 0) {
+      return "0";
+    }
+
+    // If empty OR invalid values
+    if (isNaN(dosage) || isNaN(days)) {
+      return "";
+    }
+
+    // Get frequency multiplier
     const selectedFrequency = allFrequencies.find(
-      f => f.frequencyId === Number(item.frequency)
+      f => Number(f.frequencyId) === Number(item.frequency)
     );
-    const frequencyMultiplier = selectedFrequency ? Number(selectedFrequency.feq) : 1;
 
-    // Convert string like "TABLET" into its class ID (1)
-    let itemClassId = item.itemClassName;
-
-    if (typeof itemClassId === "string") {
-      itemClassId = ITEM_CLASS[item.itemClassName] || null;
-    } else {
-      itemClassId = Number(itemClassId);
-    }
-
-    if (!itemClassId) {
-      return ""; // invalid class
-    }
+    const frequencyMultiplier = selectedFrequency
+      ? Number(selectedFrequency.feq)
+      : 1;
 
     let total = 0;
 
-    // SOLID ITEMS (TABLET / CAPSULE)
-    if (DRUG_TYPE.SOLID.includes(itemClassId)) {
+    // --------------------------
+    // SOLID ITEMS
+    // --------------------------
+    if (DRUG_TYPE.SOLID.includes(Number(item.itemClassId))) {
       total = Math.ceil(dosage * frequencyMultiplier * days);
     }
-    // LIQUID ITEMS (SYRUP, DROPS...)
-    else if (DRUG_TYPE.LIQUID.includes(itemClassId)) {
-      if (item.aDispQty && item.aDispQty > 0) {
-        total = Math.ceil((dosage * frequencyMultiplier * days) / item.aDispQty);
-      } else {
-        total = Math.ceil(dosage * frequencyMultiplier * days);
-      }
+
+    // --------------------------
+    // LIQUID ITEMS
+    // --------------------------
+    else if (DRUG_TYPE.LIQUID.includes(Number(item.itemClassId))) {
+      const qtyPerUnit = Number(item.aDispQty) || 1;
+
+      total = Math.ceil((dosage * frequencyMultiplier * days) / qtyPerUnit);
     }
-    // DEFAULT
+
+    // --------------------------
+    // OTHER TYPES (fallback)
+    // --------------------------
     else {
       total = 1;
     }
@@ -1436,34 +1555,32 @@ const handleSearch = async () => {
     return total.toString();
   };
 
+
+
+
   const handleRemoveTreatmentItem = (index) => {
     if (treatmentItems.length === 1) return
     const newItems = treatmentItems.filter((_, i) => i !== index)
     setTreatmentItems(newItems)
   }
 
+
   const handleTreatmentChange = (index, field, value) => {
     const updated = [...treatmentItems];
+    updated[index] = { ...updated[index], [field]: value };
 
-    updated[index] = {
-      ...updated[index],
-      [field]: value
-    };
+    // fields that should trigger recalculation
+    const recalcFields = ["dosage", "days", "frequency", "itemClassId", "aDispQty"];
 
-    const fieldsToRecalculate = [
-      "dosage",
-      "days",
-      "frequency",
-      "itemClassName",
-      "aDispQty"
-    ];
-
-    if (fieldsToRecalculate.includes(field)) {
+    if (recalcFields.includes(field)) {
       updated[index].total = calculateTotal(updated[index]);
     }
 
     setTreatmentItems(updated);
   };
+
+
+
 
   const handleNipSearchChange = (value) => {
     setNipSearchInput(value)
@@ -1630,6 +1747,11 @@ const handleSearch = async () => {
     ])
   }
 
+  const getDrugDetails = (itemId) => {
+    return drugCodeOptions.find(d => d.itemId === itemId);
+  };
+
+
   const handleTreatmentTemplateSelect = (templateId) => {
     if (!templateId || templateId === "Select..") return;
 
@@ -1672,19 +1794,35 @@ const handleSearch = async () => {
       }
 
       // ADD ONLY NEW ITEMS
-      const formattedNew = newItemsToAdd.map(t => ({
-        treatmentId: null,
-        drugId: t.itemId,
-        drugName: t.itemName,
-        dispUnit: t.dispU ?? "",
-        dosage: t.dosage ?? "",
-        frequency: t.frequencyId ?? "",
-        days: t.noOfDays ?? "",
-        total: t.total ?? "",
-        instruction: t.instruction ?? "",
-        stock: t.stocks ?? "",
-        templateId: String(templateId)    // IMPORTANT
-      }));
+      const formattedNew = newItemsToAdd.map(t => {
+
+        // 🟢 FETCH FULL DRUG DETAILS FROM DROPDOWN SOURCE
+        const drug = getDrugDetails(t.itemId);
+
+        const newItem = {
+          treatmentId: null,
+          drugId: t.itemId,
+          drugName: t.itemName,
+          dispUnit: drug?.dispUnitName ?? t.dispU ?? "",
+          dosage: t.dosage ?? "",
+          frequency: t.frequencyId ?? "",
+          days: t.noOfDays ?? "",
+          instruction: t.instruction ?? "",
+          stock: t.stocks ?? "",
+          templateId: String(templateId),
+
+          // 🟢 MOST IMPORTANT FIELDS (MISSING EARLIER)
+          itemClassId: drug?.itemClassId ?? null,
+          aDispQty: drug?.aDispQty ?? 1,
+        };
+
+        // 🟢 AUTO CALCULATE TOTAL
+        newItem.total = calculateTotal(newItem);
+
+        return newItem;
+      });
+
+
 
       if (isOnlyDefaultTreatmentRow(updatedList)) {
         return formattedNew;
@@ -2193,17 +2331,20 @@ const handleSearch = async () => {
                 </div>
 
                 {/* Diagnosis Section */}
-                <div className="card mb-3">
+                <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("diagnosis")}
                   >
                     <h6 className="mb-0 fw-bold">Diagnosis</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.diagnosis ? "−" : "+"}</span>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.diagnosis ? "−" : "+"}
+                    </span>
                   </div>
+
                   {expandedSections.diagnosis && (
-                    <div className="card-body">
+                    <div className="card-body" style={{ overflow: "visible" }}>
                       <div className="mb-3">
                         <label className="form-label fw-bold">Working Diagnosis</label>
                         <input
@@ -2217,7 +2358,7 @@ const handleSearch = async () => {
                         />
                       </div>
 
-                      <div className="table-responsive">
+                      <div className="table-responsive" style={{ overflow: "visible" }}>
                         <table className="table table-bordered">
                           <thead>
                             <tr>
@@ -2228,56 +2369,104 @@ const handleSearch = async () => {
                               <th className="col-md-1 text-center">Delete</th>
                             </tr>
                           </thead>
+
                           <tbody>
                             {diagnosisItems.map((item, index) => (
                               <tr key={index}>
                                 <td>
-                                  <select
-                                    className="form-control"
-                                    value={item.icdDiagId}
-                                    onChange={(e) => {
-                                      const icdId = String(e.target.value);
+                                  <div className="position-relative" style={{ width: "100%", zIndex: 20 }} ref={dropdownRef}>
 
-                                      const selectedICD = masICDData.find(
-                                        (i) => String(i.icdId) === icdId
-                                      );
+                                    {/* INPUT */}
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      placeholder="Search ICD..."
+                                      value={diagnosisItems[index].icdDiagnosis || search[index] || ""}
+                                      onChange={async (e) => {
+                                        const val = e.target.value;
 
-                                      if (!selectedICD) return;
+                                        setSearch((prev) => {
+                                          const updated = [...prev];
+                                          updated[index] = val;
+                                          return updated;
+                                        });
 
-                                      const alreadyExists = diagnosisItems.some(
-                                        (item, idx) => String(item.icdDiagId) === String(icdId) && idx !== index
-                                      );
+                                        const result = await fetchMasICDData(0, val);
+                                        setIcdDropdown(result.list);
+                                        setLastPage(result.last);
+                                        setPage(0);
+                                        setOpenDropdown(index);
+                                      }}
+                                      onClick={() => {
+                                        loadFirstPage();
+                                        setOpenDropdown(index);
+                                      }}
+                                      onBlur={() => {
+                                        setTimeout(() => {
+                                          const selectedIcd = diagnosisItems[index];
+                                          const searchText = search[index];
 
-                                      if (alreadyExists) {
-                                        setDuplicateItems([{ icdDiagnosis: selectedICD.icdName }]);
-                                        setShowDuplicatePopup(true);
-                                        return;
-                                      }
+                                          // If user typed but did NOT select → clear input
+                                          if (
+                                            (!selectedIcd.icdId || selectedIcd.icdDiagnosis !== searchText) &&
+                                            searchText !== ""
+                                          ) {
+                                            // Clear search text
+                                            setSearch((prev) => {
+                                              const updated = [...prev];
+                                              updated[index] = "";
+                                              return updated;
+                                            });
 
-                                      setDiagnosisItems((prev) => {
-                                        const updated = [...prev];
-                                        updated[index] = {
-                                          ...updated[index],
-                                          icdDiagId: Number(icdId),
-                                          icdDiagnosis: selectedICD.icdName,
-                                        };
-                                        return updated;
-                                      });
-                                    }}
+                                            // Clear diagnosis item fields
+                                            handleDiagnosisChange(index, "icdId", null);
+                                            handleDiagnosisChange(index, "icdDiagnosis", "");
+                                          }
 
-
-                                  >
-                                    <option value="">-- Select ICD --</option>
-
-                                    {masICDData.map((icd) => (
-                                      <option key={icd.icdId} value={icd.icdId}>
-                                        {icd.icdCode} - {icd.icdName}
-                                      </option>
-                                    ))}
-                                  </select>
+                                          setOpenDropdown(null);
+                                        }, 150);
+                                      }}
+                                    />
 
 
+                                    {/* DROPDOWN */}
+                                    {openDropdown === index && (
+                                      <div
+                                        className="border rounded mt-1 bg-white position-absolute w-100"
+                                        style={{ maxHeight: "220px", zIndex: 9999, overflowY: "auto" }}
+                                        onScroll={(e) => {
+                                          if (e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight) {
+                                            loadMore();
+                                          }
+                                        }}
+                                      >
+                                        {/* ICD OPTIONS */}
+                                        {icdDropdown.length > 0 ? (
+                                          icdDropdown.map((icd) => (
+                                            <div
+                                              key={icd.icdId}
+                                              className="p-2 cursor-pointer hover:bg-light"
+                                              onMouseDown={() => {
+                                                updateICD(icd, index);
+                                                setOpenDropdown(null);
+                                              }}
+                                            >
+                                              {icd.icdCode} - {icd.icdName}
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <div className="p-2 text-muted">No results found</div>
+                                        )}
+
+                                        {!lastPage && (
+                                          <div className="text-center p-2 text-primary small">Loading...</div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </td>
+
+
                                 <td className="text-center">
                                   <input
                                     type="checkbox"
@@ -2288,6 +2477,7 @@ const handleSearch = async () => {
                                     }
                                   />
                                 </td>
+
                                 <td className="text-center">
                                   <input
                                     type="checkbox"
@@ -2298,11 +2488,13 @@ const handleSearch = async () => {
                                     }
                                   />
                                 </td>
+
                                 <td className="text-center">
                                   <button className="btn btn-sm btn-success" onClick={handleAddDiagnosisItem}>
                                     +
                                   </button>
                                 </td>
+
                                 <td className="text-center">
                                   <button
                                     className="btn btn-sm btn-danger"
@@ -2320,6 +2512,7 @@ const handleSearch = async () => {
                     </div>
                   )}
                 </div>
+
 
                 {/* Investigation Section - UPDATED WITH MULTIPLE TEMPLATE SUPPORT */}
                 <div className="card mb-3">
@@ -2442,7 +2635,7 @@ const handleSearch = async () => {
                                       value={type.value}
                                       checked={investigationType === type.value}
                                       onChange={(e) => {
-                                        console.log("Radio button selected:", e.target.value)
+                                        //console.log("Radio button selected:", e.target.value)
                                         setInvestigationType(e.target.value)
                                       }}
                                     />
@@ -2791,7 +2984,6 @@ const handleSearch = async () => {
                                                 setShowDuplicatePopup(true);
                                                 return;
                                               }
-
                                               const updatedRows = treatmentItems.map((r, i) => {
                                                 if (i === index) {
                                                   const updatedItem = {
@@ -2799,8 +2991,8 @@ const handleSearch = async () => {
                                                     drugName: opt.nomenclature,
                                                     dispUnit: opt.dispUnitName,
                                                     drugId: opt.itemId,
-                                                    itemClassName: opt.itemClassName,
-                                                    aDispQty: opt.adispQty ?? 0
+                                                    itemClassId: opt.itemClassId,
+                                                    aDispQty: opt.aDispQty ?? 1,   // FIXED
                                                   };
 
                                                   updatedItem.total = calculateTotal(updatedItem);
@@ -2813,6 +3005,7 @@ const handleSearch = async () => {
                                               setActiveDrugNameDropdown(null);
                                               drugNameDropdownClickedRef.current = false;
                                             }}
+
 
 
                                           >
@@ -2850,15 +3043,16 @@ const handleSearch = async () => {
                                     onChange={(e) =>
                                       handleTreatmentChange(index, "dosage", e.target.value)
                                     }
+                                    min={0}
                                   />
                                 </td>
 
                                 <td style={{ width: "120px" }}>
                                   <select
                                     className="form-select"
-                                    value={row.frequency}
+                                    value={row.frequency || ""}
                                     onChange={(e) =>
-                                      handleTreatmentChange(index, "frequency", e.target.value)
+                                      handleTreatmentChange(index, "frequency", Number(e.target.value))
                                     }
                                   >
                                     <option value="">Select..</option>
@@ -2878,6 +3072,7 @@ const handleSearch = async () => {
                                     onChange={(e) =>
                                       handleTreatmentChange(index, "days", e.target.value)
                                     }
+                                    min={0}
                                   />
                                 </td>
 
@@ -2886,9 +3081,7 @@ const handleSearch = async () => {
                                     type="number"
                                     className="form-control"
                                     value={row.total}
-                                    onChange={(e) =>
-                                      handleTreatmentChange(index, "total", e.target.value)
-                                    }
+                                    readOnly
                                   />
                                 </td>
 
@@ -2908,7 +3101,7 @@ const handleSearch = async () => {
                                 </td>
 
                                 <td style={{ width: "100px" }}>
-                                  <input type="number" className="form-control" value={row.stock} readOnly />
+                                  <input type="number" className="form-control" value={row.stock || 0} readOnly />
                                 </td>
 
                                 <td style={{ width: "60px" }} className="text-center">
@@ -4081,7 +4274,7 @@ const handleSearch = async () => {
           onClose={handleCloseInvestigationModal}
           templateType={investigationModalType}
           onTemplateSaved={(template) => {
-            console.log("Template saved:", template)
+            //console.log("Template saved:", template)
             fetchInvestigationTemplates()
           }}
         />
@@ -4091,7 +4284,7 @@ const handleSearch = async () => {
           onClose={handleCloseTreatmentModal}
           templateType={treatmentModalType}
           onTemplateSaved={(template) => {
-            console.log("Treatment template saved:", template)
+            //console.log("Treatment template saved:", template)
           }}
         />
 
