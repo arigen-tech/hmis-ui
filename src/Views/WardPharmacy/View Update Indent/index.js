@@ -105,7 +105,7 @@ const IndentViewUpdate = () => {
   // Fetch all drugs for dropdown
   const fetchAllDrugs = async () => {
     try {
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1/${hospitalId}/${departmentId}`)
+      const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1`)
       console.log("Drugs API Response:", response)
 
       if (response && response.response && Array.isArray(response.response)) {
