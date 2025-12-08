@@ -107,6 +107,7 @@ const validRoutes = [
   "/ProcedureMaster",
   "/ProcedureTypeMaster",
   "/BedTypeMaster",
+  "/PatientAdmission",
 
   
 ];
