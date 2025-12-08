@@ -50,9 +50,6 @@ const PaymentPage = () => {
 
     return null;
   };
-  const getBillHeaderIds = () => {
-    return normalizedBillHeaderIds; // returns array
-  };
 
   // normalize incoming OPD IDs to use in payload
   const normalizedBillHeaderIds = Array.isArray(billingHeaderIds)
@@ -175,11 +172,20 @@ const PaymentPage = () => {
         operationType: "payment_update_only",
       };
 
+      let response;
       // Always call LAB API (Consultation also handled same way)
-      const response = await postRequest(
-        "/lab/updatepaymentstatus",
-        finalData
-      );
+      if (finalData.billingType === "Consultation Services") {
+         response = await postRequest(
+          "/patient/updatepaymentstatus",
+          finalData
+        );
+      } else {
+         response = await postRequest(
+          "/lab/updatepaymentstatus",
+          finalData
+        );
+      }
+
 
       console.log("=== PAYMENT RESPONSE ===", response);
 
@@ -232,7 +238,6 @@ const PaymentPage = () => {
   };
 
   const currentBillHeaderId = getBillHeaderId();
-  const currentBillHeaderIds = getBillHeaderIds();
   const investigationStatus = prepareInvestigationAndPackageStatus();
 
   return (
