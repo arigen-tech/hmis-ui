@@ -37,6 +37,19 @@ const GeneralMedicineWaitingList = () => {
   // Ref to detect click outside
   const dropdownRef = useRef(null);
 
+  // Add new state variables for Doctor's Remarks
+  const [doctorRemarksTemplates, setDoctorRemarksTemplates] = useState([
+    "Minimize the intake of fried and spicy food",
+    "Do exercise for at least 30-45 minutes every morning",
+    "Take nutritious food daily and drink 2-3 liters of water",
+    "Do not consume tobacco, alcohol and narcotics",
+    "Must take 7-8 hours of sleep daily"
+  ])
+
+  const [selectedDoctorRemarks, setSelectedDoctorRemarks] = useState([])
+  const [showDoctorRemarksModal, setShowDoctorRemarksModal] = useState(false)
+  const [doctorRemarksText, setDoctorRemarksText] = useState("")
+
   const isOnlyDefaultTreatmentRow = (items) => {
     return (
       items.length === 1 &&
@@ -276,6 +289,7 @@ const GeneralMedicineWaitingList = () => {
     doctorRemark: false,
     surgeryAdvice: false,
     additionalAdvice: false,
+    remarks: false,
   })
 
   const [expandedNipSubsections, setExpandedNipSubsections] = useState({
@@ -514,6 +528,20 @@ const GeneralMedicineWaitingList = () => {
 
   const handleCloseCurrentMedicationModal = () => {
     setShowCurrentMedicationModal(false)
+  }
+
+  // Doctor's Remarks handlers
+  const handleOpenDoctorRemarksModal = () => {
+    setShowDoctorRemarksModal(true)
+  }
+
+  const handleCloseDoctorRemarksModal = () => {
+    setShowDoctorRemarksModal(false)
+  }
+
+  const handleSaveDoctorRemarks = (selectedRemarks) => {
+    setSelectedDoctorRemarks(selectedRemarks)
+    setDoctorRemarksText(selectedRemarks.join("\n"))
   }
 
   const handleInputFocus = (event, index) => {
@@ -1089,7 +1117,13 @@ const GeneralMedicineWaitingList = () => {
       doctorRemark: false,
       surgeryAdvice: false,
       additionalAdvice: false,
+      remarks: false,
     });
+
+    // Reset Doctor's Remarks
+    setSelectedDoctorRemarks([])
+    setDoctorRemarksText("")
+    setShowDoctorRemarksModal(false)
 
     setSelectedHistoryType("");
 
@@ -1274,6 +1308,9 @@ const GeneralMedicineWaitingList = () => {
         // ===== Treatment =====
         treatment: treatmentList,
 
+        // ===== Doctor's Remarks =====
+        doctorRemarks: doctorRemarksText,
+
         // ===== Mapping IDs =====
         opdPatientDetailId: vitalsAvlaible ? opdVitalsData.opdPatientDetailsId : null,
         patientId: selectedPatient.patientId,
@@ -1348,6 +1385,10 @@ const GeneralMedicineWaitingList = () => {
     // Important resets
     setSelectedTreatmentTemplateIds(new Set());
     setSelectedTemplateIds(new Set());
+
+    // Reset Doctor's Remarks
+    setSelectedDoctorRemarks([])
+    setDoctorRemarksText("")
 
     setWorkingDiagnosis("");
     setInvestigationItems([]);
@@ -1947,6 +1988,98 @@ const GeneralMedicineWaitingList = () => {
       default: return "bg-secondary text-white";
     }
   };
+
+  // Doctor's Remarks Modal Component
+  const DoctorRemarksModal = ({ show, onClose, templates, onSave }) => {
+    const [selectedItems, setSelectedItems] = useState(new Set())
+
+    const handleCheckboxChange = (index) => {
+      setSelectedItems(prev => {
+        const newSet = new Set(prev)
+        if (newSet.has(index)) {
+          newSet.delete(index)
+        } else {
+          newSet.add(index)
+        }
+        return newSet
+      })
+    }
+
+    const handleSelectAll = () => {
+      if (selectedItems.size === templates.length) {
+        setSelectedItems(new Set())
+      } else {
+        setSelectedItems(new Set(templates.map((_, index) => index)))
+      }
+    }
+
+    const handleSave = () => {
+      const selectedTemplates = Array.from(selectedItems).map(index => templates[index])
+      onSave(selectedTemplates)
+      onClose()
+    }
+
+    if (!show) return null
+
+    return (
+      <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+        <div className="modal-dialog modal-lg">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">DOCTOR'S REMARKS TEMPLATE</h5>
+              <button
+                type="button"
+                className="btn-close"
+                onClick={onClose}
+              ></button>
+            </div>
+            <div className="modal-body">
+              <div className="table-responsive">
+                <table className="table table-bordered">
+                  <thead style={{ backgroundColor: "#b0c4de" }}>
+                    <tr>
+                      <th style={{ width: "5%" }}>
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          checked={selectedItems.size === templates.length}
+                          onChange={handleSelectAll}
+                        />
+                      </th>
+                      <th style={{ width: "95%" }}>Doctor Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {templates.map((remark, index) => (
+                      <tr key={index}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            checked={selectedItems.has(index)}
+                            onChange={() => handleCheckboxChange(index)}
+                          />
+                        </td>
+                        <td>{remark}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-primary" onClick={handleSave}>
+                OK
+              </button>
+              <button className="btn btn-secondary" onClick={onClose}>
+                CLOSE
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (showDetailView && selectedPatient) {
     return (
@@ -4285,8 +4418,8 @@ const GeneralMedicineWaitingList = () => {
 
                 </div>
 
+                {/* Doctor's Remarks Section */}
                 <div className="card mb-3">
-                  {/* HEADER */}
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
@@ -4301,7 +4434,28 @@ const GeneralMedicineWaitingList = () => {
                   {/* BODY */}
                   {expandedSections.remarks && (
                     <div className="card-body">
-                      {/* Your follow up form here */}
+                      <div className="row align-items-end">
+                        <div className="col-md-11">
+                          <label className="form-label fw-bold">Doctor's Remarks</label>
+                          <textarea
+                            className="form-control"
+                            rows={4}
+                            value={doctorRemarksText}
+                            onChange={(e) => setDoctorRemarksText(e.target.value)}
+                            placeholder="Doctor's remarks will be populated here"
+                          />
+                        </div>
+                        <div className="col-md-1 text-center">
+                          <button
+                            className="btn btn-primary"
+                            style={{ padding: "8px 12px" }}
+                            onClick={handleOpenDoctorRemarksModal}
+                            title="Select Doctor Remarks Template"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -4310,7 +4464,7 @@ const GeneralMedicineWaitingList = () => {
 
                 <div className="text-center mt-4">
                   <button className="btn btn-primary me-3" onClick={handleSubmit} disabled={isSubmitting} type="button">
-                    <i className="mdi mdi-content-save"></i> SUBMIT {isSubmitting ? (
+                    {isSubmitting ? (
                       <>
                         <i className="mdi mdi-loading mdi-spin"></i> PROCESSING...
                       </>
@@ -4352,6 +4506,14 @@ const GeneralMedicineWaitingList = () => {
           onTemplateSaved={(template) => {
             //console.log("Treatment template saved:", template)
           }}
+        />
+
+        {/* Doctor's Remarks Modal */}
+        <DoctorRemarksModal
+          show={showDoctorRemarksModal}
+          onClose={handleCloseDoctorRemarksModal}
+          templates={doctorRemarksTemplates}
+          onSave={handleSaveDoctorRemarks}
         />
 
         {/* OT Calendar Modal */}
