@@ -1027,26 +1027,26 @@ const GeneralMedicineWaitingList = () => {
   };
 
 
-const cheackVitalPresent = async (visitId) => {
-  try {
-    const data = await getRequest(`${OPD_PATIENT}/getOpdByVisit?visitId=${visitId}`);
+  const cheackVitalPresent = async (visitId) => {
+    try {
+      const data = await getRequest(`${OPD_PATIENT}/getOpdByVisit?visitId=${visitId}`);
 
-    if (data?.status === 200 && data?.response) {
-      setOpdVitalsData(data.response);
-      setVitalsAvlaible(true);
-      return;
+      if (data?.status === 200 && data?.response) {
+        setOpdVitalsData(data.response);
+        setVitalsAvlaible(true);
+        return;
+      }
+
+      setOpdVitalsData(null);
+      setVitalsAvlaible(false);
+
+    } catch (error) {
+      console.error("Error fetching vital data:", error);
+
+      setOpdVitalsData(null);
+      setVitalsAvlaible(false);
     }
-
-    setOpdVitalsData(null);
-    setVitalsAvlaible(false);
-
-  } catch (error) {
-    console.error("Error fetching vital data:", error);
-
-    setOpdVitalsData(null);
-    setVitalsAvlaible(false);
-  }
-};
+  };
 
 
 
@@ -3726,6 +3726,7 @@ const cheackVitalPresent = async (visitId) => {
                                           checked={item.selected}
                                           onChange={(e) => handleSurgeryChange(index, "selected", e.target.checked)}
                                         />
+
                                       </td>
                                       <td className="text-center">
                                         <button className="btn btn-sm btn-success" onClick={handleAddSurgeryItem}>
@@ -3871,8 +3872,6 @@ const cheackVitalPresent = async (visitId) => {
                   )}
                 </div>
 
-                {/* Referral Section - UPDATED BASED ON SCREENSHOTS */}
-                {/* Referral Section - UPDATED BASED ON SCREENSHOTS */}
                 <div className="card mb-3">
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
@@ -4222,25 +4221,92 @@ const cheackVitalPresent = async (visitId) => {
                     </div>
                   )}
                 </div>
-                {["followUp", "doctorRemark"].map((section) => (
-                  <div key={section} className="card mb-3">
-                    <div
-                      className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
-                      style={{ cursor: "pointer" }}
-                      onClick={() => toggleSection(section)}
-                    >
-                      <h6 className="mb-0 fw-bold">
-                        {section.charAt(0).toUpperCase() + section.slice(1).replace(/([A-Z])/g, " $1")}
-                      </h6>
-                      <span style={{ fontSize: "18px" }}>{expandedSections[section] ? "−" : "+"}</span>
-                    </div>
-                    {expandedSections[section] && (
-                      <div className="card-body">
-                        <p>Content for {section} section will be implemented here.</p>
-                      </div>
-                    )}
+
+
+                <div className="card mb-3">
+                  {/* HEADER */}
+                  <div
+                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("followUp")}
+                  >
+                    <h6 className="mb-0 fw-bold">Follow Up</h6>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.followUp ? "−" : "+"}
+                    </span>
                   </div>
-                ))}
+
+                  {/* BODY */}
+                  {expandedSections.followUp && (
+  <div className="card-body">
+    <div className="d-flex align-items-center justify-content-between">
+
+      {/* LEFT SIDE: Checkbox + Label */}
+      <div className="d-flex align-items-center gap-2">
+        <input
+          type="checkbox"
+          className="form-check-input m-0"
+        />
+        <h6 className="fw-bold mb-0">Follow Up</h6>
+      </div>
+
+      {/* RIGHT SIDE: Number of Days + Next Date */}
+      <div className="d-flex align-items-center gap-4">
+
+        {/* Number of Days */}
+        <div className="d-flex align-items-center gap-2">
+          <label className="form-label mb-0">Number of days</label>
+          <select className="form-select" style={{ width: "150px" }}>
+            <option value="">Select</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+        </div>
+
+        {/* Next Date */}
+        <div className="d-flex align-items-center gap-2">
+          <label className="form-label mb-0">Next date</label>
+          <input
+            type="date"
+            className="form-control"
+            style={{ width: "170px" }}
+          />
+        </div>
+
+      </div>
+    </div>
+  </div>
+)}
+
+
+
+                </div>
+
+                <div className="card mb-3">
+                  {/* HEADER */}
+                  <div
+                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("remarks")}
+                  >
+                    <h6 className="mb-0 fw-bold">Remarks</h6>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.remarks ? "−" : "+"}
+                    </span>
+                  </div>
+
+                  {/* BODY */}
+                  {expandedSections.remarks && (
+                    <div className="card-body">
+                      {/* Your follow up form here */}
+                    </div>
+                  )}
+                </div>
+
+
 
                 <div className="text-center mt-4">
                   <button className="btn btn-primary me-3" onClick={handleSubmit} disabled={isSubmitting} type="button">
