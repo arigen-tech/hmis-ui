@@ -115,14 +115,14 @@ const PendingForBilling = () => {
   const filteredTotalPages = Math.ceil(filteredPatientList.length / itemsPerPage)
   const currentItems = filteredPatientList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
-  const handlePendingClick = (patientData) => {
+  const  handlePendingClick = (patientData) => {
     const getNavigationRoute = (billingType) => {
       const type = billingType.toLowerCase()
 
       if (type.includes("laboratory") || type.includes("lab")) {
         return "/LabBillingDetails"
       }
-      if (type.includes("opd") || type.includes("consultation")) {
+      if (type.includes("opd") || type.includes("consultation services")) {
         return "/OPDBillingDetails"
       }
       if (type.includes("ipd")) {
@@ -144,15 +144,16 @@ const PendingForBilling = () => {
     // Pass the complete data structure
     navigate(route, {
       state: {
-        billingData: {
-          ...patientData.fullData,
-          // Add normalized fields for easier access
-          normalizedVisitType: patientData.visitType,
-          normalizedDoctor: patientData.consultedDoctor,
-          normalizedDepartment: patientData.department,
-          billingHeaderIds:
-            patientData.appointments?.map(a => a.billingHdId).filter(id => id) || []
-        },
+        billingData: patientData.fullData,
+        // billingData: {
+        //   ...patientData.fullData,
+        //   // Add normalized fields for easier access
+        //   normalizedVisitType: patientData.visitType,
+        //   normalizedDoctor: patientData.consultedDoctor,
+        //   normalizedDepartment: patientData.department,
+        //   billingHeaderIds:
+        //     patientData.appointments?.map(a => a.billingHdId).filter(id => id) || []
+        // },
       },
     })
   }
