@@ -497,9 +497,9 @@ const BedStatusMaster = () => {
                       maxLength={STATUS_NAME_MAX_LENGTH}
                       required
                     />
-                    <small className="text-muted">
+                    {/* <small className="text-muted">
                       {formData.statusName.length}/{STATUS_NAME_MAX_LENGTH} characters
-                    </small>
+                    </small> */}
                   </div>
                   
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">

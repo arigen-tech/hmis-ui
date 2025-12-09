@@ -27,8 +27,8 @@ const CareLevelMaster = () => {
   const [itemsPerPage] = useState(5);
   const [pageInput, setPageInput] = useState("1");
 
-  const CARE_LEVEL_NAME_MAX_LENGTH = 100;
-  const DESCRIPTION_MAX_LENGTH = 500;
+  const CARE_LEVEL_NAME_MAX_LENGTH = 50;
+  const DESCRIPTION_MAX_LENGTH = 200;
 
   // Function to format date as dd-MM-YYYY
   const formatDate = (dateString) => {
@@ -512,9 +512,9 @@ const CareLevelMaster = () => {
                       maxLength={CARE_LEVEL_NAME_MAX_LENGTH}
                       required
                     />
-                    <small className="text-muted">
+                    {/* <small className="text-muted">
                       {formData.careLevelName.length}/{CARE_LEVEL_NAME_MAX_LENGTH} characters
-                    </small>
+                    </small> */}
                   </div>
                   <div className="form-group col-md-6">
                     <label>Description <span className="text-danger">*</span></label>
@@ -529,9 +529,9 @@ const CareLevelMaster = () => {
                       maxLength={DESCRIPTION_MAX_LENGTH}
                       required
                     />
-                    <small className="text-muted">
+                    {/* <small className="text-muted">
                       {formData.description.length}/{DESCRIPTION_MAX_LENGTH} characters
-                    </small>
+                    </small> */}
                   </div>
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
                     <button 

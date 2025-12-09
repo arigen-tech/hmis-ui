@@ -1,166 +1,11 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import { MAS_BED, MAS_ROOM, MAS_BED_TYPE, MAS_BED_STATUS } from "../../../config/apiConfig";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 
 const BedManagement = () => {
-  // Sample mock data
-  const initialBedData = [
-    {
-      id: 1,
-      bedNo: "B-101",
-      room: "Room 101",
-      ward: "Ward A",
-      bedType: "Normal",
-      bedStatus: "Available",
-      status: "y",
-      lastUpdated: "2024-01-15 10:30:00"
-    },
-    {
-      id: 2,
-      bedNo: "B-102",
-      room: "Room 101",
-      ward: "Ward A",
-      bedType: "ICU",
-      bedStatus: "Occupied",
-      status: "y",
-      lastUpdated: "2024-01-10 14:20:00"
-    },
-    {
-      id: 3,
-      bedNo: "B-201",
-      room: "Room 201",
-      ward: "ICU - 1",
-      bedType: "ICU",
-      bedStatus: "Under Maintenance",
-      status: "y",
-      lastUpdated: "2024-01-05 09:15:00"
-    },
-    {
-      id: 4,
-      bedNo: "B-202",
-      room: "Room 202",
-      ward: "Cardiac Unit - 1",
-      bedType: "CCU",
-      bedStatus: "Available",
-      status: "y",
-      lastUpdated: "2024-01-20 16:45:00"
-    },
-    {
-      id: 5,
-      bedNo: "B-301",
-      room: "Room 301",
-      ward: "Children's Ward",
-      bedType: "Pediatric",
-      bedStatus: "Occupied",
-      status: "y",
-      lastUpdated: "2024-01-18 11:10:00"
-    },
-    {
-      id: 6,
-      bedNo: "B-302",
-      room: "Room 302",
-      ward: "Maternity - 1",
-      bedType: "Maternity",
-      bedStatus: "Available",
-      status: "n",
-      lastUpdated: "2024-01-12 13:25:00"
-    },
-    {
-      id: 7,
-      bedNo: "B-401",
-      room: "Room 401",
-      ward: "Ortho Ward - 1",
-      bedType: "Orthopedic",
-      bedStatus: "Occupied",
-      status: "y",
-      lastUpdated: "2024-01-08 15:40:00"
-    },
-    {
-      id: 8,
-      bedNo: "B-501",
-      room: "Room 501",
-      ward: "Neuro ICU",
-      bedType: "Neuro ICU",
-      bedStatus: "Available",
-      status: "y",
-      lastUpdated: "2024-01-22 08:55:00"
-    },
-    {
-      id: 9,
-      bedNo: "B-601",
-      room: "Room 601",
-      ward: "Oncology - 1",
-      bedType: "Oncology",
-      bedStatus: "Under Maintenance",
-      status: "y",
-      lastUpdated: "2024-01-16 12:30:00"
-    },
-    {
-      id: 10,
-      bedNo: "B-701",
-      room: "Room 701",
-      ward: "Psych Ward",
-      bedType: "Psychiatric",
-      bedStatus: "Available",
-      status: "n",
-      lastUpdated: "2024-01-14 10:05:00"
-    }
-  ];
-
-  // Sample ward data (could come from API or props)
-  const wardOptions = [
-    { value: "", label: "Select Ward" },
-    { value: "Ward A", label: "Ward A" },
-    { value: "Ward B - Private", label: "Ward B - Private" },
-    { value: "ICU - 1", label: "ICU - 1" },
-    { value: "Cardiac Unit - 1", label: "Cardiac Unit - 1" },
-    { value: "Children's Ward", label: "Children's Ward" },
-    { value: "Maternity - 1", label: "Maternity - 1" },
-    { value: "Ortho Ward - 1", label: "Ortho Ward - 1" },
-    { value: "Neuro ICU", label: "Neuro ICU" },
-    { value: "Oncology - 1", label: "Oncology - 1" },
-    { value: "Psych Ward", label: "Psych Ward" }
-  ];
-
-  const roomOptions = [
-    { value: "", label: "Select Room" },
-    { value: "Room 101", label: "Room 101" },
-    { value: "Room 102", label: "Room 102" },
-    { value: "Room 201", label: "Room 201" },
-    { value: "Room 202", label: "Room 202" },
-    { value: "Room 301", label: "Room 301" },
-    { value: "Room 302", label: "Room 302" },
-    { value: "Room 401", label: "Room 401" },
-    { value: "Room 501", label: "Room 501" },
-    { value: "Room 601", label: "Room 601" },
-    { value: "Room 701", label: "Room 701" }
-  ];
-
-  const bedTypeOptions = [
-    { value: "", label: "Select Bed Type" },
-    { value: "Normal", label: "Normal" },
-    { value: "ICU", label: "ICU" },
-    { value: "CCU", label: "CCU" },
-    { value: "Pediatric", label: "Pediatric" },
-    { value: "Maternity", label: "Maternity" },
-    { value: "Orthopedic", label: "Orthopedic" },
-    { value: "Neuro ICU", label: "Neuro ICU" },
-    { value: "Oncology", label: "Oncology" },
-    { value: "Psychiatric", label: "Psychiatric" },
-    { value: "VIP", label: "VIP" },
-    { value: "Isolation", label: "Isolation" }
-  ];
-
-  const bedStatusOptions = [
-    { value: "", label: "Select Bed Status" },
-    { value: "Available", label: "Available" },
-    { value: "Occupied", label: "Occupied" },
-    { value: "Under Maintenance", label: "Under Maintenance" },
-    { value: "Reserved", label: "Reserved" },
-    { value: "Cleaning", label: "Cleaning" }
-  ];
-
-  const [bedData, setBedData] = useState(initialBedData);
+  const [bedData, setBedData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ 
     isOpen: false, 
@@ -169,11 +14,10 @@ const BedManagement = () => {
   });
   
   const [formData, setFormData] = useState({
-    bedNo: "",
-    room: "",
-    ward: "",
-    bedType: "",
-    bedStatus: "",
+    bedNumber: "",
+    roomId: "",
+    bedTypeId: "",
+    bedStatusId: "",
   });
   
   const [searchQuery, setSearchQuery] = useState("");
@@ -185,15 +29,115 @@ const BedManagement = () => {
   const [itemsPerPage] = useState(5);
   const [pageInput, setPageInput] = useState("1");
 
+  // Dropdown options
+  const [roomOptions, setRoomOptions] = useState([]);
+  const [bedTypeOptions, setBedTypeOptions] = useState([]);
+  const [bedStatusOptions, setBedStatusOptions] = useState([]);
+
   const BED_NO_MAX_LENGTH = 20;
+
+  // Function to format date as dd-MM-YYYY
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    
+    try {
+      const date = new Date(dateString);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return "N/A";
+      }
+      
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+      const year = date.getFullYear();
+      
+      return `${day}-${month}-${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "N/A";
+    }
+  };
+
+  // Fetch dropdown data
+  const fetchDropdownData = async () => {
+    try {
+      // Fetch rooms
+      const roomResponse = await getRequest(`${MAS_ROOM}/all/1`);
+      if (roomResponse && roomResponse.response) {
+        setRoomOptions(roomResponse.response.map(room => ({
+          id: room.roomId,
+          name: room.roomName,
+          departmentName: room.wardName || "N/A"
+        })));
+      }
+
+      // Fetch bed types
+      const bedTypeResponse = await getRequest(`${MAS_BED_TYPE}/getAll/1`);
+      if (bedTypeResponse && bedTypeResponse.response) {
+        setBedTypeOptions(bedTypeResponse.response.map(type => ({
+          id: type.bedTypeId,
+          name: type.bedTypeName
+        })));
+      }
+
+      // Fetch bed statuses
+      const bedStatusResponse = await getRequest(`${MAS_BED_STATUS}/getAll/1`);
+      if (bedStatusResponse && bedStatusResponse.response) {
+        setBedStatusOptions(bedStatusResponse.response.map(status => ({
+          id: status.bedStatusId,
+          name: status.bedStatusName
+        })));
+      }
+    } catch (err) {
+      console.error("Error fetching dropdown data:", err);
+      showPopup("Failed to load dropdown data", "error");
+    }
+  };
+
+  // Fetch bed data
+  const fetchBedData = async (flag = 0) => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${MAS_BED}/getAll/${flag}`);
+      if (response && response.response) {
+        const mappedData = response.response.map(item => ({
+          id: item.bedId,
+          bedNumber: item.bedNumber,
+          room: item.roomName || "N/A",
+          roomId: item.roomId,
+          department: item.departmentName || "N/A",
+          departmentId: item.departmentId,
+          bedType: item.bedTypeName || "N/A",
+          bedTypeId: item.bedTypeId,
+          bedStatus: item.bedStatusName || "N/A",
+          bedStatusId: item.bedStatusId,
+          status: item.status,
+          lastUpdated: formatDate(item.lastUpdateDate)
+        }));
+        setBedData(mappedData);
+      }
+    } catch (err) {
+      console.error("Error fetching bed data:", err);
+      showPopup("Failed to load bed data", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial data load
+  useEffect(() => {
+    fetchBedData(0);
+    fetchDropdownData();
+  }, []);
 
   // Filter data based on search query
   const filteredBedData = bedData.filter(bed =>
-    bed.bedNo.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    bed.room.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    bed.ward.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    bed.bedType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    bed.bedStatus.toLowerCase().includes(searchQuery.toLowerCase())
+    bed.bedNumber?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    bed.room?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    bed.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    bed.bedType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    bed.bedStatus?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Calculate pagination values
@@ -216,13 +160,12 @@ const BedManagement = () => {
   // Validate form whenever formData changes
   useEffect(() => {
     const validateForm = () => {
-      const { bedNo, room, ward, bedType, bedStatus } = formData;
+      const { bedNumber, roomId, bedTypeId, bedStatusId } = formData;
       return (
-        bedNo.trim() !== "" &&
-        room.trim() !== "" &&
-        ward.trim() !== "" &&
-        bedType.trim() !== "" &&
-        bedStatus.trim() !== ""
+        bedNumber.trim() !== "" &&
+        roomId.trim() !== "" &&
+        bedTypeId.trim() !== "" &&
+        bedStatusId.trim() !== ""
       );
     };
     setIsFormValid(validateForm());
@@ -235,11 +178,10 @@ const BedManagement = () => {
   const handleEdit = (bed) => {
     setEditingBed(bed);
     setFormData({
-      bedNo: bed.bedNo,
-      room: bed.room,
-      ward: bed.ward,
-      bedType: bed.bedType,
-      bedStatus: bed.bedStatus,
+      bedNumber: bed.bedNumber || "",
+      roomId: bed.roomId?.toString() || "",
+      bedTypeId: bed.bedTypeId?.toString() || "",
+      bedStatusId: bed.bedStatusId?.toString() || "",
     });
     setShowForm(true);
   };
@@ -251,66 +193,51 @@ const BedManagement = () => {
     try {
       setLoading(true);
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      // Check for duplicates
+      const isDuplicate = bedData.some(
+        (bed) =>
+          bed.bedNumber === formData.bedNumber &&
+          (!editingBed || editingBed.id !== bed.id)
+      );
+
+      if (isDuplicate) {
+        showPopup("Bed number already exists!", "error");
+        setLoading(false);
+        return;
+      }
+
+      // Prepare request data
+      const requestData = {
+        bedNumber: formData.bedNumber,
+        roomId: parseInt(formData.roomId),
+        bedTypeId: parseInt(formData.bedTypeId),
+        bedStatusId: parseInt(formData.bedStatusId)
+      };
+
       if (editingBed) {
         // Update existing bed
-        const updatedData = bedData.map(item =>
-          item.id === editingBed.id 
-            ? { 
-                ...item, 
-                bedNo: formData.bedNo,
-                room: formData.room,
-                ward: formData.ward,
-                bedType: formData.bedType,
-                bedStatus: formData.bedStatus,
-                lastUpdated: new Date().toLocaleString('en-IN', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false
-                }).replace(',', '')
-              }
-            : item
-        );
+        const response = await putRequest(`${MAS_BED}/update/${editingBed.id}`, requestData);
         
-        setBedData(updatedData);
-        showPopup("Bed updated successfully!", "success");
+        if (response && response.status === 200) {
+          fetchBedData();
+          showPopup("Bed updated successfully!", "success");
+        }
       } else {
         // Add new bed
-        const newBed = {
-          id: bedData.length + 1,
-          bedNo: formData.bedNo,
-          room: formData.room,
-          ward: formData.ward,
-          bedType: formData.bedType,
-          bedStatus: formData.bedStatus,
-          status: "y",
-          lastUpdated: new Date().toLocaleString('en-IN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
-          }).replace(',', '')
-        };
+        const response = await postRequest(`${MAS_BED}/create`, requestData);
         
-        setBedData([...bedData, newBed]);
-        showPopup("New bed added successfully!", "success");
+        if (response && response.status === 200) {
+          fetchBedData();
+          showPopup("New bed added successfully!", "success");
+        }
       }
       
       setEditingBed(null);
-      setFormData({ bedNo: "", room: "", ward: "", bedType: "", bedStatus: "" });
+      setFormData({ bedNumber: "", roomId: "", bedTypeId: "", bedStatusId: "" });
       setShowForm(false);
     } catch (err) {
       console.error("Error saving bed data:", err);
-      showPopup(`Failed to save changes: ${err.message}`, "error");
+      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
     } finally {
       setLoading(false);
     }
@@ -335,32 +262,28 @@ const BedManagement = () => {
       try {
         setLoading(true);
         
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const updatedData = bedData.map((bed) =>
-          bed.id === confirmDialog.bedId 
-            ? { 
-                ...bed, 
-                status: confirmDialog.newStatus,
-                lastUpdated: new Date().toLocaleString('en-IN', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false
-                }).replace(',', '')
-              } 
-            : bed
+        const response = await putRequest(
+          `${MAS_BED}/status/${confirmDialog.bedId}?status=${confirmDialog.newStatus}`
         );
-        
-        setBedData(updatedData);
-        showPopup(`Bed ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+
+        if (response && response.response) {
+          // Update local state with formatted date
+          setBedData((prevData) =>
+            prevData.map((bed) =>
+              bed.id === confirmDialog.bedId 
+                ? { 
+                    ...bed, 
+                    status: confirmDialog.newStatus,
+                    lastUpdated: formatDate(new Date().toISOString())
+                  } 
+                : bed
+            )
+          );
+          showPopup(`Bed ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+        }
       } catch (err) {
         console.error("Error updating bed status:", err);
-        showPopup(`Failed to update status: ${err.message}`, "error");
+        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
       } finally {
         setLoading(false);
       }
@@ -382,7 +305,8 @@ const BedManagement = () => {
     setSearchQuery("");
     setCurrentPage(1);
     setPageInput("1");
-    showPopup("Data refreshed!", "success");
+    fetchBedData(); // Refresh from API
+    fetchDropdownData(); // Refresh dropdowns
   };
 
   const handlePageNavigation = () => {
@@ -461,6 +385,18 @@ const BedManagement = () => {
     });
   };
 
+  // Get badge class based on bed status
+  const getBedStatusBadgeClass = (status) => {
+    switch(status) {
+      case 'Available': return 'bg-success';
+      case 'Occupied': return 'bg-danger';
+      case 'Under Maintenance': return 'bg-warning';
+      case 'Cleaning': return 'bg-warning';
+      case 'Reserved': return 'bg-info';
+      default: return 'bg-secondary';
+    }
+  };
+
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -474,7 +410,7 @@ const BedManagement = () => {
                     <input
                       type="search"
                       className="form-control"
-                      placeholder="Search bed no, room, ward, bed type, or status..."
+                      placeholder="Search bed no, room, department, bed type, or status..."
                       aria-label="Search"
                       value={searchQuery}
                       onChange={handleSearchChange}
@@ -493,7 +429,7 @@ const BedManagement = () => {
                         className="btn btn-success me-2"
                         onClick={() => {
                           setEditingBed(null);
-                          setFormData({ bedNo: "", room: "", ward: "", bedType: "", bedStatus: "" });
+                          setFormData({ bedNumber: "", roomId: "", bedTypeId: "", bedStatusId: "" });
                           setShowForm(true);
                         }}
                       >
@@ -526,7 +462,7 @@ const BedManagement = () => {
                         <tr>
                           <th>Bed No</th>
                           <th>Room</th>
-                          <th>Ward</th>
+                          <th>Department</th>
                           <th>Bed Type</th>
                           <th>Bed Status</th>
                           <th>Status</th>
@@ -538,18 +474,12 @@ const BedManagement = () => {
                         {currentItems.length > 0 ? (
                           currentItems.map((bed) => (
                             <tr key={bed.id}>
-                              <td>{bed.bedNo}</td>
+                              <td>{bed.bedNumber || "N/A"}</td>
                               <td>{bed.room}</td>
-                              <td>{bed.ward}</td>
+                              <td>{bed.department}</td>
                               <td>{bed.bedType}</td>
                               <td>
-                                <span className={`badge ${
-                                  bed.bedStatus === 'Available' ? 'bg-success' :
-                                  bed.bedStatus === 'Occupied' ? 'bg-danger' :
-                                  bed.bedStatus === 'Under Maintenance' ? 'bg-warning' :
-                                  bed.bedStatus === 'Reserved' ? 'bg-info' :
-                                  'bg-secondary'
-                                }`}>
+                                <span className={`badge ${getBedStatusBadgeClass(bed.bedStatus)}`}>
                                   {bed.bedStatus}
                                 </span>
                               </td>
@@ -660,16 +590,17 @@ const BedManagement = () => {
                     <input
                       type="text"
                       className="form-control mt-1"
-                      id="bedNo"
-                      name="bedNo"
+                      id="bedNumber"
+                      name="bedNumber"
                       placeholder="Enter bed number (e.g., B-101)"
-                      value={formData.bedNo}
+                      value={formData.bedNumber}
                       onChange={handleInputChange}
                       maxLength={BED_NO_MAX_LENGTH}
                       required
+                      disabled={loading}
                     />
                     <small className="text-muted">
-                      {formData.bedNo.length}/{BED_NO_MAX_LENGTH} characters
+                      {formData.bedNumber.length}/{BED_NO_MAX_LENGTH} characters
                     </small>
                   </div>
                   
@@ -677,15 +608,17 @@ const BedManagement = () => {
                     <label>Room <span className="text-danger">*</span></label>
                     <select
                       className="form-select mt-1"
-                      id="room"
-                      name="room"
-                      value={formData.room}
+                      id="roomId"
+                      name="roomId"
+                      value={formData.roomId}
                       onChange={handleSelectChange}
                       required
+                      disabled={loading || roomOptions.length === 0}
                     >
-                      {roomOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
+                      <option value="">Select Room</option>
+                      {roomOptions.map((room) => (
+                        <option key={room.id} value={room.id}>
+                          {room.name} ({room.departmentName})
                         </option>
                       ))}
                     </select>
@@ -693,37 +626,20 @@ const BedManagement = () => {
                   </div>
                   
                   <div className="form-group col-md-4">
-                    <label>Ward <span className="text-danger">*</span></label>
-                    <select
-                      className="form-select mt-1"
-                      id="ward"
-                      name="ward"
-                      value={formData.ward}
-                      onChange={handleSelectChange}
-                      required
-                    >
-                      {wardOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <small className="text-muted">Select ward for this bed</small>
-                  </div>
-                  
-                  <div className="form-group col-md-4">
                     <label>Bed Type <span className="text-danger">*</span></label>
                     <select
                       className="form-select mt-1"
-                      id="bedType"
-                      name="bedType"
-                      value={formData.bedType}
+                      id="bedTypeId"
+                      name="bedTypeId"
+                      value={formData.bedTypeId}
                       onChange={handleSelectChange}
                       required
+                      disabled={loading || bedTypeOptions.length === 0}
                     >
-                      {bedTypeOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
+                      <option value="">Select Bed Type</option>
+                      {bedTypeOptions.map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.name}
                         </option>
                       ))}
                     </select>
@@ -734,15 +650,17 @@ const BedManagement = () => {
                     <label>Bed Status <span className="text-danger">*</span></label>
                     <select
                       className="form-select mt-1"
-                      id="bedStatus"
-                      name="bedStatus"
-                      value={formData.bedStatus}
+                      id="bedStatusId"
+                      name="bedStatusId"
+                      value={formData.bedStatusId}
                       onChange={handleSelectChange}
                       required
+                      disabled={loading || bedStatusOptions.length === 0}
                     >
-                      {bedStatusOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
+                      <option value="">Select Bed Status</option>
+                      {bedStatusOptions.map((status) => (
+                        <option key={status.id} value={status.id}>
+                          {status.name}
                         </option>
                       ))}
                     </select>
@@ -753,14 +671,15 @@ const BedManagement = () => {
                     <button 
                       type="submit" 
                       className="btn btn-primary me-2" 
-                      disabled={!isFormValid}
+                      disabled={!isFormValid || loading}
                     >
-                      {editingBed ? 'Update' : 'Save'}
+                      {loading ? "Saving..." : (editingBed ? 'Update' : 'Save')}
                     </button>
                     <button 
                       type="button" 
                       className="btn btn-danger" 
                       onClick={() => setShowForm(false)}
+                      disabled={loading}
                     >
                       Cancel
                     </button>
@@ -782,12 +701,18 @@ const BedManagement = () => {
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)} aria-label="Close"></button>
+                        <button 
+                          type="button" 
+                          className="btn-close" 
+                          onClick={() => handleConfirm(false)} 
+                          aria-label="Close"
+                          disabled={loading}
+                        ></button>
                       </div>
                       <div className="modal-body">
                         <p>
                           Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
-                          <strong> {bedData.find(bed => bed.id === confirmDialog.bedId)?.bedNo}</strong> bed?
+                          <strong> {bedData.find(bed => bed.id === confirmDialog.bedId)?.bedNumber}</strong> bed?
                         </p>
                         <p className="text-muted">
                           {confirmDialog.newStatus === "y" 
@@ -796,8 +721,22 @@ const BedManagement = () => {
                         </p>
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>Cancel</button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Confirm</button>
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary" 
+                          onClick={() => handleConfirm(false)}
+                          disabled={loading}
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn btn-primary" 
+                          onClick={() => handleConfirm(true)}
+                          disabled={loading}
+                        >
+                          {loading ? "Processing..." : "Confirm"}
+                        </button>
                       </div>
                     </div>
                   </div>

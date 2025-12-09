@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
-import { MAS_WARD_CATEGORY } from "../../../config/apiConfig";
+import { MAS_WARD_CATEGORY, MAS_CARE_LEVEL } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 
 const WardCategoryMaster = () => {
@@ -16,6 +16,7 @@ const WardCategoryMaster = () => {
   const [formData, setFormData] = useState({
     categoryName: "",
     description: "",
+    careId: "",
   });
   
   const [searchQuery, setSearchQuery] = useState("");
@@ -27,8 +28,11 @@ const WardCategoryMaster = () => {
   const [itemsPerPage] = useState(5);
   const [pageInput, setPageInput] = useState("1");
 
-  const CATEGORY_NAME_MAX_LENGTH = 100;
-  const DESCRIPTION_MAX_LENGTH = 500;
+  // Dropdown options
+  const [careLevelOptions, setCareLevelOptions] = useState([]);
+
+  const CATEGORY_NAME_MAX_LENGTH = 50;
+  const DESCRIPTION_MAX_LENGTH = 200;
 
   // Function to format date as dd-MM-YYYY
   const formatDate = (dateString) => {
@@ -53,6 +57,23 @@ const WardCategoryMaster = () => {
     }
   };
 
+  // Fetch care level dropdown data
+  const fetchCareLevelData = async () => {
+    try {
+      const response = await getRequest(`${MAS_CARE_LEVEL}/getAll/1`);
+      if (response && response.response) {
+        const mappedData = response.response.map(item => ({
+          id: item.careId,
+          name: item.careLevelName
+        }));
+        setCareLevelOptions(mappedData);
+      }
+    } catch (err) {
+      console.error("Error fetching care level data:", err);
+      showPopup("Failed to load care level data", "error");
+    }
+  };
+
   // Fetch ward category data
   const fetchWardCategoryData = async (flag = 0) => {
     try {
@@ -63,6 +84,8 @@ const WardCategoryMaster = () => {
           id: item.categoryId,
           categoryName: item.categoryName,
           description: item.description,
+          careLevel: item.careLevelName || "",
+          careId: item.careId,
           status: item.status,
           lastUpdated: formatDate(item.lastUpdateDate),
           createdBy: item.createdBy,
@@ -80,12 +103,14 @@ const WardCategoryMaster = () => {
 
   useEffect(() => {
     fetchWardCategoryData(0);
+    fetchCareLevelData();
   }, []);
 
   // Filter data based on search query
   const filteredWardCategoryData = wardCategoryData.filter(category =>
     category.categoryName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (category.description && category.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    (category.description && category.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (category.careLevel && category.careLevel.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   // Calculate pagination values
@@ -108,10 +133,11 @@ const WardCategoryMaster = () => {
   // Validate form whenever formData changes
   useEffect(() => {
     const validateForm = () => {
-      const { categoryName, description } = formData;
+      const { categoryName, description, careId } = formData;
       return (
         categoryName.trim() !== "" &&
-        description.trim() !== ""
+        description.trim() !== "" &&
+        careId.trim() !== ""
       );
     };
     setIsFormValid(validateForm());
@@ -126,6 +152,7 @@ const WardCategoryMaster = () => {
     setFormData({
       categoryName: category.categoryName,
       description: category.description || "",
+      careId: category.careId?.toString() || "",
     });
     setShowForm(true);
   };
@@ -155,6 +182,7 @@ const WardCategoryMaster = () => {
         const response = await putRequest(`${MAS_WARD_CATEGORY}/update/${editingCategory.id}`, {
           categoryName: formData.categoryName,
           description: formData.description,
+          careId: parseInt(formData.careId),
         });
 
         if (response && response.status === 200) {
@@ -166,16 +194,17 @@ const WardCategoryMaster = () => {
         const response = await postRequest(`${MAS_WARD_CATEGORY}/create`, {
           categoryName: formData.categoryName,
           description: formData.description,
+          careId: parseInt(formData.careId),
         });
 
-        if (response && response.status === 201) {
+        if (response && response.status === 200) {
           fetchWardCategoryData();
           showPopup("New ward category added successfully!", "success");
         }
       }
       
       setEditingCategory(null);
-      setFormData({ categoryName: "", description: "" });
+      setFormData({ categoryName: "", description: "", careId: "" });
       setShowForm(false);
     } catch (err) {
       console.error("Error saving ward category data:", err);
@@ -234,6 +263,11 @@ const WardCategoryMaster = () => {
   };
 
   const handleInputChange = (e) => {
+    const { id, value } = e.target;
+    setFormData((prevData) => ({ ...prevData, [id]: value }));
+  };
+
+  const handleSelectChange = (e) => {
     const { id, value } = e.target;
     setFormData((prevData) => ({ ...prevData, [id]: value }));
   };
@@ -353,7 +387,7 @@ const WardCategoryMaster = () => {
                         className="btn btn-success me-2"
                         onClick={() => {
                           setEditingCategory(null);
-                          setFormData({ categoryName: "", description: "" });
+                          setFormData({ categoryName: "", description: "", careId: "" });
                           setShowForm(true);
                         }}
                       >
@@ -386,6 +420,7 @@ const WardCategoryMaster = () => {
                         <tr>
                           <th>Ward Category Name</th>
                           <th>Description</th>
+                          <th>Care Level Type</th>
                           <th>Status</th>
                           <th>Last Updated</th>
                           <th>Edit</th>
@@ -399,6 +434,7 @@ const WardCategoryMaster = () => {
                               <td className="text-truncate" style={{ maxWidth: "300px" }} title={category.description}>
                                 {category.description || "N/A"}
                               </td>
+                              <td>{category.careLevel}</td>
                               <td>
                                 <div className="form-check form-switch">
                                   <input
@@ -430,7 +466,7 @@ const WardCategoryMaster = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="5" className="text-center">No ward category data found</td>
+                            <td colSpan="6" className="text-center">No ward category data found</td>
                           </tr>
                         )}
                       </tbody>
@@ -501,7 +537,7 @@ const WardCategoryMaster = () => {
                 </>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
-                  <div className="form-group col-md-6">
+                  <div className="form-group col-md-4">
                     <label>Ward Category Name <span className="text-danger">*</span></label>
                     <input
                       type="text"
@@ -514,11 +550,31 @@ const WardCategoryMaster = () => {
                       maxLength={CATEGORY_NAME_MAX_LENGTH}
                       required
                     />
-                    <small className="text-muted">
+                    {/* <small className="text-muted">
                       {formData.categoryName.length}/{CATEGORY_NAME_MAX_LENGTH} characters
-                    </small>
+                    </small> */}
                   </div>
-                  <div className="form-group col-md-6">
+                  <div className="form-group col-md-4">
+                    <label>Care Level Type <span className="text-danger">*</span></label>
+                    <select
+                      className="form-select mt-1"
+                      id="careId"
+                      name="careId"
+                      value={formData.careId}
+                      onChange={handleSelectChange}
+                      required
+                      disabled={loading || careLevelOptions.length === 0}
+                    >
+                      <option value="">Select Care Level</option>
+                      {careLevelOptions.map((careLevel) => (
+                        <option key={careLevel.id} value={careLevel.id}>
+                          {careLevel.name}
+                        </option>
+                      ))}
+                    </select>
+                    {/* <small className="text-muted">Select care level type</small> */}
+                  </div>
+                  <div className="form-group col-md-8 mt-3">
                     <label>Description <span className="text-danger">*</span></label>
                     <textarea
                       className="form-control mt-1"
@@ -531,10 +587,11 @@ const WardCategoryMaster = () => {
                       maxLength={DESCRIPTION_MAX_LENGTH}
                       required
                     />
-                    <small className="text-muted">
+                    {/* <small className="text-muted">
                       {formData.description.length}/{DESCRIPTION_MAX_LENGTH} characters
-                    </small>
+                    </small> */}
                   </div>
+                  
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
                     <button 
                       type="submit" 
@@ -576,11 +633,6 @@ const WardCategoryMaster = () => {
                           Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
                           <strong> {wardCategoryData.find(category => category.id === confirmDialog.categoryId)?.categoryName}</strong>?
                         </p>
-                        {/* <p className="text-muted">
-                          {confirmDialog.newStatus === "y" 
-                            ? "This will make the ward category available for selection." 
-                            : "This will hide the ward category from selection."}
-                        </p> */}
                       </div>
                       <div className="modal-footer">
                         <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)} disabled={loading}>Cancel</button>

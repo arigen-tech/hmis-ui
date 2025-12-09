@@ -23,7 +23,7 @@ const RoomCategoryMaster = () => {
     });
     const [loading, setLoading] = useState(true);
 
-    const CATEGORY_NAME_MAX_LENGTH = 40;
+    const CATEGORY_NAME_MAX_LENGTH = 50;
 
     
     useEffect(() => {
