@@ -50,6 +50,67 @@ const GeneralMedicineWaitingList = () => {
   const [showDoctorRemarksModal, setShowDoctorRemarksModal] = useState(false)
   const [doctorRemarksText, setDoctorRemarksText] = useState("")
 
+  // Add state variables for Admission
+  const [admissionDate, setAdmissionDate] = useState("")
+  const [admissionRemarks, setAdmissionRemarks] = useState("")
+  const [wardCategory, setWardCategory] = useState("")
+  const [admissionCareLevel, setAdmissionCareLevel] = useState("")
+  const [wardName, setWardName] = useState("")
+  const [admissionPriority, setAdmissionPriority] = useState("Normal")
+  const [admissionAdvised, setAdmissionAdvised] = useState(false)
+  const [occupiedBeds, setOccupiedBeds] = useState(0)
+  const [vacantBeds, setVacantBeds] = useState(0)
+
+  // Add state for ward categories and departments
+  const [wardCategories, setWardCategories] = useState([])
+  const [careLevels, setCareLevels] = useState([])
+  const [wardDepartments, setWardDepartments] = useState([])
+  const [admissionPriorities, setAdmissionPriorities] = useState([
+    "Normal", "Urgent", "Critical"
+  ])
+
+  // Ward data with occupied/vacant beds
+  const wardData = {
+    1: { // General Ward
+      departments: [
+        { id: 1, name: "General Ward - Floor 1", occupied: 5, vacant: 15 },
+        { id: 2, name: "General Ward - Floor 2", occupied: 3, vacant: 17 },
+        { id: 3, name: "General Ward - Floor 3", occupied: 8, vacant: 12 }
+      ],
+      defaultCareLevel: "Low"
+    },
+    2: { // Private Ward
+      departments: [
+        { id: 4, name: "Private Room - 101", occupied: 0, vacant: 1 },
+        { id: 5, name: "Private Room - 102", occupied: 1, vacant: 0 },
+        { id: 6, name: "Private Room - 103", occupied: 0, vacant: 1 }
+      ],
+      defaultCareLevel: "Medium"
+    },
+    3: { // ICU
+      departments: [
+        { id: 7, name: "ICU - Unit A", occupied: 4, vacant: 2 },
+        { id: 8, name: "ICU - Unit B", occupied: 5, vacant: 1 },
+        { id: 9, name: "ICU - Unit C", occupied: 3, vacant: 3 }
+      ],
+      defaultCareLevel: "Critical"
+    },
+    4: { // Semi-Private
+      departments: [
+        { id: 10, name: "Semi-Private - Room 201", occupied: 1, vacant: 1 },
+        { id: 11, name: "Semi-Private - Room 202", occupied: 0, vacant: 2 }
+      ],
+      defaultCareLevel: "Medium"
+    },
+    5: { // Special Ward
+      departments: [
+        { id: 12, name: "Special Ward - Cardiac", occupied: 6, vacant: 4 },
+        { id: 13, name: "Special Ward - Neuro", occupied: 7, vacant: 3 }
+      ],
+      defaultCareLevel: "High"
+    }
+  }
+
   const isOnlyDefaultTreatmentRow = (items) => {
     return (
       items.length === 1 &&
@@ -61,6 +122,76 @@ const GeneralMedicineWaitingList = () => {
       !items[0].days
     );
   };
+
+  // Add function to fetch ward categories
+  const fetchWardCategories = async () => {
+    try {
+      // This would be your API call to fetch ward categories
+      // For now, using static data
+      setWardCategories([
+        { id: 1, name: "General" },
+        { id: 2, name: "Private" },
+        { id: 3, name: "ICU" },
+        { id: 4, name: "Semi-Private" },
+        { id: 5, name: "Special" }
+      ])
+    } catch (error) {
+      console.error("Error fetching ward categories:", error)
+    }
+  }
+
+  // Add function to fetch care levels
+  const fetchCareLevels = async () => {
+    try {
+      // This would be your API call to fetch care levels
+      // For now, using static data
+      setCareLevels([
+        { id: 1, name: "Low" },
+        { id: 2, name: "Medium" },
+        { id: 3, name: "High" },
+        { id: 4, name: "Critical" }
+      ])
+    } catch (error) {
+      console.error("Error fetching care levels:", error)
+    }
+  }
+
+  // Handle ward category selection
+  const handleWardCategoryChange = (categoryId) => {
+    setWardCategory(categoryId)
+    
+    // Reset ward name and bed counts
+    setWardName("")
+    setOccupiedBeds(0)
+    setVacantBeds(0)
+    
+    // Set default care level based on ward category
+    if (wardData[categoryId]) {
+      const defaultCareLevel = wardData[categoryId].defaultCareLevel
+      const careLevel = careLevels.find(cl => cl.name === defaultCareLevel)
+      if (careLevel) {
+        setAdmissionCareLevel(careLevel.id)
+      }
+      
+      // Populate ward departments
+      setWardDepartments(wardData[categoryId].departments || [])
+    } else {
+      setWardDepartments([])
+    }
+  }
+
+  // Handle ward name/department selection
+  const handleWardNameChange = (deptId) => {
+    setWardName(deptId)
+    
+    if (wardCategory && wardData[wardCategory]) {
+      const selectedDept = wardData[wardCategory].departments.find(d => d.id === deptId)
+      if (selectedDept) {
+        setOccupiedBeds(selectedDept.occupied)
+        setVacantBeds(selectedDept.vacant)
+      }
+    }
+  }
 
   const fatchDrugCodeOptions = async () => {
     try {
@@ -243,6 +374,8 @@ const GeneralMedicineWaitingList = () => {
     fetchOpdTemplateData();
     fatchDrugCodeOptions();
     fetchAllFrequencies();
+    fetchWardCategories();
+    fetchCareLevels();
   }, []);
 
   const [searchFilters, setSearchFilters] = useState({
@@ -441,10 +574,10 @@ const GeneralMedicineWaitingList = () => {
   const [isSurgeryDropdownVisible, setIsSurgeryDropdownVisible] = useState(false)
   const [selectedSurgeryIndex, setSelectedSurgeryIndex] = useState(null)
   const [additionalAdvice, setAdditionalAdvice] = useState("")
-  const [admissionAdvised, setAdmissionAdvised] = useState(false)
-  const [admissionDate, setAdmissionDate] = useState("")
-  const [selectedWard, setSelectedWard] = useState("CHILDREN WARD")
-  const [admissionNotes, setAdmissionNotes] = useState("")
+  // Removed duplicate admissionAdvised state
+  // Removed duplicate admissionDate state
+  // Removed duplicate selectedWard state
+  // Removed duplicate admissionNotes state
 
   // Referral state - UPDATED
   const [referralData, setReferralData] = useState({
@@ -470,14 +603,6 @@ const GeneralMedicineWaitingList = () => {
   ])
 
   const [referralNotes, setReferralNotes] = useState("")
-
-  const wardData = {
-    "CHILDREN WARD": { occupied: 0, vacant: 20 },
-    "GENERAL WARD": { occupied: 5, vacant: 15 },
-    "ICU WARD": { occupied: 8, vacant: 2 },
-    "MATERNITY WARD": { occupied: 3, vacant: 7 },
-    "SURGICAL WARD": { occupied: 10, vacant: 10 },
-  }
 
   const surgeryOptions = [
     { id: 1, name: "Appendectomy", code: "APD" },
@@ -1125,6 +1250,17 @@ const GeneralMedicineWaitingList = () => {
     setDoctorRemarksText("")
     setShowDoctorRemarksModal(false)
 
+    // Reset Admission fields
+    setAdmissionAdvised(false)
+    setAdmissionDate("")
+    setAdmissionRemarks("")
+    setWardCategory("")
+    setAdmissionCareLevel("")
+    setWardName("")
+    setAdmissionPriority("Normal")
+    setOccupiedBeds(0)
+    setVacantBeds(0)
+
     setSelectedHistoryType("");
 
     // Reset template selections
@@ -1311,6 +1447,15 @@ const GeneralMedicineWaitingList = () => {
         // ===== Doctor's Remarks =====
         doctorRemarks: doctorRemarksText,
 
+        // ===== Admission Details =====
+        admissionAdvised: admissionAdvised,
+        admissionDate: admissionDate,
+        admissionRemarks: admissionRemarks,
+        wardCategory: wardCategory,
+        admissionCareLevel: admissionCareLevel,
+        wardName: wardName,
+        admissionPriority: admissionPriority,
+
         // ===== Mapping IDs =====
         opdPatientDetailId: vitalsAvlaible ? opdVitalsData.opdPatientDetailsId : null,
         patientId: selectedPatient.patientId,
@@ -1389,6 +1534,17 @@ const GeneralMedicineWaitingList = () => {
     // Reset Doctor's Remarks
     setSelectedDoctorRemarks([])
     setDoctorRemarksText("")
+
+    // Reset Admission fields
+    setAdmissionAdvised(false)
+    setAdmissionDate("")
+    setAdmissionRemarks("")
+    setWardCategory("")
+    setAdmissionCareLevel("")
+    setWardName("")
+    setAdmissionPriority("Normal")
+    setOccupiedBeds(0)
+    setVacantBeds(0)
 
     setWorkingDiagnosis("");
     setInvestigationItems([]);
@@ -3884,118 +4040,155 @@ const GeneralMedicineWaitingList = () => {
                         )}
                       </div>
 
-                      {/* Additional Advice Subsection */}
+                      {/* Admission Subsection */}
                       <div className="card mb-3">
                         <div
                           className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
                           style={{ cursor: "pointer" }}
                           onClick={() => toggleNipSubsection("additionalAdvice")}
                         >
-                          <h6 className="mb-0">Additional Advice</h6>
+                          <h6 className="mb-0">Admission Advice</h6>
                           <span style={{ fontSize: "16px" }}>
                             {expandedNipSubsections.additionalAdvice ? "−" : "+"}
                           </span>
                         </div>
                         {expandedNipSubsections.additionalAdvice && (
                           <div className="card-body">
-                            {admissionAdvised && (
-                              <div className="row mb-4 pb-4 border-bottom">
-                                <div className="col-12">
-                                  <div className="row g-3">
-                                    <div className="col-md-2 d-flex align-items-center">
-                                      <div className="form-check">
-                                        <input
-                                          className="form-check-input"
-                                          type="checkbox"
-                                          id="admissionAdvised"
-                                          checked={admissionAdvised}
-                                          onChange={(e) => setAdmissionAdvised(e.target.checked)}
-                                        />
-                                        <label className="form-check-label fw-bold" htmlFor="admissionAdvised">
-                                          Admission Advised
-                                        </label>
-                                      </div>
-                                    </div>
-                                    <div className="col-md-2">
-                                      <label className="form-label fw-bold">Admission Date</label>
+                            <div className="row">
+                              <div className="col-md-12">
+                                <div className="row mb-3">
+                                  <div className="col-md-3">
+                                    <div className="form-check d-flex align-items-center h-100">
                                       <input
-                                        type="date"
-                                        className="form-control"
-                                        value={admissionDate}
-                                        onChange={(e) => setAdmissionDate(e.target.value)}
+                                        className="form-check-input me-2"
+                                        type="checkbox"
+                                        id="admissionAdvised"
+                                        checked={admissionAdvised}
+                                        onChange={(e) => setAdmissionAdvised(e.target.checked)}
                                       />
-                                    </div>
-                                    <div className="col-md-2">
-                                      <label className="form-label fw-bold">Ward</label>
-                                      <select
-                                        className="form-select border-black"
-                                        value={selectedWard}
-                                        onChange={(e) => setSelectedWard(e.target.value)}
-                                      >
-                                        <option value="CHILDREN WARD">CHILDREN WARD</option>
-                                        <option value="GENERAL WARD">GENERAL WARD</option>
-                                        <option value="ICU WARD">ICU WARD</option>
-                                        <option value="MATERNITY WARD">MATERNITY WARD</option>
-                                        <option value="SURGICAL WARD">SURGICAL WARD</option>
-                                      </select>
-                                    </div>
-                                    <div className="col-md-1">
-                                      <label className="form-label fw-bold">Occupied Bed</label>
-                                      <input
-                                        type="text"
-                                        className="form-control"
-                                        value={wardData[selectedWard]?.occupied || 0}
-                                        readOnly
-                                      />
-                                    </div>
-                                    <div className="col-md-1">
-                                      <label className="form-label fw-bold">Vacant Bed</label>
-                                      <input
-                                        type="text"
-                                        className="form-control"
-                                        value={wardData[selectedWard]?.vacant || 0}
-                                        readOnly
-                                      />
-                                    </div>
-                                    <div className="col-md-4">
-                                      <label className="form-label fw-bold">Admission Notes</label>
-                                      <textarea
-                                        className="form-control"
-                                        rows={2}
-                                        value={admissionNotes}
-                                        onChange={(e) => setAdmissionNotes(e.target.value)}
-                                        placeholder="Enter admission notes"
-                                      ></textarea>
+                                      <label className="form-check-label fw-bold" htmlFor="admissionAdvised">
+                                        Admission Advised
+                                      </label>
                                     </div>
                                   </div>
+                                  <div className="col-md-9">
+                                    <label className="form-label fw-bold">Admission Advice</label>
+                                    <textarea
+                                      className="form-control"
+                                      rows={3}
+                                      value={additionalAdvice}
+                                      onChange={(e) => setAdditionalAdvice(e.target.value)}
+                                      placeholder="Enter admission advice"
+                                    ></textarea>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
 
-                            <div className="row">
-                              <div className="col-md-9">
-                                <label className="form-label fw-bold">Additional Advice</label>
-                                <textarea
-                                  className="form-control"
-                                  rows={4}
-                                  value={additionalAdvice}
-                                  onChange={(e) => setAdditionalAdvice(e.target.value)}
-                                  placeholder="Enter additional advice"
-                                ></textarea>
-                              </div>
-                              <div className="col-md-3 d-flex align-items-end">
-                                <div className="form-check w-100">
-                                  <input
-                                    className="form-check-input"
-                                    type="checkbox"
-                                    id="admissionAdvised"
-                                    checked={admissionAdvised}
-                                    onChange={(e) => setAdmissionAdvised(e.target.checked)}
-                                  />
-                                  <label className="form-check-label" htmlFor="admissionAdvised">
-                                    Admission Advised
-                                  </label>
-                                </div>
+                                {admissionAdvised && (
+                                  <div className="border-top pt-3 mt-3">
+                                    <div className="row g-3">
+                                      <div className="col-md-3">
+                                        <label className="form-label fw-bold">Admission Date</label>
+                                        <input
+                                          type="date"
+                                          className="form-control"
+                                          value={admissionDate}
+                                          onChange={(e) => setAdmissionDate(e.target.value)}
+                                        />
+                                      </div>
+                                      
+                                      <div className="col-md-3">
+                                        <label className="form-label fw-bold">Notes <span className="text-danger">*</span></label>
+                                        <input
+                                          type="text"
+                                          className="form-control"
+                                          value={admissionRemarks}
+                                          onChange={(e) => setAdmissionRemarks(e.target.value)}
+                                          placeholder="Enter notes"
+                                          required
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div className="row g-3 mt-3">
+                                      <div className="col-md-3">
+                                        <label className="form-label fw-bold">Ward Category</label>
+                                        <select
+                                          className="form-select"
+                                          value={wardCategory}
+                                          onChange={(e) => handleWardCategoryChange(Number(e.target.value))}
+                                        >
+                                          <option value="">Select Ward Category</option>
+                                          {wardCategories.map((category) => (
+                                            <option key={category.id} value={category.id}>
+                                              {category.name}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                      <div className="col-md-3">
+                                        <label className="form-label fw-bold">Care Level</label>
+                                        <input
+                                          type="text"
+                                          className="form-control"
+                                          value={careLevels.find(cl => cl.id === admissionCareLevel)?.name || ""}
+                                          readOnly
+                                        />
+                                      </div>
+                                      <div className="col-md-3">
+                                        <label className="form-label fw-bold">Ward Name/Dept Name <span className="text-danger">*</span></label>
+                                        <select
+                                          className="form-select"
+                                          value={wardName}
+                                          onChange={(e) => handleWardNameChange(Number(e.target.value))}
+                                          disabled={!wardCategory}
+                                          required
+                                        >
+                                          <option value="">Select Ward/Dept</option>
+                                          {wardDepartments.map((dept) => (
+                                            <option key={dept.id} value={dept.id}>
+                                              {dept.name}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                      <div className="col-md-3">
+                                        <label className="form-label fw-bold">Admission Priority (Optional)</label>
+                                        <select
+                                          className="form-select"
+                                          value={admissionPriority}
+                                          onChange={(e) => setAdmissionPriority(e.target.value)}
+                                        >
+                                          {admissionPriorities.map((priority) => (
+                                            <option key={priority} value={priority}>
+                                              {priority}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    </div>
+
+                                    <div className="row g-3 mt-3">
+                                      <div className="col-md-3">
+                                        <label className="form-label fw-bold">Occupied Bed</label>
+                                        <input
+                                          type="text"
+                                          className="form-control"
+                                          value={occupiedBeds}
+                                          readOnly
+                                        />
+                                      </div>
+                                      <div className="col-md-3">
+                                        <label className="form-label fw-bold">Vacant Bed</label>
+                                        <input
+                                          type="text"
+                                          className="form-control"
+                                          value={vacantBeds}
+                                          readOnly
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
