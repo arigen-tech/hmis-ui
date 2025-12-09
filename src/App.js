@@ -72,7 +72,7 @@ import GeneralMedicineWaitingList from './Views/OPD/GeneralMedicineWaitingList';
 import PatientWaitingList from './Views/OPD/GeneralMedicineWaitingList/DisplayTokenPatient';
 import OpdPreconsultation from './Views/OPD/OpdPreconsultation';
 import OpdRRecallPatient from './Views/OPD/OpdRecallPatient';
-import OpdWaitingList from './Views/OPD/OpdWaitingList';
+// import OpdWaitingList from './Views/OPD/OpdWaitingList';
 import LabPaymentSuccess from './Views/Payment/LabPaymentSuccess';
 import OpdPaymentSuccess from './Views/Payment/OpdPaymentSuccess';
 import PaymentPage from './Views/Payment/payment';
@@ -156,7 +156,7 @@ function App() {
                 <Route path="Itemunit" element={<Itemunit />} />
                 <Route path="ApointmentSetup" element={<ApointmentSetup />} />
                 <Route path="DoctorRoaster" element={<DoctorRoaster />} />
-                <Route path="PatientRegistration" element={<PatientRegistration />} />
+                <Route path="NewPatientAppointment" element={<PatientRegistration />} />
                 <Route path="rolemaster" element={<Rolemaster />} />
                 <Route path="departmenttype" element={<Departmenttype />} />
                 <Route path="departmentmaster" element={<Departmentmaster />} />
@@ -175,7 +175,7 @@ function App() {
                 <Route path="approveemployee" element={<Approveemployee />} />
                 <Route path="frequencymaster" element={<Frequencymaster />} />
                 <Route path="opdmaster" element={<OpdMaster />} />
-                <Route path="updatepatientregistration" element={<UpdatePatientRegistration />} />
+                <Route path="AppointmentForFollowUpPatient" element={<UpdatePatientRegistration />} />
                 <Route path="mainchargecode" element={<Mainchargecode />} />
                 <Route path="subchargecode" element={<Subchargecode />} />
                 <Route path="labregistration" element={<Labregistration />} />
@@ -198,7 +198,7 @@ function App() {
                 <Route path="OPDBillingDetails" element={<OPDBillingDetails />} />
                 <Route path="LabBillingDetails" element={<LabBillingDetails/>} />
                 <Route path="StockStatusReport" element={<StockStatusReport/>} />
-                <Route path="OPDWaitingList" element={<OpdWaitingList />} />
+                {/* <Route path="OPDWaitingList" element={<OpdWaitingList />} /> */}
                 <Route path="UpdateLabRegistration" element={<UpdateLabRegistration/>} />
                 <Route path="UpdateUnitRate" element={<UpdateUnitRate/>} />
                 <Route path="DrugExpiry" element={<DrugExpiry />} />
@@ -211,7 +211,7 @@ function App() {
                 <Route path="PendingForResultEntry" element={<PendingForResultEntry/>} />
                 <Route path="PhysicalStockTakingRegister" element={<PhysicalStockTakingRegister/>} />
                 <Route path="OpeningBalanceRegister" element={<OpeningBalanceRegister/>} />
-                <Route path="GeneralMedicineWaitingList" element={<GeneralMedicineWaitingList/>} />
+                <Route path="OpdWaitingList" element={<GeneralMedicineWaitingList/>} />
                 <Route path="SampleMaster" element={<SampleMaster/>} />
                 <Route path="PatientwiseBilldatails" element={<PatientwiseBilldatails/>} />
                 <Route path="ResultValidation" element={<ResultValidation/>} />
@@ -225,7 +225,7 @@ function App() {
                 <Route path="InvestigationCategoryMaster" element={<InvestigationCategoryMaster/>} />
                 <Route path="IndentIssue" element={<IndentIssue/>} />
                 <Route path="IndentApproval" element={<IndentApproval/>} />
-                                <Route path="PatientWaitingList" element={<PatientWaitingList/>} />
+                <Route path="TokenDisplay" element={<PatientWaitingList/>} />
                 <Route path="MedicineIssueRegister" element={<MedicineIssueRegister/>} />
                 <Route path="IssueReferenceReport" element={<IssueReferenceReport/>} />
                 <Route path="CareLevelMaster" element={<CareLevelMaster/>} />

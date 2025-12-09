@@ -39,7 +39,7 @@ const validRoutes = [
   "/approveemployee",
   "/frequencymaster",
   "/opdmaster",
-  "/updatepatientregistration",
+  "/AppointmentForFollowUpPatient",
   "/mainchargecode",
   "/subchargecode",
   "/labregistration",
@@ -78,7 +78,7 @@ const validRoutes = [
   "/PendingForResultEntry",
   "/PhysicalStockTakingRegister",
   "/OpeningBalanceRegister",
-  "/GeneralMedicineWaitingList",
+  "/OpdWaitingList",
   "/SampleMaster",
   "/PatientwiseBilldatails",
   "/ResultValidation",
@@ -107,6 +107,8 @@ const validRoutes = [
   "/ProcedureTypeMaster",
   "/BedTypeMaster",
   "/PatientAdmission",
+  "/TokenDisplay",
+  "/NewPatientAppointment",
 
   
 ];
