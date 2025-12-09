@@ -3,7 +3,7 @@ import placeholderImage from "../../../assets/images/placeholder.jpg"
 import OTDashboard from "./OTDashboard"
 import InvestigationModal from "./InvestigationModal"
 import TreatmentModal from "./TreatmentModal"
-import { OPD_TEMPLATE, MAS_INVESTIGATION, OPD_PATIENT, MAS_DRUG_MAS, DRUG_TYPE, ITEM_CLASS, MAS_OPD_SESSION, DOCTOR, MASTERS, MAS_FREQUENCY } from "../../../config/apiConfig"
+import { OPD_TEMPLATE, MAS_INVESTIGATION, OPD_PATIENT, MAS_DRUG_MAS, DRUG_TYPE, MAS_OPD_SESSION, DOCTOR, MASTERS, MAS_FREQUENCY } from "../../../config/apiConfig"
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import LoadingScreen from "../../../Components/Loading/index";
 import Popup from "../../../Components/popup";
@@ -416,21 +416,14 @@ const GeneralMedicineWaitingList = () => {
     diagnosis: false,
     investigation: false,
     treatment: false,
-    nip: false,
+    treatmentAdvice: false,
+    procedureCare: false,
+    surgeryAdvice: false,
+    admissionAdvice: false,
     referral: false,
     followUp: false,
     doctorRemark: false,
-    surgeryAdvice: false,
-    additionalAdvice: false,
     remarks: false,
-  })
-
-  const [expandedNipSubsections, setExpandedNipSubsections] = useState({
-    treatmentAdvice: true,
-    procedureCare: false,
-    nip: false,
-    surgeryAdvice: false,
-    additionalAdvice: false,
   })
 
   const [selectedHistoryType, setSelectedHistoryType] = useState("")
@@ -516,34 +509,6 @@ const GeneralMedicineWaitingList = () => {
     }
   ]);
   console.log("treatmentItems", treatmentItems)
-  const [nipItems, setNipItems] = useState([
-    {
-      nip: "",
-      newNIP: "",
-      class: "Select",
-      au: "Select",
-      dispUnit: "Select",
-      uomQty: "",
-      dosage: "",
-      frequency: "Select",
-      days: "",
-      total: "",
-      instruction: "",
-      stock: "",
-    },
-  ])
-
-  const [nipSearchInput, setNipSearchInput] = useState("")
-  const [isNipDropdownVisible, setIsNipDropdownVisible] = useState(false)
-  const [selectedNipIndex, setSelectedNipIndex] = useState(null)
-
-  const nipOptions = [
-    { id: 1, name: "NIP-001", code: "001" },
-    { id: 2, name: "NIP-002", code: "002" },
-    { id: 3, name: "NIP-003", code: "003" },
-    { id: 4, name: "NIP-004", code: "004" },
-    { id: 5, name: "NIP-005", code: "005" },
-  ]
 
   const [treatmentAdviceSelection, setTreatmentAdviceSelection] = useState("")
   const [generalTreatmentAdvice, setGeneralTreatmentAdvice] = useState("")
@@ -1236,12 +1201,13 @@ const GeneralMedicineWaitingList = () => {
       diagnosis: false,
       investigation: false,
       treatment: false,
-      nip: false,
+      treatmentAdvice: false,
+      procedureCare: false,
+      surgeryAdvice: false,
+      admissionAdvice: false,
       referral: false,
       followUp: false,
       doctorRemark: false,
-      surgeryAdvice: false,
-      additionalAdvice: false,
       remarks: false,
     });
 
@@ -1310,13 +1276,6 @@ const GeneralMedicineWaitingList = () => {
     setExpandedSections((prev) => ({
       ...prev,
       [section]: !prev[section],
-    }))
-  }
-
-  const toggleNipSubsection = (subsection) => {
-    setExpandedNipSubsections((prev) => ({
-      ...prev,
-      [subsection]: !prev[subsection],
     }))
   }
 
@@ -1778,51 +1737,6 @@ const GeneralMedicineWaitingList = () => {
 
 
 
-
-  const handleNipSearchChange = (value) => {
-    setNipSearchInput(value)
-    setIsNipDropdownVisible(true)
-  }
-
-  const handleNipSelect = (nip, index) => {
-    const newItems = [...nipItems]
-    newItems[index] = { ...newItems[index], nip: nip.name }
-    setNipItems(newItems)
-    setNipSearchInput("")
-    setIsNipDropdownVisible(false)
-  }
-
-  const handleAddNipItem = () => {
-    setNipItems([
-      ...nipItems,
-      {
-        nip: "",
-        newNIP: "",
-        class: "Select",
-        au: "Select",
-        dispUnit: "Select",
-        uomQty: "",
-        dosage: "",
-        frequency: "Select",
-        days: "",
-        total: "",
-        instruction: "",
-        stock: "",
-      },
-    ])
-  }
-
-  const handleRemoveNipItem = (index) => {
-    if (nipItems.length === 1) return
-    const newItems = nipItems.filter((_, i) => i !== index)
-    setNipItems(newItems)
-  }
-
-  const handleNipChange = (index, field, value) => {
-    const newItems = [...nipItems]
-    newItems[index] = { ...newItems[index], [field]: value }
-    setNipItems(newItems)
-  }
 
   const handleOpenTreatmentAdviceModal = (type) => {
     setTreatmentAdviceModalType(type)
@@ -3414,33 +3328,18 @@ const GeneralMedicineWaitingList = () => {
                           </tbody>
                         </table>
                       </div>
-                    </div>
-                  )}
-                </div>
 
-                {/* NIP Section */}
-                <div className="card mb-3">
-                  <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => toggleSection("nip")}
-                  >
-                    <h6 className="mb-0 fw-bold">NIP</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.nip ? "−" : "+"}</span>
-                  </div>
-                  {expandedSections.nip && (
-                    <div className="card-body">
                       {/* Treatment Advice Subsection */}
-                      <div className="card mb-3">
+                      <div className="card mt-3">
                         <div
                           className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
                           style={{ cursor: "pointer" }}
-                          onClick={() => toggleNipSubsection("treatmentAdvice")}
+                          onClick={() => toggleSection("treatmentAdvice")}
                         >
-                          <h6 className="mb-0">Treatment Advice</h6>
-                          <span style={{ fontSize: "16px" }}>{expandedNipSubsections.treatmentAdvice ? "−" : "+"}</span>
+                          <h6 className="mb-0 fw-bold">Treatment Advice</h6>
+                          <span style={{ fontSize: "16px" }}>{expandedSections.treatmentAdvice ? "−" : "+"}</span>
                         </div>
-                        {expandedNipSubsections.treatmentAdvice && (
+                        {expandedSections.treatmentAdvice && (
                           <div className="card-body">
                             <div className="row align-items-end">
                               <div className="col-md-11">
@@ -3467,732 +3366,527 @@ const GeneralMedicineWaitingList = () => {
                           </div>
                         )}
                       </div>
+                    </div>
+                  )}
+                </div>
 
-                      {/* NIP Subsection */}
-                      <div className="card mb-3">
-                        <div
-                          className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => toggleNipSubsection("nip")}
-                        >
-                          <h6 className="mb-0">NIP</h6>
-                          <span style={{ fontSize: "16px" }}>{expandedNipSubsections.nip ? "−" : "+"}</span>
-                        </div>
-                        {expandedNipSubsections.nip && (
-                          <div className="card-body">
-                            <div className="table-responsive">
-                              <table className="table table-bordered">
-                                <thead style={{ backgroundColor: "#b0c4de" }}>
-                                  <tr>
-                                    <th>NIP</th>
-                                    <th>New NIP</th>
-                                    <th>Class</th>
-                                    <th>AU</th>
-                                    <th>Disp. Unit</th>
-                                    <th>UOM Qty</th>
-                                    <th>Dosage</th>
-                                    <th>Frequency</th>
-                                    <th>Days</th>
-                                    <th>Total</th>
-                                    <th>Instruction</th>
-                                    <th>Stock</th>
-                                    <th className="text-center">Add</th>
-                                    <th className="text-center">Delete</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {nipItems.map((item, index) => (
-                                    <tr key={index}>
-                                      <td className="position-relative">
-                                        <input
-                                          type="text"
-                                          className="form-control"
-                                          value={item.nip}
-                                          onChange={(e) => {
-                                            handleNipSearchChange(e.target.value)
-                                            setSelectedNipIndex(index)
-                                          }}
-                                          placeholder="Search NIP"
-                                          autoComplete="off"
-                                        />
-                                        {isNipDropdownVisible && selectedNipIndex === index && nipSearchInput && (
-                                          <ul
-                                            className="list-group position-absolute w-100 mt-1"
-                                            style={{ zIndex: 1000, top: "100%" }}
-                                          >
-                                            {nipOptions
-                                              .filter((nip) =>
-                                                nip.name.toLowerCase().includes(nipSearchInput.toLowerCase()),
-                                              )
-                                              .map((nip) => (
-                                                <li
-                                                  key={nip.id}
-                                                  className="list-group-item list-group-item-action"
-                                                  onClick={() => handleNipSelect(nip, index)}
-                                                >
-                                                  {nip.name}
-                                                </li>
-                                              ))}
-                                          </ul>
-                                        )}
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control"
-                                          value={item.newNIP}
-                                          onChange={(e) => handleNipChange(index, "newNIP", e.target.value)}
-                                          placeholder="New NIP"
-                                        />
-                                      </td>
-                                      <td>
-                                        <select
-                                          className="form-select"
-                                          value={item.class}
-                                          onChange={(e) => handleNipChange(index, "class", e.target.value)}
-                                        >
-                                          <option value="Select">Select</option>
-                                          <option value="Class A">Class A</option>
-                                          <option value="Class B">Class B</option>
-                                          <option value="Class C">Class C</option>
-                                        </select>
-                                      </td>
-                                      <td>
-                                        <select
-                                          className="form-select"
-                                          value={item.au}
-                                          onChange={(e) => handleNipChange(index, "au", e.target.value)}
-                                        >
-                                          <option value="Select">Select</option>
-                                          <option value="AU-1">AU-1</option>
-                                          <option value="AU-2">AU-2</option>
-                                          <option value="AU-3">AU-3</option>
-                                        </select>
-                                      </td>
-                                      <td>
-                                        <select
-                                          className="form-select"
-                                          value={item.dispUnit}
-                                          onChange={(e) => handleNipChange(index, "dispUnit", e.target.value)}
-                                        >
-                                          <option value="Select">Select</option>
-                                          <option value="Tab">Tab</option>
-                                          <option value="Cap">Cap</option>
-                                          <option value="Syr">Syr</option>
-                                        </select>
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="number"
-                                          className="form-control"
-                                          value={item.uomQty}
-                                          onChange={(e) => handleNipChange(index, "uomQty", e.target.value)}
-                                          placeholder="0"
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="number"
-                                          className="form-control"
-                                          value={item.dosage}
-                                          onChange={(e) => handleNipChange(index, "dosage", e.target.value)}
-                                          placeholder="0"
-                                        />
-                                      </td>
-                                      <td>
-                                        <select
-                                          className="form-select"
-                                          value={item.frequency}
-                                          onChange={(e) => handleNipChange(index, "frequency", e.target.value)}
-                                        >
-                                          <option value="Select">Select</option>
-                                          <option value="OD">OD</option>
-                                          <option value="BID">BID</option>
-                                          <option value="TID">TID</option>
-                                          <option value="QID">QID</option>
-                                        </select>
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="number"
-                                          className="form-control"
-                                          value={item.days}
-                                          onChange={(e) => handleNipChange(index, "days", e.target.value)}
-                                          placeholder="0"
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="number"
-                                          className="form-control"
-                                          value={item.total}
-                                          onChange={(e) => handleNipChange(index, "total", e.target.value)}
-                                          placeholder="0"
-                                        />
-                                      </td>
-                                      <td>
-                                        <select
-                                          className="form-select"
-                                          value={item.instruction}
-                                          onChange={(e) => handleNipChange(index, "instruction", e.target.value)}
-                                        >
-                                          <option value="">Select...</option>
-                                          <option value="After Meal">After Meal</option>
-                                          <option value="Before Meal">Before Meal</option>
-                                        </select>
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="number"
-                                          className="form-control"
-                                          value={item.stock}
-                                          onChange={(e) => handleNipChange(index, "stock", e.target.value)}
-                                          placeholder="0"
-                                        />
-                                      </td>
-                                      <td className="text-center">
-                                        <button className="btn btn-sm btn-success" onClick={handleAddNipItem}>
-                                          +
-                                        </button>
-                                      </td>
-                                      <td className="text-center">
-                                        <button
-                                          className="btn btn-sm btn-danger"
-                                          onClick={() => handleRemoveNipItem(index)}
-                                          disabled={nipItems.length === 1}
-                                        >
-                                          −
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
+                {/* Procedure Care Section */}
+                <div className="card mb-3">
+                  <div
+                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("procedureCare")}
+                  >
+                    <h6 className="mb-0 fw-bold">Procedure Care</h6>
+                    <span style={{ fontSize: "18px" }}>{expandedSections.procedureCare ? "−" : "+"}</span>
+                  </div>
+                  {expandedSections.procedureCare && (
+                    <div className="card-body">
+                      <div className="row mb-3">
+                        <div className="col-12 d-flex gap-4">
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="procedureCareType"
+                              id="procedure"
+                              checked={procedureCareType === "procedure"}
+                              onChange={() => setProcedureCareType("procedure")}
+                            />
+                            <label className="form-check-label" htmlFor="procedure">
+                              Procedure
+                            </label>
                           </div>
-                        )}
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="procedureCareType"
+                              id="physiotherapy"
+                              checked={procedureCareType === "physiotherapy"}
+                              onChange={() => setProcedureCareType("physiotherapy")}
+                            />
+                            <label className="form-check-label" htmlFor="physiotherapy">
+                              Physiotherapy
+                            </label>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Procedure Care Subsection */}
-                      <div className="card mb-3">
-                        <div
-                          className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => toggleNipSubsection("procedureCare")}
-                        >
-                          <h6 className="mb-0">Procedure Care</h6>
-                          <span style={{ fontSize: "16px" }}>{expandedNipSubsections.procedureCare ? "−" : "+"}</span>
-                        </div>
-                        {expandedNipSubsections.procedureCare && (
-                          <div className="card-body">
-                            <div className="row mb-3">
-                              <div className="col-12 d-flex gap-4">
-                                <div className="form-check">
-                                  <input
-                                    className="form-check-input"
-                                    type="radio"
-                                    name="procedureCareType"
-                                    id="procedure"
-                                    checked={procedureCareType === "procedure"}
-                                    onChange={() => setProcedureCareType("procedure")}
-                                  />
-                                  <label className="form-check-label" htmlFor="procedure">
-                                    Procedure
-                                  </label>
-                                </div>
-                                <div className="form-check">
-                                  <input
-                                    className="form-check-input"
-                                    type="radio"
-                                    name="procedureCareType"
-                                    id="physiotherapy"
-                                    checked={procedureCareType === "physiotherapy"}
-                                    onChange={() => setProcedureCareType("physiotherapy")}
-                                  />
-                                  <label className="form-check-label" htmlFor="physiotherapy">
-                                    Physiotherapy
-                                  </label>
-                                </div>
-                              </div>
-                            </div>
-
-                            {procedureCareType === "procedure" ? (
-                              <div className="table-responsive">
-                                <table className="table table-bordered">
-                                  <thead style={{ backgroundColor: "#b0c4de" }}>
-                                    <tr>
-                                      <th style={{ width: "40%" }}>Nursing Care Name</th>
-                                      <th className="text-center" style={{ width: "20%" }}>
-                                        Frequency
-                                      </th>
-                                      <th className="text-center" style={{ width: "15%" }}>
-                                        No.Of Days
-                                      </th>
-                                      <th style={{ width: "15%" }}>Remarks</th>
-                                      <th className="text-center" style={{ width: "5%" }}>
-                                        Add
-                                      </th>
-                                      <th className="text-center" style={{ width: "5%" }}>
-                                        Delete
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {procedureCareItems.map((row, index) => (
-                                      <tr key={index}>
-                                        <td>
-                                          <input
-                                            type="text"
-                                            className="form-control"
-                                            value={row.name}
-                                            onChange={(e) => handleProcedureCareChange(index, "name", e.target.value)}
-                                            placeholder="Enter nursing care name"
-                                          />
-                                        </td>
-                                        <td>
-                                          <select
-                                            className="form-select"
-                                            value={row.frequency}
-                                            onChange={(e) =>
-                                              handleProcedureCareChange(index, "frequency", e.target.value)
-                                            }
-                                          >
-                                            <option value="">Select</option>
-                                            <option value="OD">OD</option>
-                                            <option value="BID">BID</option>
-                                            <option value="TID">TID</option>
-                                            <option value="QID">QID</option>
-                                          </select>
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="number"
-                                            className="form-control"
-                                            value={row.days}
-                                            onChange={(e) => handleProcedureCareChange(index, "days", e.target.value)}
-                                            placeholder="0"
-                                          />
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="text"
-                                            className="form-control"
-                                            value={row.remarks}
-                                            onChange={(e) =>
-                                              handleProcedureCareChange(index, "remarks", e.target.value)
-                                            }
-                                            placeholder="Enter remarks"
-                                          />
-                                        </td>
-                                        <td className="text-center">
-                                          <button
-                                            className="btn btn-sm btn-success"
-                                            onClick={handleAddProcedureCareItem}
-                                          >
-                                            +
-                                          </button>
-                                        </td>
-                                        <td className="text-center">
-                                          <button
-                                            className="btn btn-sm btn-danger"
-                                            onClick={() => handleRemoveProcedureCareItem(index)}
-                                            disabled={procedureCareItems.length === 1}
-                                          >
-                                            −
-                                          </button>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            ) : (
-                              <div className="table-responsive">
-                                <table className="table table-bordered">
-                                  <thead style={{ backgroundColor: "#b0c4de" }}>
-                                    <tr>
-                                      <th style={{ width: "40%" }}>Nursing Care Name</th>
-                                      <th className="text-center" style={{ width: "20%" }}>
-                                        Frequency
-                                      </th>
-                                      <th className="text-center" style={{ width: "15%" }}>
-                                        No.Of Days
-                                      </th>
-                                      <th style={{ width: "15%" }}>Remarks</th>
-                                      <th className="text-center" style={{ width: "5%" }}>
-                                        Add
-                                      </th>
-                                      <th className="text-center" style={{ width: "5%" }}>
-                                        Delete
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {physiotherapyItems.map((row, index) => (
-                                      <tr key={index}>
-                                        <td>
-                                          <input
-                                            type="text"
-                                            className="form-control"
-                                            value={row.name}
-                                            onChange={(e) => handlePhysiotherapyChange(index, "name", e.target.value)}
-                                            placeholder="Enter nursing care name"
-                                          />
-                                        </td>
-                                        <td>
-                                          <select
-                                            className="form-select"
-                                            value={row.frequency}
-                                            onChange={(e) =>
-                                              handlePhysiotherapyChange(index, "frequency", e.target.value)
-                                            }
-                                          >
-                                            <option value="">Select</option>
-                                            <option value="OD">OD</option>
-                                            <option value="BID">BID</option>
-                                            <option value="TID">TID</option>
-                                            <option value="QID">QID</option>
-                                          </select>
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="number"
-                                            className="form-control"
-                                            value={row.days}
-                                            onChange={(e) => handlePhysiotherapyChange(index, "days", e.target.value)}
-                                            placeholder="0"
-                                          />
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="text"
-                                            className="form-control"
-                                            value={row.remarks}
-                                            onChange={(e) =>
-                                              handlePhysiotherapyChange(index, "remarks", e.target.value)
-                                            }
-                                            placeholder="Enter remarks"
-                                          />
-                                        </td>
-                                        <td className="text-center">
-                                          <button
-                                            className="btn btn-sm btn-success"
-                                            onClick={handleAddPhysiotherapyItem}
-                                          >
-                                            +
-                                          </button>
-                                        </td>
-                                        <td className="text-center">
-                                          <button
-                                            className="btn btn-sm btn-danger"
-                                            onClick={() => handleRemovePhysiotherapyItem(index)}
-                                            disabled={physiotherapyItems.length === 1}
-                                          >
-                                            −
-                                          </button>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Surgery Advice Subsection */}
-                      <div className="card mb-3">
-                        <div
-                          className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => toggleNipSubsection("surgeryAdvice")}
-                        >
-                          <h6 className="mb-0">Surgery Advice</h6>
-                          <span style={{ fontSize: "16px" }}>{expandedNipSubsections.surgeryAdvice ? "−" : "+"}</span>
-                        </div>
-                        {expandedNipSubsections.surgeryAdvice && (
-                          <div className="card-body">
-                            <div className="row mb-3 align-items-center">
-                              <div className="col-12 d-flex gap-4 mb-3">
-                                <div className="form-check">
-                                  <input
-                                    className="form-check-input"
-                                    type="radio"
-                                    name="surgeryType"
-                                    id="major"
-                                    checked={surgeryType === "major"}
-                                    onChange={() => setSurgeryType("major")}
-                                  />
-                                  <label className="form-check-label" htmlFor="major">
-                                    Major
-                                  </label>
-                                </div>
-                                <div className="form-check">
-                                  <input
-                                    className="form-check-input"
-                                    type="radio"
-                                    name="surgeryType"
-                                    id="minor"
-                                    checked={surgeryType === "minor"}
-                                    onChange={() => setSurgeryType("minor")}
-                                  />
-                                  <label className="form-check-label" htmlFor="minor">
-                                    Minor
-                                  </label>
-                                </div>
-
-                                <div style={{ cursor: "default" }}>
-                                  <div className="d-flex align-items-center">
-                                    <button
-                                      className="btn btn-sm btn-primary"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        setShowOtCalendarModal(true)
-                                      }}
-                                      style={{ fontSize: "12px" }}
-                                    >
-                                      OTCalendar
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="table-responsive">
-                              <table className="table table-bordered">
-                                <thead style={{ backgroundColor: "#b0c4de" }}>
-                                  <tr>
-                                    <th style={{ width: "10%" }}>S.No</th>
-                                    <th style={{ width: "70%" }}>Surgery</th>
-                                    <th style={{ width: "15%" }}>Select</th>
-                                    <th style={{ width: "5%" }}>Add</th>
-                                    <th style={{ width: "5%" }}>Delete</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {surgeryItems.map((item, index) => (
-                                    <tr key={index}>
-                                      <td className="text-center">{index + 1}</td>
-                                      <td className="position-relative">
-                                        <input
-                                          type="text"
-                                          className="form-control"
-                                          value={item.surgery}
-                                          onChange={(e) => {
-                                            handleSurgerySearchChange(e.target.value, index)
-                                          }}
-                                          placeholder="Search Surgery"
-                                          autoComplete="off"
-                                        />
-                                        {isSurgeryDropdownVisible &&
-                                          selectedSurgeryIndex === index &&
-                                          surgerySearchInput && (
-                                            <ul
-                                              className="list-group position-absolute w-100 mt-1"
-                                              style={{ zIndex: 1000, top: "100%" }}
-                                            >
-                                              {surgeryOptions
-                                                .filter((surgery) =>
-                                                  surgery.name.toLowerCase().includes(surgerySearchInput.toLowerCase()),
-                                                )
-                                                .map((surgery) => (
-                                                  <li
-                                                    key={surgery.id}
-                                                    className="list-group-item list-group-item-action"
-                                                    onClick={() => handleSurgerySelect(surgery, index)}
-                                                  >
-                                                    {surgery.name}
-                                                  </li>
-                                                ))}
-                                            </ul>
-                                          )}
-                                      </td>
-                                      <td className="text-center">
-                                        <input
-                                          type="checkbox"
-                                          className="form-check-input"
-                                          checked={item.selected}
-                                          onChange={(e) => handleSurgeryChange(index, "selected", e.target.checked)}
-                                        />
-
-                                      </td>
-                                      <td className="text-center">
-                                        <button className="btn btn-sm btn-success" onClick={handleAddSurgeryItem}>
-                                          +
-                                        </button>
-                                      </td>
-                                      <td className="text-center">
-                                        <button
-                                          className="btn btn-sm btn-danger"
-                                          onClick={() => handleRemoveSurgeryItem(index)}
-                                          disabled={surgeryItems.length === 1}
-                                        >
-                                          −
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Admission Subsection */}
-                      <div className="card mb-3">
-                        <div
-                          className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => toggleNipSubsection("additionalAdvice")}
-                        >
-                          <h6 className="mb-0">Admission Advice</h6>
-                          <span style={{ fontSize: "16px" }}>
-                            {expandedNipSubsections.additionalAdvice ? "−" : "+"}
-                          </span>
-                        </div>
-                        {expandedNipSubsections.additionalAdvice && (
-                          <div className="card-body">
-                            <div className="row">
-                              <div className="col-md-12">
-                                <div className="row mb-3">
-                                  <div className="col-md-3">
-                                    <div className="form-check d-flex align-items-center h-100">
-                                      <input
-                                        className="form-check-input me-2"
-                                        type="checkbox"
-                                        id="admissionAdvised"
-                                        checked={admissionAdvised}
-                                        onChange={(e) => setAdmissionAdvised(e.target.checked)}
-                                      />
-                                      <label className="form-check-label fw-bold" htmlFor="admissionAdvised">
-                                        Admission Advised
-                                      </label>
-                                    </div>
-                                  </div>
-                                  <div className="col-md-9">
-                                    <label className="form-label fw-bold">Admission Advice</label>
-                                    <textarea
+                      {procedureCareType === "procedure" ? (
+                        <div className="table-responsive">
+                          <table className="table table-bordered">
+                            <thead style={{ backgroundColor: "#b0c4de" }}>
+                              <tr>
+                                <th style={{ width: "40%" }}>Nursing Care Name</th>
+                                <th className="text-center" style={{ width: "20%" }}>
+                                  Frequency
+                                </th>
+                                <th className="text-center" style={{ width: "15%" }}>
+                                  No.Of Days
+                                </th>
+                                <th style={{ width: "15%" }}>Remarks</th>
+                                <th className="text-center" style={{ width: "5%" }}>
+                                  Add
+                                </th>
+                                <th className="text-center" style={{ width: "5%" }}>
+                                  Delete
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {procedureCareItems.map((row, index) => (
+                                <tr key={index}>
+                                  <td>
+                                    <input
+                                      type="text"
                                       className="form-control"
-                                      rows={3}
-                                      value={additionalAdvice}
-                                      onChange={(e) => setAdditionalAdvice(e.target.value)}
-                                      placeholder="Enter admission advice"
-                                    ></textarea>
-                                  </div>
-                                </div>
+                                      value={row.name}
+                                      onChange={(e) => handleProcedureCareChange(index, "name", e.target.value)}
+                                      placeholder="Enter nursing care name"
+                                    />
+                                  </td>
+                                  <td>
+                                    <select
+                                      className="form-select"
+                                      value={row.frequency}
+                                      onChange={(e) =>
+                                        handleProcedureCareChange(index, "frequency", e.target.value)
+                                      }
+                                    >
+                                      <option value="">Select</option>
+                                      <option value="OD">OD</option>
+                                      <option value="BID">BID</option>
+                                      <option value="TID">TID</option>
+                                      <option value="QID">QID</option>
+                                    </select>
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="number"
+                                      className="form-control"
+                                      value={row.days}
+                                      onChange={(e) => handleProcedureCareChange(index, "days", e.target.value)}
+                                      placeholder="0"
+                                    />
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      value={row.remarks}
+                                      onChange={(e) =>
+                                        handleProcedureCareChange(index, "remarks", e.target.value)
+                                      }
+                                      placeholder="Enter remarks"
+                                    />
+                                  </td>
+                                  <td className="text-center">
+                                    <button
+                                      className="btn btn-sm btn-success"
+                                      onClick={handleAddProcedureCareItem}
+                                    >
+                                      +
+                                    </button>
+                                  </td>
+                                  <td className="text-center">
+                                    <button
+                                      className="btn btn-sm btn-danger"
+                                      onClick={() => handleRemoveProcedureCareItem(index)}
+                                      disabled={procedureCareItems.length === 1}
+                                    >
+                                      −
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="table-responsive">
+                          <table className="table table-bordered">
+                            <thead style={{ backgroundColor: "#b0c4de" }}>
+                              <tr>
+                                <th style={{ width: "40%" }}>Nursing Care Name</th>
+                                <th className="text-center" style={{ width: "20%" }}>
+                                  Frequency
+                                </th>
+                                <th className="text-center" style={{ width: "15%" }}>
+                                  No.Of Days
+                                </th>
+                                <th style={{ width: "15%" }}>Remarks</th>
+                                <th className="text-center" style={{ width: "5%" }}>
+                                  Add
+                                </th>
+                                <th className="text-center" style={{ width: "5%" }}>
+                                  Delete
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {physiotherapyItems.map((row, index) => (
+                                <tr key={index}>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      value={row.name}
+                                      onChange={(e) => handlePhysiotherapyChange(index, "name", e.target.value)}
+                                      placeholder="Enter nursing care name"
+                                    />
+                                  </td>
+                                  <td>
+                                    <select
+                                      className="form-select"
+                                      value={row.frequency}
+                                      onChange={(e) =>
+                                        handlePhysiotherapyChange(index, "frequency", e.target.value)
+                                      }
+                                    >
+                                      <option value="">Select</option>
+                                      <option value="OD">OD</option>
+                                      <option value="BID">BID</option>
+                                      <option value="TID">TID</option>
+                                      <option value="QID">QID</option>
+                                    </select>
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="number"
+                                      className="form-control"
+                                      value={row.days}
+                                      onChange={(e) => handlePhysiotherapyChange(index, "days", e.target.value)}
+                                      placeholder="0"
+                                    />
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      value={row.remarks}
+                                      onChange={(e) =>
+                                        handlePhysiotherapyChange(index, "remarks", e.target.value)
+                                      }
+                                      placeholder="Enter remarks"
+                                    />
+                                  </td>
+                                  <td className="text-center">
+                                    <button
+                                      className="btn btn-sm btn-success"
+                                      onClick={handleAddPhysiotherapyItem}
+                                    >
+                                      +
+                                    </button>
+                                  </td>
+                                  <td className="text-center">
+                                    <button
+                                      className="btn btn-sm btn-danger"
+                                      onClick={() => handleRemovePhysiotherapyItem(index)}
+                                      disabled={physiotherapyItems.length === 1}
+                                    >
+                                      −
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
-                                {admissionAdvised && (
-                                  <div className="border-top pt-3 mt-3">
-                                    <div className="row g-3">
-                                      <div className="col-md-3">
-                                        <label className="form-label fw-bold">Admission Date</label>
-                                        <input
-                                          type="date"
-                                          className="form-control"
-                                          value={admissionDate}
-                                          onChange={(e) => setAdmissionDate(e.target.value)}
-                                        />
-                                      </div>
-                                      
-                                      <div className="col-md-3">
-                                        <label className="form-label fw-bold">Notes <span className="text-danger">*</span></label>
-                                        <input
-                                          type="text"
-                                          className="form-control"
-                                          value={admissionRemarks}
-                                          onChange={(e) => setAdmissionRemarks(e.target.value)}
-                                          placeholder="Enter notes"
-                                          required
-                                        />
-                                      </div>
-                                    </div>
+                {/* Surgery Advice Section */}
+                <div className="card mb-3">
+                  <div
+                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("surgeryAdvice")}
+                  >
+                    <h6 className="mb-0 fw-bold">Surgery Advice</h6>
+                    <span style={{ fontSize: "18px" }}>{expandedSections.surgeryAdvice ? "−" : "+"}</span>
+                  </div>
+                  {expandedSections.surgeryAdvice && (
+                    <div className="card-body">
+                      <div className="row mb-3 align-items-center">
+                        <div className="col-12 d-flex gap-4 mb-3">
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="surgeryType"
+                              id="major"
+                              checked={surgeryType === "major"}
+                              onChange={() => setSurgeryType("major")}
+                            />
+                            <label className="form-check-label" htmlFor="major">
+                              Major
+                            </label>
+                          </div>
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="surgeryType"
+                              id="minor"
+                              checked={surgeryType === "minor"}
+                              onChange={() => setSurgeryType("minor")}
+                            />
+                            <label className="form-check-label" htmlFor="minor">
+                              Minor
+                            </label>
+                          </div>
 
-                                    <div className="row g-3 mt-3">
-                                      <div className="col-md-3">
-                                        <label className="form-label fw-bold">Ward Category</label>
-                                        <select
-                                          className="form-select"
-                                          value={wardCategory}
-                                          onChange={(e) => handleWardCategoryChange(Number(e.target.value))}
-                                        >
-                                          <option value="">Select Ward Category</option>
-                                          {wardCategories.map((category) => (
-                                            <option key={category.id} value={category.id}>
-                                              {category.name}
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                      <div className="col-md-3">
-                                        <label className="form-label fw-bold">Care Level</label>
-                                        <input
-                                          type="text"
-                                          className="form-control"
-                                          value={careLevels.find(cl => cl.id === admissionCareLevel)?.name || ""}
-                                          readOnly
-                                        />
-                                      </div>
-                                      <div className="col-md-3">
-                                        <label className="form-label fw-bold">Ward Name/Dept Name <span className="text-danger">*</span></label>
-                                        <select
-                                          className="form-select"
-                                          value={wardName}
-                                          onChange={(e) => handleWardNameChange(Number(e.target.value))}
-                                          disabled={!wardCategory}
-                                          required
-                                        >
-                                          <option value="">Select Ward/Dept</option>
-                                          {wardDepartments.map((dept) => (
-                                            <option key={dept.id} value={dept.id}>
-                                              {dept.name}
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                      <div className="col-md-3">
-                                        <label className="form-label fw-bold">Admission Priority (Optional)</label>
-                                        <select
-                                          className="form-select"
-                                          value={admissionPriority}
-                                          onChange={(e) => setAdmissionPriority(e.target.value)}
-                                        >
-                                          {admissionPriorities.map((priority) => (
-                                            <option key={priority} value={priority}>
-                                              {priority}
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                    </div>
-
-                                    <div className="row g-3 mt-3">
-                                      <div className="col-md-3">
-                                        <label className="form-label fw-bold">Occupied Bed</label>
-                                        <input
-                                          type="text"
-                                          className="form-control"
-                                          value={occupiedBeds}
-                                          readOnly
-                                        />
-                                      </div>
-                                      <div className="col-md-3">
-                                        <label className="form-label fw-bold">Vacant Bed</label>
-                                        <input
-                                          type="text"
-                                          className="form-control"
-                                          value={vacantBeds}
-                                          readOnly
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
+                          <div style={{ cursor: "default" }}>
+                            <div className="d-flex align-items-center">
+                              <button
+                                className="btn btn-sm btn-primary"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setShowOtCalendarModal(true)
+                                }}
+                                style={{ fontSize: "12px" }}
+                              >
+                                OTCalendar
+                              </button>
                             </div>
                           </div>
-                        )}
+                        </div>
+                      </div>
+
+                      <div className="table-responsive">
+                        <table className="table table-bordered">
+                          <thead style={{ backgroundColor: "#b0c4de" }}>
+                            <tr>
+                              <th style={{ width: "10%" }}>S.No</th>
+                              <th style={{ width: "70%" }}>Surgery</th>
+                              <th style={{ width: "15%" }}>Select</th>
+                              <th style={{ width: "5%" }}>Add</th>
+                              <th style={{ width: "5%" }}>Delete</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {surgeryItems.map((item, index) => (
+                              <tr key={index}>
+                                <td className="text-center">{index + 1}</td>
+                                <td className="position-relative">
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={item.surgery}
+                                    onChange={(e) => {
+                                      handleSurgerySearchChange(e.target.value, index)
+                                    }}
+                                    placeholder="Search Surgery"
+                                    autoComplete="off"
+                                  />
+                                  {isSurgeryDropdownVisible &&
+                                    selectedSurgeryIndex === index &&
+                                    surgerySearchInput && (
+                                      <ul
+                                        className="list-group position-absolute w-100 mt-1"
+                                        style={{ zIndex: 1000, top: "100%" }}
+                                      >
+                                        {surgeryOptions
+                                          .filter((surgery) =>
+                                            surgery.name.toLowerCase().includes(surgerySearchInput.toLowerCase()),
+                                          )
+                                          .map((surgery) => (
+                                            <li
+                                              key={surgery.id}
+                                              className="list-group-item list-group-item-action"
+                                              onClick={() => handleSurgerySelect(surgery, index)}
+                                            >
+                                              {surgery.name}
+                                            </li>
+                                          ))}
+                                      </ul>
+                                    )}
+                                </td>
+                                <td className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    className="form-check-input"
+                                    checked={item.selected}
+                                    onChange={(e) => handleSurgeryChange(index, "selected", e.target.checked)}
+                                  />
+
+                                </td>
+                                <td className="text-center">
+                                  <button className="btn btn-sm btn-success" onClick={handleAddSurgeryItem}>
+                                    +
+                                  </button>
+                                </td>
+                                <td className="text-center">
+                                  <button
+                                    className="btn btn-sm btn-danger"
+                                    onClick={() => handleRemoveSurgeryItem(index)}
+                                    disabled={surgeryItems.length === 1}
+                                  >
+                                    −
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Admission Advice Section */}
+                <div className="card mb-3">
+                  <div
+                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("admissionAdvice")}
+                  >
+                    <h6 className="mb-0 fw-bold">Admission Advice</h6>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.admissionAdvice ? "−" : "+"}
+                    </span>
+                  </div>
+                  {expandedSections.admissionAdvice && (
+                    <div className="card-body">
+                      <div className="row">
+                        <div className="col-md-12">
+                          <div className="row mb-3">
+                            <div className="col-md-3">
+                              <div className="form-check d-flex align-items-center h-100">
+                                <input
+                                  className="form-check-input me-2"
+                                  type="checkbox"
+                                  id="admissionAdvised"
+                                  checked={admissionAdvised}
+                                  onChange={(e) => setAdmissionAdvised(e.target.checked)}
+                                />
+                                <label className="form-check-label fw-bold" htmlFor="admissionAdvised">
+                                  Admission Advised
+                                </label>
+                              </div>
+                            </div>
+                            <div className="col-md-9">
+                              <label className="form-label fw-bold">Admission Advice</label>
+                              <textarea
+                                className="form-control"
+                                rows={3}
+                                value={additionalAdvice}
+                                onChange={(e) => setAdditionalAdvice(e.target.value)}
+                                placeholder="Enter admission advice"
+                              ></textarea>
+                            </div>
+                          </div>
+
+                          {admissionAdvised && (
+                            <div className="border-top pt-3 mt-3">
+                              <div className="row g-3">
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">Admission Date</label>
+                                  <input
+                                    type="date"
+                                    className="form-control"
+                                    value={admissionDate}
+                                    onChange={(e) => setAdmissionDate(e.target.value)}
+                                  />
+                                </div>
+                                
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">Notes <span className="text-danger">*</span></label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={admissionRemarks}
+                                    onChange={(e) => setAdmissionRemarks(e.target.value)}
+                                    placeholder="Enter notes"
+                                    required
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="row g-3 mt-3">
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">Ward Category</label>
+                                  <select
+                                    className="form-select"
+                                    value={wardCategory}
+                                    onChange={(e) => handleWardCategoryChange(Number(e.target.value))}
+                                  >
+                                    <option value="">Select Ward Category</option>
+                                    {wardCategories.map((category) => (
+                                      <option key={category.id} value={category.id}>
+                                        {category.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">Care Level</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={careLevels.find(cl => cl.id === admissionCareLevel)?.name || ""}
+                                    readOnly
+                                  />
+                                </div>
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">Ward Name/Dept Name <span className="text-danger">*</span></label>
+                                  <select
+                                    className="form-select"
+                                    value={wardName}
+                                    onChange={(e) => handleWardNameChange(Number(e.target.value))}
+                                    disabled={!wardCategory}
+                                    required
+                                  >
+                                    <option value="">Select Ward/Dept</option>
+                                    {wardDepartments.map((dept) => (
+                                      <option key={dept.id} value={dept.id}>
+                                        {dept.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">Admission Priority (Optional)</label>
+                                  <select
+                                    className="form-select"
+                                    value={admissionPriority}
+                                    onChange={(e) => setAdmissionPriority(e.target.value)}
+                                  >
+                                    {admissionPriorities.map((priority) => (
+                                      <option key={priority} value={priority}>
+                                        {priority}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div className="row g-3 mt-3">
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">Occupied Bed</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={occupiedBeds}
+                                    readOnly
+                                  />
+                                </div>
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">Vacant Bed</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={vacantBeds}
+                                    readOnly
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
