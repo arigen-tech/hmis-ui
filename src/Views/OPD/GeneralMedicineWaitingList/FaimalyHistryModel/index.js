@@ -1,122 +1,124 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { MASTERS } from "../../../../config/apiConfig";
+import { getRequest } from "../../../../service/apiService";
+import LoadingScreen from "../../../../Components/Loading";
 
 const MasFamilyModel = ({ show, popupType, onOk, onClose, onSelect, selectedItems }) => {
-    //   const [data, setData] = useState([]);
+    const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    const data = [
-        { id: 1, name: "Fever", description: "High temperature" },
-        { id: 2, name: "Cough", description: "Persistent cough" },
-        { id: 3, name: "Diabetes History", description: "Family diabetes" },
-    ];
+    const fetchOpdTemplateData = async () => {
+        setLoading(true);
 
-    //   useEffect(() => {
-    //     if (!show || !popupType) return;
+        try {
+            const result = await getRequest(`${MASTERS}/masMedicalHistory/getAll/1`);
 
-    //     setLoading(true);
-    //     setData([]);
+            if (result.status === 200 && Array.isArray(result.response)) {
+                setData(result.response);
+            } else {
+                setData([]);
+            }
+        } catch (error) {
+            console.error("Error fetching history data:", error);
+            setData([]);
+        }
 
-    //     let apiUrl = "";
+        setLoading(false);
+    };
 
-    //     if (popupType === "symptoms") apiUrl = "/api/symptoms";
-    //     if (popupType === "past") apiUrl = "/api/past-history";
-    //     if (popupType === "family") apiUrl = "/api/family-history";
+    useEffect(() => {
+        if (show) {
+            fetchOpdTemplateData();
+        }
+    }, [show]);
 
-    //     const fetchData = async () => {
-    //       try {
-    //         const response = await fetch(apiUrl);
-    //         const result = await response.json();
-    //         setData(result.data);
-    //       } catch (error) {
-    //         console.error("Error fetching data:", error);
-    //       }
+    // ❗ MUST be above early return (fixes ESLint hook order error)
+    const selectedIds = useMemo(
+        () => new Set(selectedItems.map((x) => x.medicalHistoryId)),
+        [selectedItems]
+    );
 
-    //       setLoading(false);
-    //     };
+    const isChecked = (id) => selectedIds.has(id);
 
-    //     fetchData();
-    //   }, [show, popupType]);
-
+    // ❗ Now it's safe
     if (!show) return null;
 
     const title =
         popupType === "symptoms"
             ? "Select Symptoms"
             : popupType === "past"
-                ? "Select Past History"
-                : "Select Family History";
-
-    const isChecked = (id) => selectedItems.some((x) => x.id === id);
+            ? "Select Past History"
+            : "Select Family History";
 
     return (
-        <div className="modal fade show d-block" style={{ background: "rgba(0,0,0,0.5)" }}>
-            <div className="modal-dialog modal-lg">
-                <div className="modal-content">
+        <>
+            {loading && <LoadingScreen />}
 
-                    <div className="modal-header bg-light">
-                        <h5 className="modal-title fw-bold">{title}</h5>
-                        <button className="btn-close" onClick={onClose}></button>
+            <div className="modal fade show d-block" style={{ background: "rgba(0,0,0,0.5)" }}>
+                <div className="modal-dialog modal-lg">
+                    <div className="modal-content">
+
+                        <div className="modal-header bg-light">
+                            <h5 className="modal-title fw-bold">{title}</h5>
+                            <button className="btn-close" onClick={onClose}></button>
+                        </div>
+
+                        <div className="modal-body" style={{ opacity: loading ? 0.3 : 1 }}>
+                            {!loading && (
+                                <div
+                                    style={{
+                                        maxHeight: "60vh",
+                                        overflowY: "auto",
+                                        border: "1px solid #ddd",
+                                        borderRadius: "5px",
+                                    }}
+                                >
+                                    <table className="table table-hover table-bordered m-0">
+                                        <thead className="table-secondary">
+                                            <tr>
+                                                <th style={{ width: "50px", textAlign: "center" }}>✔</th>
+                                                <th>Name</th>
+                                            </tr>
+                                        </thead>
+
+                                        <tbody>
+                                            {data.map((item) => (
+                                                <tr
+                                                    key={item.medicalHistoryId}
+                                                    style={{ cursor: "pointer" }}
+                                                    onClick={() => onSelect(item)}
+                                                >
+                                                    <td className="text-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isChecked(item.medicalHistoryId)}
+                                                            readOnly
+                                                        />
+                                                    </td>
+
+                                                    <td>{item.medicalHistoryName}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={onClose}>
+                                Cancel
+                            </button>
+
+                            <button className="btn btn-primary" onClick={onOk}>
+                                OK
+                            </button>
+                        </div>
+
                     </div>
-
-                    <div className="modal-body">
-
-                        {loading ? (
-                            <div className="text-center py-4">
-                                <div className="spinner-border text-primary"></div>
-                                <p className="mt-2">Loading...</p>
-                            </div>
-                        ) : (
-                            <table className="table table-hover table-bordered">
-                                <thead className="table-secondary">
-                                    <tr>
-                                        <th style={{ width: "50px", textAlign: "center" }}>✔</th>
-                                        <th>Name</th>
-                                        <th>Description</th>
-                                    </tr>
-                                </thead>
-
-                                <tbody>
-                                    {data.map((item) => (
-                                        <tr
-                                            key={item.id}
-                                            style={{ cursor: "pointer" }}
-                                            onClick={() => onSelect(item)}
-                                        >
-                                            <td className="text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={isChecked(item.id)}
-                                                    readOnly
-                                                />
-                                            </td>
-
-                                            <td>{item.name}</td>
-                                            <td>{item.description}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
-
-                    </div>
-
-                    <div className="modal-footer">
-                        <button className="btn btn-secondary" onClick={onClose}>
-                            Cancel
-                        </button>
-
-                        <button
-                            className="btn btn-primary"
-                            onClick={onOk}
-                        >
-                            OK
-                        </button>
-                    </div>
-
-
                 </div>
             </div>
-        </div>
+        </>
     );
 };
 

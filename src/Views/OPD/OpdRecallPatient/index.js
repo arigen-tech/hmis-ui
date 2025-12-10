@@ -86,43 +86,58 @@ const OpdRRecallPatient = () => {
     setModelShowPopup(true);
   };
 
-const handleClose = () => {
-  setModelShowPopup(false);  
-  setSelectedItems([]);     
-};
+  const handleClose = () => {
+    setModelShowPopup(false);
+    setSelectedItems([]);
+  };
 
-const handleOk = () => {
-  if (selectedItems.length === 0) {
-    alert("Please select at least one item.");
-    return;
-  }
+  const handleOk = () => {
+    if (selectedItems.length === 0) {
+      alert("Please select at least one item.");
+      return;
+    }
 
-  const names = selectedItems.map((x) => x.name).join(", ");
+    const newNames = selectedItems.map((x) => x.medicalHistoryName);
 
-  if (popupType === "symptoms") {
-    setFormData({ ...formData, patientSymptoms: names });
-  }
+    const mergeValues = (oldValue, newValues) => {
+      const oldArr = oldValue ? oldValue.split(",").map(x => x.trim()) : [];
+      const merged = Array.from(new Set([...oldArr, ...newValues]));
+      return merged.join(", ");
+    };
 
-  if (popupType === "past") {
-    setFormData({ ...formData, pastHistory: names });
-  }
+    if (popupType === "symptoms") {
+      setFormData({
+        ...formData,
+        patientSymptoms: mergeValues(formData.patientSymptoms, newNames),
+      });
+    }
 
-  if (popupType === "family") {
-    setFormData({ ...formData, familyHistory: names });
-  }
+    if (popupType === "past") {
+      setFormData({
+        ...formData,
+        pastHistory: mergeValues(formData.pastHistory, newNames),
+      });
+    }
 
-  setModelShowPopup(false);
-  setSelectedItems([]);
-};
+    if (popupType === "family") {
+      setFormData({
+        ...formData,
+        familyHistory: mergeValues(formData.familyHistory, newNames),
+      });
+    }
+
+    setModelShowPopup(false);
+    setSelectedItems([]);
+  };
 
 
 
   const handleSelect = (item) => {
     setSelectedItems((prev) => {
-      const exists = prev.find((x) => x.id === item.id);
+      const exists = prev.find((x) => x.medicalHistoryId === item.medicalHistoryId);
 
       if (exists) {
-        return prev.filter((x) => x.id !== item.id);
+        return prev.filter((x) => x.medicalHistoryId !== item.medicalHistoryId);
       } else {
         return [...prev, item];
       }
@@ -1512,6 +1527,11 @@ const handleOk = () => {
     setTreatmentItems(newItems);
   };
 
+  const getDrugDetails = (itemId) => {
+    return drugCodeOptions.find(d => d.itemId === itemId);
+  };
+
+
 
 
   const handleTreatmentTemplateSelect = (templateId) => {
@@ -1555,20 +1575,36 @@ const handleOk = () => {
         setShowDuplicatePopup(true);
       }
 
+
       // ADD ONLY NEW ITEMS
-      const formattedNew = newItemsToAdd.map(t => ({
-        treatmentId: null,
-        drugId: t.itemId,
-        drugName: t.itemName,
-        dispUnit: t.dispU ?? "",
-        dosage: t.dosage ?? "",
-        frequency: t.frequencyId ?? "",
-        days: t.noOfDays ?? "",
-        total: t.total ?? "",
-        instruction: t.instruction ?? "",
-        stock: t.stocks ?? "",
-        templateId: String(templateId)    // IMPORTANT
-      }));
+      const formattedNew = newItemsToAdd.map(t => {
+
+        // 🟢 FETCH FULL DRUG DETAILS FROM DROPDOWN SOURCE
+        const drug = getDrugDetails(t.itemId);
+
+        const newItem = {
+          treatmentId: null,
+          drugId: t.itemId,
+          drugName: t.itemName,
+          dispUnit: drug?.dispUnitName ?? t.dispU ?? "",
+          dosage: t.dosage ?? "",
+          frequency: t.frequencyId ?? "",
+          days: t.noOfDays ?? "",
+          instruction: t.instruction ?? "",
+          stock: t.stocks ?? "",
+          templateId: String(templateId),
+
+          itemClassId: drug?.itemClassId ?? null,
+          aDispQty: drug?.aDispQty ?? 1,
+        };
+
+        console.log("xyz",newItem)
+        newItem.total = calculateTotal(newItem);
+
+
+        return newItem;
+      });
+
 
       if (isOnlyDefaultTreatmentRow(updatedList)) {
         return formattedNew;
@@ -1582,79 +1618,104 @@ const handleOk = () => {
   };
 
   console.log("diagnosisItems", diagnosisItems)
+const calculateTotal = (item) => {
 
-  const calculateTotal = (item) => {
-    if (!item.dosage || !item.days || !item.frequency || !item.itemClassName) {
-      return "";
-    }
+  console.log("🧮 ===== calculateTotal() START =====");
+  console.log("📦 Item received:", item);
 
-    const dosage = parseFloat(item.dosage) || 0;
-    const days = parseFloat(item.days) || 0;
+  // STEP 1 — Check frequency & itemClassId
+  console.log("STEP 1: Check frequency & itemClassId");
+  console.log("➡ item.frequency:", item.frequency);
+  console.log("➡ item.itemClassId:", item.itemClassId);
 
-    const selectedFrequency = allFrequencies.find(
-      f => f.frequencyId === Number(item.frequency)
-    );
-    const frequencyMultiplier = selectedFrequency ? Number(selectedFrequency.feq) : 1;
+  if (!item.frequency || item.itemClassId == null) {
+    console.log("❌ Missing frequency or itemClassId → return 0");
+    console.log("🧮 ===== calculateTotal() END =====");
+    return "0";
+  }
 
-    // Convert string like "TABLET" into its class ID (1)
-    let itemClassId = item.itemClassName;
+  // STEP 2 — Parse dosage & days
+  const dosage = Number(item.dosage);
+  const days = Number(item.days);
 
-    if (typeof itemClassId === "string") {
-      itemClassId = ITEM_CLASS[item.itemClassName] || null;
-    } else {
-      itemClassId = Number(itemClassId);
-    }
+  console.log("STEP 2: Parsed values");
+  console.log("➡ dosage:", dosage);
+  console.log("➡ days:", days);
 
-    if (!itemClassId) {
-      return ""; // invalid class
-    }
+  if (!dosage || !days) {
+    console.log("❌ dosage or days is 0 or empty → return 0");
+    console.log("🧮 ===== calculateTotal() END =====");
+    return "0";
+  }
 
-    let total = 0;
+  if (isNaN(dosage) || isNaN(days)) {
+    console.log("❌ dosage or days is NaN → return 0");
+    console.log("🧮 ===== calculateTotal() END =====");
+    return "0";
+  }
 
-    // SOLID ITEMS (TABLET / CAPSULE)
-    if (DRUG_TYPE.SOLID.includes(itemClassId)) {
-      total = Math.ceil(dosage * frequencyMultiplier * days);
-    }
-    // LIQUID ITEMS (SYRUP, DROPS...)
-    else if (DRUG_TYPE.LIQUID.includes(itemClassId)) {
-      if (item.aDispQty && item.aDispQty > 0) {
-        total = Math.ceil((dosage * frequencyMultiplier * days) / item.aDispQty);
-      } else {
-        total = Math.ceil(dosage * frequencyMultiplier * days);
-      }
-    }
-    // DEFAULT
-    else {
-      total = 1;
-    }
+  // STEP 3 — Frequency multiplier
+  console.log("STEP 3: Resolve frequency multiplier");
+  const selectedFrequency = allFrequencies.find(
+    f => Number(f.frequencyId) === Number(item.frequency)
+  );
 
-    return total.toString();
-  };
+  console.log("➡ selectedFrequency:", selectedFrequency);
+
+  const frequencyMultiplier = selectedFrequency
+    ? Number(selectedFrequency.feq)
+    : 1;
+
+  console.log("➡ frequencyMultiplier:", frequencyMultiplier);
+
+  let total = 0;
+
+  // STEP 4 — Determine drug type
+  console.log("STEP 4: Determine DRUG TYPE");
+  console.log("➡ item.itemClassId:", item.itemClassId);
+
+  if (DRUG_TYPE.SOLID.includes(Number(item.itemClassId))) {
+    console.log("🟩 SOLID item");
+    total = Math.ceil(dosage * frequencyMultiplier * days);
+    console.log("➡ SOLID total =", total);
+  }
+
+  else if (DRUG_TYPE.LIQUID.includes(Number(item.itemClassId))) {
+    console.log("🟦 LIQUID item");
+    const qtyPerUnit = Number(item.aDispQty) || 1;
+    console.log("➡ qtyPerUnit:", qtyPerUnit);
+    total = Math.ceil((dosage * frequencyMultiplier * days) / qtyPerUnit);
+    console.log("➡ LIQUID total =", total);
+  }
+
+  else {
+    console.log("⬜ OTHER item type → default total = 1");
+    total = 1;
+  }
+
+  console.log("🧮 FINAL TOTAL =", total);
+  console.log("🧮 ===== calculateTotal() END =====");
+
+  return String(total);
+};
+
 
 
 
   const handleTreatmentChange = (index, field, value) => {
     const updated = [...treatmentItems];
+    updated[index] = { ...updated[index], [field]: value };
 
-    updated[index] = {
-      ...updated[index],
-      [field]: value
-    };
+    const recalcFields = ["dosage", "days", "frequency", "itemClassId", "aDispQty"];
 
-    const fieldsToRecalculate = [
-      "dosage",
-      "days",
-      "frequency",
-      "itemClassName",
-      "aDispQty"
-    ];
-
-    if (fieldsToRecalculate.includes(field)) {
+    if (recalcFields.includes(field)) {
       updated[index].total = calculateTotal(updated[index]);
     }
 
     setTreatmentItems(updated);
   };
+
+
 
 
 
@@ -2137,7 +2198,7 @@ const handleOk = () => {
                   popupType={popupType}
                   onClose={handleClose}
                   onSelect={handleSelect}
-                   onOk={handleOk}
+                  onOk={handleOk}
                   selectedItems={selectedItems}
                 />
 
@@ -2952,7 +3013,6 @@ const handleOk = () => {
                                                 setShowDuplicatePopup(true);
                                                 return;
                                               }
-
                                               const updatedRows = treatmentItems.map((r, i) => {
                                                 if (i === index) {
                                                   const updatedItem = {
@@ -2960,8 +3020,8 @@ const handleOk = () => {
                                                     drugName: opt.nomenclature,
                                                     dispUnit: opt.dispUnitName,
                                                     drugId: opt.itemId,
-                                                    itemClassName: opt.itemClassName,
-                                                    aDispQty: opt.adispQty ?? 0
+                                                    itemClassId: opt.itemClassId,
+                                                    aDispQty: opt.aDispQty ?? 1,   // FIXED
                                                   };
 
                                                   updatedItem.total = calculateTotal(updatedItem);
@@ -2974,6 +3034,7 @@ const handleOk = () => {
                                               setActiveDrugNameDropdown(null);
                                               drugNameDropdownClickedRef.current = false;
                                             }}
+
 
 
                                           >
@@ -3011,15 +3072,16 @@ const handleOk = () => {
                                     onChange={(e) =>
                                       handleTreatmentChange(index, "dosage", e.target.value)
                                     }
+                                    min={0}
                                   />
                                 </td>
 
                                 <td style={{ width: "120px" }}>
                                   <select
                                     className="form-select"
-                                    value={row.frequency}
+                                    value={row.frequency || ""}
                                     onChange={(e) =>
-                                      handleTreatmentChange(index, "frequency", e.target.value)
+                                      handleTreatmentChange(index, "frequency", Number(e.target.value))
                                     }
                                   >
                                     <option value="">Select..</option>
@@ -3039,6 +3101,7 @@ const handleOk = () => {
                                     onChange={(e) =>
                                       handleTreatmentChange(index, "days", e.target.value)
                                     }
+                                    min={0}
                                   />
                                 </td>
 
@@ -3050,6 +3113,7 @@ const handleOk = () => {
                                     onChange={(e) =>
                                       handleTreatmentChange(index, "total", e.target.value)
                                     }
+                                    readOnly
                                   />
                                 </td>
 
@@ -3069,7 +3133,7 @@ const handleOk = () => {
                                 </td>
 
                                 <td style={{ width: "100px" }}>
-                                  <input type="number" className="form-control" value={row.stock} readOnly />
+                                  <input type="number" className="form-control" value={row.stock || 0} readOnly />
                                 </td>
 
                                 <td style={{ width: "60px" }} className="text-center">
