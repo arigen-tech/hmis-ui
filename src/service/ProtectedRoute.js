@@ -1,4 +1,3 @@
-import React from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import PageNotFound from '../Components/PageNotFound/PageNotFound';
 
@@ -40,7 +39,7 @@ const validRoutes = [
   "/approveemployee",
   "/frequencymaster",
   "/opdmaster",
-  "/updatepatientregistration",
+  "/AppointmentForFollowUpPatient",
   "/mainchargecode",
   "/subchargecode",
   "/labregistration",
@@ -79,7 +78,7 @@ const validRoutes = [
   "/PendingForResultEntry",
   "/PhysicalStockTakingRegister",
   "/OpeningBalanceRegister",
-  "/GeneralMedicineWaitingList",
+  "/OpdWaitingList",
   "/SampleMaster",
   "/PatientwiseBilldatails",
   "/ResultValidation",
@@ -96,6 +95,21 @@ const validRoutes = [
   "/MedicineIssueRegister",
   "/IssueReferenceReport",
   "/PatientWaitingList",
+  "/CareLevelMaster",
+  "/WardCategoryMaster",
+  "/WardManagementMaster",
+  "/RoomCategoryMaster",
+  "/RoomMasterScreen",
+  "/BedManagement",
+  "/BedStatusMaster",
+  "/FamilyHistoryMaster",
+  "/ProcedureMaster",
+  "/ProcedureTypeMaster",
+  "/BedTypeMaster",
+  "/PatientAdmission",
+  "/TokenDisplay",
+  "/NewPatientAppointment",
+
   
 ];
 

@@ -1,95 +1,108 @@
-import React, { Suspense, useContext } from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate, Outlet } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle';
+import React, { Suspense } from 'react';
+import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { MenuProvider } from './context/MenuContext';
-import Gendermaster from './Views/Masters/Gendermaster';
-import Relationmaster from './Views/Masters/Relationmaster';
-import Bloodmaster from './Views/Masters/BloodMaster';
-import Manageuserapplication from './Views/Usermanagement/Manageuserapplicaton';
-import Addformreports from './Views/Usermanagement/AddFormReports';
-import Templatemaster from './Views/Usermanagement/TemplateMaster';
-import Assignapplication from './Views/Usermanagement/AssignApplicationToTemplate';
-import Rolesrights from './Views/Usermanagement/RolesRights';
-import Itemclass from './Views/Stores/ItemClass';
-import Itemcategory from './Views/Stores/ItemCategory';
-import Itemtype from './Views/Stores/ItemType';
-import Itemunit from './Views/Stores/ItemUnit';
-import Rolemaster from './Views/Usermanagement/RoleMaster';
-import Departmenttype from './Views/Masters/DepartmentType';
-import Departmentmaster from './Views/Masters/DepartmentMaster';
-import Maritalstatus from './Views/Masters/MaritalStatusMaster';
-import Countrymaster from './Views/Masters/CountryMaster';
-import Statemaster from './Views/Masters/StateMaster';
-import Districtmaster from './Views/Masters/DistrictMaster';
-import Religionmaster from './Views/Masters/ReligionMaster';
-import Hospitalmaster from './Views/Masters/HospitalMaster';
-import Createusermaster from './Views/Masters/CreateUserMaster';
-import Userdepartment from './Views/Masters/UserDepartment';
-import Identificationmaster from './Views/Masters/identificationMaster';
-import RCMC from './Views/Masters/RCMC';
-import Treatmentadvicemaster from './Views/Masters/TreatmentAdviceMaster';
-import Approveemployee from './Views/Admin/ApproveEmployee';
-import Frequencymaster from './Views/Masters/Frequencymaster';
-import OpdMaster from './Views/Masters/OpdMaster';
-import UpdatePatientRegistration from './Views/Reception/updatePatientRegistration';
-import Mainchargecode from './Views/Laboratory/Mainchargecode';
-import Subchargecode from './Views/Laboratory/Subchargecode';
-import Labregistration from './Views/Laboratory/LabRegistration';
 import ProtectedRoute from './service/ProtectedRoute';
+import Approveemployee from './Views/Admin/ApproveEmployee';
+import OpeningBalanceApprovalList from './Views/Dispensary/OpeningBalanceApproval';
+import OpeningBalanceEntry from './Views/Dispensary/OpeningBalanceEntry';
+import OpeningBalanceRegister from './Views/Dispensary/OpeningBalanceRegister';
+import PhysicalStockAdjustment from './Views/Dispensary/PhysicalStockAdjustment';
+import PhysicalStockAdjustmentApproval from './Views/Dispensary/PhysicalStockApproval';
+import PhysicalStockTakingRegister from './Views/Dispensary/PhysicalStockRegister';
+import PhysicalStockAdjustmentViewUpdate from './Views/Dispensary/PhysicalStockViewAndUpdate';
+import StockStatusReport from './Views/Dispensary/StockStatusReport';
+import UpdateUnitRate from './Views/Dispensary/UpdateUnitRate';
+import ViewAndUpdate from './Views/Dispensary/ViewAndUpdate';
+import LabBillingDetails from './Views/Laboratory/LabBillingDetails';
+import Labregistration from './Views/Laboratory/LabRegistration';
+import Mainchargecode from './Views/Laboratory/Mainchargecode';
+import OPDBillingDetails from './Views/Laboratory/OPDBillingDetails';
+import PendingForBilling from './Views/Laboratory/PendingForBilling';
+import PendingForResultEntry from './Views/Laboratory/PendingForResultEntry';
+import PendingForSampleCollection from './Views/Laboratory/PendingForSampleCollect';
+import PendingSampleCollection from './Views/Laboratory/PendingForSampleCollection';
+import ResultValidation from './Views/Laboratory/ResultValidation';
 import SampleCollectionMaster from './Views/Laboratory/SampleCollectionMaster';
+import SampleValidation from './Views/Laboratory/SampleValidation';
+import Subchargecode from './Views/Laboratory/Subchargecode';
 import UOMMaster from './Views/Laboratory/UOMMaster';
-import InvestigationPricingMaster from './Views/Masters/InvestigationPricing';
-import OpdPreconsultation from './Views/OPD/OpdPreconsultation';
+import UpdateLabRegistration from './Views/Laboratory/UpdateLabRegistration';
+import UpdateResultValidation from './Views/Laboratory/UpdateResultValidation';
+import BedManagement from './Views/Masters/BedManagementMaster';
+import BedStatusMaster from './Views/Masters/BedStatusMaster';
+import BedTypeMaster from './Views/Masters/BedTypeMaster';
+import Bloodmaster from './Views/Masters/BloodMaster';
+import CareLevelMaster from './Views/Masters/CareLevelMaster';
+import Countrymaster from './Views/Masters/CountryMaster';
+import Createusermaster from './Views/Masters/CreateUserMaster';
+import Departmentmaster from './Views/Masters/DepartmentMaster';
+import Departmenttype from './Views/Masters/DepartmentType';
+import Districtmaster from './Views/Masters/DistrictMaster';
+import Frequencymaster from './Views/Masters/Frequencymaster';
+import Gendermaster from './Views/Masters/Gendermaster';
+import Hospitalmaster from './Views/Masters/HospitalMaster';
+import HSNMaster from './Views/Masters/HSNMaster';
+import Identificationmaster from './Views/Masters/identificationMaster';
+import InvestigationCategoryMaster from './Views/Masters/InvestigationCategoryMaster';
 import InvestigationMaster from './Views/Masters/InvestigationMaster';
 import InvestigationMasterResult from './Views/Masters/InvestigationMaster/investigationMasterResult';
-import Drugmaster from './Views/Stores/DrugMaster';
-import OpeningBalanceEntry from './Views/Dispensary/OpeningBalanceEntry';
-import OpeningBalanceApprovalList from './Views/Dispensary/OpeningBalanceApproval';
-import OPDServiceMaster from './Views/Masters/OpdService';
-import ServiceCategoryMaster from './Views/Masters/ServiceCategory';
-import ItemSection from './Views/Stores/ItemSection';
-import HSNMaster from './Views/Masters/HSNMaster';
-import ViewAndUpdate from './Views/Dispensary/ViewAndUpdate';
-import PaymentPage from './Views/Payment/payment';
-import LabPaymentSuccess from './Views/Payment/LabPaymentSuccess';
-import PackageMaster from './Views/Masters/PackageMaster';
-import PackageInvestigationMaster from './Views/Masters/PackageInvestigationMaster';
-import PendingForBilling from './Views/Laboratory/PendingForBilling';
-import OPDBillingDetails from './Views/Laboratory/OPDBillingDetails';
-import LabBillingDetails from './Views/Laboratory/LabBillingDetails';
-import StockStatusReport from './Views/Dispensary/StockStatusReport';
-import OpdWaitingList from './Views/OPD/OpdWaitingList';
-import UpdateLabRegistration from './Views/Laboratory/UpdateLabRegistration';
-import UpdateUnitRate from './Views/Dispensary/UpdateUnitRate';
-import DrugExpiry from './Views/Stores/DrugExpiryReport';
-import PendingSampleCollection from './Views/Laboratory/PendingForSampleCollection';
-import PhysicalStockAdjustment from './Views/Dispensary/PhysicalStockAdjustment';
-import PhysicalStockAdjustmentViewUpdate from './Views/Dispensary/PhysicalStockViewAndUpdate';
-import PhysicalStockAdjustmentApproval from './Views/Dispensary/PhysicalStockApproval';
-import SampleValidation from './Views/Laboratory/SampleValidation';
-import PendingForSampleCollection from './Views/Laboratory/PendingForSampleCollect';
-import PendingForResultEntry from './Views/Laboratory/PendingForResultEntry';
-import PhysicalStockTakingRegister from './Views/Dispensary/PhysicalStockRegister';
-import OpeningBalanceRegister from './Views/Dispensary/OpeningBalanceRegister';
-import GeneralMedicineWaitingList from './Views/OPD/GeneralMedicineWaitingList';
-import SampleMaster from './Views/Masters/SampleMaster';
-import PatientwiseBilldatails from './Views/Masters/PatientwiseBilldatails';
-import ResultValidation from './Views/Laboratory/ResultValidation';
-import UpdateResultValidation from './Views/Laboratory/UpdateResultValidation';
-import OpdRRecallPatient from './Views/OPD/OpdRecallPatient';
-import OpdPaymentSuccess from './Views/Payment/OpdPaymentSuccess';
-import IndentCreation from './Views/WardPharmacy/CreateIndent';
-import ViewUpdateIndent from './Views/WardPharmacy/View Update Indent';
-import PendingIndent from './Views/WardPharmacy/PendingIndent';
 import InvestigationMethodology from './Views/Masters/InvestigationMethodologyMaster';
-import TrackIndent from './Views/WardPharmacy/TrackIndent';
-import InvestigationCategoryMaster from './Views/Masters/InvestigationCategoryMaster';
-import IndentIssue from './Views/WardPharmacy/IndentIssue';
+import InvestigationPricingMaster from './Views/Masters/InvestigationPricing';
+import Maritalstatus from './Views/Masters/MaritalStatusMaster';
+import OpdMaster from './Views/Masters/OpdMaster';
+import OPDServiceMaster from './Views/Masters/OpdService';
+import PackageInvestigationMaster from './Views/Masters/PackageInvestigationMaster';
+import PackageMaster from './Views/Masters/PackageMaster';
+import PatientwiseBilldatails from './Views/Masters/PatientwiseBilldatails';
+import RCMC from './Views/Masters/RCMC';
+import Relationmaster from './Views/Masters/Relationmaster';
+import Religionmaster from './Views/Masters/ReligionMaster';
+import RoomCategoryMaster from './Views/Masters/RoomCategoryMaster';
+import RoomMasterScreen from './Views/Masters/RoomMasterScreen';
+import SampleMaster from './Views/Masters/SampleMaster';
+import ServiceCategoryMaster from './Views/Masters/ServiceCategory';
+import Statemaster from './Views/Masters/StateMaster';
+import Treatmentadvicemaster from './Views/Masters/TreatmentAdviceMaster';
+import Userdepartment from './Views/Masters/UserDepartment';
+import WardCategoryMaster from './Views/Masters/WardCategoryMaster';
+import WardManagementMaster from './Views/Masters/WardManagementMaster';
+import GeneralMedicineWaitingList from './Views/OPD/GeneralMedicineWaitingList';
+import PatientWaitingList from './Views/OPD/GeneralMedicineWaitingList/DisplayTokenPatient';
+import OpdPreconsultation from './Views/OPD/OpdPreconsultation';
+import OpdRRecallPatient from './Views/OPD/OpdRecallPatient';
+// import OpdWaitingList from './Views/OPD/OpdWaitingList';
+import LabPaymentSuccess from './Views/Payment/LabPaymentSuccess';
+import OpdPaymentSuccess from './Views/Payment/OpdPaymentSuccess';
+import PaymentPage from './Views/Payment/payment';
+import UpdatePatientRegistration from './Views/Reception/updatePatientRegistration';
+import DrugExpiry from './Views/Stores/DrugExpiryReport';
+import Drugmaster from './Views/Stores/DrugMaster';
+import Itemcategory from './Views/Stores/ItemCategory';
+import Itemclass from './Views/Stores/ItemClass';
+import ItemSection from './Views/Stores/ItemSection';
+import Itemtype from './Views/Stores/ItemType';
+import Itemunit from './Views/Stores/ItemUnit';
+import Addformreports from './Views/Usermanagement/AddFormReports';
+import Assignapplication from './Views/Usermanagement/AssignApplicationToTemplate';
+import Manageuserapplication from './Views/Usermanagement/Manageuserapplicaton';
+import Rolemaster from './Views/Usermanagement/RoleMaster';
+import Rolesrights from './Views/Usermanagement/RolesRights';
+import Templatemaster from './Views/Usermanagement/TemplateMaster';
+import IndentCreation from './Views/WardPharmacy/CreateIndent';
 import IndentApproval from './Views/WardPharmacy/IndentApproval';
+import IndentIssue from './Views/WardPharmacy/IndentIssue';
 import MedicineIssueRegister from './Views/WardPharmacy/IndentIssueReport';
 import IssueReferenceReport from './Views/WardPharmacy/IssueRefReport';
-import PatientWaitingList from './Views/OPD/GeneralMedicineWaitingList/DisplayTokenPatient';
+import PendingIndent from './Views/WardPharmacy/PendingIndent';
+import TrackIndent from './Views/WardPharmacy/TrackIndent';
+import ViewUpdateIndent from './Views/WardPharmacy/View Update Indent';
+
+import FamilyHistoryMaster from './Views/Masters/FamilyHistoryMaster';
+import PatientAdmission from './Views/Masters/PatientAdmission';
+import ProcedureMaster from './Views/Masters/ProcedureMaster';
+import ProcedureTypeMaster from './Views/Masters/ProcedureTypeMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -143,7 +156,7 @@ function App() {
                 <Route path="Itemunit" element={<Itemunit />} />
                 <Route path="ApointmentSetup" element={<ApointmentSetup />} />
                 <Route path="DoctorRoaster" element={<DoctorRoaster />} />
-                <Route path="PatientRegistration" element={<PatientRegistration />} />
+                <Route path="NewPatientAppointment" element={<PatientRegistration />} />
                 <Route path="rolemaster" element={<Rolemaster />} />
                 <Route path="departmenttype" element={<Departmenttype />} />
                 <Route path="departmentmaster" element={<Departmentmaster />} />
@@ -162,7 +175,7 @@ function App() {
                 <Route path="approveemployee" element={<Approveemployee />} />
                 <Route path="frequencymaster" element={<Frequencymaster />} />
                 <Route path="opdmaster" element={<OpdMaster />} />
-                <Route path="updatepatientregistration" element={<UpdatePatientRegistration />} />
+                <Route path="AppointmentForFollowUpPatient" element={<UpdatePatientRegistration />} />
                 <Route path="mainchargecode" element={<Mainchargecode />} />
                 <Route path="subchargecode" element={<Subchargecode />} />
                 <Route path="labregistration" element={<Labregistration />} />
@@ -185,7 +198,7 @@ function App() {
                 <Route path="OPDBillingDetails" element={<OPDBillingDetails />} />
                 <Route path="LabBillingDetails" element={<LabBillingDetails/>} />
                 <Route path="StockStatusReport" element={<StockStatusReport/>} />
-                <Route path="OPDWaitingList" element={<OpdWaitingList />} />
+                {/* <Route path="OPDWaitingList" element={<OpdWaitingList />} /> */}
                 <Route path="UpdateLabRegistration" element={<UpdateLabRegistration/>} />
                 <Route path="UpdateUnitRate" element={<UpdateUnitRate/>} />
                 <Route path="DrugExpiry" element={<DrugExpiry />} />
@@ -198,7 +211,7 @@ function App() {
                 <Route path="PendingForResultEntry" element={<PendingForResultEntry/>} />
                 <Route path="PhysicalStockTakingRegister" element={<PhysicalStockTakingRegister/>} />
                 <Route path="OpeningBalanceRegister" element={<OpeningBalanceRegister/>} />
-                <Route path="GeneralMedicineWaitingList" element={<GeneralMedicineWaitingList/>} />
+                <Route path="OpdWaitingList" element={<GeneralMedicineWaitingList/>} />
                 <Route path="SampleMaster" element={<SampleMaster/>} />
                 <Route path="PatientwiseBilldatails" element={<PatientwiseBilldatails/>} />
                 <Route path="ResultValidation" element={<ResultValidation/>} />
@@ -212,9 +225,21 @@ function App() {
                 <Route path="InvestigationCategoryMaster" element={<InvestigationCategoryMaster/>} />
                 <Route path="IndentIssue" element={<IndentIssue/>} />
                 <Route path="IndentApproval" element={<IndentApproval/>} />
-                                <Route path="PatientWaitingList" element={<PatientWaitingList/>} />
+                <Route path="TokenDisplay" element={<PatientWaitingList/>} />
                 <Route path="MedicineIssueRegister" element={<MedicineIssueRegister/>} />
                 <Route path="IssueReferenceReport" element={<IssueReferenceReport/>} />
+                <Route path="CareLevelMaster" element={<CareLevelMaster/>} />
+                <Route path="WardCategoryMaster" element={<WardCategoryMaster/>} />
+                <Route path="WardManagementMaster" element={<WardManagementMaster/>} />
+                <Route path="RoomCategoryMaster"element={<RoomCategoryMaster/>}/>
+                <Route path="RoomMasterScreen"element={<RoomMasterScreen/>}/>
+                <Route path="BedManagement"element={<BedManagement/>}/>
+                <Route path="BedStatusMaster"element={<BedStatusMaster/>}/>
+                <Route path="FamilyHistoryMaster" element={<FamilyHistoryMaster/>} />
+                <Route path="/ProcedureMaster" element={<ProcedureMaster/>} />
+                <Route path="/ProcedureTypeMaster" element={<ProcedureTypeMaster/>} />
+                <Route path="/BedTypeMaster" element={<BedTypeMaster/>} />
+                <Route path="/PatientAdmission" element={<PatientAdmission/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>

@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
-import axios from "axios";
-import { API_HOST, MAS_DEPARTMENT, MAS_DEPARTMENT_TYPE } from "../../../config/apiConfig";
+import { API_HOST, MAS_DEPARTMENT, MAS_DEPARTMENT_TYPE, MAS_WARD_CATEGORY,WARD_ID } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
 const DepartmentMaster = () => {
     const [departments, setDepartments] = useState([]);
     const [departmentTypes, setDepartmentTypes] = useState([]);
+    const [wardCategories, setWardCategories] = useState([]);
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, categoryId: null, newStatus: false });
     const [formData, setFormData] = useState({
         departmentCode: "",
@@ -15,6 +15,7 @@ const DepartmentMaster = () => {
         departmentType: "",
         departmentTypeId: "",
         departmentNo: "",
+        wardCategoryId: ""
     });
     const [searchQuery, setSearchQuery] = useState("");
     const [showForm, setShowForm] = useState(false);
@@ -27,15 +28,15 @@ const DepartmentMaster = () => {
     const [loading, setLoading] = useState(true);
     const itemsPerPage = 5;
 
-
     const DEPARTMENT_CODE_MAX_LENGTH = 8;
     const DEPARTMENT_NAME_MAX_LENGTH = 30;
     const DEPARTMENT_NUMBER_MAX_LENGTH = 8;
-
+    // const WARD_ID = 10; // Constant for Ward department type ID
 
     useEffect(() => {
         fetchDepartments(0);
         fetchDepartmentTypes(1);
+        fetchWardCategories(1);
     }, []);
 
     const fetchDepartments = async (flag = 0) => {
@@ -65,6 +66,18 @@ const DepartmentMaster = () => {
         }
     };
 
+    const fetchWardCategories = async (flag = 1) => {
+        try {
+            const response = await getRequest(`${MAS_WARD_CATEGORY}/getAll/${flag}`);
+            if (response && response.response) {
+                setWardCategories(response.response);
+            }
+        } catch (err) {
+            console.error("Error fetching ward categories:", err);
+            showPopup("Failed to load ward categories", "error");
+        }
+    };
+
     const getFilteredDepartments = () => {
         if (!searchQuery) return departments;
 
@@ -73,12 +86,12 @@ const DepartmentMaster = () => {
                 return dept.departmentCode.toLowerCase().includes(searchQuery.toLowerCase());
             } else if (searchType === "description") {
                 return dept.departmentName.toLowerCase().includes(searchQuery.toLowerCase());
+            } else if (searchType === "type") {
+                return dept.departmentTypeName.toLowerCase().includes(searchQuery.toLowerCase());
             }
             return true;
         });
     };
-
-
 
     const filteredDepartments = getFilteredDepartments();
     const filteredTotalPages = Math.ceil(filteredDepartments.length / itemsPerPage);
@@ -121,7 +134,6 @@ const DepartmentMaster = () => {
         const { id, value } = e.target;
         setFormData((prevData) => ({ ...prevData, [id]: value }));
 
-        // Ensure values are always strings before calling `.trim()`
         const updatedFormData = {
             ...formData,
             [id]: value,
@@ -130,12 +142,11 @@ const DepartmentMaster = () => {
         const isValid =
             (updatedFormData.departmentCode || "").trim() !== "" &&
             (updatedFormData.departmentName || "").trim() !== "" &&
-            (updatedFormData.departmentType || "").trim() !== "" &&
-            (updatedFormData.departmentNo || "").trim() !== "";
+            (updatedFormData.departmentType || "").trim() !== "";
+            // Note: departmentNo is optional, so we don't validate it
 
         setIsFormValid(isValid);
     };
-
 
     const renderPagination = () => {
         const pageNumbers = [];
@@ -181,9 +192,9 @@ const DepartmentMaster = () => {
             departmentName: dept.departmentName,
             departmentType: dept.departmentTypeName,
             departmentTypeId: dept.departmentTypeId,
-            departmentNo: dept.departmentNo,
+            departmentNo: dept.departmentNo || "",
+            wardCategoryId: dept.wardCategoryId || null
         });
-        console.log("dept.departmentTypeId", dept.departmentTypeId);
         setIsFormValid(true);
         setShowForm(true);
     };
@@ -195,13 +206,12 @@ const DepartmentMaster = () => {
         try {
             setLoading(true);
 
-
             const isDuplicate = departments.some(
                 (dept) =>
                     dept.id !== (editingDepartment ? editingDepartment.id : null) &&
                     (dept.departmentCode === formData.departmentCode ||
                         dept.departmentName === formData.departmentName ||
-                        dept.departmentNo === formData.departmentNo)
+                        (formData.departmentNo && dept.departmentNo === formData.departmentNo))
             );
 
             if (isDuplicate) {
@@ -210,35 +220,38 @@ const DepartmentMaster = () => {
                 return;
             }
 
+            // Prepare data to send
+            const departmentData = {
+                departmentCode: formData.departmentCode,
+                departmentName: formData.departmentName,
+                departmentTypeId: formData.departmentTypeId,
+                departmentNo: formData.departmentNo || null,
+                status: editingDepartment ? editingDepartment.status : "y",
+                // wardCategoryId : formData.wardCategoryId
+            };
+
+            // Add wardCategoryId only if department type ID is WARD_ID (10)
+            if (parseInt(formData.departmentTypeId) === WARD_ID && formData.wardCategoryId) {
+                departmentData.wardCategoryId = formData.wardCategoryId;
+            }else{
+                departmentData.wardCategoryId=null;
+            }
+
             if (editingDepartment) {
                 // Update existing department
-
-                console.log("form formdata", formData.departmentTypeId);
-                const response = await putRequest(`${MAS_DEPARTMENT}/updateById/${editingDepartment.id}`, {
-                    departmentCode: formData.departmentCode,
-                    departmentName: formData.departmentName,
-                    departmentTypeId: formData.departmentTypeId,
-                    departmentNo: formData.departmentNo,
-                    status: editingDepartment.status,
-                });
+                const response = await putRequest(`${MAS_DEPARTMENT}/updateById/${editingDepartment.id}`, departmentData);
 
                 if (response && response.response) {
                     setDepartments((prevData) =>
                         prevData.map((dept) =>
-                            dept.id === editingDepartment.id ? response.data.response : dept
+                            dept.id === editingDepartment.id ? response.response : dept
                         )
                     );
                     showPopup("Department updated successfully!", "success");
                 }
             } else {
                 // Add new department
-                const response = await postRequest(`${MAS_DEPARTMENT}/create`, {
-                    departmentCode: formData.departmentCode,
-                    departmentName: formData.departmentName,
-                    departmentTypeId: formData.departmentTypeId,
-                    departmentNo: formData.departmentNo,
-                    status: "y",
-                });
+                const response = await postRequest(`${MAS_DEPARTMENT}/create`, departmentData);
 
                 if (response && response.response) {
                     setDepartments([...departments, response.response]);
@@ -246,9 +259,15 @@ const DepartmentMaster = () => {
                 }
             }
 
-
             setEditingDepartment(null);
-            setFormData({ departmentCode: "", departmentName: "", departmentType: "", departmentNo: "" });
+            setFormData({ 
+                departmentCode: "", 
+                departmentName: "", 
+                departmentType: "", 
+                departmentTypeId: "",
+                departmentNo: "",
+                wardCategoryId: ""
+            });
             setShowForm(false);
             fetchDepartments();
         } catch (err) {
@@ -305,8 +324,6 @@ const DepartmentMaster = () => {
         setConfirmDialog({ isOpen: false, categoryId: null, newStatus: null });
     };
 
-    // console.log(formData);
-
     return (
         <div className="content-wrapper">
             <div className="row">
@@ -341,6 +358,18 @@ const DepartmentMaster = () => {
                                                 <span style={{ marginLeft: "5px" }}>Department Name</span>
                                             </label>
                                         </div>
+                                        <div className="me-3">
+                                            <label>
+                                                <input
+                                                    type="radio"
+                                                    name="searchType"
+                                                    value="type"
+                                                    checked={searchType === "type"}
+                                                    onChange={() => handleSearchTypeChange("type")}
+                                                />
+                                                <span style={{ marginLeft: "5px" }}>Department Type</span>
+                                            </label>
+                                        </div>
 
                                         <div className="d-flex align-items-center me-3">
                                             <input
@@ -372,7 +401,9 @@ const DepartmentMaster = () => {
                                                     departmentCode: "",
                                                     departmentName: "",
                                                     departmentType: "",
+                                                    departmentTypeId: "",
                                                     departmentNo: "",
+                                                    wardCategoryId: ""
                                                 });
                                                 setIsFormValid(false);
                                             }}
@@ -413,7 +444,7 @@ const DepartmentMaster = () => {
                                                         <td>{dept.departmentCode}</td>
                                                         <td>{dept.departmentName}</td>
                                                         <td>{dept.departmentTypeName}</td>
-                                                        <td>{dept.departmentNo}</td>
+                                                        <td>{dept.departmentNo || "-"}</td>
                                                         <td>
                                                             <div className="form-check form-switch">
                                                                 <input
@@ -477,6 +508,40 @@ const DepartmentMaster = () => {
                                             required
                                         />
                                     </div>
+                                    
+                                    <div className="form-group col-md-4">
+                                        <label >
+                                            Department Type <span className="text-danger">*</span>
+                                        </label>
+                                        <select
+                                            className="form-control  mt-1"
+                                            id="departmentType"
+                                            name="departmentType"
+                                            value={formData.departmentType}
+                                            onChange={(e) => {
+                                                const selectedIndex = e.target.selectedIndex;
+                                                const selectedOption = e.target.options[selectedIndex];
+                                                const typeId = parseInt(selectedOption.getAttribute('data-id'), 10);
+                                                const typeName = e.target.value;
+
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    departmentType: typeName,
+                                                    departmentTypeId: isNaN(typeId) ? null : typeId,
+                                                    // Clear ward category if not selecting Ward (ID = 10)
+                                                    wardCategoryId: typeId === WARD_ID ? prev.wardCategoryId : ""
+                                                }));
+                                            }}
+                                            required
+                                        >
+                                            <option value="">Select Department Type</option>
+                                            {departmentTypes.map((type) => (
+                                                <option key={type.id} value={type.departmentTypeName} data-id={type.id}>
+                                                    {type.departmentTypeName}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                     <div className="form-group col-md-4">
                                         <label >
                                             Department <span className="text-danger">*</span>
@@ -493,41 +558,9 @@ const DepartmentMaster = () => {
                                             required
                                         />
                                     </div>
-                                    <div className="form-group col-md-4">
+                                    <div className="form-group col-md-4 mt-3">
                                         <label >
-                                            Department Type <span className="text-danger">*</span>
-                                        </label>
-                                        <select
-                                            className="form-control  mt-1"
-                                            id="departmentType"
-                                            name="departmentType"
-                                            value={formData.departmentType}
-                                            onChange={(e) => {
-                                                const selectedIndex = e.target.selectedIndex;
-                                                const selectedOption = e.target.options[selectedIndex];
-                                                const typeId = parseInt(selectedOption.getAttribute('data-id'), 10); // Convert to number
-
-                                                setFormData((prev) => ({
-                                                    ...prev,
-                                                    departmentType: e.target.value, // Store the selected type name
-                                                    departmentTypeId: isNaN(typeId) ? null : typeId, // Ensure it's a valid number
-                                                }));
-                                            }}
-                                            required
-                                        >
-                                            <option value="">Select Department Type</option>
-                                            {departmentTypes.map((type) => (
-                                                <option key={type.id} value={type.departmentTypeName} data-id={type.id}>
-                                                    {type.departmentTypeName}
-                                                </option>
-                                            ))}
-                                        </select>
-
-
-                                    </div>
-                                    <div className="form-group col-md-4 mt-2">
-                                        <label >
-                                            Department Number <span className="text-danger">*</span>
+                                            Department Number
                                         </label>
                                         <input
                                             type="text"
@@ -538,9 +571,32 @@ const DepartmentMaster = () => {
                                             value={formData.departmentNo}
                                             onChange={handleInputChange}
                                             maxLength={DEPARTMENT_NUMBER_MAX_LENGTH}
-                                            required
                                         />
                                     </div>
+
+                                    {/* Ward Category Field - Only shown when department type ID is WARD_ID (10) */}
+                                    {parseInt(formData.departmentTypeId) === WARD_ID && (
+                                        <div className="form-group col-md-4 mt-3">
+                                            <label >
+                                                Ward Category <span className="text-danger">*</span>
+                                            </label>
+                                            <select
+                                                className="form-control mt-1"
+                                                id="wardCategoryId"
+                                                name="wardCategoryId"
+                                                value={formData.wardCategoryId}
+                                                onChange={handleInputChange}
+                                                required={parseInt(formData.departmentTypeId) === WARD_ID}
+                                            >
+                                                <option value="">Select Ward Category</option>
+                                                {wardCategories.map((category) => (
+                                                    <option key={category.categoryId} value={category.categoryId}>
+                                                        {category.categoryName}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
 
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>

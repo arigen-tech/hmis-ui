@@ -30,7 +30,7 @@ const HospitalMaster = () => {
     regCostApplicable: "",
     appCostApplicable: "",
     preConsultationAvailable: "",
-    registrationCost:"",
+   // registrationCost:"",
   })
   const [searchQuery, setSearchQuery] = useState("")
   const [showForm, setShowForm] = useState(false)
@@ -365,7 +365,7 @@ const HospitalMaster = () => {
           contactNumber2: formData.contactNumber2,
           email: formData.email,
           regCostApplicable: regCostValue,
-          registrationCost: formData.regCostApplicable === "Yes" ? Number(formData.registrationCost) || 0 : 0,
+          //registrationCost: formData.regCostApplicable === "Yes" ? Number(formData.registrationCost) || 0 : 0,
           appCostApplicable: appCostValue,
           preConsultationAvailable: preConsultationValue,
           status: editingHospital.status,
@@ -392,7 +392,7 @@ const HospitalMaster = () => {
           contactNumber2: formData.contactNumber2,
           email: formData.email,
           regCostApplicable: regCostValue,
-          registrationCost: formData.regCostApplicable === "Yes" ? Number(formData.registrationCost) || 0 : 0,
+          //registrationCost: formData.regCostApplicable === "Yes" ? Number(formData.registrationCost) || 0 : 0,
           appCostApplicable: appCostValue,
           preConsultationAvailable: preConsultationValue,
           status: "y",
@@ -853,7 +853,7 @@ const HospitalMaster = () => {
                       <option value="No">No</option>
                     </select>
                   </div>
-                  {/* Registration Cost Amount (visible only when Yes) */}
+                  {/* Registration Cost Amount (visible only when Yes)
                   {formData.regCostApplicable === "Yes" && (
                     <div className="col-md-6">
                       <label htmlFor="registrationCost" className="form-label">
@@ -879,7 +879,7 @@ const HospitalMaster = () => {
                         required
                       />
                     </div>
-                  )}
+                  )} */}
 
                       <div className="col-md-6">
                         <label htmlFor="appCostApplicable" className="form-label">

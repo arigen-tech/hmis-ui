@@ -3,11 +3,13 @@ import placeholderImage from "../../../assets/images/placeholder.jpg"
 import OTDashboard from "./OTDashboard"
 import InvestigationModal from "./InvestigationModal"
 import TreatmentModal from "./TreatmentModal"
-import { OPD_TEMPLATE, MAS_INVESTIGATION, OPD_PATIENT, MAS_DRUG_MAS, DRUG_TYPE, ITEM_CLASS, MAS_OPD_SESSION, DOCTOR, MASTERS, MAS_FREQUENCY } from "../../../config/apiConfig"
+import { OPD_TEMPLATE, MAS_INVESTIGATION, OPD_PATIENT, MAS_DRUG_MAS, DRUG_TYPE, MAS_OPD_SESSION, DOCTOR, MASTERS, MAS_FREQUENCY } from "../../../config/apiConfig"
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import LoadingScreen from "../../../Components/Loading/index";
 import Popup from "../../../Components/popup";
 import DuplicatePopup from "../GeneralMedicineWaitingList/DuplicatePopup";
+import MasFamilyModel from "../GeneralMedicineWaitingList/FaimalyHistryModel"
+
 
 const GeneralMedicineWaitingList = () => {
   const [waitingList, setWaitingList] = useState([])
@@ -15,8 +17,10 @@ const GeneralMedicineWaitingList = () => {
   const [doctorData, setDoctorData] = useState([]);
   const [sessionData, setSessionData] = useState([]);
   const [masICDData, setMasICDData] = useState([]);
+  const [opdVitalsData, setOpdVitalsData] = useState([]);
   const [duplicateItems, setDuplicateItems] = useState([]);
   const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
+  const [vitalsAvlaible, setVitalsAvlaible] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
   const [selectedTreatmentTemplateIds, setSelectedTreatmentTemplateIds] = useState(new Set());
   const [opdTemplateData, setOpdTemplateData] = useState([]);
@@ -27,6 +31,92 @@ const GeneralMedicineWaitingList = () => {
   const [drugCodeOptions, setDrugCodeOptions] = useState([]);
   const [allFrequencies, setAllFrequencies] = useState([])
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [icdDropdown, setIcdDropdown] = useState([]);
+  const [page, setPage] = useState(0);
+  const [lastPage, setLastPage] = useState(false);
+  const [search, setSearch] = useState("");
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const [showModelPopup, setModelShowPopup] = useState(false);
+  const [popupType, setPopupType] = useState("");
+  const [selectedItems, setSelectedItems] = useState([]);
+
+  // Ref to detect click outside
+  const dropdownRef = useRef(null);
+
+  // Add new state variables for Doctor's Remarks
+  const [doctorRemarksTemplates, setDoctorRemarksTemplates] = useState([
+    "Minimize the intake of fried and spicy food",
+    "Do exercise for at least 30-45 minutes every morning",
+    "Take nutritious food daily and drink 2-3 liters of water",
+    "Do not consume tobacco, alcohol and narcotics",
+    "Must take 7-8 hours of sleep daily"
+  ])
+
+  const [selectedDoctorRemarks, setSelectedDoctorRemarks] = useState([])
+  const [showDoctorRemarksModal, setShowDoctorRemarksModal] = useState(false)
+  const [doctorRemarksText, setDoctorRemarksText] = useState("")
+
+  // Add state variables for Admission
+  const [admissionDate, setAdmissionDate] = useState("")
+  const [admissionRemarks, setAdmissionRemarks] = useState("")
+  const [wardCategory, setWardCategory] = useState("")
+  const [admissionCareLevel, setAdmissionCareLevel] = useState("")
+  const [wardName, setWardName] = useState("")
+  const [admissionPriority, setAdmissionPriority] = useState("Normal")
+  const [admissionAdvised, setAdmissionAdvised] = useState(false)
+  const [occupiedBeds, setOccupiedBeds] = useState(0)
+  const [vacantBeds, setVacantBeds] = useState(0)
+
+  // Add state for ward categories and departments
+  const [wardCategories, setWardCategories] = useState([])
+  const [careLevels, setCareLevels] = useState([])
+  const [wardDepartments, setWardDepartments] = useState([])
+  const [admissionPriorities, setAdmissionPriorities] = useState([
+    "Normal", "Urgent", "Critical"
+  ])
+
+  // Ward data with occupied/vacant beds
+  const wardData = {
+    1: { // General Ward
+      departments: [
+        { id: 1, name: "General Ward - Floor 1", occupied: 5, vacant: 15 },
+        { id: 2, name: "General Ward - Floor 2", occupied: 3, vacant: 17 },
+        { id: 3, name: "General Ward - Floor 3", occupied: 8, vacant: 12 }
+      ],
+      defaultCareLevel: "Low"
+    },
+    2: { // Private Ward
+      departments: [
+        { id: 4, name: "Private Room - 101", occupied: 0, vacant: 1 },
+        { id: 5, name: "Private Room - 102", occupied: 1, vacant: 0 },
+        { id: 6, name: "Private Room - 103", occupied: 0, vacant: 1 }
+      ],
+      defaultCareLevel: "Medium"
+    },
+    3: { // ICU
+      departments: [
+        { id: 7, name: "ICU - Unit A", occupied: 4, vacant: 2 },
+        { id: 8, name: "ICU - Unit B", occupied: 5, vacant: 1 },
+        { id: 9, name: "ICU - Unit C", occupied: 3, vacant: 3 }
+      ],
+      defaultCareLevel: "Critical"
+    },
+    4: { // Semi-Private
+      departments: [
+        { id: 10, name: "Semi-Private - Room 201", occupied: 1, vacant: 1 },
+        { id: 11, name: "Semi-Private - Room 202", occupied: 0, vacant: 2 }
+      ],
+      defaultCareLevel: "Medium"
+    },
+    5: { // Special Ward
+      departments: [
+        { id: 12, name: "Special Ward - Cardiac", occupied: 6, vacant: 4 },
+        { id: 13, name: "Special Ward - Neuro", occupied: 7, vacant: 3 }
+      ],
+      defaultCareLevel: "High"
+    }
+  }
+
   const isOnlyDefaultTreatmentRow = (items) => {
     return (
       items.length === 1 &&
@@ -38,6 +128,76 @@ const GeneralMedicineWaitingList = () => {
       !items[0].days
     );
   };
+
+  // Add function to fetch ward categories
+  const fetchWardCategories = async () => {
+    try {
+      // This would be your API call to fetch ward categories
+      // For now, using static data
+      setWardCategories([
+        { id: 1, name: "General" },
+        { id: 2, name: "Private" },
+        { id: 3, name: "ICU" },
+        { id: 4, name: "Semi-Private" },
+        { id: 5, name: "Special" }
+      ])
+    } catch (error) {
+      console.error("Error fetching ward categories:", error)
+    }
+  }
+
+  // Add function to fetch care levels
+  const fetchCareLevels = async () => {
+    try {
+      // This would be your API call to fetch care levels
+      // For now, using static data
+      setCareLevels([
+        { id: 1, name: "Low" },
+        { id: 2, name: "Medium" },
+        { id: 3, name: "High" },
+        { id: 4, name: "Critical" }
+      ])
+    } catch (error) {
+      console.error("Error fetching care levels:", error)
+    }
+  }
+
+  // Handle ward category selection
+  const handleWardCategoryChange = (categoryId) => {
+    setWardCategory(categoryId)
+
+    // Reset ward name and bed counts
+    setWardName("")
+    setOccupiedBeds(0)
+    setVacantBeds(0)
+
+    // Set default care level based on ward category
+    if (wardData[categoryId]) {
+      const defaultCareLevel = wardData[categoryId].defaultCareLevel
+      const careLevel = careLevels.find(cl => cl.name === defaultCareLevel)
+      if (careLevel) {
+        setAdmissionCareLevel(careLevel.id)
+      }
+
+      // Populate ward departments
+      setWardDepartments(wardData[categoryId].departments || [])
+    } else {
+      setWardDepartments([])
+    }
+  }
+
+  // Handle ward name/department selection
+  const handleWardNameChange = (deptId) => {
+    setWardName(deptId)
+
+    if (wardCategory && wardData[wardCategory]) {
+      const selectedDept = wardData[wardCategory].departments.find(d => d.id === deptId)
+      if (selectedDept) {
+        setOccupiedBeds(selectedDept.occupied)
+        setVacantBeds(selectedDept.vacant)
+      }
+    }
+  }
 
   const fatchDrugCodeOptions = async () => {
     try {
@@ -56,11 +216,11 @@ const GeneralMedicineWaitingList = () => {
   const fetchAllFrequencies = async () => {
     try {
       const response = await getRequest(`${MAS_FREQUENCY}/getAll/1`)
-      // console.log("Frequency API Response:", response);
+      // //console.log("Frequency API Response:", response);
 
       if (response && response.response) {
         setAllFrequencies(response.response)
-        // console.log("Frequencies loaded:", response.response);
+        // //console.log("Frequencies loaded:", response.response);
       } else {
         console.warn("No frequencies found in response")
         setAllFrequencies([])
@@ -71,20 +231,93 @@ const GeneralMedicineWaitingList = () => {
     }
   }
 
-  const fetchMasICDData = async () => {
+  const fetchMasICDData = async (page, searchText = "") => {
     try {
-      const data = await getRequest(`${MASTERS}/masIcd/all?flag=0&page=0&size=100`);
+      const data = await getRequest(
+        `${MASTERS}/masIcd/all?flag=0&page=${page}&size=20&search=${encodeURIComponent(searchText)}`
+      );
 
       if (data.status === 200 && data.response?.content) {
-        setMasICDData(data.response.content);
-      } else {
-        setMasICDData([]);
+        return {
+          list: data.response.content,
+          last: data.response.last,
+        };
       }
 
+      return { list: [], last: true };
     } catch (error) {
-      console.error("Error fetching ICD data:", error);
+      console.error("Error fetching ICD:", error);
+      return { list: [], last: true };
     }
   };
+
+  // FIRST PAGE LOAD
+  const loadFirstPage = async (index) => {
+    const searchText = search[index] || "";
+    const result = await fetchMasICDData(0, searchText);
+
+    setIcdDropdown(result.list);
+    setLastPage(result.last);
+    setPage(0);
+  };
+
+  // LOAD MORE FOR INFINITE SCROLL
+  const loadMore = async () => {
+    if (lastPage) return;
+
+    const nextPage = page + 1;
+    const result = await fetchMasICDData(nextPage, search[openDropdown] || "");
+
+    setIcdDropdown((prev) => [...prev, ...result.list]);
+    setLastPage(result.last);
+    setPage(nextPage);
+  };
+
+  // UPDATE SELECTED ICD
+  const updateICD = (selectedICD, index) => {
+    if (!selectedICD) return;
+
+    const exists = diagnosisItems.some(
+      (item, idx) =>
+        String(item.icdDiagId) === String(selectedICD.icdId) && idx !== index
+    );
+
+    if (exists) {
+      setDuplicateItems([{ icdDiagnosis: selectedICD.icdName }]);
+      setShowDuplicatePopup(true);
+      return;
+    }
+
+    setDiagnosisItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        icdDiagId: selectedICD.icdId,
+        icdDiagnosis: selectedICD.icdName,
+      };
+      return updated;
+    });
+
+    // clear search after selecting
+    setSearch((prev) => {
+      const updated = [...prev];
+      updated[index] = "";
+      return updated;
+    });
+  };
+
+  // CLOSE DROPDOWN ON OUTSIDE CLICK
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+
 
   const fetchOpdTemplateData = async () => {
     try {
@@ -100,6 +333,8 @@ const GeneralMedicineWaitingList = () => {
       console.error("Error fetching Doctor data:", error);
     }
   };
+
+  console.log("opdTemplateData", opdTemplateData)
 
   const fetchDoctorData = async () => {
     setLoading(true);
@@ -145,12 +380,14 @@ const GeneralMedicineWaitingList = () => {
     fetchOpdTemplateData();
     fatchDrugCodeOptions();
     fetchAllFrequencies();
+    fetchWardCategories();
+    fetchCareLevels();
   }, []);
 
   const [searchFilters, setSearchFilters] = useState({
-    doctorList: "Dr. G. Pradhan",
-    session: "Select",
-    employeeNo: "",
+    doctorList: "",
+    session: "",
+    mobileNo: "",
     patientName: "",
   })
 
@@ -185,20 +422,14 @@ const GeneralMedicineWaitingList = () => {
     diagnosis: false,
     investigation: false,
     treatment: false,
-    nip: false,
+    treatmentAdvice: false,
+    procedureCare: false,
+    surgeryAdvice: false,
+    admissionAdvice: false,
     referral: false,
     followUp: false,
     doctorRemark: false,
-    surgeryAdvice: false,
-    additionalAdvice: false,
-  })
-
-  const [expandedNipSubsections, setExpandedNipSubsections] = useState({
-    treatmentAdvice: true,
-    procedureCare: false,
-    nip: false,
-    surgeryAdvice: false,
-    additionalAdvice: false,
+    remarks: false,
   })
 
   const [selectedHistoryType, setSelectedHistoryType] = useState("")
@@ -217,6 +448,7 @@ const GeneralMedicineWaitingList = () => {
     clinicalExamination: "",
     pastHistory: "",
     familyHistory: "",
+    treatmentAdvice: "",
     mlcCase: false,
   })
 
@@ -259,6 +491,69 @@ const GeneralMedicineWaitingList = () => {
     },
   ])
 
+  const openPopup = (type) => {
+    setPopupType(type);
+    setModelShowPopup(true);
+  };
+
+  const handleModelClose = () => {
+    setModelShowPopup(false);
+    setSelectedItems([]);
+  };
+
+  const handleOk = () => {
+    if (selectedItems.length === 0) {
+      alert("Please select at least one item.");
+      return;
+    }
+
+    const newNames = selectedItems.map((x) => x.medicalHistoryName);
+
+    const mergeValues = (oldValue, newValues) => {
+      const oldArr = oldValue ? oldValue.split(",").map(x => x.trim()) : [];
+      const merged = Array.from(new Set([...oldArr, ...newValues]));
+      return merged.join(", ");
+    };
+
+    if (popupType === "symptoms") {
+      setFormData({
+        ...formData,
+        patientSymptoms: mergeValues(formData.patientSymptoms, newNames),
+      });
+    }
+
+    if (popupType === "past") {
+      setFormData({
+        ...formData,
+        pastHistory: mergeValues(formData.pastHistory, newNames),
+      });
+    }
+
+    if (popupType === "family") {
+      setFormData({
+        ...formData,
+        familyHistory: mergeValues(formData.familyHistory, newNames),
+      });
+    }
+
+    setModelShowPopup(false);
+    setSelectedItems([]);
+  };
+
+
+
+  const handleSelect = (item) => {
+    setSelectedItems((prev) => {
+      const exists = prev.find((x) => x.medicalHistoryId === item.medicalHistoryId);
+
+      if (exists) {
+        return prev.filter((x) => x.medicalHistoryId !== item.medicalHistoryId);
+      } else {
+        return [...prev, item];
+      }
+    });
+  };
+
   const [templates, setTemplates] = useState(["Blood Test Template", "Cardiac Template", "Diabetes Template"])
   const [treatmentAdviceTemplates, setTreatmentAdviceTemplates] = useState([
     "MEDICINES TO BE REPEATED AT FAC",
@@ -279,39 +574,11 @@ const GeneralMedicineWaitingList = () => {
       days: "",
       total: "",
       instruction: "",
-      stock: "",
+      stock: "0",
       templateId: "",
     }
   ]);
-
-  const [nipItems, setNipItems] = useState([
-    {
-      nip: "",
-      newNIP: "",
-      class: "Select",
-      au: "Select",
-      dispUnit: "Select",
-      uomQty: "",
-      dosage: "",
-      frequency: "Select",
-      days: "",
-      total: "",
-      instruction: "",
-      stock: "",
-    },
-  ])
-
-  const [nipSearchInput, setNipSearchInput] = useState("")
-  const [isNipDropdownVisible, setIsNipDropdownVisible] = useState(false)
-  const [selectedNipIndex, setSelectedNipIndex] = useState(null)
-
-  const nipOptions = [
-    { id: 1, name: "NIP-001", code: "001" },
-    { id: 2, name: "NIP-002", code: "002" },
-    { id: 3, name: "NIP-003", code: "003" },
-    { id: 4, name: "NIP-004", code: "004" },
-    { id: 5, name: "NIP-005", code: "005" },
-  ]
+  console.log("treatmentItems", treatmentItems)
 
   const [treatmentAdviceSelection, setTreatmentAdviceSelection] = useState("")
   const [generalTreatmentAdvice, setGeneralTreatmentAdvice] = useState("")
@@ -342,10 +609,10 @@ const GeneralMedicineWaitingList = () => {
   const [isSurgeryDropdownVisible, setIsSurgeryDropdownVisible] = useState(false)
   const [selectedSurgeryIndex, setSelectedSurgeryIndex] = useState(null)
   const [additionalAdvice, setAdditionalAdvice] = useState("")
-  const [admissionAdvised, setAdmissionAdvised] = useState(false)
-  const [admissionDate, setAdmissionDate] = useState("")
-  const [selectedWard, setSelectedWard] = useState("CHILDREN WARD")
-  const [admissionNotes, setAdmissionNotes] = useState("")
+  // Removed duplicate admissionAdvised state
+  // Removed duplicate admissionDate state
+  // Removed duplicate selectedWard state
+  // Removed duplicate admissionNotes state
 
   // Referral state - UPDATED
   const [referralData, setReferralData] = useState({
@@ -371,14 +638,6 @@ const GeneralMedicineWaitingList = () => {
   ])
 
   const [referralNotes, setReferralNotes] = useState("")
-
-  const wardData = {
-    "CHILDREN WARD": { occupied: 0, vacant: 20 },
-    "GENERAL WARD": { occupied: 5, vacant: 15 },
-    "ICU WARD": { occupied: 8, vacant: 2 },
-    "MATERNITY WARD": { occupied: 3, vacant: 7 },
-    "SURGICAL WARD": { occupied: 10, vacant: 10 },
-  }
 
   const surgeryOptions = [
     { id: 1, name: "Appendectomy", code: "APD" },
@@ -429,6 +688,20 @@ const GeneralMedicineWaitingList = () => {
 
   const handleCloseCurrentMedicationModal = () => {
     setShowCurrentMedicationModal(false)
+  }
+
+  // Doctor's Remarks handlers
+  const handleOpenDoctorRemarksModal = () => {
+    setShowDoctorRemarksModal(true)
+  }
+
+  const handleCloseDoctorRemarksModal = () => {
+    setShowDoctorRemarksModal(false)
+  }
+
+  const handleSaveDoctorRemarks = (selectedRemarks) => {
+    setSelectedDoctorRemarks(selectedRemarks)
+    setDoctorRemarksText(selectedRemarks.join("\n"))
   }
 
   const handleInputFocus = (event, index) => {
@@ -507,7 +780,7 @@ const GeneralMedicineWaitingList = () => {
   }
 
   const filterInvestigationsByMainChargeCode = () => {
-    console.log("Filtering investigations by type:", investigationType)
+    //console.log("Filtering investigations by type:", investigationType)
 
     if (!investigationType || allInvestigations.length === 0) {
       setFilteredInvestigationsByType([])
@@ -515,11 +788,11 @@ const GeneralMedicineWaitingList = () => {
     }
 
     const selectedType = investigationTypes.find(type => type.value === investigationType)
-    console.log("Selected type for filtering:", selectedType)
+    //console.log("Selected type for filtering:", selectedType)
 
     if (selectedType) {
       const filtered = allInvestigations.filter(inv => inv.mainChargeCodeId === selectedType.id)
-      console.log(`Filtered ${filtered.length} investigations for type:`, selectedType.name)
+      //console.log(`Filtered ${filtered.length} investigations for type:`, selectedType.name)
       setFilteredInvestigationsByType(filtered)
     } else {
       setFilteredInvestigationsByType([])
@@ -802,25 +1075,25 @@ const GeneralMedicineWaitingList = () => {
   // ADD THESE USEEFFECT HOOKS
 
   // DEBUGGING: Add this at the top of your component to see what's happening
-  console.log("Component render - investigationType:", investigationType, "investigationTypes:", investigationTypes)
+  //console.log("Component render - investigationType:", investigationType, "investigationTypes:", investigationTypes)
 
   useEffect(() => {
     if (showDetailView && selectedPatient) {
-      console.log("Fetching investigation data...")
+      //console.log("Fetching investigation data...")
       fetchInvestigationTemplates()
       fetchAllInvestigations()
     }
   }, [showDetailView, selectedPatient])
 
   useEffect(() => {
-    console.log("All investigations loaded:", allInvestigations.length)
+    //console.log("All investigations loaded:", allInvestigations.length)
     if (allInvestigations.length > 0) {
       extractInvestigationTypes(allInvestigations)
     }
   }, [allInvestigations])
 
   useEffect(() => {
-    console.log("Investigation types updated:", investigationTypes)
+    //console.log("Investigation types updated:", investigationTypes)
     if (investigationTypes.length > 0) {
       // FORCE SELECT LABORATORY
       const labType = investigationTypes.find(type =>
@@ -829,17 +1102,17 @@ const GeneralMedicineWaitingList = () => {
       )
 
       if (labType && investigationType !== labType.value) {
-        console.log("Setting default to Laboratory:", labType)
+        //console.log("Setting default to Laboratory:", labType)
         setInvestigationType(labType.value)
       } else if (investigationTypes.length > 0 && !investigationType) {
-        console.log("Setting to first type:", investigationTypes[0])
+        //console.log("Setting to first type:", investigationTypes[0])
         setInvestigationType(investigationTypes[0].value)
       }
     }
   }, [investigationTypes])
 
   useEffect(() => {
-    console.log("Investigation type changed to:", investigationType)
+    //console.log("Investigation type changed to:", investigationType)
     filterInvestigationsByMainChargeCode()
   }, [investigationType])
 
@@ -851,18 +1124,55 @@ const GeneralMedicineWaitingList = () => {
     setCurrentPage(1)
   }
 
+  const userId =
+    localStorage.getItem("userId") ||
+    sessionStorage.getItem("userId");
+
+
+  useEffect(() => {
+    if (userId) {
+      setSearchFilters((prev) => ({
+        ...prev,
+        doctorList: userId,
+      }));
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (searchFilters.doctorList) {
+      handleSearch();
+    }
+  }, [searchFilters.doctorList]);
+
+
+
   const handleSearch = async () => {
-    console.log("Searching with filters:", searchFilters);
+    const userId =
+      localStorage.getItem("userId") ||
+      sessionStorage.getItem("userId");
+
+    if (!userId) return;
+
+    if (!searchFilters.doctorList) {
+      alert("Doctor is required");
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      doctorList: userId,
+    }));
 
     const payload = {
-      doctorId: Number(searchFilters.doctorList) || null,
+      doctorId: Number(searchFilters.doctorList) || Number(userId) || null,
       sessionId: Number(searchFilters.session) || null,
-      employeeNo: searchFilters.employeeNo?.trim() || null,
-      patientName: searchFilters.patientName?.trim() || null
+      mobileNo: searchFilters.mobileNo?.trim() || null,
+      patientName: searchFilters.patientName?.trim() || null,
     };
 
     try {
       setLoading(true);
+
       const data = await postRequest(`${OPD_PATIENT}/activeVisit/search`, payload);
 
       if (data.status === 200 && Array.isArray(data.response)) {
@@ -878,6 +1188,8 @@ const GeneralMedicineWaitingList = () => {
   };
 
 
+
+
   const handleReset = () => {
     setSearchFilters({
       doctorList: "",
@@ -888,13 +1200,79 @@ const GeneralMedicineWaitingList = () => {
 
   };
 
+  const updateVisitStatus = async (visitId, visitDate, doctorId) => {
+    try {
+      const response = await putRequest(
+        `/patient/update-status?visitId=${visitId}&visitDate=${visitDate}&doctorId=${doctorId}`
+      );
 
-  const handleRowClick = (patient) => {
-    setSelectedPatient(patient)
-    setShowDetailView(true)
-  }
+      //console.log("Status Updated:", response);
+      return response;
 
-  console.log("setSelectedPatient", selectedPatient)
+    } catch (error) {
+      console.error("Error updating status:", error);
+    }
+  };
+
+
+  const cheackVitalPresent = async (visitId) => {
+    try {
+      const data = await getRequest(`${OPD_PATIENT}/getOpdByVisit?visitId=${visitId}`);
+
+      if (data?.status === 200 && data?.response) {
+
+        const res = data.response;
+
+        setOpdVitalsData(res);
+        setVitalsAvlaible(true);
+
+        setFormData(prev => ({
+          ...prev,
+          height: res.height || "",
+          weight: res.weight || "",
+          temperature: res.temperature || "",
+          systolicBP: res.bpSystolic || "",
+          diastolicBP: res.bpDiastolic || "",
+          pulse: res.pulse || "",
+          bmi: res.bmi || "",
+          rr: res.rr || "",
+          spo2: res.spo2 || "",
+          mlcCase: res.mlcFlag === "s" ? true : false,
+        }));
+
+        return;
+      }
+
+      setOpdVitalsData(null);
+      setVitalsAvlaible(false);
+
+    } catch (error) {
+      console.error("Error fetching vital data:", error);
+
+      setOpdVitalsData(null);
+      setVitalsAvlaible(false);
+    }
+  };
+
+
+
+
+  const handleRowClick = async (patient) => {
+
+    await updateVisitStatus(
+      patient.visitId,
+      patient.visitDate,
+      patient.docterId
+    );
+
+    cheackVitalPresent(patient.visitId);
+
+    setSelectedPatient(patient);
+    setShowDetailView(true);
+  };
+
+
+  //console.log("setSelectedPatient", selectedPatient)
 
   const handleBackToList = () => {
     // Hide detail page
@@ -911,13 +1289,31 @@ const GeneralMedicineWaitingList = () => {
       diagnosis: false,
       investigation: false,
       treatment: false,
-      nip: false,
+      treatmentAdvice: false,
+      procedureCare: false,
+      surgeryAdvice: false,
+      admissionAdvice: false,
       referral: false,
       followUp: false,
       doctorRemark: false,
-      surgeryAdvice: false,
-      additionalAdvice: false,
+      remarks: false,
     });
+
+    // Reset Doctor's Remarks
+    setSelectedDoctorRemarks([])
+    setDoctorRemarksText("")
+    setShowDoctorRemarksModal(false)
+
+    // Reset Admission fields
+    setAdmissionAdvised(false)
+    setAdmissionDate("")
+    setAdmissionRemarks("")
+    setWardCategory("")
+    setAdmissionCareLevel("")
+    setWardName("")
+    setAdmissionPriority("Normal")
+    setOccupiedBeds(0)
+    setVacantBeds(0)
 
     setSelectedHistoryType("");
 
@@ -971,30 +1367,48 @@ const GeneralMedicineWaitingList = () => {
     }))
   }
 
-  const toggleNipSubsection = (subsection) => {
-    setExpandedNipSubsections((prev) => ({
-      ...prev,
-      [subsection]: !prev[subsection],
-    }))
-  }
-
   const handleHistoryTypeClick = (historyType) => {
     setSelectedHistoryType(historyType)
   }
 
+  function calculateBMI(weight, height) {
+    if (!weight || !height) return "";
+
+    const heightInMeters = height / 100;
+    const bmi = weight / (heightInMeters * heightInMeters);
+
+    return bmi.toFixed(2);
+  }
+
+
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }))
+    const { name, value, type, checked } = e.target;
+
+    setFormData((prev) => {
+      const updated = {
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      };
+
+      // Auto-calculate BMI
+      if ((name === "weight" || name === "height") &&
+        updated.height !== "" &&
+        updated.weight !== "") {
+        updated.bmi = calculateBMI(updated.weight, updated.height);
+      }
+
+      return updated;
+    });
+
+    // Clear field error
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,
         [name]: "",
-      }))
+      }));
     }
-  }
+  };
+
 
 
   const showPopup = (message, type = "info", onCloseCallback = null) => {
@@ -1028,20 +1442,24 @@ const GeneralMedicineWaitingList = () => {
         investigationDate: item.date
       }));
 
-      console.log("inv items", investigationItems)
+      //console.log("inv items", investigationItems)
 
       // Treatment mapping → backend format
-      const treatmentList = treatmentItems.map(item => ({
-        itemId: item.drugId,
-        dosage: item.dosage,
-        frequency: item.frequency,
-        days: item.days,
-        total: item.total,
-        instraction: item.instruction
-      }));
+      const treatmentList = treatmentItems.map(item => {
+        const freq = allFrequencies.find(f => f.frequencyId == item.frequency);
+        return {
+          itemId: item.drugId,
+          dosage: item.dosage,
+          frequency: freq?.frequencyName || "",     // send NAME
+          days: item.days,
+          total: item.total,
+          instraction: item.instruction
+        };
+      });
 
 
-      console.log("treatmentItems", treatmentItems)
+
+      //console.log("treatmentItems", treatmentItems)
 
       const payload = {
         // ===== Vital =====
@@ -1076,8 +1494,22 @@ const GeneralMedicineWaitingList = () => {
 
         // ===== Treatment =====
         treatment: treatmentList,
+        treatmentAdvice: generalTreatmentAdvice,
+
+        // ===== Doctor's Remarks =====
+        doctorRemarks: doctorRemarksText,
+
+        // ===== Admission Details =====
+        admissionAdvised: admissionAdvised,
+        admissionDate: admissionDate,
+        admissionRemarks: admissionRemarks,
+        wardCategory: wardCategory,
+        admissionCareLevel: admissionCareLevel,
+        wardName: wardName,
+        admissionPriority: admissionPriority,
 
         // ===== Mapping IDs =====
+        opdPatientDetailId: vitalsAvlaible ? opdVitalsData.opdPatientDetailsId : null,
         patientId: selectedPatient.patientId,
         visitId: selectedPatient.visitId,
         departmentId: selectedPatient.deptId,
@@ -1089,7 +1521,7 @@ const GeneralMedicineWaitingList = () => {
 
       if (response?.status === 200 || response?.success === true) {
         showPopup(
-          "Recall patient updated successfully!",
+          "Recall patient Create successfully!",
           "success",
 
         );
@@ -1102,7 +1534,7 @@ const GeneralMedicineWaitingList = () => {
         alert("Updated but unexpected response received.");
       }
 
-      console.log("Final Payload =", payload);
+      //console.log("Final Payload =", payload);
 
     } catch (error) {
       console.error("Update Error:", error);
@@ -1150,6 +1582,21 @@ const GeneralMedicineWaitingList = () => {
     // Important resets
     setSelectedTreatmentTemplateIds(new Set());
     setSelectedTemplateIds(new Set());
+
+    // Reset Doctor's Remarks
+    setSelectedDoctorRemarks([])
+    setDoctorRemarksText("")
+
+    // Reset Admission fields
+    setAdmissionAdvised(false)
+    setAdmissionDate("")
+    setAdmissionRemarks("")
+    setWardCategory("")
+    setAdmissionCareLevel("")
+    setWardName("")
+    setAdmissionPriority("Normal")
+    setOccupiedBeds(0)
+    setVacantBeds(0)
 
     setWorkingDiagnosis("");
     setInvestigationItems([]);
@@ -1289,59 +1736,67 @@ const GeneralMedicineWaitingList = () => {
       ...treatmentItems,
       {
         drugName: "",
-        dispUnit: "Tab",
+        dispUnit: "",
         dosage: "",
-        frequency: "OD",
+        frequency: "",
         days: "",
         total: "",
         instruction: "",
-        stock: "",
+        stock: "0",
         treatmentId: "",
       },
     ])
   }
 
   const calculateTotal = (item) => {
-    if (!item.dosage || !item.days || !item.frequency || !item.itemClassName) {
+
+    if (!item.frequency || item.itemClassId == null) {
       return "";
     }
 
-    const dosage = parseFloat(item.dosage) || 0;
-    const days = parseFloat(item.days) || 0;
+    const dosage = Number(item.dosage);
+    const days = Number(item.days);
 
+    // 👉 If dosage or days is zero → return 0
+    if (dosage === 0 || days === 0) {
+      return "0";
+    }
+
+    // If empty OR invalid values
+    if (isNaN(dosage) || isNaN(days)) {
+      return "";
+    }
+
+    // Get frequency multiplier
     const selectedFrequency = allFrequencies.find(
-      f => f.frequencyId === Number(item.frequency)
+      f => Number(f.frequencyId) === Number(item.frequency)
     );
-    const frequencyMultiplier = selectedFrequency ? Number(selectedFrequency.feq) : 1;
 
-    // Convert string like "TABLET" into its class ID (1)
-    let itemClassId = item.itemClassName;
-
-    if (typeof itemClassId === "string") {
-      itemClassId = ITEM_CLASS[item.itemClassName] || null;
-    } else {
-      itemClassId = Number(itemClassId);
-    }
-
-    if (!itemClassId) {
-      return ""; // invalid class
-    }
+    const frequencyMultiplier = selectedFrequency
+      ? Number(selectedFrequency.feq)
+      : 1;
 
     let total = 0;
 
-    // SOLID ITEMS (TABLET / CAPSULE)
-    if (DRUG_TYPE.SOLID.includes(itemClassId)) {
+    // --------------------------
+    // SOLID ITEMS
+    // --------------------------
+    if (DRUG_TYPE.SOLID.includes(Number(item.itemClassId))) {
       total = Math.ceil(dosage * frequencyMultiplier * days);
     }
-    // LIQUID ITEMS (SYRUP, DROPS...)
-    else if (DRUG_TYPE.LIQUID.includes(itemClassId)) {
-      if (item.aDispQty && item.aDispQty > 0) {
-        total = Math.ceil((dosage * frequencyMultiplier * days) / item.aDispQty);
-      } else {
-        total = Math.ceil(dosage * frequencyMultiplier * days);
-      }
+
+    // --------------------------
+    // LIQUID ITEMS
+    // --------------------------
+    else if (DRUG_TYPE.LIQUID.includes(Number(item.itemClassId))) {
+      const qtyPerUnit = Number(item.aDispQty) || 1;
+
+      total = Math.ceil((dosage * frequencyMultiplier * days) / qtyPerUnit);
     }
-    // DEFAULT
+
+    // --------------------------
+    // OTHER TYPES (fallback)
+    // --------------------------
     else {
       total = 1;
     }
@@ -1349,79 +1804,32 @@ const GeneralMedicineWaitingList = () => {
     return total.toString();
   };
 
+
+
+
   const handleRemoveTreatmentItem = (index) => {
     if (treatmentItems.length === 1) return
     const newItems = treatmentItems.filter((_, i) => i !== index)
     setTreatmentItems(newItems)
   }
 
+
   const handleTreatmentChange = (index, field, value) => {
     const updated = [...treatmentItems];
+    updated[index] = { ...updated[index], [field]: value };
 
-    updated[index] = {
-      ...updated[index],
-      [field]: value
-    };
+    // fields that should trigger recalculation
+    const recalcFields = ["dosage", "days", "frequency", "itemClassId", "aDispQty"];
 
-    const fieldsToRecalculate = [
-      "dosage",
-      "days",
-      "frequency",
-      "itemClassName",
-      "aDispQty"
-    ];
-
-    if (fieldsToRecalculate.includes(field)) {
+    if (recalcFields.includes(field)) {
       updated[index].total = calculateTotal(updated[index]);
     }
 
     setTreatmentItems(updated);
   };
 
-  const handleNipSearchChange = (value) => {
-    setNipSearchInput(value)
-    setIsNipDropdownVisible(true)
-  }
 
-  const handleNipSelect = (nip, index) => {
-    const newItems = [...nipItems]
-    newItems[index] = { ...newItems[index], nip: nip.name }
-    setNipItems(newItems)
-    setNipSearchInput("")
-    setIsNipDropdownVisible(false)
-  }
 
-  const handleAddNipItem = () => {
-    setNipItems([
-      ...nipItems,
-      {
-        nip: "",
-        newNIP: "",
-        class: "Select",
-        au: "Select",
-        dispUnit: "Select",
-        uomQty: "",
-        dosage: "",
-        frequency: "Select",
-        days: "",
-        total: "",
-        instruction: "",
-        stock: "",
-      },
-    ])
-  }
-
-  const handleRemoveNipItem = (index) => {
-    if (nipItems.length === 1) return
-    const newItems = nipItems.filter((_, i) => i !== index)
-    setNipItems(newItems)
-  }
-
-  const handleNipChange = (index, field, value) => {
-    const newItems = [...nipItems]
-    newItems[index] = { ...newItems[index], [field]: value }
-    setNipItems(newItems)
-  }
 
   const handleOpenTreatmentAdviceModal = (type) => {
     setTreatmentAdviceModalType(type)
@@ -1543,6 +1951,11 @@ const GeneralMedicineWaitingList = () => {
     ])
   }
 
+  const getDrugDetails = (itemId) => {
+    return drugCodeOptions.find(d => d.itemId === itemId);
+  };
+
+
   const handleTreatmentTemplateSelect = (templateId) => {
     if (!templateId || templateId === "Select..") return;
 
@@ -1585,19 +1998,35 @@ const GeneralMedicineWaitingList = () => {
       }
 
       // ADD ONLY NEW ITEMS
-      const formattedNew = newItemsToAdd.map(t => ({
-        treatmentId: null,
-        drugId: t.itemId,
-        drugName: t.itemName,
-        dispUnit: t.dispU ?? "",
-        dosage: t.dosage ?? "",
-        frequency: t.frequencyId ?? "",
-        days: t.noOfDays ?? "",
-        total: t.total ?? "",
-        instruction: t.instruction ?? "",
-        stock: t.stocks ?? "",
-        templateId: String(templateId)    // IMPORTANT
-      }));
+      const formattedNew = newItemsToAdd.map(t => {
+
+        // 🟢 FETCH FULL DRUG DETAILS FROM DROPDOWN SOURCE
+        const drug = getDrugDetails(t.itemId);
+
+        const newItem = {
+          treatmentId: null,
+          drugId: t.itemId,
+          drugName: t.itemName,
+          dispUnit: drug?.dispUnitName ?? t.dispU ?? "",
+          dosage: t.dosage ?? "",
+          frequency: t.frequencyId ?? "",
+          days: t.noOfDays ?? "",
+          instruction: t.instruction ?? "",
+          stock: t.stocks ?? "",
+          templateId: String(templateId),
+
+          // 🟢 MOST IMPORTANT FIELDS (MISSING EARLIER)
+          itemClassId: drug?.itemClassId ?? null,
+          aDispQty: drug?.aDispQty ?? 1,
+        };
+
+        // 🟢 AUTO CALCULATE TOTAL
+        newItem.total = calculateTotal(newItem);
+
+        return newItem;
+      });
+
+
 
       if (isOnlyDefaultTreatmentRow(updatedList)) {
         return formattedNew;
@@ -1723,6 +2152,98 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
+  // Doctor's Remarks Modal Component
+  const DoctorRemarksModal = ({ show, onClose, templates, onSave }) => {
+    const [selectedItems, setSelectedItems] = useState(new Set())
+
+    const handleCheckboxChange = (index) => {
+      setSelectedItems(prev => {
+        const newSet = new Set(prev)
+        if (newSet.has(index)) {
+          newSet.delete(index)
+        } else {
+          newSet.add(index)
+        }
+        return newSet
+      })
+    }
+
+    const handleSelectAll = () => {
+      if (selectedItems.size === templates.length) {
+        setSelectedItems(new Set())
+      } else {
+        setSelectedItems(new Set(templates.map((_, index) => index)))
+      }
+    }
+
+    const handleSave = () => {
+      const selectedTemplates = Array.from(selectedItems).map(index => templates[index])
+      onSave(selectedTemplates)
+      onClose()
+    }
+
+    if (!show) return null
+
+    return (
+      <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+        <div className="modal-dialog modal-lg">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">DOCTOR'S REMARKS TEMPLATE</h5>
+              <button
+                type="button"
+                className="btn-close"
+                onClick={onClose}
+              ></button>
+            </div>
+            <div className="modal-body">
+              <div className="table-responsive">
+                <table className="table table-bordered">
+                  <thead style={{ backgroundColor: "#b0c4de" }}>
+                    <tr>
+                      <th style={{ width: "5%" }}>
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          checked={selectedItems.size === templates.length}
+                          onChange={handleSelectAll}
+                        />
+                      </th>
+                      <th style={{ width: "95%" }}>Doctor Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {templates.map((remark, index) => (
+                      <tr key={index}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            checked={selectedItems.has(index)}
+                            onChange={() => handleCheckboxChange(index)}
+                          />
+                        </td>
+                        <td>{remark}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-primary" onClick={handleSave}>
+                OK
+              </button>
+              <button className="btn btn-secondary" onClick={onClose}>
+                CLOSE
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (showDetailView && selectedPatient) {
     return (
       <div className="content-wrapper">
@@ -1843,104 +2364,150 @@ const GeneralMedicineWaitingList = () => {
 
               <div className="card-body">
                 {/* Clinical History Section */}
-                <div className="card mb-3">
+                <div className="card mb-3 shadow-sm">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3 bg-light d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("clinicalHistory")}
                   >
                     <h6 className="mb-0 fw-bold">Clinical History</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.clinicalHistory ? "−" : "+"}</span>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.clinicalHistory ? "−" : "+"}
+                    </span>
                   </div>
+
                   {expandedSections.clinicalHistory && (
                     <div className="card-body">
                       <div className="row">
+
+                        {/* Sidebar Buttons */}
                         <div className="col-md-3">
                           <div className="d-flex flex-column gap-2">
-                            <button
-                              className={`btn btn-sm ${selectedHistoryType === "previous-visits" ? "btn-primary" : "btn-outline-primary"}`}
-                              onClick={() => handleHistoryTypeClick("previous-visits")}
-                            >
-                              Previous Visits
-                            </button>
-                            <button
-                              className={`btn btn-sm ${selectedHistoryType === "previous-vitals" ? "btn-primary" : "btn-outline-primary"}`}
-                              onClick={() => handleHistoryTypeClick("previous-vitals")}
-                            >
-                              Previous Vitals
-                            </button>
-                            <button
-                              className={`btn btn-sm ${selectedHistoryType === "previous-lab" ? "btn-primary" : "btn-outline-primary"}`}
-                              onClick={() => handleHistoryTypeClick("previous-lab")}
-                            >
-                              Previous Lab Investigation
-                            </button>
-                            <button
-                              className={`btn btn-sm ${selectedHistoryType === "previous-ecg" ? "btn-primary" : "btn-outline-primary"}`}
-                              onClick={() => handleHistoryTypeClick("previous-ecg")}
-                            >
-                              Previous ECG Investigation
-                            </button>
-                            <button
-                              className={`btn btn-sm ${selectedHistoryType === "audit-history" ? "btn-primary" : "btn-outline-primary"}`}
-                              onClick={() => handleHistoryTypeClick("audit-history")}
-                            >
-                              Audit History
-                            </button>
+                            {[
+                              { id: "previous-visits", label: "Previous Visits" },
+                              { id: "previous-vitals", label: "Previous Vitals" },
+                              { id: "previous-lab", label: "Previous Lab Investigation" },
+                              { id: "previous-ecg", label: "Previous ECG Investigation" },
+                              { id: "audit-history", label: "Audit History" },
+                            ].map((btn) => (
+                              <button
+                                key={btn.id}
+                                className={`btn btn-sm ${selectedHistoryType === btn.id ? "btn-primary" : "btn-outline-primary"
+                                  }`}
+                                onClick={() => handleHistoryTypeClick(btn.id)}
+                              >
+                                {btn.label}
+                              </button>
+                            ))}
                           </div>
                         </div>
+
+                        {/* Input Area */}
                         <div className="col-md-9">
-                          <div className="row">
-                            <div className="col-md-6">
-                              <label className="form-label fw-bold">Patient signs & symptoms</label>
-                              <input
-                                type="text"
-                                className="form-control"
-                                name="patientSymptoms"
-                                value={formData.patientSymptoms}
-                                onChange={handleChange}
-                                placeholder="Enter symptoms"
-                              />
+
+                          {/* Symptoms */}
+                          <div className="mb-3">
+                            <div className="d-flex justify-content-between align-items-center">
+                              <label className="form-label fw-bold m-0">
+                                Patient signs & symptoms
+                              </label>
+
+                              <button
+                                className="btn btn-sm btn-outline-success p-1 px-2"
+                                onClick={() => openPopup("symptoms")}
+                              >
+                                +
+                              </button>
                             </div>
-                            <div className="col-md-6  mb-3 ">
-                              <label className="form-label fw-bold">Clinical Examination</label>
-                              <textarea
-                                className="form-control"
-                                rows={3}
-                                name="clinicalExamination"
-                                value={formData.clinicalExamination}
-                                onChange={handleChange}
-                                placeholder="Enter clinical examination details"
-                              ></textarea>
-                            </div>
-                            <div className="col-md-6">
-                              <label className="form-label fw-bold">Past History</label>
-                              <textarea
-                                className="form-control"
-                                value={formData.pastHistory}
-                                onChange={handleChange}
-                                rows={3}
-                                name="pastHistory"
-                                placeholder="Enter Past History"
-                              ></textarea>
-                            </div>
-                            <div className="col-md-6">
-                              <label className="form-label fw-bold">Family History</label>
-                              <textarea
-                                className="form-control"
-                                rows={3}
-                                value={formData.familyHistory}
-                                onChange={handleChange}
-                                name="familyHistory"
-                                placeholder="Enter Family History"
-                              ></textarea>
-                            </div>
+                            <input
+                              type="text"
+                              className="form-control mt-3"
+                              name="patientSymptoms"
+                              value={formData.patientSymptoms}
+                              onChange={handleChange}
+                              placeholder="Enter symptoms"
+                            />
                           </div>
+
+                          {/* Clinical Examination */}
+                          <div className="mb-3">
+                            <label className="form-label fw-bold">Clinical Examination</label>
+                            <textarea
+                              className="form-control"
+                              rows={3}
+                              name="clinicalExamination"
+                              value={formData.clinicalExamination}
+                              onChange={handleChange}
+                              placeholder="Enter details"
+                            ></textarea>
+                          </div>
+
+                          {/* Past */}
+                          <div className="mb-3">
+                            <div className="d-flex justify-content-between align-items-center">
+                              <label className="form-label fw-bold m-0">
+                                Past History
+                              </label>
+                              <button
+                                className="btn btn-sm btn-outline-success p-1 px-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openPopup("past");
+                                }}
+                              >
+                                +
+                              </button>
+                            </div>
+                            <textarea
+                              className="form-control mt-3"
+                              rows={3}
+                              name="pastHistory"
+                              value={formData.pastHistory}
+                              onChange={handleChange}
+                              placeholder="Enter Past History"
+                            ></textarea>
+                          </div>
+
+                          {/* Family */}
+                          <div className="mb-3">
+                            <div className="d-flex justify-content-between align-items-center">
+                              <label className="form-label fw-bold m-0">
+                                Family History
+                              </label>
+                              <button
+                                className="btn btn-sm btn-outline-success p-1 px-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openPopup("family");
+                                }}
+                              >
+                                +
+                              </button>
+                            </div>
+                            <textarea
+                              className="form-control mt-3"
+                              rows={3}
+                              name="familyHistory"
+                              value={formData.familyHistory}
+                              onChange={handleChange}
+                              placeholder="Enter Family History"
+                            ></textarea>
+                          </div>
+
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
+
+                <MasFamilyModel
+                  show={showModelPopup}
+                  popupType={popupType}
+                  onClose={handleModelClose}
+                  onSelect={handleSelect}
+                  onOk={handleOk}
+                  selectedItems={selectedItems}
+                />
 
                 {/* Vital Detail Section */}
                 <div className="card mb-3">
@@ -2051,6 +2618,7 @@ const GeneralMedicineWaitingList = () => {
                             name="bmi"
                             value={formData.bmi}
                             onChange={handleChange}
+                            readOnly
                           />
                           <span className="input-group-text">kg/m²</span>
                           {errors.bmi && <div className="invalid-feedback d-block">{errors.bmi}</div>}
@@ -2105,17 +2673,20 @@ const GeneralMedicineWaitingList = () => {
                 </div>
 
                 {/* Diagnosis Section */}
-                <div className="card mb-3">
+                <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("diagnosis")}
                   >
                     <h6 className="mb-0 fw-bold">Diagnosis</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.diagnosis ? "−" : "+"}</span>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.diagnosis ? "−" : "+"}
+                    </span>
                   </div>
+
                   {expandedSections.diagnosis && (
-                    <div className="card-body">
+                    <div className="card-body" style={{ overflow: "visible" }}>
                       <div className="mb-3">
                         <label className="form-label fw-bold">Working Diagnosis</label>
                         <input
@@ -2129,7 +2700,7 @@ const GeneralMedicineWaitingList = () => {
                         />
                       </div>
 
-                      <div className="table-responsive">
+                      <div className="table-responsive" style={{ overflow: "visible" }}>
                         <table className="table table-bordered">
                           <thead>
                             <tr>
@@ -2140,56 +2711,104 @@ const GeneralMedicineWaitingList = () => {
                               <th className="col-md-1 text-center">Delete</th>
                             </tr>
                           </thead>
+
                           <tbody>
                             {diagnosisItems.map((item, index) => (
                               <tr key={index}>
                                 <td>
-                                  <select
-                                    className="form-control"
-                                    value={item.icdDiagId}
-                                    onChange={(e) => {
-                                      const icdId = String(e.target.value);
+                                  <div className="position-relative" style={{ width: "100%", zIndex: 20 }} ref={dropdownRef}>
 
-                                      const selectedICD = masICDData.find(
-                                        (i) => String(i.icdId) === icdId
-                                      );
+                                    {/* INPUT */}
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      placeholder="Search ICD..."
+                                      value={diagnosisItems[index].icdDiagnosis || search[index] || ""}
+                                      onChange={async (e) => {
+                                        const val = e.target.value;
 
-                                      if (!selectedICD) return;
+                                        setSearch((prev) => {
+                                          const updated = [...prev];
+                                          updated[index] = val;
+                                          return updated;
+                                        });
 
-                                      const alreadyExists = diagnosisItems.some(
-                                        (item, idx) => String(item.icdDiagId) === String(icdId) && idx !== index
-                                      );
+                                        const result = await fetchMasICDData(0, val);
+                                        setIcdDropdown(result.list);
+                                        setLastPage(result.last);
+                                        setPage(0);
+                                        setOpenDropdown(index);
+                                      }}
+                                      onClick={() => {
+                                        loadFirstPage();
+                                        setOpenDropdown(index);
+                                      }}
+                                      onBlur={() => {
+                                        setTimeout(() => {
+                                          const selectedIcd = diagnosisItems[index];
+                                          const searchText = search[index];
 
-                                      if (alreadyExists) {
-                                        setDuplicateItems([{ icdDiagnosis: selectedICD.icdName }]);
-                                        setShowDuplicatePopup(true);
-                                        return;
-                                      }
+                                          // If user typed but did NOT select → clear input
+                                          if (
+                                            (!selectedIcd.icdId || selectedIcd.icdDiagnosis !== searchText) &&
+                                            searchText !== ""
+                                          ) {
+                                            // Clear search text
+                                            setSearch((prev) => {
+                                              const updated = [...prev];
+                                              updated[index] = "";
+                                              return updated;
+                                            });
 
-                                      setDiagnosisItems((prev) => {
-                                        const updated = [...prev];
-                                        updated[index] = {
-                                          ...updated[index],
-                                          icdDiagId: Number(icdId),
-                                          icdDiagnosis: selectedICD.icdName,
-                                        };
-                                        return updated;
-                                      });
-                                    }}
+                                            // Clear diagnosis item fields
+                                            handleDiagnosisChange(index, "icdId", null);
+                                            handleDiagnosisChange(index, "icdDiagnosis", "");
+                                          }
 
-
-                                  >
-                                    <option value="">-- Select ICD --</option>
-
-                                    {masICDData.map((icd) => (
-                                      <option key={icd.icdId} value={icd.icdId}>
-                                        {icd.icdCode} - {icd.icdName}
-                                      </option>
-                                    ))}
-                                  </select>
+                                          setOpenDropdown(null);
+                                        }, 150);
+                                      }}
+                                    />
 
 
+                                    {/* DROPDOWN */}
+                                    {openDropdown === index && (
+                                      <div
+                                        className="border rounded mt-1 bg-white position-absolute w-100"
+                                        style={{ maxHeight: "220px", zIndex: 9999, overflowY: "auto" }}
+                                        onScroll={(e) => {
+                                          if (e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight) {
+                                            loadMore();
+                                          }
+                                        }}
+                                      >
+                                        {/* ICD OPTIONS */}
+                                        {icdDropdown.length > 0 ? (
+                                          icdDropdown.map((icd) => (
+                                            <div
+                                              key={icd.icdId}
+                                              className="p-2 cursor-pointer hover:bg-light"
+                                              onMouseDown={() => {
+                                                updateICD(icd, index);
+                                                setOpenDropdown(null);
+                                              }}
+                                            >
+                                              {icd.icdCode} - {icd.icdName}
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <div className="p-2 text-muted">No results found</div>
+                                        )}
+
+                                        {!lastPage && (
+                                          <div className="text-center p-2 text-primary small">Loading...</div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </td>
+
+
                                 <td className="text-center">
                                   <input
                                     type="checkbox"
@@ -2200,6 +2819,7 @@ const GeneralMedicineWaitingList = () => {
                                     }
                                   />
                                 </td>
+
                                 <td className="text-center">
                                   <input
                                     type="checkbox"
@@ -2210,11 +2830,13 @@ const GeneralMedicineWaitingList = () => {
                                     }
                                   />
                                 </td>
+
                                 <td className="text-center">
                                   <button className="btn btn-sm btn-success" onClick={handleAddDiagnosisItem}>
                                     +
                                   </button>
                                 </td>
+
                                 <td className="text-center">
                                   <button
                                     className="btn btn-sm btn-danger"
@@ -2232,6 +2854,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
 
                 {/* Investigation Section - UPDATED WITH MULTIPLE TEMPLATE SUPPORT */}
                 <div className="card mb-3">
@@ -2354,7 +2977,7 @@ const GeneralMedicineWaitingList = () => {
                                       value={type.value}
                                       checked={investigationType === type.value}
                                       onChange={(e) => {
-                                        console.log("Radio button selected:", e.target.value)
+                                        //console.log("Radio button selected:", e.target.value)
                                         setInvestigationType(e.target.value)
                                       }}
                                     />
@@ -2703,7 +3326,6 @@ const GeneralMedicineWaitingList = () => {
                                                 setShowDuplicatePopup(true);
                                                 return;
                                               }
-
                                               const updatedRows = treatmentItems.map((r, i) => {
                                                 if (i === index) {
                                                   const updatedItem = {
@@ -2711,8 +3333,8 @@ const GeneralMedicineWaitingList = () => {
                                                     drugName: opt.nomenclature,
                                                     dispUnit: opt.dispUnitName,
                                                     drugId: opt.itemId,
-                                                    itemClassName: opt.itemClassName,
-                                                    aDispQty: opt.adispQty ?? 0
+                                                    itemClassId: opt.itemClassId,
+                                                    aDispQty: opt.aDispQty ?? 1,   // FIXED
                                                   };
 
                                                   updatedItem.total = calculateTotal(updatedItem);
@@ -2725,6 +3347,7 @@ const GeneralMedicineWaitingList = () => {
                                               setActiveDrugNameDropdown(null);
                                               drugNameDropdownClickedRef.current = false;
                                             }}
+
 
 
                                           >
@@ -2762,24 +3385,26 @@ const GeneralMedicineWaitingList = () => {
                                     onChange={(e) =>
                                       handleTreatmentChange(index, "dosage", e.target.value)
                                     }
+                                    min={0}
                                   />
                                 </td>
 
                                 <td style={{ width: "120px" }}>
                                   <select
                                     className="form-select"
-                                    value={row.frequency}
+                                    value={row.frequency || ""}
                                     onChange={(e) =>
                                       handleTreatmentChange(index, "frequency", e.target.value)
                                     }
                                   >
                                     <option value="">Select..</option>
                                     {allFrequencies.map((f) => (
-                                      <option key={f.frequencyId} value={f.frequencyId}>
+                                      <option key={f.frequencyId} value={f.frequencyName}>
                                         {f.frequencyName}
                                       </option>
                                     ))}
                                   </select>
+
                                 </td>
 
                                 <td style={{ width: "70px" }}>
@@ -2790,6 +3415,7 @@ const GeneralMedicineWaitingList = () => {
                                     onChange={(e) =>
                                       handleTreatmentChange(index, "days", e.target.value)
                                     }
+                                    min={0}
                                   />
                                 </td>
 
@@ -2798,9 +3424,7 @@ const GeneralMedicineWaitingList = () => {
                                     type="number"
                                     className="form-control"
                                     value={row.total}
-                                    onChange={(e) =>
-                                      handleTreatmentChange(index, "total", e.target.value)
-                                    }
+                                    readOnly
                                   />
                                 </td>
 
@@ -2820,7 +3444,7 @@ const GeneralMedicineWaitingList = () => {
                                 </td>
 
                                 <td style={{ width: "100px" }}>
-                                  <input type="number" className="form-control" value={row.stock} readOnly />
+                                  <input type="number" className="form-control" value={row.stock || 0} readOnly />
                                 </td>
 
                                 <td style={{ width: "60px" }} className="text-center">
@@ -2844,33 +3468,18 @@ const GeneralMedicineWaitingList = () => {
                           </tbody>
                         </table>
                       </div>
-                    </div>
-                  )}
-                </div>
 
-                {/* NIP Section */}
-                <div className="card mb-3">
-                  <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => toggleSection("nip")}
-                  >
-                    <h6 className="mb-0 fw-bold">NIP</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.nip ? "−" : "+"}</span>
-                  </div>
-                  {expandedSections.nip && (
-                    <div className="card-body">
                       {/* Treatment Advice Subsection */}
-                      <div className="card mb-3">
+                      <div className="card mt-3">
                         <div
                           className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
                           style={{ cursor: "pointer" }}
-                          onClick={() => toggleNipSubsection("treatmentAdvice")}
+                          onClick={() => toggleSection("treatmentAdvice")}
                         >
-                          <h6 className="mb-0">Treatment Advice</h6>
-                          <span style={{ fontSize: "16px" }}>{expandedNipSubsections.treatmentAdvice ? "−" : "+"}</span>
+                          <h6 className="mb-0 fw-bold">Treatment Advice</h6>
+                          <span style={{ fontSize: "16px" }}>{expandedSections.treatmentAdvice ? "−" : "+"}</span>
                         </div>
-                        {expandedNipSubsections.treatmentAdvice && (
+                        {expandedSections.treatmentAdvice && (
                           <div className="card-body">
                             <div className="row align-items-end">
                               <div className="col-md-11">
@@ -2897,701 +3506,532 @@ const GeneralMedicineWaitingList = () => {
                           </div>
                         )}
                       </div>
+                    </div>
+                  )}
+                </div>
 
-                      {/* NIP Subsection */}
-                      <div className="card mb-3">
-                        <div
-                          className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => toggleNipSubsection("nip")}
-                        >
-                          <h6 className="mb-0">NIP</h6>
-                          <span style={{ fontSize: "16px" }}>{expandedNipSubsections.nip ? "−" : "+"}</span>
-                        </div>
-                        {expandedNipSubsections.nip && (
-                          <div className="card-body">
-                            <div className="table-responsive">
-                              <table className="table table-bordered">
-                                <thead style={{ backgroundColor: "#b0c4de" }}>
-                                  <tr>
-                                    <th>NIP</th>
-                                    <th>New NIP</th>
-                                    <th>Class</th>
-                                    <th>AU</th>
-                                    <th>Disp. Unit</th>
-                                    <th>UOM Qty</th>
-                                    <th>Dosage</th>
-                                    <th>Frequency</th>
-                                    <th>Days</th>
-                                    <th>Total</th>
-                                    <th>Instruction</th>
-                                    <th>Stock</th>
-                                    <th className="text-center">Add</th>
-                                    <th className="text-center">Delete</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {nipItems.map((item, index) => (
-                                    <tr key={index}>
-                                      <td className="position-relative">
-                                        <input
-                                          type="text"
-                                          className="form-control"
-                                          value={item.nip}
-                                          onChange={(e) => {
-                                            handleNipSearchChange(e.target.value)
-                                            setSelectedNipIndex(index)
-                                          }}
-                                          placeholder="Search NIP"
-                                          autoComplete="off"
-                                        />
-                                        {isNipDropdownVisible && selectedNipIndex === index && nipSearchInput && (
-                                          <ul
-                                            className="list-group position-absolute w-100 mt-1"
-                                            style={{ zIndex: 1000, top: "100%" }}
-                                          >
-                                            {nipOptions
-                                              .filter((nip) =>
-                                                nip.name.toLowerCase().includes(nipSearchInput.toLowerCase()),
-                                              )
-                                              .map((nip) => (
-                                                <li
-                                                  key={nip.id}
-                                                  className="list-group-item list-group-item-action"
-                                                  onClick={() => handleNipSelect(nip, index)}
-                                                >
-                                                  {nip.name}
-                                                </li>
-                                              ))}
-                                          </ul>
-                                        )}
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control"
-                                          value={item.newNIP}
-                                          onChange={(e) => handleNipChange(index, "newNIP", e.target.value)}
-                                          placeholder="New NIP"
-                                        />
-                                      </td>
-                                      <td>
-                                        <select
-                                          className="form-select"
-                                          value={item.class}
-                                          onChange={(e) => handleNipChange(index, "class", e.target.value)}
-                                        >
-                                          <option value="Select">Select</option>
-                                          <option value="Class A">Class A</option>
-                                          <option value="Class B">Class B</option>
-                                          <option value="Class C">Class C</option>
-                                        </select>
-                                      </td>
-                                      <td>
-                                        <select
-                                          className="form-select"
-                                          value={item.au}
-                                          onChange={(e) => handleNipChange(index, "au", e.target.value)}
-                                        >
-                                          <option value="Select">Select</option>
-                                          <option value="AU-1">AU-1</option>
-                                          <option value="AU-2">AU-2</option>
-                                          <option value="AU-3">AU-3</option>
-                                        </select>
-                                      </td>
-                                      <td>
-                                        <select
-                                          className="form-select"
-                                          value={item.dispUnit}
-                                          onChange={(e) => handleNipChange(index, "dispUnit", e.target.value)}
-                                        >
-                                          <option value="Select">Select</option>
-                                          <option value="Tab">Tab</option>
-                                          <option value="Cap">Cap</option>
-                                          <option value="Syr">Syr</option>
-                                        </select>
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="number"
-                                          className="form-control"
-                                          value={item.uomQty}
-                                          onChange={(e) => handleNipChange(index, "uomQty", e.target.value)}
-                                          placeholder="0"
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="number"
-                                          className="form-control"
-                                          value={item.dosage}
-                                          onChange={(e) => handleNipChange(index, "dosage", e.target.value)}
-                                          placeholder="0"
-                                        />
-                                      </td>
-                                      <td>
-                                        <select
-                                          className="form-select"
-                                          value={item.frequency}
-                                          onChange={(e) => handleNipChange(index, "frequency", e.target.value)}
-                                        >
-                                          <option value="Select">Select</option>
-                                          <option value="OD">OD</option>
-                                          <option value="BID">BID</option>
-                                          <option value="TID">TID</option>
-                                          <option value="QID">QID</option>
-                                        </select>
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="number"
-                                          className="form-control"
-                                          value={item.days}
-                                          onChange={(e) => handleNipChange(index, "days", e.target.value)}
-                                          placeholder="0"
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="number"
-                                          className="form-control"
-                                          value={item.total}
-                                          onChange={(e) => handleNipChange(index, "total", e.target.value)}
-                                          placeholder="0"
-                                        />
-                                      </td>
-                                      <td>
-                                        <select
-                                          className="form-select"
-                                          value={item.instruction}
-                                          onChange={(e) => handleNipChange(index, "instruction", e.target.value)}
-                                        >
-                                          <option value="">Select...</option>
-                                          <option value="After Meal">After Meal</option>
-                                          <option value="Before Meal">Before Meal</option>
-                                        </select>
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="number"
-                                          className="form-control"
-                                          value={item.stock}
-                                          onChange={(e) => handleNipChange(index, "stock", e.target.value)}
-                                          placeholder="0"
-                                        />
-                                      </td>
-                                      <td className="text-center">
-                                        <button className="btn btn-sm btn-success" onClick={handleAddNipItem}>
-                                          +
-                                        </button>
-                                      </td>
-                                      <td className="text-center">
-                                        <button
-                                          className="btn btn-sm btn-danger"
-                                          onClick={() => handleRemoveNipItem(index)}
-                                          disabled={nipItems.length === 1}
-                                        >
-                                          −
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
+                {/* Procedure Care Section */}
+                <div className="card mb-3">
+                  <div
+                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("procedureCare")}
+                  >
+                    <h6 className="mb-0 fw-bold">Procedure Care</h6>
+                    <span style={{ fontSize: "18px" }}>{expandedSections.procedureCare ? "−" : "+"}</span>
+                  </div>
+                  {expandedSections.procedureCare && (
+                    <div className="card-body">
+                      <div className="row mb-3">
+                        <div className="col-12 d-flex gap-4">
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="procedureCareType"
+                              id="procedure"
+                              checked={procedureCareType === "procedure"}
+                              onChange={() => setProcedureCareType("procedure")}
+                            />
+                            <label className="form-check-label" htmlFor="procedure">
+                              Procedure
+                            </label>
                           </div>
-                        )}
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="procedureCareType"
+                              id="physiotherapy"
+                              checked={procedureCareType === "physiotherapy"}
+                              onChange={() => setProcedureCareType("physiotherapy")}
+                            />
+                            <label className="form-check-label" htmlFor="physiotherapy">
+                              Physiotherapy
+                            </label>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Procedure Care Subsection */}
-                      <div className="card mb-3">
-                        <div
-                          className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => toggleNipSubsection("procedureCare")}
-                        >
-                          <h6 className="mb-0">Procedure Care</h6>
-                          <span style={{ fontSize: "16px" }}>{expandedNipSubsections.procedureCare ? "−" : "+"}</span>
-                        </div>
-                        {expandedNipSubsections.procedureCare && (
-                          <div className="card-body">
-                            <div className="row mb-3">
-                              <div className="col-12 d-flex gap-4">
-                                <div className="form-check">
-                                  <input
-                                    className="form-check-input"
-                                    type="radio"
-                                    name="procedureCareType"
-                                    id="procedure"
-                                    checked={procedureCareType === "procedure"}
-                                    onChange={() => setProcedureCareType("procedure")}
-                                  />
-                                  <label className="form-check-label" htmlFor="procedure">
-                                    Procedure
-                                  </label>
-                                </div>
-                                <div className="form-check">
-                                  <input
-                                    className="form-check-input"
-                                    type="radio"
-                                    name="procedureCareType"
-                                    id="physiotherapy"
-                                    checked={procedureCareType === "physiotherapy"}
-                                    onChange={() => setProcedureCareType("physiotherapy")}
-                                  />
-                                  <label className="form-check-label" htmlFor="physiotherapy">
-                                    Physiotherapy
-                                  </label>
-                                </div>
-                              </div>
-                            </div>
-
-                            {procedureCareType === "procedure" ? (
-                              <div className="table-responsive">
-                                <table className="table table-bordered">
-                                  <thead style={{ backgroundColor: "#b0c4de" }}>
-                                    <tr>
-                                      <th style={{ width: "40%" }}>Nursing Care Name</th>
-                                      <th className="text-center" style={{ width: "20%" }}>
-                                        Frequency
-                                      </th>
-                                      <th className="text-center" style={{ width: "15%" }}>
-                                        No.Of Days
-                                      </th>
-                                      <th style={{ width: "15%" }}>Remarks</th>
-                                      <th className="text-center" style={{ width: "5%" }}>
-                                        Add
-                                      </th>
-                                      <th className="text-center" style={{ width: "5%" }}>
-                                        Delete
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {procedureCareItems.map((row, index) => (
-                                      <tr key={index}>
-                                        <td>
-                                          <input
-                                            type="text"
-                                            className="form-control"
-                                            value={row.name}
-                                            onChange={(e) => handleProcedureCareChange(index, "name", e.target.value)}
-                                            placeholder="Enter nursing care name"
-                                          />
-                                        </td>
-                                        <td>
-                                          <select
-                                            className="form-select"
-                                            value={row.frequency}
-                                            onChange={(e) =>
-                                              handleProcedureCareChange(index, "frequency", e.target.value)
-                                            }
-                                          >
-                                            <option value="">Select</option>
-                                            <option value="OD">OD</option>
-                                            <option value="BID">BID</option>
-                                            <option value="TID">TID</option>
-                                            <option value="QID">QID</option>
-                                          </select>
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="number"
-                                            className="form-control"
-                                            value={row.days}
-                                            onChange={(e) => handleProcedureCareChange(index, "days", e.target.value)}
-                                            placeholder="0"
-                                          />
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="text"
-                                            className="form-control"
-                                            value={row.remarks}
-                                            onChange={(e) =>
-                                              handleProcedureCareChange(index, "remarks", e.target.value)
-                                            }
-                                            placeholder="Enter remarks"
-                                          />
-                                        </td>
-                                        <td className="text-center">
-                                          <button
-                                            className="btn btn-sm btn-success"
-                                            onClick={handleAddProcedureCareItem}
-                                          >
-                                            +
-                                          </button>
-                                        </td>
-                                        <td className="text-center">
-                                          <button
-                                            className="btn btn-sm btn-danger"
-                                            onClick={() => handleRemoveProcedureCareItem(index)}
-                                            disabled={procedureCareItems.length === 1}
-                                          >
-                                            −
-                                          </button>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            ) : (
-                              <div className="table-responsive">
-                                <table className="table table-bordered">
-                                  <thead style={{ backgroundColor: "#b0c4de" }}>
-                                    <tr>
-                                      <th style={{ width: "40%" }}>Nursing Care Name</th>
-                                      <th className="text-center" style={{ width: "20%" }}>
-                                        Frequency
-                                      </th>
-                                      <th className="text-center" style={{ width: "15%" }}>
-                                        No.Of Days
-                                      </th>
-                                      <th style={{ width: "15%" }}>Remarks</th>
-                                      <th className="text-center" style={{ width: "5%" }}>
-                                        Add
-                                      </th>
-                                      <th className="text-center" style={{ width: "5%" }}>
-                                        Delete
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {physiotherapyItems.map((row, index) => (
-                                      <tr key={index}>
-                                        <td>
-                                          <input
-                                            type="text"
-                                            className="form-control"
-                                            value={row.name}
-                                            onChange={(e) => handlePhysiotherapyChange(index, "name", e.target.value)}
-                                            placeholder="Enter nursing care name"
-                                          />
-                                        </td>
-                                        <td>
-                                          <select
-                                            className="form-select"
-                                            value={row.frequency}
-                                            onChange={(e) =>
-                                              handlePhysiotherapyChange(index, "frequency", e.target.value)
-                                            }
-                                          >
-                                            <option value="">Select</option>
-                                            <option value="OD">OD</option>
-                                            <option value="BID">BID</option>
-                                            <option value="TID">TID</option>
-                                            <option value="QID">QID</option>
-                                          </select>
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="number"
-                                            className="form-control"
-                                            value={row.days}
-                                            onChange={(e) => handlePhysiotherapyChange(index, "days", e.target.value)}
-                                            placeholder="0"
-                                          />
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="text"
-                                            className="form-control"
-                                            value={row.remarks}
-                                            onChange={(e) =>
-                                              handlePhysiotherapyChange(index, "remarks", e.target.value)
-                                            }
-                                            placeholder="Enter remarks"
-                                          />
-                                        </td>
-                                        <td className="text-center">
-                                          <button
-                                            className="btn btn-sm btn-success"
-                                            onClick={handleAddPhysiotherapyItem}
-                                          >
-                                            +
-                                          </button>
-                                        </td>
-                                        <td className="text-center">
-                                          <button
-                                            className="btn btn-sm btn-danger"
-                                            onClick={() => handleRemovePhysiotherapyItem(index)}
-                                            disabled={physiotherapyItems.length === 1}
-                                          >
-                                            −
-                                          </button>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Surgery Advice Subsection */}
-                      <div className="card mb-3">
-                        <div
-                          className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => toggleNipSubsection("surgeryAdvice")}
-                        >
-                          <h6 className="mb-0">Surgery Advice</h6>
-                          <span style={{ fontSize: "16px" }}>{expandedNipSubsections.surgeryAdvice ? "−" : "+"}</span>
-                        </div>
-                        {expandedNipSubsections.surgeryAdvice && (
-                          <div className="card-body">
-                            <div className="row mb-3 align-items-center">
-                              <div className="col-12 d-flex gap-4 mb-3">
-                                <div className="form-check">
-                                  <input
-                                    className="form-check-input"
-                                    type="radio"
-                                    name="surgeryType"
-                                    id="major"
-                                    checked={surgeryType === "major"}
-                                    onChange={() => setSurgeryType("major")}
-                                  />
-                                  <label className="form-check-label" htmlFor="major">
-                                    Major
-                                  </label>
-                                </div>
-                                <div className="form-check">
-                                  <input
-                                    className="form-check-input"
-                                    type="radio"
-                                    name="surgeryType"
-                                    id="minor"
-                                    checked={surgeryType === "minor"}
-                                    onChange={() => setSurgeryType("minor")}
-                                  />
-                                  <label className="form-check-label" htmlFor="minor">
-                                    Minor
-                                  </label>
-                                </div>
-
-                                <div style={{ cursor: "default" }}>
-                                  <div className="d-flex align-items-center">
-                                    <button
-                                      className="btn btn-sm btn-primary"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        setShowOtCalendarModal(true)
-                                      }}
-                                      style={{ fontSize: "12px" }}
+                      {procedureCareType === "procedure" ? (
+                        <div className="table-responsive">
+                          <table className="table table-bordered">
+                            <thead style={{ backgroundColor: "#b0c4de" }}>
+                              <tr>
+                                <th style={{ width: "40%" }}>Nursing Care Name</th>
+                                <th className="text-center" style={{ width: "20%" }}>
+                                  Frequency
+                                </th>
+                                <th className="text-center" style={{ width: "15%" }}>
+                                  No.Of Days
+                                </th>
+                                <th style={{ width: "15%" }}>Remarks</th>
+                                <th className="text-center" style={{ width: "5%" }}>
+                                  Add
+                                </th>
+                                <th className="text-center" style={{ width: "5%" }}>
+                                  Delete
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {procedureCareItems.map((row, index) => (
+                                <tr key={index}>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      value={row.name}
+                                      onChange={(e) => handleProcedureCareChange(index, "name", e.target.value)}
+                                      placeholder="Enter nursing care name"
+                                    />
+                                  </td>
+                                  <td>
+                                    <select
+                                      className="form-select"
+                                      value={row.frequency}
+                                      onChange={(e) =>
+                                        handleProcedureCareChange(index, "frequency", e.target.value)
+                                      }
                                     >
-                                      OTCalendar
+                                      <option value="">Select</option>
+                                      <option value="OD">OD</option>
+                                      <option value="BID">BID</option>
+                                      <option value="TID">TID</option>
+                                      <option value="QID">QID</option>
+                                    </select>
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="number"
+                                      className="form-control"
+                                      value={row.days}
+                                      onChange={(e) => handleProcedureCareChange(index, "days", e.target.value)}
+                                      placeholder="0"
+                                    />
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      value={row.remarks}
+                                      onChange={(e) =>
+                                        handleProcedureCareChange(index, "remarks", e.target.value)
+                                      }
+                                      placeholder="Enter remarks"
+                                    />
+                                  </td>
+                                  <td className="text-center">
+                                    <button
+                                      className="btn btn-sm btn-success"
+                                      onClick={handleAddProcedureCareItem}
+                                    >
+                                      +
                                     </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
+                                  </td>
+                                  <td className="text-center">
+                                    <button
+                                      className="btn btn-sm btn-danger"
+                                      onClick={() => handleRemoveProcedureCareItem(index)}
+                                      disabled={procedureCareItems.length === 1}
+                                    >
+                                      −
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="table-responsive">
+                          <table className="table table-bordered">
+                            <thead style={{ backgroundColor: "#b0c4de" }}>
+                              <tr>
+                                <th style={{ width: "40%" }}>Nursing Care Name</th>
+                                <th className="text-center" style={{ width: "20%" }}>
+                                  Frequency
+                                </th>
+                                <th className="text-center" style={{ width: "15%" }}>
+                                  No.Of Days
+                                </th>
+                                <th style={{ width: "15%" }}>Remarks</th>
+                                <th className="text-center" style={{ width: "5%" }}>
+                                  Add
+                                </th>
+                                <th className="text-center" style={{ width: "5%" }}>
+                                  Delete
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {physiotherapyItems.map((row, index) => (
+                                <tr key={index}>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      value={row.name}
+                                      onChange={(e) => handlePhysiotherapyChange(index, "name", e.target.value)}
+                                      placeholder="Enter nursing care name"
+                                    />
+                                  </td>
+                                  <td>
+                                    <select
+                                      className="form-select"
+                                      value={row.frequency}
+                                      onChange={(e) =>
+                                        handlePhysiotherapyChange(index, "frequency", e.target.value)
+                                      }
+                                    >
+                                      <option value="">Select</option>
+                                      <option value="OD">OD</option>
+                                      <option value="BID">BID</option>
+                                      <option value="TID">TID</option>
+                                      <option value="QID">QID</option>
+                                    </select>
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="number"
+                                      className="form-control"
+                                      value={row.days}
+                                      onChange={(e) => handlePhysiotherapyChange(index, "days", e.target.value)}
+                                      placeholder="0"
+                                    />
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      value={row.remarks}
+                                      onChange={(e) =>
+                                        handlePhysiotherapyChange(index, "remarks", e.target.value)
+                                      }
+                                      placeholder="Enter remarks"
+                                    />
+                                  </td>
+                                  <td className="text-center">
+                                    <button
+                                      className="btn btn-sm btn-success"
+                                      onClick={handleAddPhysiotherapyItem}
+                                    >
+                                      +
+                                    </button>
+                                  </td>
+                                  <td className="text-center">
+                                    <button
+                                      className="btn btn-sm btn-danger"
+                                      onClick={() => handleRemovePhysiotherapyItem(index)}
+                                      disabled={physiotherapyItems.length === 1}
+                                    >
+                                      −
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
-                            <div className="table-responsive">
-                              <table className="table table-bordered">
-                                <thead style={{ backgroundColor: "#b0c4de" }}>
-                                  <tr>
-                                    <th style={{ width: "10%" }}>S.No</th>
-                                    <th style={{ width: "70%" }}>Surgery</th>
-                                    <th style={{ width: "15%" }}>Select</th>
-                                    <th style={{ width: "5%" }}>Add</th>
-                                    <th style={{ width: "5%" }}>Delete</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {surgeryItems.map((item, index) => (
-                                    <tr key={index}>
-                                      <td className="text-center">{index + 1}</td>
-                                      <td className="position-relative">
-                                        <input
-                                          type="text"
-                                          className="form-control"
-                                          value={item.surgery}
-                                          onChange={(e) => {
-                                            handleSurgerySearchChange(e.target.value, index)
-                                          }}
-                                          placeholder="Search Surgery"
-                                          autoComplete="off"
-                                        />
-                                        {isSurgeryDropdownVisible &&
-                                          selectedSurgeryIndex === index &&
-                                          surgerySearchInput && (
-                                            <ul
-                                              className="list-group position-absolute w-100 mt-1"
-                                              style={{ zIndex: 1000, top: "100%" }}
-                                            >
-                                              {surgeryOptions
-                                                .filter((surgery) =>
-                                                  surgery.name.toLowerCase().includes(surgerySearchInput.toLowerCase()),
-                                                )
-                                                .map((surgery) => (
-                                                  <li
-                                                    key={surgery.id}
-                                                    className="list-group-item list-group-item-action"
-                                                    onClick={() => handleSurgerySelect(surgery, index)}
-                                                  >
-                                                    {surgery.name}
-                                                  </li>
-                                                ))}
-                                            </ul>
-                                          )}
-                                      </td>
-                                      <td className="text-center">
-                                        <input
-                                          type="checkbox"
-                                          className="form-check-input"
-                                          checked={item.selected}
-                                          onChange={(e) => handleSurgeryChange(index, "selected", e.target.checked)}
-                                        />
-                                      </td>
-                                      <td className="text-center">
-                                        <button className="btn btn-sm btn-success" onClick={handleAddSurgeryItem}>
-                                          +
-                                        </button>
-                                      </td>
-                                      <td className="text-center">
-                                        <button
-                                          className="btn btn-sm btn-danger"
-                                          onClick={() => handleRemoveSurgeryItem(index)}
-                                          disabled={surgeryItems.length === 1}
-                                        >
-                                          −
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                {/* Surgery Advice Section */}
+                <div className="card mb-3">
+                  <div
+                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("surgeryAdvice")}
+                  >
+                    <h6 className="mb-0 fw-bold">Surgery Advice</h6>
+                    <span style={{ fontSize: "18px" }}>{expandedSections.surgeryAdvice ? "−" : "+"}</span>
+                  </div>
+                  {expandedSections.surgeryAdvice && (
+                    <div className="card-body">
+                      <div className="row mb-3 align-items-center">
+                        <div className="col-12 d-flex gap-4 mb-3">
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="surgeryType"
+                              id="major"
+                              checked={surgeryType === "major"}
+                              onChange={() => setSurgeryType("major")}
+                            />
+                            <label className="form-check-label" htmlFor="major">
+                              Major
+                            </label>
+                          </div>
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="surgeryType"
+                              id="minor"
+                              checked={surgeryType === "minor"}
+                              onChange={() => setSurgeryType("minor")}
+                            />
+                            <label className="form-check-label" htmlFor="minor">
+                              Minor
+                            </label>
+                          </div>
+
+                          <div style={{ cursor: "default" }}>
+                            <div className="d-flex align-items-center">
+                              <button
+                                className="btn btn-sm btn-primary"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setShowOtCalendarModal(true)
+                                }}
+                                style={{ fontSize: "12px" }}
+                              >
+                                OTCalendar
+                              </button>
                             </div>
                           </div>
-                        )}
+                        </div>
                       </div>
 
-                      {/* Additional Advice Subsection */}
-                      <div className="card mb-3">
-                        <div
-                          className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => toggleNipSubsection("additionalAdvice")}
-                        >
-                          <h6 className="mb-0">Additional Advice</h6>
-                          <span style={{ fontSize: "16px" }}>
-                            {expandedNipSubsections.additionalAdvice ? "−" : "+"}
-                          </span>
-                        </div>
-                        {expandedNipSubsections.additionalAdvice && (
-                          <div className="card-body">
-                            {admissionAdvised && (
-                              <div className="row mb-4 pb-4 border-bottom">
-                                <div className="col-12">
-                                  <div className="row g-3">
-                                    <div className="col-md-2 d-flex align-items-center">
-                                      <div className="form-check">
-                                        <input
-                                          className="form-check-input"
-                                          type="checkbox"
-                                          id="admissionAdvised"
-                                          checked={admissionAdvised}
-                                          onChange={(e) => setAdmissionAdvised(e.target.checked)}
-                                        />
-                                        <label className="form-check-label fw-bold" htmlFor="admissionAdvised">
-                                          Admission Advised
-                                        </label>
-                                      </div>
-                                    </div>
-                                    <div className="col-md-2">
-                                      <label className="form-label fw-bold">Admission Date</label>
-                                      <input
-                                        type="date"
-                                        className="form-control"
-                                        value={admissionDate}
-                                        onChange={(e) => setAdmissionDate(e.target.value)}
-                                      />
-                                    </div>
-                                    <div className="col-md-2">
-                                      <label className="form-label fw-bold">Ward</label>
-                                      <select
-                                        className="form-select border-black"
-                                        value={selectedWard}
-                                        onChange={(e) => setSelectedWard(e.target.value)}
-                                      >
-                                        <option value="CHILDREN WARD">CHILDREN WARD</option>
-                                        <option value="GENERAL WARD">GENERAL WARD</option>
-                                        <option value="ICU WARD">ICU WARD</option>
-                                        <option value="MATERNITY WARD">MATERNITY WARD</option>
-                                        <option value="SURGICAL WARD">SURGICAL WARD</option>
-                                      </select>
-                                    </div>
-                                    <div className="col-md-1">
-                                      <label className="form-label fw-bold">Occupied Bed</label>
-                                      <input
-                                        type="text"
-                                        className="form-control"
-                                        value={wardData[selectedWard]?.occupied || 0}
-                                        readOnly
-                                      />
-                                    </div>
-                                    <div className="col-md-1">
-                                      <label className="form-label fw-bold">Vacant Bed</label>
-                                      <input
-                                        type="text"
-                                        className="form-control"
-                                        value={wardData[selectedWard]?.vacant || 0}
-                                        readOnly
-                                      />
-                                    </div>
-                                    <div className="col-md-4">
-                                      <label className="form-label fw-bold">Admission Notes</label>
-                                      <textarea
-                                        className="form-control"
-                                        rows={2}
-                                        value={admissionNotes}
-                                        onChange={(e) => setAdmissionNotes(e.target.value)}
-                                        placeholder="Enter admission notes"
-                                      ></textarea>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            <div className="row">
-                              <div className="col-md-9">
-                                <label className="form-label fw-bold">Additional Advice</label>
-                                <textarea
-                                  className="form-control"
-                                  rows={4}
-                                  value={additionalAdvice}
-                                  onChange={(e) => setAdditionalAdvice(e.target.value)}
-                                  placeholder="Enter additional advice"
-                                ></textarea>
-                              </div>
-                              <div className="col-md-3 d-flex align-items-end">
-                                <div className="form-check w-100">
+                      <div className="table-responsive">
+                        <table className="table table-bordered">
+                          <thead style={{ backgroundColor: "#b0c4de" }}>
+                            <tr>
+                              <th style={{ width: "10%" }}>S.No</th>
+                              <th style={{ width: "70%" }}>Surgery</th>
+                              <th style={{ width: "15%" }}>Select</th>
+                              <th style={{ width: "5%" }}>Add</th>
+                              <th style={{ width: "5%" }}>Delete</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {surgeryItems.map((item, index) => (
+                              <tr key={index}>
+                                <td className="text-center">{index + 1}</td>
+                                <td className="position-relative">
                                   <input
-                                    className="form-check-input"
-                                    type="checkbox"
-                                    id="admissionAdvised"
-                                    checked={admissionAdvised}
-                                    onChange={(e) => setAdmissionAdvised(e.target.checked)}
+                                    type="text"
+                                    className="form-control"
+                                    value={item.surgery}
+                                    onChange={(e) => {
+                                      handleSurgerySearchChange(e.target.value, index)
+                                    }}
+                                    placeholder="Search Surgery"
+                                    autoComplete="off"
                                   />
-                                  <label className="form-check-label" htmlFor="admissionAdvised">
-                                    Admission Advised
-                                  </label>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                                  {isSurgeryDropdownVisible &&
+                                    selectedSurgeryIndex === index &&
+                                    surgerySearchInput && (
+                                      <ul
+                                        className="list-group position-absolute w-100 mt-1"
+                                        style={{ zIndex: 1000, top: "100%" }}
+                                      >
+                                        {surgeryOptions
+                                          .filter((surgery) =>
+                                            surgery.name.toLowerCase().includes(surgerySearchInput.toLowerCase()),
+                                          )
+                                          .map((surgery) => (
+                                            <li
+                                              key={surgery.id}
+                                              className="list-group-item list-group-item-action"
+                                              onClick={() => handleSurgerySelect(surgery, index)}
+                                            >
+                                              {surgery.name}
+                                            </li>
+                                          ))}
+                                      </ul>
+                                    )}
+                                </td>
+                                <td className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    className="form-check-input"
+                                    checked={item.selected}
+                                    onChange={(e) => handleSurgeryChange(index, "selected", e.target.checked)}
+                                  />
+
+                                </td>
+                                <td className="text-center">
+                                  <button className="btn btn-sm btn-success" onClick={handleAddSurgeryItem}>
+                                    +
+                                  </button>
+                                </td>
+                                <td className="text-center">
+                                  <button
+                                    className="btn btn-sm btn-danger"
+                                    onClick={() => handleRemoveSurgeryItem(index)}
+                                    disabled={surgeryItems.length === 1}
+                                  >
+                                    −
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* Referral Section - UPDATED BASED ON SCREENSHOTS */}
-                {/* Referral Section - UPDATED BASED ON SCREENSHOTS */}
+                {/* Admission Advice Section */}
+                <div className="card mb-3">
+                  <div
+                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("admissionAdvice")}
+                  >
+                    <h6 className="mb-0 fw-bold">Admission Advice</h6>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.admissionAdvice ? "−" : "+"}
+                    </span>
+                  </div>
+                  {expandedSections.admissionAdvice && (
+                    <div className="card-body">
+                      <div className="row">
+                        <div className="col-md-12">
+                          <div className="row mb-3">
+                            <div className="col-md-3">
+                              <div className="form-check d-flex align-items-center h-100">
+                                <input
+                                  className="form-check-input me-2"
+                                  type="checkbox"
+                                  id="admissionAdvised"
+                                  checked={admissionAdvised}
+                                  onChange={(e) => setAdmissionAdvised(e.target.checked)}
+                                />
+                                <label className="form-check-label fw-bold" htmlFor="admissionAdvised">
+                                  Admission Advised
+                                </label>
+                              </div>
+                            </div>
+                            <div className="col-md-9">
+                              <label className="form-label fw-bold">Admission Advice</label>
+                              <textarea
+                                className="form-control"
+                                rows={3}
+                                value={additionalAdvice}
+                                onChange={(e) => setAdditionalAdvice(e.target.value)}
+                                placeholder="Enter admission advice"
+                              ></textarea>
+                            </div>
+                          </div>
+
+                          {admissionAdvised && (
+                            <div className="border-top pt-3 mt-3">
+                              <div className="row g-3">
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">Admission Date</label>
+                                  <input
+                                    type="date"
+                                    className="form-control"
+                                    value={admissionDate}
+                                    onChange={(e) => setAdmissionDate(e.target.value)}
+                                  />
+                                </div>
+
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">Notes <span className="text-danger">*</span></label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={admissionRemarks}
+                                    onChange={(e) => setAdmissionRemarks(e.target.value)}
+                                    placeholder="Enter notes"
+                                    required
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="row g-3 mt-3">
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">Ward Category</label>
+                                  <select
+                                    className="form-select"
+                                    value={wardCategory}
+                                    onChange={(e) => handleWardCategoryChange(Number(e.target.value))}
+                                  >
+                                    <option value="">Select Ward Category</option>
+                                    {wardCategories.map((category) => (
+                                      <option key={category.id} value={category.id}>
+                                        {category.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">Care Level</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={careLevels.find(cl => cl.id === admissionCareLevel)?.name || ""}
+                                    readOnly
+                                  />
+                                </div>
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">Ward Name/Dept Name <span className="text-danger">*</span></label>
+                                  <select
+                                    className="form-select"
+                                    value={wardName}
+                                    onChange={(e) => handleWardNameChange(Number(e.target.value))}
+                                    disabled={!wardCategory}
+                                    required
+                                  >
+                                    <option value="">Select Ward/Dept</option>
+                                    {wardDepartments.map((dept) => (
+                                      <option key={dept.id} value={dept.id}>
+                                        {dept.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">Admission Priority (Optional)</label>
+                                  <select
+                                    className="form-select"
+                                    value={admissionPriority}
+                                    onChange={(e) => setAdmissionPriority(e.target.value)}
+                                  >
+                                    {admissionPriorities.map((priority) => (
+                                      <option key={priority} value={priority}>
+                                        {priority}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div className="row g-3 mt-3">
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">Occupied Bed</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={occupiedBeds}
+                                    readOnly
+                                  />
+                                </div>
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">Vacant Bed</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={vacantBeds}
+                                    readOnly
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="card mb-3">
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
@@ -3941,29 +4381,117 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
-                {["followUp", "doctorRemark"].map((section) => (
-                  <div key={section} className="card mb-3">
-                    <div
-                      className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
-                      style={{ cursor: "pointer" }}
-                      onClick={() => toggleSection(section)}
-                    >
-                      <h6 className="mb-0 fw-bold">
-                        {section.charAt(0).toUpperCase() + section.slice(1).replace(/([A-Z])/g, " $1")}
-                      </h6>
-                      <span style={{ fontSize: "18px" }}>{expandedSections[section] ? "−" : "+"}</span>
-                    </div>
-                    {expandedSections[section] && (
-                      <div className="card-body">
-                        <p>Content for {section} section will be implemented here.</p>
-                      </div>
-                    )}
+
+
+                <div className="card mb-3">
+                  {/* HEADER */}
+                  <div
+                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("followUp")}
+                  >
+                    <h6 className="mb-0 fw-bold">Follow Up</h6>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.followUp ? "−" : "+"}
+                    </span>
                   </div>
-                ))}
+
+                  {/* BODY */}
+                  {expandedSections.followUp && (
+                    <div className="card-body">
+                      <div className="d-flex align-items-center justify-content-between">
+
+                        {/* LEFT SIDE: Checkbox + Label */}
+                        <div className="d-flex align-items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="form-check-input m-0"
+                          />
+                          <h6 className="fw-bold mb-0">Follow Up</h6>
+                        </div>
+
+                        {/* RIGHT SIDE: Number of Days + Next Date */}
+                        <div className="d-flex align-items-center gap-4">
+
+                          {/* Number of Days */}
+                          <div className="d-flex align-items-center gap-2">
+                            <label className="form-label mb-0">Number of days</label>
+                            <select className="form-select" style={{ width: "150px" }}>
+                              <option value="">Select</option>
+                              <option value="1">1</option>
+                              <option value="2">2</option>
+                              <option value="3">3</option>
+                              <option value="4">4</option>
+                              <option value="5">5</option>
+                            </select>
+                          </div>
+
+                          {/* Next Date */}
+                          <div className="d-flex align-items-center gap-2">
+                            <label className="form-label mb-0">Next date</label>
+                            <input
+                              type="date"
+                              className="form-control"
+                              style={{ width: "170px" }}
+                            />
+                          </div>
+
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+
+
+                </div>
+
+                {/* Doctor's Remarks Section */}
+                <div className="card mb-3">
+                  <div
+                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("remarks")}
+                  >
+                    <h6 className="mb-0 fw-bold">Remarks</h6>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.remarks ? "−" : "+"}
+                    </span>
+                  </div>
+
+                  {/* BODY */}
+                  {expandedSections.remarks && (
+                    <div className="card-body">
+                      <div className="row align-items-end">
+                        <div className="col-md-11">
+                          <label className="form-label fw-bold">Doctor's Remarks</label>
+                          <textarea
+                            className="form-control"
+                            rows={4}
+                            value={doctorRemarksText}
+                            onChange={(e) => setDoctorRemarksText(e.target.value)}
+                            placeholder="Doctor's remarks will be populated here"
+                          />
+                        </div>
+                        <div className="col-md-1 text-center">
+                          <button
+                            className="btn btn-primary"
+                            style={{ padding: "8px 12px" }}
+                            onClick={handleOpenDoctorRemarksModal}
+                            title="Select Doctor Remarks Template"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+
 
                 <div className="text-center mt-4">
                   <button className="btn btn-primary me-3" onClick={handleSubmit} disabled={isSubmitting} type="button">
-                    <i className="mdi mdi-content-save"></i> SUBMIT {isSubmitting ? (
+                    {isSubmitting ? (
                       <>
                         <i className="mdi mdi-loading mdi-spin"></i> PROCESSING...
                       </>
@@ -3993,7 +4521,7 @@ const GeneralMedicineWaitingList = () => {
           onClose={handleCloseInvestigationModal}
           templateType={investigationModalType}
           onTemplateSaved={(template) => {
-            console.log("Template saved:", template)
+            //console.log("Template saved:", template)
             fetchInvestigationTemplates()
           }}
         />
@@ -4003,8 +4531,16 @@ const GeneralMedicineWaitingList = () => {
           onClose={handleCloseTreatmentModal}
           templateType={treatmentModalType}
           onTemplateSaved={(template) => {
-            console.log("Treatment template saved:", template)
+            //console.log("Treatment template saved:", template)
           }}
+        />
+
+        {/* Doctor's Remarks Modal */}
+        <DoctorRemarksModal
+          show={showDoctorRemarksModal}
+          onClose={handleCloseDoctorRemarksModal}
+          templates={doctorRemarksTemplates}
+          onSave={handleSaveDoctorRemarks}
         />
 
         {/* OT Calendar Modal */}
@@ -4218,10 +4754,7 @@ const GeneralMedicineWaitingList = () => {
             <div className="card-header">
               <div className="d-flex justify-content-between align-items-center">
                 <h4 className="card-title p-2 mb-0">GENERAL MEDICINE WAITING LIST</h4>
-                <div className="d-flex gap-2">
-                  <button className="btn btn-primary">OPEN TOKEN DISPLAY</button>
-                  <button className="btn btn-secondary btn-sm">CLOSE TOKEN DISPLAY</button>
-                </div>
+
               </div>
               {loading && <LoadingScreen />}
             </div>
@@ -4231,7 +4764,7 @@ const GeneralMedicineWaitingList = () => {
                   <div className="row g-3 align-items-end">
 
                     <div className="col-md-3">
-                      <label className="form-label fw-bold">Doctor List</label>
+                      <label className="form-label fw-bold">Doctor List <span>*</span></label>
                       <select
                         className="form-select"
                         value={searchFilters.doctorList}
@@ -4261,12 +4794,12 @@ const GeneralMedicineWaitingList = () => {
                     </div>
 
                     <div className="col-md-2">
-                      <label className="form-label fw-bold">Employee No.</label>
+                      <label className="form-label fw-bold">Mobile No.</label>
                       <input
                         type="text"
                         className="form-control"
-                        value={searchFilters.employeeNo}
-                        onChange={(e) => handleFilterChange("employeeNo", e.target.value)}
+                        value={searchFilters.mobileNo}
+                        onChange={(e) => handleFilterChange("mobileNo", e.target.value)}
                         maxLength={20}
                       />
                     </div>

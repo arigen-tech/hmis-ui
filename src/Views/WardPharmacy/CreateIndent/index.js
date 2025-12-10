@@ -90,7 +90,7 @@ const IndentCreation = () => {
   const fetchAllDrugs = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1/${hospitalId}/${departmentId}`);
+      const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1`);
       console.log("Drugs API Response:", response);
 
       if (response && response.response && Array.isArray(response.response)) {
@@ -237,6 +237,26 @@ const IndentCreation = () => {
     fetchCurrentDepartment(); // Fetch current department separately
     // Don't fetch ROL items on initial load, only when Import from ROL is clicked
   }, []);
+
+  // Helper function to get display value with drug code in unique format
+  const getDrugDisplayValue = (drugName, drugCode) => {
+    if (!drugName && !drugCode) return "";
+    if (drugName && drugCode) {
+      return `${drugName} [${drugCode}]`;
+    }
+    return drugName || drugCode;
+  };
+
+  // Helper function to extract drug name from display value (for search)
+  const extractDrugName = (displayValue) => {
+    if (!displayValue) return "";
+    // Remove the code part in brackets for searching
+    const bracketIndex = displayValue.lastIndexOf('[');
+    if (bracketIndex > -1) {
+      return displayValue.substring(0, bracketIndex).trim();
+    }
+    return displayValue;
+  };
 
   // Filter drugs based on search input
   const filterDrugsBySearch = (searchTerm) => {
@@ -709,14 +729,31 @@ const IndentCreation = () => {
                 <table className="table table-bordered align-middle">
                   <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
                     <tr>
-                      <th style={{ width: "200px", minWidth: "200px" }}>Drug Name / Drug Code</th>
-                      <th style={{ width: "100px", minWidth: "100px" }}>A/U</th>
-                      <th style={{ width: "150px", minWidth: "150px" }}>Required Quantity</th>
-                      <th style={{ width: "150px", minWidth: "150px" }}>Stores Available Stock</th>
-                      <th style={{ width: "150px", minWidth: "150px" }}>Ward Pharmacy Stock</th>
-                      <th style={{ width: "200px", minWidth: "200px" }}>Reason for Indent</th>
-                      <th style={{ width: "80px", minWidth: "80px", textAlign: "center" }}>Add</th>
-                      <th style={{ width: "80px", minWidth: "80px", textAlign: "center" }}>Delete</th>
+                      <th style={{ width: "300px", minWidth: "300px" }}>
+                        Drug Name / Drug Code
+                      </th>
+                      <th style={{ width: "70px", minWidth: "70px" }}>
+                        A/U
+                      </th>
+                      <th style={{ width: "110px", minWidth: "110px", whiteSpace: "normal", lineHeight: "1.2" }}>
+                        <span>Required</span><br />
+                        <span>Quantity</span>
+                      </th>
+                      <th style={{ width: "150px", minWidth: "150px" }}>
+                        Stores Available Stock
+                      </th>
+                      <th style={{ width: "150px", minWidth: "150px" }}>
+                        Ward Pharmacy Stock
+                      </th>
+                      <th style={{ width: "160px", minWidth: "160px" }}>
+                        Reason for Indent
+                      </th>
+                      <th style={{ width: "80px", minWidth: "80px", textAlign: "center" }}>
+                        Add
+                      </th>
+                      <th style={{ width: "80px", minWidth: "80px", textAlign: "center" }}>
+                        Delete
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -727,11 +764,13 @@ const IndentCreation = () => {
                             <input
                               type="text"
                               className={`form-control ${errors[`drug_${index}`] ? 'is-invalid' : ''}`}
-                              value={entry.drugName}
+                              value={getDrugDisplayValue(entry.drugName, entry.drugCode)}
                               autoComplete="off"
                               onChange={(e) => {
-                                handleEntryChange(entry.id, "drugName", e.target.value);
-                                if (e.target.value.trim() !== "") {
+                                const displayValue = e.target.value;
+                                const drugName = extractDrugName(displayValue);
+                                handleEntryChange(entry.id, "drugName", drugName);
+                                if (drugName.trim() !== "") {
                                   setActiveRowIndex(index);
                                   setDropdownVisible(true);
                                 } else {
@@ -740,14 +779,15 @@ const IndentCreation = () => {
                               }}
                               onFocus={(e) => handleDrugInputFocus(e, index)}
                               placeholder="Enter drug name or code"
-                              style={{ borderRadius: "4px", minWidth: "180px" }}
+                              style={{ borderRadius: "4px", minWidth: "280px" }}
                             />
                             {errors[`drug_${index}`] && (
                               <div className="invalid-feedback d-block">{errors[`drug_${index}`]}</div>
                             )}
 
                             {/* Search Dropdown */}
-                            {dropdownVisible && activeRowIndex === index && entry.drugName.trim() !== "" && (
+                            {dropdownVisible && activeRowIndex === index && 
+                             extractDrugName(getDrugDisplayValue(entry.drugName, entry.drugCode)).trim() !== "" && (
                               <ul
                                 className="list-group position-fixed dropdown-list"
                                 style={{
@@ -763,8 +803,8 @@ const IndentCreation = () => {
                                   overflowY: "auto",
                                 }}
                               >
-                                {filterDrugsBySearch(entry.drugName).length > 0 ? (
-                                  filterDrugsBySearch(entry.drugName).map((drug) => {
+                                {filterDrugsBySearch(extractDrugName(getDrugDisplayValue(entry.drugName, entry.drugCode))).length > 0 ? (
+                                  filterDrugsBySearch(extractDrugName(getDrugDisplayValue(entry.drugName, entry.drugCode))).map((drug) => {
                                     const isSelectedInOtherRow = selectedDrugs.some(
                                       (id) => id === drug.itemId && indentEntries[index]?.drugId !== drug.itemId
                                     );
@@ -788,11 +828,19 @@ const IndentCreation = () => {
                                               color: "#6c757d",
                                               fontSize: "0.8rem",
                                               marginTop: "2px",
+                                              display: "flex",
+                                              justifyContent: "space-between",
+                                              alignItems: "center"
                                             }}
                                           >
-                                           
+                                            <div>
+                                              <span className="badge bg-info me-1" style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>
+                                                <i className="fas fa-hashtag me-1"></i>CODE:{drug.pvmsNo}
+                                              </span>
+                                              
+                                            </div>
                                             {isSelectedInOtherRow && (
-                                              <span className="text-success ms-2">
+                                              <span className="text-success">
                                                 <i className="fas fa-check-circle me-1"></i> Added
                                               </span>
                                             )}
@@ -1000,7 +1048,16 @@ const IndentCreation = () => {
                           <tr key={item.id}>
                             <td>{index + 1}</td>
                             <td>{item.itemId}</td>
-                            <td>{item.itemName}</td>
+                            <td>
+                              <div>
+                                <strong>{item.itemName}</strong>
+                                <div className="mt-1">
+                                  <span className="badge bg-info me-2" style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>
+                                    <i className="fas fa-hashtag me-1"></i>{item.pvmsNo}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
                             <td>{item.availableQty}</td>
                             <td>{item.rolQty}</td>
                             <td style={{ textAlign: "center" }}>

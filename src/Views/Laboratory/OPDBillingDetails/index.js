@@ -4,9 +4,6 @@ import Swal from "sweetalert2";
 import { MAS_SERVICE_CATEGORY } from "../../../config/apiConfig";
 import { getRequest } from "../../../service/apiService";
 
-
-
-
 const OPDBillingDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,14 +13,32 @@ const OPDBillingDetails = () => {
     gstPercent: 0,
   });
 
+  const [formData, setFormData] = useState({
+    patientUhid:"",
+    billingType: "",
+    billingHeaderId: "",
+    patientName: "",
+    mobileNo: "",
+    age: "",
+    sex: "",
+    relation: "",
+    patientId: "",
+    address: "",
+    registrationCost: 0,
+    billingHeaderIds: [],
+  });
+
+  const [appointments, setAppointments] = useState([]);
+  const [isFormValid, setIsFormValid] = useState(false);
+
   async function fetchGstConfiguration(optionalCategoryId) {
     try {
       optionalCategoryId = 1;
-      const url = `${MAS_SERVICE_CATEGORY}/getGstConfig/1` +
+      const url =
+        `${MAS_SERVICE_CATEGORY}/getGstConfig/1` +
         (optionalCategoryId ? `?categoryId=${optionalCategoryId}` : "");
 
       const data = await getRequest(url);
-      console.log("GST:", gstConfig);
       if (
         data &&
         data.status === 200 &&
@@ -43,218 +58,204 @@ const OPDBillingDetails = () => {
     }
   }
 
-  //Confirm dialog for activate/deactivate (optional)
-  const [confirmDialog, setConfirmDialog] = useState({
-    isOpen: false,
-    patientId: null,
-    newStatus: false,
-  });
+  const formatDateDDMMYYYY = (dateStr) => {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+};
 
-  //Form data for all OPD fields
-  const [formData, setFormData] = useState({
-    billingType: "",
-    billingHeaderId: "",
-    patientName: "",
-    mobileNo: "",
-    age: "",
-    sex: "",
-    relation: "",
-    patientId: "",
-    address: "",
-    visitDate: "",
-    doctorName: "",
-    department: "",
-    visitType: "",
-    visitId: "",
-    room: "",
-    opdSession: "",
-    tariffPlan: "",
-    basePrice: "",
-    discount: "",
-    netAmount: "",
-    gst: "",
-    totalAmount: "",
-    registrationCost: "",
-  });
+  const safeSex = (sexField) => {
+    if (!sexField) return "";
+    if (typeof sexField === "string") return sexField;
+    if (typeof sexField === "object") {
+      return sexField.genderName || sexField.name || sexField.displayName || "";
+    }
+    return "";
+  };
 
-  const [appointments, setAppointments] = useState([]); // Re-introduce appointments state
-  const [isFormValid, setIsFormValid] = useState(false);
+  const normalizeVisitType = (visitType) => {
+    if (!visitType) return "New";
+    if (visitType === "N") return "New";
+    if (visitType === "F") return "Follow-up";
+    if (visitType === "E") return "Emergency";
+    return visitType;
+  };
 
-  //Step 1: Auto-fill details from previous page (location.state)
   useEffect(() => {
     if (!location.state || !location.state.billingData) {
-      console.log("No billingData passed. Redirecting back to pending list.");
       navigate("/PendingForBilling");
       return;
     }
 
-    const response = location.state.billingData;
-    
-    if (response.appointments && Array.isArray(response.appointments) && response.appointments.length > 0) {
-      setAppointments(response.appointments);
-      const primaryAppointment = response.appointments[0];
-      const mapped = {
-        billingType: "OPD",
-        billingHeaderId: primaryAppointment.billingHeaderId || "",
-        patientName: response.patientName || "",
-        mobileNo: response.mobileNo || "",
-        age: response.age || "",
-        sex: response.patientGender || "",
-        relation: response.relation || "",
-        patientId: response.patientId?.toString() || "",
-        address: `${response.patientAddress1 || ""}, ${response.patientCity || ""}`,
-        visitDate: new Date().toISOString().split("T")[0],
-        doctorName: primaryAppointment.doctorName || "",
-        department: primaryAppointment.departmentName || "",
-        visitType: primaryAppointment.visitType || "New",
-        visitId: primaryAppointment.visitId || "",
-        room: primaryAppointment.room || "",
-        opdSession: primaryAppointment.sessionName || "",
-        tariffPlan: primaryAppointment.tariffPlan || "",
-        basePrice: primaryAppointment.basePrice || "0.00",
-        discount: primaryAppointment.discount || 0,
-        netAmount: primaryAppointment.netAmount || "0.00",
-        gst: primaryAppointment.gst || "0.00",
-        totalAmount: primaryAppointment.totalAmount || "0.00",
-        registrationCost: primaryAppointment.registrationCost || "0.00",
-      };
-      setFormData((prev) => ({ ...prev, ...mapped }));
-    } else {
-      // Existing logic for pending billing if no appointments array is present or empty
-      const billing = Array.isArray(response) ? response[0] : response;
-  
-      const mapped = {
-        billingType: billing.billingType || "",
-        billingHeaderId: billing.billingHeaderId || billing.billinghdid || "",
-        patientName: billing.patientName || billing.patientFn || "",
-        mobileNo: billing.mobileNo || billing.patientMobileNumber || "",
-        age: billing.age || billing.patientAge || "",
-        sex: billing.sex || billing.patientGender || "",
-        relation: billing.relation || "",
-        patientId: billing.patientid?.toString() || billing.patientId?.toString() || "",
-        address: billing.address || `${billing.patientAddress1 || ""}, ${billing.patientCity || ""}`,
-        visitDate: billing.visitDate || new Date().toISOString().split("T")[0],
-        doctorName: billing.consultedDoctor || billing.consultedDoctor || "",
-        department: billing.department || "",
-        visitType: billing.visitType || "",
-        visitId: billing.visitId || billing.visitNo || "",
-        room: billing.room || "",
-        opdSession: billing.opdSession || "",
-        tariffPlan: billing.tariffPlan || "",
-        basePrice: billing.basePrice ?? billing.amount ?? "",
-        discount: billing.discount || billing.details?.[0]?.discount || 0,
-        netAmount: billing.netAmount || "",
-        gst: billing.gst || "",
-        totalAmount: billing.totalAmount || "",
-        registrationCost: billing.registrationCost,
-        visitType: billing.visitType === "N" ? "New" : "Follow-up",
-      };
-      setAppointments([{ // Ensure appointments array is always populated for consistent rendering
-        department: billing.department,
-        consultedDoctor: billing.consultedDoctor,
-        session: billing.opdSession,
-        speciality: billing.departmentId,
-        doctorId: billing.doctorId,
-        sessionId: billing.sessionId,
-        basePrice: billing.basePrice ?? billing.amount ?? "",
-        discount: billing.discount || billing.details?.[0]?.discount || 0,
-        netAmount: billing.netAmount || "",
-        gst: billing.gst || "",
-        totalAmount: billing.totalAmount || "",
-        registrationCost: billing.registrationCost,
-        visitType: billing.visitType === "N" ? "New" : "Follow-up",
-      }]);
-      setFormData((prev) => ({ ...prev, ...mapped }));
+    const data = location.state.billingData;
+
+    fetchGstConfiguration(data.categoryId || null);
+
+    const topLevelRegCost = Number(data.registrationCost || 0);
+
+    // Build appointments array
+    const incomingAppointments = Array.isArray(data.appointments) && data.appointments.length > 0
+      ? data.appointments
+      : [];
+
+    // Get details array
+    const details = Array.isArray(data.details) ? data.details : [];
+
+    if (incomingAppointments.length === 0) {
+      Swal.fire("Error", "No appointment data found", "error");
+      navigate("/PendingForBilling");
+      return;
     }
-    
-    const optionalCategoryId = response.categoryId || null;
-    fetchGstConfiguration(optionalCategoryId);
+
+    const processedAppointments = incomingAppointments.map((appt, idx) => {
+      let detail = details[idx] || details[0];
+
+      const visitType = normalizeVisitType(appt.visitType);
+
+      const basePrice = Number(detail?.basePrice || 0);
+      const discount = Number(detail?.discount || 0);
+      const totalAmount = basePrice-discount;
+      const taxAmount = Number(detail?.taxAmount || 0);
+      const registrationCost = visitType === "New" ? Number(detail?.registrationCost || 0) : 0;
+      const netAmount = Number(detail?.netAmount|| (basePrice + registrationCost + taxAmount));
+      
+
+      return {
+        billinghdid: appt.billingHdId || null,   // FIXED
+        visitId: appt.visitId,
+        tokenNo: appt.tokenNo,
+        department: appt.department,
+        consultedDoctor: appt.consultedDoctor,
+        sessionName: appt.sessionName,
+        visitDate: appt.visitDate.split("T")[0],
+        visitType,
+        room: appt.room || "",
+        tariffPlan: "General Tariff",
+
+        basePrice,
+        discount,
+        netAmount,
+        gst: taxAmount,
+        registrationCost,
+        totalAmount,
+
+        rawDetail: detail,
+      };
+    });
+
+
+    setAppointments(processedAppointments);
+
+    // Set patient form data
+    setFormData({
+      patientName: data.patientName || "",
+      mobileNo: data.mobileNo || "",
+      age: data.age || "",
+      sex: safeSex(data.sex),
+      relation: data.relation || "",
+      patientId: data.patientid || "",
+      address: data.address || "",
+      billingType: data.billingType || "Consultation Services",
+      billingHeaderIds: Array.isArray(data.billingHeaderIds)? data.billingHeaderIds: [data.billingHeaderIds],
+      registrationCost: topLevelRegCost,
+      patientUhid:data.patientUhid,
+    });
   }, [location.state, navigate]);
 
-  //Auto-calculate net, GST, and total whenever base or discount changes
-  // useEffect(() => {
-  //   const base = parseFloat(formData.basePrice) || 0;
-  //   const discountVal = parseFloat(formData.discount) || 0;
-  //   const regCost = formData.visitType === "New" ? Number(formData.registrationCost) || 0 : 0;
-  //
-  //   const net = Math.max(0, base - discountVal);
-  //
-  //   const gstPercent = gstConfig?.gstApplicable ? gstConfig?.gstPercent : 0;
-  //
-  //   const gstAmount = (net * gstPercent) / 100;
-  //   const total = net + gstAmount + regCost;
-  //
-  //   setFormData((prev) => ({
-  //     ...prev,
-  //     netAmount: net.toFixed(2),
-  //     gst: gstAmount.toFixed(2),
-  //     totalAmount: total.toFixed(2),
-  //   }));
-  // }, [
-  //   formData.basePrice,
-  //   formData.discount,
-  //   formData.visitType,
-  //   gstConfig
-  // ]);
-
-
-  //Validate required fields
   useEffect(() => {
-    const valid =
-      !!formData.patientName &&
-      !!formData.mobileNo &&
+    if (!appointments || appointments.length === 0 || !gstConfig) return;
 
-      !!formData.visitDate &&
-      !!formData.doctorName;
-    setIsFormValid(valid);
-  }, [formData.patientName, formData.mobileNo, formData.visitDate, formData.doctorName]);
+    const gstPercent = gstConfig.gstApplicable ? gstConfig.gstPercent : 0;
 
-  //Step 4: Handle input change
+    const recalculated = appointments.map((appt) => {
+      const base = Number(appt.basePrice || 0);
+      const discount = Number(appt.discount || 0);
+      const taxFromDetail = appt.rawDetail?.taxAmount;
+      const gstAmount = (taxFromDetail !== undefined && taxFromDetail !== null && taxFromDetail > 0) ? Number(taxFromDetail) : (net * gstPercent) / 100;
+      const reg = Number(appt.registrationCost || 0);
+      const net = Number(appt.rawDetail?.netAmount + reg || Math.max(0, base + reg + gstAmount));
+      const total = base-discount;
+
+      return {
+        ...appt,
+        netAmount: Number(net.toFixed(2)),
+        gst: Number(gstAmount.toFixed(2)),
+        totalAmount: net,
+      };
+    });
+
+    setAppointments(recalculated);
+  }, [gstConfig]);
+
+  useEffect(() => {
+    const hasPatient = !!formData.patientName && !!formData.mobileNo;
+    const hasValidAppointments = appointments.length > 0 &&
+      appointments.every(a => a.visitDate && a.consultedDoctor);
+    setIsFormValid(hasPatient && hasValidAppointments);
+  }, [formData.patientName, formData.mobileNo, appointments]);
+
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  //Step 5: Handle Save (Navigate to payment)
   const handleSave = (e) => {
     e.preventDefault();
+
     if (!isFormValid) {
-      Swal.fire("Missing", "Please fill required fields", "warning");
+      Swal.fire("Missing Information", "Please ensure all required fields are filled", "warning");
       return;
     }
 
-    navigate("/payment", {
-      state: {
-        billingType: formData.billingType,
-        amount: parseFloat(formData.totalAmount) || 0,
-        patientId: formData.patientId,
-        opdData: formData,
-        billingHeaderId: formData.billingHeaderId
-      },
+    const totalAmount = appointments.reduce((sum, appt) => sum + Number(appt.totalAmount || 0), 0) ;
+
+
+    Swal.fire({
+      title: 'Confirm Payment',
+      html: `
+      <p>Patient: <strong>${formData.patientName}</strong></p>
+      <p>Total Amount: <strong>₹${totalAmount.toFixed(2)}</strong></p>
+      <p>Appointments: <strong>${appointments.length}</strong></p>
+    `,
+      icon: 'info',
+      showCancelButton: true,
+      confirmButtonText: 'Proceed to Pay',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        navigate("/payment", {
+          state: {
+            billingType: formData.billingType,
+            amount: totalAmount,
+            patientId: formData.patientId,
+            billingHeaderIds: formData.billingHeaderIds,
+            opdData: {
+              patient: formData,
+              appointments,
+              gstConfig,
+            },
+          },
+        });
+      }
     });
   };
 
-  // Step 6: Handle Back Button
+
   const handleBack = () => {
     navigate("/PendingForBilling");
   };
 
-  // Step 7: Optional - Confirm Dialog Handlers
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, patientId: id, newStatus });
-  };
+  // Calculate totals for display
+  const totalBasePrice = appointments.reduce((sum, a) => sum + Number(a.basePrice || 0), 0);
+  const totalDiscount = appointments.reduce((sum, a) => sum + Number(a.discount || 0), 0);
+  const totalAmount = appointments.reduce((sum, a) => sum + Number(a.totalAmount || 0), 0);
+  const totalGST = appointments.reduce((sum, a) => sum + Number(a.gst || 0), 0);
+  const totalRegistration = appointments.reduce((sum, a) => sum + Number(a.registrationCost || 0), 0);
+  const grandTotal = appointments.reduce((sum, a) => sum + Number(a.netAmount || 0), 0);
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed && confirmDialog.patientId !== null) {
-      alert(
-        `Patient status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"
-        } successfully!`
-      );
-    }
-    setConfirmDialog({ isOpen: false, patientId: null, newStatus: null });
-  };
-
-  // Step 8: Render UI
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -269,282 +270,172 @@ const OPDBillingDetails = () => {
 
             <div className="card-body">
               <form className="forms row" onSubmit={handleSave}>
-                {/* Patient Details Section */}
+                {/* Patient Details */}
                 <div className="col-12 mt-4">
                   <div className="card">
                     <div className="card-header bg-light">
-                      <h5 className="mb-0">
-                        <i className="mdi mdi-account"></i> Patient Details
-                      </h5>
+                      <h5 className="mb-0"><i className="mdi mdi-account"></i> Patient Details</h5>
                     </div>
                     <div className="card-body">
                       <div className="row">
-                        {[
-                          ["Patient Name", "patientName", "text", true, true],
-                          ["Age", "age", "patientAge", "text", false, true],
-                          ["Mobile No.", "mobileNo", "text", true, true],
-                        ].map(([label, id, type, required, readOnly]) => (
-                          <div className="form-group col-md-4 mt-3" key={id}>
-                            <label>
-                              {label} {required && <span className="text-danger">*</span>}
-                            </label>
-                            <input
-                              type={type}
-                              className="form-control"
-                              id={id}
-                              placeholder={label}
-                              onChange={handleInputChange}
-                              value={formData[id]}
-                              required={required}
-                              readOnly
-                            />
-                          </div>
-                        ))}
-
                         <div className="form-group col-md-4 mt-3">
-                          <label>Sex</label>
+                          <label>Patient Name <span className="text-danger">*</span></label>
                           <input
                             type="text"
                             className="form-control"
-                            id="sex"
-                            placeholder="Relation"
-                            onChange={handleInputChange}
-                            value={formData.sex}
+                            id="patientName"
+                            value={formData.patientName}
                             readOnly
                           />
-                          {/* <select
-                            className="form-select"
-                            id="sex"
-                            value={formData.sex}
-                            onChange={handleInputChange}
-                          >
-                            <option value="">Select Sex</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Other">Other</option>
-                          </select> */}
+                        </div>
+                        <div className="form-group col-md-4 mt-3">
+                          <label>Mobile No. <span className="text-danger">*</span></label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="mobileNo"
+                            value={formData.mobileNo}
+                            readOnly
+                          />
+                        </div>
+                        <div className="form-group col-md-4 mt-3">
+                          <label>Age</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="age"
+                            value={formData.age}
+                            readOnly
+                          />
+                        </div>
+                        <div className="form-group col-md-4 mt-3">
+                          <label>Sex</label>
+                          <input type="text" className="form-control" id="sex" value={formData.sex} readOnly />
                         </div>
                         <div className="form-group col-md-4 mt-3">
                           <label>Relation</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="relation"
-                            placeholder="Relation"
-                            onChange={handleInputChange}
-                            value={formData.relation}
-                            readOnly
-                          />
+                          <input type="text" className="form-control" id="relation" value={formData.relation} readOnly />
                         </div>
                         <div className="form-group col-md-4 mt-3">
                           <label>Patient ID</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="patientId"
-                            placeholder="Patient ID"
-                            onChange={handleInputChange}
-                            value={formData.patientId}
-                            readOnly
-                          />
+                          <input type="text" className="form-control" id="patientId" value={formData.patientUhid} readOnly />
                         </div>
                         <div className="form-group col-md-12 mt-3">
                           <label>Address</label>
-                          <textarea
-                            className="form-control"
-                            id="address"
-                            placeholder="Address"
-                            onChange={handleInputChange}
-                            value={formData.address}
-                            rows="2"
-                            readOnly
-                          />
+                          <textarea className="form-control" id="address" value={formData.address} rows="2" readOnly />
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Multiple OPD Visit Information Sections based on appointments */}
+                {/* Appointments */}
                 {appointments.map((appointment, index) => (
-                  <div className="col-12 mt-4" key={`appointment-${appointment.id}-${index}`}>
+                  <div className="col-12 mt-4" key={appointment.visitId || index}>
                     <div className="card">
                       <div className="card-header bg-light d-flex justify-content-between align-items-center">
                         <h5 className="mb-0">
-                          <i className="mdi mdi-hospital-building"></i> OPD Visit Information {appointments.length > 1 ? `- Appointment ${index + 1}` : ""}
+                          <i className="mdi mdi-hospital-building"></i> OPD Visit
+                          {appointments.length > 1 ? ` ${index + 1}` : ""}
+                          <span className="badge bg-primary ms-2">{appointment.visitType}</span>
                         </h5>
                       </div>
                       <div className="card-body">
                         <div className="row">
-                          <div className="form-group col-md-4 mt-3">
-                            <label>Visit Date *</label>
-                            <input
-                              type="date"
-                              className="form-control"
-                              id={`visitDate-${appointment.id}`}
-                              onChange={handleInputChange}
-                              value={formData.visitDate} // Assuming visitDate is consistent across all appointments, or you might need to manage it per appointment
-                              required
-                              readOnly
-                            />
+                          <div className="form-group col-md-3 mt-3">
+                            <label>Visit Date</label>
+                            <input type="text" className="form-control" value={formatDateDDMMYYYY(appointment.visitDate)} readOnly />
                           </div>
-                          <div className="form-group col-md-4 mt-3">
-                            <label>Doctor Name *</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id={`doctorName-${appointment.id}`}
-                              placeholder="Doctor Name"
-                              onChange={handleInputChange}
-                              value={appointment.doctorName}
-                              required
-                              readOnly
-                            />
+                          <div className="form-group col-md-3 mt-3">
+                            <label>Doctor Name</label>
+                            <input type="text" className="form-control" value={appointment.consultedDoctor} readOnly />
                           </div>
-                          <div className="form-group col-md-4 mt-3">
+                          <div className="form-group col-md-3 mt-3">
                             <label>Department</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id={`department-${appointment.id}`}
-                              placeholder="Department"
-                              onChange={handleInputChange}
-                              value={appointment.departmentName}
-                              readOnly
-                            />
+                            <input type="text" className="form-control" value={appointment.department} readOnly />
                           </div>
-                          <div className="form-group col-md-4 mt-3">
-                            <label>Visit Type</label>
-                            <select
-                              className="form-select"
-                              id={`visitType-${appointment.id}`}
-                              value={appointment.visitType}
-                              onChange={handleInputChange}
-                              readOnly
-                            >
-                              <option value="">Select Visit Type</option>
-                              <option value="New">New</option>
-                              <option value="Follow-up">Follow-up</option>
-                              <option value="Emergency">Emergency</option>
-                            </select>
-                          </div>
-                          <div className="form-group col-md-4 mt-3">
-                            <label>Room</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id={`room-${appointment.id}`}
-                              placeholder="Room"
-                              onChange={handleInputChange}
-                              value={appointment.room || ""}
-                            />
-                          </div>
-                          <div className="form-group col-md-4 mt-3">
+                          <div className="form-group col-md-3 mt-3">
                             <label>OPD Session</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id={`opdSession-${appointment.id}`}
-                              placeholder="OPD Session"
-                              onChange={handleInputChange}
-                              value={appointment.sessionName}
-                              readOnly
-                            />
+                            <input type="text" className="form-control" value={appointment.sessionName} readOnly />
+                          </div>
+                          <div className="form-group col-md-3 mt-3">
+                            <label>Visit Type</label>
+                            <input type="text" className="form-control" value={appointment.visitType} readOnly />
+                          </div>
+                          <div className="form-group col-md-3 mt-3">
+                            <label>Token No</label>
+                            <input type="text" className="form-control" value={appointment.tokenNo || "N/A"} readOnly />
+                          </div>
+                          <div className="form-group col-md-3 mt-3">
+                            <label>Room</label>
+                            <input type="text" className="form-control" value={appointment.room || "N/A"} readOnly />
+                          </div>
+                          <div className="form-group col-md-3 mt-3">
+                            <label>Tariff Plan</label>
+                            <input type="text" className="form-control" value={appointment.tariffPlan} readOnly />
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
 
-                {/* Multiple Billing & Payment Sections based on appointments */}
-                {appointments.map((appointment, index) => (
-                  <div className="col-12 mt-4" key={`billing-${appointment.id}-${index}`}>
-                    <div className="card">
-                      <div className="card-header bg-light d-flex justify-content-between align-items-center">
-                        <h5 className="mb-0">
-                          <i className="mdi mdi-currency-inr"></i> Billing & Payment {appointments.length > 1 ? `- Appointment ${index + 1}` : ""}
-                        </h5>
+                    {/* Billing for this appointment */}
+                    <div className="card mt-2">
+                      <div className="card-header bg-light">
+                        <h5 className="mb-0"><i className="mdi mdi-currency-inr"></i> Billing Details</h5>
                       </div>
                       <div className="card-body">
                         <div className="row">
-                          <div className="form-group col-md-4 mt-3">
-                            <label>Tariff Plan</label>
-                            <select
-                              className="form-select"
-                              id={`tariffPlan-${appointment.id}`}
-                              value={appointment.tariffPlan || ""}
-                              onChange={handleInputChange}
-                              readOnly
-                            >
-                              <option value="">Select Tariff</option>
-                              <option value="General Tariff">General Tariff</option>
-                              <option value="Premium Tariff">Premium Tariff</option>
-                              <option value="VIP Tariff">VIP Tariff</option>
-                            </select>
-                          </div>
-                          <div className="form-group col-md-4 mt-3">
+                          <div className="form-group col-md-2 mt-3">
                             <label>Base Price</label>
                             <input
                               type="number"
                               className="form-control"
-                              id={`basePrice-${appointment.id}`}
-                              onChange={handleInputChange}
-                              value={appointment.basePrice}
+                              value={appointment.basePrice.toFixed(2)}
                               readOnly
                             />
                           </div>
-                          {appointment.visitType === "New" && (
-                            <div className="form-group col-md-4 mt-3">
-                              <label>Registration Cost</label>
-                              <input
-                                type="text"
-                                className="form-control"
-                                id={`registrationCost-${appointment.id}`}
-                                value={appointment.registrationCost}
-                                readOnly
-                              />
-                            </div>
-                          )}
-
-                          <div className="form-group col-md-4 mt-3">
+                          <div className="form-group col-md-2 mt-3">
                             <label>Discount</label>
                             <input
                               type="number"
                               className="form-control"
-                              id={`discount-${appointment.id}`}
-                              onChange={handleInputChange}
-                              value={appointment.discount}
+                              value={appointment.discount.toFixed(2)}
                               readOnly
                             />
                           </div>
-                          <div className="form-group col-md-4 mt-3">
-                            <label>Net Amount</label>
+                          <div className="form-group col-md-2 mt-3">
+                            <label>Total</label>
                             <input
                               type="number"
                               className="form-control"
-                              id={`netAmount-${appointment.id}`}
-                              value={appointment.netAmount}
+                              value={appointment.totalAmount.toFixed(2)}
                               readOnly
                             />
                           </div>
-                          <div className="form-group col-md-4 mt-3">
-                            <label>GST {gstConfig.gstPercent}%</label>
+                          <div className="form-group col-md-2 mt-3">
+                            <label>GST ({gstConfig.gstPercent}%)</label>
                             <input
                               type="number"
                               className="form-control"
-                              id={`gst-${appointment.id}`}
-                              value={appointment.gst}
+                              value={appointment.gst.toFixed(2)}
                               readOnly
                             />
                           </div>
-                          <div className="form-group col-md-4 mt-3">
-                            <label>Total Amount</label>
+                          <div className="form-group col-md-2 mt-3">
+                            <label>Registration</label>
                             <input
                               type="number"
                               className="form-control"
-                              id={`totalAmount-${appointment.id}`}
-                              value={appointment.totalAmount}
+                              value={appointment.registrationCost.toFixed(2)}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-2 mt-3">
+                            <label><strong>Net Amount</strong></label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              value={appointment.netAmount.toFixed(2)}
                               readOnly
                             />
                           </div>
@@ -554,59 +445,55 @@ const OPDBillingDetails = () => {
                   </div>
                 ))}
 
-                {/* Action Buttons */}
-                <div className="form-group col-md-12 d-flex justify-content-end mt-4">
-                  <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                    Pay Now
-                  </button>
-                  <button type="button" className="btn btn-danger" onClick={handleBack}>
-                    Cancel
-                  </button>
-                </div>
-              </form>
-
-              {/* Confirm Dialog */}
-              {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog">
-                  <div className="modal-dialog" role="document">
-                    <div className="modal-content">
-                      <div className="modal-header">
-                        <h5 className="modal-title">Confirm Status Change</h5>
-                        <button
-                          type="button"
-                          className="close"
-                          onClick={() => handleConfirm(false)}
-                        >
-                          <span>&times;</span>
-                        </button>
+                {/* Grand Total Summary */}
+                {appointments.length > 1 && (
+                  <div className="col-12 mt-4">
+                    <div className="card border-primary">
+                      <div className="card-header bg-primary text-white">
+                        <h5 className="mb-0"><i className="mdi mdi-calculator"></i> Grand Total Summary</h5>
                       </div>
-                      <div className="modal-body">
-                        <p>
-                          Are you sure you want to{" "}
-                          {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                          <strong>{formData.patientName || "this patient"}</strong>?
-                        </p>
-                      </div>
-                      <div className="modal-footer">
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={() => handleConfirm(false)}
-                        >
-                          No
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-primary"
-                          onClick={() => handleConfirm(true)}
-                        >
-                          Yes
-                        </button>
+                      <div className="card-body">
+                        <div className="row">
+                          <div className="col-md-2">
+                            <strong>Total Base:</strong>
+                            <p className="mb-0">₹{totalBasePrice.toFixed(2)}</p>
+                          </div>
+                          <div className="col-md-2">
+                            <strong>Total Discount:</strong>
+                            <p className="mb-0">₹{totalDiscount.toFixed(2)}</p>
+                          </div>
+                          <div className="col-md-2">
+                            <strong>Total:</strong>
+                            <p className="mb-0">₹{totalAmount.toFixed(2)}</p>
+                          </div>
+                          <div className="col-md-2">
+                            <strong>Total GST:</strong>
+                            <p className="mb-0">₹{totalGST.toFixed(2)}</p>
+                          </div>
+                          <div className="col-md-2">
+                            <strong>Registration Cost:</strong>
+                            <p className="mb-0">₹{totalRegistration.toFixed(2)}</p>
+                          </div>
+                          <div className="col-md-2">
+                            <strong className="text-primary">Grand Net Total:</strong>
+                            <h4 className="mb-0 text-primary">₹{grandTotal.toFixed(2)}</h4>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="form-group col-md-12 d-flex justify-content-end mt-4">
+                  <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
+                    <i className="mdi mdi-cash"></i> Pay Now - ₹{grandTotal.toFixed(2)}
+                  </button>
+                  <button type="button" className="btn btn-danger" onClick={handleBack}>
+                    <i className="mdi mdi-close"></i> Cancel
+                  </button>
                 </div>
-              )}
+              </form>
             </div>
           </div>
         </div>

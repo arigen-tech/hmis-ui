@@ -8,23 +8,9 @@ import { getRequest, putRequest, postRequest } from "../../../service/apiService
 import LoadingScreen from "../../../Components/Loading/index";
 import Popup from "../../../Components/popup/index";
 import DuplicatePopup from "../GeneralMedicineWaitingList/DuplicatePopup";
+import MasFamilyModel from "../GeneralMedicineWaitingList/FaimalyHistryModel"
 const OpdRRecallPatient = () => {
-  const [waitingList, setWaitingList] = useState([
-    {
-      id: 1,
-      tokenNo: "GM-1",
-      employeeNo: "33503",
-      patientName: "BHANUPRAKASH K R",
-      relation: "Husband",
-      designation: "MEDICAL SUPTD.",
-      name: "DR. NIRMALA D",
-      age: "47 Years",
-      gender: "Male",
-      opdType: "Normal OPD",
-      priority: "Priority-1",
-      status: "waiting",
-    },
-  ])
+
 
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
@@ -51,6 +37,15 @@ const OpdRRecallPatient = () => {
   const [popup, setPopup] = useState("");
   const [masICDData, setMasICDData] = useState([]);
   const [popupMessage, setPopupMessage] = useState("");
+  const [showModelPopup, setModelShowPopup] = useState(false);
+  const [popupType, setPopupType] = useState("");
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [icdDropdown, setIcdDropdown] = useState([]);
+  const [page, setPage] = useState(0);
+  const [lastPage, setLastPage] = useState(false);
+  const [search, setSearch] = useState("");
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const dropdownRef = useRef(null);
   const [formData, setFormData] = useState({
     height: "",
     weight: "",
@@ -85,6 +80,70 @@ const OpdRRecallPatient = () => {
     patientName: "",
     date: today,
   });
+
+  const openPopup = (type) => {
+    setPopupType(type);
+    setModelShowPopup(true);
+  };
+
+  const handleClose = () => {
+    setModelShowPopup(false);
+    setSelectedItems([]);
+  };
+
+  const handleOk = () => {
+    if (selectedItems.length === 0) {
+      alert("Please select at least one item.");
+      return;
+    }
+
+    const newNames = selectedItems.map((x) => x.medicalHistoryName);
+
+    const mergeValues = (oldValue, newValues) => {
+      const oldArr = oldValue ? oldValue.split(",").map(x => x.trim()) : [];
+      const merged = Array.from(new Set([...oldArr, ...newValues]));
+      return merged.join(", ");
+    };
+
+    if (popupType === "symptoms") {
+      setFormData({
+        ...formData,
+        patientSymptoms: mergeValues(formData.patientSymptoms, newNames),
+      });
+    }
+
+    if (popupType === "past") {
+      setFormData({
+        ...formData,
+        pastHistory: mergeValues(formData.pastHistory, newNames),
+      });
+    }
+
+    if (popupType === "family") {
+      setFormData({
+        ...formData,
+        familyHistory: mergeValues(formData.familyHistory, newNames),
+      });
+    }
+
+    setModelShowPopup(false);
+    setSelectedItems([]);
+  };
+
+
+
+  const handleSelect = (item) => {
+    setSelectedItems((prev) => {
+      const exists = prev.find((x) => x.medicalHistoryId === item.medicalHistoryId);
+
+      if (exists) {
+        return prev.filter((x) => x.medicalHistoryId !== item.medicalHistoryId);
+      } else {
+        return [...prev, item];
+      }
+    });
+  };
+
 
 
   const handleSearch = async () => {
@@ -174,20 +233,92 @@ const OpdRRecallPatient = () => {
     }
   };
 
-  const fetchMasICDData = async () => {
+  const fetchMasICDData = async (page, searchText = "") => {
     try {
-      const data = await getRequest(`${MASTERS}/masIcd/all?flag=0&page=0&size=100`);
+      const data = await getRequest(
+        `${MASTERS}/masIcd/all?flag=0&page=${page}&size=20&search=${encodeURIComponent(searchText)}`
+      );
 
       if (data.status === 200 && data.response?.content) {
-        setMasICDData(data.response.content);
-      } else {
-        setMasICDData([]);
+        return {
+          list: data.response.content,
+          last: data.response.last,
+        };
       }
 
+      return { list: [], last: true };
     } catch (error) {
-      console.error("Error fetching ICD data:", error);
+      console.error("Error fetching ICD:", error);
+      return { list: [], last: true };
     }
   };
+
+  // FIRST PAGE LOAD
+  const loadFirstPage = async (index) => {
+    const searchText = search[index] || "";
+    const result = await fetchMasICDData(0, searchText);
+
+    setIcdDropdown(result.list);
+    setLastPage(result.last);
+    setPage(0);
+  };
+
+  // LOAD MORE FOR INFINITE SCROLL
+  const loadMore = async () => {
+    if (lastPage) return;
+
+    const nextPage = page + 1;
+    const result = await fetchMasICDData(nextPage, search[openDropdown] || "");
+
+    setIcdDropdown((prev) => [...prev, ...result.list]);
+    setLastPage(result.last);
+    setPage(nextPage);
+  };
+
+  // UPDATE SELECTED ICD
+  const updateICD = (selectedICD, index) => {
+    if (!selectedICD) return;
+
+    const exists = diagnosisItems.some(
+      (item, idx) =>
+        String(item.icdDiagId) === String(selectedICD.icdId) && idx !== index
+    );
+
+    if (exists) {
+      setDuplicateItems([{ icdDiagnosis: selectedICD.icdName }]);
+      setShowDuplicatePopup(true);
+      return;
+    }
+
+    setDiagnosisItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        icdDiagId: selectedICD.icdId,
+        icdDiagnosis: selectedICD.icdName,
+      };
+      return updated;
+    });
+
+    // clear search after selecting
+    setSearch((prev) => {
+      const updated = [...prev];
+      updated[index] = "";
+      return updated;
+    });
+  };
+
+  // CLOSE DROPDOWN ON OUTSIDE CLICK
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
 
 
   const fetchAllFrequencies = async () => {
@@ -1218,12 +1349,32 @@ const OpdRRecallPatient = () => {
     setSelectedHistoryType(historyType)
   }
 
+  function calculateBMI(weight, height) {
+    if (!weight || !height) return "";
+
+    const heightInMeters = height / 100;
+    const bmi = weight / (heightInMeters * heightInMeters);
+
+    return bmi.toFixed(2);
+  }
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }))
+    setFormData((prev) => {
+      const updated = {
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      };
+
+      // Auto-calculate BMI
+      if ((name === "weight" || name === "height") &&
+        updated.height !== "" &&
+        updated.weight !== "") {
+        updated.bmi = calculateBMI(updated.weight, updated.height);
+      }
+
+      return updated;
+    });
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,
@@ -1249,19 +1400,6 @@ const OpdRRecallPatient = () => {
       mlcCase: false,
     })
     setErrors({})
-  }
-
-  const handleRelease = (patientId) => {
-    const updatedList = waitingList.map((patient) =>
-      patient.id === patientId ? { ...patient, status: "released" } : patient,
-    )
-    setWaitingList(updatedList)
-  }
-
-
-  const handleClose = (patientId) => {
-    const updatedList = waitingList.filter((patient) => patient.id !== patientId)
-    setWaitingList(updatedList)
   }
 
   const handleCreateTemplate = () => {
@@ -1389,6 +1527,11 @@ const OpdRRecallPatient = () => {
     setTreatmentItems(newItems);
   };
 
+  const getDrugDetails = (itemId) => {
+    return drugCodeOptions.find(d => d.itemId === itemId);
+  };
+
+
 
 
   const handleTreatmentTemplateSelect = (templateId) => {
@@ -1432,20 +1575,36 @@ const OpdRRecallPatient = () => {
         setShowDuplicatePopup(true);
       }
 
+
       // ADD ONLY NEW ITEMS
-      const formattedNew = newItemsToAdd.map(t => ({
-        treatmentId: null,
-        drugId: t.itemId,
-        drugName: t.itemName,
-        dispUnit: t.dispU ?? "",
-        dosage: t.dosage ?? "",
-        frequency: t.frequencyId ?? "",
-        days: t.noOfDays ?? "",
-        total: t.total ?? "",
-        instruction: t.instruction ?? "",
-        stock: t.stocks ?? "",
-        templateId: String(templateId)    // IMPORTANT
-      }));
+      const formattedNew = newItemsToAdd.map(t => {
+
+        // 🟢 FETCH FULL DRUG DETAILS FROM DROPDOWN SOURCE
+        const drug = getDrugDetails(t.itemId);
+
+        const newItem = {
+          treatmentId: null,
+          drugId: t.itemId,
+          drugName: t.itemName,
+          dispUnit: drug?.dispUnitName ?? t.dispU ?? "",
+          dosage: t.dosage ?? "",
+          frequency: t.frequencyId ?? "",
+          days: t.noOfDays ?? "",
+          instruction: t.instruction ?? "",
+          stock: t.stocks ?? "",
+          templateId: String(templateId),
+
+          itemClassId: drug?.itemClassId ?? null,
+          aDispQty: drug?.aDispQty ?? 1,
+        };
+
+        console.log("xyz",newItem)
+        newItem.total = calculateTotal(newItem);
+
+
+        return newItem;
+      });
+
 
       if (isOnlyDefaultTreatmentRow(updatedList)) {
         return formattedNew;
@@ -1459,79 +1618,104 @@ const OpdRRecallPatient = () => {
   };
 
   console.log("diagnosisItems", diagnosisItems)
+const calculateTotal = (item) => {
 
-  const calculateTotal = (item) => {
-    if (!item.dosage || !item.days || !item.frequency || !item.itemClassName) {
-      return "";
-    }
+  console.log("🧮 ===== calculateTotal() START =====");
+  console.log("📦 Item received:", item);
 
-    const dosage = parseFloat(item.dosage) || 0;
-    const days = parseFloat(item.days) || 0;
+  // STEP 1 — Check frequency & itemClassId
+  console.log("STEP 1: Check frequency & itemClassId");
+  console.log("➡ item.frequency:", item.frequency);
+  console.log("➡ item.itemClassId:", item.itemClassId);
 
-    const selectedFrequency = allFrequencies.find(
-      f => f.frequencyId === Number(item.frequency)
-    );
-    const frequencyMultiplier = selectedFrequency ? Number(selectedFrequency.feq) : 1;
+  if (!item.frequency || item.itemClassId == null) {
+    console.log("❌ Missing frequency or itemClassId → return 0");
+    console.log("🧮 ===== calculateTotal() END =====");
+    return "0";
+  }
 
-    // Convert string like "TABLET" into its class ID (1)
-    let itemClassId = item.itemClassName;
+  // STEP 2 — Parse dosage & days
+  const dosage = Number(item.dosage);
+  const days = Number(item.days);
 
-    if (typeof itemClassId === "string") {
-      itemClassId = ITEM_CLASS[item.itemClassName] || null;
-    } else {
-      itemClassId = Number(itemClassId);
-    }
+  console.log("STEP 2: Parsed values");
+  console.log("➡ dosage:", dosage);
+  console.log("➡ days:", days);
 
-    if (!itemClassId) {
-      return ""; // invalid class
-    }
+  if (!dosage || !days) {
+    console.log("❌ dosage or days is 0 or empty → return 0");
+    console.log("🧮 ===== calculateTotal() END =====");
+    return "0";
+  }
 
-    let total = 0;
+  if (isNaN(dosage) || isNaN(days)) {
+    console.log("❌ dosage or days is NaN → return 0");
+    console.log("🧮 ===== calculateTotal() END =====");
+    return "0";
+  }
 
-    // SOLID ITEMS (TABLET / CAPSULE)
-    if (DRUG_TYPE.SOLID.includes(itemClassId)) {
-      total = Math.ceil(dosage * frequencyMultiplier * days);
-    }
-    // LIQUID ITEMS (SYRUP, DROPS...)
-    else if (DRUG_TYPE.LIQUID.includes(itemClassId)) {
-      if (item.aDispQty && item.aDispQty > 0) {
-        total = Math.ceil((dosage * frequencyMultiplier * days) / item.aDispQty);
-      } else {
-        total = Math.ceil(dosage * frequencyMultiplier * days);
-      }
-    }
-    // DEFAULT
-    else {
-      total = 1;
-    }
+  // STEP 3 — Frequency multiplier
+  console.log("STEP 3: Resolve frequency multiplier");
+  const selectedFrequency = allFrequencies.find(
+    f => Number(f.frequencyId) === Number(item.frequency)
+  );
 
-    return total.toString();
-  };
+  console.log("➡ selectedFrequency:", selectedFrequency);
+
+  const frequencyMultiplier = selectedFrequency
+    ? Number(selectedFrequency.feq)
+    : 1;
+
+  console.log("➡ frequencyMultiplier:", frequencyMultiplier);
+
+  let total = 0;
+
+  // STEP 4 — Determine drug type
+  console.log("STEP 4: Determine DRUG TYPE");
+  console.log("➡ item.itemClassId:", item.itemClassId);
+
+  if (DRUG_TYPE.SOLID.includes(Number(item.itemClassId))) {
+    console.log("🟩 SOLID item");
+    total = Math.ceil(dosage * frequencyMultiplier * days);
+    console.log("➡ SOLID total =", total);
+  }
+
+  else if (DRUG_TYPE.LIQUID.includes(Number(item.itemClassId))) {
+    console.log("🟦 LIQUID item");
+    const qtyPerUnit = Number(item.aDispQty) || 1;
+    console.log("➡ qtyPerUnit:", qtyPerUnit);
+    total = Math.ceil((dosage * frequencyMultiplier * days) / qtyPerUnit);
+    console.log("➡ LIQUID total =", total);
+  }
+
+  else {
+    console.log("⬜ OTHER item type → default total = 1");
+    total = 1;
+  }
+
+  console.log("🧮 FINAL TOTAL =", total);
+  console.log("🧮 ===== calculateTotal() END =====");
+
+  return String(total);
+};
+
 
 
 
   const handleTreatmentChange = (index, field, value) => {
     const updated = [...treatmentItems];
+    updated[index] = { ...updated[index], [field]: value };
 
-    updated[index] = {
-      ...updated[index],
-      [field]: value
-    };
+    const recalcFields = ["dosage", "days", "frequency", "itemClassId", "aDispQty"];
 
-    const fieldsToRecalculate = [
-      "dosage",
-      "days",
-      "frequency",
-      "itemClassName",
-      "aDispQty"
-    ];
-
-    if (fieldsToRecalculate.includes(field)) {
+    if (recalcFields.includes(field)) {
       updated[index].total = calculateTotal(updated[index]);
     }
 
     setTreatmentItems(updated);
   };
+
+
 
 
 
@@ -1874,104 +2058,150 @@ const OpdRRecallPatient = () => {
 
               <div className="card-body">
                 {/* Clinical History Section */}
-                <div className="card mb-3">
+                <div className="card mb-3 shadow-sm">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3 bg-light d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("clinicalHistory")}
                   >
                     <h6 className="mb-0 fw-bold">Clinical History</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.clinicalHistory ? "−" : "+"}</span>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.clinicalHistory ? "−" : "+"}
+                    </span>
                   </div>
+
                   {expandedSections.clinicalHistory && (
                     <div className="card-body">
                       <div className="row">
+
+                        {/* Sidebar Buttons */}
                         <div className="col-md-3">
                           <div className="d-flex flex-column gap-2">
-                            <button
-                              className={`btn btn-sm ${selectedHistoryType === "previous-visits" ? "btn-primary" : "btn-outline-primary"}`}
-                              onClick={() => handleHistoryTypeClick("previous-visits")}
-                            >
-                              Previous Visits
-                            </button>
-                            <button
-                              className={`btn btn-sm ${selectedHistoryType === "previous-vitals" ? "btn-primary" : "btn-outline-primary"}`}
-                              onClick={() => handleHistoryTypeClick("previous-vitals")}
-                            >
-                              Previous Vitals
-                            </button>
-                            <button
-                              className={`btn btn-sm ${selectedHistoryType === "previous-lab" ? "btn-primary" : "btn-outline-primary"}`}
-                              onClick={() => handleHistoryTypeClick("previous-lab")}
-                            >
-                              Previous Lab Investigation
-                            </button>
-                            <button
-                              className={`btn btn-sm ${selectedHistoryType === "previous-ecg" ? "btn-primary" : "btn-outline-primary"}`}
-                              onClick={() => handleHistoryTypeClick("previous-ecg")}
-                            >
-                              Previous ECG Investigation
-                            </button>
-                            <button
-                              className={`btn btn-sm ${selectedHistoryType === "audit-history" ? "btn-primary" : "btn-outline-primary"}`}
-                              onClick={() => handleHistoryTypeClick("audit-history")}
-                            >
-                              Audit History
-                            </button>
+                            {[
+                              { id: "previous-visits", label: "Previous Visits" },
+                              { id: "previous-vitals", label: "Previous Vitals" },
+                              { id: "previous-lab", label: "Previous Lab Investigation" },
+                              { id: "previous-ecg", label: "Previous ECG Investigation" },
+                              { id: "audit-history", label: "Audit History" },
+                            ].map((btn) => (
+                              <button
+                                key={btn.id}
+                                className={`btn btn-sm ${selectedHistoryType === btn.id ? "btn-primary" : "btn-outline-primary"
+                                  }`}
+                                onClick={() => handleHistoryTypeClick(btn.id)}
+                              >
+                                {btn.label}
+                              </button>
+                            ))}
                           </div>
                         </div>
+
+                        {/* Input Area */}
                         <div className="col-md-9">
-                          <div className="row">
-                            <div className="col-md-6">
-                              <label className="form-label fw-bold">Patient signs & symptoms</label>
-                              <input
-                                type="text"
-                                className="form-control"
-                                name="patientSymptoms"
-                                value={formData.patientSymptoms}
-                                onChange={handleChange}
-                                placeholder="Enter symptoms"
-                              />
+
+                          {/* Symptoms */}
+                          <div className="mb-3">
+                            <div className="d-flex justify-content-between align-items-center">
+                              <label className="form-label fw-bold m-0">
+                                Patient signs & symptoms
+                              </label>
+
+                              <button
+                                className="btn btn-sm btn-outline-success p-1 px-2"
+                                onClick={() => openPopup("symptoms")}
+                              >
+                                +
+                              </button>
                             </div>
-                            <div className="col-md-6  mb-3 ">
-                              <label className="form-label fw-bold">Clinical Examination</label>
-                              <textarea
-                                className="form-control"
-                                rows={3}
-                                name="clinicalExamination"
-                                value={formData.clinicalExamination}
-                                onChange={handleChange}
-                                placeholder="Enter clinical examination details"
-                              ></textarea>
-                            </div>
-                            <div className="col-md-6">
-                              <label className="form-label fw-bold">Past History</label>
-                              <textarea
-                                className="form-control"
-                                rows={3}
-                                name="pastHistory"
-                                value={formData.pastHistory}
-                                onChange={handleChange}
-                                placeholder="Enter Past History"
-                              ></textarea>
-                            </div>
-                            <div className="col-md-6">
-                              <label className="form-label fw-bold">Family History</label>
-                              <textarea
-                                className="form-control"
-                                rows={3}
-                                name="FamilyHistory"
-                                value={formData.familyHistory}
-                                onChange={handleChange}
-                                placeholder="Enter Family History"
-                              ></textarea>
-                            </div>
+                            <input
+                              type="text"
+                              className="form-control mt-3"
+                              name="patientSymptoms"
+                              value={formData.patientSymptoms}
+                              onChange={handleChange}
+                              placeholder="Enter symptoms"
+                            />
                           </div>
+
+                          {/* Clinical Examination */}
+                          <div className="mb-3">
+                            <label className="form-label fw-bold">Clinical Examination</label>
+                            <textarea
+                              className="form-control"
+                              rows={3}
+                              name="clinicalExamination"
+                              value={formData.clinicalExamination}
+                              onChange={handleChange}
+                              placeholder="Enter details"
+                            ></textarea>
+                          </div>
+
+                          {/* Past */}
+                          <div className="mb-3">
+                            <div className="d-flex justify-content-between align-items-center">
+                              <label className="form-label fw-bold m-0">
+                                Past History
+                              </label>
+                              <button
+                                className="btn btn-sm btn-outline-success p-1 px-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openPopup("past");
+                                }}
+                              >
+                                +
+                              </button>
+                            </div>
+                            <textarea
+                              className="form-control mt-3"
+                              rows={3}
+                              name="pastHistory"
+                              value={formData.pastHistory}
+                              onChange={handleChange}
+                              placeholder="Enter Past History"
+                            ></textarea>
+                          </div>
+
+                          {/* Family */}
+                          <div className="mb-3">
+                            <div className="d-flex justify-content-between align-items-center">
+                              <label className="form-label fw-bold m-0">
+                                Family History
+                              </label>
+                              <button
+                                className="btn btn-sm btn-outline-success p-1 px-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openPopup("family");
+                                }}
+                              >
+                                +
+                              </button>
+                            </div>
+                            <textarea
+                              className="form-control mt-3"
+                              rows={3}
+                              name="familyHistory"
+                              value={formData.familyHistory}
+                              onChange={handleChange}
+                              placeholder="Enter Family History"
+                            ></textarea>
+                          </div>
+
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
+                <MasFamilyModel
+                  show={showModelPopup}
+                  popupType={popupType}
+                  onClose={handleClose}
+                  onSelect={handleSelect}
+                  onOk={handleOk}
+                  selectedItems={selectedItems}
+                />
+
 
                 {/* Vital Detail Section */}
                 <div className="card mb-3">
@@ -2082,6 +2312,7 @@ const OpdRRecallPatient = () => {
                             name="bmi"
                             value={formData.bmi}
                             onChange={handleChange}
+                            readOnly
                           />
                           <span className="input-group-text">kg/m²</span>
                           {errors.bmi && <div className="invalid-feedback d-block">{errors.bmi}</div>}
@@ -2136,7 +2367,7 @@ const OpdRRecallPatient = () => {
                 </div>
 
                 {/* Diagnosis Section */}
-                <div className="card mb-3">
+                <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
@@ -2146,7 +2377,7 @@ const OpdRRecallPatient = () => {
                     <span style={{ fontSize: "18px" }}>{expandedSections.diagnosis ? "−" : "+"}</span>
                   </div>
                   {expandedSections.diagnosis && (
-                    <div className="card-body">
+                    <div className="card-body" style={{ overflow: "visible" }}>
                       <div className="mb-3">
                         <label className="form-label fw-bold">Working Diagnosis</label>
                         <input
@@ -2160,7 +2391,7 @@ const OpdRRecallPatient = () => {
                         />
                       </div>
 
-                      <div className="table-responsive">
+                      <div className="table-responsive" style={{ overflow: "visible" }}>
                         <table className="table table-bordered">
                           <thead>
                             <tr>
@@ -2175,51 +2406,96 @@ const OpdRRecallPatient = () => {
                             {diagnosisItems.map((item, index) => (
                               <tr key={index}>
                                 <td>
-                                  <select
-                                    className="form-control"
-                                    value={item.icdDiagId}
-                                    onChange={(e) => {
-                                      const icdId = String(e.target.value);
+                                  <div className="position-relative" style={{ width: "100%", zIndex: 20 }} ref={dropdownRef}>
 
-                                      const selectedICD = masICDData.find(
-                                        (i) => String(i.icdId) === icdId
-                                      );
+                                    {/* INPUT */}
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      placeholder="Search ICD..."
+                                      value={diagnosisItems[index].icdDiagnosis || search[index] || ""}
+                                      onChange={async (e) => {
+                                        const val = e.target.value;
 
-                                      if (!selectedICD) return;
+                                        setSearch((prev) => {
+                                          const updated = [...prev];
+                                          updated[index] = val;
+                                          return updated;
+                                        });
 
-                                      const alreadyExists = diagnosisItems.some(
-                                        (item, idx) => String(item.icdDiagId) === String(icdId) && idx !== index
-                                      );
+                                        const result = await fetchMasICDData(0, val);
+                                        setIcdDropdown(result.list);
+                                        setLastPage(result.last);
+                                        setPage(0);
+                                        setOpenDropdown(index);
+                                      }}
+                                      onClick={() => {
+                                        loadFirstPage();
+                                        setOpenDropdown(index);
+                                      }}
+                                      onBlur={() => {
+                                        setTimeout(() => {
+                                          const selectedIcd = diagnosisItems[index];
+                                          const searchText = search[index];
 
-                                      if (alreadyExists) {
-                                        setDuplicateItems([{ icdDiagnosis: selectedICD.icdName }]);
-                                        setShowDuplicatePopup(true);
-                                        return;
-                                      }
+                                          // If user typed but did NOT select → clear input
+                                          if (
+                                            (!selectedIcd.icdId || selectedIcd.icdDiagnosis !== searchText) &&
+                                            searchText !== ""
+                                          ) {
+                                            // Clear search text
+                                            setSearch((prev) => {
+                                              const updated = [...prev];
+                                              updated[index] = "";
+                                              return updated;
+                                            });
 
-                                      setDiagnosisItems((prev) => {
-                                        const updated = [...prev];
-                                        updated[index] = {
-                                          ...updated[index],
-                                          icdDiagId: Number(icdId),
-                                          icdDiagnosis: selectedICD.icdName,
-                                        };
-                                        return updated;
-                                      });
-                                    }}
+                                            // Clear diagnosis item fields
+                                            handleDiagnosisChange(index, "icdId", null);
+                                            handleDiagnosisChange(index, "icdDiagnosis", "");
+                                          }
 
-
-                                  >
-                                    <option value="">-- Select ICD --</option>
-
-                                    {masICDData.map((icd) => (
-                                      <option key={icd.icdId} value={icd.icdId}>
-                                        {icd.icdCode} - {icd.icdName}
-                                      </option>
-                                    ))}
-                                  </select>
+                                          setOpenDropdown(null);
+                                        }, 150);
+                                      }}
+                                    />
 
 
+                                    {/* DROPDOWN */}
+                                    {openDropdown === index && (
+                                      <div
+                                        className="border rounded mt-1 bg-white position-absolute w-100"
+                                        style={{ maxHeight: "220px", zIndex: 9999, overflowY: "auto" }}
+                                        onScroll={(e) => {
+                                          if (e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight) {
+                                            loadMore();
+                                          }
+                                        }}
+                                      >
+                                        {/* ICD OPTIONS */}
+                                        {icdDropdown.length > 0 ? (
+                                          icdDropdown.map((icd) => (
+                                            <div
+                                              key={icd.icdId}
+                                              className="p-2 cursor-pointer hover:bg-light"
+                                              onMouseDown={() => {
+                                                updateICD(icd, index);
+                                                setOpenDropdown(null);
+                                              }}
+                                            >
+                                              {icd.icdCode} - {icd.icdName}
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <div className="p-2 text-muted">No results found</div>
+                                        )}
+
+                                        {!lastPage && (
+                                          <div className="text-center p-2 text-primary small">Loading...</div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </td>
 
 
@@ -2737,7 +3013,6 @@ const OpdRRecallPatient = () => {
                                                 setShowDuplicatePopup(true);
                                                 return;
                                               }
-
                                               const updatedRows = treatmentItems.map((r, i) => {
                                                 if (i === index) {
                                                   const updatedItem = {
@@ -2745,8 +3020,8 @@ const OpdRRecallPatient = () => {
                                                     drugName: opt.nomenclature,
                                                     dispUnit: opt.dispUnitName,
                                                     drugId: opt.itemId,
-                                                    itemClassName: opt.itemClassName,
-                                                    aDispQty: opt.adispQty ?? 0
+                                                    itemClassId: opt.itemClassId,
+                                                    aDispQty: opt.aDispQty ?? 1,   // FIXED
                                                   };
 
                                                   updatedItem.total = calculateTotal(updatedItem);
@@ -2759,6 +3034,7 @@ const OpdRRecallPatient = () => {
                                               setActiveDrugNameDropdown(null);
                                               drugNameDropdownClickedRef.current = false;
                                             }}
+
 
 
                                           >
@@ -2796,15 +3072,16 @@ const OpdRRecallPatient = () => {
                                     onChange={(e) =>
                                       handleTreatmentChange(index, "dosage", e.target.value)
                                     }
+                                    min={0}
                                   />
                                 </td>
 
                                 <td style={{ width: "120px" }}>
                                   <select
                                     className="form-select"
-                                    value={row.frequency}
+                                    value={row.frequency || ""}
                                     onChange={(e) =>
-                                      handleTreatmentChange(index, "frequency", e.target.value)
+                                      handleTreatmentChange(index, "frequency", Number(e.target.value))
                                     }
                                   >
                                     <option value="">Select..</option>
@@ -2824,6 +3101,7 @@ const OpdRRecallPatient = () => {
                                     onChange={(e) =>
                                       handleTreatmentChange(index, "days", e.target.value)
                                     }
+                                    min={0}
                                   />
                                 </td>
 
@@ -2835,6 +3113,7 @@ const OpdRRecallPatient = () => {
                                     onChange={(e) =>
                                       handleTreatmentChange(index, "total", e.target.value)
                                     }
+                                    readOnly
                                   />
                                 </td>
 
@@ -2854,7 +3133,7 @@ const OpdRRecallPatient = () => {
                                 </td>
 
                                 <td style={{ width: "100px" }}>
-                                  <input type="number" className="form-control" value={row.stock} readOnly />
+                                  <input type="number" className="form-control" value={row.stock || 0} readOnly />
                                 </td>
 
                                 <td style={{ width: "60px" }} className="text-center">

@@ -1,5 +1,3 @@
-
-
 import { useState, useRef, useEffect } from "react"
 import placeholderImage from "../../../assets/images/placeholder.jpg"
 import { getRequest, postRequest } from "../../../service/apiService"
@@ -96,7 +94,7 @@ const LabRegistration = () => {
       {
         id: 1,
         name: "",
-        date: "",
+        date: new Date().toISOString().split('T')[0], // Initialize with today's date
         originalAmount: 0,
         discountAmount: 0,
         netAmount: 0,
@@ -113,6 +111,32 @@ const LabRegistration = () => {
   let stream = null
 
   const [checkedRows, setCheckedRows] = useState([true])
+
+  // Add this useEffect to synchronize dates when new rows are added
+  useEffect(() => {
+    // If there's at least one row with a date, ensure all rows have the same date
+    const rowsWithDates = formData.rows.filter(row => row.date);
+    if (rowsWithDates.length > 0) {
+      const firstDate = rowsWithDates[0].date;
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Ensure the date is not in the past
+      const validDate = firstDate >= today ? firstDate : today;
+      
+      // Check if any row has a different date
+      const hasDifferentDate = formData.rows.some(row => row.date && row.date !== validDate);
+      
+      if (hasDifferentDate) {
+        setFormData(prev => ({
+          ...prev,
+          rows: prev.rows.map(row => ({
+            ...row,
+            date: validDate
+          }))
+        }));
+      }
+    }
+  }, [formData.rows.length]);
 
   // Enhanced payment calculation function - FIXED
   const calculatePaymentBreakdown = () => {
@@ -384,7 +408,30 @@ const LabRegistration = () => {
     }
   }
 
-
+  // Function to handle date changes with validation
+  const handleDateChange = (index, selectedDate) => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Validate that date is not in the past
+    if (selectedDate < today) {
+      Swal.fire({
+        title: 'Invalid Date',
+        text: 'Cannot select past dates. Please select today or a future date.',
+        icon: 'warning',
+        confirmButtonText: 'OK'
+      });
+      return;
+    }
+    
+    // Update all rows with the selected date
+    setFormData(prev => ({
+      ...prev,
+      rows: prev.rows.map((row, i) => ({
+        ...row,
+        date: selectedDate
+      }))
+    }));
+  }
 
   const handleRowChange = (index, field, value) => {
     setFormData((prev) => {
@@ -409,10 +456,18 @@ const LabRegistration = () => {
   const addRow = (e, type) => {
     e.preventDefault();
     const lastRow = formData.rows[formData.rows.length - 1];
-    if (!lastRow.name || !lastRow.date) {
-      Swal.fire("Missing Fields", "Please fill all required fields.", "warning");
+    
+    // Check if previous row has name
+    if (!lastRow.name) {
+      Swal.fire("Missing Fields", "Please fill investigation/package name before adding new row.", "warning");
       return;
     }
+    
+    // Get the current synchronized date from existing rows
+    const currentDate = formData.rows[0]?.date || new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    const defaultDate = currentDate >= today ? currentDate : today;
+    
     setFormData((prev) => ({
       ...prev,
       rows: [
@@ -420,7 +475,7 @@ const LabRegistration = () => {
         {
           id: Date.now(),
           name: "",
-          date: "",
+          date: defaultDate, // Use the synchronized date
           originalAmount: 0,
           discountAmount: 0,
           netAmount: 0,
@@ -430,8 +485,6 @@ const LabRegistration = () => {
     }));
     setCheckedRows((prev) => [...prev, true]);
   };
-
-
 
   const removeRow = (index) => {
     setFormData((prev) => ({
@@ -713,8 +766,6 @@ const LabRegistration = () => {
     formData.relation
   ]);
 
-
-
   // Add this useEffect after the existing useEffect
   useEffect(() => {
     console.log("GST Config changed:", gstConfig)
@@ -756,6 +807,18 @@ const LabRegistration = () => {
       newErrors.rows = `At least one ${formData.type} is required.`
       valid = false
     }
+
+    // Check if all rows have names and dates
+    formData.rows.forEach((row, index) => {
+      if (!row.name || row.name.trim() === "") {
+        newErrors[`row_${index}_name`] = `Row ${index + 1}: Investigation/Package name is required.`
+        valid = false
+      }
+      if (!row.date || row.date.trim() === "") {
+        newErrors[`row_${index}_date`] = `Row ${index + 1}: Date is required.`
+        valid = false
+      }
+    });
 
     if (!formData.paymentMode) {
       newErrors.paymentMode = "Payment mode is required."
@@ -850,7 +913,7 @@ const LabRegistration = () => {
           if (row.itemId) { // Only include rows that have valid itemId
             labData.labInvestigationReq.push({
               id: row.itemId,
-              appointmentDate: row.date || new Date().toISOString().split("T")[0],
+              appointmentDate: row.date || new Date().toISOString().split('T')[0],
               checkStatus: checkedRows[index] || false, // Send actual check status
               actualAmount: parseFloat(row.originalAmount) || 0,
               discountedAmount: parseFloat(row.discountAmount) || 0,
@@ -902,8 +965,6 @@ const LabRegistration = () => {
     }
   };
 
-
-
   const isMobileNoMissing = !formData.mobileNo || formData.mobileNo.trim() === ""
 
   const handleReset = () => {
@@ -950,8 +1011,11 @@ const LabRegistration = () => {
         {
           id: 1,
           name: "",
-          date: "",
+          date: new Date().toISOString().split('T')[0], // Reset to today's date
           originalAmount: 0,
+          discountAmount: 0,
+          netAmount: 0,
+          type: "investigation",
         },
       ],
       paymentMode: "",
@@ -964,7 +1028,6 @@ const LabRegistration = () => {
   const isAnyDateOrNameMissing = formData.rows.some(
     (row) => !row.date || row.date.trim() === "" || !row.name || row.name.trim() === "",
   )
-
 
   // Get payment breakdown for display
   const paymentBreakdown = calculatePaymentBreakdown()
@@ -1775,8 +1838,9 @@ const LabRegistration = () => {
                           <input
                             type="date"
                             className="form-control"
-                            value={row.date}
-                            onChange={(e) => handleRowChange(index, "date", e.target.value)}
+                            value={row.date || new Date().toISOString().split('T')[0]}
+                            onChange={(e) => handleDateChange(index, e.target.value)}
+                            min={new Date().toISOString().split('T')[0]}
                           />
                         </td>
                         <td>

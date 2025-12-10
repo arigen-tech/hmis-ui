@@ -46,6 +46,26 @@ const IndentViewUpdate = () => {
     return getStatusInfo(record?.status).editable;
   }
 
+  // Helper function to get display value with drug code in unique format
+  const getDrugDisplayValue = (drugName, drugCode) => {
+    if (!drugName && !drugCode) return "";
+    if (drugName && drugCode) {
+      return `${drugName} [${drugCode}]`;
+    }
+    return drugName || drugCode;
+  };
+
+  // Helper function to extract drug name from display value (for search)
+  const extractDrugName = (displayValue) => {
+    if (!displayValue) return "";
+    // Remove the code part in brackets for searching
+    const bracketIndex = displayValue.lastIndexOf('[');
+    if (bracketIndex > -1) {
+      return displayValue.substring(0, bracketIndex).trim();
+    }
+    return displayValue;
+  };
+
   // Fetch all indents
   const fetchIndents = async (status = "") => {
     try {
@@ -85,7 +105,7 @@ const IndentViewUpdate = () => {
   // Fetch all drugs for dropdown
   const fetchAllDrugs = async () => {
     try {
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1/${hospitalId}/${departmentId}`)
+      const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1`)
       console.log("Drugs API Response:", response)
 
       if (response && response.response && Array.isArray(response.response)) {
@@ -207,11 +227,18 @@ const IndentViewUpdate = () => {
     const updatedEntries = [...indentEntries]
 
     if (field === "itemName") {
-      const selectedItem = itemOptions.find((opt) => opt.name === value)
+      const displayValue = value;
+      const drugName = extractDrugName(displayValue);
+      
+      const selectedItem = itemOptions.find((opt) => 
+        opt.name.toLowerCase().includes(drugName.toLowerCase()) ||
+        opt.code.toLowerCase().includes(drugName.toLowerCase())
+      );
+      
       updatedEntries[index] = {
         ...updatedEntries[index],
         itemId: selectedItem ? selectedItem.id : "",
-        itemName: value,
+        itemName: selectedItem ? selectedItem.name : drugName,
         itemCode: selectedItem ? selectedItem.code : "",
         apu: selectedItem ? selectedItem.unit : "",
         availableStock: selectedItem ? selectedItem.availableStock : "",
@@ -537,25 +564,63 @@ const IndentViewUpdate = () => {
                 </div>
 
                 <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
-                  <table className="table table-bordered table-hover align-middle" style={{ minWidth: "1200px" }}>
+                  <table className="table table-bordered table-hover align-middle" >
                     <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
-                      <tr>
-                        <th className="text-center" style={{ width: "60px", minWidth: "60px" }}>
-                          S.No.
-                        </th>
-                        <th style={{ width: "350px", minWidth: "350px" }}>Item Name/Code</th>
-                        <th style={{ width: "100px", minWidth: "100px" }}>A/U</th>
-                        <th style={{ width: "120px", minWidth: "120px" }}>Requested Quantity</th>
-                        <th style={{ width: "120px", minWidth: "120px" }}>Available Stock</th>
-                        <th style={{ width: "200px", minWidth: "200px" }}>Reason for Indent</th>
-                        {/* Show Add/Delete only for editable records (Draft status) */}
-                        {isRecordEditable && (
-                          <>
-                            <th style={{ width: "60px", minWidth: "60px" }}>Add</th>
-                            <th style={{ width: "70px", minWidth: "70px" }}>Delete</th>
-                          </>
-                        )}
-                      </tr>
+            <tr>
+  <th
+    className="text-center"
+    style={{ width: "20px" }}
+  >
+    S.No.
+  </th>
+
+  <th style={{ width: "350px" }}>
+    Item Name/Code
+  </th>
+
+  <th style={{ width: "35px" }}>
+    A/U
+  </th>
+
+  <th
+    style={{
+      width: "35px",
+      whiteSpace: "normal",
+      lineHeight: "1.1",
+      textAlign: "center"
+    }}
+  >
+    Req <br /> Qty
+  </th>
+
+  <th
+    style={{
+      width: "20px",            // reduced from 25px → 20px
+      whiteSpace: "normal",
+      lineHeight: "1.1",
+      textAlign: "center"
+    }}
+  >
+    Avl <br /> Stk
+  </th>
+
+  <th style={{ width: "100px" }}>   {/* increased from 70px → 100px */}
+    Reason for Indent
+  </th>
+
+  {isRecordEditable && (
+    <>
+      <th style={{ width: "60px" }}>Add</th>
+      <th style={{ width: "70px" }}>Delete</th>
+    </>
+  )}
+</tr>
+
+
+
+
+
+
                     </thead>
                     <tbody>
                       {indentEntries.length === 0 ? (
@@ -575,14 +640,15 @@ const IndentViewUpdate = () => {
                                   ref={(el) => (itemInputRefs.current[index] = el)}
                                   type="text"
                                   className="form-control form-control-sm"
-                                  value={entry.itemName}
+                                  value={getDrugDisplayValue(entry.itemName, entry.itemCode)}
                                   onChange={(e) => {
-                                    const value = e.target.value
-                                    handleIndentEntryChange(index, "itemName", value)
-                                    if (value.length > 0) {
-                                      setActiveItemDropdown(index)
+                                    const displayValue = e.target.value;
+                                    const drugName = extractDrugName(displayValue);
+                                    handleIndentEntryChange(index, "itemName", displayValue);
+                                    if (drugName.trim() !== "") {
+                                      setActiveItemDropdown(index);
                                     } else {
-                                      setActiveItemDropdown(null)
+                                      setActiveItemDropdown(null);
                                     }
                                   }}
                                   placeholder="Item Name/Code"
@@ -592,7 +658,9 @@ const IndentViewUpdate = () => {
                                   readOnly={!isRecordEditable}
                                 />
                                 {/* Search Dropdown */}
-                                {activeItemDropdown === index && entry.itemName.trim() !== "" && isRecordEditable && (
+                                {activeItemDropdown === index && 
+                                 extractDrugName(getDrugDisplayValue(entry.itemName, entry.itemCode)).trim() !== "" && 
+                                 isRecordEditable && (
                                   <ul
                                     className="list-group position-fixed dropdown-list"
                                     style={{
@@ -608,8 +676,8 @@ const IndentViewUpdate = () => {
                                       overflowY: "auto",
                                     }}
                                   >
-                                    {filterDrugsBySearch(entry.itemName).length > 0 ? (
-                                      filterDrugsBySearch(entry.itemName).map((drug) => {
+                                    {filterDrugsBySearch(extractDrugName(getDrugDisplayValue(entry.itemName, entry.itemCode))).length > 0 ? (
+                                      filterDrugsBySearch(extractDrugName(getDrugDisplayValue(entry.itemName, entry.itemCode))).map((drug) => {
                                         const isSelectedInOtherRow = selectedDrugs.some(
                                           (id) => id === drug.id && indentEntries[index]?.itemId !== drug.id
                                         );
@@ -633,11 +701,21 @@ const IndentViewUpdate = () => {
                                                   color: "#6c757d",
                                                   fontSize: "0.8rem",
                                                   marginTop: "2px",
+                                                  display: "flex",
+                                                  justifyContent: "space-between",
+                                                  alignItems: "center"
                                                 }}
                                               >
-                                                {drug.code}
+                                                <div>
+                                                  <span className="badge bg-info me-1" style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>
+                                                    <i className="fas fa-hashtag me-1"></i>{drug.code}
+                                                  </span>
+                                                  <span className="badge bg-secondary" style={{ fontSize: "0.75rem" }}>
+                                                    ID: {drug.id}
+                                                  </span>
+                                                </div>
                                                 {isSelectedInOtherRow && (
-                                                  <span className="text-success ms-2">
+                                                  <span className="text-success">
                                                     <i className="fas fa-check-circle me-1"></i> Added
                                                   </span>
                                                 )}
@@ -663,7 +741,6 @@ const IndentViewUpdate = () => {
                                 value={entry.apu}
                                 onChange={(e) => handleIndentEntryChange(index, "apu", e.target.value)}
                                 placeholder="Unit"
-                                style={{ minWidth: "90px", backgroundColor: "#f5f5f5" }}
                                 readOnly
                               />
                             </td>
@@ -676,7 +753,6 @@ const IndentViewUpdate = () => {
                                 placeholder="0"
                                 min="0"
                                 step="1"
-                                style={{ minWidth: "110px" }}
                                 readOnly={!isRecordEditable}
                               />
                             </td>
@@ -689,7 +765,7 @@ const IndentViewUpdate = () => {
                                 placeholder="0"
                                 min="0"
                                 step="1"
-                                style={{ minWidth: "110px", backgroundColor: "#f5f5f5" }}
+                                style={{  backgroundColor: "#f5f5f5" }}
                                 readOnly
                               />
                             </td>
@@ -699,7 +775,6 @@ const IndentViewUpdate = () => {
                                 value={entry.reasonForIndent}
                                 onChange={(e) => handleIndentEntryChange(index, "reasonForIndent", e.target.value)}
                                 placeholder="Reason"
-                                style={{ minWidth: "180px", minHeight: "40px" }}
                                 readOnly={!isRecordEditable}
                               />
                             </td>
@@ -714,7 +789,6 @@ const IndentViewUpdate = () => {
                                     style={{
                                       color: "white",
                                       border: "none",
-                                      width: "35px",
                                       height: "35px",
                                     }}
                                     title="Add Row"
@@ -730,7 +804,6 @@ const IndentViewUpdate = () => {
                                     disabled={indentEntries.length === 1}
                                     title="Delete Row"
                                     style={{
-                                      width: "35px",
                                       height: "35px",
                                     }}
                                   >
