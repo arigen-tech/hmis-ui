@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react"
-import Popup from "../../../Components/popup"
+import { useEffect, useState } from "react";
 import LoadingScreen from "../../../Components/Loading/index";
-import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import Popup from "../../../Components/popup";
 import { MAS_SERVICE_CATEGORY } from "../../../config/apiConfig";
+import { getRequest, postRequest, putRequest } from "../../../service/apiService";
 
 
 const ServiceCategoryMaster = () => {
@@ -10,6 +10,8 @@ const ServiceCategoryMaster = () => {
     serviceCatName: "",
     sacCode: "",
     gstApplicable: false,
+    registrationCost: "",   // NEW
+    gstPercent: ""
   });
 
 
@@ -75,6 +77,8 @@ const ServiceCategoryMaster = () => {
       serviceCatName: item.serviceCatName,
       sacCode: item.sacCode,
       gstApplicable: !!item.gstApplicable,
+      registrationCost: item.registrationCost ?? "",
+      gstPercent: item.gstPercent ?? ""
     });
     setIsFormValid(true);
   };
@@ -91,6 +95,8 @@ const ServiceCategoryMaster = () => {
         serviceCatName: formData.serviceCatName,
         sacCode: formData.sacCode,
         gstApplicable: formData.gstApplicable,
+        gstPercent: formData.gstApplicable ? Number(formData.gstPercent || 0) : 0,
+        registrationCost: Number(formData.registrationCost || 0),
       };
 
       if (editingService) {
@@ -115,6 +121,8 @@ const ServiceCategoryMaster = () => {
           serviceCatName: "",
           sacCode: "",
           gstApplicable: false,
+          gstPercent: Number(formData.gstPercent || 0),
+          registrationCost: Number(formData.registrationCost || 0),
         });
       } else {
         throw new Error(response.message || 'Failed to save service category');
@@ -175,6 +183,19 @@ const ServiceCategoryMaster = () => {
   const handleInputChange = (e) => {
     const { id, value } = e.target
     setFormData((prevData) => ({ ...prevData, [id]: value }))
+
+    if (id === "registrationCost" && value !== "") {
+      if (!/^\d*\.?\d*$/.test(value)) return; // allow only numeric & decimals
+    }
+
+    if (id === "gstApplicable") {
+      setFormData(prev => ({
+        ...prev,
+        gstApplicable: value === "true",
+        gstPercent: value === "true" ? prev.gstPercent : 0
+      }));
+      return;
+    }
 
     const updatedFormData = { ...formData, [id]: value }
     setIsFormValid(
@@ -349,7 +370,7 @@ const ServiceCategoryMaster = () => {
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="d-flex justify-content-end">
-                    
+
                     <button type="button" className="btn btn-secondary" onClick={() => {
                       setShowForm(false);
                       setFormData({
@@ -391,6 +412,7 @@ const ServiceCategoryMaster = () => {
                         required
                       />
                     </div>
+
                     <div className="form-group col-md-4 mt-3">
                       <label>
                         GST Applicable <span className="text-danger">*</span>
@@ -409,7 +431,43 @@ const ServiceCategoryMaster = () => {
                         <option value="false">No</option>
                       </select>
                     </div>
+                    {formData.gstApplicable === true && (
+                      <>
+                        <div className="form-group col-md-4 mt-3">
+                          <label>
+                            GST Percent <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="form-control"
+                            id="gstPercent"
+                            placeholder="GST Percent"
+                            onChange={handleInputChange}
+                            value={formData.gstPercent}
+                            required
+                          />
+                        </div>
+                      </>
+                    )}
 
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Registration Cost <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        className="form-control"
+                        id="registrationCost"
+                        placeholder="Registration Amount"
+                        onChange={handleInputChange}
+                        value={formData.registrationCost}
+                        required
+                      />
+                    </div>
 
 
                   </div>

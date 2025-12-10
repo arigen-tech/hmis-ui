@@ -45,6 +45,7 @@ const PatientRegistration = () => {
   const [departmentData, setDepartmentData] = useState([]);
   const [doctorDataMap, setDoctorDataMap] = useState({});
   const [session, setSession] = useState([]);
+  const [isDuplicatePatient, setIsDuplicatePatient] = useState(false);
   const [appointments, setAppointments] = useState([{
     id: 0,
     speciality: "",
@@ -129,19 +130,13 @@ const PatientRegistration = () => {
 
   const isFormValid = () => {
     // Required fields
-    const requiredFields = ["firstName", "gender", "relation", "dob", "email", "mobileNo"];
+    const requiredFields = ["firstName", "gender", "relation", "dob", "mobileNo"];
 
     for (let field of requiredFields) {
       if (!formData[field] || formData[field].trim() === "") {
         return false;
       }
     }
-
-    const validAppointment = appointments.some(a =>
-      a.speciality && a.selDoctorId && a.selSession
-    );
-
-    if (!validAppointment) return false;
 
     return true;
   };
@@ -558,6 +553,51 @@ const PatientRegistration = () => {
     }
   };
 
+  async function checkDuplicatePatient(firstName, dob, gender, mobile, relation) {
+    const params = new URLSearchParams({
+      firstName,
+      dob,
+      gender,
+      mobile,
+      relation,
+    }).toString();
+
+    const result = await getRequest(`/patient/check-duplicate?${params}`);
+    return result === true;
+  }
+
+  useEffect(() => {
+    const { firstName, dob, gender, mobileNo, relation } = formData;
+
+    if (firstName && dob && gender && mobileNo && relation) {
+      const timer = setTimeout(async () => {
+        try {
+          const isDuplicate = await checkDuplicatePatient(firstName, dob, gender, mobileNo, relation);
+          if (isDuplicate) {
+            Swal.fire("Duplicate Found!", "A patient with these details already exists.", "warning");
+            setIsDuplicatePatient(true);
+          } else {
+            setIsDuplicatePatient(false);
+          }
+        } catch (err) {
+          console.error("Duplicate check failed:", err);
+        }
+      }, 800);
+
+      return () => clearTimeout(timer);
+    } else {
+      // If any field is cleared, reset duplicate flag
+      setIsDuplicatePatient(false);
+    }
+  }, [
+    formData.firstName,
+    formData.dob,
+    formData.gender,
+    formData.mobileNo,
+    formData.relation
+  ]);
+
+
   async function fetchRelationData() {
     setLoading(true);
 
@@ -867,9 +907,11 @@ const PatientRegistration = () => {
           departmentId: 0,
           hospitalId: 0,
           doctorId: 0,
+          doctorId: 0,
           lastChgBy: "string"
         },
-        visit: visitList,
+
+        visits: visitList,
       };
       //debugger
       // Filter out invalid visits (doctor/session empty)
@@ -885,68 +927,97 @@ const PatientRegistration = () => {
       try {
         setLoading(true);
         const data = await postRequest(`${PATIENT_REGISTRATION}`, requestData);
+
         if (data.status === 200) {
-          const resp = data.response.opdBillingPatientResponse;
 
-          // Show success popup
-          Swal.fire({
-            title: "Patient Registered Successfully!",
-            html: `
-    <p><strong>${resp.patientName}</strong> has been registered successfully.</p>
-    <p>Do you want to proceed to billing?</p>
-  `,
-            icon: "success",
-            showCancelButton: true,
-            confirmButtonText: "Proceed to Billing",
-            cancelButtonText: "Close",
-            allowOutsideClick: false,
-          }).then((result) => {
-            if (result.isConfirmed) {
-              navigate("/OPDBillingDetails", {
-                state: {
-                  billingData: {
-                    patientId: resp.patientid,
-                    patientName: resp.patientName,
-                    mobileNo: resp.mobileNo,
-                    age: resp.age,
-                    sex: resp.sex,
-                    relation: resp.relation,
-                    address: resp.address,
+          const resp = data.response?.opdBillingPatientResponse;
+          const patientResp = data.response?.patient || data.response;
 
-                    appointments: resp.appointments,
-                    details: resp.details,
-
-                    billingHeaderIds: resp.appointments.map(a => a.billingHdId)
+          if (resp) {
+            // Existing billing flow
+            Swal.fire({
+              title: "Patient Registered Successfully!",
+              html: `
+          <p><strong>${resp.patientName}</strong> has been registered successfully.</p>
+          <p>Do you want to proceed to billing?</p>
+        `,
+              icon: "success",
+              showCancelButton: true,
+              confirmButtonText: "Proceed to Billing",
+              cancelButtonText: "Close",
+              allowOutsideClick: false,
+            }).then((result) => {
+              if (result.isConfirmed) {
+                navigate("/OPDBillingDetails", {
+                  state: {
+                    billingData: {
+                      patientUhid: patientResp.uhidNo,
+                      patientId: resp.patientid,
+                      patientName: resp.patientName,
+                      mobileNo: resp.mobileNo,
+                      age: resp.age,
+                      sex: resp.sex,
+                      relation: resp.relation,
+                      address: resp.address,
+                      appointments: resp.appointments,
+                      details: resp.details,
+                      billingHeaderIds: (resp.appointments || []).map(a => a.billingHdId)
+                    }
                   }
-                }
-              });
-            } if (result.dismiss === Swal.DismissReason.cancel) {
+                });
+              } else if (result.dismiss === Swal.DismissReason.cancel) {
+                window.location.reload();
+              }
+            });
+
+          } else if (patientResp) {
+            // Case: no billing response but patient saved
+            const displayName =
+              patientResp.patientFn ||
+              patientResp.patientName ||
+              `${formData.firstName} ${formData.lastName}`.trim();
+
+            Swal.fire({
+              title: "Patient Registered Successfully!",
+              html: `<p><strong>${displayName || "Patient"}</strong> has been registered successfully.</p>`,
+              icon: "success",
+              confirmButtonText: "OK",
+              allowOutsideClick: false,
+            }).then(() => {
               window.location.reload();
-            }
-          });
+            });
 
+          } else {
+            // Fallback
+            Swal.fire({
+              icon: "success",
+              title: "Patient Registered",
+              text: "Patient registered successfully.",
+            }).then(() => window.location.reload());
+          }
 
-        }
-        else {
+        } else {
           Swal.fire({
             icon: "error",
             title: "Registration Failed",
-            text: data.message || "Unexpected response received. Please try again."
+            text: data.message || "Unexpected response received. Please try again.",
           });
         }
+
       } catch (error) {
         console.error("Error:", error);
         Swal.fire({
           icon: "error",
           title: "Registration Failed",
-          text: "Something went wrong while registering the patient. Please try again."
+          text: "Something went wrong while registering the patient. Please try again.",
         });
+
       } finally {
         setLoading(false);
       }
+
     }
   };
-
   async function fetchDoctor(value, rowId) {
     try {
       const data = await getRequest(`${DOCTOR_BY_SPECIALITY}${value}`);
@@ -973,8 +1044,10 @@ const PatientRegistration = () => {
     if (!doctorId || !deptId) {
       return;
     }
-    let timestamp = Date.now();
-    let value = new Date(timestamp).toJSON().split('.')[0].split('T')[0];
+    const today = new Date();
+    const value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    console.log('value', value); // "2025-12-05" जैसे
+
     const data = await getRequest(`${GET_DOCTOR_SESSION}deptId=${deptId}&doctorId=${doctorId}&rosterDate=${value}&sessionId=${sessionId}`);
     if (data.status == 200) {
       let sessionVal = [{ key: 0, value: '' }, { key: 1, value: '' }];
@@ -1024,7 +1097,7 @@ const PatientRegistration = () => {
         <div className="row align-items-center">
           <div className="border-0 mb-4">
             <div className="card-header py-3 no-bg bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
-              <h3 className="fw-bold mb-0">Registration of Other Patient</h3>
+              <h3 className="fw-bold mb-0">Registration of New Patient</h3>
             </div>
           </div>
         </div>
@@ -1042,7 +1115,7 @@ const PatientRegistration = () => {
                     <div className="col-md-9">
                       <div className="row g-3">
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="firstName">First Name *</label>
+                          <label className="form-label" htmlFor="firstName">First Name <span className="text-danger">*</span></label>
                           <input type="text" className={`form-control ${errors.firstName ? 'is-invalid' : ''}`}
                             id="firstName" name="firstName" value={formData.firstName} onChange={handleChange}
                             placeholder="Enter First Name" />
@@ -1059,14 +1132,14 @@ const PatientRegistration = () => {
                             onChange={handleChange} className="form-control" placeholder="Enter Last Name" />
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="mobileNo">Mobile No.</label>
+                          <label className="form-label" htmlFor="mobileNo">Mobile No.<span className="text-danger">*</span></label>
                           <input type="text" id="mobileNo"
                             className={`form-control ${errors.mobileNo ? 'is-invalid' : ''}`} name="mobileNo"
                             value={formData.mobileNo} onChange={handleChange} placeholder="Enter Mobile Number" />
                           {errors.mobileNo && <div className="invalid-feedback">{errors.mobileNo}</div>}
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="gender">Gender *</label>
+                          <label className="form-label" htmlFor="gender">Gender <span className="text-danger">*</span></label>
                           <select className={`form-select ${errors.gender ? 'is-invalid' : ''}`} id="gender"
                             name="gender" value={formData.gender} onChange={handleChange}>
                             <option value="">Select</option>
@@ -1079,7 +1152,7 @@ const PatientRegistration = () => {
                           {errors.gender && <div className="invalid-feedback">{errors.gender}</div>}
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="relation">Relation *</label>
+                          <label className="form-label" htmlFor="relation">Relation <span className="text-danger">*</span></label>
                           <select className={`form-select ${errors.relation ? 'is-invalid' : ''}`} id="relation"
                             name="relation" value={formData.relation} onChange={handleChange}>
                             <option value="">Select</option>
@@ -1092,7 +1165,7 @@ const PatientRegistration = () => {
                           {errors.relation && <div className="invalid-feedback">{errors.relation}</div>}
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="dob">DOB *</label>
+                          <label className="form-label" htmlFor="dob">DOB <span className="text-danger">*</span></label>
                           <input type="date" id="dob" name="dob"
                             className={`form-control ${errors.dob ? 'is-invalid' : ''}`} value={formData.dob}
                             max={new Date().toISOString().split("T")[0]} onChange={handleChange}
@@ -1114,7 +1187,7 @@ const PatientRegistration = () => {
                           {errors.age && <div className="invalid-feedback">{errors.age}</div>}
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="email">Email *</label>
+                          <label className="form-label" htmlFor="email">Email <span className="text-danger">*</span></label>
                           <input type="email" id="email" name="email"
                             className={`form-control ${errors.email ? 'is-invalid' : ''}`} value={formData.email}
                             onChange={handleChange} placeholder="Enter Email Address" />
@@ -1342,7 +1415,6 @@ const PatientRegistration = () => {
             </div>
           </div>
         </div>
-
         {/* Emergency Contact Details Section */}
         <div className="row mb-3">
           <div className="col-sm-12">

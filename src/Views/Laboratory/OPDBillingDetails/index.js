@@ -58,6 +58,15 @@ const OPDBillingDetails = () => {
     }
   }
 
+  const formatDateDDMMYYYY = (dateStr) => {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+};
+
   const safeSex = (sexField) => {
     if (!sexField) return "";
     if (typeof sexField === "string") return sexField;
@@ -108,11 +117,11 @@ const OPDBillingDetails = () => {
 
       const basePrice = Number(detail?.basePrice || 0);
       const discount = Number(detail?.discount || 0);
-      const netAmount = Number(detail?.netAmount|| (basePrice - discount));
+      const totalAmount = basePrice-discount;
       const taxAmount = Number(detail?.taxAmount || 0);
       const registrationCost = visitType === "New" ? Number(detail?.registrationCost || 0) : 0;
-
-      const totalAmount = netAmount + taxAmount + registrationCost;
+      const netAmount = Number(detail?.netAmount|| (basePrice + registrationCost + taxAmount));
+      
 
       return {
         billinghdid: appt.billingHdId || null,   // FIXED
@@ -164,21 +173,17 @@ const OPDBillingDetails = () => {
     const recalculated = appointments.map((appt) => {
       const base = Number(appt.basePrice || 0);
       const discount = Number(appt.discount || 0);
-      const net = Number(appt.rawDetail?.netAmount || Math.max(0, base - discount));
-
       const taxFromDetail = appt.rawDetail?.taxAmount;
-      const gstAmount = (taxFromDetail !== undefined && taxFromDetail !== null && taxFromDetail > 0)
-        ? Number(taxFromDetail)
-        : (net * gstPercent) / 100;
-
+      const gstAmount = (taxFromDetail !== undefined && taxFromDetail !== null && taxFromDetail > 0) ? Number(taxFromDetail) : (net * gstPercent) / 100;
       const reg = Number(appt.registrationCost || 0);
-      const total = Number((net).toFixed(2));
+      const net = Number(appt.rawDetail?.netAmount + reg || Math.max(0, base + reg + gstAmount));
+      const total = base-discount;
 
       return {
         ...appt,
         netAmount: Number(net.toFixed(2)),
         gst: Number(gstAmount.toFixed(2)),
-        totalAmount: total,
+        totalAmount: net,
       };
     });
 
@@ -205,7 +210,7 @@ const OPDBillingDetails = () => {
       return;
     }
 
-    const totalAmount = appointments.reduce((sum, appt) => sum + Number(appt.totalAmount || 0), 0);
+    const totalAmount = appointments.reduce((sum, appt) => sum + Number(appt.totalAmount || 0), 0) ;
 
 
     Swal.fire({
@@ -246,10 +251,10 @@ const OPDBillingDetails = () => {
   // Calculate totals for display
   const totalBasePrice = appointments.reduce((sum, a) => sum + Number(a.basePrice || 0), 0);
   const totalDiscount = appointments.reduce((sum, a) => sum + Number(a.discount || 0), 0);
-  const totalNetAmount = appointments.reduce((sum, a) => sum + Number(a.netAmount || 0), 0);
+  const totalAmount = appointments.reduce((sum, a) => sum + Number(a.totalAmount || 0), 0);
   const totalGST = appointments.reduce((sum, a) => sum + Number(a.gst || 0), 0);
   const totalRegistration = appointments.reduce((sum, a) => sum + Number(a.registrationCost || 0), 0);
-  const grandTotal = appointments.reduce((sum, a) => sum + Number(a.totalAmount || 0), 0);
+  const grandTotal = appointments.reduce((sum, a) => sum + Number(a.netAmount || 0), 0);
 
   return (
     <div className="content-wrapper">
@@ -339,7 +344,7 @@ const OPDBillingDetails = () => {
                         <div className="row">
                           <div className="form-group col-md-3 mt-3">
                             <label>Visit Date</label>
-                            <input type="date" className="form-control" value={appointment.visitDate} readOnly />
+                            <input type="text" className="form-control" value={formatDateDDMMYYYY(appointment.visitDate)} readOnly />
                           </div>
                           <div className="form-group col-md-3 mt-3">
                             <label>Doctor Name</label>
@@ -398,7 +403,15 @@ const OPDBillingDetails = () => {
                               readOnly
                             />
                           </div>
-                          
+                          <div className="form-group col-md-2 mt-3">
+                            <label>Total</label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              value={appointment.totalAmount.toFixed(2)}
+                              readOnly
+                            />
+                          </div>
                           <div className="form-group col-md-2 mt-3">
                             <label>GST ({gstConfig.gstPercent}%)</label>
                             <input
@@ -417,7 +430,7 @@ const OPDBillingDetails = () => {
                               readOnly
                             />
                           </div>
-                          <div className="form-group col-md-3 mt-3">
+                          <div className="form-group col-md-2 mt-3">
                             <label><strong>Net Amount</strong></label>
                             <input
                               type="number"
@@ -426,15 +439,6 @@ const OPDBillingDetails = () => {
                               readOnly
                             />
                           </div>
-                          {/* <div className="form-group col-md-2 mt-3">
-                            <label><strong>Total Amount</strong></label>
-                            <input
-                              type="number"
-                              className="form-control fw-bold"
-                              value={appointment.totalAmount.toFixed(2)}
-                              readOnly
-                            />
-                          </div> */}
                         </div>
                       </div>
                     </div>
@@ -458,21 +462,21 @@ const OPDBillingDetails = () => {
                             <strong>Total Discount:</strong>
                             <p className="mb-0">₹{totalDiscount.toFixed(2)}</p>
                           </div>
-                          {/* <div className="col-md-2">
-                            <strong>Total Net:</strong>
-                            <p className="mb-0">₹{totalNetAmount.toFixed(2)}</p>
-                          </div> */}
+                          <div className="col-md-2">
+                            <strong>Total:</strong>
+                            <p className="mb-0">₹{totalAmount.toFixed(2)}</p>
+                          </div>
                           <div className="col-md-2">
                             <strong>Total GST:</strong>
                             <p className="mb-0">₹{totalGST.toFixed(2)}</p>
                           </div>
                           <div className="col-md-2">
-                            <strong>Total Registration:</strong>
+                            <strong>Registration Cost:</strong>
                             <p className="mb-0">₹{totalRegistration.toFixed(2)}</p>
                           </div>
                           <div className="col-md-2">
-                            <strong className="text-primary">Grand Total:</strong>
-                            <h4 className="mb-0 text-primary">₹{totalNetAmount.toFixed(2)}</h4>
+                            <strong className="text-primary">Grand Net Total:</strong>
+                            <h4 className="mb-0 text-primary">₹{grandTotal.toFixed(2)}</h4>
                           </div>
                         </div>
                       </div>
