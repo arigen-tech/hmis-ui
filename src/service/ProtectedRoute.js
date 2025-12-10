@@ -111,6 +111,8 @@ const validRoutes = [
   "/NewPatientAppointment",
   "/MealTypeMaster",
   "/DietTypeMaster",
+  "/DietPreferenceMaster",
+  "/DietScheduleMaster",
 
   
 ];
