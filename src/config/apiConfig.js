@@ -198,3 +198,7 @@ export const MAS_CARE_LEVEL = `${MASTERS}/mas-care-level`;
 export const MAS_BED_TYPE = `${MASTERS}/masBedType`;
 export const MAS_ROOM= `${MASTERS}/mas-room`;
 export const MAS_BED = `${MASTERS}/masBed`;
+export const MAS_PROCEDURE_TYPE = `${MASTERS}/masProcedureType`;
+export const MAS_PROCEDURE = `${MASTERS}/masProcedure`;
+export const MAS_MEDICAL_HISTORY = `${MASTERS}/masMedicalHistory`;
+

@@ -1,116 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
+import LoadingScreen from "../../../Components/Loading";
+import { MAS_PROCEDURE, MAS_DEPARTMENT, MAS_PROCEDURE_TYPE } from "../../../config/apiConfig";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 
 const ProcedureMaster = () => {
-  // Department options where dept type is OPD
-  const departmentOptions = [
-    { id: 1, name: "General Medicine", deptType: "OPD" },
-    { id: 2, name: "Pediatrics", deptType: "OPD" },
-    { id: 3, name: "Orthopedics", deptType: "OPD" },
-    { id: 4, name: "Cardiology", deptType: "IPD" },
-    { id: 5, name: "Neurology", deptType: "OPD" },
-    { id: 6, name: "Dermatology", deptType: "OPD" },
-    { id: 7, name: "ENT", deptType: "OPD" },
-    { id: 8, name: "Ophthalmology", deptType: "OPD" },
-    { id: 9, name: "Gynecology", deptType: "OPD" },
-    { id: 10, name: "Urology", deptType: "OPD" }
-  ];
-
-  // MAS Procedure Type options
-  const masProcedureTypeOptions = [
-    { id: 1, name: "Basic Care" },
-    { id: 2, name: "Advanced Care" },
-    { id: 3, name: "Therapeutic" },
-    { id: 4, name: "Diagnostic" },
-    { id: 5, name: "Preventive" },
-    { id: 6, name: "Emergency" },
-    { id: 7, name: "Post-operative" },
-    { id: 8, name: "Palliative" }
-  ];
-
-  const [procedureData, setProcedureData] = useState([
-    {
-      "id": 1,
-      "procedureCode": "Back",
-      "procedureName": "Back Care",
-      "department": "General Medicine",
-      "masProcedureType": "Basic Care",
-      "status": "y"
-    },
-    {
-      "id": 2,
-      "procedureCode": "Stam",
-      "procedureName": "Steam Inhalation",
-      "department": "Pediatrics",
-      "masProcedureType": "Therapeutic",
-      "status": "y"
-    },
-    {
-      "id": 3,
-      "procedureCode": "FC",
-      "procedureName": "Foot Care",
-      "department": "General Medicine",
-      "masProcedureType": "Basic Care",
-      "status": "y"
-    },
-    {
-      "id": 4,
-      "procedureCode": "No",
-      "procedureName": "Nebulization",
-      "department": "Pediatrics",
-      "masProcedureType": "Therapeutic",
-      "status": "y"
-    },
-    {
-      "id": 5,
-      "procedureCode": "Ene",
-      "procedureName": "Enema",
-      "department": "General Medicine",
-      "masProcedureType": "Basic Care",
-      "status": "y"
-    },
-    {
-      "id": 6,
-      "procedureCode": "WC",
-      "procedureName": "Wound Care",
-      "department": "Orthopedics",
-      "masProcedureType": "Advanced Care",
-      "status": "y"
-    },
-    {
-      "id": 7,
-      "procedureCode": "CPR",
-      "procedureName": "Cardiopulmonary Resuscitation",
-      "department": "Cardiology",
-      "masProcedureType": "Emergency",
-      "status": "y"
-    },
-    {
-      "id": 8,
-      "procedureCode": "IVT",
-      "procedureName": "IV Therapy",
-      "department": "General Medicine",
-      "masProcedureType": "Advanced Care",
-      "status": "y"
-    },
-    {
-      "id": 9,
-      "procedureCode": "DSG",
-      "procedureName": "Dressing Change",
-      "department": "Orthopedics",
-      "masProcedureType": "Basic Care",
-      "status": "y"
-    },
-    {
-      "id": 10,
-      "procedureCode": "MON",
-      "procedureName": "Vital Signs Monitoring",
-      "department": "General Medicine",
-      "masProcedureType": "Diagnostic",
-      "status": "y"
-    }
-  ]);
-
+  const [procedureData, setProcedureData] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ 
     isOpen: false, 
     procedureId: null, 
@@ -120,8 +16,8 @@ const ProcedureMaster = () => {
   const [formData, setFormData] = useState({
     procedureCode: "",
     procedureName: "",
-    department: "",
-    masProcedureType: "",
+    departmentId: "",
+    procedureTypeId: "",
   });
   
   const [searchQuery, setSearchQuery] = useState("");
@@ -130,79 +26,212 @@ const ProcedureMaster = () => {
   const [editingProcedure, setEditingProcedure] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageInput, setPageInput] = useState("");
-  const itemsPerPage = 5;
+  const [itemsPerPage] = useState(5);
+  const [pageInput, setPageInput] = useState("1");
 
-  // Filter OPD departments only
-  const opdDepartments = departmentOptions.filter(dept => dept.deptType === "OPD");
+  // Dropdown options
+  const [departmentOptions, setDepartmentOptions] = useState([]);
+  const [procedureTypeOptions, setProcedureTypeOptions] = useState([]);
+
+  const PROCEDURE_CODE_MAX_LENGTH = 8;
+  const PROCEDURE_NAME_MAX_LENGTH = 30;
+
+  // Function to format date as dd-MM-YYYY
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    
+    try {
+      const date = new Date(dateString);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return "N/A";
+      }
+      
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+      const year = date.getFullYear();
+      
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "N/A";
+    }
+  };
+
+  // Fetch dropdown data
+  const fetchDropdownData = async () => {
+    try {
+      // Fetch departments (OPD only, flag=1 for active)
+      const departmentResponse = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
+      if (departmentResponse && departmentResponse.response) {
+        // Filter for OPD departments only
+        const opdDepartments = departmentResponse.response.filter(dept => 
+          dept.departmentTypeName && dept.departmentTypeName.toUpperCase() === "OPD"
+        );
+        setDepartmentOptions(opdDepartments.map(dept => ({
+          id: dept.id,
+          name: dept.departmentName,
+          deptType: dept.departmentTypeName
+        })));
+      }
+
+      // Fetch procedure types (active only, flag=1)
+      const procedureTypeResponse = await getRequest(`${MAS_PROCEDURE_TYPE}/getAll/1`);
+      if (procedureTypeResponse && procedureTypeResponse.response) {
+        setProcedureTypeOptions(procedureTypeResponse.response.map(type => ({
+          id: type.procedureTypeId,
+          name: type.procedureTypeName
+        })));
+      }
+    } catch (err) {
+      console.error("Error fetching dropdown data:", err);
+      showPopup("Failed to load dropdown data", "error");
+    }
+  };
+
+  // Fetch procedure data
+  const fetchProcedureData = async (flag = 0) => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${MAS_PROCEDURE}/getAll/${flag}`);
+      if (response && response.response) {
+        const mappedData = response.response.map(item => ({
+          id: item.procedureId,
+          procedureCode: item.procedureCode,
+          procedureName: item.procedureName,
+          department: item.departmentName || "",
+          departmentId: item.departmentId,
+          procedureType: item.procedureTypeName || "",
+          procedureTypeId: item.procedureTypeId,
+          status: item.status,
+          lastUpdated: formatDate(item.lastChangedDate)
+        }));
+        setProcedureData(mappedData);
+      }
+    } catch (err) {
+      console.error("Error fetching procedure data:", err);
+      showPopup("Failed to load procedure data", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial data load
+  useEffect(() => {
+    fetchProcedureData(0);
+    fetchDropdownData();
+  }, []);
+
+  // Filter data based on search query
+  const filteredProcedureData = procedureData.filter(procedure =>
+    procedure.procedureCode?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    procedure.procedureName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    procedure.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    procedure.procedureType?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Calculate pagination values
+  const totalPages = Math.ceil(filteredProcedureData.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredProcedureData.slice(indexOfFirstItem, indexOfLastItem);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+    setPageInput("1");
+  }, [searchQuery]);
+
+  // Update page input when current page changes
+  useEffect(() => {
+    setPageInput(currentPage.toString());
+  }, [currentPage]);
+
+  // Validate form whenever formData changes
+  useEffect(() => {
+    const validateForm = () => {
+      const { procedureCode, procedureName, departmentId, procedureTypeId } = formData;
+      return (
+        procedureCode.trim() !== "" &&
+        procedureName.trim() !== "" &&
+        departmentId.trim() !== "" &&
+        procedureTypeId.trim() !== ""
+      );
+    };
+    setIsFormValid(validateForm());
+  }, [formData]);
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
-    setCurrentPage(1);
   };
-
-  const filteredProcedureData = procedureData.filter(procedure =>
-    procedure.procedureName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    procedure.procedureCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    procedure.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    procedure.masProcedureType.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const handleEdit = (procedure) => {
     setEditingProcedure(procedure);
-    setShowForm(true);
     setFormData({
-      procedureCode: procedure.procedureCode,
-      procedureName: procedure.procedureName,
-      department: procedure.department,
-      masProcedureType: procedure.masProcedureType,
+      procedureCode: procedure.procedureCode || "",
+      procedureName: procedure.procedureName || "",
+      departmentId: procedure.departmentId?.toString() || "",
+      procedureTypeId: procedure.procedureTypeId?.toString() || "",
     });
+    setShowForm(true);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
+    
+    try {
+      setLoading(true);
+      
+      // Check for duplicates (procedure code should be unique)
+      const isDuplicate = procedureData.some(
+        (procedure) =>
+          procedure.procedureCode.toLowerCase() === formData.procedureCode.toLowerCase() &&
+          (!editingProcedure || editingProcedure.id !== procedure.id)
+      );
 
-    const formElement = e.target;
-    const updatedProcedureCode = formElement.procedureCode.value;
-    const updatedProcedureName = formElement.procedureName.value;
-    const updatedDepartment = formElement.department.value;
-    const updatedMasProcedureType = formElement.masProcedureType.value;
+      if (isDuplicate) {
+        showPopup("Procedure code already exists!", "error");
+        setLoading(false);
+        return;
+      }
 
-    if (editingProcedure) {
-      setProcedureData(procedureData.map(procedure =>
-        procedure.id === editingProcedure.id
-          ? { 
-              ...procedure, 
-              procedureCode: updatedProcedureCode,
-              procedureName: updatedProcedureName,
-              department: updatedDepartment,
-              masProcedureType: updatedMasProcedureType,
-            }
-          : procedure
-      ));
-      showPopup("Procedure updated successfully!", "success");
-    } else {
-      const newProcedure = {
-        id: procedureData.length + 1,
-        procedureCode: updatedProcedureCode,
-        procedureName: updatedProcedureName,
-        department: updatedDepartment,
-        masProcedureType: updatedMasProcedureType,
-        status: "y"
+      // Prepare request data
+      const requestData = {
+        procedureCode: formData.procedureCode,
+        procedureName: formData.procedureName,
+        departmentId: parseInt(formData.departmentId),
+        procedureTypeId: parseInt(formData.procedureTypeId)
       };
-      setProcedureData([...procedureData, newProcedure]);
-      showPopup("Procedure added successfully!", "success");
-    }
 
-    setEditingProcedure(null);
-    setShowForm(false);
-    setFormData({ 
-      procedureCode: "", 
-      procedureName: "", 
-      department: "", 
-      masProcedureType: "", 
-    });
+      if (editingProcedure) {
+        // Update existing procedure
+        const response = await putRequest(`${MAS_PROCEDURE}/update/${editingProcedure.id}`, requestData);
+        
+        if (response && response.status === 200) {
+          fetchProcedureData();
+          showPopup("Procedure updated successfully!", "success");
+        }
+      } else {
+        // Add new procedure
+        const response = await postRequest(`${MAS_PROCEDURE}/create`, requestData);
+        
+        if (response && (response.status === 200 || response.status === 201)) {
+          fetchProcedureData();
+          showPopup("New procedure added successfully!", "success");
+        }
+      }
+      
+      setEditingProcedure(null);
+      setFormData({ procedureCode: "", procedureName: "", departmentId: "", procedureTypeId: "" });
+      setShowForm(false);
+    } catch (err) {
+      console.error("Error saving procedure data:", err);
+      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const showPopup = (message, type = 'info') => {
@@ -214,142 +243,163 @@ const ProcedureMaster = () => {
       }
     });
   };
-
+  
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, procedureId: id, newStatus });
   };
 
-  const handleConfirm = (confirmed) => {
+  const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.procedureId !== null) {
-      setProcedureData((prevData) =>
-        prevData.map((procedure) =>
-          procedure.id === confirmDialog.procedureId ? { ...procedure, status: confirmDialog.newStatus } : procedure
-        )
-      );
-      showPopup(`Procedure ${confirmDialog.newStatus === "y" ? 'activated' : 'deactivated'} successfully!`, "success");
+      try {
+        setLoading(true);
+        
+        const response = await putRequest(
+          `${MAS_PROCEDURE}/status/${confirmDialog.procedureId}?status=${confirmDialog.newStatus}`
+        );
+
+        if (response && response.response) {
+          // Update local state with formatted date
+          setProcedureData((prevData) =>
+            prevData.map((procedure) =>
+              procedure.id === confirmDialog.procedureId 
+                ? { 
+                    ...procedure, 
+                    status: confirmDialog.newStatus,
+                    lastUpdated: formatDate(new Date().toISOString())
+                  } 
+                : procedure
+            )
+          );
+          showPopup(`Procedure ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+        }
+      } catch (err) {
+        console.error("Error updating procedure status:", err);
+        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+      } finally {
+        setLoading(false);
+      }
     }
     setConfirmDialog({ isOpen: false, procedureId: null, newStatus: null });
   };
 
-  const handleActivate = () => {
-    if (editingProcedure) {
-      setProcedureData(procedureData.map(procedure =>
-        procedure.id === editingProcedure.id
-          ? { ...procedure, status: "y" }
-          : procedure
-      ));
-      setEditingProcedure(null);
-      setShowForm(false);
-      setFormData({ 
-        procedureCode: "", 
-        procedureName: "", 
-        department: "", 
-        masProcedureType: "", 
-      });
-      showPopup("Procedure activated successfully!", "success");
-    }
+  const handleInputChange = (e) => {
+    const { id, value } = e.target;
+    setFormData((prevData) => ({ ...prevData, [id]: value }));
   };
 
-  const currentItems = filteredProcedureData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const handleSelectChange = (e) => {
+    const { id, value } = e.target;
+    setFormData((prevData) => ({ ...prevData, [id]: value }));
+  };
+
+  const handleRefresh = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+    setPageInput("1");
+    fetchProcedureData(); // Refresh from API
+    fetchDropdownData(); // Refresh dropdowns
+  };
 
   const handlePageNavigation = () => {
-    const pageNumber = parseInt(pageInput, 10);
-    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
+    const pageNumber = parseInt(pageInput);
+    if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     } else {
-      showPopup("Please enter a valid page number.", "error");
+      showPopup(`Please enter a valid page number between 1 and ${totalPages}`, "error");
+      setPageInput(currentPage.toString());
     }
   };
 
-  const filteredTotalPages = Math.ceil(filteredProcedureData.length / itemsPerPage);
+  const handlePageInputChange = (e) => {
+    setPageInput(e.target.value);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handlePageNavigation();
+    }
+  };
 
   const renderPagination = () => {
     const pageNumbers = [];
     const maxVisiblePages = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
     if (endPage - startPage < maxVisiblePages - 1) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
 
+    // Add first page and ellipsis if needed
     if (startPage > 1) {
       pageNumbers.push(1);
-      if (startPage > 2) pageNumbers.push("...");
+      if (startPage > 2) {
+        pageNumbers.push("ellipsis-left");
+      }
     }
 
+    // Add page numbers
     for (let i = startPage; i <= endPage; i++) {
       pageNumbers.push(i);
     }
 
-    if (endPage < filteredTotalPages) {
-      if (endPage < filteredTotalPages - 1) pageNumbers.push("...");
-      pageNumbers.push(filteredTotalPages);
+    // Add last page and ellipsis if needed
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        pageNumbers.push("ellipsis-right");
+      }
+      pageNumbers.push(totalPages);
     }
 
-    return pageNumbers.map((number, index) => (
-      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-        {typeof number === "number" ? (
-          <button className="page-link" onClick={() => setCurrentPage(number)}>
+    return pageNumbers.map((number, index) => {
+      if (number === "ellipsis-left" || number === "ellipsis-right") {
+        return (
+          <li key={index} className="page-item disabled">
+            <span className="page-link">...</span>
+          </li>
+        );
+      }
+      
+      return (
+        <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
+          <button 
+            className="page-link" 
+            onClick={() => {
+              setCurrentPage(number);
+              setPageInput(number.toString());
+            }}
+          >
             {number}
           </button>
-        ) : (
-          <span className="page-link disabled">{number}</span>
-        )}
-      </li>
-    ));
-  };
-
-  const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    const updatedFormData = { ...formData, [id]: value };
-    setFormData(updatedFormData);
-    
-    // Validate form
-    const isValid = updatedFormData.procedureCode.trim() !== "" && 
-                    updatedFormData.procedureName.trim() !== "" && 
-                    updatedFormData.department.trim() !== "" && 
-                    updatedFormData.masProcedureType.trim() !== "";
-    setIsFormValid(isValid);
-  };
-
-  const handleCreateFormSubmit = (e) => {
-    e.preventDefault();
-    if (formData.procedureCode && formData.procedureName && formData.department && formData.masProcedureType) {
-      const newProcedure = {
-        id: procedureData.length + 1,
-        procedureCode: formData.procedureCode,
-        procedureName: formData.procedureName,
-        department: formData.department,
-        masProcedureType: formData.masProcedureType,
-        status: "y"
-      };
-      setProcedureData([...procedureData, newProcedure]);
-      setFormData({ 
-        procedureCode: "", 
-        procedureName: "", 
-        department: "", 
-        masProcedureType: "", 
-      });
-      setShowForm(false);
-      showPopup("Procedure added successfully!", "success");
-    } else {
-      showPopup("Please fill out all required fields.", "error");
-    }
-  };
-
-  const handleReset = () => {
-    setFormData({ 
-      procedureCode: "", 
-      procedureName: "", 
-      department: "", 
-      masProcedureType: "", 
+        </li>
+      );
     });
-    setEditingProcedure(null);
-    setIsFormValid(false);
+  };
+
+  // Handle activate for inactive records in edit mode
+  const handleActivate = async () => {
+    if (editingProcedure && editingProcedure.status === "n") {
+      try {
+        setLoading(true);
+        
+        const response = await putRequest(
+          `${MAS_PROCEDURE}/status/${editingProcedure.id}?status=y`
+        );
+
+        if (response && response.response) {
+          fetchProcedureData();
+          showPopup("Procedure activated successfully!", "success");
+          setEditingProcedure(null);
+          setFormData({ procedureCode: "", procedureName: "", departmentId: "", procedureTypeId: "" });
+          setShowForm(false);
+        }
+      } catch (err) {
+        console.error("Error activating procedure:", err);
+        showPopup(`Failed to activate: ${err.response?.data?.message || err.message}`, "error");
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   return (
@@ -358,49 +408,51 @@ const ProcedureMaster = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title">PROCEDURE CARE MASTER</h4>
+              <h4 className="card-title">Procedure Care Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                {!showForm && (
-                  <form className="d-inline-block searchform me-4" role="search">
-                    <div className="input-group searchinput">
-                      <input
-                        type="search"
-                        className="form-control"
-                        placeholder="Search"
-                        aria-label="Search"
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                      />
-                      <span className="input-group-text" id="search-icon">
-                        <i className="fa fa-search"></i>
-                      </span>
-                    </div>
-                  </form>
-                )}
+                <form className="d-inline-block searchform me-4" role="search">
+                  <div className="input-group searchinput">
+                    <input
+                      type="search"
+                      className="form-control"
+                      placeholder="Search procedure code, name, department, or procedure type..."
+                      aria-label="Search"
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                    />
+                    <span className="input-group-text" id="search-icon">
+                      <i className="fa fa-search"></i>
+                    </span>
+                  </div>
+                </form>
+
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
-                      <button type="button" className="btn btn-success me-2">
-                        <i className="mdi mdi-file-document-outline"></i> GENERATE REPORT 
+                      <button 
+                        type="button" 
+                        className="btn btn-success me-2"
+                        onClick={() => {
+                          setEditingProcedure(null);
+                          setFormData({ procedureCode: "", procedureName: "", departmentId: "", procedureTypeId: "" });
+                          setShowForm(true);
+                        }}
+                      >
+                        <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button type="button" className="btn btn-success me-2" onClick={() => {
-                        setShowForm(true);
-                        setEditingProcedure(null);
-                        setFormData({ 
-                          procedureCode: "", 
-                          procedureName: "", 
-                          department: "", 
-                          masProcedureType: "", 
-                        });
-                      }}>
-                        <i className="mdi mdi-plus"></i> ADD
+                      <button 
+                        type="button" 
+                        className="btn btn-success me-2 flex-shrink-0"
+                        onClick={handleRefresh}
+                      >
+                        <i className="mdi mdi-refresh"></i> Show All
+                      </button>
+                      <button type="button" className="btn btn-success me-2">
+                        <i className="mdi mdi-file-document-outline"></i> Generate Report
                       </button>
                     </>
                   ) : (
-                    <button type="button" className="btn btn-secondary" onClick={() => {
-                      setShowForm(false);
-                      handleReset();
-                    }}>
+                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
                       <i className="mdi mdi-arrow-left"></i> Back
                     </button>
                   )}
@@ -408,184 +460,239 @@ const ProcedureMaster = () => {
               </div>
             </div>
             <div className="card-body">
-              {!showForm ? (
-                <div className="table-responsive packagelist">
-                  <table className="table table-bordered table-hover align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Procedure Care Code</th>
-                        <th>Procedure Care Name</th>
-                        <th>Department</th>
-                        <th> Procedure Type</th>
-                        <th>Status</th>
-                        <th>Edit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentItems.map((procedure) => (
-                        <tr key={procedure.id}>
-                          <td>{procedure.procedureCode}</td>
-                          <td>{procedure.procedureName}</td>
-                          <td>{procedure.department}</td>
-                          <td>{procedure.masProcedureType}</td>
-
-                          <td>
-                            <div className="form-check form-switch">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                checked={procedure.status === "y"}
-                                onChange={() => handleSwitchChange(procedure.id, procedure.status === "y" ? "n" : "y")}
-                                id={`switch-${procedure.id}`}
-                              />
-                              <label
-                                className="form-check-label px-0"
-                                htmlFor={`switch-${procedure.id}`}
-                                onClick={() => handleSwitchChange(procedure.id, procedure.status === "y" ? "n" : "y")}
-                              >
-                                {procedure.status === "y" ? 'Active' : 'Inactive'}
-                              </label>
-                            </div>
-                          </td>
-                          <td>
-                            <button
-                              className="btn btn-sm btn-success me-2"
-                              onClick={() => handleEdit(procedure)}
-                              disabled={procedure.status !== "y"}
-                            >
-                              <i className="fa fa-pencil"></i>
-                            </button>
-                          </td>
+              {loading ? (
+                <LoadingScreen />
+              ) : !showForm ? (
+                <>
+                  <div className="table-responsive packagelist">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Procedure Code</th>
+                          <th>Procedure Name</th>
+                          <th>Department</th>
+                          <th>Procedure Type</th>
+                          <th>Status</th>
+                          <th>Last Updated</th>
+                          <th>Edit</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <nav className="d-flex justify-content-between align-items-center mt-3">
-                    <div>
-                      <span>
-                        Page {currentPage} of {filteredTotalPages} | Total Records: {filteredProcedureData.length}
-                      </span>
-                    </div>
-                    <ul className="pagination mb-0">
-                      <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                      </thead>
+                      <tbody>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((procedure) => (
+                            <tr key={procedure.id}>
+                              <td>{procedure.procedureCode || "N/A"}</td>
+                              <td>{procedure.procedureName}</td>
+                              <td>{procedure.department}</td>
+                              <td>{procedure.procedureType}</td>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={procedure.status === "y"}
+                                    onChange={() => handleSwitchChange(procedure.id, procedure.status === "y" ? "n" : "y")}
+                                    id={`switch-${procedure.id}`}
+                                  />
+                                  <label
+                                    className="form-check-label px-0"
+                                    htmlFor={`switch-${procedure.id}`}
+                                  >
+                                    {procedure.status === "y" ? 'Active' : 'Inactive'}
+                                  </label>
+                                </div>
+                              </td>
+                              <td>{procedure.lastUpdated}</td>
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-success me-2"
+                                  onClick={() => handleEdit(procedure)}
+                                  disabled={procedure.status !== "y"}
+                                >
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="7" className="text-center">No procedure data found</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {filteredProcedureData.length > 0 && (
+                    <nav className="d-flex justify-content-between align-items-center mt-3">
+                      <div>
+                        <span className="text-muted">
+                          Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredProcedureData.length)} of {filteredProcedureData.length} entries
+                        </span>
+                      </div>
+                      
+                      <ul className="pagination mb-0">
+                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={() => {
+                              if (currentPage > 1) {
+                                setCurrentPage(currentPage - 1);
+                              }
+                            }}
+                            disabled={currentPage === 1}
+                          >
+                            &laquo; Previous
+                          </button>
+                        </li>
+                        
+                        {renderPagination()}
+                        
+                        <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={() => {
+                              if (currentPage < totalPages) {
+                                setCurrentPage(currentPage + 1);
+                              }
+                            }}
+                            disabled={currentPage === totalPages}
+                          >
+                            Next &raquo;
+                          </button>
+                        </li>
+                      </ul>
+                      
+                      <div className="d-flex align-items-center">
+                        <span className="me-2">Go to:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max={totalPages}
+                          value={pageInput}
+                          onChange={handlePageInputChange}
+                          onKeyPress={handleKeyPress}
+                          className="form-control me-2"
+                          style={{ width: "80px" }}
+                        />
                         <button
-                          className="page-link"
-                          onClick={() => setCurrentPage(currentPage - 1)}
-                          disabled={currentPage === 1}
+                          className="btn btn-primary"
+                          onClick={handlePageNavigation}
                         >
-                          &laquo; Previous
+                          Go
                         </button>
-                      </li>
-                      {renderPagination()}
-                      <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                        <button
-                          className="page-link"
-                          onClick={() => setCurrentPage(currentPage + 1)}
-                          disabled={currentPage === filteredTotalPages}
-                        >
-                          Next &raquo;
-                        </button>
-                      </li>
-                    </ul>
-                    <div className="d-flex align-items-center">
-                      <input
-                        type="number"
-                        min="1"
-                        max={filteredTotalPages}
-                        value={pageInput}
-                        onChange={(e) => setPageInput(e.target.value)}
-                        placeholder="Go to page"
-                        className="form-control me-2"
-                      />
-                      <button
-                        className="btn btn-primary"
-                        onClick={handlePageNavigation}
-                      >
-                        Go
-                      </button>
-                    </div>
-                  </nav>
-                </div>
+                      </div>
+                    </nav>
+                  )}
+                </>
               ) : (
-                <form className="forms row " onSubmit={editingProcedure ? handleSave : handleCreateFormSubmit}>
-                  <div className="form-group col-md-4 ">
+                <form className="forms row" onSubmit={handleSave}>
+                  <div className="form-group col-md-4">
                     <label>Procedure Code <span className="text-danger">*</span></label>
                     <input
                       type="text"
-                      className="form-control"
+                      className="form-control mt-1"
                       id="procedureCode"
                       name="procedureCode"
                       placeholder="Enter procedure code"
                       value={formData.procedureCode}
                       onChange={handleInputChange}
+                      maxLength={PROCEDURE_CODE_MAX_LENGTH}
                       required
+                      disabled={loading}
                     />
+                    {/* <small className="text-muted">
+                      {formData.procedureCode.length}/{PROCEDURE_CODE_MAX_LENGTH} characters (max)
+                    </small> */}
                   </div>
-
+                  
                   <div className="form-group col-md-4">
                     <label>Procedure Name <span className="text-danger">*</span></label>
                     <input
                       type="text"
-                      className="form-control"
+                      className="form-control mt-1"
                       id="procedureName"
                       name="procedureName"
                       placeholder="Enter procedure name"
                       value={formData.procedureName}
                       onChange={handleInputChange}
+                      maxLength={PROCEDURE_NAME_MAX_LENGTH}
                       required
+                      disabled={loading}
                     />
+                    {/* <small className="text-muted">
+                      {formData.procedureName.length}/{PROCEDURE_NAME_MAX_LENGTH} characters (max)
+                    </small> */}
                   </div>
-
+                  
                   <div className="form-group col-md-4">
                     <label>Department <span className="text-danger">*</span></label>
                     <select
-                      className="form-control"
-                      id="department"
-                      name="department"
-                      value={formData.department}
-                      onChange={handleInputChange}
+                      className="form-select mt-1"
+                      id="departmentId"
+                      name="departmentId"
+                      value={formData.departmentId}
+                      onChange={handleSelectChange}
                       required
+                      disabled={loading || departmentOptions.length === 0}
                     >
                       <option value="">Select Department</option>
-                      {opdDepartments.map(dept => (
-                        <option key={dept.id} value={dept.name}>{dept.name}</option>
+                      {departmentOptions.map((dept) => (
+                        <option key={dept.id} value={dept.id}>
+                          {dept.name} ({dept.deptType})
+                        </option>
                       ))}
                     </select>
+                    {/* <small className="text-muted">Select OPD department only</small> */}
                   </div>
-
-                  <div className="form-group col-md-4 mt-2">
-                    <label> Procedure Type <span className="text-danger">*</span></label>
+                  
+                  <div className="form-group col-md-4 mt-3">
+                    <label>Procedure Type <span className="text-danger">*</span></label>
                     <select
-                      className="form-control"
-                      id="masProcedureType"
-                      name="masProcedureType"
-                      value={formData.masProcedureType}
-                      onChange={handleInputChange}
+                      className="form-select mt-1"
+                      id="procedureTypeId"
+                      name="procedureTypeId"
+                      value={formData.procedureTypeId}
+                      onChange={handleSelectChange}
                       required
+                      disabled={loading || procedureTypeOptions.length === 0}
                     >
-                      <option value="">Select MAS Procedure Type</option>
-                      {masProcedureTypeOptions.map(type => (
-                        <option key={type.id} value={type.name}>{type.name}</option>
+                      <option value="">Select Procedure Type</option>
+                      {procedureTypeOptions.map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.name}
+                        </option>
                       ))}
                     </select>
+                    {/* <small className="text-muted">Select type of procedure</small> */}
                   </div>
-
-                 
-
-                  <div className="form-group col-md-12 d-flex justify-content-end mt-4">
-                    <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                      {editingProcedure ? "UPDATE" : "ADD"}
+                  
+                  <div className="form-group col-md-12 d-flex justify-content-end mt-3">
+                    <button 
+                      type="submit" 
+                      className="btn btn-primary me-2" 
+                      disabled={!isFormValid || loading}
+                    >
+                      {loading ? "Saving..." : (editingProcedure ? 'Update' : 'Save')}
                     </button>
+                    
                     {editingProcedure && editingProcedure.status === "n" && (
                       <button 
                         type="button" 
                         className="btn btn-success me-2" 
                         onClick={handleActivate}
+                        disabled={loading}
                       >
-                        ACTIVATE
+                        Activate
                       </button>
                     )}
-                    <button type="button" className="btn btn-danger me-2">
+                    
+                    <button 
+                      type="button" 
+                      className="btn btn-danger" 
+                      onClick={() => setShowForm(false)}
+                      disabled={loading}
+                    >
                       Cancel
                     </button>
                   </div>
@@ -601,23 +708,47 @@ const ProcedureMaster = () => {
               )}
               
               {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog">
-                  <div className="modal-dialog" role="document">
+                <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                  <div className="modal-dialog modal-dialog-centered" role="document">
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="close" onClick={() => handleConfirm(false)}>
-                          <span>&times;</span>
-                        </button>
+                        <button 
+                          type="button" 
+                          className="btn-close" 
+                          onClick={() => handleConfirm(false)} 
+                          aria-label="Close"
+                          disabled={loading}
+                        ></button>
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{procedureData.find(procedure => procedure.id === confirmDialog.procedureId)?.procedureName}</strong>?
+                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
+                          <strong> {procedureData.find(procedure => procedure.id === confirmDialog.procedureId)?.procedureName}</strong> procedure?
                         </p>
+                        {/* <p className="text-muted">
+                          {confirmDialog.newStatus === "y" 
+                            ? "This will make the procedure available for use." 
+                            : "This will hide the procedure from selection."}
+                        </p> */}
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary" 
+                          onClick={() => handleConfirm(false)}
+                          disabled={loading}
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn btn-primary" 
+                          onClick={() => handleConfirm(true)}
+                          disabled={loading}
+                        >
+                          {loading ? "Processing..." : "Confirm"}
+                        </button>
                       </div>
                     </div>
                   </div>
