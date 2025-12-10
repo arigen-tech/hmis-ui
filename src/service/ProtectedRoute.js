@@ -109,6 +109,8 @@ const validRoutes = [
   "/PatientAdmission",
   "/TokenDisplay",
   "/NewPatientAppointment",
+  "/MealTypeMaster",
+  "/DietTypeMaster",
 
   
 ];
