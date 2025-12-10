@@ -8,6 +8,8 @@ import { getRequest, putRequest, postRequest } from "../../../service/apiService
 import LoadingScreen from "../../../Components/Loading/index";
 import Popup from "../../../Components/popup";
 import DuplicatePopup from "../GeneralMedicineWaitingList/DuplicatePopup";
+import MasFamilyModel from "../GeneralMedicineWaitingList/FaimalyHistryModel"
+
 
 const GeneralMedicineWaitingList = () => {
   const [waitingList, setWaitingList] = useState([])
@@ -34,6 +36,10 @@ const GeneralMedicineWaitingList = () => {
   const [lastPage, setLastPage] = useState(false);
   const [search, setSearch] = useState("");
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [showModelPopup, setModelShowPopup] = useState(false);
+  const [popupType, setPopupType] = useState("");
+  const [selectedItems, setSelectedItems] = useState([]);
+
   // Ref to detect click outside
   const dropdownRef = useRef(null);
 
@@ -159,12 +165,12 @@ const GeneralMedicineWaitingList = () => {
   // Handle ward category selection
   const handleWardCategoryChange = (categoryId) => {
     setWardCategory(categoryId)
-    
+
     // Reset ward name and bed counts
     setWardName("")
     setOccupiedBeds(0)
     setVacantBeds(0)
-    
+
     // Set default care level based on ward category
     if (wardData[categoryId]) {
       const defaultCareLevel = wardData[categoryId].defaultCareLevel
@@ -172,7 +178,7 @@ const GeneralMedicineWaitingList = () => {
       if (careLevel) {
         setAdmissionCareLevel(careLevel.id)
       }
-      
+
       // Populate ward departments
       setWardDepartments(wardData[categoryId].departments || [])
     } else {
@@ -183,7 +189,7 @@ const GeneralMedicineWaitingList = () => {
   // Handle ward name/department selection
   const handleWardNameChange = (deptId) => {
     setWardName(deptId)
-    
+
     if (wardCategory && wardData[wardCategory]) {
       const selectedDept = wardData[wardCategory].departments.find(d => d.id === deptId)
       if (selectedDept) {
@@ -442,6 +448,7 @@ const GeneralMedicineWaitingList = () => {
     clinicalExamination: "",
     pastHistory: "",
     familyHistory: "",
+    treatmentAdvice: "",
     mlcCase: false,
   })
 
@@ -483,6 +490,69 @@ const GeneralMedicineWaitingList = () => {
       infectiousDisease: false,
     },
   ])
+
+  const openPopup = (type) => {
+    setPopupType(type);
+    setModelShowPopup(true);
+  };
+
+  const handleModelClose = () => {
+    setModelShowPopup(false);
+    setSelectedItems([]);
+  };
+
+  const handleOk = () => {
+    if (selectedItems.length === 0) {
+      alert("Please select at least one item.");
+      return;
+    }
+
+    const newNames = selectedItems.map((x) => x.medicalHistoryName);
+
+    const mergeValues = (oldValue, newValues) => {
+      const oldArr = oldValue ? oldValue.split(",").map(x => x.trim()) : [];
+      const merged = Array.from(new Set([...oldArr, ...newValues]));
+      return merged.join(", ");
+    };
+
+    if (popupType === "symptoms") {
+      setFormData({
+        ...formData,
+        patientSymptoms: mergeValues(formData.patientSymptoms, newNames),
+      });
+    }
+
+    if (popupType === "past") {
+      setFormData({
+        ...formData,
+        pastHistory: mergeValues(formData.pastHistory, newNames),
+      });
+    }
+
+    if (popupType === "family") {
+      setFormData({
+        ...formData,
+        familyHistory: mergeValues(formData.familyHistory, newNames),
+      });
+    }
+
+    setModelShowPopup(false);
+    setSelectedItems([]);
+  };
+
+
+
+  const handleSelect = (item) => {
+    setSelectedItems((prev) => {
+      const exists = prev.find((x) => x.medicalHistoryId === item.medicalHistoryId);
+
+      if (exists) {
+        return prev.filter((x) => x.medicalHistoryId !== item.medicalHistoryId);
+      } else {
+        return [...prev, item];
+      }
+    });
+  };
 
   const [templates, setTemplates] = useState(["Blood Test Template", "Cardiac Template", "Diabetes Template"])
   const [treatmentAdviceTemplates, setTreatmentAdviceTemplates] = useState([
@@ -1150,8 +1220,26 @@ const GeneralMedicineWaitingList = () => {
       const data = await getRequest(`${OPD_PATIENT}/getOpdByVisit?visitId=${visitId}`);
 
       if (data?.status === 200 && data?.response) {
-        setOpdVitalsData(data.response);
+
+        const res = data.response;
+
+        setOpdVitalsData(res);
         setVitalsAvlaible(true);
+
+        setFormData(prev => ({
+          ...prev,
+          height: res.height || "",
+          weight: res.weight || "",
+          temperature: res.temperature || "",
+          systolicBP: res.bpSystolic || "",
+          diastolicBP: res.bpDiastolic || "",
+          pulse: res.pulse || "",
+          bmi: res.bmi || "",
+          rr: res.rr || "",
+          spo2: res.spo2 || "",
+          mlcCase: res.mlcFlag === "s" ? true : false,
+        }));
+
         return;
       }
 
@@ -1357,14 +1445,18 @@ const GeneralMedicineWaitingList = () => {
       //console.log("inv items", investigationItems)
 
       // Treatment mapping → backend format
-      const treatmentList = treatmentItems.map(item => ({
-        itemId: item.drugId,
-        dosage: item.dosage,
-        frequency: item.frequency,
-        days: item.days,
-        total: item.total,
-        instraction: item.instruction
-      }));
+      const treatmentList = treatmentItems.map(item => {
+        const freq = allFrequencies.find(f => f.frequencyId == item.frequency);
+        return {
+          itemId: item.drugId,
+          dosage: item.dosage,
+          frequency: freq?.frequencyName || "",     // send NAME
+          days: item.days,
+          total: item.total,
+          instraction: item.instruction
+        };
+      });
+
 
 
       //console.log("treatmentItems", treatmentItems)
@@ -1402,6 +1494,7 @@ const GeneralMedicineWaitingList = () => {
 
         // ===== Treatment =====
         treatment: treatmentList,
+        treatmentAdvice: generalTreatmentAdvice,
 
         // ===== Doctor's Remarks =====
         doctorRemarks: doctorRemarksText,
@@ -2271,104 +2364,150 @@ const GeneralMedicineWaitingList = () => {
 
               <div className="card-body">
                 {/* Clinical History Section */}
-                <div className="card mb-3">
+                <div className="card mb-3 shadow-sm">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3 bg-light d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("clinicalHistory")}
                   >
                     <h6 className="mb-0 fw-bold">Clinical History</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.clinicalHistory ? "−" : "+"}</span>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.clinicalHistory ? "−" : "+"}
+                    </span>
                   </div>
+
                   {expandedSections.clinicalHistory && (
                     <div className="card-body">
                       <div className="row">
+
+                        {/* Sidebar Buttons */}
                         <div className="col-md-3">
                           <div className="d-flex flex-column gap-2">
-                            <button
-                              className={`btn btn-sm ${selectedHistoryType === "previous-visits" ? "btn-primary" : "btn-outline-primary"}`}
-                              onClick={() => handleHistoryTypeClick("previous-visits")}
-                            >
-                              Previous Visits
-                            </button>
-                            <button
-                              className={`btn btn-sm ${selectedHistoryType === "previous-vitals" ? "btn-primary" : "btn-outline-primary"}`}
-                              onClick={() => handleHistoryTypeClick("previous-vitals")}
-                            >
-                              Previous Vitals
-                            </button>
-                            <button
-                              className={`btn btn-sm ${selectedHistoryType === "previous-lab" ? "btn-primary" : "btn-outline-primary"}`}
-                              onClick={() => handleHistoryTypeClick("previous-lab")}
-                            >
-                              Previous Lab Investigation
-                            </button>
-                            <button
-                              className={`btn btn-sm ${selectedHistoryType === "previous-ecg" ? "btn-primary" : "btn-outline-primary"}`}
-                              onClick={() => handleHistoryTypeClick("previous-ecg")}
-                            >
-                              Previous ECG Investigation
-                            </button>
-                            <button
-                              className={`btn btn-sm ${selectedHistoryType === "audit-history" ? "btn-primary" : "btn-outline-primary"}`}
-                              onClick={() => handleHistoryTypeClick("audit-history")}
-                            >
-                              Audit History
-                            </button>
+                            {[
+                              { id: "previous-visits", label: "Previous Visits" },
+                              { id: "previous-vitals", label: "Previous Vitals" },
+                              { id: "previous-lab", label: "Previous Lab Investigation" },
+                              { id: "previous-ecg", label: "Previous ECG Investigation" },
+                              { id: "audit-history", label: "Audit History" },
+                            ].map((btn) => (
+                              <button
+                                key={btn.id}
+                                className={`btn btn-sm ${selectedHistoryType === btn.id ? "btn-primary" : "btn-outline-primary"
+                                  }`}
+                                onClick={() => handleHistoryTypeClick(btn.id)}
+                              >
+                                {btn.label}
+                              </button>
+                            ))}
                           </div>
                         </div>
+
+                        {/* Input Area */}
                         <div className="col-md-9">
-                          <div className="row">
-                            <div className="col-md-6">
-                              <label className="form-label fw-bold">Patient signs & symptoms</label>
-                              <input
-                                type="text"
-                                className="form-control"
-                                name="patientSymptoms"
-                                value={formData.patientSymptoms}
-                                onChange={handleChange}
-                                placeholder="Enter symptoms"
-                              />
+
+                          {/* Symptoms */}
+                          <div className="mb-3">
+                            <div className="d-flex justify-content-between align-items-center">
+                              <label className="form-label fw-bold m-0">
+                                Patient signs & symptoms
+                              </label>
+
+                              <button
+                                className="btn btn-sm btn-outline-success p-1 px-2"
+                                onClick={() => openPopup("symptoms")}
+                              >
+                                +
+                              </button>
                             </div>
-                            <div className="col-md-6  mb-3 ">
-                              <label className="form-label fw-bold">Clinical Examination</label>
-                              <textarea
-                                className="form-control"
-                                rows={3}
-                                name="clinicalExamination"
-                                value={formData.clinicalExamination}
-                                onChange={handleChange}
-                                placeholder="Enter clinical examination details"
-                              ></textarea>
-                            </div>
-                            <div className="col-md-6">
-                              <label className="form-label fw-bold">Past History</label>
-                              <textarea
-                                className="form-control"
-                                value={formData.pastHistory}
-                                onChange={handleChange}
-                                rows={3}
-                                name="pastHistory"
-                                placeholder="Enter Past History"
-                              ></textarea>
-                            </div>
-                            <div className="col-md-6">
-                              <label className="form-label fw-bold">Family History</label>
-                              <textarea
-                                className="form-control"
-                                rows={3}
-                                value={formData.familyHistory}
-                                onChange={handleChange}
-                                name="familyHistory"
-                                placeholder="Enter Family History"
-                              ></textarea>
-                            </div>
+                            <input
+                              type="text"
+                              className="form-control mt-3"
+                              name="patientSymptoms"
+                              value={formData.patientSymptoms}
+                              onChange={handleChange}
+                              placeholder="Enter symptoms"
+                            />
                           </div>
+
+                          {/* Clinical Examination */}
+                          <div className="mb-3">
+                            <label className="form-label fw-bold">Clinical Examination</label>
+                            <textarea
+                              className="form-control"
+                              rows={3}
+                              name="clinicalExamination"
+                              value={formData.clinicalExamination}
+                              onChange={handleChange}
+                              placeholder="Enter details"
+                            ></textarea>
+                          </div>
+
+                          {/* Past */}
+                          <div className="mb-3">
+                            <div className="d-flex justify-content-between align-items-center">
+                              <label className="form-label fw-bold m-0">
+                                Past History
+                              </label>
+                              <button
+                                className="btn btn-sm btn-outline-success p-1 px-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openPopup("past");
+                                }}
+                              >
+                                +
+                              </button>
+                            </div>
+                            <textarea
+                              className="form-control mt-3"
+                              rows={3}
+                              name="pastHistory"
+                              value={formData.pastHistory}
+                              onChange={handleChange}
+                              placeholder="Enter Past History"
+                            ></textarea>
+                          </div>
+
+                          {/* Family */}
+                          <div className="mb-3">
+                            <div className="d-flex justify-content-between align-items-center">
+                              <label className="form-label fw-bold m-0">
+                                Family History
+                              </label>
+                              <button
+                                className="btn btn-sm btn-outline-success p-1 px-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openPopup("family");
+                                }}
+                              >
+                                +
+                              </button>
+                            </div>
+                            <textarea
+                              className="form-control mt-3"
+                              rows={3}
+                              name="familyHistory"
+                              value={formData.familyHistory}
+                              onChange={handleChange}
+                              placeholder="Enter Family History"
+                            ></textarea>
+                          </div>
+
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
+
+                <MasFamilyModel
+                  show={showModelPopup}
+                  popupType={popupType}
+                  onClose={handleModelClose}
+                  onSelect={handleSelect}
+                  onOk={handleOk}
+                  selectedItems={selectedItems}
+                />
 
                 {/* Vital Detail Section */}
                 <div className="card mb-3">
@@ -3255,16 +3394,17 @@ const GeneralMedicineWaitingList = () => {
                                     className="form-select"
                                     value={row.frequency || ""}
                                     onChange={(e) =>
-                                      handleTreatmentChange(index, "frequency", Number(e.target.value))
+                                      handleTreatmentChange(index, "frequency", e.target.value)
                                     }
                                   >
                                     <option value="">Select..</option>
                                     {allFrequencies.map((f) => (
-                                      <option key={f.frequencyId} value={f.frequencyId}>
+                                      <option key={f.frequencyId} value={f.frequencyName}>
                                         {f.frequencyName}
                                       </option>
                                     ))}
                                   </select>
+
                                 </td>
 
                                 <td style={{ width: "70px" }}>
@@ -3792,7 +3932,7 @@ const GeneralMedicineWaitingList = () => {
                                     onChange={(e) => setAdmissionDate(e.target.value)}
                                   />
                                 </div>
-                                
+
                                 <div className="col-md-3">
                                   <label className="form-label fw-bold">Notes <span className="text-danger">*</span></label>
                                   <input
@@ -4258,48 +4398,48 @@ const GeneralMedicineWaitingList = () => {
 
                   {/* BODY */}
                   {expandedSections.followUp && (
-  <div className="card-body">
-    <div className="d-flex align-items-center justify-content-between">
+                    <div className="card-body">
+                      <div className="d-flex align-items-center justify-content-between">
 
-      {/* LEFT SIDE: Checkbox + Label */}
-      <div className="d-flex align-items-center gap-2">
-        <input
-          type="checkbox"
-          className="form-check-input m-0"
-        />
-        <h6 className="fw-bold mb-0">Follow Up</h6>
-      </div>
+                        {/* LEFT SIDE: Checkbox + Label */}
+                        <div className="d-flex align-items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="form-check-input m-0"
+                          />
+                          <h6 className="fw-bold mb-0">Follow Up</h6>
+                        </div>
 
-      {/* RIGHT SIDE: Number of Days + Next Date */}
-      <div className="d-flex align-items-center gap-4">
+                        {/* RIGHT SIDE: Number of Days + Next Date */}
+                        <div className="d-flex align-items-center gap-4">
 
-        {/* Number of Days */}
-        <div className="d-flex align-items-center gap-2">
-          <label className="form-label mb-0">Number of days</label>
-          <select className="form-select" style={{ width: "150px" }}>
-            <option value="">Select</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-          </select>
-        </div>
+                          {/* Number of Days */}
+                          <div className="d-flex align-items-center gap-2">
+                            <label className="form-label mb-0">Number of days</label>
+                            <select className="form-select" style={{ width: "150px" }}>
+                              <option value="">Select</option>
+                              <option value="1">1</option>
+                              <option value="2">2</option>
+                              <option value="3">3</option>
+                              <option value="4">4</option>
+                              <option value="5">5</option>
+                            </select>
+                          </div>
 
-        {/* Next Date */}
-        <div className="d-flex align-items-center gap-2">
-          <label className="form-label mb-0">Next date</label>
-          <input
-            type="date"
-            className="form-control"
-            style={{ width: "170px" }}
-          />
-        </div>
+                          {/* Next Date */}
+                          <div className="d-flex align-items-center gap-2">
+                            <label className="form-label mb-0">Next date</label>
+                            <input
+                              type="date"
+                              className="form-control"
+                              style={{ width: "170px" }}
+                            />
+                          </div>
 
-      </div>
-    </div>
-  </div>
-)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
 
 
