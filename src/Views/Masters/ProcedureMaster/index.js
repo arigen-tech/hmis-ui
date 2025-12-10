@@ -447,9 +447,9 @@ const ProcedureMaster = () => {
                       >
                         <i className="mdi mdi-refresh"></i> Show All
                       </button>
-                      <button type="button" className="btn btn-success me-2">
+                      {/* <button type="button" className="btn btn-success me-2">
                         <i className="mdi mdi-file-document-outline"></i> Generate Report
-                      </button>
+                      </button> */}
                     </>
                   ) : (
                     <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>

@@ -201,4 +201,5 @@ export const MAS_BED = `${MASTERS}/masBed`;
 export const MAS_PROCEDURE_TYPE = `${MASTERS}/masProcedureType`;
 export const MAS_PROCEDURE = `${MASTERS}/masProcedure`;
 export const MAS_MEDICAL_HISTORY = `${MASTERS}/masMedicalHistory`;
+export const MAS_TREATMENT_ADVISE = `${MASTERS}/masTreatmentAdvise`;
 
