@@ -16,7 +16,7 @@ const ItemTypeManagement = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
-  const itemsPerPage = 4
+  const itemsPerPage = 5
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, itemTypeId: null, newStatus: false })
   const [popupMessage, setPopupMessage] = useState(null)
   const [showForm, setShowForm] = useState(false)
@@ -371,9 +371,9 @@ const ItemTypeManagement = () => {
                     <button type="button" className="btn btn-success me-1" onClick={() => setShowForm(true)}>
                       <i className="mdi mdi-plus"></i> ADD
                     </button>
-                    <button type="button" className="btn btn-success me-2">
+                    {/* <button type="button" className="btn btn-success me-2">
                       <i className="mdi mdi-plus"></i> Generate Report
-                    </button>
+                    </button> */}
                   </div>
                 </div>
               )}

@@ -211,9 +211,9 @@ const RCMC = () => {
                                             <button type="button" className="btn btn-success me-2 flex-shrink-0">
                                                 <i className="mdi mdi-plus"></i> Show All
                                             </button>
-                                            <button type="button" className="btn btn-success me-2" onClick={() => setShowModal(true)}>
+                                            {/* <button type="button" className="btn btn-success me-2" onClick={() => setShowModal(true)}>
                                                 <i className="mdi mdi-plus"></i> Reports
-                                            </button>
+                                            </button> */}
                                         </>
                                     ) : (
                                         <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>

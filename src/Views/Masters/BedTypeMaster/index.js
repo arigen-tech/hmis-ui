@@ -512,9 +512,9 @@ const BedTypeMaster = () => {
                       maxLength={BED_TYPE_NAME_MAX_LENGTH}
                       required
                     />
-                    <small className="text-muted">
+                    {/* <small className="text-muted">
                       {formData.bedTypeName.length}/{BED_TYPE_NAME_MAX_LENGTH} characters
-                    </small>
+                    </small> */}
                   </div>
                   
                   <div className="form-group col-md-6">
@@ -530,9 +530,9 @@ const BedTypeMaster = () => {
                       rows="2"
                       required
                     />
-                    <small className="text-muted">
+                    {/* <small className="text-muted">
                       {formData.description.length}/{DESCRIPTION_MAX_LENGTH} characters
-                    </small>
+                    </small> */}
                   </div>
                   
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">

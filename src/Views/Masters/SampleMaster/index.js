@@ -24,7 +24,7 @@ const SampleMaster = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filteredTotalPages, setFilteredTotalPages] = useState(1);
   const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
-  const [itemsPerPage] = useState(4);
+  const [itemsPerPage] = useState(5);
   const [pageInput, setPageInput] = useState("");
 
   const SAMPLE_DESCRIPTION_MAX_LENGTH = 30;

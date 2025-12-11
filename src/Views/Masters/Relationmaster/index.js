@@ -24,7 +24,7 @@ const Relationmaster = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filteredTotalPages, setFilteredTotalPages] = useState(1);
   const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(5);
   const [pageInput, setPageInput] = useState("");
 
  
@@ -333,9 +333,8 @@ const Relationmaster = () => {
                   <table className="table table-bordered table-hover align-middle">
                     <thead className="table-light">
                       <tr>
-                        
-                        <th>Relation Name</th>
                         <th> Relation Code</th>
+                        <th>Relation Name</th>
                         <th>Status</th>
                         <th>Edit</th>
                       </tr>
@@ -344,8 +343,8 @@ const Relationmaster = () => {
                       {currentItems.length > 0 ? (
                         currentItems.map((relation) => (
                           <tr key={relation.id}>
-                            <td>{relation.relationName}</td>
                             <td>{relation.code}</td>
+                            <td>{relation.relationName}</td>
                             <td>
                               <div className="form-check form-switch">
                                 <input
@@ -432,20 +431,6 @@ const Relationmaster = () => {
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="form-group col-md-4">
-                    <label>Relation Name <span className="text-danger">*</span></label>
-                    <input
-                      type="text"
-                      className="form-control  mt-1"
-                      id="relationName"
-                      name="relationName"
-                      placeholder="Relation Name"
-                      value={formData.relationName}
-                      onChange={handleInputChange}
-                      maxLength={RELATION_NAME_MAX_LENGTH}
-                      required
-                    />
-                  </div>
-                  <div className="form-group col-md-4">
                     <label> Relation Code <span className="text-danger">*</span></label>
                     <input
                       type="text"
@@ -459,6 +444,21 @@ const Relationmaster = () => {
                       required
                     />
                   </div>
+                  <div className="form-group col-md-4">
+                    <label>Relation Name <span className="text-danger">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control  mt-1"
+                      id="relationName"
+                      name="relationName"
+                      placeholder="Relation Name"
+                      value={formData.relationName}
+                      onChange={handleInputChange}
+                      maxLength={RELATION_NAME_MAX_LENGTH}
+                      required
+                    />
+                  </div>
+                  
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                     <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                       Save

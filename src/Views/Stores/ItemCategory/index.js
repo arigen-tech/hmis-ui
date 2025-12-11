@@ -59,7 +59,7 @@ const ItemCategory = () => {
 
     const [loading, setLoading] = useState(false);
 
-    const itemsPerPage = 3
+    const itemsPerPage = 5
 
 
 
@@ -317,9 +317,9 @@ const ItemCategory = () => {
                                         <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                                             <i className="mdi mdi-plus"></i> Add
                                         </button>
-                                        <button type="button" className="btn btn-success me-2">
+                                        {/* <button type="button" className="btn btn-success me-2">
                                             <i className="mdi mdi-plus"></i> Generate Report
-                                        </button>
+                                        </button> */}
                                     </div>
                                 </div>
                             )}
@@ -330,9 +330,10 @@ const ItemCategory = () => {
                                     <table className="table table-bordered table-hover align-middle">
                                         <thead className="table-light">
                                             <tr>
-                                                <th>Section</th>
+                                               
                                                 <th>Item Category Code</th>
                                                 <th>Item Category Name</th>
+                                                 <th>Section</th>
                                                 <th>Status</th>
                                                 <th>Edit</th>
                                             </tr>
@@ -340,9 +341,10 @@ const ItemCategory = () => {
                                         <tbody>
                                             {currentItems.map((category) => (
                                                 <tr key={category.itemCategoryId}>
-                                                    <td>{category.sectionName}</td>
+                                                    
                                                     <td>{category.itemCategoryCode}</td>
                                                     <td>{category.itemCategoryName}</td>
+                                                    <td>{category.sectionName}</td>
                                                     <td>
                                                         <div className="form-check form-switch">
                                                             <input

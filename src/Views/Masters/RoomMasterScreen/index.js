@@ -344,7 +344,7 @@ const handleRefresh = () => {
   setCurrentPage(1);
   fetchRoomData();
   fetchDropdownData();
-  showPopup("Data refreshed!", "success");
+  // showPopup("Data refreshed!", "success");
 };
 
 return (

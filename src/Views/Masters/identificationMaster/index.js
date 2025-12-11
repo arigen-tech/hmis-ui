@@ -11,7 +11,7 @@ const Identificationmaster = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("");
-  const itemsPerPage = 4;
+  const itemsPerPage = 5;
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, identificationId: null, newStatus: false });
   const [popupMessage, setPopupMessage] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -268,9 +268,9 @@ const Identificationmaster = () => {
                     <button type="button" className="btn btn-success me-1" onClick={() => setShowForm(true)}>
                       <i className="mdi mdi-plus"></i> ADD
                     </button>
-                    <button type="button" className="btn btn-success me-2 d-flex align-items-center">
+                    {/* <button type="button" className="btn btn-success me-2 d-flex align-items-center">
                       <i className="mdi mdi-plus  d-sm-inlined-sm-inline ms-1"></i> Generate Report
-                    </button>
+                    </button> */}
                   </div>
                 </div>
               )}
@@ -283,8 +283,8 @@ const Identificationmaster = () => {
                   <table className="table table-bordered table-hover align-middle">
                     <thead className="table-light">
                       <tr>
-                        <th>Identification Type Name</th>
                         <th>Identification Type Code</th>
+                        <th>Identification Type Name</th>
                         <th>Status</th>
                         <th>Edit</th>
                       </tr>
@@ -292,8 +292,8 @@ const Identificationmaster = () => {
                     <tbody>
                       {currentItems.map((type) => (
                         <tr key={type.identificationTypeId}>
-                          <td>{type.identificationName}</td>
                           <td>{type.identificationCode}</td>
+                          <td>{type.identificationName}</td>
                           <td>
                             <div className="form-check form-switch">
                               <input
