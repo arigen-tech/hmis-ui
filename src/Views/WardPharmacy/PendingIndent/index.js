@@ -80,6 +80,7 @@ const PendingIndentApproval = () => {
   // Fetch all drugs for dropdown with current stock
   const fetchAllDrugs = async () => {
     try {
+      setLoading(true)
       const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1`)
       console.log("Drugs API Response:", response)
 
@@ -108,6 +109,8 @@ const PendingIndentApproval = () => {
       }
     } catch (err) {
       console.error("Error fetching drugs:", err)
+    }finally{
+      setLoading(false)
     }
   }
 
@@ -174,8 +177,6 @@ const PendingIndentApproval = () => {
   // Handle edit click - UPDATED to fetch current stock
   const handleEditClick = async (record, e) => {
     e.stopPropagation()
-    if(loading) return ;
-    setLoading(true);
 
     console.log("Viewing record:", record)
     setSelectedRecord(record)
@@ -349,7 +350,6 @@ const PendingIndentApproval = () => {
       showPopup(`Error processing indent. Please try again.`, "error")
     } finally {
       setProcessing(false)
-      setLoading(false)
     }
   }
 
