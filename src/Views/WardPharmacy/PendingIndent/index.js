@@ -3,6 +3,7 @@ import ReactDOM from "react-dom"
 import Popup from "../../../Components/popup"
 import { Store_Internal_Indent, MAS_DRUG_MAS } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
+import LoadingScreen from "../../../Components/Loading"
 
 const PendingIndentApproval = () => {
   const [currentView, setCurrentView] = useState("list")
@@ -173,6 +174,8 @@ const PendingIndentApproval = () => {
   // Handle edit click - UPDATED to fetch current stock
   const handleEditClick = async (record, e) => {
     e.stopPropagation()
+    if(loading) return ;
+    setLoading(true);
 
     console.log("Viewing record:", record)
     setSelectedRecord(record)
@@ -346,6 +349,7 @@ const PendingIndentApproval = () => {
       showPopup(`Error processing indent. Please try again.`, "error")
     } finally {
       setProcessing(false)
+      setLoading(false)
     }
   }
 
@@ -432,6 +436,7 @@ const PendingIndentApproval = () => {
 
     return (
       <div className="content-wrapper">
+        {loading && <LoadingScreen/>}
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
