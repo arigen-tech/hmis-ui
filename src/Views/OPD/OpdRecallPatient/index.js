@@ -47,8 +47,13 @@ const OpdRRecallPatient = () => {
   const dropdownRef = useRef(null);
   const [duplicateItems, setDuplicateItems] = useState([]);
   const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
+  const getToday = () => new Date().toISOString().split("T")[0]
+
   const [searchFilters, setSearchFilters] = useState({
-  })
+    mobileNumber: "",
+    patientName: "",
+    date: getToday(),
+  });
 
   // Doctor's Remarks state
   const [doctorRemarksTemplates, setDoctorRemarksTemplates] = useState([
@@ -661,7 +666,6 @@ const OpdRRecallPatient = () => {
   const [treatmentAdviceModalType, setTreatmentAdviceModalType] = useState("")
   const [selectedTemplate, setSelectedTemplate] = useState("Select..")
   const [templateName, setTemplateName] = useState("")
-  const getToday = () => new Date().toISOString().split("T")[0]
   const [investigationItems, setInvestigationItems] = useState([
     {
       id: null,
