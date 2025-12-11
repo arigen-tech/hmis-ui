@@ -12,7 +12,7 @@ const Itemclass = () => {
     const [searchQuery, setSearchQuery] = useState("")
     const [pageInput, setPageInput] = useState("")
     const [currentPage, setCurrentPage] = useState(1)
-    const itemsPerPage = 3
+    const itemsPerPage = 5
     const [showForm, setShowForm] = useState(false)
     const [isFormValid, setIsFormValid] = useState(false)
     const [loading, setLoading] = useState(false);
@@ -274,9 +274,9 @@ const Itemclass = () => {
                                         <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                                             <i className="mdi mdi-plus"></i> Add
                                         </button>
-                                        <button type="button" className="btn btn-success me-2">
+                                        {/* <button type="button" className="btn btn-success me-2">
                                             <i className="mdi mdi-plus"></i> Generate Report
-                                        </button>
+                                        </button> */}
                                     </div>
                                 </div>
                             )}

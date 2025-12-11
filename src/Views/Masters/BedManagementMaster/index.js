@@ -599,9 +599,9 @@ const BedManagement = () => {
                       required
                       disabled={loading}
                     />
-                    <small className="text-muted">
+                    {/* <small className="text-muted">
                       {formData.bedNumber.length}/{BED_NO_MAX_LENGTH} characters
-                    </small>
+                    </small> */}
                   </div>
                   
                   <div className="form-group col-md-4">
@@ -622,7 +622,7 @@ const BedManagement = () => {
                         </option>
                       ))}
                     </select>
-                    <small className="text-muted">Select room for this bed</small>
+                    {/* <small className="text-muted">Select room for this bed</small> */}
                   </div>
                   
                   <div className="form-group col-md-4">
@@ -643,7 +643,7 @@ const BedManagement = () => {
                         </option>
                       ))}
                     </select>
-                    <small className="text-muted">Select type of bed</small>
+                    {/* <small className="text-muted">Select type of bed</small> */}
                   </div>
                   
                   <div className="form-group col-md-4">
@@ -664,7 +664,7 @@ const BedManagement = () => {
                         </option>
                       ))}
                     </select>
-                    <small className="text-muted">Select current status of bed</small>
+                    {/* <small className="text-muted">Select current status of bed</small> */}
                   </div>
                   
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
@@ -714,11 +714,11 @@ const BedManagement = () => {
                           Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
                           <strong> {bedData.find(bed => bed.id === confirmDialog.bedId)?.bedNumber}</strong> bed?
                         </p>
-                        <p className="text-muted">
+                        {/* <p className="text-muted">
                           {confirmDialog.newStatus === "y" 
                             ? "This will make the bed available for patient allocation." 
                             : "This will hide the bed from patient allocation."}
-                        </p>
+                        </p> */}
                       </div>
                       <div className="modal-footer">
                         <button 

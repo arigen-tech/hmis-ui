@@ -20,7 +20,7 @@ const InvestigationMethodologyMaster = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageInput, setPageInput] = useState("");
     const [isLoading, setIsLoading] = useState(true);
-    const itemsPerPage = 4;
+    const itemsPerPage = 5;
 
     const METHOD_NAME_MAX_LENGTH = 30;
     const NOTE_MAX_LENGTH = 50;
@@ -192,11 +192,11 @@ const InvestigationMethodologyMaster = () => {
                                     {!showForm ? (
                                         <>
                                             <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
-                                                <i className="mdi mdi-plus"></i> ADD
+                                                <i className="mdi mdi-plus"></i> Add
                                             </button>
-                                            <button type="button" className="btn btn-success me-2 flex-shrink-0">
+                                            {/* <button type="button" className="btn btn-success me-2 flex-shrink-0">
                                                 <i className="mdi mdi-plus"></i> Generate Report
-                                            </button>
+                                            </button> */}
                                         </>
                                     ) : (
                                         <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>

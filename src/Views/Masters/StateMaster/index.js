@@ -23,7 +23,7 @@ const StateMaster = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageInput, setPageInput] = useState("");
     const [loading, setLoading] = useState(true);
-    const itemsPerPage = 4;
+    const itemsPerPage = 5;
 
     const STATE_CODE_MAX_LENGTH = 8;
     const STATE_NAME_MAX_LENGTH = 30;
@@ -304,9 +304,9 @@ const StateMaster = () => {
                                             }}>
                                                 <i className="mdi mdi-plus"></i> ADD
                                             </button>
-                                            <button type="button" className="btn btn-success me-2 flex-shrink-0">
+                                            {/* <button type="button" className="btn btn-success me-2 flex-shrink-0">
                                                 <i className="mdi mdi-file-export"></i> Generate Report
-                                            </button>
+                                            </button> */}
                                         </>
                                     ) : (
                                         <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>

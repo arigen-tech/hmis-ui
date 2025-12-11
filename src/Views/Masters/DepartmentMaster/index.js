@@ -410,13 +410,13 @@ const DepartmentMaster = () => {
                                         >
                                             <i className="mdi mdi-plus"></i> Add
                                         </button>
-                                        <button
+                                        {/* <button
                                             type="button"
                                             className="btn btn-success d-flex align-items-center"
                                         >
                                             <i className="mdi mdi-file-export d-sm-inlined-sm-inline ms-1" ></i>
                                             Generate Report
-                                        </button>
+                                        </button> */}
                                     </div>
                                 )}
                             </div>

@@ -294,9 +294,9 @@ const ItemSection = () => {
                     }}>
                       <i className="mdi mdi-plus"></i> Add
                     </button>
-                    <button type="button" className="btn btn-success me-2">
+                    {/* <button type="button" className="btn btn-success me-2">
                       <i className="mdi mdi-plus"></i> Generate Report
-                    </button>
+                    </button> */}
                   </div>
                 </div>
               )}
