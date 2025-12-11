@@ -267,7 +267,6 @@ useEffect(() => {
   const handleEditClick = (record, e) => {
     e.stopPropagation();
     setSelectedRecord(record);
-    setLoading(true);
     if (!record || !Array.isArray(record.items)) return;
 
     const entries = record.items.map((item) => {
@@ -548,6 +547,7 @@ useEffect(() => {
     } finally {
       setProcessing(false);
       setConfirmAction(null);
+      setLoading(false);
     }
   };
 
