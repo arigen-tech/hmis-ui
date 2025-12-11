@@ -35,6 +35,23 @@ const IndentCreation = () => {
   const [rolItems, setRolItems] = useState([]);
   const [selectedRolItems, setSelectedRolItems] = useState([]);
 
+  // Helper function to format date to DD/MM/YYYY
+  const formatDateToDDMMYYYY = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  // Helper function to convert DD/MM/YYYY to YYYY-MM-DD
+  const convertToYYYYMMDD = (ddmmyyyy) => {
+    if (!ddmmyyyy || ddmmyyyy.length !== 10) return "";
+    const [day, month, year] = ddmmyyyy.split('/');
+    return `${year}-${month}-${day}`;
+  };
+
   // Fetch current department by ID
   const fetchCurrentDepartment = async () => {
     try {
@@ -672,17 +689,12 @@ const IndentCreation = () => {
                 <div className="col-md-3">
                   <label className="form-label fw-bold">Indent Date</label>
                   <input
-                    type="date"
+                    type="text"
                     className={`form-control ${errors.indentDate ? 'is-invalid' : ''}`}
-                    value={indentDate}
-                    onChange={(e) => {
-                      setIndentDate(e.target.value);
-                      if (errors.indentDate) {
-                        const newErrors = { ...errors };
-                        delete newErrors.indentDate;
-                        setErrors(newErrors);
-                      }
-                    }}
+                    value={formatDateToDDMMYYYY(indentDate)}
+                    placeholder="DD/MM/YYYY"
+                    readOnly
+                    style={{ backgroundColor: "#f5f5f5", cursor: "not-allowed" }}
                   />
                   {errors.indentDate && <div className="invalid-feedback">{errors.indentDate}</div>}
                 </div>
