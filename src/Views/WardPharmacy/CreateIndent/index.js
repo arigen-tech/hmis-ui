@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, Store_Internal_Indent, MAS_DRUG_MAS } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService"
+import LoadingScreen from "../../../Components/Loading";
 
 const IndentCreation = () => {
   const [currentView, setCurrentView] = useState("form") // "form" or "detail"
@@ -675,6 +676,7 @@ const IndentCreation = () => {
 
   return (
     <div className="content-wrapper">
+      {loading && <LoadingScreen/>}
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
