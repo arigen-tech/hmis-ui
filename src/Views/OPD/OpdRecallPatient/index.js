@@ -48,7 +48,7 @@ const OpdRRecallPatient = () => {
   const [duplicateItems, setDuplicateItems] = useState([]);
   const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
   const [searchFilters, setSearchFilters] = useState({
-  })  
+  })
 
   // Doctor's Remarks state
   const [doctorRemarksTemplates, setDoctorRemarksTemplates] = useState([
@@ -165,7 +165,7 @@ const OpdRRecallPatient = () => {
     setWardName("")
     setOccupiedBeds(0)
     setVacantBeds(0)
-    
+
     if (wardData[categoryId]) {
       const defaultCareLevel = wardData[categoryId].defaultCareLevel
       const careLevel = careLevels.find(cl => cl.name === defaultCareLevel)
@@ -180,7 +180,7 @@ const OpdRRecallPatient = () => {
 
   const handleWardNameChange = (deptId) => {
     setWardName(deptId)
-    
+
     if (wardCategory && wardData[wardCategory]) {
       const selectedDept = wardData[wardCategory].departments.find(d => d.id === deptId)
       if (selectedDept) {
@@ -328,7 +328,7 @@ const OpdRRecallPatient = () => {
       return;
     }
 
-    const newNames = selectedItems.map((x) => x.medicalHistoryName);
+    const newNames = selectedItems.map(x => x.name);
 
     const mergeValues = (oldValue, newValues) => {
       const oldArr = oldValue ? oldValue.split(",").map(x => x.trim()) : [];
@@ -357,19 +357,25 @@ const OpdRRecallPatient = () => {
       });
     }
 
+    if (popupType === "treatmentAdvice") {
+      setGeneralTreatmentAdvice(prev =>
+        mergeValues(prev, newNames)
+      );
+    }
+
     setModelShowPopup(false);
     setSelectedItems([]);
   };
 
   const handleSelect = (item) => {
-    setSelectedItems((prev) => {
-      const exists = prev.find((x) => x.medicalHistoryId === item.medicalHistoryId);
+    setSelectedItems(prev => {
+      const exists = prev.find(x => x.id === item.id);
 
       if (exists) {
-        return prev.filter((x) => x.medicalHistoryId !== item.medicalHistoryId);
-      } else {
-        return [...prev, item];
+        return prev.filter(x => x.id !== item.id);
       }
+
+      return [...prev, item];
     });
   };
 
@@ -558,6 +564,7 @@ const OpdRRecallPatient = () => {
         icdObj: icdObjList,
         treatments: treatmentItems,
         investigations: investigationItems,
+        treatmentAdvice: generalTreatmentAdvice,
         removeIcdIds,
         removedTreatmentIds,
         removedInvestigationIds,
@@ -640,6 +647,7 @@ const OpdRRecallPatient = () => {
     spo2: "",
     patientSymptoms: "",
     clinicalExamination: "",
+    treatmentAdvice: "",
     pastHistory: "",
     familyHistory: "",
     mlcCase: false,
@@ -709,6 +717,8 @@ const OpdRRecallPatient = () => {
       templateId: "",
     }
   ]);
+
+  console.log("treat", treatmentItems)
 
   const [treatmentAdviceSelection, setTreatmentAdviceSelection] = useState("")
   const [generalTreatmentAdvice, setGeneralTreatmentAdvice] = useState("")
@@ -1169,6 +1179,7 @@ const OpdRRecallPatient = () => {
       familyHistory: patient.familyHistory || "",
       mlcCase: patient.mlcFlag === "y" ? true : false,
     });
+    setGeneralTreatmentAdvice(patient.treatmentAdvice || "")
     setWorkingDiagnosis(patient?.workingDiag || "")
     setDiagnosisItems(
       patient.icdDiag && patient.icdDiag.length > 0
@@ -1212,18 +1223,27 @@ const OpdRRecallPatient = () => {
 
     setTreatmentItems(
       patient.patientPrescriptionDts && patient.patientPrescriptionDts.length > 0
-        ? patient.patientPrescriptionDts.map(item => ({
-          treatmentId: item.prescriptionDtId,
-          drugId: item.itemId,
-          drugName: item.itemName,
-          dispUnit: item.depUnit,
-          dosage: item.dosage,
-          frequency: item.frequencyId,
-          days: item.days,
-          total: item.total,
-          instruction: item.instraction,
-          stock: item.stocks,
-        }))
+        ? patient.patientPrescriptionDts.map(item => {
+          const drug = getDrugDetails(item.itemId);
+          const freq = getFreqDetails(item.frequencyId);
+
+          const obj = {
+            treatmentId: item.prescriptionDtId,
+            drugId: item.itemId,
+            drugName: item.itemName,
+            dispUnit: drug?.dispUnitName ?? item.depUnit ?? "",
+            dosage: Number(item.dosage) || "",
+            frequency: freq?.frequencyName ?? item.frequencyId ?? "",
+            days: Number(item.days) || "",
+            instruction: item.instraction ?? "",
+            stock: item.stocks ?? "",
+            itemClassId: drug?.itemClassId ?? null,
+            aDispQty: drug?.aDispQty ?? 1,
+          };
+
+          obj.total = calculateTotal(obj);
+          return obj;
+        })
         : [
           {
             treatmentId: null,
@@ -1239,6 +1259,7 @@ const OpdRRecallPatient = () => {
           }
         ]
     );
+
 
     setShowDetailView(true)
   }
@@ -1498,6 +1519,10 @@ const OpdRRecallPatient = () => {
     return drugCodeOptions.find(d => d.itemId === itemId);
   };
 
+  const getFreqDetails = (feqId) => {
+    return allFrequencies.find(d => d.frequencyId === feqId);
+  };
+
   const handleTreatmentTemplateSelect = (templateId) => {
     if (!templateId || templateId === "Select..") return;
     if (selectedTreatmentTemplateIds.has(templateId)) return;
@@ -1535,13 +1560,14 @@ const OpdRRecallPatient = () => {
 
       const formattedNew = newItemsToAdd.map(t => {
         const drug = getDrugDetails(t.itemId);
+        const freName = getFreqDetails(t.frequencyId);
         const newItem = {
           treatmentId: null,
           drugId: t.itemId,
           drugName: t.itemName,
           dispUnit: drug?.dispUnitName ?? t.dispU ?? "",
           dosage: t.dosage ?? "",
-          frequency: t.frequencyId ?? "",
+          frequency: freName?.frequencyName ?? "",
           days: t.noOfDays ?? "",
           instruction: t.instruction ?? "",
           stock: t.stocks ?? "",
@@ -1552,6 +1578,8 @@ const OpdRRecallPatient = () => {
         newItem.total = calculateTotal(newItem);
         return newItem;
       });
+
+      console.log("new  data", newItemsToAdd)
 
       if (isOnlyDefaultTreatmentRow(updatedList)) {
         return formattedNew;
@@ -1589,7 +1617,7 @@ const OpdRRecallPatient = () => {
 
     let total = 0;
 
-    
+
     if (DRUG_TYPE.SOLID.includes(Number(item.itemClassId))) {
       total = Math.ceil(dosage * frequencyMultiplier * days);
     }
@@ -2965,12 +2993,12 @@ const OpdRRecallPatient = () => {
                                     className="form-select"
                                     value={row.frequency || ""}
                                     onChange={(e) =>
-                                      handleTreatmentChange(index, "frequency", Number(e.target.value))
+                                      handleTreatmentChange(index, "frequency", e.target.value)
                                     }
                                   >
                                     <option value="">Select..</option>
                                     {allFrequencies.map((f) => (
-                                      <option key={f.frequencyId} value={f.frequencyId}>
+                                      <option key={f.frequencyId} value={f.frequencyName}>
                                         {f.frequencyName}
                                       </option>
                                     ))}
@@ -3049,7 +3077,6 @@ const OpdRRecallPatient = () => {
                           <div className="card-body">
                             <div className="row align-items-end">
                               <div className="col-md-11">
-                                <label className="form-label fw-bold">Treatment Advice</label>
                                 <textarea
                                   className="form-control"
                                   rows={3}
@@ -3060,10 +3087,11 @@ const OpdRRecallPatient = () => {
                               </div>
                               <div className="col-md-1 text-center">
                                 <button
-                                  className="btn btn-primary"
-                                  style={{ padding: "8px 12px" }}
-                                  onClick={() => handleOpenTreatmentAdviceModal("general")}
-                                  title="Add Treatment Advice"
+                                  className="btn btn-sm btn-outline-success p-1 px-2"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openPopup("treatmentAdvice");
+                                  }}
                                 >
                                   +
                                 </button>

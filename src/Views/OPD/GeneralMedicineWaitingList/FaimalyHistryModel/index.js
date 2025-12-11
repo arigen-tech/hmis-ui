@@ -7,40 +7,87 @@ const MasFamilyModel = ({ show, popupType, onOk, onClose, onSelect, selectedItem
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
 
+    // Normalize API response keys so UI and hooks stay consistent
+    const normalize = (item, type) => {
+        if (type === "past" || type === "family") {
+            return {
+                id: item.medicalHistoryId,
+                name: item.medicalHistoryName,
+            };
+        }
+
+        if (type === "symptoms") {
+            return {
+                id: item.symptomsId,
+                name: item.symptomsName,
+            };
+        }
+
+        if (type === "treatmentAdvice") {
+            return {
+                id: item.treatmentAdviseId,
+                name: item.treatmentAdvice,
+            };
+        }
+
+        return item;
+    };
+
     const fetchOpdTemplateData = async () => {
         setLoading(true);
 
         try {
-            const result = await getRequest(`${MASTERS}/masMedicalHistory/getAll/1`);
+            let url = "";
 
-            if (result.status === 200 && Array.isArray(result.response)) {
-                setData(result.response);
+            switch (popupType) {
+                case "past":
+                    url = `${MASTERS}/masMedicalHistory/getAll/1`;
+                    break;
+
+                case "family":
+                    url = `${MASTERS}/masMedicalHistory/getAll/1`;
+                    break; // ✅ FIXED MISSING BREAK
+
+                case "symptoms":
+                    url = `${MASTERS}/masMedicalHistory1/getAll/1`;
+                    break;
+
+                case "treatmentAdvice":
+                    url = `${MASTERS}/masTreatmentAdvise/getAll/1`;
+                    break;
+
+                default:
+                    url = `${MASTERS}/masMedicalHistory/getAll/1`;
+            }
+
+            const result = await getRequest(url);
+
+            if (result?.status === 200 && Array.isArray(result?.response)) {
+                const formatted = result.response.map((item) => normalize(item, popupType));
+                setData(formatted);
             } else {
                 setData([]);
             }
         } catch (error) {
             console.error("Error fetching history data:", error);
             setData([]);
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
     };
 
     useEffect(() => {
-        if (show) {
-            fetchOpdTemplateData();
-        }
-    }, [show]);
+        if (show) fetchOpdTemplateData();
+    }, [show, popupType]);
 
-    // ❗ MUST be above early return (fixes ESLint hook order error)
+    // Track selected IDs
     const selectedIds = useMemo(
-        () => new Set(selectedItems.map((x) => x.medicalHistoryId)),
+        () => new Set(selectedItems.map((x) => x.id)),
         [selectedItems]
     );
 
     const isChecked = (id) => selectedIds.has(id);
 
-    // ❗ Now it's safe
     if (!show) return null;
 
     const title =
@@ -48,7 +95,11 @@ const MasFamilyModel = ({ show, popupType, onOk, onClose, onSelect, selectedItem
             ? "Select Symptoms"
             : popupType === "past"
             ? "Select Past History"
-            : "Select Family History";
+            : popupType === "family"
+            ? "Select Family History"
+            : popupType === "treatmentAdvice"
+            ? "Select Treatment Advice"
+            : "Select Items";
 
     return (
         <>
@@ -84,19 +135,19 @@ const MasFamilyModel = ({ show, popupType, onOk, onClose, onSelect, selectedItem
                                         <tbody>
                                             {data.map((item) => (
                                                 <tr
-                                                    key={item.medicalHistoryId}
+                                                    key={item.id}
                                                     style={{ cursor: "pointer" }}
                                                     onClick={() => onSelect(item)}
                                                 >
                                                     <td className="text-center">
                                                         <input
                                                             type="checkbox"
-                                                            checked={isChecked(item.medicalHistoryId)}
+                                                            checked={isChecked(item.id)}
                                                             readOnly
                                                         />
                                                     </td>
 
-                                                    <td>{item.medicalHistoryName}</td>
+                                                    <td>{item.name}</td>
                                                 </tr>
                                             ))}
                                         </tbody>

@@ -501,58 +501,63 @@ const GeneralMedicineWaitingList = () => {
     setSelectedItems([]);
   };
 
-  const handleOk = () => {
+const handleOk = () => {
     if (selectedItems.length === 0) {
-      alert("Please select at least one item.");
-      return;
+        alert("Please select at least one item.");
+        return;
     }
 
-    const newNames = selectedItems.map((x) => x.medicalHistoryName);
+    const newNames = selectedItems.map(x => x.name);
 
     const mergeValues = (oldValue, newValues) => {
-      const oldArr = oldValue ? oldValue.split(",").map(x => x.trim()) : [];
-      const merged = Array.from(new Set([...oldArr, ...newValues]));
-      return merged.join(", ");
+        const oldArr = oldValue ? oldValue.split(",").map(x => x.trim()) : [];
+        const merged = Array.from(new Set([...oldArr, ...newValues]));
+        return merged.join(", ");
     };
 
     if (popupType === "symptoms") {
-      setFormData({
-        ...formData,
-        patientSymptoms: mergeValues(formData.patientSymptoms, newNames),
-      });
+        setFormData({
+            ...formData,
+            patientSymptoms: mergeValues(formData.patientSymptoms, newNames),
+        });
     }
 
     if (popupType === "past") {
-      setFormData({
-        ...formData,
-        pastHistory: mergeValues(formData.pastHistory, newNames),
-      });
+        setFormData({
+            ...formData,
+            pastHistory: mergeValues(formData.pastHistory, newNames),
+        });
     }
 
     if (popupType === "family") {
-      setFormData({
-        ...formData,
-        familyHistory: mergeValues(formData.familyHistory, newNames),
-      });
+        setFormData({
+            ...formData,
+            familyHistory: mergeValues(formData.familyHistory, newNames),
+        });
+    }
+
+    if (popupType === "treatmentAdvice") {
+        setGeneralTreatmentAdvice(prev =>
+            mergeValues(prev, newNames)
+        );
     }
 
     setModelShowPopup(false);
     setSelectedItems([]);
-  };
+};
 
+const handleSelect = (item) => {
+    setSelectedItems(prev => {
+        const exists = prev.find(x => x.id === item.id);
 
+        if (exists) {
+            return prev.filter(x => x.id !== item.id);
+        }
 
-  const handleSelect = (item) => {
-    setSelectedItems((prev) => {
-      const exists = prev.find((x) => x.medicalHistoryId === item.medicalHistoryId);
-
-      if (exists) {
-        return prev.filter((x) => x.medicalHistoryId !== item.medicalHistoryId);
-      } else {
         return [...prev, item];
-      }
     });
-  };
+};
+
 
   const [templates, setTemplates] = useState(["Blood Test Template", "Cardiac Template", "Diabetes Template"])
   const [treatmentAdviceTemplates, setTreatmentAdviceTemplates] = useState([
@@ -1450,7 +1455,7 @@ const GeneralMedicineWaitingList = () => {
         return {
           itemId: item.drugId,
           dosage: item.dosage,
-          frequency: freq?.frequencyName || "",     // send NAME
+          frequency: item.frequency || "",     // send NAME
           days: item.days,
           total: item.total,
           instraction: item.instruction
@@ -1955,6 +1960,10 @@ const GeneralMedicineWaitingList = () => {
     return drugCodeOptions.find(d => d.itemId === itemId);
   };
 
+    const getFreqDetails = (feqId) => {
+    return allFrequencies.find(d => d.frequencyId === feqId);
+  };
+
 
   const handleTreatmentTemplateSelect = (templateId) => {
     if (!templateId || templateId === "Select..") return;
@@ -2002,6 +2011,7 @@ const GeneralMedicineWaitingList = () => {
 
         // 🟢 FETCH FULL DRUG DETAILS FROM DROPDOWN SOURCE
         const drug = getDrugDetails(t.itemId);
+        const freName = getFreqDetails(t.frequencyId);
 
         const newItem = {
           treatmentId: null,
@@ -2009,7 +2019,7 @@ const GeneralMedicineWaitingList = () => {
           drugName: t.itemName,
           dispUnit: drug?.dispUnitName ?? t.dispU ?? "",
           dosage: t.dosage ?? "",
-          frequency: t.frequencyId ?? "",
+          frequency: freName?.frequencyName ?? "",
           days: t.noOfDays ?? "",
           instruction: t.instruction ?? "",
           stock: t.stocks ?? "",
@@ -3476,14 +3486,13 @@ const GeneralMedicineWaitingList = () => {
                           style={{ cursor: "pointer" }}
                           onClick={() => toggleSection("treatmentAdvice")}
                         >
-                          <h6 className="mb-0 fw-bold">Treatment Advice</h6>
-                          <span style={{ fontSize: "16px" }}>{expandedSections.treatmentAdvice ? "−" : "+"}</span>
+                          <h6 className="mb-0 fw-bold ">Treatment Advice</h6>
+                          <span style={{ fontSize: "16px" }} >{expandedSections.treatmentAdvice ? "−" : "+"}</span>
                         </div>
                         {expandedSections.treatmentAdvice && (
                           <div className="card-body">
                             <div className="row align-items-end">
                               <div className="col-md-11">
-                                <label className="form-label fw-bold">Treatment Advice</label>
                                 <textarea
                                   className="form-control"
                                   rows={3}
@@ -3494,14 +3503,17 @@ const GeneralMedicineWaitingList = () => {
                               </div>
                               <div className="col-md-1 text-center">
                                 <button
-                                  className="btn btn-primary"
-                                  style={{ padding: "8px 12px" }}
-                                  onClick={() => handleOpenTreatmentAdviceModal("general")}
-                                  title="Add Treatment Advice"
-                                >
-                                  +
-                                </button>
+                                className="btn btn-sm btn-outline-success p-1 px-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openPopup("treatmentAdvice");
+                                }}
+                              >
+                                +
+                              </button>
                               </div>
+
+                              
                             </div>
                           </div>
                         )}
