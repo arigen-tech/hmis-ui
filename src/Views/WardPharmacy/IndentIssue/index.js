@@ -264,19 +264,21 @@ useEffect(() => {
     setIndentEntries(updatedEntries);
   };
 
-  const handleEditClick = (record, e) => {
-    e.stopPropagation();
+ const handleEditClick = async (record, e) => {
+  e.stopPropagation();
+  setLoading(true);
+
+  try {
     setSelectedRecord(record);
     if (!record || !Array.isArray(record.items)) return;
 
     const entries = record.items.map((item) => {
-      // Get the first batch as default
-      const defaultBatch = item.batches && item.batches.length > 0 ? item.batches[0] : null;
+      const defaultBatch =
+        item.batches && item.batches.length > 0 ? item.batches[0] : null;
       const defaultBatchStock = defaultBatch ? defaultBatch.batchstock : 0;
       const approvedQty = item.approvedQty || 0;
       const previousIssuedQty = item.issuedQty || 0;
 
-      // Calculate total available stock as SUM of all batch stocks
       let totalAvailableStock = 0;
       if (item.batches && Array.isArray(item.batches)) {
         totalAvailableStock = item.batches.reduce((sum, batch) => {
@@ -284,13 +286,11 @@ useEffect(() => {
         }, 0);
       }
 
-      // Auto-calculate qty issued based on batch stock and remaining approved qty
-      const autoQtyIssued = calculateAutoQtyIssued(defaultBatchStock, approvedQty, previousIssuedQty);
-
-      console.log("Default batch for item:", item.itemName, defaultBatch);
-      console.log("Default batch stock:", defaultBatchStock, "Approved Qty:", approvedQty, "Previous Issued:", previousIssuedQty);
-      console.log("Auto calculated qty issued:", autoQtyIssued);
-      console.log("Total available stock (sum of all batches):", totalAvailableStock);
+      const autoQtyIssued = calculateAutoQtyIssued(
+        defaultBatchStock,
+        approvedQty,
+        previousIssuedQty
+      );
 
       return {
         id: item.indentTId || null,
@@ -304,17 +304,24 @@ useEffect(() => {
         batchNo: defaultBatch ? defaultBatch.batchNo : "",
         dom: defaultBatch ? defaultBatch.manufactureDate : "",
         doe: defaultBatch ? defaultBatch.expiryDate : "",
-        qtyIssued: autoQtyIssued, // Auto-filled based on condition
-        balanceAfterIssue: Math.max(0, approvedQty - previousIssuedQty - Number(autoQtyIssued)),
-        batchStock: defaultBatchStock,  // Individual batch stock
-        availableStock: totalAvailableStock,  // SUM of all batches
+        qtyIssued: autoQtyIssued,
+        balanceAfterIssue: Math.max(
+          0,
+          approvedQty - previousIssuedQty - Number(autoQtyIssued)
+        ),
+        batchStock: defaultBatchStock,
+        availableStock: totalAvailableStock,
       };
     });
 
-    console.log("Setting indent entries:", entries);
     setIndentEntries(entries);
     setCurrentView("detail");
-  };
+  } catch (error) {
+    console.error("Error in handleEditClick:", error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleBackToList = () => {
     setCurrentView("list")
