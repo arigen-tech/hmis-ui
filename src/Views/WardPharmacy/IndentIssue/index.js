@@ -3,6 +3,7 @@ import ReactDOM from "react-dom"
 import Popup from "../../../Components/popup"
 import { Store_Internal_Indent } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
+import LoadingScreen from "../../../Components/Loading"
 
 const IndentIssue = () => {
   const [currentView, setCurrentView] = useState("list")
@@ -266,6 +267,7 @@ useEffect(() => {
   const handleEditClick = (record, e) => {
     e.stopPropagation();
     setSelectedRecord(record);
+    setLoading(true);
     if (!record || !Array.isArray(record.items)) return;
 
     const entries = record.items.map((item) => {
@@ -502,6 +504,7 @@ useEffect(() => {
     try {
       setProcessing(true);
       setShowConfirmDialog(false);
+      setLoading(true);
 
       const payload = {
         indentMId: selectedRecord?.indentMId,
@@ -848,6 +851,7 @@ useEffect(() => {
       <div className="content-wrapper">
         <ConfirmationDialog />
         <PreviousIssuesModal />
+        {loading && <LoadingScreen/>}
         {popupMessage && (
           <Popup
             message={popupMessage.message}
