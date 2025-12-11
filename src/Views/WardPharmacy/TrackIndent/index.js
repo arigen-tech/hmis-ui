@@ -1,4 +1,5 @@
 import { useState } from "react"
+import LoadingScreen from "../../../Components/Loading"
 
 const TrackIndent = () => {
   const [currentView, setCurrentView] = useState("list")
@@ -11,6 +12,7 @@ const TrackIndent = () => {
   const [filteredIndentData, setFilteredIndentData] = useState([])
   const [showReceivedQtyPopup, setShowReceivedQtyPopup] = useState(false)
   const [selectedItemForPopup, setSelectedItemForPopup] = useState(null)
+  const [loading , setLoading] = useState(false)
 
   // Mock data based on images
   const mockIndentData = [
@@ -109,6 +111,7 @@ const TrackIndent = () => {
   const handleSearch = () => {
     if (!fromDate || !toDate) {
       setFilteredIndentData(indentData)
+      setLoading(false)
       return
     }
     const from = new Date(fromDate)
@@ -131,7 +134,9 @@ const TrackIndent = () => {
   const handleRowClick = (record, e) => {
     e.stopPropagation()
     setSelectedIndent(record)
+    setLoading(true);
     setCurrentView("detail")
+    setTimeout(() => setLoading(false), 300)
   }
 
   const handleBackToList = () => {
@@ -148,6 +153,8 @@ const TrackIndent = () => {
     setShowReceivedQtyPopup(false)
     setSelectedItemForPopup(null)
   }
+
+
 
   const handleIndentReport = () => {
     console.log("Generating Indent Report for:", selectedIndent)
@@ -217,6 +224,7 @@ const TrackIndent = () => {
   if (currentView === "detail") {
     return (
       <div className="content-wrapper">
+        {loading && <LoadingScreen/>}
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
@@ -524,6 +532,7 @@ const TrackIndent = () => {
   // List View
   return (
     <div className="content-wrapper">
+      {loading && <LoadingScreen/>}
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
