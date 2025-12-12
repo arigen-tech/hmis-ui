@@ -414,7 +414,7 @@ const UpdatePatientRegistration = () => {
       setShowDetails(true);
     } else {
       setAppointmentFlag(false);
-      setShowDetails(false);
+      setShowDetails(!preConsultationFlag);
     }
   };
 
@@ -593,6 +593,9 @@ const UpdatePatientRegistration = () => {
 
           setAppointments(mappedAppointments);
           setNextAppointmentId(mappedAppointments.length);
+          // Auto select appointment radio button when appointments exist
+          setAppointmentFlag(true);
+          
           mappedAppointments.forEach(async (appt) => {
             if (appt.speciality) {
               try {
@@ -619,10 +622,13 @@ const UpdatePatientRegistration = () => {
             sessionName: "",
           }]);
           setNextAppointmentId(1);
+          // Auto select update info radio button when no appointments
+          setAppointmentFlag(false);
         }
+        
         setShowPatientDetails(true);
-        setShowDetails(true);
-        setAppointmentFlag(false); // Default to update info mode
+        // Only show details if appointment flag is true OR preConsultationFlag is false
+        setShowDetails(appointmentFlag || !preConsultationFlag);
 
         Swal.fire("Loaded", "Patient details loaded successfully", "success");
       } else {
@@ -1723,55 +1729,10 @@ const UpdatePatientRegistration = () => {
             </div>
           </div>
 
-          {/* Radio Buttons */}
-          <div className="row mb-3">
-            <div className="col-sm-12">
-              <div className="card shadow mb-3">
-                <div className="card-header py-3 bg-light border-bottom-1">
-                  <h6 className="mb-0 fw-bold">Update Options</h6>
-                </div>
-                <div className="card-body">
-                  <div className="row g-3">
-                    <div className="col-md-12">
-                      <div className="form-check form-check-inline">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          name="appointmentType"
-                          id="updateInfo"
-                          value="updateInfo"
-                          onChange={handleRadioChange}
-                          defaultChecked
-                        />
-                        <label className="form-check-label" htmlFor="updateInfo">
-                          Update Information
-                        </label>
-                      </div>
-                      <div className="form-check form-check-inline">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          name="appointmentType"
-                          id="appointment"
-                          value="appointment"
-                          onChange={handleRadioChange}
-                        />
-                        <label className="form-check-label" htmlFor="appointment">
-                          Appointment
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {showDetails && (
             <>
-
               {/* Vital Details Section */}
-              {!preConsultationFlag && <>
+              {!preConsultationFlag && (
                 <div className="row mb-3">
                   <div className="col-sm-12">
                     <div className="card shadow mb-3">
@@ -1884,102 +1845,148 @@ const UpdatePatientRegistration = () => {
                     </div>
                   </div>
                 </div>
-              </>
-              }
+              )}
 
-              {/* Appointment Details Section */}
+              {/* Update Options Section - Moved under Vital Details */}
               <div className="row mb-3">
                 <div className="col-sm-12">
                   <div className="card shadow mb-3">
-                    <div className="card-header py-3 bg-light border-bottom-1 d-flex align-items-center justify-content-between">
-                      <h6 className="mb-0 fw-bold">Appointment Details</h6>
-                      <div className="d-flex gap-2">
-                        <button type="button" className="btn btn-sm btn-outline-primary" onClick={addAppointmentRow}>
-                          + Add
-                        </button>
-                      </div>
+                    <div className="card-header py-3 bg-light border-bottom-1">
+                      <h6 className="mb-0 fw-bold">Update Options</h6>
                     </div>
                     <div className="card-body">
-                      <form>
-                        {appointments.map((appointment, index) => {
-                          const doctorOptions = doctorDataMap[appointment.id] || [];
-                          return (
-                            <div className="row g-3 mb-3" key={`appointment-${appointment.id}`}>
-                              <div className="col-12 d-flex align-items-center justify-content-between">
-                                <h6 className="fw-bold text-muted mb-0">Appointment {index + 1}</h6>
-                                {appointments.length > 1 && (
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline-danger"
-                                    onClick={() => removeAppointmentRow(appointment.id)}
-                                  >
-                                    - Remove
-                                  </button>
-                                )}
-                              </div>
-                              <div className="col-md-4">
-                                <label className="form-label">Speciality</label>
-                                <select
-                                  className="form-select"
-                                  value={appointment.speciality}
-                                  onChange={(e) => handleSpecialityChange(appointment.id, e.target.value)}
-                                >
-                                  <option value="">Select Speciality</option>
-                                  {departmentData.map((department) => (
-                                    <option key={department.id} value={department.id}>
-                                      {department.departmentName}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div className="col-md-4">
-                                <label className="form-label">Doctor Name</label>
-                                <select
-                                  className="form-select"
-                                  value={appointment.selDoctorId}
-                                  onChange={(e) =>
-                                    handleDoctorChange(appointment.id, e.target.value, appointment.speciality)
-                                  }
-                                >
-                                  <option value="">Select Doctor</option>
-                                  {doctorOptions.map((doctor) => (
-                                    <option key={doctor.id} value={doctor.userId}>
-                                      {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""} ${doctor.lastName ? doctor.lastName : ""}`}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div className="col-md-4">
-                                <label className="form-label">Session</label>
-                                <select
-                                  className="form-select"
-                                  value={appointment.selSession}
-                                  disabled={!appointment.selDoctorId}
-                                  onChange={(e) =>
-                                    handleSessionChange(
-                                      appointment.id,
-                                      e.target.value,
-                                      appointment.speciality,
-                                      appointment.selDoctorId
-                                    )
-                                  }
-                                >
-                                  <option value="">Select Session</option>
-                                  {session.map((ses) => (
-                                    <option key={ses.id} value={ses.id}>
-                                      {ses.sessionName}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </form>
+                      <div className="row g-3">
+                        <div className="col-md-12">
+                          <div className="form-check form-check-inline">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="appointmentType"
+                              id="updateInfo"
+                              value="updateInfo"
+                              onChange={handleRadioChange}
+                              checked={!appointmentFlag}
+                            />
+                            <label className="form-check-label" htmlFor="updateInfo">
+                              Update Information
+                            </label>
+                          </div>
+                          <div className="form-check form-check-inline">
+                            <input
+                              className="form-check-input"
+                              type="radio"
+                              name="appointmentType"
+                              id="appointment"
+                              value="appointment"
+                              onChange={handleRadioChange}
+                              checked={appointmentFlag}
+                            />
+                            <label className="form-check-label" htmlFor="appointment">
+                              Appointment
+                            </label>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
+
+              {/* Appointment Details Section - only show when appointmentFlag is true */}
+              {appointmentFlag && (
+                <div className="row mb-3">
+                  <div className="col-sm-12">
+                    <div className="card shadow mb-3">
+                      <div className="card-header py-3 bg-light border-bottom-1 d-flex align-items-center justify-content-between">
+                        <h6 className="mb-0 fw-bold">Appointment Details</h6>
+                        <div className="d-flex gap-2">
+                          <button type="button" className="btn btn-sm btn-outline-primary" onClick={addAppointmentRow}>
+                            + Add
+                          </button>
+                        </div>
+                      </div>
+                      <div className="card-body">
+                        <form>
+                          {appointments.map((appointment, index) => {
+                            const doctorOptions = doctorDataMap[appointment.id] || [];
+                            return (
+                              <div className="row g-3 mb-3" key={`appointment-${appointment.id}`}>
+                                <div className="col-12 d-flex align-items-center justify-content-between">
+                                  <h6 className="fw-bold text-muted mb-0">Appointment {index + 1}</h6>
+                                  {appointments.length > 1 && (
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-outline-danger"
+                                      onClick={() => removeAppointmentRow(appointment.id)}
+                                    >
+                                      - Remove
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="col-md-4">
+                                  <label className="form-label">Speciality</label>
+                                  <select
+                                    className="form-select"
+                                    value={appointment.speciality}
+                                    onChange={(e) => handleSpecialityChange(appointment.id, e.target.value)}
+                                  >
+                                    <option value="">Select Speciality</option>
+                                    {departmentData.map((department) => (
+                                      <option key={department.id} value={department.id}>
+                                        {department.departmentName}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="col-md-4">
+                                  <label className="form-label">Doctor Name</label>
+                                  <select
+                                    className="form-select"
+                                    value={appointment.selDoctorId}
+                                    onChange={(e) =>
+                                      handleDoctorChange(appointment.id, e.target.value, appointment.speciality)
+                                    }
+                                  >
+                                    <option value="">Select Doctor</option>
+                                    {doctorOptions.map((doctor) => (
+                                      <option key={doctor.id} value={doctor.userId}>
+                                        {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""} ${doctor.lastName ? doctor.lastName : ""}`}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="col-md-4">
+                                  <label className="form-label">Session</label>
+                                  <select
+                                    className="form-select"
+                                    value={appointment.selSession}
+                                    disabled={!appointment.selDoctorId}
+                                    onChange={(e) =>
+                                      handleSessionChange(
+                                        appointment.id,
+                                        e.target.value,
+                                        appointment.speciality,
+                                        appointment.selDoctorId
+                                      )
+                                    }
+                                  >
+                                    <option value="">Select Session</option>
+                                    {session.map((ses) => (
+                                      <option key={ses.id} value={ses.id}>
+                                        {ses.sessionName}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
