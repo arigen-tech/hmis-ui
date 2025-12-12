@@ -461,170 +461,122 @@ const UpdatePatientRegistration = () => {
 
   // };
 
-  const handleEdit = async (patient) => {
-    try {
-      const patientId = patient.id;
+const handleEdit = async (patient) => {
+  try {
+    const patientId = patient.id;
+    const response = await getRequest(`${PATIENT_FOLLOW_UP_DETAILS}/${patientId}`);
 
-      // Call backend to get full patient profile
-      // FIXED: Use correct endpoint path
-      const response = await getRequest(`${PATIENT_FOLLOW_UP_DETAILS}/${patientId}`);
+    if (response.status === 200) {
+      const data = response.response;
+      const genderObj = genderData.find(g => g.id == data.personal?.gender);
+      const relationObj = relationData.find(r => r.id == data.personal?.relation);
+      const countryObj = countryData.find(c => c.id == data.address?.country);
+      const stateObj = stateData.find(s => s.id == data.address?.state);
+      const districtObj = districtData.find(d => d.id == data.address?.district);
 
-      if (response.status === 200) {
-        const data = response.response;
-
-        // ============================
-        // 1. Find gender object from genderData
-        // ============================
-        const genderObj = genderData.find(g => g.id == data.personal.gender);
-        const relationObj = relationData.find(r => r.id == data.personal.relation);
-
-        // ============================
-        // 2. Find country/state/district objects
-        // ============================
-        const countryObj = countryData.find(c => c.id == data.address.country);
-        const stateObj = stateData.find(s => s.id == data.address.state);
-        const districtObj = districtData.find(d => d.id == data.address.district);
-
-        const nokCountryObj = countryData.find(c => c.id == data.nok.country);
-        const nokStateObj = nokStateData.find(s => s.id == data.nok.state);
-        const nokDistrictObj = nokDistrictData.find(d => d.id == data.nok.district);
-
-        // ============================
-        // 3. Set patient details with proper object mapping
-        // ============================
-        setPatientDetailForm(prev => ({
-          ...prev,
-          // Basic info
-          id: patientId,
-          uhidNo: patient.uhidNo || "", // Added from patient object
-
-          // ============================
-          // Personal Details
-          // ============================
-          patientFn: data.personal.firstName || "",
-          patientMn: data.personal.middleName || "",
-          patientLn: data.personal.lastName || "",
-          patientMobileNumber: data.personal.mobileNo || "",
-          patientEmailId: data.personal.email || "",
-          patientDob: data.personal.dob || "",
-          patientAge: data.personal.age || "",
-          patientGender: genderObj || "", // Store object, not just ID
-          patientRelation: relationObj || "", // Store object, not just ID
-
-          // ============================
-          // Address
-          // ============================
-          patientAddress1: data.address.address1 || "",
-          patientAddress2: data.address.address2 || "",
-          patientCity: data.address.city || "",
-          patientPincode: data.address.pinCode || "",
-          patientCountry: countryObj || "", // Store object
-          patientState: stateObj || "", // Store object
-          patientDistrict: districtObj || "", // Store object
-
-          // ============================
-          // NOK
-          // ============================
-          nokFn: data.nok.firstName || "",
-          nokMn: data.nok.middleName || "",
-          nokLn: data.nok.lastName || "",
-          nokEmail: data.nok.email || "",
-          nokMobileNumber: data.nok.mobileNo || "",
-          nokAddress1: data.nok.address1 || "",
-          nokAddress2: data.nok.address2 || "",
-          nokCity: data.nok.city || "",
-          nokPincode: data.nok.pinCode || "",
-          nokCountry: nokCountryObj || "", // Store object
-          nokState: nokStateObj || "", // Store object
-          nokDistrict: nokDistrictObj || "", // Store object
-
-          // ============================
-          // Emergency Contact
-          // ============================
-          emerFn: data.emergency.firstName || "",
-          emerLn: data.emergency.lastName || "",
-          emerMobile: data.emergency.mobileNo || "",
-
-          // ============================
-          // Vitals
-          // ============================
-          height: data.vitals.height || "",
-          weight: data.vitals.weight || "",
-          temperature: data.vitals.temperature || "",
-          systolicBP: data.vitals.bpSys || "",
-          diastolicBP: data.vitals.bpDia || "",
-          pulse: data.vitals.pulse || "",
-          rr: data.vitals.rr || "",
-          spo2: data.vitals.spo2 || "",
-          bmi: data.vitals.bmi || "",
-
-          // ============================
-          // Patient Image
-          // ============================
-          patientImage: data.photoUrl ? `${API_HOST}${data.photoUrl}` : placeholderImage,
+      const nokCountryObj = countryData.find(c => c.id == data.nok?.country);
+      const nokStateObj = nokStateData.find(s => s.id == data.nok?.state);
+      const nokDistrictObj = nokDistrictData.find(d => d.id == data.nok?.district);
+      setPatientDetailForm(prev => ({
+        ...prev,
+        // Basic info
+        id: patientId,
+        uhidNo: patient.uhidNo || "", // Added from patient object
+        patientFn: data.personal?.firstName || "",
+        patientMn: data.personal?.middleName || "",
+        patientLn: data.personal?.lastName || "",
+        patientMobileNumber: data.personal?.mobileNo || "",
+        patientEmailId: data.personal?.email || "",
+        patientDob: data.personal?.dob || "",
+        patientAge: data.personal?.age || "",
+        patientGender: genderObj || "", // Store object, not just ID
+        patientRelation: relationObj || "", // Store object, not just ID
+        patientAddress1: data.address?.address1 || "",
+        patientAddress2: data.address?.address2 || "",
+        patientCity: data.address?.city || "",
+        patientPincode: data.address?.pinCode || "",
+        patientCountry: countryObj || "", // Store object
+        patientState: stateObj || "", // Store object
+        patientDistrict: districtObj || "", // Store object
+        nokFn: data.nok?.firstName || "",
+        nokMn: data.nok?.middleName || "",
+        nokLn: data.nok?.lastName || "",
+        nokEmail: data.nok?.email || "",
+        nokMobileNumber: data.nok?.mobileNo || "",
+        nokAddress1: data.nok?.address1 || "",
+        nokAddress2: data.nok?.address2 || "",
+        nokCity: data.nok?.city || "",
+        nokPincode: data.nok?.pinCode || "",
+        nokCountry: nokCountryObj || "", // Store object
+        nokState: nokStateObj || "", // Store object
+        nokDistrict: nokDistrictObj || "", // Store object
+        emerFn: data.emergency?.firstName || "",
+        emerLn: data.emergency?.lastName || "",
+        emerMobile: data.emergency?.mobileNo || "",
+        height: data.vitals?.height || "",
+        weight: data.vitals?.weight || "",
+        temperature: data.vitals?.temperature || "",
+        systolicBP: data.vitals?.bpSys || "",
+        diastolicBP: data.vitals?.bpDia || "",
+        pulse: data.vitals?.pulse || "",
+        rr: data.vitals?.rr || "",
+        spo2: data.vitals?.spo2 || "",
+        bmi: data.vitals?.bmi || "",
+        patientImage: data.photoUrl ? `${API_HOST}${data.photoUrl}` : placeholderImage,
+      }));
+      if (data.appointments && data.appointments.length > 0) {
+        const mappedAppointments = data.appointments.map((appt, index) => ({
+          id: index,
+          speciality: appt.specialityId?.toString() || "",
+          selDoctorId: appt.doctorId?.toString() || "",
+          selSession: appt.sessionId?.toString() || "",
+          departmentName: appt.specialityName || "",
+          doctorName: appt.doctorName || "",
+          sessionName: appt.sessionName || "",
         }));
 
-        // ===================================================
-        // 4. Fill Appointment Rows
-        // ===================================================
-        if (data.appointments && data.appointments.length > 0) {
-          const mappedAppointments = data.appointments.map((appt, index) => ({
-            id: index,
-            speciality: appt.specialityId.toString(),
-            selDoctorId: appt.doctorId.toString(),
-            selSession: appt.sessionId.toString(),
-            departmentName: appt.specialityName || "",
-            doctorName: appt.doctorName || "",
-            sessionName: appt.sessionName || "",
-          }));
-
-          setAppointments(mappedAppointments);
-          setNextAppointmentId(mappedAppointments.length);
-
-          // Fetch doctors for each appointment
-          mappedAppointments.forEach(async (appt) => {
-            if (appt.speciality) {
-              try {
-                const doctorData = await getRequest(`${DOCTOR_BY_SPECIALITY}${appt.speciality}`);
-                if (doctorData.status === 200) {
-                  setDoctorDataMap(prev => ({
-                    ...prev,
-                    [appt.id]: doctorData.response
-                  }));
-                }
-              } catch (err) {
-                console.error(`Error fetching doctors for speciality ${appt.speciality}:`, err);
+        setAppointments(mappedAppointments);
+        setNextAppointmentId(mappedAppointments.length);
+        mappedAppointments.forEach(async (appt) => {
+          if (appt.speciality) {
+            try {
+              const doctorData = await getRequest(`${DOCTOR_BY_SPECIALITY}${appt.speciality}`);
+              if (doctorData.status === 200) {
+                setDoctorDataMap(prev => ({
+                  ...prev,
+                  [appt.id]: doctorData.response
+                }));
               }
+            } catch (err) {
+              console.error(`Error fetching doctors for speciality ${appt.speciality}:`, err);
             }
-          });
-        } else {
-          // Reset to default if no appointments
-          setAppointments([{
-            id: 0,
-            speciality: "",
-            selDoctorId: "",
-            selSession: "",
-            departmentName: "",
-            doctorName: "",
-            sessionName: "",
-          }]);
-          setNextAppointmentId(1);
-        }
-
-        // SHOW DETAILS UI
-        setShowPatientDetails(true);
-        setShowDetails(true);
-        setAppointmentFlag(false); // Default to update info mode
-
-        Swal.fire("Loaded", "Patient details loaded successfully", "success");
+          }
+        });
       } else {
-        Swal.fire("Error", response.message || "Unable to load patient details", "error");
+        setAppointments([{
+          id: 0,
+          speciality: "",
+          selDoctorId: "",
+          selSession: "",
+          departmentName: "",
+          doctorName: "",
+          sessionName: "",
+        }]);
+        setNextAppointmentId(1);
       }
-    } catch (err) {
-      console.error(err);
-      Swal.fire("Error", "Unable to load patient details", "error");
+      setShowPatientDetails(true);
+      setShowDetails(true);
+      setAppointmentFlag(false); // Default to update info mode
+
+      Swal.fire("Loaded", "Patient details loaded successfully", "success");
+    } else {
+      Swal.fire("Error", response.message || "Unable to load patient details", "error");
     }
-  };
+  } catch (err) {
+    console.error(err);
+    Swal.fire("Error", "Unable to load patient details", "error");
+  }
+};
 
   async function fetchGenderData() {
     setLoading(true);
