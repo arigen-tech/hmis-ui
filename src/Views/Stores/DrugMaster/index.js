@@ -43,8 +43,8 @@ const DrugMaster = () => {
     const [currentPage, setCurrentPage] = useState(1)
     const [pageInput, setPageInput] = useState("")
     const [loading, setLoading] = useState(false);
-  const departmentId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
-  const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
+    const departmentId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
+    const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
 
 
     const itemsPerPage = 5
@@ -100,7 +100,7 @@ const DrugMaster = () => {
     const fetchDrugMasterData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${MAS_DRUG_MAS}/getAll/0/${hospitalId}/${departmentId}`);
+            const data = await getRequest(`${MAS_DRUG_MAS}/getAll/0`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setDrugs(data.response);
             } else {
@@ -229,7 +229,7 @@ const DrugMaster = () => {
             !!updatedFormData.dispensingUnit &&
             !!updatedFormData.reorderLevel &&
             !!updatedFormData.itemCategory,
-           
+
         )
     }
 
@@ -419,16 +419,20 @@ const DrugMaster = () => {
     }
 
     const filteredDrugs = drugs.filter((item) => {
-        const query = searchQuery.toLowerCase();
+        const q = (searchQuery || "").toLowerCase();
+
         return (
-            (item.pvmsNo?.toLowerCase() || "").includes(query) ||
-            (item.nomenclature?.toLowerCase() || "").includes(query) ||
-            (item.groupName?.toLowerCase() || "").includes(query) ||
-            (item.itemClassName?.toLowerCase() || "").includes(query) ||
-            (item.sectionName?.toLowerCase() || "").includes(query) ||
-            (item.unitAU?.toString().toLowerCase() || "").includes(query)
+            (item.pvmsNo || "").toLowerCase().includes(q) ||
+            (item.nomenclature || "").toLowerCase().includes(q) ||
+            (item.groupName || "").toLowerCase().includes(q) ||
+            (item.itemClassName || "").toLowerCase().includes(q) ||
+            (item.sectionName || "").toLowerCase().includes(q) ||
+            (item.unitAU ? item.unitAU.toString().toLowerCase() : "")
+                .includes(q)
         );
-    })
+    });
+
+
 
     const filteredTotalPages = Math.ceil(filteredDrugs.length / itemsPerPage)
     const currentItems = filteredDrugs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
@@ -491,6 +495,7 @@ const DrugMaster = () => {
                     <div className="card form-card">
                         <div className="card-header d-flex justify-content-between align-items-center">
                             <h4 className="card-title p-2">Item Drug Master</h4>
+                            {loading && <LoadingScreen />}
 
                             <div className="d-flex justify-content-between align-items-center">
                                 {!showForm && (
