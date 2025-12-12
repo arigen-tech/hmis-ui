@@ -30,7 +30,7 @@ const IndentIssue = () => {
   const [previousIssuesData, setPreviousIssuesData] = useState([])
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [confirmAction, setConfirmAction] = useState(null) // "partially" or "fully"
- 
+
   const [previousIssuesLoading, setPreviousIssuesLoading] = useState(false)
   const [previousIssuesError, setPreviousIssuesError] = useState(null)
 
@@ -85,60 +85,60 @@ const IndentIssue = () => {
     fetchPendingIndentsForIssue(departmentId);
   }, [departmentId]);
 
-useEffect(() => {
-  // Extract all items from indents for dropdown options
-  const allItems = [];
-  const batchMap = {};
+  useEffect(() => {
+    // Extract all items from indents for dropdown options
+    const allItems = [];
+    const batchMap = {};
 
-  console.log("Processing indent data for batch options:", indentData);
+    console.log("Processing indent data for batch options:", indentData);
 
-  indentData.forEach(indent => {
-    if (indent.items && Array.isArray(indent.items)) {
-      indent.items.forEach(item => {
-        const itemCode = item.pvmsNo || `ITEM_${item.itemId}`;
+    indentData.forEach(indent => {
+      if (indent.items && Array.isArray(indent.items)) {
+        indent.items.forEach(item => {
+          const itemCode = item.pvmsNo || `ITEM_${item.itemId}`;
 
-        
-        let totalAvailableStock = 0;
-        if (item.batches && Array.isArray(item.batches)) {
-          totalAvailableStock = item.batches.reduce((sum, batch) => {
-            return sum + (Number(batch.batchstock) || 0);
-          }, 0);
-        }
 
-        if (!allItems.some(existing => existing.itemId === item.itemId)) {
-          allItems.push({
-            id: item.itemId,
-            code: itemCode,
-            name: item.itemName || "",
-            unit: item.unitAuName || "",
-            availableStock: totalAvailableStock  
-          });
-        }
+          let totalAvailableStock = 0;
+          if (item.batches && Array.isArray(item.batches)) {
+            totalAvailableStock = item.batches.reduce((sum, batch) => {
+              return sum + (Number(batch.batchstock) || 0);
+            }, 0);
+          }
 
-        // CHANGE 2: Extract batch options for this item
-        // Backend now returns batches SORTED BY EXPIRY DATE (FEFO)
-        if (item.batches && Array.isArray(item.batches)) {
-          console.log(`Processing batches for item ${itemCode}:`, item.batches);
+          if (!allItems.some(existing => existing.itemId === item.itemId)) {
+            allItems.push({
+              id: item.itemId,
+              code: itemCode,
+              name: item.itemName || "",
+              unit: item.unitAuName || "",
+              availableStock: totalAvailableStock
+            });
+          }
 
-          // IMPORTANT: Batches come from backend ALREADY SORTED by expiry date
-          // So we just map them without re-sorting
-          batchMap[itemCode] = item.batches.map(batch => ({
-            batchNo: batch.batchNo,
-            dom: batch.manufactureDate,
-            doe: batch.expiryDate,
-            stock: batch.batchstock || 0,  // Individual batch stock from current department
-            totalAvailableStock: totalAvailableStock  // Total for this item
-          }));
-        }
-      });
-    }
-  });
+          // CHANGE 2: Extract batch options for this item
+          // Backend now returns batches SORTED BY EXPIRY DATE (FEFO)
+          if (item.batches && Array.isArray(item.batches)) {
+            console.log(`Processing batches for item ${itemCode}:`, item.batches);
 
-  console.log("Batch map created:", batchMap);
-  console.log("Item options created:", allItems);
-  setItemOptions(allItems);
-  setBatchOptions(batchMap);
-}, [indentData]);
+            // IMPORTANT: Batches come from backend ALREADY SORTED by expiry date
+            // So we just map them without re-sorting
+            batchMap[itemCode] = item.batches.map(batch => ({
+              batchNo: batch.batchNo,
+              dom: batch.manufactureDate,
+              doe: batch.expiryDate,
+              stock: batch.batchstock || 0,  // Individual batch stock from current department
+              totalAvailableStock: totalAvailableStock  // Total for this item
+            }));
+          }
+        });
+      }
+    });
+
+    console.log("Batch map created:", batchMap);
+    console.log("Item options created:", allItems);
+    setItemOptions(allItems);
+    setBatchOptions(batchMap);
+  }, [indentData]);
 
   const handleSearch = () => {
     if (!fromDate || !toDate) {
@@ -264,64 +264,64 @@ useEffect(() => {
     setIndentEntries(updatedEntries);
   };
 
- const handleEditClick = async (record, e) => {
-  e.stopPropagation();
-  setLoading(true);
+  const handleEditClick = async (record, e) => {
+    e.stopPropagation();
+    setLoading(true);
 
-  try {
-    setSelectedRecord(record);
-    if (!record || !Array.isArray(record.items)) return;
+    try {
+      setSelectedRecord(record);
+      if (!record || !Array.isArray(record.items)) return;
 
-    const entries = record.items.map((item) => {
-      const defaultBatch =
-        item.batches && item.batches.length > 0 ? item.batches[0] : null;
-      const defaultBatchStock = defaultBatch ? defaultBatch.batchstock : 0;
-      const approvedQty = item.approvedQty || 0;
-      const previousIssuedQty = item.issuedQty || 0;
+      const entries = record.items.map((item) => {
+        const defaultBatch =
+          item.batches && item.batches.length > 0 ? item.batches[0] : null;
+        const defaultBatchStock = defaultBatch ? defaultBatch.batchstock : 0;
+        const approvedQty = item.approvedQty || 0;
+        const previousIssuedQty = item.issuedQty || 0;
 
-      let totalAvailableStock = 0;
-      if (item.batches && Array.isArray(item.batches)) {
-        totalAvailableStock = item.batches.reduce((sum, batch) => {
-          return sum + (Number(batch.batchstock) || 0);
-        }, 0);
-      }
+        let totalAvailableStock = 0;
+        if (item.batches && Array.isArray(item.batches)) {
+          totalAvailableStock = item.batches.reduce((sum, batch) => {
+            return sum + (Number(batch.batchstock) || 0);
+          }, 0);
+        }
 
-      const autoQtyIssued = calculateAutoQtyIssued(
-        defaultBatchStock,
-        approvedQty,
-        previousIssuedQty
-      );
+        const autoQtyIssued = calculateAutoQtyIssued(
+          defaultBatchStock,
+          approvedQty,
+          previousIssuedQty
+        );
 
-      return {
-        id: item.indentTId || null,
-        itemId: item.itemId || "",
-        itemCode: item.pvmsNo || `ITEM_${item.itemId}`,
-        itemName: item.itemName || "",
-        apu: item.unitAuName || "",
-        qtyDemanded: item.requestedQty || 0,
-        approvedQty: approvedQty,
-        previousIssuedQty: previousIssuedQty,
-        batchNo: defaultBatch ? defaultBatch.batchNo : "",
-        dom: defaultBatch ? defaultBatch.manufactureDate : "",
-        doe: defaultBatch ? defaultBatch.expiryDate : "",
-        qtyIssued: autoQtyIssued,
-        balanceAfterIssue: Math.max(
-          0,
-          approvedQty - previousIssuedQty - Number(autoQtyIssued)
-        ),
-        batchStock: defaultBatchStock,
-        availableStock: totalAvailableStock,
-      };
-    });
+        return {
+          id: item.indentTId || null,
+          itemId: item.itemId || "",
+          itemCode: item.pvmsNo || `ITEM_${item.itemId}`,
+          itemName: item.itemName || "",
+          apu: item.unitAuName || "",
+          qtyDemanded: item.requestedQty || 0,
+          approvedQty: approvedQty,
+          previousIssuedQty: previousIssuedQty,
+          batchNo: defaultBatch ? defaultBatch.batchNo : "",
+          dom: defaultBatch ? defaultBatch.manufactureDate : "",
+          doe: defaultBatch ? defaultBatch.expiryDate : "",
+          qtyIssued: autoQtyIssued,
+          balanceAfterIssue: Math.max(
+            0,
+            approvedQty - previousIssuedQty - Number(autoQtyIssued)
+          ),
+          batchStock: defaultBatchStock,
+          availableStock: totalAvailableStock,
+        };
+      });
 
-    setIndentEntries(entries);
-    setCurrentView("detail");
-  } catch (error) {
-    console.error("Error in handleEditClick:", error);
-  } finally {
-    setLoading(false);
-  }
-};
+      setIndentEntries(entries);
+      setCurrentView("detail");
+    } catch (error) {
+      console.error("Error in handleEditClick:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleBackToList = () => {
     setCurrentView("list")
@@ -615,17 +615,17 @@ useEffect(() => {
     }
   };
 
- const formatDate = (dateStr) => {
-  if (!dateStr) return "";
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
 
-  const date = new Date(dateStr);
+    const date = new Date(dateStr);
 
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-indexed
-  const year = date.getFullYear();
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-indexed
+    const year = date.getFullYear();
 
-  return `${day}/${month}/${year}`;
-};
+    return `${day}/${month}/${year}`;
+  };
 
 
   const formatDateTime = (dateTimeStr) => {
@@ -858,7 +858,7 @@ useEffect(() => {
       <div className="content-wrapper">
         <ConfirmationDialog />
         <PreviousIssuesModal />
-        {loading && <LoadingScreen/>}
+        {loading && <LoadingScreen />}
         {popupMessage && (
           <Popup
             message={popupMessage.message}
@@ -998,7 +998,8 @@ useEffect(() => {
                             style={{ padding: "0", width: "20px" }}
                           >{index + 1}</td>
 
-                    <td style={{ position: "relative",  }}>  {/* CHANGE 1: Added overflow: "visible" */}
+
+<td style={{ position: "relative", overflow: "visible" }}>
   <input
     ref={(el) => (itemInputRefs.current[index] = el)}
     type="text"
@@ -1026,16 +1027,17 @@ useEffect(() => {
     }}
   />
   {activeItemDropdown === index && (
-    /* CHANGE 2: Removed ReactDOM.createPortal - render inline instead */
     <ul
-      className="list-group position-absolute"  /* CHANGE 3: Kept position-absolute (was already correct) */
+      className="list-group position-absolute"
       style={{
         zIndex: 9999,
         maxHeight: 200,
         overflowY: "auto",
-        minWidth: "450px",  /* CHANGE 4: Changed to minWidth: "450px" to show full item names and stock info */
-        top: "100%",  /* CHANGE 5: Simplified from calculated getBoundingClientRect() to "100%" */
-        left: 0,  /* CHANGE 6: Simplified from calculated getBoundingClientRect() to 0 */
+        minWidth: "450px",
+        /* CHANGE 1: Smart positioning - opens upward if it's in bottom rows */
+        bottom: indentEntries.length - index <= 2 ? "100%" : "auto",  // Opens upward for last 2 rows
+        top: indentEntries.length - index <= 2 ? "auto" : "100%",     // Opens downward for other rows
+        left: 0,
         backgroundColor: "white",
         border: "1px solid #dee2e6",
         borderRadius: "0.375rem",
@@ -1053,7 +1055,11 @@ useEffect(() => {
           <li
             key={opt.id}
             className="list-group-item list-group-item-action"
-            style={{ cursor: "pointer" }}
+            style={{ 
+              cursor: "pointer",
+              padding: "8px 12px",  /* CHANGE 2: Reduced padding from default 16px to 8px */
+              fontSize: "14px"       /* CHANGE 3: Slightly smaller font for compact display */
+            }}
             onMouseDown={(e) => {
               e.preventDefault()
               dropdownClickedRef.current = true
@@ -1076,12 +1082,16 @@ useEffect(() => {
           opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
       ).length === 0 &&
         entry.itemName !== "" && (
-          <li className="list-group-item text-muted">No matches found</li>
+          <li 
+            className="list-group-item text-muted"
+            style={{ padding: "8px 12px" }}  /* CHANGE 4: Consistent padding for "no matches" */
+          >
+            No matches found
+          </li>
         )}
     </ul>
   )}
 </td>
-
                           <td>
                             <input
                               type="text"
