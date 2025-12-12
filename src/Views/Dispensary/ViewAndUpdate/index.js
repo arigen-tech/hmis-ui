@@ -161,6 +161,21 @@ const OpeningBalanceApproval = () => {
     return d.toISOString().split("T")[0];
   };
 
+  const formatDateToDDMMYYYY = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const convertToYYYYMMDD = (ddmmyyyy) => {
+    if (!ddmmyyyy || ddmmyyyy.length !== 10) return "";
+    const [day, month, year] = ddmmyyyy.split('/');
+    return `${year}-${month}-${day}`;
+  };
+
   // Filtered data based on date range
   const filteredApprovalData = approvalData.filter((item) => {
     if (!fromDate || !toDate) return true;
@@ -1040,27 +1055,31 @@ const OpeningBalanceApproval = () => {
                 <div className="col-md-3">
                   <label className="form-label fw-bold">From Date</label>
                   <input
-                    type="date"
+                    type="text"
                     className="form-control"
-                    value={fromDate}
+                    value={formatDateToDDMMYYYY(fromDate)}
                     onChange={(e) => {
-                      setFromDate(e.target.value);
+                      setFromDate(convertToYYYYMMDD(e.target.value));
                       setCurrentPage(1);
                     }}
-                    max={toDate || undefined}
+                    placeholder="DD/MM/YYYY"
+                    readOnly
+                    style={{ backgroundColor: "#f5f5f5", cursor: "not-allowed" }}
                   />
                 </div>
                 <div className="col-md-3">
                   <label className="form-label fw-bold">To Date</label>
                   <input
-                    type="date"
+                    type="text"
                     className="form-control"
-                    value={toDate}
+                    value={formatDateToDDMMYYYY(toDate)}
                     onChange={(e) => {
-                      setToDate(e.target.value);
+                      setToDate(convertToYYYYMMDD(e.target.value));
                       setCurrentPage(1);
                     }}
-                    min={fromDate || undefined}
+                    placeholder="DD/MM/YYYY"
+                    readOnly
+                    style={{ backgroundColor: "#f5f5f5", cursor: "not-allowed" }}
                   />
                 </div>
                 <div className="col-md-3 d-flex align-items-end"></div>

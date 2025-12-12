@@ -179,6 +179,21 @@ const TrackIndent = () => {
   const currentItems = filteredIndentData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
   const totalPages = Math.ceil(filteredIndentData.length / itemsPerPage)
 
+  const formatDateToDDMMYYYY = (dateString) => {
+    if (!dateString) return ""
+    const date = new Date(dateString)
+    const day = String(date.getDate()).padStart(2, "0")
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const year = date.getFullYear()
+    return `${day}/${month}/${year}`
+  }
+
+  const convertToYYYYMMDD = (ddmmyyyy) => {
+    if (!ddmmyyyy || ddmmyyyy.length !== 10) return ""
+    const [day, month, year] = ddmmyyyy.split("/")
+    return `${year}-${month}-${day}`
+  }
+
   const renderPagination = () => {
     const pageNumbers = []
     const maxVisiblePages = 5
@@ -544,21 +559,25 @@ const TrackIndent = () => {
                 <div className="col-md-2">
                   <label className="form-label fw-bold">From Date</label>
                   <input
-                    type="date"
+                    type="text"
                     className="form-control"
-                    value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
+                    value={formatDateToDDMMYYYY(fromDate)}
+                    onChange={(e) => setFromDate(convertToYYYYMMDD(e.target.value))}
                     placeholder="DD/MM/YYYY"
+                    readOnly
+                    style={{ backgroundColor: "#f5f5f5", cursor: "not-allowed" }}
                   />
                 </div>
                 <div className="col-md-2">
                   <label className="form-label fw-bold">To Date</label>
                   <input
-                    type="date"
+                    type="text"
                     className="form-control"
-                    value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
+                    value={formatDateToDDMMYYYY(toDate)}
+                    onChange={(e) => setToDate(convertToYYYYMMDD(e.target.value))}
                     placeholder="DD/MM/YYYY"
+                    readOnly
+                    style={{ backgroundColor: "#f5f5f5", cursor: "not-allowed" }}
                   />
                 </div>
                 <div className="col-md-2 d-flex align-items-end">
