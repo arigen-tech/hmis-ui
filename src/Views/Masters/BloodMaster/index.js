@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST,MAS_BLOODGROUP } from "../../../config/apiConfig";
+import { API_HOST, MAS_BLOODGROUP } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
@@ -28,30 +28,30 @@ const BloodGroupMaster = () => {
   const BLOOD_CODE_MAX_LENGTH = 8;
   const [pageInput, setPageInput] = useState("");
 
- 
+
   useEffect(() => {
     fetchBloodGroups(0);
   }, []);
 
- const fetchBloodGroups = async (flag = 0) => {
-  try {
-    setLoading(true);
-    const response = await getRequest(`${MAS_BLOODGROUP}/getAll/${flag}`);
-    
-    if (response && response.response) {
-      setBloodGroups(response.response);
+  const fetchBloodGroups = async (flag = 0) => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${MAS_BLOODGROUP}/getAll/${flag}`);
+
+      if (response && response.response) {
+        setBloodGroups(response.response);
+      }
+    } catch (err) {
+      console.error("Error fetching blood groups data:", err);
+      showPopup("Failed to load blood groups data", "error");
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error("Error fetching blood groups data:", err);
-    showPopup("Failed to load blood groups data", "error");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
-    setCurrentPage(1); 
+    setCurrentPage(1);
   };
 
   const filteredBloodGroups = bloodGroups.filter(
@@ -60,7 +60,7 @@ const BloodGroupMaster = () => {
       bloodGroup.bloodGroupCode.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  
+
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredBloodGroups.slice(indexOfFirstItem, indexOfLastItem);
@@ -82,7 +82,7 @@ const BloodGroupMaster = () => {
     try {
       setLoading(true);
 
-      
+
       const isDuplicate = bloodGroups.some(
         (group) =>
           group.bloodGroupCode === formData.bloodGroupCode ||
@@ -96,7 +96,7 @@ const BloodGroupMaster = () => {
       }
 
       if (editingBloodGroup) {
-        
+
         const response = await putRequest(`${MAS_BLOODGROUP}/updateById/${editingBloodGroup.bloodGroupId}`, {
           bloodGroupCode: formData.bloodGroupCode,
           bloodGroupName: formData.bloodGroupName,
@@ -112,7 +112,7 @@ const BloodGroupMaster = () => {
           showPopup("Blood group updated successfully!", "success");
         }
       } else {
-        
+
         const response = await postRequest(`${MAS_BLOODGROUP}/create`, {
           bloodGroupCode: formData.bloodGroupCode,
           bloodGroupName: formData.bloodGroupName,
@@ -125,11 +125,11 @@ const BloodGroupMaster = () => {
         }
       }
 
-      
+
       setEditingBloodGroup(null);
       setFormData({ bloodGroupCode: "", bloodGroupName: "" });
       setShowForm(false);
-      fetchBloodGroups(); 
+      fetchBloodGroups();
     } catch (err) {
       console.error("Error saving blood group:", err);
       showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
@@ -148,16 +148,16 @@ const BloodGroupMaster = () => {
     });
   };
 
-  
+
   const handleSwitchChange = (bloodGroupId, newStatus) => {
-    console.log("Switch change - ID:", bloodGroupId, "New status:", newStatus); 
+    console.log("Switch change - ID:", bloodGroupId, "New status:", newStatus);
     if (bloodGroupId === undefined || bloodGroupId === null) {
       console.error("Invalid ID received in handleSwitchChange");
       showPopup("Error: Invalid blood group ID", "error");
       return;
     }
 
-    
+
     setConfirmDialog({
       isOpen: true,
       bloodGroupId: bloodGroupId,
@@ -165,51 +165,51 @@ const BloodGroupMaster = () => {
     });
   };
 
-  
- const handleConfirm = async (confirmed) => {
-  console.log("Confirm dialog state:", confirmDialog);
 
-  if (confirmed && confirmDialog.bloodGroupId !== null) {
-    try {
-      setLoading(true);
-      console.log("Making API call with ID:", confirmDialog.bloodGroupId, "Status:", confirmDialog.newStatus);
+  const handleConfirm = async (confirmed) => {
+    console.log("Confirm dialog state:", confirmDialog);
 
-      // API call to update status
-      const response = await putRequest(
-        `${MAS_BLOODGROUP}/status/${confirmDialog.bloodGroupId}?status=${confirmDialog.newStatus}`
-      );
+    if (confirmed && confirmDialog.bloodGroupId !== null) {
+      try {
+        setLoading(true);
+        console.log("Making API call with ID:", confirmDialog.bloodGroupId, "Status:", confirmDialog.newStatus);
 
-      console.log("API response:", response);
-
-      if (response &&  response.response) {
-        // Update local state to reflect the change
-        setBloodGroups((prevData) =>
-          prevData.map((group) =>
-            group.bloodGroupId === confirmDialog.bloodGroupId
-              ? { ...group, status: confirmDialog.newStatus }
-              : group
-          )
+        // API call to update status
+        const response = await putRequest(
+          `${MAS_BLOODGROUP}/status/${confirmDialog.bloodGroupId}?status=${confirmDialog.newStatus}`
         );
-        
-        // Show success message
-        showPopup(
-          `Blood group ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-          "success"
-        );
-      } else {
-        throw new Error("Invalid response structure");
+
+        console.log("API response:", response);
+
+        if (response && response.response) {
+          // Update local state to reflect the change
+          setBloodGroups((prevData) =>
+            prevData.map((group) =>
+              group.bloodGroupId === confirmDialog.bloodGroupId
+                ? { ...group, status: confirmDialog.newStatus }
+                : group
+            )
+          );
+
+          // Show success message
+          showPopup(
+            `Blood group ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            "success"
+          );
+        } else {
+          throw new Error("Invalid response structure");
+        }
+      } catch (err) {
+        console.error("Error updating blood group status:", err);
+        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Error updating blood group status:", err);
-      showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
-    } finally {
-      setLoading(false);
     }
-  }
 
-  // Reset confirmation dialog state
-  setConfirmDialog({ isOpen: false, bloodGroupId: null, newStatus: null });
-};
+    // Reset confirmation dialog state
+    setConfirmDialog({ isOpen: false, bloodGroupId: null, newStatus: null });
+  };
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -223,44 +223,44 @@ const BloodGroupMaster = () => {
     fetchBloodGroups();
   };
 
-const handlePageNavigation = () => {
-  const pageNumber = Number(pageInput);
-  if (pageNumber >= 1 && pageNumber <= filteredTotalPages) {
-    setCurrentPage(pageNumber);
-  }
-};
+  const handlePageNavigation = () => {
+    const pageNumber = Number(pageInput);
+    if (pageNumber >= 1 && pageNumber <= filteredTotalPages) {
+      setCurrentPage(pageNumber);
+    }
+  };
 
-const renderPagination = () => {
-  const pageNumbers = [];
-  const maxVisiblePages = 5;
-  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-  const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
-  if (endPage - startPage < maxVisiblePages - 1) {
-    startPage = Math.max(1, endPage - maxVisiblePages + 1);
-  }
-  if (startPage > 1) {
-    pageNumbers.push(1);
-    if (startPage > 2) pageNumbers.push("...");
-  }
-  for (let i = startPage; i <= endPage; i++) {
-    pageNumbers.push(i);
-  }
-  if (endPage < filteredTotalPages) {
-    if (endPage < filteredTotalPages - 1) pageNumbers.push("...");
-    pageNumbers.push(filteredTotalPages);
-  }
-  return pageNumbers.map((number, index) => (
-    <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-      {typeof number === "number" ? (
-        <button className="page-link" onClick={() => setCurrentPage(number)}>
-          {number}
-        </button>
-      ) : (
-        <span className="page-link disabled">{number}</span>
-      )}
-    </li>
-  ));
-};
+  const renderPagination = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    if (startPage > 1) {
+      pageNumbers.push(1);
+      if (startPage > 2) pageNumbers.push("...");
+    }
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+    if (endPage < filteredTotalPages) {
+      if (endPage < filteredTotalPages - 1) pageNumbers.push("...");
+      pageNumbers.push(filteredTotalPages);
+    }
+    return pageNumbers.map((number, index) => (
+      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
+        {typeof number === "number" ? (
+          <button className="page-link" onClick={() => setCurrentPage(number)}>
+            {number}
+          </button>
+        ) : (
+          <span className="page-link disabled">{number}</span>
+        )}
+      </li>
+    ));
+  };
 
   return (
     <div className="content-wrapper">
@@ -270,21 +270,25 @@ const renderPagination = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Blood Group Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search Blood Groups"
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
 
                 <div className="d-flex align-items-center">
                   {!showForm ? (
@@ -319,7 +323,7 @@ const renderPagination = () => {
             </div>
             <div className="card-body">
               {loading ? (
-                 <LoadingScreen />
+                <LoadingScreen />
               ) : !showForm ? (
                 <div className="table-responsive packagelist">
                   <table className="table table-bordered table-hover align-middle">
@@ -373,51 +377,51 @@ const renderPagination = () => {
                     </tbody>
                   </table>
                   {filteredBloodGroups.length > 0 && (
-                <nav className="d-flex justify-content-between align-items-center mt-3">
-                <div>
-                  <span>
-                    Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredProducts}
-                  </span>
-                </div>
-                <ul className="pagination mb-0">
-                  <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                    >
-                      &laquo; Previous
-                    </button>
-                  </li>
-                  {renderPagination()}
-                  <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === filteredTotalPages}
-                    >
-                      Next &raquo;
-                    </button>
-                  </li>
-                </ul>
-                <div className="d-flex align-items-center">
-                  <input
-                    type="number"
-                    min="1"
-                    max={filteredTotalPages}
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                    placeholder="Go to page"
-                    className="form-control me-2"
-                  />
-                  <button
-                    className="btn btn-primary"
-                    onClick={handlePageNavigation}
-                  >
-                    Go
-                  </button>
-                </div>
-              </nav>
+                    <nav className="d-flex justify-content-between align-items-center mt-3">
+                      <div>
+                        <span>
+                          Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredProducts}
+                        </span>
+                      </div>
+                      <ul className="pagination mb-0">
+                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                          >
+                            &laquo; Previous
+                          </button>
+                        </li>
+                        {renderPagination()}
+                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            disabled={currentPage === filteredTotalPages}
+                          >
+                            Next &raquo;
+                          </button>
+                        </li>
+                      </ul>
+                      <div className="d-flex align-items-center">
+                        <input
+                          type="number"
+                          min="1"
+                          max={filteredTotalPages}
+                          value={pageInput}
+                          onChange={(e) => setPageInput(e.target.value)}
+                          placeholder="Go to page"
+                          className="form-control me-2"
+                        />
+                        <button
+                          className="btn btn-primary"
+                          onClick={handlePageNavigation}
+                        >
+                          Go
+                        </button>
+                      </div>
+                    </nav>
                   )}
                 </div>
               ) : (
@@ -432,7 +436,7 @@ const renderPagination = () => {
                       placeholder="e.g., O+"
                       value={formData.bloodGroupCode}
                       onChange={handleInputChange}
-                      maxLength = {BLOOD_CODE_MAX_LENGTH}
+                      maxLength={BLOOD_CODE_MAX_LENGTH}
 
                       required
                     />
@@ -447,7 +451,7 @@ const renderPagination = () => {
                       placeholder="Blood Group Name"
                       value={formData.bloodGroupName}
                       onChange={handleInputChange}
-                      maxLength = {BLOOD_NAME_MAX_LENGTH}
+                      maxLength={BLOOD_NAME_MAX_LENGTH}
                       required
                     />
                   </div>

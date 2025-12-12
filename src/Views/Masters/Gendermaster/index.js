@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading"
 import axios from "axios";
-import { API_HOST,MAS_GENDER } from "../../../config/apiConfig";
+import { API_HOST, MAS_GENDER } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
 
@@ -30,27 +30,27 @@ const Gendermaster = () => {
   const Gender_NAME_MAX_LENGTH = 30;
   const Gender_Code_MAX_LENGTH = 1;
 
-  
 
-  
+
+
   useEffect(() => {
-    fetchGenderData(0); 
+    fetchGenderData(0);
   }, []);
 
   const fetchGenderData = async (flag = 0) => {
     try {
       setLoading(true);
       const response = await getRequest(`${MAS_GENDER}/getAll/${flag}`);
-  
+
       if (response && response.response) {
-        
+
         const transformedData = response.response.map(gender => ({
           id: gender.id,
           genderCode: gender.genderCode,
           genderName: gender.genderName,
-          status: gender.status 
+          status: gender.status
         }));
-  
+
         setGenderData(transformedData);
         setTotalFilteredProducts(transformedData.length);
         setFilteredTotalPages(Math.ceil(transformedData.length / itemsPerPage));
@@ -62,7 +62,7 @@ const Gendermaster = () => {
       setLoading(false);
     }
   };
-  
+
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -70,11 +70,11 @@ const Gendermaster = () => {
   };
 
   const filteredGenderData = genderData.filter(gender =>
-    gender.genderName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    gender.genderName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     gender.genderCode.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  
+
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredGenderData.slice(indexOfFirstItem, indexOfLastItem);
@@ -92,12 +92,12 @@ const Gendermaster = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    
+
     try {
       setLoading(true);
-      
+
       if (editingGender) {
-        
+
         const response = await axios.put(`${MAS_GENDER}/updateById/${editingGender.id}`, {
           id: editingGender.id,
           genderCode: formData.genderCode,
@@ -105,16 +105,16 @@ const Gendermaster = () => {
           code: null,
           status: editingGender.status
         });
-        
+
         if (response && response.response) {
-         
+
           setGenderData(genderData.map(gender =>
             gender.id === editingGender.id ? response.response : gender
           ));
           showPopup("Gender updated successfully!", "success");
         }
       } else {
-       
+
         const response = await postRequest(`${MAS_GENDER}/create`, {
           genderCode: formData.genderCode,
           genderName: formData.genderName,
@@ -127,24 +127,24 @@ const Gendermaster = () => {
             gender.genderCode === formData.genderCode ||
             gender.genderName === formData.genderName
         );
-    
+
         if (isDuplicate) {
           showPopup("Gender already exists!", "error");
           setLoading(false);
           return;
         }
-        
+
         if (response && response.response) {
-          
+
           setGenderData([...genderData, response.response]);
           showPopup("New gender added successfully!", "success");
         }
       }
-      
+
       setEditingGender(null);
       setFormData({ genderCode: "", genderName: "" });
       setShowForm(false);
-      fetchGenderData(); 
+      fetchGenderData();
     } catch (err) {
       console.error("Error saving gender data:", err);
       showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
@@ -162,7 +162,7 @@ const Gendermaster = () => {
       }
     });
   };
-  
+
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, genderId: id, newStatus });
   };
@@ -171,17 +171,17 @@ const Gendermaster = () => {
     if (confirmed && confirmDialog.genderId !== null) {
       try {
         setLoading(true);
-        
+
         const response = await putRequest(
           `${MAS_GENDER}/status/${confirmDialog.genderId}?status=${confirmDialog.newStatus}`
         );
-        
+
         if (response && response.response) {
-         
+
           setGenderData((prevData) =>
             prevData.map((gender) =>
-              gender.id === confirmDialog.genderId ? 
-                { ...gender, status: confirmDialog.newStatus } : 
+              gender.id === confirmDialog.genderId ?
+                { ...gender, status: confirmDialog.newStatus } :
                 gender
             )
           );
@@ -193,7 +193,7 @@ const Gendermaster = () => {
       } finally {
         setTimeout(() => {
           setLoading(false);
-        }, 2000); 
+        }, 2000);
       }
     }
     setConfirmDialog({ isOpen: false, genderId: null, newStatus: null });
@@ -202,12 +202,12 @@ const Gendermaster = () => {
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prevData) => ({ ...prevData, [id]: value }));
-    
-   
+
+
     if (id === "genderName") {
       setIsFormValid(value.trim() !== "");
     } else if (id === "genderCode") {
-      
+
       if (!editingGender) {
         setIsFormValid(value.trim() !== "" && formData.genderName.trim() !== "");
       }
@@ -274,27 +274,31 @@ const Gendermaster = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Gender Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search"
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
 
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2"
                         onClick={() => {
                           setEditingGender(null);
@@ -305,14 +309,14 @@ const Gendermaster = () => {
                       >
                         <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2 flex-shrink-0"
                         onClick={handleRefresh}
                       >
                         <i className="mdi mdi-refresh"></i> Show All
                       </button>
-                     
+
                     </>
                   ) : (
                     <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
@@ -323,8 +327,8 @@ const Gendermaster = () => {
               </div>
             </div>
             <div className="card-body">
-            {loading ? (
-                <LoadingScreen /> 
+              {loading ? (
+                <LoadingScreen />
               ) : !showForm ? (
                 <div className="table-responsive packagelist">
                   <table className="table table-bordered table-hover align-middle">
@@ -378,51 +382,51 @@ const Gendermaster = () => {
                     </tbody>
                   </table>
                   {filteredGenderData.length > 0 && (
-                     <nav className="d-flex justify-content-between align-items-center mt-3">
-                     <div>
-                       <span>
-                         Page {currentPage} of {filteredTotalPages} | Total Records: {filteredGenderData.length}
-                       </span>
-                     </div>
-                     <ul className="pagination mb-0">
-                       <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                         <button
-                           className="page-link"
-                           onClick={() => setCurrentPage(currentPage - 1)}
-                           disabled={currentPage === 1}
-                         >
-                           &laquo; Previous
-                         </button>
-                       </li>
-                       {renderPagination()}
-                       <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                         <button
-                           className="page-link"
-                           onClick={() => setCurrentPage(currentPage + 1)}
-                           disabled={currentPage === filteredTotalPages}
-                         >
-                           Next &raquo;
-                         </button>
-                       </li>
-                     </ul>
-                     <div className="d-flex align-items-center">
-                       <input
-                         type="number"
-                         min="1"
-                         max={filteredTotalPages}
-                         value={pageInput}
-                         onChange={(e) => setPageInput(e.target.value)}
-                         placeholder="Go to page"
-                         className="form-control me-2"
-                       />
-                       <button
-                         className="btn btn-primary"
-                         onClick={handlePageNavigation}
-                       >
-                         Go
-                       </button>
-                     </div>
-                   </nav>
+                    <nav className="d-flex justify-content-between align-items-center mt-3">
+                      <div>
+                        <span>
+                          Page {currentPage} of {filteredTotalPages} | Total Records: {filteredGenderData.length}
+                        </span>
+                      </div>
+                      <ul className="pagination mb-0">
+                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                          >
+                            &laquo; Previous
+                          </button>
+                        </li>
+                        {renderPagination()}
+                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            disabled={currentPage === filteredTotalPages}
+                          >
+                            Next &raquo;
+                          </button>
+                        </li>
+                      </ul>
+                      <div className="d-flex align-items-center">
+                        <input
+                          type="number"
+                          min="1"
+                          max={filteredTotalPages}
+                          value={pageInput}
+                          onChange={(e) => setPageInput(e.target.value)}
+                          placeholder="Go to page"
+                          className="form-control me-2"
+                        />
+                        <button
+                          className="btn btn-primary"
+                          onClick={handlePageNavigation}
+                        >
+                          Go
+                        </button>
+                      </div>
+                    </nav>
                   )}
                 </div>
               ) : (

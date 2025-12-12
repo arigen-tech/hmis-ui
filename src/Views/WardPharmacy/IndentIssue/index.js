@@ -1028,7 +1028,7 @@ useEffect(() => {
                             {activeItemDropdown === index &&
                               ReactDOM.createPortal(
                                 <ul
-                                  className="list-group position-fixed"
+                                  className="list-group position-absolute"
                                   style={{
                                     zIndex: 9999,
                                     maxHeight: 200,
