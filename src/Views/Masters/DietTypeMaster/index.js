@@ -3,51 +3,51 @@ import Popup from "../../../Components/popup";
 
 const DietTypeMaster = () => {
   const [dietTypeData, setDietTypeData] = useState([
-    { 
-      id: 1, 
-      dietTypeName: "Vegetarian", 
+    {
+      id: 1,
+      dietTypeName: "Vegetarian",
       description: "Plant-based diet with no meat products",
-      sequenceNo: 1, 
+      sequenceNo: 1,
       status: true, // true = Active, false = Inactive
       lastUpdatedDate: "2024-01-15",
       createdBy: "Admin",
       lastUpdatedBy: "Admin"
     },
-    { 
-      id: 2, 
-      dietTypeName: "Vegan", 
+    {
+      id: 2,
+      dietTypeName: "Vegan",
       description: "No animal products including dairy, eggs, and honey",
-      sequenceNo: 2, 
+      sequenceNo: 2,
       status: true,
       lastUpdatedDate: "2024-01-10",
       createdBy: "Admin",
       lastUpdatedBy: "Admin"
     },
-    { 
-      id: 3, 
-      dietTypeName: "Keto", 
+    {
+      id: 3,
+      dietTypeName: "Keto",
       description: "High-fat, low-carbohydrate diet",
-      sequenceNo: 3, 
+      sequenceNo: 3,
       status: true,
       lastUpdatedDate: "2024-01-05",
       createdBy: "Admin",
       lastUpdatedBy: "Admin"
     },
-    { 
-      id: 4, 
-      dietTypeName: "Gluten-Free", 
+    {
+      id: 4,
+      dietTypeName: "Gluten-Free",
       description: "Diet without gluten-containing grains",
-      sequenceNo: 4, 
+      sequenceNo: 4,
       status: false,
       lastUpdatedDate: "2024-01-02",
       createdBy: "Manager",
       lastUpdatedBy: "Admin"
     },
-    { 
-      id: 5, 
-      dietTypeName: "Paleo", 
+    {
+      id: 5,
+      dietTypeName: "Paleo",
       description: "Focuses on whole foods, lean meats, fruits and vegetables",
-      sequenceNo: 5, 
+      sequenceNo: 5,
       status: true,
       lastUpdatedDate: "2024-01-01",
       createdBy: "Admin",
@@ -97,7 +97,7 @@ const DietTypeMaster = () => {
           return a.status ? 1 : -1;
         }
       }
-      
+
       if (a[sortConfig.key] < b[sortConfig.key]) {
         return sortConfig.direction === 'ascending' ? -1 : 1;
       }
@@ -139,7 +139,7 @@ const DietTypeMaster = () => {
   const handleSave = (e) => {
     e.preventDefault();
     console.log("Save button clicked, isFormValid:", isFormValid);
-    
+
     if (!isFormValid) {
       console.log("Form is not valid");
       return;
@@ -164,14 +164,14 @@ const DietTypeMaster = () => {
       // Update existing diet type
       setDietTypeData((prevData) =>
         prevData.map((dietType) =>
-          dietType.id === editingDietType.id 
-            ? { 
-                ...dietType, 
-                dietTypeName: formData.dietTypeName,
-                description: formData.description,
-                lastUpdatedDate: currentDate,
-                lastUpdatedBy: currentUser
-              }
+          dietType.id === editingDietType.id
+            ? {
+              ...dietType,
+              dietTypeName: formData.dietTypeName,
+              description: formData.description,
+              lastUpdatedDate: currentDate,
+              lastUpdatedBy: currentUser
+            }
             : dietType
         )
       );
@@ -179,12 +179,12 @@ const DietTypeMaster = () => {
     } else {
       // Create new diet type - auto generate sequence number
       const newId = dietTypeData.length > 0 ? Math.max(...dietTypeData.map(item => item.id)) + 1 : 1;
-      const newSequenceNo = dietTypeData.length > 0 
-        ? Math.max(...dietTypeData.map(item => item.sequenceNo)) + 1 
+      const newSequenceNo = dietTypeData.length > 0
+        ? Math.max(...dietTypeData.map(item => item.sequenceNo)) + 1
         : 1;
-      
+
       console.log("Creating new diet type with ID:", newId, "Sequence:", newSequenceNo);
-      
+
       const newDietType = {
         id: newId,
         dietTypeName: formData.dietTypeName,
@@ -195,13 +195,13 @@ const DietTypeMaster = () => {
         createdBy: currentUser,
         lastUpdatedBy: currentUser
       };
-      
+
       setDietTypeData((prevData) => [...prevData, newDietType]);
       showPopup("New diet type added successfully!", "success");
     }
 
     setEditingDietType(null);
-    setFormData({ 
+    setFormData({
       dietTypeName: "",
       description: ""
     });
@@ -212,20 +212,20 @@ const DietTypeMaster = () => {
   const toggleStatus = (id) => {
     const currentDate = new Date().toISOString().split('T')[0];
     const currentUser = "Admin";
-    
+
     setDietTypeData((prevData) =>
       prevData.map((dietType) =>
-        dietType.id === id 
-          ? { 
-              ...dietType, 
-              status: !dietType.status,
-              lastUpdatedDate: currentDate,
-              lastUpdatedBy: currentUser
-            }
+        dietType.id === id
+          ? {
+            ...dietType,
+            status: !dietType.status,
+            lastUpdatedDate: currentDate,
+            lastUpdatedBy: currentUser
+          }
           : dietType
       )
     );
-    
+
     const updatedDietType = dietTypeData.find(m => m.id === id);
     const newStatus = !updatedDietType.status;
     showPopup(`Status changed to ${newStatus ? "Active" : "Inactive"} successfully!`, "success");
@@ -250,16 +250,16 @@ const DietTypeMaster = () => {
       // Validate form
       const isDietTypeNameValid = (updatedData.dietTypeName?.trim() || "") !== "";
       const isDescriptionValid = (updatedData.description?.trim() || "") !== "";
-      
+
       const formValid = isDietTypeNameValid && isDescriptionValid;
-      console.log("Form validation:", { 
-        dietTypeName: updatedData.dietTypeName, 
+      console.log("Form validation:", {
+        dietTypeName: updatedData.dietTypeName,
         description: updatedData.description,
-        isDietTypeNameValid, 
-        isDescriptionValid, 
-        formValid 
+        isDietTypeNameValid,
+        isDescriptionValid,
+        formValid
       });
-      
+
       setIsFormValid(formValid);
 
       return updatedData;
@@ -327,21 +327,25 @@ const DietTypeMaster = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Diet Type Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search by name, description or status"
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
 
                 <div className="d-flex align-items-center">
                   {!showForm ? (
@@ -351,7 +355,7 @@ const DietTypeMaster = () => {
                         className="btn btn-success me-2"
                         onClick={() => {
                           setEditingDietType(null);
-                          setFormData({ 
+                          setFormData({
                             dietTypeName: "",
                             description: ""
                           });
@@ -383,14 +387,14 @@ const DietTypeMaster = () => {
                   <table className="table table-bordered table-hover align-middle">
                     <thead className="table-light">
                       <tr>
-                        <th 
+                        <th
                           style={{ cursor: 'pointer' }}
                           onClick={() => handleSort('dietTypeName')}
                         >
                           Diet Type Name {getSortIcon('dietTypeName')}
                         </th>
                         <th>Description</th>
-                        <th 
+                        <th
                           style={{ cursor: 'pointer' }}
                           onClick={() => handleSort('lastUpdatedDate')}
                         >
@@ -420,8 +424,8 @@ const DietTypeMaster = () => {
                                   id={`status-switch-${dietType.id}`}
                                   checked={dietType.status}
                                   onChange={() => toggleStatus(dietType.id)}
-                                  style={{ 
-                                    width: '2.5em', 
+                                  style={{
+                                    width: '2.5em',
                                     height: '1.3em',
                                     cursor: 'pointer'
                                   }}
@@ -536,11 +540,11 @@ const DietTypeMaster = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="form-group col-md-12 d-flex justify-content-end mt-4">
-                    <button 
-                      type="submit" 
-                      className="btn btn-primary me-2" 
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
                       disabled={!isFormValid}
                     >
                       {editingDietType ? "Update" : "Save"}
