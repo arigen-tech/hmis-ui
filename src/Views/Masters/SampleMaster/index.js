@@ -95,8 +95,8 @@ const SampleMaster = () => {
       // Check for duplicates (excluding the current editing sample)
       const isDuplicate = sampleData.some(
         (sample) =>
-          (sample.sampleCode === formData.sampleCode || 
-           sample.sampleDescription === formData.sampleDescription) &&
+          (sample.sampleCode === formData.sampleCode ||
+            sample.sampleDescription === formData.sampleDescription) &&
           sample.id !== editingSample?.id
       );
 
@@ -266,21 +266,25 @@ const SampleMaster = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Sample Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search"
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
 
                 <div className="d-flex align-items-center">
                   {!showForm ? (

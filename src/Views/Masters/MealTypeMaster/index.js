@@ -3,46 +3,46 @@ import Popup from "../../../Components/popup";
 
 const MealTypeMaster = () => {
   const [mealTypeData, setMealTypeData] = useState([
-    { 
-      id: 1, 
-      mealTypeName: "Breakfast", 
-      sequenceNo: 1, 
+    {
+      id: 1,
+      mealTypeName: "Breakfast",
+      sequenceNo: 1,
       status: true, // true = Active, false = Inactive
       lastUpdatedDate: "2024-01-15",
       createdBy: "Admin",
       lastUpdatedBy: "Admin"
     },
-    { 
-      id: 2, 
-      mealTypeName: "Lunch", 
-      sequenceNo: 2, 
+    {
+      id: 2,
+      mealTypeName: "Lunch",
+      sequenceNo: 2,
       status: true,
       lastUpdatedDate: "2024-01-10",
       createdBy: "Admin",
       lastUpdatedBy: "Admin"
     },
-    { 
-      id: 3, 
-      mealTypeName: "Dinner", 
-      sequenceNo: 3, 
+    {
+      id: 3,
+      mealTypeName: "Dinner",
+      sequenceNo: 3,
       status: true,
       lastUpdatedDate: "2024-01-05",
       createdBy: "Admin",
       lastUpdatedBy: "Admin"
     },
-    { 
-      id: 4, 
-      mealTypeName: "Snacks", 
-      sequenceNo: 4, 
+    {
+      id: 4,
+      mealTypeName: "Snacks",
+      sequenceNo: 4,
       status: false,
       lastUpdatedDate: "2024-01-02",
       createdBy: "Manager",
       lastUpdatedBy: "Admin"
     },
-    { 
-      id: 5, 
-      mealTypeName: "Brunch", 
-      sequenceNo: 5, 
+    {
+      id: 5,
+      mealTypeName: "Brunch",
+      sequenceNo: 5,
       status: true,
       lastUpdatedDate: "2024-01-01",
       createdBy: "Admin",
@@ -90,7 +90,7 @@ const MealTypeMaster = () => {
           return a.status ? 1 : -1;
         }
       }
-      
+
       if (a[sortConfig.key] < b[sortConfig.key]) {
         return sortConfig.direction === 'ascending' ? -1 : 1;
       }
@@ -164,14 +164,14 @@ const MealTypeMaster = () => {
       // Update existing meal type
       setMealTypeData((prevData) =>
         prevData.map((mealType) =>
-          mealType.id === editingMealType.id 
-            ? { 
-                ...mealType, 
-                mealTypeName: formData.mealTypeName,
-                sequenceNo: parseInt(formData.sequenceNo),
-                lastUpdatedDate: currentDate,
-                lastUpdatedBy: currentUser
-              }
+          mealType.id === editingMealType.id
+            ? {
+              ...mealType,
+              mealTypeName: formData.mealTypeName,
+              sequenceNo: parseInt(formData.sequenceNo),
+              lastUpdatedDate: currentDate,
+              lastUpdatedBy: currentUser
+            }
             : mealType
         )
       );
@@ -188,13 +188,13 @@ const MealTypeMaster = () => {
         createdBy: currentUser,
         lastUpdatedBy: currentUser
       };
-      
+
       setMealTypeData((prevData) => [...prevData, newMealType]);
       showPopup("New meal type added successfully!", "success");
     }
 
     setEditingMealType(null);
-    setFormData({ 
+    setFormData({
       mealTypeName: "",
       sequenceNo: ""
     });
@@ -205,20 +205,20 @@ const MealTypeMaster = () => {
   const toggleStatus = (id) => {
     const currentDate = new Date().toISOString().split('T')[0];
     const currentUser = "Admin";
-    
+
     setMealTypeData((prevData) =>
       prevData.map((mealType) =>
-        mealType.id === id 
-          ? { 
-              ...mealType, 
-              status: !mealType.status,
-              lastUpdatedDate: currentDate,
-              lastUpdatedBy: currentUser
-            }
+        mealType.id === id
+          ? {
+            ...mealType,
+            status: !mealType.status,
+            lastUpdatedDate: currentDate,
+            lastUpdatedBy: currentUser
+          }
           : mealType
       )
     );
-    
+
     const updatedMealType = mealTypeData.find(m => m.id === id);
     const newStatus = !updatedMealType.status;
     showPopup(`Status changed to ${newStatus ? "Active" : "Inactive"} successfully!`, "success");
@@ -245,7 +245,7 @@ const MealTypeMaster = () => {
       const isSequenceNoValid = (updatedData.sequenceNo?.trim() || "") !== "" &&
         !isNaN(updatedData.sequenceNo) &&
         parseInt(updatedData.sequenceNo) > 0;
-      
+
       setIsFormValid(isMealTypeNameValid && isSequenceNoValid);
 
       return updatedData;
@@ -313,21 +313,25 @@ const MealTypeMaster = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Meal Type Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search by name or status"
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
 
                 <div className="d-flex align-items-center">
                   {!showForm ? (
@@ -337,7 +341,7 @@ const MealTypeMaster = () => {
                         className="btn btn-success me-2"
                         onClick={() => {
                           setEditingMealType(null);
-                          setFormData({ 
+                          setFormData({
                             mealTypeName: "",
                             sequenceNo: ""
                           });
@@ -369,19 +373,19 @@ const MealTypeMaster = () => {
                   <table className="table table-bordered table-hover align-middle">
                     <thead className="table-light">
                       <tr>
-                        <th 
+                        <th
                           style={{ cursor: 'pointer' }}
                           onClick={() => handleSort('mealTypeName')}
                         >
                           Meal Type Name {getSortIcon('mealTypeName')}
                         </th>
-                        <th 
+                        <th
                           style={{ cursor: 'pointer' }}
                           onClick={() => handleSort('sequenceNo')}
                         >
                           Sequence No {getSortIcon('sequenceNo')}
                         </th>
-                        <th 
+                        <th
                           style={{ cursor: 'pointer' }}
                           onClick={() => handleSort('lastUpdatedDate')}
                         >
@@ -411,8 +415,8 @@ const MealTypeMaster = () => {
                                   id={`status-switch-${mealType.id}`}
                                   checked={mealType.status}
                                   onChange={() => toggleStatus(mealType.id)}
-                                  style={{ 
-                                    width: '2.5em', 
+                                  style={{
+                                    width: '2.5em',
                                     height: '1.3em',
                                     cursor: 'pointer'
                                   }}
@@ -519,7 +523,7 @@ const MealTypeMaster = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                     <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                       {editingMealType ? "Update" : "Save"}

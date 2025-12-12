@@ -7,19 +7,19 @@ import { postRequest, putRequest, getRequest } from "../../../service/apiService
 const BedManagement = () => {
   const [bedData, setBedData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState({ 
-    isOpen: false, 
-    bedId: null, 
-    newStatus: false 
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    bedId: null,
+    newStatus: false
   });
-  
+
   const [formData, setFormData] = useState({
     bedNumber: "",
     roomId: "",
     bedTypeId: "",
     bedStatusId: "",
   });
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
@@ -39,19 +39,19 @@ const BedManagement = () => {
   // Function to format date as dd-MM-YYYY
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
-    
+
     try {
       const date = new Date(dateString);
-      
+
       // Check if date is valid
       if (isNaN(date.getTime())) {
         return "N/A";
       }
-      
+
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
       const year = date.getFullYear();
-      
+
       return `${day}-${month}-${year}`;
     } catch (error) {
       console.error("Error formatting date:", error);
@@ -133,7 +133,7 @@ const BedManagement = () => {
 
   // Filter data based on search query
   const filteredBedData = bedData.filter(bed =>
-    bed.bedNumber?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    bed.bedNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     bed.room?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     bed.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     bed.bedType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -189,10 +189,10 @@ const BedManagement = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    
+
     try {
       setLoading(true);
-      
+
       // Check for duplicates
       const isDuplicate = bedData.some(
         (bed) =>
@@ -217,7 +217,7 @@ const BedManagement = () => {
       if (editingBed) {
         // Update existing bed
         const response = await putRequest(`${MAS_BED}/update/${editingBed.id}`, requestData);
-        
+
         if (response && response.status === 200) {
           fetchBedData();
           showPopup("Bed updated successfully!", "success");
@@ -225,13 +225,13 @@ const BedManagement = () => {
       } else {
         // Add new bed
         const response = await postRequest(`${MAS_BED}/create`, requestData);
-        
+
         if (response && response.status === 200) {
           fetchBedData();
           showPopup("New bed added successfully!", "success");
         }
       }
-      
+
       setEditingBed(null);
       setFormData({ bedNumber: "", roomId: "", bedTypeId: "", bedStatusId: "" });
       setShowForm(false);
@@ -252,7 +252,7 @@ const BedManagement = () => {
       }
     });
   };
-  
+
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, bedId: id, newStatus });
   };
@@ -261,7 +261,7 @@ const BedManagement = () => {
     if (confirmed && confirmDialog.bedId !== null) {
       try {
         setLoading(true);
-        
+
         const response = await putRequest(
           `${MAS_BED}/status/${confirmDialog.bedId}?status=${confirmDialog.newStatus}`
         );
@@ -270,12 +270,12 @@ const BedManagement = () => {
           // Update local state with formatted date
           setBedData((prevData) =>
             prevData.map((bed) =>
-              bed.id === confirmDialog.bedId 
-                ? { 
-                    ...bed, 
-                    status: confirmDialog.newStatus,
-                    lastUpdated: formatDate(new Date().toISOString())
-                  } 
+              bed.id === confirmDialog.bedId
+                ? {
+                  ...bed,
+                  status: confirmDialog.newStatus,
+                  lastUpdated: formatDate(new Date().toISOString())
+                }
                 : bed
             )
           );
@@ -368,11 +368,11 @@ const BedManagement = () => {
           </li>
         );
       }
-      
+
       return (
         <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-          <button 
-            className="page-link" 
+          <button
+            className="page-link"
             onClick={() => {
               setCurrentPage(number);
               setPageInput(number.toString());
@@ -387,7 +387,7 @@ const BedManagement = () => {
 
   // Get badge class based on bed status
   const getBedStatusBadgeClass = (status) => {
-    switch(status) {
+    switch (status) {
       case 'Available': return 'bg-success';
       case 'Occupied': return 'bg-danger';
       case 'Under Maintenance': return 'bg-warning';
@@ -405,27 +405,31 @@ const BedManagement = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Bed Management</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search bed no, room, department, bed type, or status..."
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
 
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2"
                         onClick={() => {
                           setEditingBed(null);
@@ -435,8 +439,8 @@ const BedManagement = () => {
                       >
                         <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2 flex-shrink-0"
                         onClick={handleRefresh}
                       >
@@ -520,7 +524,7 @@ const BedManagement = () => {
                       </tbody>
                     </table>
                   </div>
-                  
+
                   {filteredBedData.length > 0 && (
                     <nav className="d-flex justify-content-between align-items-center mt-3">
                       <div>
@@ -528,7 +532,7 @@ const BedManagement = () => {
                           Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredBedData.length)} of {filteredBedData.length} entries
                         </span>
                       </div>
-                      
+
                       <ul className="pagination mb-0">
                         <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
                           <button
@@ -543,9 +547,9 @@ const BedManagement = () => {
                             &laquo; Previous
                           </button>
                         </li>
-                        
+
                         {renderPagination()}
-                        
+
                         <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
                           <button
                             className="page-link"
@@ -560,7 +564,7 @@ const BedManagement = () => {
                           </button>
                         </li>
                       </ul>
-                      
+
                       <div className="d-flex align-items-center">
                         <span className="me-2">Go to:</span>
                         <input
@@ -603,7 +607,7 @@ const BedManagement = () => {
                       {formData.bedNumber.length}/{BED_NO_MAX_LENGTH} characters
                     </small> */}
                   </div>
-                  
+
                   <div className="form-group col-md-4">
                     <label>Room <span className="text-danger">*</span></label>
                     <select
@@ -624,7 +628,7 @@ const BedManagement = () => {
                     </select>
                     {/* <small className="text-muted">Select room for this bed</small> */}
                   </div>
-                  
+
                   <div className="form-group col-md-4">
                     <label>Bed Type <span className="text-danger">*</span></label>
                     <select
@@ -645,7 +649,7 @@ const BedManagement = () => {
                     </select>
                     {/* <small className="text-muted">Select type of bed</small> */}
                   </div>
-                  
+
                   <div className="form-group col-md-4">
                     <label>Bed Status <span className="text-danger">*</span></label>
                     <select
@@ -666,18 +670,18 @@ const BedManagement = () => {
                     </select>
                     {/* <small className="text-muted">Select current status of bed</small> */}
                   </div>
-                  
+
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
-                    <button 
-                      type="submit" 
-                      className="btn btn-primary me-2" 
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
                       disabled={!isFormValid || loading}
                     >
                       {loading ? "Saving..." : (editingBed ? 'Update' : 'Save')}
                     </button>
-                    <button 
-                      type="button" 
-                      className="btn btn-danger" 
+                    <button
+                      type="button"
+                      className="btn btn-danger"
                       onClick={() => setShowForm(false)}
                       disabled={loading}
                     >
@@ -686,7 +690,7 @@ const BedManagement = () => {
                   </div>
                 </form>
               )}
-              
+
               {popupMessage && (
                 <Popup
                   message={popupMessage.message}
@@ -694,24 +698,24 @@ const BedManagement = () => {
                   onClose={popupMessage.onClose}
                 />
               )}
-              
+
               {confirmDialog.isOpen && (
                 <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                   <div className="modal-dialog modal-dialog-centered" role="document">
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Status Change</h5>
-                        <button 
-                          type="button" 
-                          className="btn-close" 
-                          onClick={() => handleConfirm(false)} 
+                        <button
+                          type="button"
+                          className="btn-close"
+                          onClick={() => handleConfirm(false)}
                           aria-label="Close"
                           disabled={loading}
                         ></button>
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
+                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
                           <strong> {bedData.find(bed => bed.id === confirmDialog.bedId)?.bedNumber}</strong> bed?
                         </p>
                         {/* <p className="text-muted">
@@ -721,17 +725,17 @@ const BedManagement = () => {
                         </p> */}
                       </div>
                       <div className="modal-footer">
-                        <button 
-                          type="button" 
-                          className="btn btn-secondary" 
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
                           onClick={() => handleConfirm(false)}
                           disabled={loading}
                         >
                           Cancel
                         </button>
-                        <button 
-                          type="button" 
-                          className="btn btn-primary" 
+                        <button
+                          type="button"
+                          className="btn btn-primary"
                           onClick={() => handleConfirm(true)}
                           disabled={loading}
                         >

@@ -9,11 +9,11 @@ const RoomMasterScreen = () => {
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, id: null, newStatus: "" });
   const [loading, setLoading] = useState(false);
 
-  const [formData, setFormData] = useState({ 
-    roomName: "", 
-    deptId: "", 
-    roomCategoryId: "", 
-    noOfBeds: "" 
+  const [formData, setFormData] = useState({
+    roomName: "",
+    deptId: "",
+    roomCategoryId: "",
+    noOfBeds: ""
   });
   const [showForm, setShowForm] = useState(false);
   const [editingRoom, setEditingRoom] = useState(null);
@@ -36,19 +36,19 @@ const RoomMasterScreen = () => {
   // Function to format date as dd-MM-YYYY
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
-    
+
     try {
       const date = new Date(dateString);
-      
+
       // Check if date is valid
       if (isNaN(date.getTime())) {
         return "N/A";
       }
-      
+
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
       const year = date.getFullYear();
-      
+
       return `${day}-${month}-${year}`;
     } catch (error) {
       console.error("Error formatting date:", error);
@@ -182,7 +182,7 @@ const RoomMasterScreen = () => {
       if (editingRoom) {
         // Update room
         const response = await putRequest(`${MAS_ROOM}/update/${editingRoom.id}`, requestData);
-        
+
         if (response && response.status === 200) {
           fetchRoomData();
           showPopup("Room updated successfully!", "success");
@@ -190,7 +190,7 @@ const RoomMasterScreen = () => {
       } else {
         // Add new room
         const response = await postRequest(`${MAS_ROOM}/create`, requestData);
-        
+
         if (response && response.status === 200) {
           fetchRoomData();
           showPopup("New room added successfully!", "success");
@@ -233,17 +233,17 @@ const RoomMasterScreen = () => {
         const response = await putRequest(
           `${MAS_ROOM}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
         );
-        
+
         if (response && response.response) {
           // Update local state with formatted date
           setRoomData((prevData) =>
             prevData.map((room) =>
               room.id === confirmDialog.id
-                ? { 
-                    ...room, 
-                    status: confirmDialog.newStatus,
-                    lastUpdated: formatDate(new Date().toISOString())
-                  }
+                ? {
+                  ...room,
+                  status: confirmDialog.newStatus,
+                  lastUpdated: formatDate(new Date().toISOString())
+                }
                 : room
             )
           );
@@ -324,374 +324,378 @@ const RoomMasterScreen = () => {
             <span className="page-link">...</span>
           </li>
         );
-    }
-    
-    return (
-      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-        <button 
-          className="page-link" 
-          onClick={() => handlePageClick(number)}
-        >
-          {number}
-        </button>
-      </li>
-    );
-  });
-};
+      }
 
-const handleRefresh = () => {
-  setSearchQuery("");
-  setCurrentPage(1);
-  fetchRoomData();
-  fetchDropdownData();
-  // showPopup("Data refreshed!", "success");
-};
+      return (
+        <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
+          <button
+            className="page-link"
+            onClick={() => handlePageClick(number)}
+          >
+            {number}
+          </button>
+        </li>
+      );
+    });
+  };
 
-return (
-  <div className="content-wrapper">
-    <div className="row">
-      <div className="col-12 grid-margin stretch-card">
-        <div className="card form-card">
-          {/* HEADER */}
-          <div className="card-header d-flex justify-content-between align-items-center">
-            <h4 className="card-title">Room Master Screen</h4>
-            
-            <div className="d-flex justify-content-between align-items-center">
-              {/* Search form */}
-              <form className="d-inline-block searchform me-4" role="search">
-                <div className="input-group searchinput">
-                  <input
-                    type="search"
-                    className="form-control"
-                    placeholder="Search room name, department, or category..."
-                    aria-label="Search"
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                  />
-                  <span className="input-group-text" id="search-icon">
-                    <i className="fa fa-search"></i>
-                  </span>
-                </div>
-              </form>
+  const handleRefresh = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+    fetchRoomData();
+    fetchDropdownData();
+    // showPopup("Data refreshed!", "success");
+  };
 
-              <div className="d-flex align-items-center">
+  return (
+    <div className="content-wrapper">
+      <div className="row">
+        <div className="col-12 grid-margin stretch-card">
+          <div className="card form-card">
+            {/* HEADER */}
+            <div className="card-header d-flex justify-content-between align-items-center">
+              <h4 className="card-title">Room Master Screen</h4>
+
+              <div className="d-flex justify-content-between align-items-center">
+                {/* Search form */}
                 {!showForm ? (
-                  <>
-                    <button 
-                      type="button" 
-                      className="btn btn-success me-2"
-                      onClick={() => {
-                        setShowForm(true);
-                        setEditingRoom(null);
-                        setFormData({ roomName: "", deptId: "", roomCategoryId: "", noOfBeds: "" });
-                      }}
-                    >
-                      <i className="mdi mdi-plus"></i> Add 
-                    </button>
-                    <button 
-                      type="button" 
-                      className="btn btn-success me-2 flex-shrink-0"
-                      onClick={handleRefresh}
-                    >
-                      <i className="mdi mdi-refresh"></i> Show All
-                    </button>
-                  </>
-                ) : (
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
-                    <i className="mdi mdi-arrow-left"></i> Back
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="card-body">
-            {/* LOADING */}
-            {loading ? (
-              <LoadingScreen />
-            ) : !showForm ? (
-              <>
-                {/* TABLE */}
-                <div className="table-responsive packagelist">
-                  <table className="table table-bordered table-hover align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Room Name</th>
-                        <th>Department</th>
-                        <th>Room Category</th>
-                        <th>Beds</th>
-                        <th>Status</th>
-                        <th>Last Updated</th>
-                        <th>Edit</th>
-                      </tr>
-                    </thead>
-                    
-                    <tbody>
-                      {currentItems.length > 0 ? (
-                        currentItems.map((room) => (
-                          <tr key={room.id}>
-                            <td>{room.roomName}</td>
-                            <td>{room.department}</td>
-                            <td>{room.roomCategory}</td>
-                            <td>{room.beds}</td>
-                            
-                            <td>
-                              <div className="form-check form-switch">
-                                <input
-                                  className="form-check-input"
-                                  type="checkbox"
-                                  checked={room.status === "y"}
-                                  onChange={() =>
-                                    handleSwitchChange(room.id, room.status === "y" ? "n" : "y")
-                                  }
-                                  id={`switch-${room.id}`}
-                                />
-                                <label
-                                  className="form-check-label px-0"
-                                  htmlFor={`switch-${room.id}`}
-                                >
-                                  {room.status === "y" ? 'Active' : 'Inactive'}
-                                </label>
-                              </div>
-                            </td>
-                            
-                            <td>{room.lastUpdated}</td>
-                            
-                            <td>
-                              <button
-                                className="btn btn-sm btn-success me-2"
-                                onClick={() => handleEdit(room)}
-                                disabled={room.status !== "y"}
-                              >
-                                <i className="fa fa-pencil"></i>
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="7" className="text-center">
-                            No room found
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                
-                {/* PAGINATION */}
-                {filteredRooms.length > 0 && (
-                  <nav className="d-flex justify-content-between align-items-center mt-3">
-                    <div>
-                      <span className="text-muted">
-                        Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filteredRooms.length)} of {filteredRooms.length} entries
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
                       </span>
                     </div>
-                    
-                    <ul className="pagination mb-0">
-                      <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                        <button
-                          className="page-link"
-                          onClick={handlePrevPage}
-                          disabled={currentPage === 1}
-                        >
-                          &laquo; Previous
-                        </button>
-                      </li>
-                      
-                      {renderPageNumbers()}
-                      
-                      <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                        <button
-                          className="page-link"
-                          onClick={handleNextPage}
-                          disabled={currentPage === totalPages}
-                        >
-                          Next &raquo;
-                        </button>
-                      </li>
-                    </ul>
-                    
-                    <div className="d-flex align-items-center">
-                      <span className="me-2">Go to:</span>
-                      <input
-                        type="number"
-                        min="1"
-                        max={totalPages}
-                        value={currentPage}
-                        onChange={(e) => {
-                          const page = parseInt(e.target.value);
-                          if (!isNaN(page) && page >= 1 && page <= totalPages) {
-                            setCurrentPage(page);
-                          }
-                        }}
-                        className="form-control me-2"
-                        style={{ width: "80px" }}
-                      />
+                  </form>
+                ) : (
+                  <></>
+                )}
+
+                <div className="d-flex align-items-center">
+                  {!showForm ? (
+                    <>
                       <button
-                        className="btn btn-primary"
+                        type="button"
+                        className="btn btn-success me-2"
                         onClick={() => {
-                          // Already handled by onChange
+                          setShowForm(true);
+                          setEditingRoom(null);
+                          setFormData({ roomName: "", deptId: "", roomCategoryId: "", noOfBeds: "" });
                         }}
                       >
-                        Go
+                        <i className="mdi mdi-plus"></i> Add
                       </button>
-                    </div>
-                  </nav>
-                )}
-              </>
-            ) : (
-              // FORM
-              <form className="forms row" onSubmit={handleSave}>
-                <div className="form-group col-md-4">
-                  <label>Room Name <span className="text-danger">*</span></label>
-                  <input
-                    type="text"
-                    className="form-control mt-1"
-                    name="roomName"
-                    placeholder="Enter room name"
-                    value={formData.roomName}
-                    maxLength={ROOM_NAME_MAX_LENGTH}
-                    onChange={handleInputChange}
-                    required
-                  />
+                      <button
+                        type="button"
+                        className="btn btn-success me-2 flex-shrink-0"
+                        onClick={handleRefresh}
+                      >
+                        <i className="mdi mdi-refresh"></i> Show All
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                      <i className="mdi mdi-arrow-left"></i> Back
+                    </button>
+                  )}
                 </div>
-                
-                <div className="form-group col-md-4">
-                  <label>Department <span className="text-danger">*</span></label>
-                  <select
-                    className="form-select mt-1"
-                    name="deptId"
-                    value={formData.deptId}
-                    onChange={handleInputChange}
-                    required
-                    disabled={loading}
-                  >
-                    <option value="">Select Department</option>
-                    {departmentOptions.map((department, index) => (
-                      <option key={index} value={department.id}>
-                        {department.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="form-group col-md-4">
-                  <label>Room Category <span className="text-danger">*</span></label>
-                  <select
-                    className="form-select mt-1"
-                    name="roomCategoryId"
-                    value={formData.roomCategoryId}
-                    onChange={handleInputChange}
-                    required
-                    disabled={loading}
-                  >
-                    <option value="">Select Category</option>
-                    {roomCategoryOptions.map((category, index) => (
-                      <option key={index} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="form-group col-md-4 mt-3">
-                  <label>Beds <span className="text-danger">*</span></label>
-                  <input
-                    type="number"
-                    className="form-control mt-1"
-                    name="noOfBeds"
-                    placeholder="Enter number of beds"
-                    value={formData.noOfBeds}
-                    onChange={handleInputChange}
-                    min="1"
-                    required
-                  />
-                </div>
-                
-                <div className="form-group col-md-12 d-flex justify-content-end mt-3">
-                  <button 
-                    type="submit" 
-                    className="btn btn-primary me-2" 
-                    disabled={!isFormValid || loading}
-                  >
-                    {loading ? "Saving..." : (editingRoom ? 'Update' : 'Save')}
-                  </button>
-                  <button 
-                    type="button" 
-                    className="btn btn-danger" 
-                    onClick={() => setShowForm(false)}
-                    disabled={loading}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            )}
-            
-            {/* POPUP */}
-            {popupMessage && (
-              <Popup
-                message={popupMessage.message}
-                type={popupMessage.type}
-                onClose={popupMessage.onClose}
-              />
-            )}
-            
-            {/* CONFIRM DIALOG */}
-            {confirmDialog.isOpen && (
-              <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                <div className="modal-dialog modal-dialog-centered" role="document">
-                  <div className="modal-content">
-                    <div className="modal-header">
-                      <h5 className="modal-title">Confirm Status Change</h5>
-                      <button 
-                        type="button" 
-                        className="btn-close" 
-                        onClick={() => handleConfirm(false)} 
-                        aria-label="Close"
-                        disabled={loading}
-                      ></button>
-                    </div>
-                    <div className="modal-body">
-                      <p>
-                        Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
-                        <strong> {roomData.find(room => room.id === confirmDialog.id)?.roomName}</strong>?
-                      </p>
-                      {/* <p className="text-muted">
+              </div>
+            </div>
+
+            <div className="card-body">
+              {/* LOADING */}
+              {loading ? (
+                <LoadingScreen />
+              ) : !showForm ? (
+                <>
+                  {/* TABLE */}
+                  <div className="table-responsive packagelist">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Room Name</th>
+                          <th>Department</th>
+                          <th>Room Category</th>
+                          <th>Beds</th>
+                          <th>Status</th>
+                          <th>Last Updated</th>
+                          <th>Edit</th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((room) => (
+                            <tr key={room.id}>
+                              <td>{room.roomName}</td>
+                              <td>{room.department}</td>
+                              <td>{room.roomCategory}</td>
+                              <td>{room.beds}</td>
+
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={room.status === "y"}
+                                    onChange={() =>
+                                      handleSwitchChange(room.id, room.status === "y" ? "n" : "y")
+                                    }
+                                    id={`switch-${room.id}`}
+                                  />
+                                  <label
+                                    className="form-check-label px-0"
+                                    htmlFor={`switch-${room.id}`}
+                                  >
+                                    {room.status === "y" ? 'Active' : 'Inactive'}
+                                  </label>
+                                </div>
+                              </td>
+
+                              <td>{room.lastUpdated}</td>
+
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-success me-2"
+                                  onClick={() => handleEdit(room)}
+                                  disabled={room.status !== "y"}
+                                >
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="7" className="text-center">
+                              No room found
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* PAGINATION */}
+                  {filteredRooms.length > 0 && (
+                    <nav className="d-flex justify-content-between align-items-center mt-3">
+                      <div>
+                        <span className="text-muted">
+                          Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filteredRooms.length)} of {filteredRooms.length} entries
+                        </span>
+                      </div>
+
+                      <ul className="pagination mb-0">
+                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={handlePrevPage}
+                            disabled={currentPage === 1}
+                          >
+                            &laquo; Previous
+                          </button>
+                        </li>
+
+                        {renderPageNumbers()}
+
+                        <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={handleNextPage}
+                            disabled={currentPage === totalPages}
+                          >
+                            Next &raquo;
+                          </button>
+                        </li>
+                      </ul>
+
+                      <div className="d-flex align-items-center">
+                        <span className="me-2">Go to:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max={totalPages}
+                          value={currentPage}
+                          onChange={(e) => {
+                            const page = parseInt(e.target.value);
+                            if (!isNaN(page) && page >= 1 && page <= totalPages) {
+                              setCurrentPage(page);
+                            }
+                          }}
+                          className="form-control me-2"
+                          style={{ width: "80px" }}
+                        />
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => {
+                            // Already handled by onChange
+                          }}
+                        >
+                          Go
+                        </button>
+                      </div>
+                    </nav>
+                  )}
+                </>
+              ) : (
+                // FORM
+                <form className="forms row" onSubmit={handleSave}>
+                  <div className="form-group col-md-4">
+                    <label>Room Name <span className="text-danger">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control mt-1"
+                      name="roomName"
+                      placeholder="Enter room name"
+                      value={formData.roomName}
+                      maxLength={ROOM_NAME_MAX_LENGTH}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group col-md-4">
+                    <label>Department <span className="text-danger">*</span></label>
+                    <select
+                      className="form-select mt-1"
+                      name="deptId"
+                      value={formData.deptId}
+                      onChange={handleInputChange}
+                      required
+                      disabled={loading}
+                    >
+                      <option value="">Select Department</option>
+                      {departmentOptions.map((department, index) => (
+                        <option key={index} value={department.id}>
+                          {department.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group col-md-4">
+                    <label>Room Category <span className="text-danger">*</span></label>
+                    <select
+                      className="form-select mt-1"
+                      name="roomCategoryId"
+                      value={formData.roomCategoryId}
+                      onChange={handleInputChange}
+                      required
+                      disabled={loading}
+                    >
+                      <option value="">Select Category</option>
+                      {roomCategoryOptions.map((category, index) => (
+                        <option key={index} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group col-md-4 mt-3">
+                    <label>Beds <span className="text-danger">*</span></label>
+                    <input
+                      type="number"
+                      className="form-control mt-1"
+                      name="noOfBeds"
+                      placeholder="Enter number of beds"
+                      value={formData.noOfBeds}
+                      onChange={handleInputChange}
+                      min="1"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group col-md-12 d-flex justify-content-end mt-3">
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
+                      disabled={!isFormValid || loading}
+                    >
+                      {loading ? "Saving..." : (editingRoom ? 'Update' : 'Save')}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      onClick={() => setShowForm(false)}
+                      disabled={loading}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* POPUP */}
+              {popupMessage && (
+                <Popup
+                  message={popupMessage.message}
+                  type={popupMessage.type}
+                  onClose={popupMessage.onClose}
+                />
+              )}
+
+              {/* CONFIRM DIALOG */}
+              {confirmDialog.isOpen && (
+                <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                  <div className="modal-dialog modal-dialog-centered" role="document">
+                    <div className="modal-content">
+                      <div className="modal-header">
+                        <h5 className="modal-title">Confirm Status Change</h5>
+                        <button
+                          type="button"
+                          className="btn-close"
+                          onClick={() => handleConfirm(false)}
+                          aria-label="Close"
+                          disabled={loading}
+                        ></button>
+                      </div>
+                      <div className="modal-body">
+                        <p>
+                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+                          <strong> {roomData.find(room => room.id === confirmDialog.id)?.roomName}</strong>?
+                        </p>
+                        {/* <p className="text-muted">
                         {confirmDialog.newStatus === "y" 
                           ? "This will make the room available for patient allocation." 
                           : "This will hide the room from patient allocation."}
                       </p> */}
-                    </div>
-                    <div className="modal-footer">
-                      <button 
-                        type="button" 
-                        className="btn btn-secondary" 
-                        onClick={() => handleConfirm(false)}
-                        disabled={loading}
-                      >
-                        Cancel
-                      </button>
-                      <button 
-                        type="button" 
-                        className="btn btn-primary" 
-                        onClick={() => handleConfirm(true)}
-                        disabled={loading}
-                      >
-                        {loading ? "Processing..." : "Confirm"}
-                      </button>
+                      </div>
+                      <div className="modal-footer">
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => handleConfirm(false)}
+                          disabled={loading}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => handleConfirm(true)}
+                          disabled={loading}
+                        >
+                          {loading ? "Processing..." : "Confirm"}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
 };
 
 export default RoomMasterScreen;
