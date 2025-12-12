@@ -94,7 +94,7 @@ const OPDBillingDetails = () => {
 
     fetchGstConfiguration(data.categoryId || null);
 
-    const topLevelRegCost = Number(data.registrationCost || 0);
+    const topLevelRegCost = Number(data.details[0].registrationCost || 0);
 
     // Build appointments array
     const incomingAppointments = Array.isArray(data.appointments) && data.appointments.length > 0
@@ -174,16 +174,17 @@ const OPDBillingDetails = () => {
       const base = Number(appt.basePrice || 0);
       const discount = Number(appt.discount || 0);
       const taxFromDetail = appt.rawDetail?.taxAmount;
-      const gstAmount = (taxFromDetail !== undefined && taxFromDetail !== null && taxFromDetail > 0) ? Number(taxFromDetail) : (net * gstPercent) / 100;
+      const gstAmount = (taxFromDetail !== undefined && taxFromDetail !== null && taxFromDetail > 0) ? Number(taxFromDetail) : (base * gstPercent) / 100;
       const reg = Number(appt.registrationCost || 0);
       const net = Number(appt.rawDetail?.netAmount + reg || Math.max(0, base + reg + gstAmount));
-      const total = base-discount;
+      const total = base - discount+gstAmount;
 
       return {
         ...appt,
         netAmount: Number(net.toFixed(2)),
         gst: Number(gstAmount.toFixed(2)),
-        totalAmount: net,
+        totalAmount: total,
+        registrationCost: Number(reg.toFixed(2)),
       };
     });
 
@@ -404,20 +405,20 @@ const OPDBillingDetails = () => {
                             />
                           </div>
                           <div className="form-group col-md-2 mt-3">
-                            <label>Total</label>
-                            <input
-                              type="number"
-                              className="form-control"
-                              value={appointment.totalAmount.toFixed(2)}
-                              readOnly
-                            />
-                          </div>
-                          <div className="form-group col-md-2 mt-3">
                             <label>GST ({gstConfig.gstPercent}%)</label>
                             <input
                               type="number"
                               className="form-control"
                               value={appointment.gst.toFixed(2)}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-2 mt-3">
+                            <label>Total</label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              value={appointment.totalAmount.toFixed(2)}
                               readOnly
                             />
                           </div>

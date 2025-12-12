@@ -172,6 +172,7 @@ export const INVESTIGATION_PACKAGE_API = `/investigation-package`;
 export const LAB = `/lab`;
 export const OPD_TEMPLATE = `/opdTemplate`
 export const Store_Internal_Indent = `/storeInternalIndent`
+export const PATIENT_FOLLOW_UP_DETAILS = "/patient/getFullDetails";
 
 
 
