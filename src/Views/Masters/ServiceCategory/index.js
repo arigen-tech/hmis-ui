@@ -56,19 +56,34 @@ const ServiceCategoryMaster = () => {
     setCurrentPage(1)
   }
 
-  const filteredServiceList = serviceCategoryData.filter(
-    (item) =>
-      (item?.serviceCatName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item?.sacCode?.toLowerCase().includes(searchQuery.toLowerCase())) ?? false
-  )
+const search = searchQuery.trim().toLowerCase();
 
-  console.log("filteredServiceList", filteredServiceList);
+const filteredServiceList = serviceCategoryData.filter((item) => {
+  const name = item?.serviceCatName?.toLowerCase() || "";
+  const sacCode = item?.sacCode?.toLowerCase() || "";
+  const cateCode = item?.serviceCateCode?.toLowerCase() || "";
+
+  const status = item?.status === "y" ? "active" : "deactivated";
+
+  const dateObj = item?.lastChgDt ? new Date(item.lastChgDt) : null;
+  const dateUS = dateObj ? dateObj.toLocaleDateString("en-US") : ""; 
+  const dateUSNormalized = dateUS.replace(/0/g, ""); 
+  return (
+    name.includes(search) ||
+    sacCode.includes(search) ||
+    cateCode.includes(search) ||
+    status.includes(search) ||
+    dateUS.toLowerCase().includes(search) ||
+    dateUSNormalized.toLowerCase().includes(search)
+  );
+});
+
+
 
   const filteredTotalPages = Math.ceil(filteredServiceList.length / itemsPerPage)
 
   const currentItems = filteredServiceList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
-  console.log("currentItems", currentItems);
 
   const handleEdit = (item) => {
     setEditingService(item);
@@ -311,7 +326,6 @@ const ServiceCategoryMaster = () => {
                         <th>Service Category Code</th>
                         <th>Service Category</th>
                         <th>SAC Code</th>
-                        <th>Last Changed By</th>
                         <th>Last Changed Date</th>
                         <th>Status</th>
                         <th>Edit</th>
@@ -324,7 +338,6 @@ const ServiceCategoryMaster = () => {
                             <td>{item.serviceCateCode}</td>
                             <td>{item.serviceCatName}</td>
                             <td>{item.sacCode}</td>
-                            <td>{item.lastChgBy}</td>
                             <td>{new Date(item.lastChgDt).toLocaleDateString()}</td>
                             <td>
                               <div className="form-check form-switch">
@@ -358,7 +371,6 @@ const ServiceCategoryMaster = () => {
                         <tr>
                           <td colSpan="7" className="text-center">
                             <div className="p-3">
-                              <i className="fa fa-folder-open fa-2x text-muted"></i>
                               <p className="text-muted mb-0">No records found</p>
                             </div>
                           </td>

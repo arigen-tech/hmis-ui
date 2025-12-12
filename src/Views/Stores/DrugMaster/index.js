@@ -4,7 +4,6 @@ import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import { MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN } from "../../../config/apiConfig";
 
-
 const DrugMaster = () => {
     const [formData, setFormData] = useState({
         drugCode: "",
@@ -46,15 +45,10 @@ const DrugMaster = () => {
     const departmentId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
     const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
 
-
     const itemsPerPage = 5
     const [editingDrug, setEditingDrug] = useState(null)
     const [showForm, setShowForm] = useState(false)
     const [isFormValid, setIsFormValid] = useState(false)
-
-
-    console.log("form data", formData);
-
 
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, drugId: null, newStatus: null, name: "" })
 
@@ -62,10 +56,6 @@ const DrugMaster = () => {
         setSearchQuery(e.target.value)
         setCurrentPage(1)
     }
-
-
-
-
 
     useEffect(() => {
         fetchDrugMasterData();
@@ -77,30 +67,58 @@ const DrugMaster = () => {
     useEffect(() => {
         if (formData.itemGroup) {
             fetchMasItemType(formData.itemGroup);
+        } else {
+            setMasItemTypeData([]);
+            setFormData(prev => ({ ...prev, itemType: "", section: "", itemClass: "", itemCategory: "" }));
         }
     }, [formData.itemGroup]);
-
 
     useEffect(() => {
         if (formData.itemType) {
             fetchItemSectionData(formData.itemType);
+        } else {
+            setItemSectionData([]);
+            setFormData(prev => ({ ...prev, section: "", itemClass: "", itemCategory: "" }));
         }
     }, [formData.itemType]);
-
 
     useEffect(() => {
         if (formData.section) {
             fetchServiceCategoryData(formData.section);
             fetchItemClassData(formData.section);
+        } else {
+            setServiceCategoryData([]);
+            setItemClassData([]);
+            setFormData(prev => ({ ...prev, itemClass: "", itemCategory: "" }));
         }
     }, [formData.section]);
 
-    console.log("hos' dep", hospitalId, departmentId);
+    // Validate form whenever formData changes
+    useEffect(() => {
+        validateForm();
+    }, [formData]);
+
+    const validateForm = () => {
+        const isValid = 
+            formData.drugCode?.trim() !== "" &&
+            formData.drugName?.trim() !== "" &&
+            formData.itemGroup !== "" &&
+            formData.section !== "" &&
+            formData.itemType !== "" &&
+            formData.itemClass !== "" &&
+            formData.dispensingUnit !== "" &&
+            formData.unitAU !== "" &&
+            formData.itemCategory !== "" &&
+            formData.reorderLevel !== "" &&
+            formData.facilityCode !== "";
+        
+        setIsFormValid(isValid);
+    };
 
     const fetchDrugMasterData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`${MAS_DRUG_MAS}/getAll/0`);
+            const data = await getRequest(`/master/masStoreItemWithotStock/getAll/0`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 setDrugs(data.response);
             } else {
@@ -109,6 +127,7 @@ const DrugMaster = () => {
             }
         } catch (error) {
             console.error("Error fetching Service Category data:", error);
+            showPopup("Error fetching drug data", "error");
         } finally {
             setLoading(false);
         }
@@ -209,9 +228,6 @@ const DrugMaster = () => {
         }
     };
 
-
-
-
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target
         const updatedFormData = {
@@ -219,18 +235,6 @@ const DrugMaster = () => {
             [name]: type === "checkbox" ? checked : value,
         }
         setFormData(updatedFormData)
-
-        setIsFormValid(
-            !!updatedFormData.drugCode &&
-            !!updatedFormData.drugName &&
-            !!updatedFormData.itemGroup &&
-            !!updatedFormData.section &&
-            !!updatedFormData.itemClass &&
-            !!updatedFormData.dispensingUnit &&
-            !!updatedFormData.reorderLevel &&
-            !!updatedFormData.itemCategory,
-
-        )
     }
 
     const handleSwitchChange = (id, newStatus, name) => {
@@ -242,7 +246,6 @@ const DrugMaster = () => {
             try {
                 const response = await putRequest(
                     `${MAS_DRUG_MAS}/status/${confirmDialog.drugId}?status=${confirmDialog.newStatus}`,
-
                 );
                 if (response.status === 200) {
                     showPopup("Status updated successfully!", "success");
@@ -259,130 +262,59 @@ const DrugMaster = () => {
     }
 
     const handleEdit = async (drug) => {
-        setEditingDrug(drug);
-        setEditEnabled(true);
-        setShowForm(true);
-
-        await fetchMasItemType(drug.groupId);
-
-        await fetchItemSectionData(drug.itemTypeId);
-
-        await fetchServiceCategoryData(drug.sectionId);
-        await fetchItemClassData(drug.sectionId);
-
-        setFormData({
-            drugCode: drug.pvmsNo || "",
-            drugName: drug.nomenclature || "",
-            itemGroup: drug.groupId || "",
-            section: drug.sectionId || "",
-            itemType: drug.itemTypeId || "",
-            unitAU: drug.unitAU || "",
-            itemClass: drug.itemClassId || "",
-            dispensingUnit: drug.dispUnit || "",
-            itemCategory: drug.masItemCategoryid || "",
-            dispensingQty: drug.adispQty || "",
-            reorderLevel: drug.reOrderLevelDispensary || "",
-            reorderLevelStore: drug.reOrderLevelStore || "",
-            hsnCode: drug.hsnCode || "",
-            noOfDays: drug.noOfDays || "",
-            frequency: drug.frequency || "",
-            dosage: drug.dosage || "",
-            facilityCode: drug.facilityCode || "",
-            dangerousDrug: drug.dangerousDrug || false,
-            inactiveForEntry: drug.inactiveForEntry || false,
-        });
-        setIsFormValid(true);
-    };
-
-
-    const handleSave = async (e) => {
-        e.preventDefault();
-        if (!isFormValid) return;
-
-        setProcess(true);
-
         try {
-            const payload = {
-                pvmsNo: formData.drugCode,
-                nomenclature: formData.drugName,
-                groupId: Number(formData.itemGroup),
-                itemTypeId: Number(formData.itemType),
-                dispUnit: formData.dispensingUnit,
-                unitAU: Number(formData.unitAU),
-                sectionId: Number(formData.section),
-                itemClassId: Number(formData.itemClass),
-                masItemCategoryId: Number(formData.itemCategory),
-                adispQty: Number(formData.dispensingQty),
-                reOrderLevelDispensary: Number(formData.reorderLevel),
-                reOrderLevelStore: Number(formData.reorderLevelStore),
-                hsnCode: formData.hsnCode,
-                facilityCode: formData.facilityCode,
-                dangerousDrug: formData.dangerousDrug,
-                inactiveForEntry: formData.inactiveForEntry,
-            };
+            setEditingDrug(drug);
+            setEditEnabled(true);
+            setShowForm(true);
 
-            let response;
-
-            if (editingDrug) {
-                response = await putRequest(
-                    `${MAS_DRUG_MAS}/update/${editingDrug.itemId}`,
-                    payload
-                );
-
-                if (response.status === 200) {
-                    showPopup("Drug updated successfully!", "success");
-                } else {
-                    throw new Error(response.message || "Failed to update item");
-                }
-            } else {
-                response = await postRequest(`${MAS_DRUG_MAS}/create`, payload);
-
-                if (response.status === 200) {
-                    showPopup("Drug added successfully!", "success");
-                } else {
-                    throw new Error(response.message || "Failed to add item");
-                }
-            }
-
-            setEditingDrug(null);
-            setShowForm(false);
-            setEditEnabled(false);
+            // First set the form data with the drug's values
             setFormData({
-                drugCode: "",
-                drugName: "",
-                itemGroup: "",
-                section: "",
-                itemType: "",
-                unitAU: "",
-                itemClass: "",
-                dispensingUnit: "",
-                itemCategory: "",
-                dispensingQty: "",
-                reorderLevel: "",
-                reorderLevelStore: "",
-                hsnCode: "",
-                noOfDays: "",
-                frequency: "",
-                dosage: "",
-                facilityCode: "",
-                dangerousDrug: false,
-                inactiveForEntry: false,
+                drugCode: drug.pvmsNo || "",
+                drugName: drug.nomenclature || "",
+                itemGroup: drug.groupId?.toString() || "",
+                section: drug.sectionId?.toString() || "",
+                itemType: drug.itemTypeId?.toString() || "",
+                unitAU: drug.unitAU?.toString() || "",
+                itemClass: drug.itemClassId?.toString() || "",
+                dispensingUnit: drug.dispUnit?.toString() || "",
+                itemCategory: drug.masItemCategoryid?.toString() || "",
+                dispensingQty: drug.adispQty?.toString() || "",
+                reorderLevel: drug.reOrderLevelDispensary?.toString() || "",
+                reorderLevelStore: drug.reOrderLevelStore?.toString() || "",
+                hsnCode: drug.hsnCode || "",
+                noOfDays: drug.noOfDays?.toString() || "",
+                frequency: drug.frequency || "",
+                dosage: drug.dosage || "",
+                facilityCode: drug.facilityCode || "",
+                dangerousDrug: drug.dangerousDrug || false,
+                inactiveForEntry: drug.inactiveForEntry || false,
             });
 
-            await fetchDrugMasterData();
-
+            // Then fetch dependent data
+            if (drug.groupId) {
+                await fetchMasItemType(drug.groupId);
+            }
+            
+            if (drug.itemTypeId) {
+                await fetchItemSectionData(drug.itemTypeId);
+            }
+            
+            if (drug.sectionId) {
+                await Promise.all([
+                    fetchServiceCategoryData(drug.sectionId),
+                    fetchItemClassData(drug.sectionId)
+                ]);
+            }
         } catch (error) {
-            console.error("Error saving drug:", error);
-            showPopup(error.message || "Failed to save drug.", "error");
-        } finally {
-            setProcess(false);
+            console.error("Error in handleEdit:", error);
+            showPopup("Error loading drug data for editing", "error");
         }
     };
 
-    const handleBack = () => {
-        setShowForm(false);
-        setEditEnabled(false);
+    const handleAdd = () => {
         setEditingDrug(null);
+        setEditEnabled(false);
+        setShowForm(true);
         setFormData({
             drugCode: "",
             drugName: "",
@@ -406,7 +338,107 @@ const DrugMaster = () => {
         });
     }
 
+    const handleSave = async (e) => {
+        e.preventDefault();
+        
+        if (!isFormValid) {
+            showPopup("Please fill all required fields marked with *", "error");
+            return;
+        }
 
+        setProcess(true);
+
+        try {
+            const payload = {
+                pvmsNo: formData.drugCode.trim(),
+                nomenclature: formData.drugName.trim(),
+                groupId: Number(formData.itemGroup),
+                itemTypeId: Number(formData.itemType),
+                dispUnit: formData.dispensingUnit,
+                unitAU: Number(formData.unitAU) || 0,
+                sectionId: Number(formData.section),
+                itemClassId: Number(formData.itemClass),
+                masItemCategoryId: Number(formData.itemCategory),
+                adispQty: Number(formData.dispensingQty) || 0,
+                reOrderLevelDispensary: Number(formData.reorderLevel) || 0,
+                reOrderLevelStore: Number(formData.reorderLevelStore) || 0,
+                hsnCode: formData.hsnCode || "",
+                noOfDays: Number(formData.noOfDays) || 0,
+                frequency: formData.frequency || "",
+                dosage: formData.dosage || "",
+                facilityCode: formData.facilityCode,
+                dangerousDrug: formData.dangerousDrug,
+                inactiveForEntry: formData.inactiveForEntry,
+                status: "y"
+            };
+
+            console.log("Saving payload:", payload);
+            console.log("Is edit mode:", editEnabled);
+            console.log("Editing drug ID:", editingDrug?.itemId);
+
+            let response;
+            let url;
+
+            if (editingDrug && editEnabled) {
+                // UPDATE operation
+                url = `${MAS_DRUG_MAS}/update/${editingDrug.itemId}`;
+                console.log("Update URL:", url);
+                response = await putRequest(url, payload);
+            } else {
+                // CREATE operation
+                url = `${MAS_DRUG_MAS}/create`;
+                console.log("Create URL:", url);
+                response = await postRequest(url, payload);
+            }
+
+            console.log("API Response:", response);
+
+            if (response.status === 200 || response.status === 201) {
+                showPopup(editEnabled ? "Drug updated successfully!" : "Drug added successfully!", "success");
+                resetForm();
+                await fetchDrugMasterData();
+            } else {
+                throw new Error(response.message || response.response?.message || "Failed to save drug");
+            }
+
+        } catch (error) {
+            console.error("Error saving drug:", error);
+            showPopup(error.message || "Failed to save drug. Please try again.", "error");
+        } finally {
+            setProcess(false);
+        }
+    };
+
+    const resetForm = () => {
+        setEditingDrug(null);
+        setEditEnabled(false);
+        setShowForm(false);
+        setFormData({
+            drugCode: "",
+            drugName: "",
+            itemGroup: "",
+            section: "",
+            itemType: "",
+            unitAU: "",
+            itemClass: "",
+            dispensingUnit: "",
+            itemCategory: "",
+            dispensingQty: "",
+            reorderLevel: "",
+            reorderLevelStore: "",
+            hsnCode: "",
+            noOfDays: "",
+            frequency: "",
+            dosage: "",
+            facilityCode: "",
+            dangerousDrug: false,
+            inactiveForEntry: false,
+        });
+    };
+
+    const handleBack = () => {
+        resetForm();
+    }
 
     const showPopup = (message, type = "info") => {
         setPopupMessage({
@@ -427,12 +459,9 @@ const DrugMaster = () => {
             (item.groupName || "").toLowerCase().includes(q) ||
             (item.itemClassName || "").toLowerCase().includes(q) ||
             (item.sectionName || "").toLowerCase().includes(q) ||
-            (item.unitAU ? item.unitAU.toString().toLowerCase() : "")
-                .includes(q)
+            (item.unitAU ? item.unitAU.toString().toLowerCase() : "").includes(q)
         );
     });
-
-
 
     const filteredTotalPages = Math.ceil(filteredDrugs.length / itemsPerPage)
     const currentItems = filteredDrugs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
@@ -483,11 +512,6 @@ const DrugMaster = () => {
         ))
     }
 
-    const handleAdd = () => {
-        setEditingDrug(null)
-        setShowForm(true)
-    }
-
     return (
         <div className="content-wrapper">
             <div className="row">
@@ -518,9 +542,6 @@ const DrugMaster = () => {
                                         <button type="button" className="btn btn-success me-2" onClick={handleAdd}>
                                             <i className="mdi mdi-plus"></i> Add
                                         </button>
-                                        {/* <button type="button" className="btn btn-success me-2">
-                                            <i className="mdi mdi-plus"></i> Generate Report
-                                        </button> */}
                                     </>
                                 )}
                             </div>
@@ -543,50 +564,56 @@ const DrugMaster = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {currentItems.map((item) => (
-                                                <tr key={item.itemId}>
-                                                    <td>{item.pvmsNo}</td>
-                                                    <td>{item.nomenclature}</td>
-                                                    <td>{item.groupName}</td>
-                                                    <td>{item.unitAU}</td>
-                                                    <td>{item.sectionName}</td>
-                                                    <td>{item.itemClassName}</td>
-                                                    <td>
-                                                        <div className="form-check form-switch">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={item.status === "y"}
-                                                                onChange={() => handleSwitchChange(item.itemId, item.status === "y" ? "n" : "y", item.nomenclature)}
-                                                                id={`switch-${item.id}`}
-                                                            />
-                                                            <label
-                                                                className="form-check-label px-0"
-                                                                htmlFor={`switch-${item.itemId}`}
-
+                                            {currentItems.length > 0 ? (
+                                                currentItems.map((item) => (
+                                                    <tr key={item.itemId}>
+                                                        <td>{item.pvmsNo}</td>
+                                                        <td>{item.nomenclature}</td>
+                                                        <td>{item.groupName}</td>
+                                                        <td>{item.unitAU}</td>
+                                                        <td>{item.sectionName}</td>
+                                                        <td>{item.itemClassName}</td>
+                                                        <td>
+                                                            <div className="form-check form-switch">
+                                                                <input
+                                                                    className="form-check-input"
+                                                                    type="checkbox"
+                                                                    checked={item.status === "y"}
+                                                                    onChange={() => handleSwitchChange(item.itemId, item.status === "y" ? "n" : "y", item.nomenclature)}
+                                                                    id={`switch-${item.itemId}`}
+                                                                />
+                                                                <label
+                                                                    className="form-check-label px-0"
+                                                                    htmlFor={`switch-${item.itemId}`}
+                                                                >
+                                                                    {item.status === "y" ? "Active" : "Deactivated"}
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <button
+                                                                className="btn btn-sm btn-success me-2"
+                                                                onClick={() => handleEdit(item)}
+                                                                disabled={item.status !== "y"}
                                                             >
-                                                                {item.status === "y" ? "Active" : "Deactivated"}
-                                                            </label>
-                                                        </div>
-
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-success me-2"
-                                                            onClick={() => handleEdit(item)}
-                                                            disabled={item.status !== "y"}
-                                                        >
-                                                            <i className="fa fa-pencil"></i>
-                                                        </button>
+                                                                <i className="fa fa-pencil"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="8" className="text-center">
+                                                        No drugs found
                                                     </td>
                                                 </tr>
-                                            ))}
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
                             ) : (
-                                <form className="forms row">
-                                    <div className="d-flex justify-content-end">
+                                <form className="forms row" onSubmit={handleSave}>
+                                    <div className="d-flex justify-content-end mb-3">
                                         <button type="button" className="btn btn-secondary" onClick={handleBack}>
                                             <i className="mdi mdi-arrow-left"></i> Back
                                         </button>
@@ -605,6 +632,7 @@ const DrugMaster = () => {
                                                 onChange={handleInputChange}
                                                 value={formData.drugCode}
                                                 required
+                                                disabled={editEnabled}
                                             />
                                         </div>
                                         <div className="form-group col-md-8 mt-3">
@@ -631,6 +659,7 @@ const DrugMaster = () => {
                                                 name="itemGroup"
                                                 value={formData.itemGroup}
                                                 onChange={handleInputChange}
+                                                required
                                             >
                                                 <option value="">Select Store Item</option>
                                                 {masStoreGroup.map((item) => (
@@ -639,7 +668,6 @@ const DrugMaster = () => {
                                                     </option>
                                                 ))}
                                             </select>
-
                                         </div>
 
                                         <div className="form-group col-md-4 mt-3">
@@ -652,9 +680,9 @@ const DrugMaster = () => {
                                                 value={formData.itemType}
                                                 onChange={handleInputChange}
                                                 required
+                                                disabled={!formData.itemGroup}
                                             >
                                                 <option value="">Select Item Type</option>
-
                                                 {masItemTypeData.map((item) => (
                                                     <option key={item.id} value={item.id}>
                                                         {item.name}
@@ -673,9 +701,9 @@ const DrugMaster = () => {
                                                 value={formData.section}
                                                 onChange={handleInputChange}
                                                 required
+                                                disabled={!formData.itemType}
                                             >
                                                 <option value="">Select Item Section</option>
-
                                                 {itemSectionData.map((section) => (
                                                     <option key={section.sectionId} value={section.sectionId}>
                                                         {section.sectionName}
@@ -694,6 +722,7 @@ const DrugMaster = () => {
                                                 value={formData.itemClass}
                                                 onChange={handleInputChange}
                                                 required
+                                                disabled={!formData.section}
                                             >
                                                 <option value=""> Select Item Class </option>
                                                 {itemClassData.map((cls) => (
@@ -714,9 +743,9 @@ const DrugMaster = () => {
                                                 value={formData.itemCategory}
                                                 onChange={handleInputChange}
                                                 required
+                                                disabled={!formData.section}
                                             >
                                                 <option value=""> Select Category </option>
-
                                                 {serviceCategoryData.map((cat) => (
                                                     <option key={cat.itemCategoryId} value={cat.itemCategoryId}>
                                                         {cat.itemCategoryName}
@@ -764,12 +793,13 @@ const DrugMaster = () => {
                                         <div className="form-group col-md-4 mt-3">
                                             <label>Dispensing Qty</label>
                                             <input
-                                                type="text"
+                                                type="number"
                                                 className="form-control"
                                                 placeholder="Dispensing Qty"
                                                 name="dispensingQty"
                                                 value={formData.dispensingQty}
                                                 onChange={handleInputChange}
+                                                min="0"
                                             />
                                         </div>
 
@@ -778,34 +808,26 @@ const DrugMaster = () => {
                                                 Re-order Level-Dispensary <span className="text-danger">*</span>
                                             </label>
                                             <input
-                                                type="text"
+                                                type="number"
                                                 className="form-control"
                                                 name="reorderLevel"
                                                 value={formData.reorderLevel}
                                                 onChange={handleInputChange}
                                                 required
+                                                min="0"
                                             />
                                         </div>
 
                                         <div className="form-group col-md-4 mt-3">
                                             <label>Re-order Level-Store</label>
                                             <input
-                                                type="text"
+                                                type="number"
                                                 className="form-control"
                                                 name="reorderLevelStore"
                                                 placeholder="Re-order Level-Store"
                                                 value={formData.reorderLevelStore}
                                                 onChange={handleInputChange}
-                                            />
-                                        </div>
-
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>Re-order Level-Ward</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                name="reorderLevelWard"
-                                                placeholder="Re-order Level-Ward"
+                                                min="0"
                                             />
                                         </div>
 
@@ -841,12 +863,13 @@ const DrugMaster = () => {
                                         <div className="form-group col-md-4 mt-3">
                                             <label>No of Days</label>
                                             <input
-                                                type="text"
+                                                type="number"
                                                 className="form-control"
                                                 placeholder="No of Days"
                                                 name="noOfDays"
                                                 value={formData.noOfDays}
                                                 onChange={handleInputChange}
+                                                min="0"
                                             />
                                         </div>
 
@@ -858,7 +881,7 @@ const DrugMaster = () => {
                                                 value={formData.frequency}
                                                 onChange={handleInputChange}
                                             >
-                                                <option value="Select">Select</option>
+                                                <option value="">Select</option>
                                                 <option value="Once Daily">Once Daily</option>
                                                 <option value="Twice Daily">Twice Daily</option>
                                                 <option value="Thrice Daily">Thrice Daily</option>
@@ -876,6 +899,7 @@ const DrugMaster = () => {
                                                 onChange={handleInputChange}
                                                 required
                                             >
+                                                <option value="">Select</option>
                                                 <option value="Primary">Primary</option>
                                                 <option value="Secondary">Secondary</option>
                                                 <option value="Tertiary">Tertiary</option>
@@ -915,12 +939,28 @@ const DrugMaster = () => {
                                         </div>
                                     </div>
 
-                                    <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                                        <button onClick={handleSave} type="submit" className="btn btn-primary me-2">
-                                            {process ? (editEnabled ? "Updating..." : "Saving...") : (editEnabled ? "Update" : "Save")}
+                                    <div className="form-group col-md-12 d-flex justify-content-end mt-4">
+                                        <button 
+                                            type="submit" 
+                                            className="btn btn-primary me-2"
+                                            disabled={!isFormValid || process}
+                                        >
+                                            {process ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                    {editEnabled ? "Updating..." : "Saving..."}
+                                                </>
+                                            ) : (
+                                                editEnabled ? "Update" : "Save"
+                                            )}
                                         </button>
 
-                                        <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-danger" 
+                                            onClick={handleBack}
+                                            disabled={process}
+                                        >
                                             Cancel
                                         </button>
                                     </div>
@@ -929,14 +969,12 @@ const DrugMaster = () => {
 
                             {/* Confirmation Modal */}
                             {confirmDialog.isOpen && (
-                                <div className="modal d-block" tabIndex="-1" role="dialog">
-                                    <div className="modal-dialog" role="document">
+                                <div className="modal fade show d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                                    <div className="modal-dialog modal-dialog-centered" role="document">
                                         <div className="modal-content">
                                             <div className="modal-header">
                                                 <h5 className="modal-title">Confirm Status Change</h5>
-                                                <button type="button" className="close" onClick={() => handleConfirm(false)}>
-                                                    <span>&times;</span>
-                                                </button>
+                                                <button type="button" className="btn-close" onClick={() => handleConfirm(false)}></button>
                                             </div>
                                             <div className="modal-body">
                                                 <p>
@@ -962,7 +1000,7 @@ const DrugMaster = () => {
                             )}
 
                             {/* Pagination - only show when not in form mode */}
-                            {!showForm && (
+                            {!showForm && filteredDrugs.length > 0 && (
                                 <nav className="d-flex justify-content-between align-items-center mt-3">
                                     <div>
                                         <span>
@@ -999,6 +1037,7 @@ const DrugMaster = () => {
                                             onChange={(e) => setPageInput(e.target.value)}
                                             placeholder="Go to page"
                                             className="form-control me-2"
+                                            style={{ width: '100px' }}
                                         />
                                         <button className="btn btn-primary" onClick={handlePageNavigation}>
                                             Go

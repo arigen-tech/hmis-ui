@@ -5,37 +5,7 @@ import { getRequest, putRequest, postRequest } from "../../../service/apiService
 import { MAS_ITEM_CATEGORY, MAS_ITEM_SECTION } from "../../../config/apiConfig";
 
 const ItemCategory = () => {
-    // const [itemCategories, setItemCategories] = useState([
-    //     { id: 1, sectionType: "DRUGS", categoryCode: "CA1", categoryName: "ANAESTHETICS - LOCAL & GENERAL", status: "y" },
-    //     {
-    //         id: 2,
-    //         sectionType: "DRUGS",
-    //         categoryCode: "CA2",
-    //         categoryName: "CNS DISEASES AND PSYCHOTHERAPEUTIC DRUGS",
-    //         status: "y",
-    //     },
-    //     {
-    //         id: 3,
-    //         sectionType: "DRUGS",
-    //         categoryCode: "CA3",
-    //         categoryName: "PAIN FEVER GOUT RHEUMATOID ARTHRITIS AND MIGRAINE DRUGS",
-    //         status: "y",
-    //     },
-    //     {
-    //         id: 4,
-    //         sectionType: "DRUGS",
-    //         categoryCode: "CA4",
-    //         categoryName: "ALLERGIC DISORDERS AND OTHER RESPIRATORY DISEASES DRUGS",
-    //         status: "y",
-    //     },
-    //     {
-    //         id: 5,
-    //         sectionType: "DRUGS",
-    //         categoryCode: "CA5",
-    //         categoryName: "ANTI-INFECTIVE AGENTS",
-    //         status: "y"
-    //     },
-    // ])
+
 
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, categoryId: null, newStatus: false })
     const [formData, setFormData] = useState({
@@ -111,12 +81,24 @@ const ItemCategory = () => {
         setCurrentPage(1)
     }
 
-    const filteredItemCategories = itemCategories.filter(
-        (category) =>
-            category.itemCategoryCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            category.itemCategoryName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            category.sectionName.toLowerCase().includes(searchQuery.toLowerCase()),
-    )
+    const search = searchQuery.trim().toLowerCase();
+
+    const filteredItemCategories = itemCategories.filter((category) => {
+        const code = category?.itemCategoryCode?.toLowerCase() || "";
+        const name = category?.itemCategoryName?.toLowerCase() || "";
+        const section = category?.sectionName?.toLowerCase() || "";
+
+        // Convert status into readable text
+        const status = category?.status === "y" ? "active" : "deactivated";
+
+        return (
+            code.includes(search) ||
+            name.includes(search) ||
+            section.includes(search) ||
+            status.includes(search)
+        );
+    });
+
 
     const filteredTotalPages = Math.ceil(filteredItemCategories.length / itemsPerPage)
 
@@ -333,10 +315,10 @@ const ItemCategory = () => {
                                     <table className="table table-bordered table-hover align-middle">
                                         <thead className="table-light">
                                             <tr>
-                                               
+
                                                 <th>Item Category Code</th>
                                                 <th>Item Category Name</th>
-                                                 <th>Section</th>
+                                                <th>Section</th>
                                                 <th>Status</th>
                                                 <th>Edit</th>
                                             </tr>
@@ -344,7 +326,7 @@ const ItemCategory = () => {
                                         <tbody>
                                             {currentItems.map((category) => (
                                                 <tr key={category.itemCategoryId}>
-                                                    
+
                                                     <td>{category.itemCategoryCode}</td>
                                                     <td>{category.itemCategoryName}</td>
                                                     <td>{category.sectionName}</td>
