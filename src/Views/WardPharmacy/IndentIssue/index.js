@@ -998,89 +998,89 @@ useEffect(() => {
                             style={{ padding: "0", width: "20px" }}
                           >{index + 1}</td>
 
-                          <td style={{ position: "relative" }}>
-                            <input
-                              ref={(el) => (itemInputRefs.current[index] = el)}
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={entry.itemName}
-                              onChange={(e) => {
-                                const value = e.target.value
-                                handleIndentEntryChange(index, "itemName", value)
-                                if (value.length > 0) {
-                                  setActiveItemDropdown(index)
-                                } else {
-                                  setActiveItemDropdown(null)
-                                }
-                              }}
-                              placeholder="Item Name/Code"
-                              autoComplete="off"
-                              onFocus={() => setActiveItemDropdown(index)}
-                              onBlur={() => {
-                                setTimeout(() => {
-                                  if (!dropdownClickedRef.current) {
-                                    setActiveItemDropdown(null)
-                                  }
-                                  dropdownClickedRef.current = false
-                                }, 150)
-                              }}
-                            />
-                            {activeItemDropdown === index &&
-                              ReactDOM.createPortal(
-                                <ul
-                                  className="list-group position-absolute"
-                                  style={{
-                                    zIndex: 9999,
-                                    maxHeight: 200,
-                                    overflowY: "auto",
-                                    top: `${itemInputRefs.current[index]?.getBoundingClientRect().bottom + window.scrollY}px`,
-                                    left: `${itemInputRefs.current[index]?.getBoundingClientRect().left + window.scrollX}px`,
-                                    backgroundColor: "white",
-                                    border: "1px solid #dee2e6",
-                                    borderRadius: "0.375rem",
-                                    boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
-                                  }}
-                                >
-                                  {itemOptions
-                                    .filter(
-                                      (opt) =>
-                                        entry.itemName === "" ||
-                                        opt.name.toLowerCase().includes(entry.itemName.toLowerCase()) ||
-                                        opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
-                                    )
-                                    .map((opt) => (
-                                      <li
-                                        key={opt.id}
-                                        className="list-group-item list-group-item-action"
-                                        style={{ cursor: "pointer" }}
-                                        onMouseDown={(e) => {
-                                          e.preventDefault()
-                                          dropdownClickedRef.current = true
-                                        }}
-                                        onClick={(e) => {
-                                          e.preventDefault()
-                                          e.stopPropagation()
-                                          handleIndentEntryChange(index, "itemName", opt.name)
-                                          setActiveItemDropdown(null)
-                                          dropdownClickedRef.current = false
-                                        }}
-                                      >
-                                        {opt.code} - {opt.name} (Total Stock: {opt.availableStock})
-                                      </li>
-                                    ))}
-                                  {itemOptions.filter(
-                                    (opt) =>
-                                      entry.itemName === "" ||
-                                      opt.name.toLowerCase().includes(entry.itemName.toLowerCase()) ||
-                                      opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
-                                  ).length === 0 &&
-                                    entry.itemName !== "" && (
-                                      <li className="list-group-item text-muted">No matches found</li>
-                                    )}
-                                </ul>,
-                                document.body,
-                              )}
-                          </td>
+                    <td style={{ position: "relative",  }}>  {/* CHANGE 1: Added overflow: "visible" */}
+  <input
+    ref={(el) => (itemInputRefs.current[index] = el)}
+    type="text"
+    className="form-control form-control-sm"
+    value={entry.itemName}
+    onChange={(e) => {
+      const value = e.target.value
+      handleIndentEntryChange(index, "itemName", value)
+      if (value.length > 0) {
+        setActiveItemDropdown(index)
+      } else {
+        setActiveItemDropdown(null)
+      }
+    }}
+    placeholder="Item Name/Code"
+    autoComplete="off"
+    onFocus={() => setActiveItemDropdown(index)}
+    onBlur={() => {
+      setTimeout(() => {
+        if (!dropdownClickedRef.current) {
+          setActiveItemDropdown(null)
+        }
+        dropdownClickedRef.current = false
+      }, 150)
+    }}
+  />
+  {activeItemDropdown === index && (
+    /* CHANGE 2: Removed ReactDOM.createPortal - render inline instead */
+    <ul
+      className="list-group position-absolute"  /* CHANGE 3: Kept position-absolute (was already correct) */
+      style={{
+        zIndex: 9999,
+        maxHeight: 200,
+        overflowY: "auto",
+        minWidth: "450px",  /* CHANGE 4: Changed to minWidth: "450px" to show full item names and stock info */
+        top: "100%",  /* CHANGE 5: Simplified from calculated getBoundingClientRect() to "100%" */
+        left: 0,  /* CHANGE 6: Simplified from calculated getBoundingClientRect() to 0 */
+        backgroundColor: "white",
+        border: "1px solid #dee2e6",
+        borderRadius: "0.375rem",
+        boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
+      }}
+    >
+      {itemOptions
+        .filter(
+          (opt) =>
+            entry.itemName === "" ||
+            opt.name.toLowerCase().includes(entry.itemName.toLowerCase()) ||
+            opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
+        )
+        .map((opt) => (
+          <li
+            key={opt.id}
+            className="list-group-item list-group-item-action"
+            style={{ cursor: "pointer" }}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              dropdownClickedRef.current = true
+            }}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              handleIndentEntryChange(index, "itemName", opt.name)
+              setActiveItemDropdown(null)
+              dropdownClickedRef.current = false
+            }}
+          >
+            {opt.code} - {opt.name} (Total Stock: {opt.availableStock})
+          </li>
+        ))}
+      {itemOptions.filter(
+        (opt) =>
+          entry.itemName === "" ||
+          opt.name.toLowerCase().includes(entry.itemName.toLowerCase()) ||
+          opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
+      ).length === 0 &&
+        entry.itemName !== "" && (
+          <li className="list-group-item text-muted">No matches found</li>
+        )}
+    </ul>
+  )}
+</td>
 
                           <td>
                             <input
