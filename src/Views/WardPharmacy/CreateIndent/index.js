@@ -13,6 +13,7 @@ const IndentCreation = () => {
 
   // Form State
   const [indentDate, setIndentDate] = useState(new Date().toISOString().split("T")[0]);
+  const [displayDate, setDisplayDate] = useState(""); // For DD/MM/YYYY display
   const [department, setDepartment] = useState("");
   const [departments, setDepartments] = useState([]);
   const [loggedInDepartment, setLoggedInDepartment] = useState(""); // Will be auto-filled from department ID
@@ -36,7 +37,53 @@ const IndentCreation = () => {
   const [rolItems, setRolItems] = useState([]);
   const [selectedRolItems, setSelectedRolItems] = useState([]);
 
+  // Helper function to convert YYYY-MM-DD to DD/MM/YYYY
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return "";
+    const [year, month, day] = dateString.split("-");
+    return `${day}/${month}/${year}`;
+  };
 
+  // Helper function to convert DD/MM/YYYY to YYYY-MM-DD
+  const formatDateForStorage = (displayDate) => {
+    if (!displayDate) return "";
+    const parts = displayDate.split("/");
+    if (parts.length !== 3) return "";
+    const [day, month, year] = parts;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  };
+
+  // Handle date input change
+  const handleDateChange = (e) => {
+    let value = e.target.value.replace(/\D/g, ""); // Remove non-digits
+    
+    // Auto-format as user types
+    if (value.length >= 2) {
+      value = value.slice(0, 2) + "/" + value.slice(2);
+    }
+    if (value.length >= 5) {
+      value = value.slice(0, 5) + "/" + value.slice(5);
+    }
+    if (value.length > 10) {
+      value = value.slice(0, 10);
+    }
+
+    setDisplayDate(value);
+
+    // Convert to YYYY-MM-DD format for backend
+    if (value.length === 10) {
+      const storageFormat = formatDateForStorage(value);
+      if (storageFormat) {
+        setIndentDate(storageFormat);
+        // Clear date error if valid
+        if (errors.indentDate) {
+          const newErrors = { ...errors };
+          delete newErrors.indentDate;
+          setErrors(newErrors);
+        }
+      }
+    }
+  };
 
   // Fetch current department by ID
   const fetchCurrentDepartment = async () => {
@@ -238,6 +285,8 @@ const IndentCreation = () => {
     fetchDepartments();
     fetchAllDrugs();
     fetchCurrentDepartment(); // Fetch current department separately
+    // Initialize display date on mount
+    setDisplayDate(formatDateForDisplay(indentDate));
     // Don't fetch ROL items on initial load, only when Import from ROL is clicked
   }, []);
 
@@ -565,7 +614,9 @@ const IndentCreation = () => {
       showPopup("Indent saved successfully!", "success");
       
       // Reset form
-      setIndentDate(new Date().toISOString().split("T")[0]);
+      const today = new Date().toISOString().split("T")[0];
+      setIndentDate(today);
+      setDisplayDate(formatDateForDisplay(today));
       setDepartment("");
       setIndentEntries([
         { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "" },
@@ -629,7 +680,9 @@ const IndentCreation = () => {
       showPopup("Indent submitted successfully!", "success");
 
       // Reset form
-      setIndentDate(new Date().toISOString().split("T")[0]);
+      const today = new Date().toISOString().split("T")[0];
+      setIndentDate(today);
+      setDisplayDate(formatDateForDisplay(today));
       setDepartment("");
       setIndentEntries([
         { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "" },
@@ -676,18 +729,12 @@ const IndentCreation = () => {
                 <div className="col-md-3">
                   <label className="form-label fw-bold">Indent Date</label>
                   <input
-                                       type="date"
-                                       className={`form-control ${errors.indentDate ? 'is-invalid' : ''}`}
-                                       value={indentDate}
-                                       onChange={(e) => {
-                                         setIndentDate(e.target.value);
-                                         if (errors.indentDate) {
-                                           const newErrors = { ...errors };
-                                           delete newErrors.indentDate;
-                                           setErrors(newErrors);
-                                         }
-                                       }}
-                   
+                    type="text"
+                    className={`form-control ${errors.indentDate ? 'is-invalid' : ''}`}
+                    value={displayDate}
+                    onChange={handleDateChange}
+                    placeholder="DD/MM/YYYY"
+                    maxLength="10"
                   />
                   {errors.indentDate && <div className="invalid-feedback">{errors.indentDate}</div>}
                 </div>
