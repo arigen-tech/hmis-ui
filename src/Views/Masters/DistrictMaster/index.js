@@ -324,7 +324,7 @@ const DistrictMaster = () => {
                                                 });
                                                 setIsFormValid(false);
                                             }}>
-                                                <i className="mdi mdi-plus"></i> ADD
+                                                <i className="mdi mdi-plus"></i> Add
                                             </button>
                                             <button type="button" className="btn btn-success me-2 flex-shrink-0">
                                                 <i className="mdi mdi-file-export"></i> Generate Report

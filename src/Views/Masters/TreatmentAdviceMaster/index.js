@@ -7,17 +7,17 @@ import { postRequest, putRequest, getRequest } from "../../../service/apiService
 const TreatmentAdviceMaster = () => {
   const [treatmentData, setTreatmentData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState({ 
-    isOpen: false, 
-    treatmentAdviseId: null, 
-    newStatus: false 
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    treatmentAdviseId: null,
+    newStatus: false
   });
-  
+
   const [formData, setFormData] = useState({
     treatmentAdvice: "",
     departmentId: "",
   });
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
@@ -35,19 +35,19 @@ const TreatmentAdviceMaster = () => {
   // Function to format date as dd-MM-YYYY
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
-    
+
     try {
       const date = new Date(dateString);
-      
+
       // Check if date is valid
       if (isNaN(date.getTime())) {
         return "N/A";
       }
-      
+
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
       const year = date.getFullYear();
-      
+
       return `${day}/${month}/${year}`;
     } catch (error) {
       console.error("Error formatting date:", error);
@@ -83,7 +83,7 @@ const TreatmentAdviceMaster = () => {
         const mappedData = response.response.map(item => ({
           id: item.treatmentAdviseId,
           treatmentAdvice: item.treatmentAdvice,
-          department: item.departmentName ,
+          department: item.departmentName,
           departmentId: item.departmentId,
           status: item.status,
           lastUpdated: formatDate(item.lastUpdateDate),
@@ -108,9 +108,9 @@ const TreatmentAdviceMaster = () => {
 
   // Filter data based on search query
   const filteredTreatmentData = treatmentData.filter(treatment =>
-    treatment.treatmentAdvice?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    treatment.treatmentAdvice?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     treatment.department?.toLowerCase().includes(searchQuery.toLowerCase())
-   
+
   );
 
   // Calculate pagination values
@@ -158,10 +158,10 @@ const TreatmentAdviceMaster = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    
+
     try {
       setLoading(true);
-      
+
       // Check for duplicates (treatment advice should be unique within same department)
       const isDuplicate = treatmentData.some(
         (treatment) =>
@@ -185,7 +185,7 @@ const TreatmentAdviceMaster = () => {
       if (editingTreatment) {
         // Update existing treatment advice
         const response = await putRequest(`${MAS_TREATMENT_ADVISE}/update/${editingTreatment.id}`, requestData);
-        
+
         if (response && response.status === 200) {
           fetchTreatmentData();
           showPopup("Treatment advice updated successfully!", "success");
@@ -193,13 +193,13 @@ const TreatmentAdviceMaster = () => {
       } else {
         // Add new treatment advice
         const response = await postRequest(`${MAS_TREATMENT_ADVISE}/create`, requestData);
-        
+
         if (response && (response.status === 200 || response.status === 201)) {
           fetchTreatmentData();
           showPopup("New treatment advice added successfully!", "success");
         }
       }
-      
+
       setEditingTreatment(null);
       setFormData({ treatmentAdvice: "", departmentId: "" });
       setShowForm(false);
@@ -220,7 +220,7 @@ const TreatmentAdviceMaster = () => {
       }
     });
   };
-  
+
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, treatmentAdviseId: id, newStatus });
   };
@@ -229,7 +229,7 @@ const TreatmentAdviceMaster = () => {
     if (confirmed && confirmDialog.treatmentAdviseId !== null) {
       try {
         setLoading(true);
-        
+
         const response = await putRequest(
           `${MAS_TREATMENT_ADVISE}/status/${confirmDialog.treatmentAdviseId}?status=${confirmDialog.newStatus}`
         );
@@ -238,12 +238,12 @@ const TreatmentAdviceMaster = () => {
           // Update local state with formatted date
           setTreatmentData((prevData) =>
             prevData.map((treatment) =>
-              treatment.id === confirmDialog.treatmentAdviseId 
-                ? { 
-                    ...treatment, 
-                    status: confirmDialog.newStatus,
-                    lastUpdated: formatDate(new Date().toISOString())
-                  } 
+              treatment.id === confirmDialog.treatmentAdviseId
+                ? {
+                  ...treatment,
+                  status: confirmDialog.newStatus,
+                  lastUpdated: formatDate(new Date().toISOString())
+                }
                 : treatment
             )
           );
@@ -336,11 +336,11 @@ const TreatmentAdviceMaster = () => {
           </li>
         );
       }
-      
+
       return (
         <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-          <button 
-            className="page-link" 
+          <button
+            className="page-link"
             onClick={() => {
               setCurrentPage(number);
               setPageInput(number.toString());
@@ -361,27 +361,31 @@ const TreatmentAdviceMaster = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Treatment Advice Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search treatment advice, department, or created by..."
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
 
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2"
                         onClick={() => {
                           setEditingTreatment(null);
@@ -391,8 +395,8 @@ const TreatmentAdviceMaster = () => {
                       >
                         <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2 flex-shrink-0"
                         onClick={handleRefresh}
                       >
@@ -468,7 +472,7 @@ const TreatmentAdviceMaster = () => {
                       </tbody>
                     </table>
                   </div>
-                  
+
                   {filteredTreatmentData.length > 0 && (
                     <nav className="d-flex justify-content-between align-items-center mt-3">
                       <div>
@@ -476,7 +480,7 @@ const TreatmentAdviceMaster = () => {
                           Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredTreatmentData.length)} of {filteredTreatmentData.length} entries
                         </span>
                       </div>
-                      
+
                       <ul className="pagination mb-0">
                         <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
                           <button
@@ -491,9 +495,9 @@ const TreatmentAdviceMaster = () => {
                             &laquo; Previous
                           </button>
                         </li>
-                        
+
                         {renderPagination()}
-                        
+
                         <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
                           <button
                             className="page-link"
@@ -508,7 +512,7 @@ const TreatmentAdviceMaster = () => {
                           </button>
                         </li>
                       </ul>
-                      
+
                       <div className="d-flex align-items-center">
                         <span className="me-2">Go to:</span>
                         <input
@@ -551,7 +555,7 @@ const TreatmentAdviceMaster = () => {
                       {formData.treatmentAdvice.length}/{TREATMENT_ADVICE_MAX_LENGTH} characters
                     </small> */}
                   </div>
-                  
+
                   <div className="form-group col-md-6">
                     <label>Department <span className="text-danger">*</span></label>
                     <select
@@ -572,18 +576,18 @@ const TreatmentAdviceMaster = () => {
                     </select>
                     {/* <small className="text-muted">Select department for this treatment advice</small> */}
                   </div>
-                  
+
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
-                    <button 
-                      type="submit" 
-                      className="btn btn-primary me-2" 
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
                       disabled={!isFormValid || loading}
                     >
                       {loading ? "Saving..." : (editingTreatment ? 'Update' : 'Save')}
                     </button>
-                    <button 
-                      type="button" 
-                      className="btn btn-danger" 
+                    <button
+                      type="button"
+                      className="btn btn-danger"
                       onClick={() => setShowForm(false)}
                       disabled={loading}
                     >
@@ -592,7 +596,7 @@ const TreatmentAdviceMaster = () => {
                   </div>
                 </form>
               )}
-              
+
               {popupMessage && (
                 <Popup
                   message={popupMessage.message}
@@ -600,24 +604,24 @@ const TreatmentAdviceMaster = () => {
                   onClose={popupMessage.onClose}
                 />
               )}
-              
+
               {confirmDialog.isOpen && (
                 <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                   <div className="modal-dialog modal-dialog-centered" role="document">
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Status Change</h5>
-                        <button 
-                          type="button" 
-                          className="btn-close" 
-                          onClick={() => handleConfirm(false)} 
+                        <button
+                          type="button"
+                          className="btn-close"
+                          onClick={() => handleConfirm(false)}
                           aria-label="Close"
                           disabled={loading}
                         ></button>
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
+                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
                           <strong> {treatmentData.find(treatment => treatment.id === confirmDialog.treatmentAdviseId)?.treatmentAdvice}</strong> treatment advice?
                         </p>
                         {/* <p className="text-muted">
@@ -627,17 +631,17 @@ const TreatmentAdviceMaster = () => {
                         </p> */}
                       </div>
                       <div className="modal-footer">
-                        <button 
-                          type="button" 
-                          className="btn btn-secondary" 
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
                           onClick={() => handleConfirm(false)}
                           disabled={loading}
                         >
                           Cancel
                         </button>
-                        <button 
-                          type="button" 
-                          className="btn btn-primary" 
+                        <button
+                          type="button"
+                          className="btn btn-primary"
                           onClick={() => handleConfirm(true)}
                           disabled={loading}
                         >

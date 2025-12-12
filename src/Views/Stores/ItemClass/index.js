@@ -48,7 +48,7 @@ const Itemclass = () => {
     };
 
     const fetchItemSectionData = async () => {
-        setLoading(true);
+        // setLoading(true);
         try {
             const data = await getRequest(`${MAS_ITEM_SECTION}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
@@ -59,9 +59,10 @@ const Itemclass = () => {
             }
         } catch (error) {
             console.error("Error fetching Item Section data:", error);
-        } finally {
-            setLoading(false);
-        }
+        } 
+        // finally {
+        //     setLoading(false);
+        // }
     }
 
 
@@ -82,7 +83,8 @@ const Itemclass = () => {
     const filtereditemClassData = itemClassData.filter(
         (Class) =>
             Class.itemClassName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            Class.itemClassCode.toLowerCase().includes(searchQuery.toLowerCase()),
+            Class.itemClassCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            Class.sectionName.toLowerCase().includes(searchQuery.toLowerCase()),
     )
 
     const filteredTotalPages = Math.ceil(filtereditemClassData.length / itemsPerPage)
@@ -252,6 +254,7 @@ const Itemclass = () => {
                     <div className="card form-card">
                         <div className="card-header">
                             <h4 className="card-title p-2">Item Class Master</h4>
+                            {loading && <LoadingScreen />}
                             {!showForm && (
                                 <div className="d-flex justify-content-end align-items-center mt-3">
 
