@@ -21,7 +21,6 @@ import { DEPARTMENT_CODE_OPD } from "../../../config/constants";
 import { getRequest, postRequest } from "../../../service/apiService";
 
 const UpdatePatientRegistration = () => {
-
   async function fetchHospitalDetails() {
     try {
       const data = await getRequest(`${HOSPITAL}/${sessionStorage.getItem('hospitalId')}`);
@@ -54,6 +53,7 @@ const UpdatePatientRegistration = () => {
       setLoading(false);
     }
   }
+
   async function fetchAllDistrictData() {
     try {
       const data = await getRequest(`${ALL_DISTRICT}/1`);
@@ -83,6 +83,7 @@ const UpdatePatientRegistration = () => {
     fetchAllDistrictData();
     fetchHospitalDetails();
   }, []);
+
   const [popupMessage, setPopupMessage] = useState(null);
   const [hospitalId, setHospitalId] = useState(12);
   const [errors, setErrors] = useState({});
@@ -100,7 +101,6 @@ const UpdatePatientRegistration = () => {
   const [session, setSession] = useState([]);
   const [appointmentFlag, setAppointmentFlag] = useState(false);
   const [showPatientDetails, setShowPatientDetails] = useState(false);
-
   const [image, setImage] = useState(placeholderImage);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const videoRef = useRef(null);
@@ -119,6 +119,11 @@ const UpdatePatientRegistration = () => {
   });
   let stream = null;
   const [patients, setPatients] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [mobileQuery, setMobileQuery] = useState("");
+  const [pageInput, setPageInput] = useState("");
 
   const [appointments, setAppointments] = useState([
     {
@@ -131,6 +136,11 @@ const UpdatePatientRegistration = () => {
       sessionName: "",
     }
   ]);
+
+  const [nextAppointmentId, setNextAppointmentId] = useState(1);
+  const [doctorDataMap, setDoctorDataMap] = useState({});
+  const [sessionDataMap, setSessionDataMap] = useState({});
+
   const addAppointmentRow = () => {
     setAppointments(prev => [
       ...prev,
@@ -188,22 +198,16 @@ const UpdatePatientRegistration = () => {
     const selectedDoctor = doctorOptions.find(doctor => doctor.userId == value);
     const doctorName = selectedDoctor ? `${selectedDoctor.firstName} ${selectedDoctor.middleName || ''} ${selectedDoctor.lastName || ''}`.trim() : "";
 
-
     setAppointments(prev =>
       prev.map(a =>
         a.id === id ? { ...a, selDoctorId: value, selSession: "", doctorName } : a
       )
     );
 
-
     checkDoctorValid(id, value, specialityId);
   };
 
-  // Load doctor session (like Registration screen)
-  const today = new Date().toISOString().split("T")[0];
-
   const handleSessionChange = (id, value, specialityId, doctorId) => {
-
     setAppointments(prev =>
       prev.map(a =>
         a.id === id ? { ...a, selSession: value } : a
@@ -221,7 +225,6 @@ const UpdatePatientRegistration = () => {
 
     if (data.status !== 200) {
       Swal.fire(data.message);
-
 
       setAppointments(prev =>
         prev.map(a =>
@@ -241,7 +244,6 @@ const UpdatePatientRegistration = () => {
     if (data.status !== 200) {
       Swal.fire(data.message);
 
-
       setAppointments(prev =>
         prev.map(a =>
           a.id === rowId ? { ...a, selSession: "" } : a
@@ -250,18 +252,23 @@ const UpdatePatientRegistration = () => {
     }
   }
 
-
-  const [nextAppointmentId, setNextAppointmentId] = useState(1);
-  const [doctorDataMap, setDoctorDataMap] = useState({});
-  const [sessionDataMap, setSessionDataMap] = useState({});
-
-
   const handleChangeSearch = (e) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
+
+    // Also update search query for filtering
+    if (name === "patientName") {
+      setSearchQuery(value);
+    }
+    if (name === "mobileNo") {
+      setMobileQuery(value);
+    }
+    setCurrentPage(1);
   };
+
   function calculateDOBFromAge(age) {
     const today = new Date();
     const birthYear = today.getFullYear() - age;
@@ -295,7 +302,6 @@ const UpdatePatientRegistration = () => {
   }
 
   function checkBMI(a, b) {
-    debugger;
     if (a === '' || b == '') {
       return;
     }
@@ -304,6 +310,7 @@ const UpdatePatientRegistration = () => {
     var sub = a / d;
     return (parseFloat(Math.round(sub * 100) / 100).toFixed(2));
   }
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -332,22 +339,74 @@ const UpdatePatientRegistration = () => {
     setPatientDetailForm(next);
   };
 
-
   const handleSearch = async () => {
-    const searchPayload = {
-      mobileNo: formData.mobileNo,
-      patientName: formData.patientName,
-      uhidNo: formData.uhidNo,
-      appointmentDate: formData.appointmentDate,
-    };
+    setLoading(true);
     try {
+      const searchPayload = {
+        mobileNo: formData.mobileNo || null,
+        patientName: formData.patientName || null,
+        uhidNo: formData.uhidNo || null,
+        appointmentDate: formData.appointmentDate
+          ? new Date(formData.appointmentDate).toISOString().split("T")[0]
+          : null,
+      };
+
+      Object.keys(searchPayload).forEach(key => {
+        if (searchPayload[key] === "" || searchPayload[key] === undefined) {
+          searchPayload[key] = null;
+        }
+      });
+
       const response = await postRequest(`${PATIENT_SEARCH}`, searchPayload);
-      setPatients(response.response);
+      
+      if (Array.isArray(response.response)) {
+        setPatients(response.response);
+      } else {
+        setPatients([]);
+        Swal.fire("Info", "No patients found matching your criteria", "info");
+      }
     } catch (error) {
       console.error("Error searching patients:", error);
+      Swal.fire("Error", "Failed to search patients", "error");
+    } finally {
+      setLoading(false);
+      setCurrentPage(1);
     }
   };
 
+  const handleReset = () => {
+    setFormData({
+      mobileNo: "",
+      patientName: "",
+      uhidNo: "",
+      appointmentDate: ""
+    });
+    setSearchQuery("");
+    setMobileQuery("");
+    setPatients([]);
+    setCurrentPage(1);
+    setShowPatientDetails(false);
+    setShowDetails(false);
+    setPatientDetailForm({
+      patientGender: "",
+      patientRelation: ""
+    });
+    setAppointments([{
+      id: 0,
+      speciality: "",
+      selDoctorId: "",
+      selSession: "",
+      departmentName: "",
+      doctorName: "",
+      sessionName: "",
+    }]);
+    setNextAppointmentId(1);
+    setImage(placeholderImage);
+    setImageURL("");
+    setDoctorDataMap({});
+    setSessionDataMap({});
+    setErrors({});
+  };
 
   const handleRadioChange = (event) => {
     if (event.target.value === "appointment") {
@@ -358,6 +417,7 @@ const UpdatePatientRegistration = () => {
       setShowDetails(false);
     }
   };
+
   const startCamera = async () => {
     try {
       setIsCameraOn(true); // Ensure the video element is rendered before accessing ref
@@ -387,11 +447,11 @@ const UpdatePatientRegistration = () => {
 
       setImage(imageData);
       stopCamera();
-      debugger;
       confirmUpload(imageData);
 
     }
   };
+
   const confirmUpload = (imageData) => {
     Swal.fire({
       title: "Confirm Upload",
@@ -408,6 +468,7 @@ const UpdatePatientRegistration = () => {
       }
     });
   };
+
   const uploadImage = async (base64Image) => {
     try {
       // Convert base64 to Blob
@@ -443,7 +504,6 @@ const UpdatePatientRegistration = () => {
     }
   };
 
-
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
       videoRef.current.srcObject.getTracks().forEach(track => track.stop());
@@ -454,129 +514,125 @@ const UpdatePatientRegistration = () => {
   const clearPhoto = () => {
     setImage(placeholderImage);
   };
-  // const handleEdit = (patient) => {
-  //   setPatientDetailForm(patient);
-  //   console.log(patient)
-  //   setShowPatientDetails(true);
 
-  // };
+  const handleEdit = async (patient) => {
+    try {
+      const patientId = patient.id;
+      const response = await getRequest(`${PATIENT_FOLLOW_UP_DETAILS}/${patientId}`);
 
-const handleEdit = async (patient) => {
-  try {
-    const patientId = patient.id;
-    const response = await getRequest(`${PATIENT_FOLLOW_UP_DETAILS}/${patientId}`);
+      if (response.status === 200) {
+        const data = response.response;
+        const genderObj = genderData.find(g => g.id == data.personal?.gender);
+        const relationObj = relationData.find(r => r.id == data.personal?.relation);
+        const countryObj = countryData.find(c => c.id == data.address?.country);
+        const stateObj = stateData.find(s => s.id == data.address?.state);
+        const districtObj = districtData.find(d => d.id == data.address?.district);
 
-    if (response.status === 200) {
-      const data = response.response;
-      const genderObj = genderData.find(g => g.id == data.personal?.gender);
-      const relationObj = relationData.find(r => r.id == data.personal?.relation);
-      const countryObj = countryData.find(c => c.id == data.address?.country);
-      const stateObj = stateData.find(s => s.id == data.address?.state);
-      const districtObj = districtData.find(d => d.id == data.address?.district);
-
-      const nokCountryObj = countryData.find(c => c.id == data.nok?.country);
-      const nokStateObj = nokStateData.find(s => s.id == data.nok?.state);
-      const nokDistrictObj = nokDistrictData.find(d => d.id == data.nok?.district);
-      setPatientDetailForm(prev => ({
-        ...prev,
-        // Basic info
-        id: patientId,
-        uhidNo: patient.uhidNo || "", // Added from patient object
-        patientFn: data.personal?.firstName || "",
-        patientMn: data.personal?.middleName || "",
-        patientLn: data.personal?.lastName || "",
-        patientMobileNumber: data.personal?.mobileNo || "",
-        patientEmailId: data.personal?.email || "",
-        patientDob: data.personal?.dob || "",
-        patientAge: data.personal?.age || "",
-        patientGender: genderObj || "", // Store object, not just ID
-        patientRelation: relationObj || "", // Store object, not just ID
-        patientAddress1: data.address?.address1 || "",
-        patientAddress2: data.address?.address2 || "",
-        patientCity: data.address?.city || "",
-        patientPincode: data.address?.pinCode || "",
-        patientCountry: countryObj || "", // Store object
-        patientState: stateObj || "", // Store object
-        patientDistrict: districtObj || "", // Store object
-        nokFn: data.nok?.firstName || "",
-        nokMn: data.nok?.middleName || "",
-        nokLn: data.nok?.lastName || "",
-        nokEmail: data.nok?.email || "",
-        nokMobileNumber: data.nok?.mobileNo || "",
-        nokAddress1: data.nok?.address1 || "",
-        nokAddress2: data.nok?.address2 || "",
-        nokCity: data.nok?.city || "",
-        nokPincode: data.nok?.pinCode || "",
-        nokCountry: nokCountryObj || "", // Store object
-        nokState: nokStateObj || "", // Store object
-        nokDistrict: nokDistrictObj || "", // Store object
-        emerFn: data.emergency?.firstName || "",
-        emerLn: data.emergency?.lastName || "",
-        emerMobile: data.emergency?.mobileNo || "",
-        height: data.vitals?.height || "",
-        weight: data.vitals?.weight || "",
-        temperature: data.vitals?.temperature || "",
-        systolicBP: data.vitals?.bpSys || "",
-        diastolicBP: data.vitals?.bpDia || "",
-        pulse: data.vitals?.pulse || "",
-        rr: data.vitals?.rr || "",
-        spo2: data.vitals?.spo2 || "",
-        bmi: data.vitals?.bmi || "",
-        patientImage: data.photoUrl ? `${API_HOST}${data.photoUrl}` : placeholderImage,
-      }));
-      if (data.appointments && data.appointments.length > 0) {
-        const mappedAppointments = data.appointments.map((appt, index) => ({
-          id: index,
-          speciality: appt.specialityId?.toString() || "",
-          selDoctorId: appt.doctorId?.toString() || "",
-          selSession: appt.sessionId?.toString() || "",
-          departmentName: appt.specialityName || "",
-          doctorName: appt.doctorName || "",
-          sessionName: appt.sessionName || "",
+        const nokCountryObj = countryData.find(c => c.id == data.nok?.country);
+        const nokStateObj = nokStateData.find(s => s.id == data.nok?.state);
+        const nokDistrictObj = nokDistrictData.find(d => d.id == data.nok?.district);
+        
+        setPatientDetailForm(prev => ({
+          ...prev,
+          // Basic info
+          id: patientId,
+          uhidNo: patient.uhidNo || "",
+          patientFn: data.personal?.firstName || "",
+          patientMn: data.personal?.middleName || "",
+          patientLn: data.personal?.lastName || "",
+          patientMobileNumber: data.personal?.mobileNo || "",
+          patientEmailId: data.personal?.email || "",
+          patientDob: data.personal?.dob || "",
+          patientAge: data.personal?.age || "",
+          patientGender: genderObj || "",
+          patientRelation: relationObj || "",
+          patientAddress1: data.address?.address1 || "",
+          patientAddress2: data.address?.address2 || "",
+          patientCity: data.address?.city || "",
+          patientPincode: data.address?.pinCode || "",
+          patientCountry: countryObj || "",
+          patientState: stateObj || "",
+          patientDistrict: districtObj || "",
+          nokFn: data.nok?.firstName || "",
+          nokMn: data.nok?.middleName || "",
+          nokLn: data.nok?.lastName || "",
+          nokEmail: data.nok?.email || "",
+          nokMobileNumber: data.nok?.mobileNo || "",
+          nokAddress1: data.nok?.address1 || "",
+          nokAddress2: data.nok?.address2 || "",
+          nokCity: data.nok?.city || "",
+          nokPincode: data.nok?.pinCode || "",
+          nokCountry: nokCountryObj || "",
+          nokState: nokStateObj || "",
+          nokDistrict: nokDistrictObj || "",
+          emerFn: data.emergency?.firstName || "",
+          emerLn: data.emergency?.lastName || "",
+          emerMobile: data.emergency?.mobileNo || "",
+          height: data.vitals?.height || "",
+          weight: data.vitals?.weight || "",
+          temperature: data.vitals?.temperature || "",
+          systolicBP: data.vitals?.bpSys || "",
+          diastolicBP: data.vitals?.bpDia || "",
+          pulse: data.vitals?.pulse || "",
+          rr: data.vitals?.rr || "",
+          spo2: data.vitals?.spo2 || "",
+          bmi: data.vitals?.bmi || "",
+          patientImage: data.photoUrl ? `${API_HOST}${data.photoUrl}` : placeholderImage,
         }));
+        
+        if (data.appointments && data.appointments.length > 0) {
+          const mappedAppointments = data.appointments.map((appt, index) => ({
+            id: index,
+            speciality: appt.specialityId?.toString() || "",
+            selDoctorId: appt.doctorId?.toString() || "",
+            selSession: appt.sessionId?.toString() || "",
+            departmentName: appt.specialityName || "",
+            doctorName: appt.doctorName || "",
+            sessionName: appt.sessionName || "",
+          }));
 
-        setAppointments(mappedAppointments);
-        setNextAppointmentId(mappedAppointments.length);
-        mappedAppointments.forEach(async (appt) => {
-          if (appt.speciality) {
-            try {
-              const doctorData = await getRequest(`${DOCTOR_BY_SPECIALITY}${appt.speciality}`);
-              if (doctorData.status === 200) {
-                setDoctorDataMap(prev => ({
-                  ...prev,
-                  [appt.id]: doctorData.response
-                }));
+          setAppointments(mappedAppointments);
+          setNextAppointmentId(mappedAppointments.length);
+          mappedAppointments.forEach(async (appt) => {
+            if (appt.speciality) {
+              try {
+                const doctorData = await getRequest(`${DOCTOR_BY_SPECIALITY}${appt.speciality}`);
+                if (doctorData.status === 200) {
+                  setDoctorDataMap(prev => ({
+                    ...prev,
+                    [appt.id]: doctorData.response
+                  }));
+                }
+              } catch (err) {
+                console.error(`Error fetching doctors for speciality ${appt.speciality}:`, err);
               }
-            } catch (err) {
-              console.error(`Error fetching doctors for speciality ${appt.speciality}:`, err);
             }
-          }
-        });
-      } else {
-        setAppointments([{
-          id: 0,
-          speciality: "",
-          selDoctorId: "",
-          selSession: "",
-          departmentName: "",
-          doctorName: "",
-          sessionName: "",
-        }]);
-        setNextAppointmentId(1);
-      }
-      setShowPatientDetails(true);
-      setShowDetails(true);
-      setAppointmentFlag(false); // Default to update info mode
+          });
+        } else {
+          setAppointments([{
+            id: 0,
+            speciality: "",
+            selDoctorId: "",
+            selSession: "",
+            departmentName: "",
+            doctorName: "",
+            sessionName: "",
+          }]);
+          setNextAppointmentId(1);
+        }
+        setShowPatientDetails(true);
+        setShowDetails(true);
+        setAppointmentFlag(false); // Default to update info mode
 
-      Swal.fire("Loaded", "Patient details loaded successfully", "success");
-    } else {
-      Swal.fire("Error", response.message || "Unable to load patient details", "error");
+        Swal.fire("Loaded", "Patient details loaded successfully", "success");
+      } else {
+        Swal.fire("Error", response.message || "Unable to load patient details", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire("Error", "Unable to load patient details", "error");
     }
-  } catch (err) {
-    console.error(err);
-    Swal.fire("Error", "Unable to load patient details", "error");
-  }
-};
+  };
 
   async function fetchGenderData() {
     setLoading(true);
@@ -594,9 +650,8 @@ const handleEdit = async (patient) => {
     } finally {
       setLoading(false);
     }
-
-
   }
+
   async function fetchRelationData() {
     setLoading(true);
 
@@ -614,6 +669,7 @@ const handleEdit = async (patient) => {
       setLoading(false);
     }
   }
+
   async function fetchCountryData() {
     setLoading(true);
 
@@ -647,6 +703,7 @@ const handleEdit = async (patient) => {
       setLoading(false);
     }
   }
+
   async function fetchSesion() {
     try {
       const data = await getRequest(`${GET_SESSION}1`);
@@ -662,6 +719,7 @@ const handleEdit = async (patient) => {
       setLoading(false);
     }
   }
+
   async function fetchDistrict(value) {
     try {
       const data = await getRequest(`${DISTRICT_BY_STATE}${value}`);
@@ -680,7 +738,6 @@ const handleEdit = async (patient) => {
 
   async function fetchNokStates(value) {
     try {
-
       const data = await getRequest(`${STATE_BY_COUNTRY}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokStateData(data.response);
@@ -697,7 +754,6 @@ const handleEdit = async (patient) => {
 
   async function fetchNokAllStates(value) {
     try {
-
       const data = await getRequest(`${ALL_STATE}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokStateData(data.response);
@@ -727,6 +783,7 @@ const handleEdit = async (patient) => {
       setLoading(false);
     }
   }
+
   async function fetchAllNokDistrict(value) {
     try {
       const data = await getRequest(`${ALL_DISTRICT}/1`);
@@ -742,6 +799,7 @@ const handleEdit = async (patient) => {
       setLoading(false);
     }
   }
+
   async function fetchDepartment() {
     try {
       const data = await getRequest(`${ALL_DEPARTMENT}/1`);
@@ -760,9 +818,8 @@ const handleEdit = async (patient) => {
       setLoading(false);
     }
   }
+
   const handleAddChange = (e) => {
-    if (e.target.name == 'patientState')
-      debugger;
     const { name, value } = e.target;
     setPatientDetailForm((prev) => ({ ...prev, [name]: value }));
   };
@@ -795,9 +852,6 @@ const handleEdit = async (patient) => {
     sendPatientData();
   };
 
-
-
-
   async function fetchDoctor(value) {
     try {
       const data = await getRequest(`${DOCTOR_BY_SPECIALITY}${value}`);
@@ -813,8 +867,8 @@ const handleEdit = async (patient) => {
       setLoading(false);
     }
   }
-  async function fetchSession(doc) {
 
+  async function fetchSession(doc) {
     console.log(doc.target.value);
     if (patientDetailForm.speciality != '' && doc) {
       console.log(doc);
@@ -839,11 +893,9 @@ const handleEdit = async (patient) => {
       else {
         Swal.fire(data.message);
       }
-
-
     }
-
   }
+
   const validateForm = () => {
     const newErrors = {};
     let isValid = true;
@@ -891,539 +943,384 @@ const handleEdit = async (patient) => {
     return isValid;
   };
 
-  const visitList = appointments.map(appt => ({
-    id: 0,
-    tokenNo: 0,
-    visitDate: new Date(Date.now()).toJSON(),
-    departmentId: Number(appt.speciality),
-    doctorId: Number(appt.selDoctorId),
-    doctorName: appt.doctorName || "",
-    sessionId: Number(appt.selSession),
-    hospitalId: Number(sessionStorage.getItem('hospitalId')),
-    priority: 0,
-    billingStatus: "Pending",
-    patientId: 0,
-    iniDoctorId: 0,
-    visitType: "F"
-  }));
-
-
- const sendPatientData = async () => {
-  if (!validateForm()) {
-    Swal.fire("Validation Error", "Please check all required fields", "error");
-    return;
-  }
-
-  const hospitalId = Number(sessionStorage.getItem('hospitalId') || 12);
-  const username = sessionStorage.getItem('username') || "system";
-  const currentDate = new Date().toISOString();
-  const currentDateOnly = new Date().toISOString().split('T')[0];
-
-  // Helper functions
-  const toNumber = (value) => {
-    if (value === null || value === undefined || value === '') return null;
-    const num = Number(value);
-    return isNaN(num) ? null : num;
-  };
-
-  const extractId = (value) => {
-    if (!value) return null;
-    if (typeof value === 'object' && value.id !== undefined) return toNumber(value.id);
-    return toNumber(value);
-  };
-
-  // Smart truncation function that handles base64 images
-  const smartTruncate = (value, defaultMaxLength = 255) => {
-    if (!value) return "";
-    
-    const strValue = String(value);
-    
-    // Handle base64 images - store only filename, not the actual data
-    if (strValue.startsWith('data:image')) {
-      // Extract filename from base64 or use default
-      const timestamp = new Date().getTime();
-      const extension = strValue.includes('image/png') ? 'png' : 
-                       strValue.includes('image/jpeg') ? 'jpg' : 
-                       strValue.includes('image/gif') ? 'gif' : 'img';
-      return `patient_${patientDetailForm.id || 'new'}_${timestamp}.${extension}`;
+  const sendPatientData = async () => {
+    if (!validateForm()) {
+      Swal.fire("Validation Error", "Please check all required fields", "error");
+      return;
     }
-    
-    // Handle URLs - if it's a very long URL, extract the filename part
-    if (strValue.includes('http') && strValue.length > 200) {
-      try {
-        const url = new URL(strValue);
-        const pathname = url.pathname;
-        const filename = pathname.split('/').pop() || `image_${new Date().getTime()}.jpg`;
-        return filename.substring(0, defaultMaxLength);
-      } catch (e) {
-        // Not a valid URL, fall back to truncation
-      }
-    }
-    
-    // For regular strings, truncate if necessary
-    return strValue.length > defaultMaxLength ? 
-           strValue.substring(0, defaultMaxLength) : strValue;
-  };
 
-  // Create a safe string field handler that logs warnings
-  const safeStringField = (fieldName, value, context = 'patient') => {
-    const strValue = smartTruncate(value);
-    
-    // Log warning if value was truncated
-    if (value && String(value).length > 255 && strValue.length === 255) {
-      console.warn(`⚠️ Field ${context}.${fieldName} was truncated from ${String(value).length} to 255 characters`);
-      console.warn(`Original value start:`, String(value).substring(0, 100));
-    }
-    
-    return strValue;
-  };
+    const hospitalId = Number(sessionStorage.getItem('hospitalId') || 12);
+    const username = sessionStorage.getItem('username') || "system";
+    const currentDate = new Date().toISOString();
+    const currentDateOnly = new Date().toISOString().split('T')[0];
 
-  // Validate and prepare data with automatic length management
-  const prepareData = (data, fieldName = 'root') => {
-    if (typeof data === 'string') {
-      return safeStringField(fieldName, data);
-    }
-    
-    if (typeof data === 'number' || typeof data === 'boolean') {
-      return data;
-    }
-    
-    if (data === null || data === undefined) {
-      return null;
-    }
-    
-    if (Array.isArray(data)) {
-      return data.map((item, index) => prepareData(item, `${fieldName}[${index}]`));
-    }
-    
-    if (typeof data === 'object') {
-      const result = {};
-      for (const key in data) {
-        if (data.hasOwnProperty(key)) {
-          result[key] = prepareData(data[key], `${fieldName}.${key}`);
-        }
-      }
-      return result;
-    }
-    
-    return data;
-  };
-
-  // 1. Prepare patient request with dynamic field handling
-  const patientRequest = {
-    id: toNumber(patientDetailForm.id) || null,
-    uhidNo: patientDetailForm.uhidNo || "",
-    patientStatus: "",
-    regDate: currentDateOnly,
-    lastChgBy: username,
-    patientHospitalId: hospitalId,
-    patientFn: patientDetailForm.patientFn || "",
-    patientMn: patientDetailForm.patientMn || "",
-    patientLn: patientDetailForm.patientLn || "",
-    patientDob: patientDetailForm.patientDob || null,
-    patientAge: patientDetailForm.patientAge || "",
-    patientGenderId: extractId(patientDetailForm.patientGender),
-    patientEmailId: patientDetailForm.patientEmailId || "",
-    patientMobileNumber: patientDetailForm.patientMobileNumber || "",
-    // Handle patientImage specially - it's the most likely culprit
-    patientImage: smartTruncate(imageURL || patientDetailForm.patientImage || ""),
-    fileName: "",
-    patientRelationId: extractId(patientDetailForm.patientRelation),
-    patientMaritalStatusId: null,
-    patientReligionId: null,
-    patientAddress1: patientDetailForm.patientAddress1 || "",
-    patientAddress2: patientDetailForm.patientAddress2 || "",
-    patientCity: patientDetailForm.patientCity || "",
-    patientPincode: patientDetailForm.patientPincode || "",
-    patientDistrictId: extractId(patientDetailForm.patientDistrict),
-    patientStateId: extractId(patientDetailForm.patientState),
-    patientCountryId: extractId(patientDetailForm.patientCountry),
-    pincode: patientDetailForm.patientPincode || "",
-    emerFn: patientDetailForm.emerFn || "",
-    emerLn: patientDetailForm.emerLn || "",
-    emerRelationId: null,
-    emerMobile: patientDetailForm.emerMobile || "",
-    nokFn: patientDetailForm.nokFn || "",
-    nokMn: patientDetailForm.nokMn || "",
-    nokLn: patientDetailForm.nokLn || "",
-    nokEmail: patientDetailForm.nokEmail || "",
-    nokMobileNumber: patientDetailForm.nokMobileNumber || "",
-    nokAddress1: patientDetailForm.nokAddress1 || "",
-    nokAddress2: patientDetailForm.nokAddress2 || "",
-    nokCity: patientDetailForm.nokCity || "",
-    nokDistrictId: extractId(patientDetailForm.nokDistrict),
-    nokStateId: extractId(patientDetailForm.nokState),
-    nokCountryId: extractId(patientDetailForm.nokCountry),
-    nokPincode: patientDetailForm.nokPincode || "",
-    nokRelationId: null
-  };
-
-  // 2. Prepare OPD detail request
-  const opdPatientDetailRequest = {
-    height: patientDetailForm.height || "0",
-    idealWeight: patientDetailForm.idealWeight || "0",
-    weight: patientDetailForm.weight || "0",
-    pulse: patientDetailForm.pulse || "0",
-    temperature: patientDetailForm.temperature || "0",
-    opdDate: currentDate,
-    rr: patientDetailForm.rr || "0",
-    bmi: patientDetailForm.bmi || "0",
-    spo2: patientDetailForm.spo2 || "0",
-    varation: null,
-    bpSystolic: patientDetailForm.systolicBP || "0",
-    bpDiastolic: patientDetailForm.diastolicBP || "0",
-    icdDiag: "",
-    workingDiag: "",
-    followUpFlag: "",
-    followUpDays: null,
-    pastMedicalHistory: "",
-    presentComplaints: "",
-    familyHistory: "",
-    treatmentAdvice: "",
-    sosFlag: "",
-    recmmdMedAdvice: "",
-    medicineFlag: "s",
-    labFlag: "s",
-    radioFlag: "s",
-    referralFlag: "s",
-    mlcFlag: "s",
-    policeStation: "",
-    policeName: "",
-    patientId: toNumber(patientDetailForm.id),
-    visitId: null,
-    departmentId: appointments.length > 0 ? toNumber(appointments[0].speciality) : null,
-    hospitalId: hospitalId,
-    doctorId: appointments.length > 0 ? toNumber(appointments[0].selDoctorId) : null,
-    lastChgBy: username
-  };
-
-  // 3. Prepare visits array
-  const visitsArray = appointmentFlag ? 
-    appointments
-      .filter(appt => appt.speciality && appt.selDoctorId && appt.selSession)
-      .map(appt => ({
-        id: null,
-        tokenNo: null,
-        visitDate: currentDate,
-        departmentId: toNumber(appt.speciality),
-        doctorId: toNumber(appt.selDoctorId),
-        doctorName: appt.doctorName || "",
-        sessionId: toNumber(appt.selSession),
-        hospitalId: hospitalId,
-        priority: null,
-        billingStatus: "Pending",
-        patientId: toNumber(patientDetailForm.id),
-        iniDoctorId: toNumber(appt.selDoctorId),
-        visitType: "F"
-      })) : [];
-
-  // 4. Create the final request and apply automatic validation
-  const finalRequest = prepareData({
-    appointmentFlag: appointmentFlag,
-    patientDetails: {
-      patient: patientRequest,
-      opdPatientDetail: opdPatientDetailRequest,
-      visits: visitsArray
-    }
-  });
-
-  // Debug: Check for potential issues
-  const checkForLongStrings = (obj, path = '') => {
-    const issues = [];
-    
-    const checkObject = (currentObj, currentPath) => {
-      for (const key in currentObj) {
-        if (currentObj.hasOwnProperty(key)) {
-          const value = currentObj[key];
-          const fullPath = currentPath ? `${currentPath}.${key}` : key;
-          
-          if (typeof value === 'string' && value.length > 250) {
-            issues.push({
-              path: fullPath,
-              length: value.length,
-              preview: value.substring(0, 100) + '...',
-              value: value
-            });
-          }
-          
-          if (value && typeof value === 'object' && !Array.isArray(value)) {
-            checkObject(value, fullPath);
-          }
-        }
-      }
+    // Helper functions
+    const toNumber = (value) => {
+      if (value === null || value === undefined || value === '') return null;
+      const num = Number(value);
+      return isNaN(num) ? null : num;
     };
-    
-    checkObject(obj, path);
-    return issues;
-  };
 
-  const longStringIssues = checkForLongStrings(finalRequest);
-  if (longStringIssues.length > 0) {
-    console.warn("⚠️ Found potentially long string fields:", longStringIssues);
-    
-    // Log each issue
-    longStringIssues.forEach(issue => {
-      console.warn(`Field: ${issue.path}, Length: ${issue.length}, Preview: ${issue.preview}`);
-    });
-  }
+    const extractId = (value) => {
+      if (!value) return null;
+      if (typeof value === 'object' && value.id !== undefined) return toNumber(value.id);
+      return toNumber(value);
+    };
 
-  console.log("Final request ready for sending:", finalRequest);
+    // Smart truncation function that handles base64 images
+    const smartTruncate = (value, defaultMaxLength = 255) => {
+      if (!value) return "";
+      
+      const strValue = String(value);
+      
+      // Handle base64 images - store only filename, not the actual data
+      if (strValue.startsWith('data:image')) {
+        // Extract filename from base64 or use default
+        const timestamp = new Date().getTime();
+        const extension = strValue.includes('image/png') ? 'png' : 
+                         strValue.includes('image/jpeg') ? 'jpg' : 
+                         strValue.includes('image/gif') ? 'gif' : 'img';
+        return `patient_${patientDetailForm.id || 'new'}_${timestamp}.${extension}`;
+      }
+      
+      // Handle URLs - if it's a very long URL, extract the filename part
+      if (strValue.includes('http') && strValue.length > 200) {
+        try {
+          const url = new URL(strValue);
+          const pathname = url.pathname;
+          const filename = pathname.split('/').pop() || `image_${new Date().getTime()}.jpg`;
+          return filename.substring(0, defaultMaxLength);
+        } catch (e) {
+          // Not a valid URL, fall back to truncation
+        }
+      }
+      
+      // For regular strings, truncate if necessary
+      return strValue.length > defaultMaxLength ? 
+             strValue.substring(0, defaultMaxLength) : strValue;
+    };
 
-  try {
-    Swal.fire({
-      title: 'Processing...',
-      allowOutsideClick: false,
-      showConfirmButton: false,
-      didOpen: () => {
-        Swal.showLoading();
+    // Create a safe string field handler that logs warnings
+    const safeStringField = (fieldName, value, context = 'patient') => {
+      const strValue = smartTruncate(value);
+      
+      // Log warning if value was truncated
+      if (value && String(value).length > 255 && strValue.length === 255) {
+        console.warn(`⚠️ Field ${context}.${fieldName} was truncated from ${String(value).length} to 255 characters`);
+        console.warn(`Original value start:`, String(value).substring(0, 100));
+      }
+      
+      return strValue;
+    };
+
+    // Validate and prepare data with automatic length management
+    const prepareData = (data, fieldName = 'root') => {
+      if (typeof data === 'string') {
+        return safeStringField(fieldName, data);
+      }
+      
+      if (typeof data === 'number' || typeof data === 'boolean') {
+        return data;
+      }
+      
+      if (data === null || data === undefined) {
+        return null;
+      }
+      
+      if (Array.isArray(data)) {
+        return data.map((item, index) => prepareData(item, `${fieldName}[${index}]`));
+      }
+      
+      if (typeof data === 'object') {
+        const result = {};
+        for (const key in data) {
+          if (data.hasOwnProperty(key)) {
+            result[key] = prepareData(data[key], `${fieldName}.${key}`);
+          }
+        }
+        return result;
+      }
+      
+      return data;
+    };
+
+    // 1. Prepare patient request with dynamic field handling
+    const patientRequest = {
+      id: toNumber(patientDetailForm.id) || null,
+      uhidNo: patientDetailForm.uhidNo || "",
+      patientStatus: "",
+      regDate: currentDateOnly,
+      lastChgBy: username,
+      patientHospitalId: hospitalId,
+      patientFn: patientDetailForm.patientFn || "",
+      patientMn: patientDetailForm.patientMn || "",
+      patientLn: patientDetailForm.patientLn || "",
+      patientDob: patientDetailForm.patientDob || null,
+      patientAge: patientDetailForm.patientAge || "",
+      patientGenderId: extractId(patientDetailForm.patientGender),
+      patientEmailId: patientDetailForm.patientEmailId || "",
+      patientMobileNumber: patientDetailForm.patientMobileNumber || "",
+      // Handle patientImage specially - it's the most likely culprit
+      patientImage: smartTruncate(imageURL || patientDetailForm.patientImage || ""),
+      fileName: "",
+      patientRelationId: extractId(patientDetailForm.patientRelation),
+      patientMaritalStatusId: null,
+      patientReligionId: null,
+      patientAddress1: patientDetailForm.patientAddress1 || "",
+      patientAddress2: patientDetailForm.patientAddress2 || "",
+      patientCity: patientDetailForm.patientCity || "",
+      patientPincode: patientDetailForm.patientPincode || "",
+      patientDistrictId: extractId(patientDetailForm.patientDistrict),
+      patientStateId: extractId(patientDetailForm.patientState),
+      patientCountryId: extractId(patientDetailForm.patientCountry),
+      pincode: patientDetailForm.patientPincode || "",
+      emerFn: patientDetailForm.emerFn || "",
+      emerLn: patientDetailForm.emerLn || "",
+      emerRelationId: null,
+      emerMobile: patientDetailForm.emerMobile || "",
+      nokFn: patientDetailForm.nokFn || "",
+      nokMn: patientDetailForm.nokMn || "",
+      nokLn: patientDetailForm.nokLn || "",
+      nokEmail: patientDetailForm.nokEmail || "",
+      nokMobileNumber: patientDetailForm.nokMobileNumber || "",
+      nokAddress1: patientDetailForm.nokAddress1 || "",
+      nokAddress2: patientDetailForm.nokAddress2 || "",
+      nokCity: patientDetailForm.nokCity || "",
+      nokDistrictId: extractId(patientDetailForm.nokDistrict),
+      nokStateId: extractId(patientDetailForm.nokState),
+      nokCountryId: extractId(patientDetailForm.nokCountry),
+      nokPincode: patientDetailForm.nokPincode || "",
+      nokRelationId: null
+    };
+
+    // 2. Prepare OPD detail request
+    const opdPatientDetailRequest = {
+      height: patientDetailForm.height || "0",
+      idealWeight: patientDetailForm.idealWeight || "0",
+      weight: patientDetailForm.weight || "0",
+      pulse: patientDetailForm.pulse || "0",
+      temperature: patientDetailForm.temperature || "0",
+      opdDate: currentDate,
+      rr: patientDetailForm.rr || "0",
+      bmi: patientDetailForm.bmi || "0",
+      spo2: patientDetailForm.spo2 || "0",
+      varation: null,
+      bpSystolic: patientDetailForm.systolicBP || "0",
+      bpDiastolic: patientDetailForm.diastolicBP || "0",
+      icdDiag: "",
+      workingDiag: "",
+      followUpFlag: "",
+      followUpDays: null,
+      pastMedicalHistory: "",
+      presentComplaints: "",
+      familyHistory: "",
+      treatmentAdvice: "",
+      sosFlag: "",
+      recmmdMedAdvice: "",
+      medicineFlag: "s",
+      labFlag: "s",
+      radioFlag: "s",
+      referralFlag: "s",
+      mlcFlag: "s",
+      policeStation: "",
+      policeName: "",
+      patientId: toNumber(patientDetailForm.id),
+      visitId: null,
+      departmentId: appointments.length > 0 ? toNumber(appointments[0].speciality) : null,
+      hospitalId: hospitalId,
+      doctorId: appointments.length > 0 ? toNumber(appointments[0].selDoctorId) : null,
+      lastChgBy: username
+    };
+
+    // 3. Prepare visits array
+    const visitsArray = appointmentFlag ? 
+      appointments
+        .filter(appt => appt.speciality && appt.selDoctorId && appt.selSession)
+        .map(appt => ({
+          id: null,
+          tokenNo: null,
+          visitDate: currentDate,
+          departmentId: toNumber(appt.speciality),
+          doctorId: toNumber(appt.selDoctorId),
+          doctorName: appt.doctorName || "",
+          sessionId: toNumber(appt.selSession),
+          hospitalId: hospitalId,
+          priority: null,
+          billingStatus: "Pending",
+          patientId: toNumber(patientDetailForm.id),
+          iniDoctorId: toNumber(appt.selDoctorId),
+          visitType: "F"
+        })) : [];
+
+    // 4. Create the final request and apply automatic validation
+    const finalRequest = prepareData({
+      appointmentFlag: appointmentFlag,
+      patientDetails: {
+        patient: patientRequest,
+        opdPatientDetail: opdPatientDetailRequest,
+        visits: visitsArray
       }
     });
 
-    const response = await postRequest(PATIENT_FOLLOW_UP, finalRequest);
-    
-    Swal.close();
+    console.log("Final request ready for sending:", finalRequest);
 
-    if (response.status === 200) {
-      const message = appointmentFlag 
-        ? "Patient updated and appointments scheduled successfully!" 
-        : "Patient information updated successfully!";
-      
-      await Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: message,
-        confirmButtonText: 'OK'
+    try {
+      Swal.fire({
+        title: 'Processing...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
       });
 
-      resetForm();
-      setShowPatientDetails(false);
-      setPatients([]);
-    } else {
-      console.error("Backend error response:", response);
-      throw new Error(response.message || response.detail || "Update failed");
-    }
-  } catch (error) {
-    console.error("Error in update:", error);
-    
-    // Provide specific guidance based on error type
-    if (error.message && error.message.includes("too long")) {
-      // Try to identify which field caused the issue
-      const fieldMatch = error.message.match(/column "([^"]+)"/i);
-      if (fieldMatch) {
-        const fieldName = fieldMatch[1];
-        Swal.fire({
-          icon: 'error',
-          title: 'Data Too Long',
-          html: `The field <strong>${fieldName}</strong> contains too much data.<br/>
-                 Please shorten the value and try again.`,
+      const response = await postRequest(PATIENT_FOLLOW_UP, finalRequest);
+      
+      Swal.close();
+
+      if (response.status === 200) {
+        const message = appointmentFlag 
+          ? "Patient updated and appointments scheduled successfully!" 
+          : "Patient information updated successfully!";
+        
+        await Swal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: message,
           confirmButtonText: 'OK'
         });
+
+        handleReset();
+      } else {
+        console.error("Backend error response:", response);
+        throw new Error(response.message || response.detail || "Update failed");
+      }
+    } catch (error) {
+      console.error("Error in update:", error);
+      
+      // Provide specific guidance based on error type
+      if (error.message && error.message.includes("too long")) {
+        // Try to identify which field caused the issue
+        const fieldMatch = error.message.match(/column "([^"]+)"/i);
+        if (fieldMatch) {
+          const fieldName = fieldMatch[1];
+          Swal.fire({
+            icon: 'error',
+            title: 'Data Too Long',
+            html: `The field <strong>${fieldName}</strong> contains too much data.<br/>
+                   Please shorten the value and try again.`,
+            confirmButtonText: 'OK'
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Data Too Long',
+            text: 'Some data exceeds the maximum allowed length. Please check particularly long text fields.',
+            confirmButtonText: 'OK'
+          });
+        }
       } else {
         Swal.fire({
           icon: 'error',
-          title: 'Data Too Long',
-          text: 'Some data exceeds the maximum allowed length. Please check particularly long text fields.',
+          title: 'Update Failed',
+          text: error.message || 'Failed to update patient. Please try again.',
           confirmButtonText: 'OK'
         });
       }
-    } else {
-      Swal.fire({
-        icon: 'error',
-        title: 'Update Failed',
-        text: error.message || 'Failed to update patient. Please try again.',
-        confirmButtonText: 'OK'
-      });
     }
-  }
-};
-
-  // Helper function to reset form
-  const resetForm = () => {
-    setFormData({
-      mobileNo: "",
-      patientName: "",
-      uhidNo: "",
-      appointmentDate: ""
-    });
-
-    setPatientDetailForm({
-      patientGender: "",
-      patientRelation: ""
-    });
-
-    setAppointments([{
-      id: 0,
-      speciality: "",
-      selDoctorId: "",
-      selSession: "",
-      departmentName: "",
-      doctorName: "",
-      sessionName: "",
-    }]);
-
-    setNextAppointmentId(1);
-    setImage(placeholderImage);
-    setImageURL("");
-    setShowDetails(false);
-    setDoctorDataMap({});
-    setSessionDataMap({});
   };
 
+  // Pagination calculations
+  const filteredPatients = patients.filter(patient => {
+    const fullName = `${patient.patientFn || ""} ${patient.patientMn || ""} ${patient.patientLn || ""}`.toLowerCase();
+    const mobile = patient.patientMobileNumber || "";
 
+    return (
+      fullName.includes(searchQuery.toLowerCase()) ||
+      mobile.includes(mobileQuery)
+    );
+  });
 
-  return (
-    <div className="body d-flex py-3">
-      <div className="container-xxl">
-        <div className="row align-items-center">
-          <div className="border-0 mb-4">
-            <div className="card-header py-3 no-bg bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
-              <h3 className="fw-bold mb-0">Update Patient Registration and Followup Appointment
-              </h3>
-            </div>
-          </div>
-        </div>
+  const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
+  const currentItems = filteredPatients.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
-        {/* Patient address */}
-        <div className="row mb-3">
-          <div className="col-sm-12">
-            <div className="card shadow mb-3">
-              <div className="card-header py-3 bg-light border-bottom-1">
-                <h6 className="mb-0 fw-bold">Appointment of Patient </h6>
-              </div>
-              <div className="card-body">
-                <form>
-                  <div className="row g-3">
-                    {showPatientDetails && (<>
-                      {/* Radio Buttons */}
-                      <div className="">
-                        <div className="form-check form-check-inline">
-                          <input
-                            className="form-check-input"
-                            type="radio"
-                            name="appointmentType"
-                            id="updateInfo"
-                            value="updateInfo"
-                            onChange={handleRadioChange}
-                            defaultChecked
-                          />
-                          <label className="form-check-label" htmlFor="updateInfo">
-                            Update Information
-                          </label>
-                        </div>
-                        <div className="form-check form-check-inline">
-                          <input
-                            className="form-check-input"
-                            type="radio"
-                            name="appointmentType"
-                            id="appointment"
-                            value="appointment"
-                            onChange={handleRadioChange}
-                          />
-                          <label className="form-check-label" htmlFor="appointment">
-                            Appointment
-                          </label>
-                        </div>
-                      </div>
-                    </>)}
+  // Render pagination numbers
+  const renderPagination = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
-                    {/* Mobile No, Patient Name, UHID No */}
-                    <div className="row g-3">
-                      <div className="col-md-3">
-                        <label className="form-label">Mobile No.</label>
-                        <input type="text" className="form-control" placeholder="Enter Mobile No."
-                          name="mobileNo"
-                          value={formData.mobileNo}
-                          onChange={handleChangeSearch} />
-                      </div>
-                      <div className="col-md-3">
-                        <label className="form-label">Patient Name</label>
-                        <input type="text" className="form-control" placeholder="Enter Patient Name"
-                          name="patientName"
-                          value={formData.patientName}
-                          onChange={handleChangeSearch} />
-                      </div>
-                      <div className="col-md-3">
-                        <label className="form-label">UHID No.</label>
-                        <input type="text" className="form-control" placeholder="Enter UHID No."
-                          name="uhidNo"
-                          value={formData.uhidNo}
-                          onChange={handleChangeSearch} />
-                      </div>
-                      <div className="col-md-3">
-                        <label className="form-label">Appointment Date</label>
-                        <input type="date" className="form-control"
-                          name="appointmentDate"
-                          value={formData.appointmentDate}
-                          onChange={handleChangeSearch} />
-                      </div>
-                    </div>
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
 
+    if (startPage > 1) {
+      pageNumbers.push(1);
+      if (startPage > 2) pageNumbers.push("...");
+    }
 
-                    {/* Buttons */}
-                    <div className="mt-3">
-                      <button type="button" className="btn btn-primary me-2" onClick={handleSearch}>
-                        Search
-                      </button>
-                      <button type="reset" className="btn btn-secondary">
-                        Reset
-                      </button>
-                    </div>
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
 
-                    <div className="col-md-12">
-                      <table className="table table-bordered">
-                        <thead className="table-secondary">
-                          <tr>
-                            <th>Patient Name</th>
-                            <th>Mobile No.</th>
-                            <th>UHID No.</th>
-                            <th>Age</th>
-                            <th>Gender</th>
-                            <th>Email</th>
-                            <th>Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {patients.map((patient, index) => (
-                            <tr key={index}>
-                              <td>{`${patient.patientFn || ''} ${patient.patientMn || ''} ${patient.patientLn || ''}`.trim()}</td>
-                              <td>{patient.patientMobileNumber || ''}</td>
-                              <td>{patient.uhidNo}</td>
-                              <td>{patient.patientAge || ''}</td>
-                              <td>{patient.patientGender.genderName}</td>
-                              <td>{patient.patientEmailId}</td>
-                              <td>
-                                <button type="button" className="btn btn-primary btn-sm" onClick={() => handleEdit(patient)}>
-                                  Edit
-                                  <span className="ms-2">
-                                    <i className="icofont-edit"></i>
-                                  </span>
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) pageNumbers.push("...");
+      pageNumbers.push(totalPages);
+    }
 
-                    {/* Pagination */}
-                    <div className="d-flex align-items-center justify-content-end">
-                      <span className="me-2">Go To Page</span>
-                      <input type="text" className="form-control me-2" style={{ width: "60px" }} />
-                      <button className="btn btn-warning">Go</button>
-                      <span className="mx-3">Page 1 of 2</span>
-                      <button className="btn btn-light" disabled>&laquo;</button>
-                      <button className="btn btn-light" disabled>&lsaquo;</button>
-                      <button className="btn btn-light">&rsaquo;</button>
-                      <button className="btn btn-light">&raquo;</button>
-                    </div>
+    return pageNumbers.map((number, index) => (
+      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
+        {typeof number === "number" ? (
+          <button className="page-link" onClick={() => setCurrentPage(number)}>
+            {number}
+          </button>
+        ) : (
+          <span className="page-link disabled">{number}</span>
+        )}
+      </li>
+    ));
+  };
 
-                  </div>
-                </form>
+  const handlePageNavigation = () => {
+    const pageNumber = Number.parseInt(pageInput, 10);
+    if (pageNumber > 0 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+    } else {
+      Swal.fire("Invalid Page", "Please enter a valid page number.", "warning");
+    }
+  };
+
+  if (loading) {
+    return <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
+      <div className="spinner-border text-primary" role="status">
+        <span className="visually-hidden">Loading...</span>
+      </div>
+    </div>;
+  }
+
+  // Show FORM VIEW when patient is selected
+  if (showPatientDetails) {
+    return (
+      <div className="body d-flex py-3">
+        <div className="container-xxl">
+          <div className="row align-items-center">
+            <div className="border-0 mb-4">
+              <div className="card-header py-3 no-bg bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
+                <div className="d-flex align-items-center w-100">
+                  <h3 className="fw-bold mb-0">Update Patient Registration and Followup Appointment</h3>
+
+                  <button className="btn btn-secondary ms-auto me-3" onClick={handleReset}>
+                    <i className="icofont-arrow-left me-1"></i> Back to Search
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        {showPatientDetails && (<>
+
           {/* Patient Personal Details */}
           <div className="row mb-3">
             <div className="col-sm-12">
@@ -1474,7 +1371,7 @@ const handleEdit = async (patient) => {
                                 </option>
                               ))}
                             </select>
-                            {errors.gender && <div className="invalid-feedback">{errors.gender}</div>}
+                            {errors.patientGender && <div className="invalid-feedback">{errors.patientGender}</div>}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label" htmlFor="relation">Relation *</label>
@@ -1494,20 +1391,20 @@ const handleEdit = async (patient) => {
                                 </option>
                               ))}
                             </select>
-                            {errors.relation && <div className="invalid-feedback">{errors.relation}</div>}
+                            {errors.patientRelation && <div className="invalid-feedback">{errors.patientRelation}</div>}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label" htmlFor="dob">DOB <span className="text-danger">*</span></label>
                             <input type="date" id="dob" name="dob"
-                              className={`form-control ${errors.dob ? 'is-invalid' : ''}`} value={patientDetailForm.dob}
+                              className={`form-control ${errors.patientDob ? 'is-invalid' : ''}`} value={patientDetailForm.patientDob}
                               max={new Date().toISOString().split("T")[0]} onChange={handleChange}
                               placeholder="Select Date of Birth" />
-                            {errors.dob && <div className="invalid-feedback">{errors.dob}</div>}
+                            {errors.patientDob && <div className="invalid-feedback">{errors.patientDob}</div>}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">Age</label>
                             <input
-                              type="text" // <<== NOT number!
+                              type="text"
                               id="age"
                               name="age"
                               className={`form-control ${errors.age ? "is-invalid" : ""}`}
@@ -1515,13 +1412,13 @@ const handleEdit = async (patient) => {
                               onChange={handleChange}
                               placeholder="Enter Age"
                             />
-
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">Email *</label>
-                            <input type="email" className="form-control" placeholder="Enter Email Address"
+                            <input type="email" className={`form-control ${errors.patientEmailId ? 'is-invalid' : ''}`} placeholder="Enter Email Address"
                               name="patientEmailId" value={patientDetailForm.patientEmailId || ""}
                               onChange={handleChange} required />
+                            {errors.patientEmailId && <div className="invalid-feedback">{errors.patientEmailId}</div>}
                           </div>
                         </div>
                       </div>
@@ -1533,7 +1430,7 @@ const handleEdit = async (patient) => {
                               <video ref={videoRef} autoPlay className="d-block mx-auto"
                                 style={{ width: "100%", height: "150px" }}></video>
                             ) : (
-                              <img src={image || "/default-profile.png"} alt="Profile" className="img-fluid border"
+                              <img src={image || placeholderImage} alt="Profile" className="img-fluid border"
                                 style={{ width: "100%", height: "150px" }} />
                             )}
                             <canvas ref={canvasRef} width="300" height="150" style={{ display: "none" }}></canvas>
@@ -1602,8 +1499,6 @@ const handleEdit = async (patient) => {
                       </div>
                       <div className="col-md-4">
                         <label className="form-label">State</label>
-
-
                         <select
                           className="form-select"
                           name="patientState"
@@ -1828,6 +1723,50 @@ const handleEdit = async (patient) => {
             </div>
           </div>
 
+          {/* Radio Buttons */}
+          <div className="row mb-3">
+            <div className="col-sm-12">
+              <div className="card shadow mb-3">
+                <div className="card-header py-3 bg-light border-bottom-1">
+                  <h6 className="mb-0 fw-bold">Update Options</h6>
+                </div>
+                <div className="card-body">
+                  <div className="row g-3">
+                    <div className="col-md-12">
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="appointmentType"
+                          id="updateInfo"
+                          value="updateInfo"
+                          onChange={handleRadioChange}
+                          defaultChecked
+                        />
+                        <label className="form-check-label" htmlFor="updateInfo">
+                          Update Information
+                        </label>
+                      </div>
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="appointmentType"
+                          id="appointment"
+                          value="appointment"
+                          onChange={handleRadioChange}
+                        />
+                        <label className="form-check-label" htmlFor="appointment">
+                          Appointment
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {showDetails && (
             <>
 
@@ -1948,7 +1887,6 @@ const handleEdit = async (patient) => {
               </>
               }
 
-
               {/* Appointment Details Section */}
               <div className="row mb-3">
                 <div className="col-sm-12">
@@ -2052,19 +1990,199 @@ const handleEdit = async (patient) => {
                 <div className="card-body">
                   <div className="row g-3">
                     <div className="mt-4">
-                      <button type="button" onClick={handleSubmit} className="btn btn-primary me-2">Registration</button>
-                      <button type="reset" className="btn btn-secondary">Reset</button>
+                      <button type="button" onClick={handleSubmit} className="btn btn-primary me-2">Update Registration</button>
+                      <button type="button" onClick={handleReset} className="btn btn-secondary">Reset</button>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </>)}
+        </div>
+      </div>
+    );
+  }
 
+  // Show SEARCH VIEW (default)
+  return (
+    <div className="body d-flex py-3">
+      <div className="container-xxl">
+        <div className="row align-items-center">
+          <div className="border-0 mb-4">
+            <div className="card-header py-3 no-bg bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
+              <h3 className="fw-bold mb-0">Update Patient Registration and Followup Appointment</h3>
+            </div>
+          </div>
+        </div>
 
+        {/* Patient Search */}
+        <div className="row mb-3">
+          <div className="col-sm-12">
+            <div className="card shadow mb-3">
+              <div className="card-header py-3 bg-light border-bottom-1">
+                <h6 className="mb-0 fw-bold">Search Patient</h6>
+              </div>
+              <div className="card-body">
+                <form>
+                  <div className="row g-3">
+                    <div className="col-md-3">
+                      <label className="form-label">Mobile No.</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Enter Mobile No."
+                        name="mobileNo"
+                        value={formData.mobileNo}
+                        onChange={handleChangeSearch}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Patient Name</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Enter Patient Name"
+                        name="patientName"
+                        value={formData.patientName}
+                        onChange={handleChangeSearch}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">UHID No.</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Enter UHID No."
+                        name="uhidNo"
+                        value={formData.uhidNo}
+                        onChange={handleChangeSearch}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Appointment Date</label>
+                      <input
+                        type="date"
+                        className="form-control"
+                        name="appointmentDate"
+                        value={formData.appointmentDate}
+                        onChange={handleChangeSearch}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-3 mb-3">
+                    <button
+                      type="button"
+                      className="btn btn-primary me-2"
+                      onClick={handleSearch}
+                      disabled={loading}
+                    >
+                      {loading ? 'Searching...' : 'Search'}
+                    </button>
+                    <button type="button" className="btn btn-secondary" onClick={handleReset}>
+                      Reset
+                    </button>
+                  </div>
+
+                  {filteredPatients.length > 0 && (
+                    <div className="col-md-12">
+                      <div className="table-responsive packagelist">
+                        <table className="table table-bordered table-hover align-middle">
+                          <thead className="table-light">
+                            <tr>
+                              <th>Patient Name</th>
+                              <th>Mobile No.</th>
+                              <th>UHID No.</th>
+                              <th>Age</th>
+                              <th>Gender</th>
+                              <th>Email</th>
+                              <th>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {currentItems.map((patient, index) => (
+                              <tr key={index} className="table-row-hover">
+                                <td>
+                                  {`${patient.patientFn || ""} ${patient.patientMn || ""} ${patient.patientLn || ""}`.trim()}
+                                </td>
+                                <td>{patient.patientMobileNumber || ""}</td>
+                                <td>{patient.uhidNo || ""}</td>
+                                <td>{patient.patientAge || ""}</td>
+                                <td>{patient.patientGender?.genderName || ""}</td>
+                                <td>{patient.patientEmailId || ""}</td>
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => handleEdit(patient)}
+                                  >
+                                    Edit
+                                    <span className="ms-2">
+                                      <i className="icofont-edit"></i>
+                                    </span>
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination */}
+                      {filteredPatients.length > itemsPerPage && (
+                        <nav className="d-flex justify-content-between align-items-center mt-3">
+                          <div>
+                            <span>
+                              Page {currentPage} of {totalPages} | Total Records: {filteredPatients.length}
+                            </span>
+                          </div>
+                          <ul className="pagination mb-0">
+                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                              <button
+                                className="page-link"
+                                onClick={() => setCurrentPage(currentPage - 1)}
+                                disabled={currentPage === 1}
+                              >
+                                &laquo; Previous
+                              </button>
+                            </li>
+                            {renderPagination()}
+                            <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                              <button
+                                className="page-link"
+                                onClick={() => setCurrentPage(currentPage + 1)}
+                                disabled={currentPage === totalPages}
+                              >
+                                Next &raquo;
+                              </button>
+                            </li>
+                          </ul>
+                          <div className="d-flex align-items-center">
+                            <input
+                              type="number"
+                              min="1"
+                              max={totalPages}
+                              value={pageInput}
+                              onChange={(e) => setPageInput(e.target.value)}
+                              placeholder="Go to page"
+                              className="form-control me-2"
+                              style={{ width: "120px" }}
+                            />
+                            <button className="btn btn-primary" onClick={handlePageNavigation}>
+                              GO
+                            </button>
+                          </div>
+                        </nav>
+                      )}
+                    </div>
+                  )}
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
+
 export default UpdatePatientRegistration;
