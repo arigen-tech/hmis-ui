@@ -389,7 +389,7 @@ const DepartmentMaster = () => {
                                             className="btn btn-success me-2"
                                             onClick={() => handleSearchChange(searchQuery)}
                                         >
-                                            <i className="mdi mdi-magnify"></i> Search
+                                            <i className="mdi mdi-magnify"></i> Show All
                                         </button>
                                         <button
                                             type="button"

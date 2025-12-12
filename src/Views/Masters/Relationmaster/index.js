@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST,MAS_RELATION } from "../../../config/apiConfig";
+import { API_HOST, MAS_RELATION } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
@@ -27,12 +27,12 @@ const Relationmaster = () => {
   const [itemsPerPage] = useState(5);
   const [pageInput, setPageInput] = useState("");
 
- 
+
 
   const RELATION_NAME_MAX_LENGTH = 30;
   const RELATION_CODE_MAX_LENGTH = 30;
 
- 
+
   useEffect(() => {
     fetchRelationData(0);
   }, []);
@@ -43,12 +43,12 @@ const Relationmaster = () => {
       const response = await getRequest(`${MAS_RELATION}/getAll/${flag}`);
 
       if (response && response.response) {
-        
+
         const transformedData = response.response.map((relation) => ({
           id: relation.id,
           relationName: relation.relationName,
           code: relation.code,
-          status: relation.status, 
+          status: relation.status,
         }));
 
         setRelationData(transformedData);
@@ -92,34 +92,34 @@ const Relationmaster = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-  
+
     try {
       setLoading(true);
-  
-      
+
+
       const isDuplicate = relationData.some(
         (relation) =>
           relation.relationName === formData.relationName ||
           relation.code === formData.code
       );
-  
+
       if (isDuplicate) {
         showPopup("Relation already exists!", "error");
         setLoading(false);
         return;
       }
-  
+
       if (editingRelation) {
-       
+
         const response = await putRequest(`${MAS_RELATION}/updateById/${editingRelation.id}`, {
           id: editingRelation.id,
           relationName: formData.relationName,
           code: formData.code,
           status: editingRelation.status,
         });
-  
+
         if (response && response.response) {
-         
+
           setRelationData((prevData) =>
             prevData.map((relation) =>
               relation.id === editingRelation.id ? response.response : relation
@@ -128,24 +128,24 @@ const Relationmaster = () => {
           showPopup("Relation updated successfully!", "success");
         }
       } else {
-        
+
         const response = await postRequest(`${MAS_RELATION}/create`, {
           relationName: formData.relationName,
           code: formData.code,
           status: "y",
         });
-        
+
         if (response && response.response) {
           setRelationData((prevData) => [...prevData, response.response]);
           showPopup("New relation added successfully!", "success");
         }
-        
+
       }
-  
+
       setEditingRelation(null);
       setFormData({ relationName: "", code: "" });
       setShowForm(false);
-      fetchRelationData(); 
+      fetchRelationData();
     } catch (err) {
       console.error("Error saving relation data:", err);
       showPopup(
@@ -156,7 +156,7 @@ const Relationmaster = () => {
       setLoading(false);
     }
   };
-  
+
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -176,13 +176,13 @@ const Relationmaster = () => {
     if (confirmed && confirmDialog.relationId !== null) {
       try {
         setLoading(true);
-        
+
         const response = await putRequest(
           `${MAS_RELATION}/status/${confirmDialog.relationId}?status=${confirmDialog.newStatus}`
         );
 
         if (response && response.response) {
-          
+
           setRelationData((prevData) =>
             prevData.map((relation) =>
               relation.id === confirmDialog.relationId
@@ -207,21 +207,21 @@ const Relationmaster = () => {
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
-    
+
     setFormData((prevData) => {
-        const updatedData = { ...prevData, [id]: value };
+      const updatedData = { ...prevData, [id]: value };
 
-        
-        if (id === "relationName" || id === "code") {
-            setIsFormValid(
-                (updatedData.relationName?.trim() || "") !== "" &&
-                (updatedData.code?.trim() || "") !== ""
-            );
-        }
 
-        return updatedData;
+      if (id === "relationName" || id === "code") {
+        setIsFormValid(
+          (updatedData.relationName?.trim() || "") !== "" &&
+          (updatedData.code?.trim() || "") !== ""
+        );
+      }
+
+      return updatedData;
     });
-};
+  };
 
 
   const handleRefresh = () => {
@@ -278,22 +278,25 @@ const Relationmaster = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Relation Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search"
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
-
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
@@ -382,50 +385,50 @@ const Relationmaster = () => {
                   </table>
                   {filteredRelationData.length > 0 && (
                     <nav className="d-flex justify-content-between align-items-center mt-3">
-                    <div>
-                      <span>
-                        Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredProducts}
-                      </span>
-                    </div>
-                    <ul className="pagination mb-0">
-                      <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                      <div>
+                        <span>
+                          Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredProducts}
+                        </span>
+                      </div>
+                      <ul className="pagination mb-0">
+                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                          >
+                            &laquo; Previous
+                          </button>
+                        </li>
+                        {renderPagination()}
+                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            disabled={currentPage === filteredTotalPages}
+                          >
+                            Next &raquo;
+                          </button>
+                        </li>
+                      </ul>
+                      <div className="d-flex align-items-center">
+                        <input
+                          type="number"
+                          min="1"
+                          max={filteredTotalPages}
+                          value={pageInput}
+                          onChange={(e) => setPageInput(e.target.value)}
+                          placeholder="Go to page"
+                          className="form-control me-2"
+                        />
                         <button
-                          className="page-link"
-                          onClick={() => setCurrentPage(currentPage - 1)}
-                          disabled={currentPage === 1}
+                          className="btn btn-primary"
+                          onClick={handlePageNavigation}
                         >
-                          &laquo; Previous
+                          Go
                         </button>
-                      </li>
-                      {renderPagination()}
-                      <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                        <button
-                          className="page-link"
-                          onClick={() => setCurrentPage(currentPage + 1)}
-                          disabled={currentPage === filteredTotalPages}
-                        >
-                          Next &raquo;
-                        </button>
-                      </li>
-                    </ul>
-                    <div className="d-flex align-items-center">
-                      <input
-                        type="number"
-                        min="1"
-                        max={filteredTotalPages}
-                        value={pageInput}
-                        onChange={(e) => setPageInput(e.target.value)}
-                        placeholder="Go to page"
-                        className="form-control me-2"
-                      />
-                      <button
-                        className="btn btn-primary"
-                        onClick={handlePageNavigation}
-                      >
-                        Go
-                      </button>
-                    </div>
-                  </nav>
+                      </div>
+                    </nav>
                   )}
                 </div>
               ) : (
@@ -458,7 +461,7 @@ const Relationmaster = () => {
                       required
                     />
                   </div>
-                  
+
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                     <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                       Save
