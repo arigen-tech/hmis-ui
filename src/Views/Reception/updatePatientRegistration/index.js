@@ -3,14 +3,17 @@ import Swal from "sweetalert2";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import {
   ALL_COUNTRY,
-  ALL_DEPARTMENT, ALL_DISTRICT,
+  ALL_DEPARTMENT,
+  ALL_DISTRICT,
   ALL_GENDER,
-  ALL_RELATION, ALL_STATE,
+  ALL_RELATION,
+  ALL_STATE,
   API_HOST,
   DISTRICT_BY_STATE,
   DOCTOR_BY_SPECIALITY,
   GET_DOCTOR_SESSION,
-  GET_SESSION, HOSPITAL,
+  GET_SESSION,
+  HOSPITAL,
   PATIENT_FOLLOW_UP,
   PATIENT_FOLLOW_UP_DETAILS,
   PATIENT_IMAGE_UPLOAD,
@@ -124,6 +127,8 @@ const UpdatePatientRegistration = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileQuery, setMobileQuery] = useState("");
   const [pageInput, setPageInput] = useState("");
+  const [searchPerformed, setSearchPerformed] = useState(false);
+
 
   const [appointments, setAppointments] = useState([
     {
@@ -134,6 +139,7 @@ const UpdatePatientRegistration = () => {
       departmentName: "",
       doctorName: "",
       sessionName: "",
+      visitId: null // Added to track existing visits
     }
   ]);
 
@@ -152,12 +158,19 @@ const UpdatePatientRegistration = () => {
         departmentName: "",
         doctorName: "",
         sessionName: "",
+        visitId: null
       }
     ]);
     setNextAppointmentId(prev => prev + 1);
   };
 
   const removeAppointmentRow = (id) => {
+    // Don't remove if it's the only row
+    if (appointments.length <= 1) {
+      Swal.fire("Error", "At least one appointment row is required", "error");
+      return;
+    }
+
     setAppointments(prev => prev.filter(appt => appt.id !== id));
     setDoctorDataMap(prev => {
       let updated = { ...prev };
@@ -177,7 +190,13 @@ const UpdatePatientRegistration = () => {
     setAppointments(prev =>
       prev.map(a =>
         a.id === rowId
-          ? { ...a, speciality: value, selDoctorId: "", selSession: "", departmentName: selectedDepartment.departmentName }
+          ? {
+            ...a,
+            speciality: value,
+            selDoctorId: "",
+            selSession: "",
+            departmentName: selectedDepartment ? selectedDepartment.departmentName : ""
+          }
           : a
       )
     );
@@ -358,16 +377,19 @@ const UpdatePatientRegistration = () => {
       });
 
       const response = await postRequest(`${PATIENT_SEARCH}`, searchPayload);
-      
+
       if (Array.isArray(response.response)) {
         setPatients(response.response);
+        setSearchPerformed(true);  // ADD THIS
       } else {
         setPatients([]);
+        setSearchPerformed(false); // ADD THIS
         Swal.fire("Info", "No patients found matching your criteria", "info");
       }
     } catch (error) {
       console.error("Error searching patients:", error);
       Swal.fire("Error", "Failed to search patients", "error");
+      setSearchPerformed(false); // ADD THIS
     } finally {
       setLoading(false);
       setCurrentPage(1);
@@ -384,6 +406,7 @@ const UpdatePatientRegistration = () => {
     setSearchQuery("");
     setMobileQuery("");
     setPatients([]);
+    setSearchPerformed(false);
     setCurrentPage(1);
     setShowPatientDetails(false);
     setShowDetails(false);
@@ -399,6 +422,7 @@ const UpdatePatientRegistration = () => {
       departmentName: "",
       doctorName: "",
       sessionName: "",
+      visitId: null
     }]);
     setNextAppointmentId(1);
     setImage(placeholderImage);
@@ -409,11 +433,13 @@ const UpdatePatientRegistration = () => {
   };
 
   const handleRadioChange = (event) => {
-    if (event.target.value === "appointment") {
-      setAppointmentFlag(true);
+    const newAppointmentFlag = event.target.value === "appointment";
+    setAppointmentFlag(newAppointmentFlag);
+
+    // Always show details when appointment is selected
+    if (newAppointmentFlag) {
       setShowDetails(true);
     } else {
-      setAppointmentFlag(false);
       setShowDetails(!preConsultationFlag);
     }
   };
@@ -531,7 +557,7 @@ const UpdatePatientRegistration = () => {
         const nokCountryObj = countryData.find(c => c.id == data.nok?.country);
         const nokStateObj = nokStateData.find(s => s.id == data.nok?.state);
         const nokDistrictObj = nokDistrictData.find(d => d.id == data.nok?.district);
-        
+
         setPatientDetailForm(prev => ({
           ...prev,
           // Basic info
@@ -579,7 +605,8 @@ const UpdatePatientRegistration = () => {
           bmi: data.vitals?.bmi || "",
           patientImage: data.photoUrl ? `${API_HOST}${data.photoUrl}` : placeholderImage,
         }));
-        
+
+        // Handle appointments - ALWAYS show appointment section even if no appointments exist
         if (data.appointments && data.appointments.length > 0) {
           const mappedAppointments = data.appointments.map((appt, index) => ({
             id: index,
@@ -589,13 +616,15 @@ const UpdatePatientRegistration = () => {
             departmentName: appt.specialityName || "",
             doctorName: appt.doctorName || "",
             sessionName: appt.sessionName || "",
+            visitId: appt.appointmentId || null // Store existing visit ID
           }));
 
           setAppointments(mappedAppointments);
           setNextAppointmentId(mappedAppointments.length);
           // Auto select appointment radio button when appointments exist
           setAppointmentFlag(true);
-          
+
+          // Load doctor data for each appointment
           mappedAppointments.forEach(async (appt) => {
             if (appt.speciality) {
               try {
@@ -612,6 +641,7 @@ const UpdatePatientRegistration = () => {
             }
           });
         } else {
+          // Even if no existing appointments, show appointment section
           setAppointments([{
             id: 0,
             speciality: "",
@@ -620,15 +650,15 @@ const UpdatePatientRegistration = () => {
             departmentName: "",
             doctorName: "",
             sessionName: "",
+            visitId: null
           }]);
           setNextAppointmentId(1);
-          // Auto select update info radio button when no appointments
-          setAppointmentFlag(false);
+          setAppointmentFlag(true); // Default to appointment tab
         }
-        
+
         setShowPatientDetails(true);
-        // Only show details if appointment flag is true OR preConsultationFlag is false
-        setShowDetails(appointmentFlag || !preConsultationFlag);
+        // Always show details section
+        setShowDetails(true);
 
         Swal.fire("Loaded", "Patient details loaded successfully", "success");
       } else {
@@ -976,19 +1006,19 @@ const UpdatePatientRegistration = () => {
     // Smart truncation function that handles base64 images
     const smartTruncate = (value, defaultMaxLength = 255) => {
       if (!value) return "";
-      
+
       const strValue = String(value);
-      
+
       // Handle base64 images - store only filename, not the actual data
       if (strValue.startsWith('data:image')) {
         // Extract filename from base64 or use default
         const timestamp = new Date().getTime();
-        const extension = strValue.includes('image/png') ? 'png' : 
-                         strValue.includes('image/jpeg') ? 'jpg' : 
-                         strValue.includes('image/gif') ? 'gif' : 'img';
+        const extension = strValue.includes('image/png') ? 'png' :
+          strValue.includes('image/jpeg') ? 'jpg' :
+            strValue.includes('image/gif') ? 'gif' : 'img';
         return `patient_${patientDetailForm.id || 'new'}_${timestamp}.${extension}`;
       }
-      
+
       // Handle URLs - if it's a very long URL, extract the filename part
       if (strValue.includes('http') && strValue.length > 200) {
         try {
@@ -1000,22 +1030,22 @@ const UpdatePatientRegistration = () => {
           // Not a valid URL, fall back to truncation
         }
       }
-      
+
       // For regular strings, truncate if necessary
-      return strValue.length > defaultMaxLength ? 
-             strValue.substring(0, defaultMaxLength) : strValue;
+      return strValue.length > defaultMaxLength ?
+        strValue.substring(0, defaultMaxLength) : strValue;
     };
 
     // Create a safe string field handler that logs warnings
     const safeStringField = (fieldName, value, context = 'patient') => {
       const strValue = smartTruncate(value);
-      
+
       // Log warning if value was truncated
       if (value && String(value).length > 255 && strValue.length === 255) {
         console.warn(`⚠️ Field ${context}.${fieldName} was truncated from ${String(value).length} to 255 characters`);
         console.warn(`Original value start:`, String(value).substring(0, 100));
       }
-      
+
       return strValue;
     };
 
@@ -1024,19 +1054,19 @@ const UpdatePatientRegistration = () => {
       if (typeof data === 'string') {
         return safeStringField(fieldName, data);
       }
-      
+
       if (typeof data === 'number' || typeof data === 'boolean') {
         return data;
       }
-      
+
       if (data === null || data === undefined) {
         return null;
       }
-      
+
       if (Array.isArray(data)) {
         return data.map((item, index) => prepareData(item, `${fieldName}[${index}]`));
       }
-      
+
       if (typeof data === 'object') {
         const result = {};
         for (const key in data) {
@@ -1046,7 +1076,7 @@ const UpdatePatientRegistration = () => {
         }
         return result;
       }
-      
+
       return data;
     };
 
@@ -1138,25 +1168,28 @@ const UpdatePatientRegistration = () => {
       lastChgBy: username
     };
 
-    // 3. Prepare visits array
-    const visitsArray = appointmentFlag ? 
+    // 3. Prepare visits array - Send visitId for existing appointments, null for new ones
+    const visitsArray = appointmentFlag ?
       appointments
         .filter(appt => appt.speciality && appt.selDoctorId && appt.selSession)
-        .map(appt => ({
-          id: null,
-          tokenNo: null,
-          visitDate: currentDate,
-          departmentId: toNumber(appt.speciality),
-          doctorId: toNumber(appt.selDoctorId),
-          doctorName: appt.doctorName || "",
-          sessionId: toNumber(appt.selSession),
-          hospitalId: hospitalId,
-          priority: null,
-          billingStatus: "Pending",
-          patientId: toNumber(patientDetailForm.id),
-          iniDoctorId: toNumber(appt.selDoctorId),
-          visitType: "F"
-        })) : [];
+        .map(appt => {
+          return {
+            id: appt.visitId || null, // This is crucial - send existing visit ID or null for new
+            tokenNo: null,
+            visitDate: currentDate,
+            departmentId: toNumber(appt.speciality),
+            doctorId: toNumber(appt.selDoctorId),
+            doctorName: appt.doctorName || "",
+            sessionId: toNumber(appt.selSession),
+            hospitalId: hospitalId,
+            priority: null,
+            billingStatus: "Pending",
+            patientId: toNumber(patientDetailForm.id),
+            iniDoctorId: toNumber(appt.selDoctorId),
+            visitType: "F",
+            lastChgBy: username
+          };
+        }) : [];
 
     // 4. Create the final request and apply automatic validation
     const finalRequest = prepareData({
@@ -1181,14 +1214,14 @@ const UpdatePatientRegistration = () => {
       });
 
       const response = await postRequest(PATIENT_FOLLOW_UP, finalRequest);
-      
+
       Swal.close();
 
       if (response.status === 200) {
-        const message = appointmentFlag 
-          ? "Patient updated and appointments scheduled successfully!" 
+        const message = appointmentFlag
+          ? "Patient updated and appointments scheduled successfully!"
           : "Patient information updated successfully!";
-        
+
         await Swal.fire({
           icon: 'success',
           title: 'Success',
@@ -1203,7 +1236,7 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error("Error in update:", error);
-      
+
       // Provide specific guidance based on error type
       if (error.message && error.message.includes("too long")) {
         // Try to identify which field caused the issue
@@ -1253,7 +1286,20 @@ const UpdatePatientRegistration = () => {
     currentPage * itemsPerPage
   );
 
-  // Render pagination numbers
+  // Handle page change without refreshing
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+  };
+
+  // UPDATE YOUR renderPagination METHOD - Change all buttons to type="button"
   const renderPagination = () => {
     const pageNumbers = [];
     const maxVisiblePages = 5;
@@ -1281,7 +1327,12 @@ const UpdatePatientRegistration = () => {
     return pageNumbers.map((number, index) => (
       <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
         {typeof number === "number" ? (
-          <button className="page-link" onClick={() => setCurrentPage(number)}>
+          <button
+            type="button"
+            className="page-link"
+            onClick={() => handlePageChange(number)}
+            disabled={loading}
+          >
             {number}
           </button>
         ) : (
@@ -1291,14 +1342,18 @@ const UpdatePatientRegistration = () => {
     ));
   };
 
-  const handlePageNavigation = () => {
+  // UPDATE YOUR handlePageNavigation METHOD
+  const handlePageNavigation = (e) => {
+    e.preventDefault();
     const pageNumber = Number.parseInt(pageInput, 10);
     if (pageNumber > 0 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
+      handlePageChange(pageNumber);
+      setPageInput("");
     } else {
       Swal.fire("Invalid Page", "Please enter a valid page number.", "warning");
     }
   };
+
 
   if (loading) {
     return <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
@@ -1868,7 +1923,7 @@ const UpdatePatientRegistration = () => {
                               checked={!appointmentFlag}
                             />
                             <label className="form-check-label" htmlFor="updateInfo">
-                              Update Information
+                              Update Information Only
                             </label>
                           </div>
                           <div className="form-check form-check-inline">
@@ -1882,7 +1937,7 @@ const UpdatePatientRegistration = () => {
                               checked={appointmentFlag}
                             />
                             <label className="form-check-label" htmlFor="appointment">
-                              Appointment
+                              Update with Appointment
                             </label>
                           </div>
                         </div>
@@ -1901,7 +1956,7 @@ const UpdatePatientRegistration = () => {
                         <h6 className="mb-0 fw-bold">Appointment Details</h6>
                         <div className="d-flex gap-2">
                           <button type="button" className="btn btn-sm btn-outline-primary" onClick={addAppointmentRow}>
-                            + Add
+                            + Add Appointment
                           </button>
                         </div>
                       </div>
@@ -1910,25 +1965,29 @@ const UpdatePatientRegistration = () => {
                           {appointments.map((appointment, index) => {
                             const doctorOptions = doctorDataMap[appointment.id] || [];
                             return (
-                              <div className="row g-3 mb-3" key={`appointment-${appointment.id}`}>
+                              <div className="row g-3 mb-3 border-bottom pb-3" key={`appointment-${appointment.id}`}>
                                 <div className="col-12 d-flex align-items-center justify-content-between">
-                                  <h6 className="fw-bold text-muted mb-0">Appointment {index + 1}</h6>
+                                  <h6 className="fw-bold text-muted mb-0">
+                                    Appointment {index + 1}
+                                    {appointment.visitId && <span className="text-success ms-2">(Existing)</span>}
+                                  </h6>
                                   {appointments.length > 1 && (
                                     <button
                                       type="button"
                                       className="btn btn-sm btn-outline-danger"
                                       onClick={() => removeAppointmentRow(appointment.id)}
                                     >
-                                      - Remove
+                                      Remove
                                     </button>
                                   )}
                                 </div>
                                 <div className="col-md-4">
-                                  <label className="form-label">Speciality</label>
+                                  <label className="form-label">Speciality *</label>
                                   <select
                                     className="form-select"
                                     value={appointment.speciality}
                                     onChange={(e) => handleSpecialityChange(appointment.id, e.target.value)}
+                                    required
                                   >
                                     <option value="">Select Speciality</option>
                                     {departmentData.map((department) => (
@@ -1939,24 +1998,26 @@ const UpdatePatientRegistration = () => {
                                   </select>
                                 </div>
                                 <div className="col-md-4">
-                                  <label className="form-label">Doctor Name</label>
+                                  <label className="form-label">Doctor Name *</label>
                                   <select
                                     className="form-select"
                                     value={appointment.selDoctorId}
                                     onChange={(e) =>
                                       handleDoctorChange(appointment.id, e.target.value, appointment.speciality)
                                     }
+                                    required
+                                    disabled={!appointment.speciality}
                                   >
                                     <option value="">Select Doctor</option>
                                     {doctorOptions.map((doctor) => (
-                                      <option key={doctor.id} value={doctor.userId}>
+                                      <option key={doctor.userId} value={doctor.userId}>
                                         {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""} ${doctor.lastName ? doctor.lastName : ""}`}
                                       </option>
                                     ))}
                                   </select>
                                 </div>
                                 <div className="col-md-4">
-                                  <label className="form-label">Session</label>
+                                  <label className="form-label">Session *</label>
                                   <select
                                     className="form-select"
                                     value={appointment.selSession}
@@ -1969,6 +2030,7 @@ const UpdatePatientRegistration = () => {
                                         appointment.selDoctorId
                                       )
                                     }
+                                    required
                                   >
                                     <option value="">Select Session</option>
                                     {session.map((ses) => (
@@ -2030,7 +2092,7 @@ const UpdatePatientRegistration = () => {
                 <h6 className="mb-0 fw-bold">Search Patient</h6>
               </div>
               <div className="card-body">
-                <form>
+                <form onSubmit={handleFormSubmit}>
                   <div className="row g-3">
                     <div className="col-md-3">
                       <label className="form-label">Mobile No.</label>
@@ -2090,7 +2152,7 @@ const UpdatePatientRegistration = () => {
                     </button>
                   </div>
 
-                  {filteredPatients.length > 0 && (
+                  {searchPerformed && filteredPatients.length > 0 && (
                     <div className="col-md-12">
                       <div className="table-responsive packagelist">
                         <table className="table table-bordered table-hover align-middle">
@@ -2121,6 +2183,7 @@ const UpdatePatientRegistration = () => {
                                     type="button"
                                     className="btn btn-primary btn-sm"
                                     onClick={() => handleEdit(patient)}
+                                    disabled={loading}
                                   >
                                     Edit
                                     <span className="ms-2">
@@ -2134,8 +2197,8 @@ const UpdatePatientRegistration = () => {
                         </table>
                       </div>
 
-                      {/* Pagination */}
-                      {filteredPatients.length > itemsPerPage && (
+                      {/* PAGINATION SECTION - ALL BUTTONS TYPE="button" */}
+                      {searchPerformed && filteredPatients.length > itemsPerPage && (
                         <nav className="d-flex justify-content-between align-items-center mt-3">
                           <div>
                             <span>
@@ -2145,9 +2208,10 @@ const UpdatePatientRegistration = () => {
                           <ul className="pagination mb-0">
                             <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
                               <button
+                                type="button"
                                 className="page-link"
-                                onClick={() => setCurrentPage(currentPage - 1)}
-                                disabled={currentPage === 1}
+                                onClick={() => handlePageChange(currentPage - 1)}
+                                disabled={currentPage === 1 || loading}
                               >
                                 &laquo; Previous
                               </button>
@@ -2155,9 +2219,10 @@ const UpdatePatientRegistration = () => {
                             {renderPagination()}
                             <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
                               <button
+                                type="button"
                                 className="page-link"
-                                onClick={() => setCurrentPage(currentPage + 1)}
-                                disabled={currentPage === totalPages}
+                                onClick={() => handlePageChange(currentPage + 1)}
+                                disabled={currentPage === totalPages || loading}
                               >
                                 Next &raquo;
                               </button>
@@ -2173,8 +2238,14 @@ const UpdatePatientRegistration = () => {
                               placeholder="Go to page"
                               className="form-control me-2"
                               style={{ width: "120px" }}
+                              disabled={loading}
                             />
-                            <button className="btn btn-primary" onClick={handlePageNavigation}>
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              onClick={handlePageNavigation}
+                              disabled={loading}
+                            >
                               GO
                             </button>
                           </div>
