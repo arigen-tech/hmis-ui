@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
-import { MAS_BED, MAS_ROOM, MAS_BED_TYPE, MAS_BED_STATUS } from "../../../config/apiConfig";
+import { MAS_BED, MAS_ROOM, MAS_BED_TYPE, MAS_BED_STATUS, MAS_DEPARTMENT } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 
 const BedManagement = () => {
@@ -19,6 +19,9 @@ const BedManagement = () => {
     bedTypeId: "",
     bedStatusId: "",
   });
+  
+  // New state for ward filter (not saved to DB)
+  const [selectedWardId, setSelectedWardId] = useState("");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -30,7 +33,9 @@ const BedManagement = () => {
   const [pageInput, setPageInput] = useState("1");
 
   // Dropdown options
+  const [wardOptions, setWardOptions] = useState([]); // For filtering only
   const [roomOptions, setRoomOptions] = useState([]);
+  const [filteredRoomOptions, setFilteredRoomOptions] = useState([]); // Rooms filtered by selected ward
   const [bedTypeOptions, setBedTypeOptions] = useState([]);
   const [bedStatusOptions, setBedStatusOptions] = useState([]);
 
@@ -51,8 +56,8 @@ const BedManagement = () => {
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
       const year = date.getFullYear();
-
-      return `${day}-${month}-${year}`;
+      
+      return `${day}/${month}/${year}`;
     } catch (error) {
       console.error("Error formatting date:", error);
       return "N/A";
@@ -62,14 +67,30 @@ const BedManagement = () => {
   // Fetch dropdown data
   const fetchDropdownData = async () => {
     try {
-      // Fetch rooms
+      // Fetch wards (departments) for filtering only - assuming departmentTypeId 10 is for wards
+      const wardResponse = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
+      if (wardResponse && wardResponse.response) {
+        // Filter wards where departmentTypeId is 10
+        const filteredWards = wardResponse.response
+          .filter(dept => dept.departmentTypeId === 10)
+          .map(ward => ({
+            id: ward.id,
+            name: ward.departmentName
+          }));
+        setWardOptions(filteredWards);
+      }
+
+      // Fetch all rooms
       const roomResponse = await getRequest(`${MAS_ROOM}/all/1`);
       if (roomResponse && roomResponse.response) {
-        setRoomOptions(roomResponse.response.map(room => ({
+        const allRooms = roomResponse.response.map(room => ({
           id: room.roomId,
           name: room.roomName,
+          departmentId: room.departmentId,
           departmentName: room.wardName || "N/A"
-        })));
+        }));
+        setRoomOptions(allRooms);
+        setFilteredRoomOptions(allRooms); // Initially show all rooms
       }
 
       // Fetch bed types
@@ -131,6 +152,42 @@ const BedManagement = () => {
     fetchDropdownData();
   }, []);
 
+  // Filter room options when ward is selected
+  useEffect(() => {
+    if (selectedWardId) {
+      const filteredRooms = roomOptions.filter(room => 
+        room.departmentId === parseInt(selectedWardId)
+      );
+      setFilteredRoomOptions(filteredRooms);
+      
+      // If current roomId doesn't belong to selected ward, clear room selection
+      if (formData.roomId) {
+        const selectedRoom = roomOptions.find(room => 
+          room.id === parseInt(formData.roomId) && room.departmentId === parseInt(selectedWardId)
+        );
+        if (!selectedRoom) {
+          setFormData(prev => ({ ...prev, roomId: "" }));
+        }
+      }
+    } else {
+      setFilteredRoomOptions(roomOptions);
+    }
+  }, [selectedWardId, roomOptions]);
+
+  // Validate form whenever formData changes
+  useEffect(() => {
+    const validateForm = () => {
+      const { bedNumber, roomId, bedTypeId, bedStatusId } = formData;
+      return (
+        bedNumber.trim() !== "" &&
+        roomId.trim() !== "" &&
+        bedTypeId.trim() !== "" &&
+        bedStatusId.trim() !== ""
+      );
+    };
+    setIsFormValid(validateForm());
+  }, [formData]);
+
   // Filter data based on search query
   const filteredBedData = bedData.filter(bed =>
     bed.bedNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -157,20 +214,6 @@ const BedManagement = () => {
     setPageInput(currentPage.toString());
   }, [currentPage]);
 
-  // Validate form whenever formData changes
-  useEffect(() => {
-    const validateForm = () => {
-      const { bedNumber, roomId, bedTypeId, bedStatusId } = formData;
-      return (
-        bedNumber.trim() !== "" &&
-        roomId.trim() !== "" &&
-        bedTypeId.trim() !== "" &&
-        bedStatusId.trim() !== ""
-      );
-    };
-    setIsFormValid(validateForm());
-  }, [formData]);
-
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
   };
@@ -183,6 +226,14 @@ const BedManagement = () => {
       bedTypeId: bed.bedTypeId?.toString() || "",
       bedStatusId: bed.bedStatusId?.toString() || "",
     });
+    
+    // Set selected ward from bed's departmentId for filtering
+    if (bed.departmentId) {
+      setSelectedWardId(bed.departmentId.toString());
+    } else {
+      setSelectedWardId("");
+    }
+    
     setShowForm(true);
   };
 
@@ -206,7 +257,7 @@ const BedManagement = () => {
         return;
       }
 
-      // Prepare request data
+      // Prepare request data - NO wardId included, only roomId
       const requestData = {
         bedNumber: formData.bedNumber,
         roomId: parseInt(formData.roomId),
@@ -234,6 +285,7 @@ const BedManagement = () => {
 
       setEditingBed(null);
       setFormData({ bedNumber: "", roomId: "", bedTypeId: "", bedStatusId: "" });
+      setSelectedWardId(""); // Reset ward filter
       setShowForm(false);
     } catch (err) {
       console.error("Error saving bed data:", err);
@@ -301,10 +353,15 @@ const BedManagement = () => {
     setFormData((prevData) => ({ ...prevData, [id]: value }));
   };
 
+  const handleWardChange = (e) => {
+    setSelectedWardId(e.target.value);
+  };
+
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
     setPageInput("1");
+    setSelectedWardId(""); // Clear ward filter
     fetchBedData(); // Refresh from API
     fetchDropdownData(); // Refresh dropdowns
   };
@@ -434,6 +491,7 @@ const BedManagement = () => {
                         onClick={() => {
                           setEditingBed(null);
                           setFormData({ bedNumber: "", roomId: "", bedTypeId: "", bedStatusId: "" });
+                          setSelectedWardId(""); // Clear ward filter
                           setShowForm(true);
                         }}
                       >
@@ -448,7 +506,10 @@ const BedManagement = () => {
                       </button>
                     </>
                   ) : (
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                    <button type="button" className="btn btn-secondary" onClick={() => {
+                      setShowForm(false);
+                      setSelectedWardId(""); // Clear ward filter when going back
+                    }}>
                       <i className="mdi mdi-arrow-left"></i> Back
                     </button>
                   )}
@@ -466,7 +527,7 @@ const BedManagement = () => {
                         <tr>
                           <th>Bed No</th>
                           <th>Room</th>
-                          <th>Department</th>
+                          <th>Ward</th>
                           <th>Bed Type</th>
                           <th>Bed Status</th>
                           <th>Status</th>
@@ -603,9 +664,27 @@ const BedManagement = () => {
                       required
                       disabled={loading}
                     />
-                    {/* <small className="text-muted">
-                      {formData.bedNumber.length}/{BED_NO_MAX_LENGTH} characters
-                    </small> */}
+                  </div>
+                  
+                  {/* Ward Name Dropdown - For filtering only */}
+                  <div className="form-group col-md-4">
+                    <label>Ward Name</label>
+                    <select
+                      className="form-select mt-1"
+                      id="wardFilter"
+                      name="wardFilter"
+                      value={selectedWardId}
+                      onChange={handleWardChange}
+                      disabled={loading || wardOptions.length === 0}
+                    >
+                      <option value="">All Wards</option>
+                      {wardOptions.map((ward) => (
+                        <option key={ward.id} value={ward.id}>
+                          {ward.name}
+                        </option>
+                      ))}
+                    </select>
+                    {/* <small className="text-muted">Select to filter rooms by ward</small> */}
                   </div>
 
                   <div className="form-group col-md-4">
@@ -617,19 +696,18 @@ const BedManagement = () => {
                       value={formData.roomId}
                       onChange={handleSelectChange}
                       required
-                      disabled={loading || roomOptions.length === 0}
+                      disabled={loading || filteredRoomOptions.length === 0}
                     >
                       <option value="">Select Room</option>
-                      {roomOptions.map((room) => (
+                      {filteredRoomOptions.map((room) => (
                         <option key={room.id} value={room.id}>
                           {room.name} ({room.departmentName})
                         </option>
                       ))}
                     </select>
-                    {/* <small className="text-muted">Select room for this bed</small> */}
                   </div>
-
-                  <div className="form-group col-md-4">
+                  
+                  <div className="form-group col-md-4 mt-3">
                     <label>Bed Type <span className="text-danger">*</span></label>
                     <select
                       className="form-select mt-1"
@@ -647,10 +725,9 @@ const BedManagement = () => {
                         </option>
                       ))}
                     </select>
-                    {/* <small className="text-muted">Select type of bed</small> */}
                   </div>
-
-                  <div className="form-group col-md-4">
+                  
+                  <div className="form-group col-md-4 mt-3">
                     <label>Bed Status <span className="text-danger">*</span></label>
                     <select
                       className="form-select mt-1"
@@ -668,7 +745,6 @@ const BedManagement = () => {
                         </option>
                       ))}
                     </select>
-                    {/* <small className="text-muted">Select current status of bed</small> */}
                   </div>
 
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
@@ -679,10 +755,13 @@ const BedManagement = () => {
                     >
                       {loading ? "Saving..." : (editingBed ? 'Update' : 'Save')}
                     </button>
-                    <button
-                      type="button"
-                      className="btn btn-danger"
-                      onClick={() => setShowForm(false)}
+                    <button 
+                      type="button" 
+                      className="btn btn-danger" 
+                      onClick={() => {
+                        setShowForm(false);
+                        setSelectedWardId(""); // Clear ward filter
+                      }}
                       disabled={loading}
                     >
                       Cancel
@@ -718,11 +797,6 @@ const BedManagement = () => {
                           Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
                           <strong> {bedData.find(bed => bed.id === confirmDialog.bedId)?.bedNumber}</strong> bed?
                         </p>
-                        {/* <p className="text-muted">
-                          {confirmDialog.newStatus === "y" 
-                            ? "This will make the bed available for patient allocation." 
-                            : "This will hide the bed from patient allocation."}
-                        </p> */}
                       </div>
                       <div className="modal-footer">
                         <button

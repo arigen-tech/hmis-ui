@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react"
 import { getRequest, putRequest } from "../../../service/apiService"
-import { LAB } from "../../../config/apiConfig"
+import { LAB, ALL_REPORTS } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"
 
 const ResultValidation = () => {
   const [resultList, setResultList] = useState([])
@@ -20,6 +21,8 @@ const ResultValidation = () => {
   const [showDetailView, setShowDetailView] = useState(false)
   const [masterValidate, setMasterValidate] = useState(false)
   const [masterReject, setMasterReject] = useState(false)
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  const [pdfUrl, setPdfUrl] = useState(null)
   const itemsPerPage = 5
 
   // Fetch unvalidated results data
@@ -67,6 +70,7 @@ const ResultValidation = () => {
       result_entered_by:item.resultEnteredBy||'',
       patientId: item.patientId || 0,
       mobile_no: item.patientPhnNum || '',
+      orderHdId: item.orderHdId || 0,
 
       investigations: item.resultEntryInvestigationResponses ? item.resultEntryInvestigationResponses.map((inv, invIndex) => {
         const hasSubTests = inv.resultEntrySubInvestigationRes && inv.resultEntrySubInvestigationRes.length > 0;
@@ -88,7 +92,7 @@ const ResultValidation = () => {
             comparisonType: inv.comparisonType || "",
             fixedId: inv.fixedId || null,
             fixedDropdownValues: inv.fixedDropdownValues || [],
-            inRange: inv.inRange !== undefined ? inv.inRange : null, // Ensure inRange is properly mapped
+            inRange: inv.inRange !== undefined ? inv.inRange : null,
             subTests: inv.resultEntrySubInvestigationRes.map((subTest, subIndex) => ({
               id: `${invIndex + 1}.${subIndex + 1}`,
               si_no: getSubTestNumber(invIndex + 1, subIndex, inv.resultEntrySubInvestigationRes.length),
@@ -105,7 +109,7 @@ const ResultValidation = () => {
               comparisonType: subTest.comparisonType || "",
               fixedId: subTest.fixedId || null,
               fixedDropdownValues: subTest.fixedDropdownValues || [],
-              inRange: subTest.inRange !== undefined ? subTest.inRange : null, // Ensure inRange is properly mapped
+              inRange: subTest.inRange !== undefined ? subTest.inRange : null,
             }))
           };
         } else {
@@ -123,7 +127,7 @@ const ResultValidation = () => {
             reject: false,
             validate: false,
             comparisonType: inv.comparisonType || "",
-            inRange: inv.inRange !== undefined ? inv.inRange : null, // Ensure inRange is properly mapped
+            inRange: inv.inRange !== undefined ? inv.inRange : null,
             fixedId: inv.fixedId || null,
             fixedDropdownValues: inv.fixedDropdownValues || [],
             subTests: []
@@ -133,7 +137,6 @@ const ResultValidation = () => {
     }))
   }
 
-  // Helper functions for formatting
   const getSubTestNumber = (mainIndex, subIndex, totalSubTests) => {
     if (totalSubTests === 1) {
       return "";
@@ -180,17 +183,15 @@ const ResultValidation = () => {
     })
   }
 
-  // Get result text style based on inRange value
   const getResultTextStyle = (inRange) => {
     if (inRange === true) {
       return { fontWeight: 'bold', color: 'green' };
     } else if (inRange === false) {
       return { fontWeight: 'bold', color: 'red' };
     }
-    return {}; // Default style for null or undefined
+    return {};
   }
 
-  // Handle result change for main investigations with fixedId
   const handleResultChange = (investigationId, value, selectedFixedId = null) => {
     if (selectedResult) {
       const updatedInvestigations = selectedResult.investigations.map((inv) => {
@@ -207,7 +208,6 @@ const ResultValidation = () => {
     }
   }
 
-  // Handle result change for sub-tests with fixedId
   const handleSubTestResultChange = (investigationId, subTestId, value, selectedFixedId = null) => {
     if (selectedResult) {
       const updatedInvestigations = selectedResult.investigations.map((inv) => {
@@ -230,12 +230,10 @@ const ResultValidation = () => {
     }
   }
 
-  // Render result input field with proper fixedId handling and inRange styling
   const renderResultInput = (test, isSubTest = false, investigationId = null) => {
     const resultStyle = getResultTextStyle(test.inRange);
 
     if (test.comparisonType === 'f' && test.fixedDropdownValues && test.fixedDropdownValues.length > 0) {
-      // Find the currently selected option to display the correct value
       const selectedOption = test.fixedDropdownValues.find(opt => opt.fixedId === test.fixedId);
       const displayValue = selectedOption ? selectedOption.fixedValue : test.result;
 
@@ -289,7 +287,6 @@ const ResultValidation = () => {
     }
   }
 
-  // Render result display for read-only fields with inRange styling
   const renderResultDisplay = (test) => {
     const resultStyle = getResultTextStyle(test.inRange);
 
@@ -502,19 +499,12 @@ const ResultValidation = () => {
       const response = await putRequest(`${LAB}/validate`, requestPayload);
 
       if (response.status === 200) {
-        // Show print confirmation popup after successful validation
         setConfirmationPopup({
-          message: "Validation has been done successfully! Do you want to print?",
-          onConfirm: () => {
-            // User wants to print
-    handleValidationSuccess();
-
-            setConfirmationPopup(null);
-            handlePrintAndCleanup();
-          },
+          message: "Validation has been done successfully! Do you want to print the report?",
+          onConfirm: onConfirmPrint,
           onCancel: () => {
-            // User doesn't want to print, just cleanup
             setConfirmationPopup(null);
+            handleValidationSuccess();
           },
           confirmText: "Yes",
           cancelText: "No",
@@ -531,23 +521,58 @@ const ResultValidation = () => {
     }
   };
 
-  const handlePrintAndCleanup = () => {
-    // Handle print functionality here
-    console.log("Printing results for:", selectedResult);
-    
-    // You can add your print logic here
-    // For example: window.print() or generate a PDF report
-    
-    // Then proceed with cleanup
-  };
-
   const handleValidationSuccess = async () => {
-    // Refresh the unvalidated results list
     await fetchUnvalidatedResults();
     setShowDetailView(false);
     setSelectedResult(null);
     setMasterValidate(false);
     setMasterReject(false);
+  };
+
+  const generateLabReport = async () => {
+    if (!selectedResult) return;
+    
+    const orderhd_id = selectedResult.orderHdId;
+    
+    if (!orderhd_id) {
+      showPopup("Order ID not found for generating report", "error");
+      return;
+    }
+    
+    setIsGeneratingPDF(true);
+    
+    try {
+      const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
+      const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
+      
+      const url = `${ALL_REPORTS}/labInvestigationReport?orderhd_id=${orderhd_id}&hospitalId=${hospitalId}&departmentId=${departmentId}`;
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      const blob = await response.blob();
+      const fileURL = window.URL.createObjectURL(blob);
+      setPdfUrl(fileURL);
+      
+    } catch (error) {
+      console.error("Error generating PDF", error);
+      showPopup("Error generating lab report. Please try again.", "error");
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+  const onConfirmPrint = () => {
+    generateLabReport();
+    setConfirmationPopup(null);
   };
 
   const getPriorityColor = (priority) => {
@@ -696,6 +721,18 @@ const ResultValidation = () => {
         )}
 
         {loading && <LoadingScreen />}
+        
+        {pdfUrl && (
+          <PdfViewer
+            pdfUrl={pdfUrl}
+            onClose={() => {
+              setPdfUrl(null);
+              handleValidationSuccess();
+            }}
+            name={`Lab Report - ${selectedResult?.patient_name || 'Patient'}`}
+          />
+        )}
+
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
@@ -935,7 +972,6 @@ const ResultValidation = () => {
                                   <strong>{investigation.investigation}</strong>
                                 </td>
                               </tr>
-                              {/* In the sub-test row, fix the columns */}
                               {investigation.subTests.map((subTest) => (
                                 <tr key={subTest.id}>
                                   <td>{subTest.si_no}</td>
@@ -1019,8 +1055,17 @@ const ResultValidation = () => {
                 </div>
 
                 <div className="text-end mt-4">
-                  <button className="btn btn-success me-3" onClick={handleSubmit} disabled={loading}>
-                    <i className="mdi mdi-check-circle"></i> VALIDATE
+                  <button className="btn btn-success me-3" onClick={handleSubmit} disabled={loading || isGeneratingPDF}>
+                    {isGeneratingPDF ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Generating Report...
+                      </>
+                    ) : (
+                      <>
+                        <i className="mdi mdi-check-circle"></i> VALIDATE
+                      </>
+                    )}
                   </button>
                   <button className="btn btn-secondary" onClick={handleBackToList}>
                     <i className="mdi mdi-arrow-left"></i> BACK TO LIST

@@ -104,12 +104,7 @@ const Departmenttype = () => {
                     type.departmentTypeName === formData.departmentTypeName
             );
 
-            if (isDuplicate) {
-                showPopup("Department type with the same code or name already exists!", "error");
-                setLoading(false);
-                return;
-            }
-
+            
             if (editingType) {
                 
                 const response = await putRequest(`${MAS_DEPARTMENT_TYPE}/updateById/${editingType.id}`, {
@@ -127,6 +122,12 @@ const Departmenttype = () => {
                     showPopup("Department type updated successfully!", "success");
                 }
             } else {
+                if (isDuplicate) {
+                showPopup("Department type with the same code or name already exists!", "error");
+                setLoading(false);
+                return;
+            }
+
                 
                 const response = await postRequest(`${MAS_DEPARTMENT_TYPE}/create`, {
                     departmentTypeCode: formData.departmentTypeCode,
