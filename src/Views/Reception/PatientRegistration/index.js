@@ -114,7 +114,8 @@ const PatientRegistration = () => {
     varation: "",
     department: "",
     selDoctorId: "",
-    selSession: ""
+    selSession: "",
+    registrationCost:"",
   });
   const [image, setImage] = useState(placeholderImage);
   const [isCameraOn, setIsCameraOn] = useState(false);
@@ -992,7 +993,8 @@ const PatientRegistration = () => {
                       address: resp.address,
                       appointments: resp.appointments,
                       details: resp.details,
-                      billingHeaderIds: (resp.appointments || []).map(a => a.billingHdId)
+                      billingHeaderIds: (resp.appointments || []).map(a => a.billingHdId),
+                      registrationCost:resp.registrationCost
                     }
                   }
                 });

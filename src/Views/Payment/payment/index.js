@@ -20,6 +20,7 @@ const PaymentPage = () => {
     investigationandPackegBillStatus,
     paymentData,
     opdData,
+    registrationCost,
   } = location.state || {};
 
 
@@ -130,7 +131,8 @@ const PaymentPage = () => {
           isPaymentUpdate: true,
           shouldNotCreateNewBilling: true,
           useExistingBillingHeader: true,
-          patientId
+          patientId,
+          registrationCost,
         };
       } else {
         paymentRequest = {
@@ -190,7 +192,7 @@ const PaymentPage = () => {
       console.log("=== PAYMENT RESPONSE ===", response);
 
       if (response?.status === 200 && response?.response?.msg === "Success") {
-        handlePaymentSuccess(response, finalData);
+        navigateToSuccessPage(response, finalData);
       } else {
         throw new Error(
           response?.response?.msg || "Payment API Failed"
@@ -204,17 +206,6 @@ const PaymentPage = () => {
     }
   };
 
-  // Payment Success
-  const handlePaymentSuccess = (response, request) => {
-    setPopupMessage({
-      message: "Payment Successful!",
-      type: "success",
-      onClose: () => {
-        setPopupMessage(null);
-        navigateToSuccessPage(response, request);
-      },
-    });
-  };
 
   // Success Navigation
   const navigateToSuccessPage = (response, request) => {

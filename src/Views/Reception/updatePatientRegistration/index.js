@@ -278,7 +278,6 @@ const UpdatePatientRegistration = () => {
       [name]: value
     });
 
-    // Also update search query for filtering
     if (name === "patientName") {
       setSearchQuery(value);
     }
@@ -354,6 +353,33 @@ const UpdatePatientRegistration = () => {
     } else {
       next[name] = value;
     }
+
+    // Add validation for email and mobile number
+    let error = "";
+
+    if (name === "patientEmailId" && value) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(value)) {
+        error = "Invalid email format.";
+      }
+    }
+
+    if (name === "patientMobileNumber") {
+      if (value && !/^\d{10}$/.test(value)) {
+        error = "Mobile number must be exactly 10 digits.";
+      }
+    }
+
+    // Update errors state
+    setErrors(prevErrors => {
+      const newErrors = { ...prevErrors };
+      if (error) {
+        newErrors[name] = error;
+      } else {
+        delete newErrors[name];
+      }
+      return newErrors;
+    });
 
     setPatientDetailForm(next);
   };
@@ -616,7 +642,8 @@ const UpdatePatientRegistration = () => {
             departmentName: appt.specialityName || "",
             doctorName: appt.doctorName || "",
             sessionName: appt.sessionName || "",
-            visitId: appt.appointmentId || null // Store existing visit ID
+            visitId: appt.appointmentId || null,
+            tokenNo: appt.tokenNo || null,
           }));
 
           setAppointments(mappedAppointments);
@@ -650,7 +677,8 @@ const UpdatePatientRegistration = () => {
             departmentName: "",
             doctorName: "",
             sessionName: "",
-            visitId: null
+            visitId: null,
+            tokenNo: null
           }]);
           setNextAppointmentId(1);
           setAppointmentFlag(true); // Default to appointment tab
@@ -967,12 +995,12 @@ const UpdatePatientRegistration = () => {
     }
 
     // Mobile number validation
-    if (patientDetailForm.patientMobileNumber) {
-      const mobileRegex = /^\d{10}$/;
-      if (!mobileRegex.test(patientDetailForm.patientMobileNumber)) {
-        newErrors.patientMobileNumber = "Mobile must be 10 digits";
-        isValid = false;
-      }
+    if (!patientDetailForm.patientMobileNumber) {
+      newErrors.patientMobileNumber = "Mobile number is required";
+      isValid = false;
+    } else if (!/^\d{10}$/.test(patientDetailForm.patientMobileNumber)) {
+      newErrors.patientMobileNumber = "Mobile must be 10 digits";
+      isValid = false;
     }
 
     setErrors(newErrors);
@@ -1168,7 +1196,7 @@ const UpdatePatientRegistration = () => {
       lastChgBy: username
     };
 
-    // 3. Prepare visits array - Send visitId for existing appointments, null for new ones
+    // 3. Prepare visits array
     const visitsArray = appointmentFlag ?
       appointments
         .filter(appt => appt.speciality && appt.selDoctorId && appt.selSession)
@@ -1395,7 +1423,7 @@ const UpdatePatientRegistration = () => {
                       <div className="col-md-9">
                         <div className="row g-3">
                           <div className="col-md-4">
-                            <label className="form-label">First Name *</label>
+                            <label className="form-label">First Name <span className="text-danger">*</span></label>
                             <input type="text" name="patientFn" onChange={handleChange} className="form-control"
                               placeholder="Enter First Name" required value={patientDetailForm.patientFn || ""} />
                           </div>
@@ -1415,7 +1443,7 @@ const UpdatePatientRegistration = () => {
                               placeholder="Enter Mobile Number" value={patientDetailForm.patientMobileNumber || ""} />
                           </div>
                           <div className="col-md-4">
-                            <label className="form-label" htmlFor="gender">Gender *</label>
+                            <label className="form-label" htmlFor="gender">Gender <span className="text-danger">*</span></label>
                             <select
                               className="form-select"
                               name="patientGender"
@@ -1435,7 +1463,7 @@ const UpdatePatientRegistration = () => {
                             {errors.patientGender && <div className="invalid-feedback">{errors.patientGender}</div>}
                           </div>
                           <div className="col-md-4">
-                            <label className="form-label" htmlFor="relation">Relation *</label>
+                            <label className="form-label" htmlFor="relation">Relation <span className="text-danger">*</span></label>
                             <select
                               className="form-select"
                               name="patientRelation"
@@ -1475,7 +1503,7 @@ const UpdatePatientRegistration = () => {
                             />
                           </div>
                           <div className="col-md-4">
-                            <label className="form-label">Email *</label>
+                            <label className="form-label">Email </label>
                             <input type="email" className={`form-control ${errors.patientEmailId ? 'is-invalid' : ''}`} placeholder="Enter Email Address"
                               name="patientEmailId" value={patientDetailForm.patientEmailId || ""}
                               onChange={handleChange} required />
@@ -1970,6 +1998,12 @@ const UpdatePatientRegistration = () => {
                                   <h6 className="fw-bold text-muted mb-0">
                                     Appointment {index + 1}
                                     {appointment.visitId && <span className="text-success ms-2">(Existing)</span>}
+                                    {appointment.tokenNo && (
+                                      <span className="badge bg-primary text-white fs-5 fw-bold px-3 py-2 ms-2">
+                                        <i className="icofont-ticket me-2"></i>
+                                        TOKEN #{appointment.tokenNo}
+                                      </span>
+                                    )}
                                   </h6>
                                   {appointments.length > 1 && (
                                     <button
@@ -2196,64 +2230,63 @@ const UpdatePatientRegistration = () => {
                           </tbody>
                         </table>
                       </div>
-
-                      {/* PAGINATION SECTION - ALL BUTTONS TYPE="button" */}
-                      {searchPerformed && filteredPatients.length > itemsPerPage && (
-                        <nav className="d-flex justify-content-between align-items-center mt-3">
-                          <div>
-                            <span>
-                              Page {currentPage} of {totalPages} | Total Records: {filteredPatients.length}
-                            </span>
-                          </div>
-                          <ul className="pagination mb-0">
-                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                              <button
-                                type="button"
-                                className="page-link"
-                                onClick={() => handlePageChange(currentPage - 1)}
-                                disabled={currentPage === 1 || loading}
-                              >
-                                &laquo; Previous
-                              </button>
-                            </li>
-                            {renderPagination()}
-                            <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                              <button
-                                type="button"
-                                className="page-link"
-                                onClick={() => handlePageChange(currentPage + 1)}
-                                disabled={currentPage === totalPages || loading}
-                              >
-                                Next &raquo;
-                              </button>
-                            </li>
-                          </ul>
-                          <div className="d-flex align-items-center">
-                            <input
-                              type="number"
-                              min="1"
-                              max={totalPages}
-                              value={pageInput}
-                              onChange={(e) => setPageInput(e.target.value)}
-                              placeholder="Go to page"
-                              className="form-control me-2"
-                              style={{ width: "120px" }}
-                              disabled={loading}
-                            />
-                            <button
-                              type="button"
-                              className="btn btn-primary"
-                              onClick={handlePageNavigation}
-                              disabled={loading}
-                            >
-                              GO
-                            </button>
-                          </div>
-                        </nav>
-                      )}
                     </div>
                   )}
                 </form>
+                {/* PAGINATION SECTION - ALL BUTTONS TYPE="button" */}
+                {searchPerformed && filteredPatients.length > itemsPerPage && (
+                  <nav className="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                      <span>
+                        Page {currentPage} of {totalPages} | Total Records: {filteredPatients.length}
+                      </span>
+                    </div>
+                    <ul className="pagination mb-0">
+                      <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                        <button
+                          type="button"
+                          className="page-link"
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          disabled={currentPage === 1 || loading}
+                        >
+                          &laquo; Previous
+                        </button>
+                      </li>
+                      {renderPagination()}
+                      <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                        <button
+                          type="button"
+                          className="page-link"
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          disabled={currentPage === totalPages || loading}
+                        >
+                          Next &raquo;
+                        </button>
+                      </li>
+                    </ul>
+                    <div className="d-flex align-items-center">
+                      <input
+                        type="number"
+                        min="1"
+                        max={totalPages}
+                        value={pageInput}
+                        onChange={(e) => setPageInput(e.target.value)}
+                        placeholder="Go to page"
+                        className="form-control me-2"
+                        style={{ width: "120px" }}
+                        disabled={loading}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={handlePageNavigation}
+                        disabled={loading}
+                      >
+                        GO
+                      </button>
+                    </div>
+                  </nav>
+                )}
               </div>
             </div>
           </div>

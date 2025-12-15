@@ -14,7 +14,7 @@ const OPDBillingDetails = () => {
   });
 
   const [formData, setFormData] = useState({
-    patientUhid:"",
+    patientUhid: "",
     billingType: "",
     billingHeaderId: "",
     patientName: "",
@@ -59,13 +59,13 @@ const OPDBillingDetails = () => {
   }
 
   const formatDateDDMMYYYY = (dateStr) => {
-  if (!dateStr) return "";
-  const date = new Date(dateStr);
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const yyyy = date.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
-};
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    const dd = String(date.getDate()).padStart(2, "0");
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const yyyy = date.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  };
 
   const safeSex = (sexField) => {
     if (!sexField) return "";
@@ -94,7 +94,7 @@ const OPDBillingDetails = () => {
 
     fetchGstConfiguration(data.categoryId || null);
 
-    const topLevelRegCost = Number(data.details[0].registrationCost || 0);
+    const topLevelRegCost = Number(data.registrationCost || 0);
 
     // Build appointments array
     const incomingAppointments = Array.isArray(data.appointments) && data.appointments.length > 0
@@ -114,38 +114,50 @@ const OPDBillingDetails = () => {
       let detail = details[idx] || details[0];
 
       const visitType = normalizeVisitType(appt.visitType);
-
       const basePrice = Number(detail?.basePrice || 0);
       const discount = Number(detail?.discount || 0);
-      const totalAmount = basePrice-discount;
       const taxAmount = Number(detail?.taxAmount || 0);
-      const registrationCost = visitType === "New" ? Number(detail?.registrationCost || 0) : 0;
-      const netAmount = Number(detail?.netAmount|| (basePrice + registrationCost + taxAmount));
+      const detailNetAmount = Number(detail?.netAmount || 0);
       
+      // Calculate registration cost: only for "New" visits
+      let registrationCost = 0;
+      if (visitType === "New") {
+        if (incomingAppointments.length === 1) {
+          registrationCost = topLevelRegCost;
+        } else {
+          const newAppointmentsCount = incomingAppointments.filter(a => 
+            normalizeVisitType(a.visitType) === "New"
+          ).length;
+          registrationCost = newAppointmentsCount > 0 ? topLevelRegCost / newAppointmentsCount : 0;
+        }
+      }
+
+      // Calculate amounts correctly
+      const totalAmount = basePrice - discount + taxAmount; // base - discount + tax
+      const netAmount = totalAmount + registrationCost; // total + registration
 
       return {
-        billinghdid: appt.billingHdId || null,   // FIXED
+        billingHdId: appt.billingHdId || null, // Fixed variable name
         visitId: appt.visitId,
         tokenNo: appt.tokenNo,
         department: appt.department,
         consultedDoctor: appt.consultedDoctor,
         sessionName: appt.sessionName,
-        visitDate: appt.visitDate.split("T")[0],
+        visitDate: appt.visitDate?.split("T")[0] || "",
         visitType,
         room: appt.room || "",
         tariffPlan: "General Tariff",
 
         basePrice,
         discount,
-        netAmount,
         gst: taxAmount,
         registrationCost,
-        totalAmount,
+        totalAmount, // base - discount + tax
+        netAmount, // totalAmount + registrationCost
 
         rawDetail: detail,
       };
     });
-
 
     setAppointments(processedAppointments);
 
@@ -159,9 +171,11 @@ const OPDBillingDetails = () => {
       patientId: data.patientid || "",
       address: data.address || "",
       billingType: data.billingType || "Consultation Services",
-      billingHeaderIds: Array.isArray(data.billingHeaderIds)? data.billingHeaderIds: [data.billingHeaderIds],
+      billingHeaderIds: Array.isArray(data.billingHeaderIds) 
+        ? data.billingHeaderIds 
+        : [data.billingHdId || data.billinghdid].filter(Boolean),
       registrationCost: topLevelRegCost,
-      patientUhid:data.patientUhid,
+      patientUhid: data.patientUhid || "",
     });
   }, [location.state, navigate]);
 
@@ -174,17 +188,24 @@ const OPDBillingDetails = () => {
       const base = Number(appt.basePrice || 0);
       const discount = Number(appt.discount || 0);
       const taxFromDetail = appt.rawDetail?.taxAmount;
-      const gstAmount = (taxFromDetail !== undefined && taxFromDetail !== null && taxFromDetail > 0) ? Number(taxFromDetail) : (base * gstPercent) / 100;
+      const gstAmount = (taxFromDetail !== undefined && taxFromDetail !== null && taxFromDetail > 0) 
+        ? Number(taxFromDetail) 
+        : (base * gstPercent) / 100;
       const reg = Number(appt.registrationCost || 0);
-      const net = Number(appt.rawDetail?.netAmount + reg || Math.max(0, base + reg + gstAmount));
-      const total = base - discount+gstAmount;
+      
+      // Calculate total amount: base - discount + GST
+      const totalAmount = Math.max(0, base - discount + gstAmount);
+      // Calculate net amount: total + registration
+      const netAmount = Math.max(0, totalAmount + reg);
 
       return {
         ...appt,
-        netAmount: Number(net.toFixed(2)),
+        basePrice: Number(base.toFixed(2)),
+        discount: Number(discount.toFixed(2)),
         gst: Number(gstAmount.toFixed(2)),
-        totalAmount: total,
+        totalAmount: Number(totalAmount.toFixed(2)),
         registrationCost: Number(reg.toFixed(2)),
+        netAmount: Number(netAmount.toFixed(2)),
       };
     });
 
@@ -211,28 +232,66 @@ const OPDBillingDetails = () => {
       return;
     }
 
-    const totalAmount = appointments.reduce((sum, appt) => sum + Number(appt.totalAmount || 0), 0) ;
+    // Calculate NET TOTAL (sum of all netAmount)
+    const netTotal = appointments.reduce((sum, a) => sum + Number(a.netAmount || 0), 0);
 
+    // Calculate other totals for display
+    const totalBasePrice = appointments.reduce((sum, a) => sum + Number(a.basePrice || 0), 0);
+    const totalDiscount = appointments.reduce((sum, a) => sum + Number(a.discount || 0), 0);
+    const totalGST = appointments.reduce((sum, a) => sum + Number(a.gst || 0), 0);
+    const totalRegistration = appointments.reduce((sum, a) => sum + Number(a.registrationCost || 0), 0);
 
     Swal.fire({
       title: 'Confirm Payment',
       html: `
-      <p>Patient: <strong>${formData.patientName}</strong></p>
-      <p>Total Amount: <strong>₹${totalAmount.toFixed(2)}</strong></p>
-      <p>Appointments: <strong>${appointments.length}</strong></p>
-    `,
+        <div style="text-align: left;">
+          <p><strong>Patient:</strong> ${formData.patientName}</p>
+          <p><strong>Mobile:</strong> ${formData.mobileNo}</p>
+          <hr style="margin: 10px 0;" />
+          <p><strong>Payment Summary:</strong></p>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr>
+              <td style="padding: 4px 0;">Base Price:</td>
+              <td style="text-align: right; padding: 4px 0;">₹${totalBasePrice.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0;">Discount:</td>
+              <td style="text-align: right; padding: 4px 0;">- ₹${totalDiscount.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0;">GST:</td>
+              <td style="text-align: right; padding: 4px 0;">+ ₹${totalGST.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0;">Registration:</td>
+              <td style="text-align: right; padding: 4px 0;">+ ₹${totalRegistration.toFixed(2)}</td>
+            </tr>
+            <tr style="border-top: 1px solid #ddd; font-weight: bold;">
+              <td style="padding: 8px 0; color: #dc3545;">NET AMOUNT:</td>
+              <td style="text-align: right; padding: 8px 0; color: #dc3545; font-size: 16px;">
+                ₹${netTotal.toFixed(2)}
+              </td>
+            </tr>
+          </table>
+          <hr style="margin: 10px 0;" />
+          <p><small>Appointments: ${appointments.length}</small></p>
+        </div>
+      `,
       icon: 'info',
       showCancelButton: true,
-      confirmButtonText: 'Proceed to Pay',
-      cancelButtonText: 'Cancel'
+      confirmButtonText: `Pay ₹${netTotal.toFixed(2)}`,
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#28a745',
+      width: '450px'
     }).then((result) => {
       if (result.isConfirmed) {
         navigate("/payment", {
           state: {
             billingType: formData.billingType,
-            amount: totalAmount,
+            amount: netTotal,
             patientId: formData.patientId,
             billingHeaderIds: formData.billingHeaderIds,
+            registrationCost:formData.registrationCost,
             opdData: {
               patient: formData,
               appointments,
@@ -244,7 +303,6 @@ const OPDBillingDetails = () => {
     });
   };
 
-
   const handleBack = () => {
     navigate("/PendingForBilling");
   };
@@ -252,9 +310,9 @@ const OPDBillingDetails = () => {
   // Calculate totals for display
   const totalBasePrice = appointments.reduce((sum, a) => sum + Number(a.basePrice || 0), 0);
   const totalDiscount = appointments.reduce((sum, a) => sum + Number(a.discount || 0), 0);
-  const totalAmount = appointments.reduce((sum, a) => sum + Number(a.totalAmount || 0), 0);
   const totalGST = appointments.reduce((sum, a) => sum + Number(a.gst || 0), 0);
   const totalRegistration = appointments.reduce((sum, a) => sum + Number(a.registrationCost || 0), 0);
+  const totalAmount = appointments.reduce((sum, a) => sum + Number(a.totalAmount || 0), 0);
   const grandTotal = appointments.reduce((sum, a) => sum + Number(a.netAmount || 0), 0);
 
   return (
@@ -414,7 +472,7 @@ const OPDBillingDetails = () => {
                             />
                           </div>
                           <div className="form-group col-md-2 mt-3">
-                            <label>Total</label>
+                            <label>Total (Base-Disc+GST)</label>
                             <input
                               type="number"
                               className="form-control"
@@ -435,7 +493,7 @@ const OPDBillingDetails = () => {
                             <label><strong>Net Amount</strong></label>
                             <input
                               type="number"
-                              className="form-control"
+                              className="form-control bg-light"
                               value={appointment.netAmount.toFixed(2)}
                               readOnly
                             />
@@ -446,48 +504,51 @@ const OPDBillingDetails = () => {
                   </div>
                 ))}
 
-                {/* Grand Total Summary */}
-                {appointments.length > 1 && (
-                  <div className="col-12 mt-4">
-                    <div className="card border-primary">
-                      <div className="card-header bg-primary text-white">
-                        <h5 className="mb-0"><i className="mdi mdi-calculator"></i> Grand Total Summary</h5>
-                      </div>
-                      <div className="card-body">
-                        <div className="row">
-                          <div className="col-md-2">
-                            <strong>Total Base:</strong>
-                            <p className="mb-0">₹{totalBasePrice.toFixed(2)}</p>
-                          </div>
-                          <div className="col-md-2">
-                            <strong>Total Discount:</strong>
-                            <p className="mb-0">₹{totalDiscount.toFixed(2)}</p>
-                          </div>
-                          <div className="col-md-2">
-                            <strong>Total:</strong>
-                            <p className="mb-0">₹{totalAmount.toFixed(2)}</p>
-                          </div>
-                          <div className="col-md-2">
-                            <strong>Total GST:</strong>
-                            <p className="mb-0">₹{totalGST.toFixed(2)}</p>
-                          </div>
-                          <div className="col-md-2">
-                            <strong>Registration Cost:</strong>
-                            <p className="mb-0">₹{totalRegistration.toFixed(2)}</p>
-                          </div>
-                          <div className="col-md-2">
-                            <strong className="text-primary">Grand Net Total:</strong>
-                            <h4 className="mb-0 text-primary">₹{grandTotal.toFixed(2)}</h4>
-                          </div>
+                {/* Grand Total Summary - Show always, not just when multiple */}
+                <div className="col-12 mt-4">
+                  <div className="card border-primary">
+                    <div className="card-header bg-primary text-white">
+                      <h5 className="mb-0"><i className="mdi mdi-calculator"></i> Grand Total Summary</h5>
+                    </div>
+                    <div className="card-body">
+                      <div className="row">
+                        <div className="col-md-2">
+                          <strong>Total Base:</strong>
+                          <p className="mb-0">₹{totalBasePrice.toFixed(2)}</p>
+                        </div>
+                        <div className="col-md-2">
+                          <strong>Total Discount:</strong>
+                          <p className="mb-0">₹{totalDiscount.toFixed(2)}</p>
+                        </div>
+                        <div className="col-md-2">
+                          <strong>Total GST:</strong>
+                          <p className="mb-0">₹{totalGST.toFixed(2)}</p>
+                        </div>
+                        <div className="col-md-2">
+                          <strong>Total (Base-Disc+GST):</strong>
+                          <p className="mb-0">₹{totalAmount.toFixed(2)}</p>
+                        </div>
+                        <div className="col-md-2">
+                          <strong>Registration Cost:</strong>
+                          <p className="mb-0">₹{totalRegistration.toFixed(2)}</p>
+                        </div>
+                        <div className="col-md-2">
+                          <strong className="text-primary">NET AMOUNT:</strong>
+                          <h4 className="mb-0 text-primary">₹{grandTotal.toFixed(2)}</h4>
                         </div>
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
 
                 {/* Action Buttons */}
                 <div className="form-group col-md-12 d-flex justify-content-end mt-4">
-                  <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary me-2" 
+                    disabled={!isFormValid}
+                    style={{ minWidth: '200px' }}
+                  >
                     <i className="mdi mdi-cash"></i> Pay Now - ₹{grandTotal.toFixed(2)}
                   </button>
                   <button type="button" className="btn btn-danger" onClick={handleBack}>
