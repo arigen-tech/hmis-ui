@@ -34,7 +34,7 @@ const EmployeeRegistration = () => {
         // New sections
         specialtyCenter: [{ specialtyCenterId: 1, specialtyCenterName: "", centerId: "" }],
         workExperience: [{ experienceId: 1, organizationName: "", designation: "", fromDate: "", toDate: "", duration: "", filePath: null }],
-        designationLevel: [{ designationLevelId: 1, levelName: "", effectiveDate: "", filePath: null }],
+        memberships: [{ membershipsId: 1, levelName: "", effectiveDate: "", filePath: null }],
         specialtyInterest: [{ interestId: 1, specialtyInterestName: "", description: "", filePath: null }],
         awardsDistinction: [{ awardId: 1, awardName: "", awardingBody: "", yearReceived: "", description: "", filePath: null }],
     };
@@ -434,20 +434,20 @@ const EmployeeRegistration = () => {
     };
 
     // Designation Level Section
-    const addDesignationLevelRow = () => {
+    const addmembershipsRow = () => {
         setFormData((prev) => ({
             ...prev,
-            designationLevel: [
-                ...prev.designationLevel,
-                { id: prev.designationLevel.length + 1, levelName: "", effectiveDate: "", filePath: null },
+            memberships: [
+                ...prev.memberships,
+                { id: prev.memberships.length + 1, levelName: "", effectiveDate: "", filePath: null },
             ],
         }));
     };
 
-    const removeDesignationLevelRow = (index) => {
+    const removemembershipsRow = (index) => {
         setFormData((prev) => ({
             ...prev,
-            designationLevel: prev.designationLevel.filter((_, i) => i !== index),
+            memberships: prev.memberships.filter((_, i) => i !== index),
         }));
     };
 
@@ -534,10 +534,10 @@ const EmployeeRegistration = () => {
         }));
     };
 
-    const handleDesignationLevelChange = (index, field, value) => {
+    const handlemembershipsChange = (index, field, value) => {
         setFormData(prev => ({
             ...prev,
-            designationLevel: prev.designationLevel.map((item, i) =>
+            memberships: prev.memberships.map((item, i) =>
                 i === index ? { ...item, [field]: value } : item
             )
         }));
@@ -669,12 +669,12 @@ const EmployeeRegistration = () => {
         });
 
         // Designation Level
-        formData.designationLevel.forEach((level, index) => {
-            formDataToSend.append(`designationLevel[${index}].designationLevelId`, level.designationLevelId || '');
-            formDataToSend.append(`designationLevel[${index}].levelName`, level.levelName);
-            formDataToSend.append(`designationLevel[${index}].effectiveDate`, level.effectiveDate);
+        formData.memberships.forEach((level, index) => {
+            formDataToSend.append(`memberships[${index}].membershipsId`, level.membershipsId || '');
+            formDataToSend.append(`memberships[${index}].levelName`, level.levelName);
+            formDataToSend.append(`memberships[${index}].effectiveDate`, level.effectiveDate);
             if (level.filePath) {
-                formDataToSend.append(`designationLevel[${index}].filePath`, level.filePath);
+                formDataToSend.append(`memberships[${index}].filePath`, level.filePath);
             }
         });
 
@@ -752,8 +752,8 @@ const EmployeeRegistration = () => {
                 duration: "", 
                 filePath: null 
             }],
-            designationLevel: [{ 
-                designationLevelId: 1, 
+            memberships: [{ 
+                membershipsId: 1, 
                 levelName: "", 
                 effectiveDate: "", 
                 filePath: null 
@@ -1066,7 +1066,9 @@ const EmployeeRegistration = () => {
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">ID Type *</label>
+                                                        <label className="form-label">ID Type
+                                                            <span className="text-danger">*</span>
+                                                        </label>
                                                         <select
                                                             className="form-select"
                                                             style={{ paddingRight: "40px" }}
@@ -1108,6 +1110,38 @@ const EmployeeRegistration = () => {
                                                         />
                                                     </div>
 
+                                                     <div className="col-md-4">
+                                                        <label className="form-label">No. of experience</label>
+                                                        <input
+                                                            type="text"
+                                                            className="form-control"
+                                                            placeholder="No of experience"
+                                                            maxLength={mlenght}
+                                                        />
+                                                    </div>
+
+                                                      <div className="col-md-4">
+                                                        <label className="form-label">Profile Description</label>
+                                                        <input
+                                                            type="text"
+                                                            className="form-control"
+                                                            placeholder="Profile Description"
+                                                            maxLength={mlenght}
+                                                        />
+                                                    </div>
+
+                                                      <div className="col-md-4">
+                                                        <label className="form-label">Registration Number</label>
+                                                        <input
+                                                            type="text"
+                                                            className="form-control"
+                                                            placeholder="Registration Number"
+                                                            maxLength={mlenght}
+                                                        />
+                                                    </div>
+
+                                                     
+                                                     
                                                     {viewDept && (
                                                         <div className="col-md-4">
                                                             <label className="form-label">Department Name *</label>
@@ -1148,6 +1182,16 @@ const EmployeeRegistration = () => {
                                                                 </option>
                                                             ))}
                                                         </select>
+                                                    </div>
+
+                                                      <div className="col-md-4">
+                                                        <label className="form-label">Designation </label>
+                                                        <input
+                                                            type="text"
+                                                            className="form-control"
+                                                            placeholder="Designation "
+                                                            maxLength={mlenght}
+                                                        />
                                                     </div>
 
                                                     <div className="col-md-4">
@@ -1488,7 +1532,7 @@ const EmployeeRegistration = () => {
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
                                 <div className="card-header bg-light border-bottom-1 py-3">
-                                    <h6 className="fw-bold mb-0">Designation Levels</h6>
+                                    <h6 className="fw-bold mb-0">Memberships</h6>
                                 </div>
                                 <div className="card-body">
                                     <table className="table table-bordered">
@@ -1502,7 +1546,7 @@ const EmployeeRegistration = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {formData.designationLevel.map((row, index) => (
+                                            {formData.memberships.map((row, index) => (
                                                 <tr key={index}>
                                                     <td>{index + 1}</td>
                                                     <td>
@@ -1511,7 +1555,7 @@ const EmployeeRegistration = () => {
                                                             className="form-control"
                                                             value={row.levelName}
                                                             placeholder="Level Name"
-                                                            onChange={(e) => handleDesignationLevelChange(index, "levelName", e.target.value)}
+                                                            onChange={(e) => handlemembershipsChange(index, "levelName", e.target.value)}
                                                             maxLength={mlenght}
                                                         />
                                                     </td>
@@ -1520,19 +1564,19 @@ const EmployeeRegistration = () => {
                                                             type="date"
                                                             className="form-control"
                                                             value={row.effectiveDate}
-                                                            onChange={(e) => handleDesignationLevelChange(index, "effectiveDate", e.target.value)}
+                                                            onChange={(e) => handlemembershipsChange(index, "effectiveDate", e.target.value)}
                                                         />
                                                     </td>
                                                     <td>
                                                         <input
                                                             type="file"
                                                             className="form-control"
-                                                            onChange={(e) => handleDesignationLevelChange(index, "filePath", e.target.files[0])}
+                                                            onChange={(e) => handlemembershipsChange(index, "filePath", e.target.files[0])}
                                                             accept=".pdf,.jpg,.jpeg,.png"
                                                         />
                                                     </td>
                                                     <td>
-                                                        <button type="button" className="btn btn-danger" onClick={() => removeDesignationLevelRow(index)}>
+                                                        <button type="button" className="btn btn-danger" onClick={() => removemembershipsRow(index)}>
                                                             <i className="icofont-close"></i>
                                                         </button>
                                                     </td>
@@ -1540,7 +1584,7 @@ const EmployeeRegistration = () => {
                                             ))}
                                         </tbody>
                                     </table>
-                                    <button type="button" className="btn btn-success" onClick={addDesignationLevelRow}>
+                                    <button type="button" className="btn btn-success" onClick={addmembershipsRow}>
                                         Add Row +
                                     </button>
                                 </div>
