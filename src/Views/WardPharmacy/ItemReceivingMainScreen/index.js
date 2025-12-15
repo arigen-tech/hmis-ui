@@ -40,7 +40,7 @@ const ItemReceivingMainScreen = () => {
             dom: "2025-01-15",
             doe: "2027-01-15",
             qtyDemanded: 100,
-            qtyIssued: 80,
+            qtyIssued: 0, // Changed to 0 to show yellow row
             qtyReceived: 0,
             previousReceivedQty: 0,
           },
@@ -57,6 +57,19 @@ const ItemReceivingMainScreen = () => {
             qtyReceived: 0,
             previousReceivedQty: 0,
           },
+          {
+            id: 3,
+            drugCode: "DRG-003",
+            drugName: "Ibuprofen 400mg",
+            apu: "TAB",
+            batchNo: "BAT-2025-003",
+            dom: "2025-03-10",
+            doe: "2027-03-10",
+            qtyDemanded: 75,
+            qtyIssued: 0, // Changed to 0 to show yellow row
+            qtyReceived: 0,
+            previousReceivedQty: 0,
+          },
         ],
       },
       {
@@ -67,17 +80,30 @@ const ItemReceivingMainScreen = () => {
         issueDate: "2025-12-11T14:45:00",
         items: [
           {
-            id: 3,
-            drugCode: "DRG-003",
-            drugName: "Ibuprofen 400mg",
+            id: 4,
+            drugCode: "DRG-004",
+            drugName: "Aspirin 300mg",
             apu: "TAB",
-            batchNo: "BAT-2025-003",
+            batchNo: "BAT-2025-004",
             dom: "2025-03-10",
             doe: "2027-03-10",
             qtyDemanded: 200,
             qtyIssued: 150,
             qtyReceived: 0,
             previousReceivedQty: 50,
+          },
+          {
+            id: 5,
+            drugCode: "DRG-005",
+            drugName: "Cetirizine 10mg",
+            apu: "TAB",
+            batchNo: "BAT-2025-005",
+            dom: "2025-04-01",
+            doe: "2027-04-01",
+            qtyDemanded: 60,
+            qtyIssued: 0, // Changed to 0 to show yellow row
+            qtyReceived: 0,
+            previousReceivedQty: 0,
           },
         ],
       },
@@ -241,8 +267,8 @@ const ItemReceivingMainScreen = () => {
 
                 {/* Items table */}
                 <div className="table-responsive">
-                  <table className="table table-bordered table-hover align-middle text-center">
-                    <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
+                  <table className="table table-bordered align-middle text-center">
+                    <thead>
                       <tr>
                         <th style={{ width: "60px" }}>S.No.</th>
                         <th style={{ minWidth: "140px" }}>Drug Code</th>
@@ -259,7 +285,11 @@ const ItemReceivingMainScreen = () => {
                     </thead>
                     <tbody>
                       {receivingItems.map((item, idx) => (
-                        <tr key={item.id || idx}>
+                        <tr 
+                          key={item.id || idx}
+                          className={item.qtyIssued === 0 ? "table-warning" : ""}
+                        
+                        >
                           <td className="fw-bold">{idx + 1}</td>
                           <td>{item.drugCode}</td>
                           <td className="text-start">{item.drugName}</td>
@@ -331,11 +361,35 @@ const ItemReceivingMainScreen = () => {
             </div>
             <div className="card-body">
               {/* Search Row */}
-             
+              <div className="row mb-3">
+                <div className="col-md-3">
+                  <label className="form-label fw-bold">From Date</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                  />
+                </div>
+                <div className="col-md-3">
+                  <label className="form-label fw-bold">To Date</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                  />
+                </div>
+                <div className="col-md-2 d-flex align-items-end">
+                  <button type="button" className="btn btn-primary" onClick={handleSearch}>
+                    Search
+                  </button>
+                </div>
+              </div>
 
               {/* Table */}
               <div className="table-responsive">
-                <table className="table table-bordered table-hover align-middle">
+                <table className="table table-bordered align-middle">
                   <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
                     <tr>
                       <th>Indent No.</th>
