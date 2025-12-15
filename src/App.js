@@ -108,6 +108,7 @@ import DietTypeMaster from './Views/Masters/DietTypeMaster';
 import DietPreferenceMaster from './Views/Masters/DietPreferenceMaster';
 import DietScheduleMaster from './Views/Masters/DietScheduleMaster'; 
 import ItemReceivingMainScreen from './Views/WardPharmacy/ItemReceivingMainScreen';
+import AdmissionStatusMaster from './Views/Masters/AdmissionStatusMaster'; 
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -250,6 +251,7 @@ function App() {
                 <Route path="/DietPreferenceMaster" element={<DietPreferenceMaster/>} />
                 <Route path="/DietScheduleMaster" element={<DietScheduleMaster/>} />
                 <Route path="ItemReceivingMainScreen" element={<ItemReceivingMainScreen/>} />
+                <Route path="/AdmissionStatusMaster" element={<AdmissionStatusMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>

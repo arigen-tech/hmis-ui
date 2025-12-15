@@ -113,7 +113,8 @@ const validRoutes = [
   "/DietTypeMaster",
   "/DietPreferenceMaster",
   "/DietScheduleMaster",
-  "/ItemReceivingMainScreen"
+  "/ItemReceivingMainScreen",
+  "/AdmissionStatusMaster",
 
   
 ];
