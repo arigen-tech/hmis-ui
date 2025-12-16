@@ -113,6 +113,7 @@ import IntakeItemMaster from './Views/Masters/IntakeItemMaster';
 import PatientacuityMaster from './Views/Masters/PatientacuityMaster';
 import OutputTypeMaster from './Views/Masters/OutputTypeMaster';
 import IntakeTypeMaster from './Views/Masters/IntakeTypeMaster';
+import InpatientMaster from  './Views/Masters/InpatientMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -260,6 +261,7 @@ function App() {
                 <Route path="/PatientacuityMaster" element={<PatientacuityMaster/>} />
                 <Route path="/OutputTypeMaster" element={<OutputTypeMaster/>} />
                 <Route path="/IntakeTypeMaster" element={<IntakeTypeMaster/>} />
+                <Route path="/InpatientMaster" element={<InpatientMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
