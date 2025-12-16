@@ -279,7 +279,13 @@ const PendingForBilling = () => {
                     </thead>
                     <tbody>
                       {currentItems.map((item) => (
-                        <tr key={item.id}>
+                        <tr
+                          key={item.id}
+                          onClick={() => handlePendingClick(item)}
+                          role="button"
+                          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handlePendingClick(item) }}
+                          style={{ cursor: "pointer" }}
+                        >
                           <td>{item.patientName}</td>
                           <td>{item.mobileNo}</td>
                           <td>{item.age}</td>
@@ -294,7 +300,7 @@ const PendingForBilling = () => {
                           <td>
                             <button
                               className="btn btn-warning btn-sm"
-                              onClick={() => handlePendingClick(item)}
+                              onClick={(e) => { e.stopPropagation(); handlePendingClick(item); }}
                               style={{
                                 cursor: "pointer",
                                 border: "none",
@@ -302,6 +308,7 @@ const PendingForBilling = () => {
                                 color: "#ff6b35",
                                 textDecoration: "underline",
                               }}
+                              aria-label={`Open ${item.patientName} billing details`}
                             >
                               {item.billingStatus}
                             </button>
