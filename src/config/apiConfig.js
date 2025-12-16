@@ -207,5 +207,7 @@ export const MAS_MEAL_TYPE = `${MASTERS}/masMealType`;
 export const MAS_DIET_SCHEDULE = `${MASTERS}/masDietSchedule`;
 export const MAS_DIET_TYPE = `${MASTERS}/masDietType`;
 export const MAS_DIET_PREFERENCE = `${MASTERS}/masDietPreference`;
-
+export const MAS_INTAKE_ITEM = `${MASTERS}/masIntakeItem`;
+export const MAS_INTAKE_TYPE = `${MASTERS}/masIntakeType`;
+export const MAS_PATIENT_ACUITY = `${MASTERS}/masPatientAcuity`;
 
