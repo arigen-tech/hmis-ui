@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { CKEditor } from '@ckeditor/ckeditor5-react';
+import DecoupledEditor from '@ckeditor/ckeditor5-build-decoupled-document';
 import placeholderImage from "../../../../assets/images/placeholder.jpg";
 import { MAS_COUNTRY, MAS_DISTRICT, MAS_STATE, MAS_DEPARTMENT, MAS_GENDER, MAS_ROLES, MAS_IDENTIFICATION_TYPE, API_HOST, MAS_EMPLOYMENT_TYPE, MAS_USER_TYPE, EMPLOYEE_REGISTRATION } from "../../../../config/apiConfig";
 import { getRequest, putRequest, postRequestWithFormData } from "../../../../service/apiService";
@@ -37,12 +39,21 @@ const EmployeeRegistration = () => {
         memberships: [{ membershipsId: 1, levelName: "" }],
         specialtyInterest: [{ interestId: 1, specialtyInterestName: "" }],
         awardsDistinction: [{ awardId: 1, awardName: "" }],
+        profileDescription: "",
     };
     const [formData, setFormData] = useState(initialFormData);
     const [popup, setPopup] = useState("");
     const [popupMessage, setPopupMessage] = useState("");
     const [profileImage, setProfileImage] = useState(null);
     const [loading, setLoading] = useState(false);
+    // Refs for CKEditor toolbar and editor instance for Profile Description
+    const profileEditorRef = useRef(null);
+    const profileInclusionRef = useRef(null);
+
+    const handleProfileEditorChange = (event, editor) => {
+        const data = editor.getData();
+        setFormData(prev => ({ ...prev, profileDescription: data }));
+    };
     const [departmentData, setDepartmentData] = useState([]);
     const [viewDept, setviewDept] = useState(false);
     const [countryData, setCountryData] = useState([]);
@@ -424,7 +435,7 @@ const EmployeeRegistration = () => {
                 { experienceId: prev.workExperience.length + 1, organizationName: "" },
             ],
         }));
-    }; 
+    };
 
     const removeWorkExperienceRow = (index) => {
         setFormData((prev) => ({
@@ -442,7 +453,7 @@ const EmployeeRegistration = () => {
                 { membershipsId: prev.memberships.length + 1, levelName: "" },
             ],
         }));
-    }; 
+    };
 
     const removemembershipsRow = (index) => {
         setFormData((prev) => ({
@@ -460,7 +471,7 @@ const EmployeeRegistration = () => {
                 { interestId: prev.specialtyInterest.length + 1, specialtyInterestName: "" },
             ],
         }));
-    }; 
+    };
 
     const removeSpecialtyInterestRow = (index) => {
         setFormData((prev) => ({
@@ -478,7 +489,7 @@ const EmployeeRegistration = () => {
                 { awardId: prev.awardsDistinction.length + 1, awardName: "" },
             ],
         }));
-    }; 
+    };
 
     const removeAwardsDistinctionRow = (index) => {
         setFormData((prev) => ({
@@ -610,6 +621,8 @@ const EmployeeRegistration = () => {
         formDataToSend.append('pincode', formData.pincode);
         formDataToSend.append('mobileNo', formData.mobileNo);
         formDataToSend.append('registrationNo', formData.registrationNo);
+        // Profile description (rich text)
+        formDataToSend.append('profileDescription', formData.profileDescription || '');
         formDataToSend.append('identificationType', formData.identificationType);
         formDataToSend.append('employeeTypeId', formData.employeeTypeId);
         formDataToSend.append('employmentTypeId', formData.employmentTypeId);
@@ -684,15 +697,15 @@ const EmployeeRegistration = () => {
 
     const handleReset = () => {
         setFormData(initialFormData);
-        
+
         // Reset profile image preview
         const profileImageInput = document.getElementById('profilePicName');
         if (profileImageInput) profileImageInput.value = '';
-        
+
         // Reset ID document
         const idDocumentInput = document.getElementById('idDocumentName');
         if (idDocumentInput) idDocumentInput.value = '';
-        
+
         // Reset all file inputs by their class name
         const fileInputs = document.querySelectorAll('input[type="file"]');
         fileInputs.forEach(input => {
@@ -705,22 +718,22 @@ const EmployeeRegistration = () => {
             profilePicPreview: null,
             profilePicName: null,
             idDocumentName: null,
-            qualification: [{ 
-                employeeQualificationId: 1, 
-                institutionName: "", 
-                completionYear: "", 
-                qualificationName: "", 
-                filePath: null 
+            qualification: [{
+                employeeQualificationId: 1,
+                institutionName: "",
+                completionYear: "",
+                qualificationName: "",
+                filePath: null
             }],
-            document: [{ 
-                employeeDocumentId: 1, 
-                documentName: "", 
-                filePath: null 
+            document: [{
+                employeeDocumentId: 1,
+                documentName: "",
+                filePath: null
             }],
-            specialtyCenter: [{ 
-                specialtyCenterId: 1, 
-                specialtyCenterName: "", 
-                centerId: "" 
+            specialtyCenter: [{
+                specialtyCenterId: 1,
+                specialtyCenterName: "",
+                centerId: ""
             }],
             workExperience: [{ experienceId: 1, organizationName: "" }],
             memberships: [{ membershipsId: 1, levelName: "" }],
@@ -730,12 +743,17 @@ const EmployeeRegistration = () => {
 
         // Reset file related states
         setProfileImage(null);
+
+        // Clear CKEditor content if initialized
+        if (profileEditorRef.current) {
+            profileEditorRef.current.setData('');
+        }
     };
 
     const handleCreate = async () => {
         const formDataToSend = prepareFormData();
         if (!formDataToSend) return;
-    
+
         setLoading(true);
         try {
             const response = await fetch(`${API_HOST}/${EMPLOYEE_REGISTRATION}/create`, {
@@ -746,16 +764,16 @@ const EmployeeRegistration = () => {
                 },
                 body: formDataToSend
             });
-    
+
             const data = await response.json();
-    
+
             if (!response.ok || data.status === 500) {
                 throw new Error(data.message || "Failed to create employee");
             }
-    
+
             showPopup("Employee created successfully", "success");
             handleReset();
-    
+
         } catch (error) {
             console.error("Error creating employee:", error);
             showPopup(error.message || "Error submitting form. Please try again.", "error");
@@ -767,13 +785,13 @@ const EmployeeRegistration = () => {
     const handleCreateWithApprove = async () => {
         const formDataToSend = prepareFormData();
         if (!formDataToSend) return;
-    
+
         if (!formData.deprtId) {
             setviewDept(true);
             showPopup("Department is required for approval. Please select a department.", "error");
             return;
         }
-    
+
         setLoading(true);
         try {
             const response = await fetch(`${API_HOST}/${EMPLOYEE_REGISTRATION}/create-and-approve`, {
@@ -783,16 +801,16 @@ const EmployeeRegistration = () => {
                 },
                 body: formDataToSend
             });
-    
-            const data = await response.json(); 
-    
+
+            const data = await response.json();
+
             if (!response.ok || data.status === 500) {
                 throw new Error(data.message || `Failed with status: ${response.status}`);
             }
-    
+
             showPopup("Employee created and approved successfully", "success");
             handleReset();
-    
+
         } catch (error) {
             console.error("Error creating and approving employee:", error);
             showPopup(error.message || "Error creating and approving employee", "error");
@@ -1064,7 +1082,7 @@ const EmployeeRegistration = () => {
                                                         />
                                                     </div>
 
-                                                     <div className="col-md-4">
+                                                    <div className="col-md-4">
                                                         <label className="form-label">No. of experience</label>
                                                         <input
                                                             type="text"
@@ -1074,17 +1092,9 @@ const EmployeeRegistration = () => {
                                                         />
                                                     </div>
 
-                                                      <div className="col-md-4">
-                                                        <label className="form-label">Profile Description</label>
-                                                        <input
-                                                            type="text"
-                                                            className="form-control"
-                                                            placeholder="Profile Description"
-                                                            maxLength={mlenght}
-                                                        />
-                                                    </div>
 
-                                                      <div className="col-md-4">
+
+                                                    <div className="col-md-4">
                                                         <label className="form-label">Registration Number</label>
                                                         <input
                                                             type="text"
@@ -1094,8 +1104,8 @@ const EmployeeRegistration = () => {
                                                         />
                                                     </div>
 
-                                                     
-                                                     
+
+
                                                     {viewDept && (
                                                         <div className="col-md-4">
                                                             <label className="form-label">Department Name *</label>
@@ -1138,7 +1148,7 @@ const EmployeeRegistration = () => {
                                                         </select>
                                                     </div>
 
-                                                      <div className="col-md-4">
+                                                    <div className="col-md-4">
                                                         <label className="form-label">Designation </label>
                                                         <input
                                                             type="text"
@@ -1217,6 +1227,34 @@ const EmployeeRegistration = () => {
                                                         accept="image/*"
                                                         onChange={handleImageChange}
                                                     />
+                                                </div>
+                                            </div>
+
+                                            <div className="col-md-12">
+                                                <label className="form-label">Profile Description</label>
+                                                <div className="form-group col-md-10">
+                                                    <div className="form-label" style={{ border: '1px solid #ced4da', borderRadius: '6px', padding: '8px' }}>
+                                                        <div ref={profileInclusionRef}></div>
+                                                        <CKEditor
+                                                            editor={DecoupledEditor}
+                                                            data={formData.profileDescription}
+                                                            config={{
+                                                                toolbar: { shouldNotGroupWhenFull: true },
+                                                                alignment: {
+                                                                    options: ["left", "center", "right", "justify"],
+                                                                },
+                                                            }}
+                                                            
+                                                            onReady={(editor) => {
+                                                                profileEditorRef.current = editor;
+                                                                if (profileInclusionRef.current) {
+                                                                    profileInclusionRef.current.inngerHTML = '';
+                                                                    profileInclusionRef.current.appendChild(editor.ui.view.toolbar.element);
+                                                                }
+                                                            }}
+                                                            onChange={handleProfileEditorChange}
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1426,7 +1464,7 @@ const EmployeeRegistration = () => {
                                     </table>
                                     <button type="button" className="btn btn-success" onClick={addWorkExperienceRow}>
                                         Add Row +
-                                    </button> 
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -1473,7 +1511,7 @@ const EmployeeRegistration = () => {
                                     </table>
                                     <button type="button" className="btn btn-success" onClick={addmembershipsRow}>
                                         Add Row +
-                                    </button> 
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -1520,7 +1558,7 @@ const EmployeeRegistration = () => {
                                     </table>
                                     <button type="button" className="btn btn-success" onClick={addSpecialtyInterestRow}>
                                         Add Row +
-                                    </button> 
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -1567,7 +1605,7 @@ const EmployeeRegistration = () => {
                                     </table>
                                     <button type="button" className="btn btn-success" onClick={addAwardsDistinctionRow}>
                                         Add Row +
-                                    </button> 
+                                    </button>
                                 </div>
                             </div>
                         </div>
