@@ -33,10 +33,10 @@ const EmployeeRegistration = () => {
         document: [{ employeeDocumentId: 1, documentName: "", filePath: null }],
         // New sections
         specialtyCenter: [{ specialtyCenterId: 1, specialtyCenterName: "", centerId: "" }],
-        workExperience: [{ experienceId: 1, organizationName: "", designation: "", fromDate: "", toDate: "", duration: "", filePath: null }],
-        memberships: [{ membershipsId: 1, levelName: "", effectiveDate: "", filePath: null }],
-        specialtyInterest: [{ interestId: 1, specialtyInterestName: "", description: "", filePath: null }],
-        awardsDistinction: [{ awardId: 1, awardName: "", awardingBody: "", yearReceived: "", description: "", filePath: null }],
+        workExperience: [{ experienceId: 1, organizationName: "" }],
+        memberships: [{ membershipsId: 1, levelName: "" }],
+        specialtyInterest: [{ interestId: 1, specialtyInterestName: "" }],
+        awardsDistinction: [{ awardId: 1, awardName: "" }],
     };
     const [formData, setFormData] = useState(initialFormData);
     const [popup, setPopup] = useState("");
@@ -421,10 +421,10 @@ const EmployeeRegistration = () => {
             ...prev,
             workExperience: [
                 ...prev.workExperience,
-                { id: prev.workExperience.length + 1, organizationName: "", designation: "", fromDate: "", toDate: "", duration: "", filePath: null },
+                { experienceId: prev.workExperience.length + 1, organizationName: "" },
             ],
         }));
-    };
+    }; 
 
     const removeWorkExperienceRow = (index) => {
         setFormData((prev) => ({
@@ -439,10 +439,10 @@ const EmployeeRegistration = () => {
             ...prev,
             memberships: [
                 ...prev.memberships,
-                { id: prev.memberships.length + 1, levelName: "", effectiveDate: "", filePath: null },
+                { membershipsId: prev.memberships.length + 1, levelName: "" },
             ],
         }));
-    };
+    }; 
 
     const removemembershipsRow = (index) => {
         setFormData((prev) => ({
@@ -457,10 +457,10 @@ const EmployeeRegistration = () => {
             ...prev,
             specialtyInterest: [
                 ...prev.specialtyInterest,
-                { id: prev.specialtyInterest.length + 1, specialtyInterestName: "", description: "", filePath: null },
+                { interestId: prev.specialtyInterest.length + 1, specialtyInterestName: "" },
             ],
         }));
-    };
+    }; 
 
     const removeSpecialtyInterestRow = (index) => {
         setFormData((prev) => ({
@@ -475,10 +475,10 @@ const EmployeeRegistration = () => {
             ...prev,
             awardsDistinction: [
                 ...prev.awardsDistinction,
-                { id: prev.awardsDistinction.length + 1, awardName: "", awardingBody: "", yearReceived: "", description: "", filePath: null },
+                { awardId: prev.awardsDistinction.length + 1, awardName: "" },
             ],
         }));
-    };
+    }; 
 
     const removeAwardsDistinctionRow = (index) => {
         setFormData((prev) => ({
@@ -655,49 +655,28 @@ const EmployeeRegistration = () => {
             formDataToSend.append(`specialtyCenter[${index}].centerId`, center.centerId);
         });
 
-        // Work Experience
+        // Work Experience (simplified)
         formData.workExperience.forEach((exp, index) => {
             formDataToSend.append(`workExperience[${index}].experienceId`, exp.experienceId || '');
             formDataToSend.append(`workExperience[${index}].organizationName`, exp.organizationName);
-            formDataToSend.append(`workExperience[${index}].designation`, exp.designation);
-            formDataToSend.append(`workExperience[${index}].fromDate`, exp.fromDate);
-            formDataToSend.append(`workExperience[${index}].toDate`, exp.toDate);
-            formDataToSend.append(`workExperience[${index}].duration`, exp.duration);
-            if (exp.filePath) {
-                formDataToSend.append(`workExperience[${index}].filePath`, exp.filePath);
-            }
         });
 
-        // Designation Level
+        // Designation Level (simplified)
         formData.memberships.forEach((level, index) => {
             formDataToSend.append(`memberships[${index}].membershipsId`, level.membershipsId || '');
             formDataToSend.append(`memberships[${index}].levelName`, level.levelName);
-            formDataToSend.append(`memberships[${index}].effectiveDate`, level.effectiveDate);
-            if (level.filePath) {
-                formDataToSend.append(`memberships[${index}].filePath`, level.filePath);
-            }
         });
 
-        // Specialty Interest
+        // Specialty Interest (simplified)
         formData.specialtyInterest.forEach((interest, index) => {
             formDataToSend.append(`specialtyInterest[${index}].interestId`, interest.interestId || '');
             formDataToSend.append(`specialtyInterest[${index}].specialtyInterestName`, interest.specialtyInterestName);
-            formDataToSend.append(`specialtyInterest[${index}].description`, interest.description);
-            if (interest.filePath) {
-                formDataToSend.append(`specialtyInterest[${index}].filePath`, interest.filePath);
-            }
         });
 
-        // Awards & Distinctions
+        // Awards & Distinctions (simplified)
         formData.awardsDistinction.forEach((award, index) => {
             formDataToSend.append(`awardsDistinction[${index}].awardId`, award.awardId || '');
             formDataToSend.append(`awardsDistinction[${index}].awardName`, award.awardName);
-            formDataToSend.append(`awardsDistinction[${index}].awardingBody`, award.awardingBody);
-            formDataToSend.append(`awardsDistinction[${index}].yearReceived`, award.yearReceived);
-            formDataToSend.append(`awardsDistinction[${index}].description`, award.description);
-            if (award.filePath) {
-                formDataToSend.append(`awardsDistinction[${index}].filePath`, award.filePath);
-            }
         });
 
         return formDataToSend;
@@ -743,35 +722,10 @@ const EmployeeRegistration = () => {
                 specialtyCenterName: "", 
                 centerId: "" 
             }],
-            workExperience: [{ 
-                experienceId: 1, 
-                organizationName: "", 
-                designation: "", 
-                fromDate: "", 
-                toDate: "", 
-                duration: "", 
-                filePath: null 
-            }],
-            memberships: [{ 
-                membershipsId: 1, 
-                levelName: "", 
-                effectiveDate: "", 
-                filePath: null 
-            }],
-            specialtyInterest: [{ 
-                interestId: 1, 
-                specialtyInterestName: "", 
-                description: "", 
-                filePath: null 
-            }],
-            awardsDistinction: [{ 
-                awardId: 1, 
-                awardName: "", 
-                awardingBody: "", 
-                yearReceived: "", 
-                description: "", 
-                filePath: null 
-            }]
+            workExperience: [{ experienceId: 1, organizationName: "" }],
+            memberships: [{ membershipsId: 1, levelName: "" }],
+            specialtyInterest: [{ interestId: 1, specialtyInterestName: "" }],
+            awardsDistinction: [{ awardId: 1, awardName: "" }]
         });
 
         // Reset file related states
@@ -1444,11 +1398,6 @@ const EmployeeRegistration = () => {
                                             <tr>
                                                 <th>S.No</th>
                                                 <th>Organization Name</th>
-                                                <th>Designation</th>
-                                                <th>From Date</th>
-                                                <th>To Date</th>
-                                                <th>Duration</th>
-                                                <th>File Upload</th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
@@ -1467,50 +1416,6 @@ const EmployeeRegistration = () => {
                                                         />
                                                     </td>
                                                     <td>
-                                                        <input
-                                                            type="text"
-                                                            className="form-control"
-                                                            value={row.designation}
-                                                            placeholder="Designation"
-                                                            onChange={(e) => handleWorkExperienceChange(index, "designation", e.target.value)}
-                                                            maxLength={mlenght}
-                                                        />
-                                                    </td>
-                                                    <td>
-                                                        <input
-                                                            type="date"
-                                                            className="form-control"
-                                                            value={row.fromDate}
-                                                            onChange={(e) => handleWorkExperienceChange(index, "fromDate", e.target.value)}
-                                                        />
-                                                    </td>
-                                                    <td>
-                                                        <input
-                                                            type="date"
-                                                            className="form-control"
-                                                            value={row.toDate}
-                                                            onChange={(e) => handleWorkExperienceChange(index, "toDate", e.target.value)}
-                                                        />
-                                                    </td>
-                                                    <td>
-                                                        <input
-                                                            type="text"
-                                                            className="form-control"
-                                                            value={row.duration}
-                                                            placeholder="Duration (e.g., 2 years)"
-                                                            onChange={(e) => handleWorkExperienceChange(index, "duration", e.target.value)}
-                                                            maxLength={20}
-                                                        />
-                                                    </td>
-                                                    <td>
-                                                        <input
-                                                            type="file"
-                                                            className="form-control"
-                                                            onChange={(e) => handleWorkExperienceChange(index, "filePath", e.target.files[0])}
-                                                            accept=".pdf,.jpg,.jpeg,.png"
-                                                        />
-                                                    </td>
-                                                    <td>
                                                         <button type="button" className="btn btn-danger" onClick={() => removeWorkExperienceRow(index)}>
                                                             <i className="icofont-close"></i>
                                                         </button>
@@ -1521,7 +1426,7 @@ const EmployeeRegistration = () => {
                                     </table>
                                     <button type="button" className="btn btn-success" onClick={addWorkExperienceRow}>
                                         Add Row +
-                                    </button>
+                                    </button> 
                                 </div>
                             </div>
                         </div>
@@ -1540,8 +1445,6 @@ const EmployeeRegistration = () => {
                                             <tr>
                                                 <th>S.No</th>
                                                 <th>Level Name</th>
-                                                <th>Effective Date</th>
-                                                <th>File Upload</th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
@@ -1560,22 +1463,6 @@ const EmployeeRegistration = () => {
                                                         />
                                                     </td>
                                                     <td>
-                                                        <input
-                                                            type="date"
-                                                            className="form-control"
-                                                            value={row.effectiveDate}
-                                                            onChange={(e) => handlemembershipsChange(index, "effectiveDate", e.target.value)}
-                                                        />
-                                                    </td>
-                                                    <td>
-                                                        <input
-                                                            type="file"
-                                                            className="form-control"
-                                                            onChange={(e) => handlemembershipsChange(index, "filePath", e.target.files[0])}
-                                                            accept=".pdf,.jpg,.jpeg,.png"
-                                                        />
-                                                    </td>
-                                                    <td>
                                                         <button type="button" className="btn btn-danger" onClick={() => removemembershipsRow(index)}>
                                                             <i className="icofont-close"></i>
                                                         </button>
@@ -1586,7 +1473,7 @@ const EmployeeRegistration = () => {
                                     </table>
                                     <button type="button" className="btn btn-success" onClick={addmembershipsRow}>
                                         Add Row +
-                                    </button>
+                                    </button> 
                                 </div>
                             </div>
                         </div>
@@ -1605,8 +1492,6 @@ const EmployeeRegistration = () => {
                                             <tr>
                                                 <th>S.No</th>
                                                 <th>Specialty Interest Name</th>
-                                                <th>Description</th>
-                                                <th>File Upload</th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
@@ -1625,23 +1510,6 @@ const EmployeeRegistration = () => {
                                                         />
                                                     </td>
                                                     <td>
-                                                        <textarea
-                                                            className="form-control"
-                                                            value={row.description}
-                                                            placeholder="Description"
-                                                            onChange={(e) => handleSpecialtyInterestChange(index, "description", e.target.value)}
-                                                            rows={2}
-                                                        />
-                                                    </td>
-                                                    <td>
-                                                        <input
-                                                            type="file"
-                                                            className="form-control"
-                                                            onChange={(e) => handleSpecialtyInterestChange(index, "filePath", e.target.files[0])}
-                                                            accept=".pdf,.jpg,.jpeg,.png"
-                                                        />
-                                                    </td>
-                                                    <td>
                                                         <button type="button" className="btn btn-danger" onClick={() => removeSpecialtyInterestRow(index)}>
                                                             <i className="icofont-close"></i>
                                                         </button>
@@ -1652,7 +1520,7 @@ const EmployeeRegistration = () => {
                                     </table>
                                     <button type="button" className="btn btn-success" onClick={addSpecialtyInterestRow}>
                                         Add Row +
-                                    </button>
+                                    </button> 
                                 </div>
                             </div>
                         </div>
@@ -1671,10 +1539,6 @@ const EmployeeRegistration = () => {
                                             <tr>
                                                 <th>S.No</th>
                                                 <th>Award Name</th>
-                                                <th>Awarding Body</th>
-                                                <th>Year Received</th>
-                                                <th>Description</th>
-                                                <th>File Upload</th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
@@ -1693,45 +1557,6 @@ const EmployeeRegistration = () => {
                                                         />
                                                     </td>
                                                     <td>
-                                                        <input
-                                                            type="text"
-                                                            className="form-control"
-                                                            value={row.awardingBody}
-                                                            placeholder="Awarding Body"
-                                                            onChange={(e) => handleAwardsDistinctionChange(index, "awardingBody", e.target.value)}
-                                                            maxLength={mlenght}
-                                                        />
-                                                    </td>
-                                                    <td>
-                                                        <input
-                                                            type="text"
-                                                            className="form-control"
-                                                            value={row.yearReceived}
-                                                            placeholder="YYYY"
-                                                            onChange={(e) => handleAwardsDistinctionChange(index, "yearReceived", e.target.value.replace(/\D/g, '').slice(0, 4))}
-                                                            maxLength={4}
-                                                            inputMode="numeric"
-                                                            pattern="\d*"
-                                                        />
-                                                    </td>
-                                                    <td>
-                                                        <textarea
-                                                            className="form-control"
-                                                            value={row.description}
-                                                            placeholder="Description"
-                                                            onChange={(e) => handleAwardsDistinctionChange(index, "description", e.target.value)}
-                                                            rows={2}
-                                                        />
-                                                    </td>
-                                                    <td>
-                                                        <input
-                                                            type="file"
-                                                            className="form-control"
-                                                            onChange={(e) => handleAwardsDistinctionChange(index, "filePath", e.target.files[0])}
-                                                            accept=".pdf,.jpg,.jpeg,.png"
-                                                        />
-                                                    </td>
-                                                    <td>
                                                         <button type="button" className="btn btn-danger" onClick={() => removeAwardsDistinctionRow(index)}>
                                                             <i className="icofont-close"></i>
                                                         </button>
@@ -1742,7 +1567,7 @@ const EmployeeRegistration = () => {
                                     </table>
                                     <button type="button" className="btn btn-success" onClick={addAwardsDistinctionRow}>
                                         Add Row +
-                                    </button>
+                                    </button> 
                                 </div>
                             </div>
                         </div>
