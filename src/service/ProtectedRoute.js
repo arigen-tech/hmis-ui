@@ -116,6 +116,7 @@ const validRoutes = [
   "/ItemReceivingMainScreen",
   "/AdmissionStatusMaster",
   "/IntakeItemMaster",
+  "/PatientacuityMaster",
 
   
 ];
