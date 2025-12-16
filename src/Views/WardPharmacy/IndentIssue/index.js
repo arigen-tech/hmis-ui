@@ -29,13 +29,9 @@ const IndentIssue = () => {
   const [showPreviousIssues, setShowPreviousIssues] = useState(false)
   const [previousIssuesData, setPreviousIssuesData] = useState([])
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
-  const [confirmAction, setConfirmAction] = useState(null) // "partially" or "fully"
 
   const [previousIssuesLoading, setPreviousIssuesLoading] = useState(false)
   const [previousIssuesError, setPreviousIssuesError] = useState(null)
-
-
-
 
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId")
 
@@ -49,9 +45,7 @@ const IndentIssue = () => {
       }
 
       setLoading(true);
-
       const url = `${Store_Internal_Indent}/getallindentforissue?deptId=${deptId}`;
-
       console.log("Fetching indents for issue from URL:", url);
 
       const response = await getRequest(url);
@@ -97,7 +91,6 @@ const IndentIssue = () => {
         indent.items.forEach(item => {
           const itemCode = item.pvmsNo || `ITEM_${item.itemId}`;
 
-
           let totalAvailableStock = 0;
           if (item.batches && Array.isArray(item.batches)) {
             totalAvailableStock = item.batches.reduce((sum, batch) => {
@@ -115,19 +108,17 @@ const IndentIssue = () => {
             });
           }
 
-          // CHANGE 2: Extract batch options for this item
-          // Backend now returns batches SORTED BY EXPIRY DATE (FEFO)
+          // Extract batch options for this item - Backend returns batches SORTED BY EXPIRY DATE (FEFO)
           if (item.batches && Array.isArray(item.batches)) {
             console.log(`Processing batches for item ${itemCode}:`, item.batches);
 
-            // IMPORTANT: Batches come from backend ALREADY SORTED by expiry date
-            // So we just map them without re-sorting
+            // Batches come from backend ALREADY SORTED by expiry date
             batchMap[itemCode] = item.batches.map(batch => ({
               batchNo: batch.batchNo,
               dom: batch.manufactureDate,
               doe: batch.expiryDate,
-              stock: batch.batchstock || 0,  // Individual batch stock from current department
-              totalAvailableStock: totalAvailableStock  // Total for this item
+              stock: batch.batchstock || 0,
+              totalAvailableStock: totalAvailableStock
             }));
           }
         });
@@ -157,20 +148,33 @@ const IndentIssue = () => {
   }
 
   // Function to calculate auto-filled qty issued based on batch stock and approved qty
-  const calculateAutoQtyIssued = (batchStock, approvedQty, previousIssuedQty) => {
+  const calculateAutoQtyIssued = (batchStock, approvedQty, previousIssuedQty, availableStock) => {
     const batchStockNum = Number(batchStock) || 0;
     const approvedQtyNum = Number(approvedQty) || 0;
     const previousIssuedQtyNum = Number(previousIssuedQty) || 0;
+    const availableStockNum = Number(availableStock) || 0;
+    
     const remainingQty = Math.max(0, approvedQtyNum - previousIssuedQtyNum);
 
-    console.log("Calculating auto qty issued - batchStock:", batchStockNum, "approvedQty:", approvedQtyNum, "previousIssued:", previousIssuedQtyNum, "remainingQty:", remainingQty);
+    console.log("Calculating auto qty issued - batchStock:", batchStockNum, 
+                "approvedQty:", approvedQtyNum, 
+                "previousIssued:", previousIssuedQtyNum, 
+                "remainingQty:", remainingQty,
+                "availableStock:", availableStockNum);
 
     if (batchStockNum === 0 || remainingQty === 0) return "";
 
-    if (batchStockNum > remainingQty) {
-      return remainingQty.toString();
+    // Check if we have enough total stock for full issue
+    if (availableStockNum >= remainingQty) {
+        // We have enough stock - suggest min of batch stock or remaining qty
+        if (batchStockNum > remainingQty) {
+            return remainingQty.toString();
+        } else {
+            return batchStockNum.toString();
+        }
     } else {
-      return batchStockNum.toString();
+        // Not enough stock - leave empty (user should set to 0)
+        return "";
     }
   };
 
@@ -207,11 +211,16 @@ const IndentIssue = () => {
         const newBatchStock = selectedBatch.stock || 0;
         const approvedQty = Number(updatedEntries[index].approvedQty) || 0;
         const previousIssuedQty = Number(updatedEntries[index].previousIssuedQty) || 0;
+        const availableStock = Number(updatedEntries[index].availableStock) || 0;
 
-        // Auto-calculate qty issued based on batch stock and remaining approved qty
-        const autoQtyIssued = calculateAutoQtyIssued(newBatchStock, approvedQty, previousIssuedQty);
+        // Auto-calculate qty issued based on batch stock, approved qty, and total available stock
+        const autoQtyIssued = calculateAutoQtyIssued(newBatchStock, approvedQty, previousIssuedQty, availableStock);
 
-        console.log("Auto calculating qty issued - batchStock:", newBatchStock, "approvedQty:", approvedQty, "previousIssued:", previousIssuedQty, "autoQtyIssued:", autoQtyIssued);
+        console.log("Auto calculating qty issued - batchStock:", newBatchStock, 
+                   "approvedQty:", approvedQty, 
+                   "previousIssued:", previousIssuedQty, 
+                   "availableStock:", availableStock, 
+                   "autoQtyIssued:", autoQtyIssued);
 
         updatedEntries[index] = {
           ...updatedEntries[index],
@@ -221,7 +230,6 @@ const IndentIssue = () => {
           batchStock: newBatchStock,  // Individual batch stock
           qtyIssued: autoQtyIssued,
           balanceAfterIssue: Math.max(0, approvedQty - previousIssuedQty - Number(autoQtyIssued)),
-          // availableStock remains as SUM of all batches (already set from item)
         };
       }
     } else if (field === "qtyIssued") {
@@ -286,10 +294,12 @@ const IndentIssue = () => {
           }, 0);
         }
 
+        // Pass availableStock to the function
         const autoQtyIssued = calculateAutoQtyIssued(
           defaultBatchStock,
           approvedQty,
-          previousIssuedQty
+          previousIssuedQty,
+          totalAvailableStock
         );
 
         return {
@@ -328,7 +338,6 @@ const IndentIssue = () => {
     setSelectedRecord(null)
     setIndentEntries([])
     setShowConfirmDialog(false)
-    setConfirmAction(null)
   }
 
   const handleShowAll = () => {
@@ -345,7 +354,6 @@ const IndentIssue = () => {
       alert("Please enter a valid page number.")
     }
   }
-
 
   const addNewRow = () => {
     const newEntry = {
@@ -389,7 +397,7 @@ const IndentIssue = () => {
     })
   }
 
-  // Check if all items have Approved Qty equal to Total Issued (for Full Issue validation)
+  // Check if all items have Approved Qty equal to Total Issued
   const isAllItemsFullyIssued = () => {
     return indentEntries.every(entry => {
       const approvedQty = Number(entry.approvedQty) || 0;
@@ -400,21 +408,7 @@ const IndentIssue = () => {
     });
   };
 
-  // Check if Partial Issue is possible (at least one item has quantity to issue)
-  const isPartialIssuePossible = () => {
-    return indentEntries.some(entry => {
-      const approvedQty = Number(entry.approvedQty) || 0;
-      const previousIssuedQty = Number(entry.previousIssuedQty) || 0;
-      const qtyIssued = Number(entry.qtyIssued) || 0;
-      const remainingQty = Math.max(0, approvedQty - previousIssuedQty);
-
-      // Check if there's remaining quantity AND we have entered some quantity to issue
-      // Allow 0 as valid input for partial issue
-      return remainingQty > 0 && qtyIssued >= 0;
-    });
-  };
-
-  // Check if any item has quantity to issue (common check for both buttons)
+  // Check if any item has quantity to issue
   const hasItemsToIssue = () => {
     return indentEntries.some(entry => {
       const approvedQty = Number(entry.approvedQty) || 0;
@@ -422,8 +416,7 @@ const IndentIssue = () => {
       const previousIssuedQty = Number(entry.previousIssuedQty) || 0;
       const remainingQty = Math.max(0, approvedQty - previousIssuedQty);
 
-      // Check if there's remaining quantity AND we're trying to issue something (0 is allowed)
-      return remainingQty > 0 && qtyIssued >= 0;
+      return remainingQty > 0 && qtyIssued > 0;
     });
   };
 
@@ -432,14 +425,18 @@ const IndentIssue = () => {
     return indentEntries.some(entry => entry.itemCode && entry.itemName);
   };
 
-  const validateSubmission = (type) => {
+  const validateSubmission = () => {
     const errors = []
 
     // Check if at least one item has data
     if (!hasValidEntries()) {
       errors.push("At least one item must be selected");
-      return errors; // Early return as no items selected
+      return errors;
     }
+
+    // Track items that can be issued
+    const issuableItems = [];
+    const insufficientItems = [];
 
     indentEntries.forEach((entry, index) => {
       if (entry.itemCode && entry.itemName) {
@@ -447,53 +444,70 @@ const IndentIssue = () => {
         const approvedQty = Number(entry.approvedQty) || 0;
         const batchStock = Number(entry.batchStock) || 0;
         const previousIssuedQty = Number(entry.previousIssuedQty) || 0;
+        const availableStock = Number(entry.availableStock) || 0;
         const remainingQty = Math.max(0, approvedQty - previousIssuedQty);
 
-        // Check if batch is selected when trying to issue something (even 0)
-        if (entry.qtyIssued !== "" && !entry.batchNo && entry.availableStock > 0) {
-          errors.push(`Row ${index + 1}: Batch No is required`);
-        }
+        // Only validate items with approved quantity > 0
+        if (approvedQty > 0 && remainingQty > 0) {
+          // Check if user is trying to issue this item
+          if (qtyIssued > 0) {
+            // Validation for items being issued
+            if (!entry.batchNo) {
+              errors.push(`Row ${index + 1}: Batch No is required`);
+            }
 
-        if (qtyIssued > batchStock) {
-          errors.push(`Row ${index + 1}: Qty Issued (${qtyIssued}) cannot exceed Batch Stock (${batchStock})`);
-        }
+            if (qtyIssued !== remainingQty) {
+              errors.push(`Row ${index + 1}: Must issue full remaining quantity (${remainingQty})`);
+            }
 
-        if (qtyIssued > remainingQty) {
-          errors.push(`Row ${index + 1}: Qty Issued (${qtyIssued}) cannot exceed Remaining Approved Qty (${remainingQty})`);
-        }
+            if (qtyIssued > batchStock) {
+              errors.push(`Row ${index + 1}: Qty Issued (${qtyIssued}) cannot exceed Batch Stock (${batchStock})`);
+            }
 
-        // Check if qty issued is negative
-        if (qtyIssued < 0) {
-          errors.push(`Row ${index + 1}: Quantity to issue cannot be negative`);
+            if (qtyIssued > remainingQty) {
+              errors.push(`Row ${index + 1}: Qty Issued (${qtyIssued}) cannot exceed Remaining Approved Qty (${remainingQty})`);
+            }
+
+            // Check if sufficient stock available
+            if (availableStock < remainingQty) {
+              insufficientItems.push({
+                index: index + 1,
+                itemName: entry.itemName,
+                required: remainingQty,
+                available: availableStock
+              });
+            } else {
+              issuableItems.push({
+                index: index + 1,
+                itemName: entry.itemName,
+                qtyIssued: qtyIssued
+              });
+            }
+          }
+          // Note: Items with qtyIssued = 0 are allowed (won't be issued)
         }
       }
-    })
+    });
 
-    if (type === "fully") {
-      if (!isAllItemsFullyIssued()) {
-        errors.push("For Fully Issue, all items must have Qty Issued + Previous Issued equal to Approved Qty");
-      }
+    // Show warning for insufficient items that user is trying to issue
+    if (insufficientItems.length > 0) {
+      const insufficientList = insufficientItems.map(item => 
+        `Row ${item.index}: ${item.itemName} - Required: ${item.required}, Available: ${item.available}`
+      ).join('\n');
+      
+      errors.push(`Cannot issue these items due to insufficient stock:\n${insufficientList}\n\nPlease set Qty Issued to 0 for these items.`);
     }
 
-    // For partial issue, check if at least one item has remaining quantity
-    if (type === "partially") {
-      const hasRemainingQuantity = indentEntries.some(entry => {
-        const approvedQty = Number(entry.approvedQty) || 0;
-        const previousIssuedQty = Number(entry.previousIssuedQty) || 0;
-        const remainingQty = Math.max(0, approvedQty - previousIssuedQty);
-        return remainingQty > 0;
-      });
-
-      if (!hasRemainingQuantity) {
-        errors.push("For Partial Issue, at least one item must have remaining approved quantity");
-      }
+    // Check if at least one item can be issued
+    if (issuableItems.length === 0 && errors.length === 0) {
+      errors.push("No items can be issued. Either insufficient stock or no quantity entered.");
     }
 
-    return errors
-  }
+    return errors;
+  };
 
-  const handleButtonClick = (type) => {
-    const errors = validateSubmission(type);
+  const handleIssueClick = () => {
+    const errors = validateSubmission();
 
     if (errors.length > 0) {
       showPopup(errors.join("\n"), "error");
@@ -501,13 +515,10 @@ const IndentIssue = () => {
     }
 
     // Show confirmation dialog
-    setConfirmAction(type);
     setShowConfirmDialog(true);
   };
 
   const handleConfirmSubmit = async () => {
-    if (!confirmAction) return;
-
     try {
       setProcessing(true);
       setShowConfirmDialog(false);
@@ -515,13 +526,12 @@ const IndentIssue = () => {
 
       const payload = {
         indentMId: selectedRecord?.indentMId,
-        issueType: confirmAction === "fully" ? "full" : "partial",
         items: indentEntries
-          .filter((entry) => entry.itemCode && entry.itemName)
+          .filter((entry) => entry.itemCode && entry.itemName && Number(entry.qtyIssued) > 0)
           .map((entry) => ({
             indentTId: entry.id, // indent detail ID
-            issuedQty: entry.qtyIssued !== "" ? Number(entry.qtyIssued) : 0, // New quantity to issue (0 is allowed)
-            availablestock: entry.availableStock ? Number(entry.availableStock) : 0, // Send available stock as-is
+            issuedQty: Number(entry.qtyIssued) || 0,
+            availablestock: entry.availableStock ? Number(entry.availableStock) : 0,
           })),
       };
 
@@ -532,7 +542,7 @@ const IndentIssue = () => {
       console.log("API Response:", response);
 
       if (response && response.status === 200) {
-        showPopup(`Indent ${confirmAction === "fully" ? "fully" : "partially"} issued successfully!`, "success");
+        showPopup("Indent issued successfully!", "success");
 
         // After successful issue, remove the indent from the list
         setTimeout(() => {
@@ -554,19 +564,16 @@ const IndentIssue = () => {
       showPopup("Error issuing indent. Please try again.", "error");
     } finally {
       setProcessing(false);
-      setConfirmAction(null);
       setLoading(false);
     }
   };
 
   const handleCancelConfirm = () => {
     setShowConfirmDialog(false);
-    setConfirmAction(null);
   };
 
   const handleViewPreviousIssues = async (entry) => {
     try {
-      // Validate that itemId exists
       if (!entry.itemId) {
         showPopup("Item ID is missing. Cannot fetch previous issues.", "error");
         return;
@@ -574,13 +581,11 @@ const IndentIssue = () => {
 
       console.log("Opening previous issues modal for item:", entry.itemId);
 
-      // Set loading state and show modal
       setPreviousIssuesLoading(true);
       setPreviousIssuesError(null);
       setPreviousIssuesData([]);
       setShowPreviousIssues(true);
 
-      // Fetch from the real API
       const url = `${Store_Internal_Indent}/getpreviousissues?itemId=${entry.itemId}&indentMId=${selectedRecord?.indentMId || ''}`;
 
       console.log("Fetching previous issues from URL:", url);
@@ -590,7 +595,6 @@ const IndentIssue = () => {
 
       let data = [];
 
-      // Handle different response formats
       if (response && response.response && Array.isArray(response.response)) {
         data = response.response;
       } else if (response && Array.isArray(response)) {
@@ -622,12 +626,11 @@ const IndentIssue = () => {
     const date = new Date(dateStr);
 
     const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-indexed
+    const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
 
     return `${day}/${month}/${year}`;
   };
-
 
   const formatDateTime = (dateTimeStr) => {
     if (!dateTimeStr) return ""
@@ -714,8 +717,7 @@ const IndentIssue = () => {
         >
           <h5 className="mb-4">Confirm Issue</h5>
           <p className="mb-4">
-            Are you sure you want to {confirmAction === "fully" ? "fully" : "partially"} issue this indent?
-            {confirmAction === "fully" && " This will issue the full approved quantity for all items."}
+            Are you sure you want to issue this indent? This will issue the full approved quantity for all selected items.
           </p>
           <div className="d-flex justify-content-end gap-3">
             <button
@@ -728,11 +730,11 @@ const IndentIssue = () => {
             </button>
             <button
               type="button"
-              className={confirmAction === "fully" ? "btn btn-primary" : "btn btn-warning"}
+              className="btn btn-primary"
               onClick={handleConfirmSubmit}
               disabled={processing}
             >
-              {processing ? "Processing..." : `Yes, ${confirmAction === "fully" ? "Fully" : "Partially"} Issue`}
+              {processing ? "Processing..." : "Yes, Issue"}
             </button>
           </div>
         </div>
@@ -953,7 +955,7 @@ const IndentIssue = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={selectedRecord?.issuedDate ? formatDateTime(selectedRecord.issuedDate) : ""}
+                       value={selectedRecord?.storeApprovedDate ? formatDateTime(selectedRecord.storeApprovedDate) : ""}
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -964,7 +966,7 @@ const IndentIssue = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={selectedRecord?.issuedBy || ""}
+                      value={selectedRecord?.storeApprovedBy || ""}
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -999,100 +1001,98 @@ const IndentIssue = () => {
                             style={{ padding: "0", width: "20px" }}
                           >{index + 1}</td>
 
-
-<td style={{ position: "relative", overflow: "visible" }}>
-  <input
-    ref={(el) => (itemInputRefs.current[index] = el)}
-    type="text"
-    className="form-control form-control-sm"
-    value={entry.itemName}
-    onChange={(e) => {
-      const value = e.target.value
-      handleIndentEntryChange(index, "itemName", value)
-      if (value.length > 0) {
-        setActiveItemDropdown(index)
-      } else {
-        setActiveItemDropdown(null)
-      }
-    }}
-    placeholder="Item Name/Code"
-    autoComplete="off"
-    onFocus={() => setActiveItemDropdown(index)}
-    onBlur={() => {
-      setTimeout(() => {
-        if (!dropdownClickedRef.current) {
-          setActiveItemDropdown(null)
-        }
-        dropdownClickedRef.current = false
-      }, 150)
-    }}
-  />
-  {activeItemDropdown === index && (
-    <ul
-      className="list-group position-absolute"
-      style={{
-        zIndex: 9999,
-        maxHeight: 200,
-        overflowY: "auto",
-        minWidth: "450px",
-        /* CHANGE 1: Smart positioning - opens upward if it's in bottom rows */
-        bottom: indentEntries.length - index <= 2 ? "100%" : "auto",  // Opens upward for last 2 rows
-        top: indentEntries.length - index <= 2 ? "auto" : "100%",     // Opens downward for other rows
-        left: 0,
-        backgroundColor: "white",
-        border: "1px solid #dee2e6",
-        borderRadius: "0.375rem",
-        boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
-      }}
-    >
-      {itemOptions
-        .filter(
-          (opt) =>
-            entry.itemName === "" ||
-            opt.name.toLowerCase().includes(entry.itemName.toLowerCase()) ||
-            opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
-        )
-        .map((opt) => (
-          <li
-            key={opt.id}
-            className="list-group-item list-group-item-action"
-            style={{ 
-              cursor: "pointer",
-              padding: "8px 12px",  /* CHANGE 2: Reduced padding from default 16px to 8px */
-              fontSize: "14px"       /* CHANGE 3: Slightly smaller font for compact display */
-            }}
-            onMouseDown={(e) => {
-              e.preventDefault()
-              dropdownClickedRef.current = true
-            }}
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              handleIndentEntryChange(index, "itemName", opt.name)
-              setActiveItemDropdown(null)
-              dropdownClickedRef.current = false
-            }}
-          >
-            {opt.code} - {opt.name} (Total Stock: {opt.availableStock})
-          </li>
-        ))}
-      {itemOptions.filter(
-        (opt) =>
-          entry.itemName === "" ||
-          opt.name.toLowerCase().includes(entry.itemName.toLowerCase()) ||
-          opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
-      ).length === 0 &&
-        entry.itemName !== "" && (
-          <li 
-            className="list-group-item text-muted"
-            style={{ padding: "8px 12px" }}  /* CHANGE 4: Consistent padding for "no matches" */
-          >
-            No matches found
-          </li>
-        )}
-    </ul>
-  )}
-</td>
+                          <td style={{ position: "relative", overflow: "visible" }}>
+                            <input
+                              ref={(el) => (itemInputRefs.current[index] = el)}
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={entry.itemName}
+                              onChange={(e) => {
+                                const value = e.target.value
+                                handleIndentEntryChange(index, "itemName", value)
+                                if (value.length > 0) {
+                                  setActiveItemDropdown(index)
+                                } else {
+                                  setActiveItemDropdown(null)
+                                }
+                              }}
+                              placeholder="Item Name/Code"
+                              autoComplete="off"
+                              onFocus={() => setActiveItemDropdown(index)}
+                              onBlur={() => {
+                                setTimeout(() => {
+                                  if (!dropdownClickedRef.current) {
+                                    setActiveItemDropdown(null)
+                                  }
+                                  dropdownClickedRef.current = false
+                                }, 150)
+                              }}
+                            />
+                            {activeItemDropdown === index && (
+                              <ul
+                                className="list-group position-absolute"
+                                style={{
+                                  zIndex: 9999,
+                                  maxHeight: 200,
+                                  overflowY: "auto",
+                                  minWidth: "450px",
+                                  bottom: indentEntries.length - index <= 2 ? "100%" : "auto",
+                                  top: indentEntries.length - index <= 2 ? "auto" : "100%",
+                                  left: 0,
+                                  backgroundColor: "white",
+                                  border: "1px solid #dee2e6",
+                                  borderRadius: "0.375rem",
+                                  boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
+                                }}
+                              >
+                                {itemOptions
+                                  .filter(
+                                    (opt) =>
+                                      entry.itemName === "" ||
+                                      opt.name.toLowerCase().includes(entry.itemName.toLowerCase()) ||
+                                      opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
+                                  )
+                                  .map((opt) => (
+                                    <li
+                                      key={opt.id}
+                                      className="list-group-item list-group-item-action"
+                                      style={{
+                                        cursor: "pointer",
+                                        padding: "8px 12px",
+                                        fontSize: "14px"
+                                      }}
+                                      onMouseDown={(e) => {
+                                        e.preventDefault()
+                                        dropdownClickedRef.current = true
+                                      }}
+                                      onClick={(e) => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        handleIndentEntryChange(index, "itemName", opt.name)
+                                        setActiveItemDropdown(null)
+                                        dropdownClickedRef.current = false
+                                      }}
+                                    >
+                                      {opt.code} - {opt.name} (Total Stock: {opt.availableStock})
+                                    </li>
+                                  ))}
+                                {itemOptions.filter(
+                                  (opt) =>
+                                    entry.itemName === "" ||
+                                    opt.name.toLowerCase().includes(entry.itemName.toLowerCase()) ||
+                                    opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
+                                ).length === 0 &&
+                                  entry.itemName !== "" && (
+                                    <li
+                                      className="list-group-item text-muted"
+                                      style={{ padding: "8px 12px" }}
+                                    >
+                                      No matches found
+                                    </li>
+                                  )}
+                              </ul>
+                            )}
+                          </td>
                           <td>
                             <input
                               type="text"
@@ -1254,7 +1254,7 @@ const IndentIssue = () => {
                               onChange={(e) => handleIndentEntryChange(index, "qtyIssued", e.target.value)}
                               placeholder="0"
                               min="0"
-                              title="Enter quantity to issue (0 is allowed)"
+                              title="Enter quantity to issue"
                             />
                           </td>
 
@@ -1340,21 +1340,12 @@ const IndentIssue = () => {
                 <div className="d-flex justify-content-end gap-2 mt-4">
                   <button
                     type="button"
-                    className="btn btn-warning"
-                    onClick={() => handleButtonClick("partially")}
-                    disabled={processing}
-                    title="Partially issue items (0 quantity allowed)"
-                  >
-                    {processing ? "Processing..." : "Partially Issue"}
-                  </button>
-                  <button
-                    type="button"
                     className="btn btn-primary"
-                    onClick={() => handleButtonClick("fully")}
+                    onClick={handleIssueClick}
                     disabled={processing}
-                    title="Fully issue all items"
+                    title="Issue indent"
                   >
-                    {processing ? "Processing..." : "Fully Issue"}
+                    {processing ? "Processing..." : "Issue"}
                   </button>
                   <button
                     type="button"
@@ -1447,7 +1438,7 @@ const IndentIssue = () => {
                     {currentItems.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="text-center">
-                          {loading ? "Loading..." : "No records found."}
+                          {loading ? <LoadingScreen /> : "No records found."}
                         </td>
                       </tr>
                     ) : (
