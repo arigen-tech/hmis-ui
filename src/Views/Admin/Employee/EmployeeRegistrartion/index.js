@@ -1372,7 +1372,7 @@ const EmployeeRegistration = () => {
                                                                 type="text"
                                                                 className="form-control"
                                                                 value={row.specialtyCenterName}
-                                                                placeholder="Search or enter specialty center"
+                                                                placeholder="Enter speciality details"
                                                                 onChange={(e) => {
                                                                     handleSpecialtyCenterChange(index, "specialtyCenterName", e.target.value);
                                                                     setSpecialtySearch(e.target.value);
@@ -1448,7 +1448,7 @@ const EmployeeRegistration = () => {
                                                             type="text"
                                                             className="form-control"
                                                             value={row.organizationName}
-                                                            placeholder="Organization Name"
+                                                            placeholder="Enter organization details"
                                                             onChange={(e) => handleWorkExperienceChange(index, "organizationName", e.target.value)}
                                                             maxLength={mlenght}
                                                         />
@@ -1495,7 +1495,7 @@ const EmployeeRegistration = () => {
                                                             type="text"
                                                             className="form-control"
                                                             value={row.levelName}
-                                                            placeholder="Level Name"
+                                                            placeholder="Enter membership details"
                                                             onChange={(e) => handlemembershipsChange(index, "levelName", e.target.value)}
                                                             maxLength={mlenght}
                                                         />
@@ -1542,7 +1542,7 @@ const EmployeeRegistration = () => {
                                                             type="text"
                                                             className="form-control"
                                                             value={row.specialtyInterestName}
-                                                            placeholder="Specialty Interest"
+                                                            placeholder="Enter specialty details"
                                                             onChange={(e) => handleSpecialtyInterestChange(index, "specialtyInterestName", e.target.value)}
                                                             maxLength={mlenght}
                                                         />
@@ -1589,7 +1589,7 @@ const EmployeeRegistration = () => {
                                                             type="text"
                                                             className="form-control"
                                                             value={row.awardName}
-                                                            placeholder="Award Name"
+                                                            placeholder="Enter award details"
                                                             onChange={(e) => handleAwardsDistinctionChange(index, "awardName", e.target.value)}
                                                             maxLength={mlenght}
                                                         />
