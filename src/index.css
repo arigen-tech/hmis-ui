@@ -19226,12 +19226,13 @@
    color: var(--white-color);
    align-items: center;
    padding: 8px 0;
-   font-size: 17px;
+   font-size: 1rem;
  }
  .sidebar .menu-list .ms-link {
    color: var(--white-color);
    position: relative;
    padding: 5px 0;
+   font-size: 0.9rem;
  }
  .sidebar .menu-list .ms-link span {
    font-size: 14px;
