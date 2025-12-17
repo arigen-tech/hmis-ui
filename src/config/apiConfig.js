@@ -54,7 +54,7 @@ export const MAS_HSN = `${MASTERS}/masHSN`;
 export const DG_MAS_COLLECTION = `${MASTERS}/DgMasCollection`;
 export const DG_MAS_INVESTIGATION_CATEGORY=`${MASTERS}/masInvestigationCategory`;
 export const DG_MAS_INVESTIGATION_METHODOLOGY=`${MASTERS}/masInvestigationMethodology`;
-
+export const MAS_DESIGNATION = `${MASTERS}/masDesignation`;
 
 
 export const DG_UOM = `${MASTERS}/dgUom`;

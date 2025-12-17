@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import DecoupledEditor from '@ckeditor/ckeditor5-build-decoupled-document';
 import placeholderImage from "../../../../assets/images/placeholder.jpg";
-import { MAS_COUNTRY, MAS_DISTRICT, MAS_STATE, MAS_DEPARTMENT, MAS_GENDER, MAS_ROLES, MAS_IDENTIFICATION_TYPE, API_HOST, MAS_EMPLOYMENT_TYPE, MAS_USER_TYPE, EMPLOYEE_REGISTRATION } from "../../../../config/apiConfig";
+import { MAS_COUNTRY, MAS_DISTRICT, MAS_STATE, MAS_DEPARTMENT, MAS_GENDER, MAS_ROLES, MAS_IDENTIFICATION_TYPE, API_HOST, MAS_EMPLOYMENT_TYPE, MAS_USER_TYPE, EMPLOYEE_REGISTRATION,MAS_DESIGNATION } from "../../../../config/apiConfig";
 import { getRequest, putRequest, postRequestWithFormData } from "../../../../service/apiService";
 import Popup from "../../../../Components/popup";
 
@@ -30,6 +30,7 @@ const EmployeeRegistration = () => {
         roleId: "",
         fromDate: "",
         deprtId: "",
+        designation: "",
 
         qualification: [{ employeeQualificationId: 1, institutionName: "", completionYear: "", qualificationName: "", filePath: null }],
         document: [{ employeeDocumentId: 1, documentName: "", filePath: null }],
@@ -67,6 +68,9 @@ const EmployeeRegistration = () => {
     const [specialtyCenterData, setSpecialtyCenterData] = useState([]);
     const [specialtySearch, setSpecialtySearch] = useState("");
     const [MAS_SPECIALITY_CENTER, setMAS_SPECIALITY_CENTER] = useState("masSpecialityCenter");
+    const [selectedDesignationId, setSelectedDesignationId] = useState("");
+    const [designationData, setDesignationData] = useState([]);
+    const [designationLoading, setDesignationLoading] = useState(false);
 
     const [countryIds, setCountryIds] = useState("");
     const [stateIds, setStateIds] = useState("");
@@ -218,6 +222,33 @@ const EmployeeRegistration = () => {
         }
     };
 
+const fetchDesignationByEmpTypeData = async (employeeTypeId) => {
+    if (!employeeTypeId) {
+        setDesignationData([]);
+        setSelectedDesignationId("");
+        return;
+    }
+
+    setDesignationLoading(true);
+    try {
+        const data = await getRequest(`${MAS_DESIGNATION}/getById/${employeeTypeId}`);
+        
+        if (data && data.status === 200 && Array.isArray(data.response)) {
+            setDesignationData(data.response);
+        } else {
+            console.error("Unexpected API response format:", data);
+            setDesignationData([]);
+            showPopup("Failed to fetch designations. Please try again.", "error");
+        }
+    } catch (error) {
+        console.error("Error fetching Designation data:", error);
+        setDesignationData([]);
+        showPopup("Failed to fetch designations. Please try again.", "error");
+    } finally {
+        setDesignationLoading(false);
+    }
+};
+
     const fetchEmploymentTypeData = async () => {
         setLoading(true);
         try {
@@ -323,12 +354,28 @@ const EmployeeRegistration = () => {
         }));
     };
 
-    const handleEmployeeTypeChange = (empTypeId) => {
-        setFormData((prevState) => ({
-            ...prevState,
-            employeeTypeId: empTypeId,
-        }));
-    };
+const handleEmployeeTypeChange = (empTypeId) => {
+    setFormData((prevState) => ({
+        ...prevState,
+        employeeTypeId: empTypeId,
+        designation: "", 
+    }));
+
+    setDesignationData([]);
+    setSelectedDesignationId("");
+    
+    if (empTypeId) {
+        fetchDesignationByEmpTypeData(empTypeId);
+    }
+};
+
+const handleDesignationChange = (designationId) => {
+    setSelectedDesignationId(designationId);
+    setFormData((prevState) => ({
+        ...prevState,
+        designation: designationId,
+    }));
+};
 
     const handleRoleChange = (role) => {
         setFormData((prevState) => ({
@@ -1149,13 +1196,21 @@ const EmployeeRegistration = () => {
                                                     </div>
 
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Designation </label>
-                                                        <input
-                                                            type="text"
-                                                            className="form-control"
-                                                            placeholder="Designation "
-                                                            maxLength={mlenght}
-                                                        />
+                                                        <label className="form-label">Designation *</label>
+                                                        <select
+                                                            className="form-select"
+                                                            style={{ paddingRight: "40px" }}
+                                                            value={formData.designationId}
+                                                            onChange={(e) => handleDesignationChange(parseInt(e.target.value, 10))}
+                                                            disabled={loading}
+                                                        >
+                                                            <option value="">Select Designation</option>
+                                                            {designationData.map((designation) => (
+                                                                <option key={designation.id} value={designation.id}>
+                                                                    {designation.designationName} {/* Adjust field name based on your API response */}
+                                                                </option>
+                                                            ))}
+                                                        </select>
                                                     </div>
 
                                                     <div className="col-md-4">
@@ -1244,7 +1299,7 @@ const EmployeeRegistration = () => {
                                                                     options: ["left", "center", "right", "justify"],
                                                                 },
                                                             }}
-                                                            
+
                                                             onReady={(editor) => {
                                                                 profileEditorRef.current = editor;
                                                                 if (profileInclusionRef.current) {
