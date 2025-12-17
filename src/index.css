@@ -18305,11 +18305,12 @@
  .table tr th {
    color: var(--text-color);
    text-transform: uppercase;
-   font-size: 12px;
+   font-size: 10px;
  }
  .table tr td {
    border-color: var(--border-color);
    color: var(--text-color);
+   padding: 0.3rem 0.4rem !important;
  }
  .table tr:hover td {
    color: var(--color-800);
