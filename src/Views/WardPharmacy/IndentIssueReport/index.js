@@ -1,8 +1,8 @@
 import { useState } from "react";
 
-const MedicineIssueRegister = () => {
+const ItemIssueRegister = () => {
   const [department, setDepartment] = useState("");
-  const [drugName, setDrugName] = useState("");
+  const [itemName, setItemName] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -104,7 +104,7 @@ const MedicineIssueRegister = () => {
 
   const handleReset = () => {
     setDepartment("");
-    setDrugName("");
+    setItemName("");
     setFromDate("");
     setToDate("");
   };
@@ -116,7 +116,7 @@ const MedicineIssueRegister = () => {
           <div className="card form-card">
             <div className="card-header">
               <h4 className="card-title p-2 mb-0">
-                Medicine Issue Register
+                Item Issue Register
               </h4>
             </div>
             <div className="card-body">
@@ -136,13 +136,13 @@ const MedicineIssueRegister = () => {
                   </select>
                 </div>
                 <div className="col-md-3">
-                  <label className="form-label fw-bold">Drug Name</label>
+                  <label className="form-label fw-bold">Item Name</label>
                   <input
                     type="text"
                     className="form-control"
-                    value={drugName}
-                    onChange={(e) => setDrugName(e.target.value)}
-                    placeholder="Enter drug name"
+                    value={itemName}
+                    onChange={(e) => setItemName(e.target.value)}
+                    placeholder="Enter item name"
                   />
                 </div>
                 <div className="col-md-2">
@@ -219,4 +219,4 @@ const MedicineIssueRegister = () => {
   );
 };
 
-export default MedicineIssueRegister;
+export default ItemIssueRegister;

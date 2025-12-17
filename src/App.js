@@ -116,6 +116,7 @@ import IntakeTypeMaster from './Views/Masters/IntakeTypeMaster';
 import InpatientMaster from  './Views/Masters/InpatientMaster';
 import SpecialityMaster from './Views/Masters/SpecialityMaster';
 import ViewDownwload from './Views/Laboratory/ViewDownload';
+import ItemIssueRegister from './Views/WardPharmacy/IndentIssueReport';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -240,7 +241,7 @@ function App() {
                 <Route path="IndentIssue" element={<IndentIssue/>} />
                 <Route path="IndentApproval" element={<IndentApproval/>} />
                 <Route path="TokenDisplay" element={<PatientWaitingList/>} />
-                <Route path="MedicineIssueRegister" element={<MedicineIssueRegister/>} />
+                <Route path="MedicineIssueRegister" element={<ItemIssueRegister/>} />
                 <Route path="IssueReferenceReport" element={<IssueReferenceReport/>} />
                 <Route path="CareLevelMaster" element={<CareLevelMaster/>} />
                 <Route path="WardCategoryMaster" element={<WardCategoryMaster/>} />
