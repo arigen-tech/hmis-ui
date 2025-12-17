@@ -120,6 +120,7 @@ const validRoutes = [
   "/OutputTypeMaster",
   "/IntakeTypeMaster",
   "/InpatientMaster",
+  "/SpecialityMaster",
 
   
 ];
