@@ -39,81 +39,71 @@ const GeneralMedicineWaitingList = () => {
   const [showModelPopup, setModelShowPopup] = useState(false);
   const [popupType, setPopupType] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
-
-  // Ref to detect click outside
   const dropdownRef = useRef(null);
-
-  // Add new state variables for Doctor's Remarks
-  const [doctorRemarksTemplates, setDoctorRemarksTemplates] = useState([
-    "Minimize the intake of fried and spicy food",
-    "Do exercise for at least 30-45 minutes every morning",
-    "Take nutritious food daily and drink 2-3 liters of water",
-    "Do not consume tobacco, alcohol and narcotics",
-    "Must take 7-8 hours of sleep daily"
-  ])
-
-  const [selectedDoctorRemarks, setSelectedDoctorRemarks] = useState([])
-  const [showDoctorRemarksModal, setShowDoctorRemarksModal] = useState(false)
   const [doctorRemarksText, setDoctorRemarksText] = useState("")
+  const departmentName =
+    localStorage.getItem("departmentName") ||
+    sessionStorage.getItem("departmentName") ||
+    "";
+
+    const searchTimeoutRef = useRef(null);
+
+
 
   // Add state variables for Admission
+
+  const [wardCategory, setWardCategory] = useState("")
+  const [wardCategories, setWardCategories] = useState([])
+
+  const [admissionCareLevel, setAdmissionCareLevel] = useState("")
+  const [admissionCareLevelName, setAdmissionCareLevelName] = useState("")
+
+  const [wardDepartments, setWardDepartments] = useState([])
+  const [wardName, setWardName] = useState("")
+
+  const [occupiedBeds, setOccupiedBeds] = useState("0")
+  const [vacantBeds, setVacantBeds] = useState("0")
+
+
+
   const [admissionDate, setAdmissionDate] = useState("")
   const [admissionRemarks, setAdmissionRemarks] = useState("")
-  const [wardCategory, setWardCategory] = useState("")
-  const [admissionCareLevel, setAdmissionCareLevel] = useState("")
-  const [wardName, setWardName] = useState("")
   const [admissionPriority, setAdmissionPriority] = useState("Normal")
   const [admissionAdvised, setAdmissionAdvised] = useState(false)
-  const [occupiedBeds, setOccupiedBeds] = useState(0)
-  const [vacantBeds, setVacantBeds] = useState(0)
-
-  // Add state for ward categories and departments
-  const [wardCategories, setWardCategories] = useState([])
+  const [wardDepartment, setWardDepartment] = useState([])
   const [careLevels, setCareLevels] = useState([])
-  const [wardDepartments, setWardDepartments] = useState([])
   const [admissionPriorities, setAdmissionPriorities] = useState([
     "Normal", "Urgent", "Critical"
   ])
 
-  // Ward data with occupied/vacant beds
-  const wardData = {
-    1: { // General Ward
-      departments: [
-        { id: 1, name: "General Ward - Floor 1", occupied: 5, vacant: 15 },
-        { id: 2, name: "General Ward - Floor 2", occupied: 3, vacant: 17 },
-        { id: 3, name: "General Ward - Floor 3", occupied: 8, vacant: 12 }
-      ],
-      defaultCareLevel: "Low"
-    },
-    2: { // Private Ward
-      departments: [
-        { id: 4, name: "Private Room - 101", occupied: 0, vacant: 1 },
-        { id: 5, name: "Private Room - 102", occupied: 1, vacant: 0 },
-        { id: 6, name: "Private Room - 103", occupied: 0, vacant: 1 }
-      ],
-      defaultCareLevel: "Medium"
-    },
-    3: { // ICU
-      departments: [
-        { id: 7, name: "ICU - Unit A", occupied: 4, vacant: 2 },
-        { id: 8, name: "ICU - Unit B", occupied: 5, vacant: 1 },
-        { id: 9, name: "ICU - Unit C", occupied: 3, vacant: 3 }
-      ],
-      defaultCareLevel: "Critical"
-    },
-    4: { // Semi-Private
-      departments: [
-        { id: 10, name: "Semi-Private - Room 201", occupied: 1, vacant: 1 },
-        { id: 11, name: "Semi-Private - Room 202", occupied: 0, vacant: 2 }
-      ],
-      defaultCareLevel: "Medium"
-    },
-    5: { // Special Ward
-      departments: [
-        { id: 12, name: "Special Ward - Cardiac", occupied: 6, vacant: 4 },
-        { id: 13, name: "Special Ward - Neuro", occupied: 7, vacant: 3 }
-      ],
-      defaultCareLevel: "High"
+
+
+  const fetchWardCategoryData = async () => {
+    try {
+      const data = await getRequest(`${MASTERS}/masWardCategory/getAll/1`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setWardCategories(data.response);
+      } else {
+        setWardCategories([]);
+      }
+    } catch (error) {
+      console.error("Error fetching WardCategory data:", error);
+    }
+  };
+
+  const fetchWardData = async (categoryId) => {
+    try {
+      const data = await getRequest(
+        `${MASTERS}/ward-department/getAllBy/${categoryId}`
+      )
+
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setWardDepartments(data.response)
+      } else {
+        setWardDepartments([])
+      }
+    } catch (error) {
+      console.error("Error fetching Ward data:", error)
     }
   }
 
@@ -129,73 +119,39 @@ const GeneralMedicineWaitingList = () => {
     );
   };
 
-  // Add function to fetch ward categories
-  const fetchWardCategories = async () => {
-    try {
-      // This would be your API call to fetch ward categories
-      // For now, using static data
-      setWardCategories([
-        { id: 1, name: "General" },
-        { id: 2, name: "Private" },
-        { id: 3, name: "ICU" },
-        { id: 4, name: "Semi-Private" },
-        { id: 5, name: "Special" }
-      ])
-    } catch (error) {
-      console.error("Error fetching ward categories:", error)
-    }
-  }
-
-  // Add function to fetch care levels
-  const fetchCareLevels = async () => {
-    try {
-      // This would be your API call to fetch care levels
-      // For now, using static data
-      setCareLevels([
-        { id: 1, name: "Low" },
-        { id: 2, name: "Medium" },
-        { id: 3, name: "High" },
-        { id: 4, name: "Critical" }
-      ])
-    } catch (error) {
-      console.error("Error fetching care levels:", error)
-    }
-  }
-
-  // Handle ward category selection
   const handleWardCategoryChange = (categoryId) => {
     setWardCategory(categoryId)
-
-    // Reset ward name and bed counts
     setWardName("")
-    setOccupiedBeds(0)
-    setVacantBeds(0)
+    setOccupiedBeds("0")
+    setVacantBeds("0")
+    setWardDepartments([])
 
-    // Set default care level based on ward category
-    if (wardData[categoryId]) {
-      const defaultCareLevel = wardData[categoryId].defaultCareLevel
-      const careLevel = careLevels.find(cl => cl.name === defaultCareLevel)
-      if (careLevel) {
-        setAdmissionCareLevel(careLevel.id)
-      }
+    const selectedCategory = wardCategories.find(
+      (cat) => cat.categoryId === categoryId
+    )
 
-      // Populate ward departments
-      setWardDepartments(wardData[categoryId].departments || [])
-    } else {
-      setWardDepartments([])
+    if (selectedCategory) {
+      // store care id
+      setAdmissionCareLevel(selectedCategory.careId)
+
+      // show care level name
+      setAdmissionCareLevelName(selectedCategory.careLevelName)
+
+      // fetch ward list
+      fetchWardData(categoryId)
     }
   }
 
-  // Handle ward name/department selection
   const handleWardNameChange = (deptId) => {
     setWardName(deptId)
 
-    if (wardCategory && wardData[wardCategory]) {
-      const selectedDept = wardData[wardCategory].departments.find(d => d.id === deptId)
-      if (selectedDept) {
-        setOccupiedBeds(selectedDept.occupied)
-        setVacantBeds(selectedDept.vacant)
-      }
+    const selectedWard = wardDepartments.find(
+      (dept) => dept.id === deptId
+    )
+
+    if (selectedWard) {
+      setOccupiedBeds(selectedWard.occupiedBed)
+      setVacantBeds(selectedWard.vacantBed)
     }
   }
 
@@ -231,6 +187,106 @@ const GeneralMedicineWaitingList = () => {
     }
   }
 
+  const fetchMasProcedureData = async (page, searchText = "") => {
+    try {
+      const data = await getRequest(
+        `${MASTERS}/masProcedureFilter/getAll?flag=0&page=${page}&size=20&search=${encodeURIComponent(searchText)}`
+      );
+
+      if (data.status === 200 && data.response?.content) {
+        return {
+          list: data.response.content,
+          last: data.response.last,
+        };
+      }
+
+      return { list: [], last: true };
+    } catch (error) {
+      console.error("Error fetching Procedures:", error);
+      return { list: [], last: true };
+    }
+  };
+
+
+  const loadProcedureFirstPage = async (index) => {
+    const searchText = procedureSearch[index] || "";
+    const result = await fetchMasProcedureData(0, searchText);
+
+    setProcedureDropdown(result.list);
+    setProcedureLastPage(result.last);
+    setProcedurePage(0);
+  };
+
+
+  const loadMoreProcedure = async () => {
+    if (procedureLastPage) return;
+
+    const nextPage = procedurePage + 1;
+    const result = await fetchMasProcedureData(nextPage, procedureSearch[openProcedureDropdown] || "");
+
+    setProcedureDropdown((prev) => [...prev, ...result.list]);
+    setProcedureLastPage(result.last);
+    setProcedurePage(nextPage);
+  };
+
+
+  const updateProcedure = (selected, index) => {
+    if (!selected) return;
+
+    // prevent duplicate selection
+    const exists = procedureCareItems.some(
+      (item, idx) => String(item.id) === String(selected.procedureId) && idx !== index
+    );
+
+
+    if (exists) {
+      setDuplicateItems([{ icdDiagnosis: selected.procedureName }]);
+      setShowDuplicatePopup(true);
+      return;
+    }
+
+    setProcedureCareItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        id: selected.procedureId,
+        name: selected.procedureName,
+      };
+      return updated;
+    });
+
+    // clear search after selecting
+    setProcedureSearch((prev) => {
+      const updated = [...prev];
+      updated[index] = "";
+      return updated;
+    });
+  };
+
+
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      const refs = procedureDropdownRef.current;
+
+      const clickedInside = refs.some(
+        (ref) => ref && ref.contains && ref.contains(e.target)
+      );
+
+      if (!clickedInside) {
+        setOpenProcedureDropdown(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+
+
+
+
+
   const fetchMasICDData = async (page, searchText = "") => {
     try {
       const data = await getRequest(
@@ -250,6 +306,7 @@ const GeneralMedicineWaitingList = () => {
       return { list: [], last: true };
     }
   };
+
 
   // FIRST PAGE LOAD
   const loadFirstPage = async (index) => {
@@ -339,7 +396,7 @@ const GeneralMedicineWaitingList = () => {
   const fetchDoctorData = async () => {
     setLoading(true);
     try {
-      const data = await getRequest(`${DOCTOR}/allDoctor/list`);
+      const data = await getRequest(`${DOCTOR}/doctorsByDepartment`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setDoctorData(data.response);
       } else {
@@ -352,6 +409,8 @@ const GeneralMedicineWaitingList = () => {
       setLoading(false);
     }
   };
+
+
 
   const fetchSessionData = async () => {
     setLoading(true);
@@ -377,11 +436,11 @@ const GeneralMedicineWaitingList = () => {
     fetchDoctorData();
     fetchSessionData();
     fetchMasICDData();
+    fetchMasProcedureData();
     fetchOpdTemplateData();
     fatchDrugCodeOptions();
     fetchAllFrequencies();
-    fetchWardCategories();
-    fetchCareLevels();
+    fetchWardCategoryData();
   }, []);
 
   const [searchFilters, setSearchFilters] = useState({
@@ -417,9 +476,9 @@ const GeneralMedicineWaitingList = () => {
 
   const [expandedSections, setExpandedSections] = useState({
     personalDetails: false,
-    clinicalHistory: false,
+    clinicalHistory: true,
     vitalDetail: false,
-    diagnosis: false,
+    diagnosis: true,
     investigation: false,
     treatment: false,
     treatmentAdvice: false,
@@ -482,6 +541,14 @@ const GeneralMedicineWaitingList = () => {
 
   const [workingDiagnosis, setWorkingDiagnosis] = useState("")
 
+  const [followUps, setFollowUps] = useState({
+    noOfFollowDays: "",
+    followUpFlag: "n",
+    FolloUpDate: getToday(),
+  });
+
+  console.log("followUps",followUps)
+
   const [diagnosisItems, setDiagnosisItems] = useState([
     {
       icdDiagId: "",
@@ -501,62 +568,69 @@ const GeneralMedicineWaitingList = () => {
     setSelectedItems([]);
   };
 
-const handleOk = () => {
+  const handleOk = () => {
     if (selectedItems.length === 0) {
-        alert("Please select at least one item.");
-        return;
+      alert("Please select at least one item.");
+      return;
     }
 
     const newNames = selectedItems.map(x => x.name);
 
     const mergeValues = (oldValue, newValues) => {
-        const oldArr = oldValue ? oldValue.split(",").map(x => x.trim()) : [];
-        const merged = Array.from(new Set([...oldArr, ...newValues]));
-        return merged.join(", ");
+      const oldArr = oldValue ? oldValue.split(",").map(x => x.trim()) : [];
+      const merged = Array.from(new Set([...oldArr, ...newValues]));
+      return merged.join(", ");
     };
 
     if (popupType === "symptoms") {
-        setFormData({
-            ...formData,
-            patientSymptoms: mergeValues(formData.patientSymptoms, newNames),
-        });
+      setFormData({
+        ...formData,
+        patientSymptoms: mergeValues(formData.patientSymptoms, newNames),
+      });
     }
 
     if (popupType === "past") {
-        setFormData({
-            ...formData,
-            pastHistory: mergeValues(formData.pastHistory, newNames),
-        });
+      setFormData({
+        ...formData,
+        pastHistory: mergeValues(formData.pastHistory, newNames),
+      });
     }
 
     if (popupType === "family") {
-        setFormData({
-            ...formData,
-            familyHistory: mergeValues(formData.familyHistory, newNames),
-        });
+      setFormData({
+        ...formData,
+        familyHistory: mergeValues(formData.familyHistory, newNames),
+      });
     }
 
     if (popupType === "treatmentAdvice") {
-        setGeneralTreatmentAdvice(prev =>
-            mergeValues(prev, newNames)
-        );
+      setGeneralTreatmentAdvice(prev =>
+        mergeValues(prev, newNames)
+      );
+    }
+
+    if (popupType === "doctorRemark") {
+      setDoctorRemarksText(prev =>
+        mergeValues(prev, newNames)
+      );
     }
 
     setModelShowPopup(false);
     setSelectedItems([]);
-};
+  };
 
-const handleSelect = (item) => {
+
+  const handleSelect = (item) => {
     setSelectedItems(prev => {
-        const exists = prev.find(x => x.id === item.id);
+      const exists = prev.find(x => x.id === item.id);
 
-        if (exists) {
-            return prev.filter(x => x.id !== item.id);
-        }
+      if (exists) {
+        return prev.filter(x => x.id !== item.id);
+      }
 
-        return [...prev, item];
+      return [...prev, item];
     });
-};
+  };
 
 
   const [templates, setTemplates] = useState(["Blood Test Template", "Cardiac Template", "Diabetes Template"])
@@ -591,14 +665,21 @@ const handleSelect = (item) => {
   const [physiotherapyTreatmentAdvice, setPhysiotherapyTreatmentAdvice] = useState("")
   const [selectedTreatmentAdviceItems, setSelectedTreatmentAdviceItems] = useState([])
 
+  const [procedureDropdown, setProcedureDropdown] = useState([]);
+  const [procedurePage, setProcedurePage] = useState(0);
+  const [procedureLastPage, setProcedureLastPage] = useState(true);
+  const [procedureSearch, setProcedureSearch] = useState([]);
+  const [openProcedureDropdown, setOpenProcedureDropdown] = useState(null);
+  const procedureDropdownRef = useRef([]);
+
+
   const [procedureCareItems, setProcedureCareItems] = useState([
-    {
-      name: "",
-      frequency: "",
-      days: "",
-      remarks: "",
-    },
-  ])
+    { id: "", name: "", frequency: "", days: "", remarks: "" }
+  ]);
+
+
+  console.log("procedureCareItems", procedureCareItems)
+
 
   const [physiotherapyItems, setPhysiotherapyItems] = useState([
     {
@@ -614,10 +695,7 @@ const handleSelect = (item) => {
   const [isSurgeryDropdownVisible, setIsSurgeryDropdownVisible] = useState(false)
   const [selectedSurgeryIndex, setSelectedSurgeryIndex] = useState(null)
   const [additionalAdvice, setAdditionalAdvice] = useState("")
-  // Removed duplicate admissionAdvised state
-  // Removed duplicate admissionDate state
-  // Removed duplicate selectedWard state
-  // Removed duplicate admissionNotes state
+
 
   // Referral state - UPDATED
   const [referralData, setReferralData] = useState({
@@ -695,19 +773,9 @@ const handleSelect = (item) => {
     setShowCurrentMedicationModal(false)
   }
 
-  // Doctor's Remarks handlers
-  const handleOpenDoctorRemarksModal = () => {
-    setShowDoctorRemarksModal(true)
-  }
 
-  const handleCloseDoctorRemarksModal = () => {
-    setShowDoctorRemarksModal(false)
-  }
 
-  const handleSaveDoctorRemarks = (selectedRemarks) => {
-    setSelectedDoctorRemarks(selectedRemarks)
-    setDoctorRemarksText(selectedRemarks.join("\n"))
-  }
+
 
   const handleInputFocus = (event, index) => {
     const rect = event.target.getBoundingClientRect()
@@ -1305,26 +1373,24 @@ const handleSelect = (item) => {
     });
 
     // Reset Doctor's Remarks
-    setSelectedDoctorRemarks([])
-    setDoctorRemarksText("")
-    setShowDoctorRemarksModal(false)
+    setDoctorRemarksText("");
 
     // Reset Admission fields
-    setAdmissionAdvised(false)
-    setAdmissionDate("")
-    setAdmissionRemarks("")
-    setWardCategory("")
-    setAdmissionCareLevel("")
-    setWardName("")
-    setAdmissionPriority("Normal")
-    setOccupiedBeds(0)
-    setVacantBeds(0)
+    setAdmissionAdvised(false);
+    setAdmissionDate("");
+    setAdmissionRemarks("");
+    setWardCategory("");
+    setAdmissionCareLevel("");
+    setWardName("");
+    setAdmissionPriority("Normal");
+    setOccupiedBeds(0);
+    setVacantBeds(0);
 
     setSelectedHistoryType("");
 
     // Reset template selections
     setSelectedTemplateIds(new Set());
-    setSelectedTreatmentTemplateIds(new Set());   // 🔥 MISSING earlier (important)
+    setSelectedTreatmentTemplateIds(new Set());
 
     // Reset diagnosis
     setDiagnosisItems([
@@ -1338,9 +1404,38 @@ const handleSelect = (item) => {
 
     setWorkingDiagnosis("");
 
-    // Reset investigations / treatments
-    setInvestigationItems([]);
-    setTreatmentItems([]);
+    // Reset followUps
+    setFollowUps({
+      noOfFollowDays: "",
+      followUpFlag: "n",
+      FolloUpDate: getToday(),
+    });
+
+    // Reset investigations / treatments with default one row each
+    setInvestigationItems([
+      {
+        investigationId: "",
+        templateIds: [],
+        name: "",
+        date: getToday(),
+      },
+    ]);
+
+    setTreatmentItems([
+      {
+        treatmentId: null,
+        drugId: "",
+        drugName: "",
+        dispUnit: "",
+        dosage: "",
+        frequency: "",
+        days: "",
+        total: "",
+        instruction: "",
+        stock: "0",
+        templateId: "",
+      },
+    ]);
 
     // Reset form
     setFormData({
@@ -1501,17 +1596,35 @@ const handleSelect = (item) => {
         treatment: treatmentList,
         treatmentAdvice: generalTreatmentAdvice,
 
+        // ======== procedureCare =======
+        // procedureCare: procedureCareItems.map(item => ({
+        //   procedureId: Number(item.id),
+        //   procedureName: item.name,
+        //   frequencyId: Number(item.frequency),
+        //   noOfDays: Number(item.days),
+        //   remarks: item.remarks
+        // })),
+
         // ===== Doctor's Remarks =====
         doctorRemarks: doctorRemarksText,
 
+        // ======== follow up =====
+        followUpFlag: followUps.followUpFlag,
+        followUpDate: followUps.FolloUpDate ? new Date(followUps.FolloUpDate).toISOString() : null,
+        followUpDays: Number(followUps.noOfFollowDays),
+
         // ===== Admission Details =====
-        admissionAdvised: admissionAdvised,
-        admissionDate: admissionDate,
-        admissionRemarks: admissionRemarks,
-        wardCategory: wardCategory,
-        admissionCareLevel: admissionCareLevel,
-        wardName: wardName,
-        admissionPriority: admissionPriority,
+
+        admissionFlag: admissionAdvised ? "y" : "n",
+        admissionAdvisedDate: admissionAdvised && admissionDate ? new Date(admissionDate).toISOString() : null,
+        admissionRemarks: additionalAdvice || null,
+        admissionCareLevel: admissionAdvised ? Number(admissionCareLevel) : null,
+        admissionWardCategory: admissionAdvised ? Number(wardCategory) : null,
+        admissionWard: admissionAdvised ? Number(wardName) : null,
+        admissionPriority: admissionAdvised ? admissionPriority : null,
+
+        // ================= Referal ================
+        referralFlag: referralData.isReferred === "Yes" ? "y" : "n",
 
         // ===== Mapping IDs =====
         opdPatientDetailId: vitalsAvlaible ? opdVitalsData.opdPatientDetailsId : null,
@@ -1526,24 +1639,22 @@ const handleSelect = (item) => {
 
       if (response?.status === 200 || response?.success === true) {
         showPopup(
-          "Recall patient Create successfully!",
+          "Recall patient created successfully!",
           "success",
-
+          () => {
+            handleResetForm();
+            setShowDetailView(false);
+            handleSearch();
+          }
         );
-        handleResetForm();
-        setShowDetailView(false);
-        setWaitingList([]);
-
-
       } else {
         alert("Updated but unexpected response received.");
       }
 
-      //console.log("Final Payload =", payload);
 
     } catch (error) {
       console.error("Update Error:", error);
-      showPopup("Failed to update. Please try again.", "error");
+      showPopup("Failed to Submit Data. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -1554,6 +1665,7 @@ const handleSelect = (item) => {
 
 
   const handleResetForm = () => {
+    // Reset main form data
     setFormData({
       height: "",
       weight: "",
@@ -1583,31 +1695,65 @@ const handleSelect = (item) => {
       },
     ]);
 
+    // Reset followUps to default
+    setFollowUps({
+      noOfFollowDays: "",
+      followUpFlag: "n",
+      FolloUpDate: getToday(),
+    });
 
-    // Important resets
+    // Important resets for templates
     setSelectedTreatmentTemplateIds(new Set());
     setSelectedTemplateIds(new Set());
 
-    // Reset Doctor's Remarks
-    setSelectedDoctorRemarks([])
-    setDoctorRemarksText("")
+    // Reset doctor remarks
+    setDoctorRemarksText("");
 
     // Reset Admission fields
-    setAdmissionAdvised(false)
-    setAdmissionDate("")
-    setAdmissionRemarks("")
-    setWardCategory("")
-    setAdmissionCareLevel("")
-    setWardName("")
-    setAdmissionPriority("Normal")
-    setOccupiedBeds(0)
-    setVacantBeds(0)
+    setAdmissionAdvised(false);
+    setAdmissionDate("");
+    setAdmissionRemarks("");
+    setWardCategory("");
+    setAdmissionCareLevel("");
+    setWardName("");
+    setAdmissionPriority("Normal");
+    setOccupiedBeds(0);
+    setVacantBeds(0);
 
+    // Reset working diagnosis
     setWorkingDiagnosis("");
-    setInvestigationItems([]);
-    setTreatmentItems([]);
+
+    // Reset investigations with one default row
+    setInvestigationItems([
+      {
+        investigationId: "",
+        templateIds: [],
+        name: "",
+        date: getToday(),
+      },
+    ]);
+
+    // Reset treatments with one default row
+    setTreatmentItems([
+      {
+        treatmentId: null,
+        drugId: "",
+        drugName: "",
+        dispUnit: "",
+        dosage: "",
+        frequency: "",
+        days: "",
+        total: "",
+        instruction: "",
+        stock: "0",
+        templateId: "",
+      },
+    ]);
+
+    // Reset form errors
     setErrors({});
   };
+
 
 
   const handleRelease = (patientId) => {
@@ -1960,7 +2106,7 @@ const handleSelect = (item) => {
     return drugCodeOptions.find(d => d.itemId === itemId);
   };
 
-    const getFreqDetails = (feqId) => {
+  const getFreqDetails = (feqId) => {
     return allFrequencies.find(d => d.frequencyId === feqId);
   };
 
@@ -2105,6 +2251,13 @@ const handleSelect = (item) => {
     currentPage * itemsPerPage
   );
 
+  const calculateFollowUpDate = (days) => {
+    const date = new Date();
+    date.setDate(date.getDate() + Number(days || 0));
+    return date.toISOString().split("T")[0];
+  };
+
+
   // HANDLE PAGE INPUT
   const handlePageNavigation = () => {
     const pageNumber = Number.parseInt(pageInput, 10);
@@ -2162,97 +2315,6 @@ const handleSelect = (item) => {
     }
   };
 
-  // Doctor's Remarks Modal Component
-  const DoctorRemarksModal = ({ show, onClose, templates, onSave }) => {
-    const [selectedItems, setSelectedItems] = useState(new Set())
-
-    const handleCheckboxChange = (index) => {
-      setSelectedItems(prev => {
-        const newSet = new Set(prev)
-        if (newSet.has(index)) {
-          newSet.delete(index)
-        } else {
-          newSet.add(index)
-        }
-        return newSet
-      })
-    }
-
-    const handleSelectAll = () => {
-      if (selectedItems.size === templates.length) {
-        setSelectedItems(new Set())
-      } else {
-        setSelectedItems(new Set(templates.map((_, index) => index)))
-      }
-    }
-
-    const handleSave = () => {
-      const selectedTemplates = Array.from(selectedItems).map(index => templates[index])
-      onSave(selectedTemplates)
-      onClose()
-    }
-
-    if (!show) return null
-
-    return (
-      <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-        <div className="modal-dialog modal-lg">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title">DOCTOR'S REMARKS TEMPLATE</h5>
-              <button
-                type="button"
-                className="btn-close"
-                onClick={onClose}
-              ></button>
-            </div>
-            <div className="modal-body">
-              <div className="table-responsive">
-                <table className="table table-bordered">
-                  <thead style={{ backgroundColor: "#b0c4de" }}>
-                    <tr>
-                      <th style={{ width: "5%" }}>
-                        <input
-                          type="checkbox"
-                          className="form-check-input"
-                          checked={selectedItems.size === templates.length}
-                          onChange={handleSelectAll}
-                        />
-                      </th>
-                      <th style={{ width: "95%" }}>Doctor Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {templates.map((remark, index) => (
-                      <tr key={index}>
-                        <td>
-                          <input
-                            type="checkbox"
-                            className="form-check-input"
-                            checked={selectedItems.has(index)}
-                            onChange={() => handleCheckboxChange(index)}
-                          />
-                        </td>
-                        <td>{remark}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-primary" onClick={handleSave}>
-                OK
-              </button>
-              <button className="btn btn-secondary" onClick={onClose}>
-                CLOSE
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   if (showDetailView && selectedPatient) {
     return (
@@ -2422,12 +2484,12 @@ const handleSelect = (item) => {
                                 Patient signs & symptoms
                               </label>
 
-                              <button
+                              {/* <button
                                 className="btn btn-sm btn-outline-success p-1 px-2"
                                 onClick={() => openPopup("symptoms")}
                               >
                                 +
-                              </button>
+                              </button> */}
                             </div>
                             <input
                               type="text"
@@ -3503,17 +3565,17 @@ const handleSelect = (item) => {
                               </div>
                               <div className="col-md-1 text-center">
                                 <button
-                                className="btn btn-sm btn-outline-success p-1 px-2"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openPopup("treatmentAdvice");
-                                }}
-                              >
-                                +
-                              </button>
+                                  className="btn btn-sm btn-outline-success p-1 px-2"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openPopup("treatmentAdvice");
+                                  }}
+                                >
+                                  +
+                                </button>
                               </div>
 
-                              
+
                             </div>
                           </div>
                         )}
@@ -3523,7 +3585,7 @@ const handleSelect = (item) => {
                 </div>
 
                 {/* Procedure Care Section */}
-                <div className="card mb-3">
+                <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
@@ -3533,7 +3595,7 @@ const handleSelect = (item) => {
                     <span style={{ fontSize: "18px" }}>{expandedSections.procedureCare ? "−" : "+"}</span>
                   </div>
                   {expandedSections.procedureCare && (
-                    <div className="card-body">
+                    <div className="card-body" style={{ overflow: "visible" }}>
                       <div className="row mb-3">
                         <div className="col-12 d-flex gap-4">
                           <div className="form-check">
@@ -3566,7 +3628,7 @@ const handleSelect = (item) => {
                       </div>
 
                       {procedureCareType === "procedure" ? (
-                        <div className="table-responsive">
+                        <div className="table-responsive" style={{ overflow: "visible" }}>
                           <table className="table table-bordered">
                             <thead style={{ backgroundColor: "#b0c4de" }}>
                               <tr>
@@ -3590,27 +3652,114 @@ const handleSelect = (item) => {
                               {procedureCareItems.map((row, index) => (
                                 <tr key={index}>
                                   <td>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      value={row.name}
-                                      onChange={(e) => handleProcedureCareChange(index, "name", e.target.value)}
-                                      placeholder="Enter nursing care name"
-                                    />
+                                    <div
+                                      className="procedure-wrapper"
+                                      ref={(el) => (procedureDropdownRef.current[index] = el)}
+                                      style={{ position: "relative", width: "100%" }}
+                                    >
+
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Search Procedure..."
+                                        value={procedureCareItems[index].name || procedureSearch[index] || ""}
+                                        onChange={async (e) => {
+                                          const val = e.target.value;
+                                          setProcedureSearch((prev) => {
+                                            const updated = [...prev];
+                                            updated[index] = val;
+                                            return updated;
+                                          });
+
+                                          const result = await fetchMasProcedureData(0, val);
+                                          setProcedureDropdown(result.list);
+                                          setProcedureLastPage(result.last);
+                                          setProcedurePage(0);
+                                          setOpenProcedureDropdown(index);
+                                        }}
+                                        onClick={() => {
+                                          loadProcedureFirstPage(index);
+                                          setOpenProcedureDropdown(index);
+                                        }}
+                                        onBlur={() => {
+                                          setTimeout(() => {
+                                            const selected = procedureCareItems[index];
+                                            const text = procedureSearch[index];
+
+                                            if ((!selected.id || selected.name !== text) && text !== "") {
+                                              setProcedureSearch((prev) => {
+                                                const updated = [...prev];
+                                                updated[index] = "";
+                                                return updated;
+                                              });
+
+                                              setProcedureCareItems((prev) => {
+                                                const updated = [...prev];
+                                                updated[index].id = "";
+                                                updated[index].name = "";
+                                                return updated;
+                                              });
+                                            }
+                                            setOpenProcedureDropdown(null);
+                                          }, 150);
+                                        }}
+                                      />
+
+                                      {openProcedureDropdown === index && (
+                                        <div
+                                          className="border rounded bg-white position-absolute w-100 shadow-lg"
+                                          style={{
+                                            maxHeight: "250px",
+                                            overflowY: "auto",
+                                            zIndex: 999999,
+                                            top: "100%",
+                                            left: 0
+                                          }}
+                                          onScroll={(e) => {
+                                            if (e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight) {
+                                              loadMoreProcedure();
+                                            }
+                                          }}
+                                        >
+                                          {procedureDropdown.length > 0 ? (
+                                            procedureDropdown.map((proc) => (
+                                              <div
+                                                key={proc.procedureId}
+                                                className="p-2 cursor-pointer hover:bg-light"
+                                                onMouseDown={() => {
+                                                  updateProcedure(proc, index);
+                                                  setOpenProcedureDropdown(null);
+                                                }}
+                                              >
+                                                {proc.procedureCode} - {proc.procedureName}
+                                              </div>
+                                            ))
+                                          ) : (
+                                            <div className="p-2 text-muted">No results found</div>
+                                          )}
+
+                                          {!procedureLastPage && (
+                                            <div className="text-center p-2 text-primary small">Loading...</div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
                                   </td>
+
                                   <td>
                                     <select
                                       className="form-select"
-                                      value={row.frequency}
+                                      value={row.frequency || ""}
                                       onChange={(e) =>
                                         handleProcedureCareChange(index, "frequency", e.target.value)
                                       }
                                     >
-                                      <option value="">Select</option>
-                                      <option value="OD">OD</option>
-                                      <option value="BID">BID</option>
-                                      <option value="TID">TID</option>
-                                      <option value="QID">QID</option>
+                                      <option value="">Select..</option>
+                                      {allFrequencies.map((f) => (
+                                        <option key={f.frequencyId} value={f.frequencyId}>
+                                          {f.frequencyName}
+                                        </option>
+                                      ))}
                                     </select>
                                   </td>
                                   <td>
@@ -3620,6 +3769,7 @@ const handleSelect = (item) => {
                                       value={row.days}
                                       onChange={(e) => handleProcedureCareChange(index, "days", e.target.value)}
                                       placeholder="0"
+                                      min={0}
                                     />
                                   </td>
                                   <td>
@@ -3691,16 +3841,17 @@ const handleSelect = (item) => {
                                   <td>
                                     <select
                                       className="form-select"
-                                      value={row.frequency}
+                                      value={row.frequency || ""}
                                       onChange={(e) =>
                                         handlePhysiotherapyChange(index, "frequency", e.target.value)
                                       }
                                     >
-                                      <option value="">Select</option>
-                                      <option value="OD">OD</option>
-                                      <option value="BID">BID</option>
-                                      <option value="TID">TID</option>
-                                      <option value="QID">QID</option>
+                                      <option value="">Select..</option>
+                                      {allFrequencies.map((f) => (
+                                        <option key={f.frequencyId} value={f.frequencyId}>
+                                          {f.frequencyName}
+                                        </option>
+                                      ))}
                                     </select>
                                   </td>
                                   <td>
@@ -3710,6 +3861,7 @@ const handleSelect = (item) => {
                                       value={row.days}
                                       onChange={(e) => handlePhysiotherapyChange(index, "days", e.target.value)}
                                       placeholder="0"
+                                      min={0}
                                     />
                                   </td>
                                   <td>
@@ -3920,16 +4072,7 @@ const handleSelect = (item) => {
                                 </label>
                               </div>
                             </div>
-                            <div className="col-md-9">
-                              <label className="form-label fw-bold">Admission Advice</label>
-                              <textarea
-                                className="form-control"
-                                rows={3}
-                                value={additionalAdvice}
-                                onChange={(e) => setAdditionalAdvice(e.target.value)}
-                                placeholder="Enter admission advice"
-                              ></textarea>
-                            </div>
+
                           </div>
 
                           {admissionAdvised && (
@@ -3944,17 +4087,15 @@ const handleSelect = (item) => {
                                     onChange={(e) => setAdmissionDate(e.target.value)}
                                   />
                                 </div>
-
-                                <div className="col-md-3">
-                                  <label className="form-label fw-bold">Notes <span className="text-danger">*</span></label>
-                                  <input
-                                    type="text"
+                                <div className="col-md-9">
+                                  <label className="form-label fw-bold">Admission Notes <span className="text-danger">*</span></label>
+                                  <textarea
                                     className="form-control"
-                                    value={admissionRemarks}
-                                    onChange={(e) => setAdmissionRemarks(e.target.value)}
-                                    placeholder="Enter notes"
-                                    required
-                                  />
+                                    rows={3}
+                                    value={additionalAdvice}
+                                    onChange={(e) => setAdditionalAdvice(e.target.value)}
+                                    placeholder="Enter admission advice"
+                                  ></textarea>
                                 </div>
                               </div>
 
@@ -3968,20 +4109,22 @@ const handleSelect = (item) => {
                                   >
                                     <option value="">Select Ward Category</option>
                                     {wardCategories.map((category) => (
-                                      <option key={category.id} value={category.id}>
-                                        {category.name}
+                                      <option key={category.categoryId} value={category.categoryId}>
+                                        {category.categoryName}
                                       </option>
                                     ))}
                                   </select>
+
                                 </div>
                                 <div className="col-md-3">
                                   <label className="form-label fw-bold">Care Level</label>
                                   <input
                                     type="text"
                                     className="form-control"
-                                    value={careLevels.find(cl => cl.id === admissionCareLevel)?.name || ""}
+                                    value={admissionCareLevelName}
                                     readOnly
                                   />
+
                                 </div>
                                 <div className="col-md-3">
                                   <label className="form-label fw-bold">Ward Name/Dept Name <span className="text-danger">*</span></label>
@@ -3990,15 +4133,15 @@ const handleSelect = (item) => {
                                     value={wardName}
                                     onChange={(e) => handleWardNameChange(Number(e.target.value))}
                                     disabled={!wardCategory}
-                                    required
                                   >
                                     <option value="">Select Ward/Dept</option>
                                     {wardDepartments.map((dept) => (
                                       <option key={dept.id} value={dept.id}>
-                                        {dept.name}
+                                        {dept.departmentName}
                                       </option>
                                     ))}
                                   </select>
+
                                 </div>
                                 <div className="col-md-3">
                                   <label className="form-label fw-bold">Admission Priority (Optional)</label>
@@ -4016,6 +4159,7 @@ const handleSelect = (item) => {
                                 </div>
                               </div>
 
+                              {/* {wardName && ( */}
                               <div className="row g-3 mt-3">
                                 <div className="col-md-3">
                                   <label className="form-label fw-bold">Occupied Bed</label>
@@ -4026,6 +4170,7 @@ const handleSelect = (item) => {
                                     readOnly
                                   />
                                 </div>
+
                                 <div className="col-md-3">
                                   <label className="form-label fw-bold">Vacant Bed</label>
                                   <input
@@ -4036,6 +4181,8 @@ const handleSelect = (item) => {
                                   />
                                 </div>
                               </div>
+                              {/* )} */}
+
                             </div>
                           )}
                         </div>
@@ -4396,7 +4543,6 @@ const handleSelect = (item) => {
 
 
                 <div className="card mb-3">
-                  {/* HEADER */}
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
@@ -4408,43 +4554,58 @@ const handleSelect = (item) => {
                     </span>
                   </div>
 
-                  {/* BODY */}
                   {expandedSections.followUp && (
                     <div className="card-body">
                       <div className="d-flex align-items-center justify-content-between">
 
-                        {/* LEFT SIDE: Checkbox + Label */}
+                        {/* Checkbox */}
                         <div className="d-flex align-items-center gap-2">
                           <input
                             type="checkbox"
                             className="form-check-input m-0"
+                            checked={followUps.followUpFlag === "y"}
+                            onChange={(e) =>
+                              setFollowUps({
+                                ...followUps,
+                                followUpFlag: e.target.checked ? "y" : "n",
+                              })
+                            }
                           />
                           <h6 className="fw-bold mb-0">Follow Up</h6>
                         </div>
 
-                        {/* RIGHT SIDE: Number of Days + Next Date */}
                         <div className="d-flex align-items-center gap-4">
 
                           {/* Number of Days */}
                           <div className="d-flex align-items-center gap-2">
                             <label className="form-label mb-0">Number of days</label>
-                            <select className="form-select" style={{ width: "150px" }}>
-                              <option value="">Select</option>
-                              <option value="1">1</option>
-                              <option value="2">2</option>
-                              <option value="3">3</option>
-                              <option value="4">4</option>
-                              <option value="5">5</option>
-                            </select>
+                            <input
+                              type="number"
+                              min={0}
+                              className="form-control"
+                              value={followUps.noOfFollowDays}
+                              onChange={(e) => {
+                                const days = e.target.value;
+                                setFollowUps({
+                                  ...followUps,
+                                  noOfFollowDays: days,
+                                  FolloUpDate: calculateFollowUpDate(days),
+                                });
+                              }}
+                              style={{ width: "120px" }}
+                              disabled={followUps.followUpFlag !== "y"}
+                            />
                           </div>
 
-                          {/* Next Date */}
+                          {/* Follow Up Date (Read Only) */}
                           <div className="d-flex align-items-center gap-2">
-                            <label className="form-label mb-0">Next date</label>
+                            <label className="form-label mb-0">Follow Up date</label>
                             <input
                               type="date"
                               className="form-control"
                               style={{ width: "170px" }}
+                              value={followUps.FolloUpDate}
+                              readOnly
                             />
                           </div>
 
@@ -4452,10 +4613,8 @@ const handleSelect = (item) => {
                       </div>
                     </div>
                   )}
-
-
-
                 </div>
+
 
                 {/* Doctor's Remarks Section */}
                 <div className="card mb-3">
@@ -4464,7 +4623,7 @@ const handleSelect = (item) => {
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("remarks")}
                   >
-                    <h6 className="mb-0 fw-bold">Remarks</h6>
+                    <h6 className="mb-0 fw-bold">Final Medicine Advice</h6>
                     <span style={{ fontSize: "18px" }}>
                       {expandedSections.remarks ? "−" : "+"}
                     </span>
@@ -4475,7 +4634,6 @@ const handleSelect = (item) => {
                     <div className="card-body">
                       <div className="row align-items-end">
                         <div className="col-md-11">
-                          <label className="form-label fw-bold">Doctor's Remarks</label>
                           <textarea
                             className="form-control"
                             rows={4}
@@ -4486,10 +4644,11 @@ const handleSelect = (item) => {
                         </div>
                         <div className="col-md-1 text-center">
                           <button
-                            className="btn btn-primary"
-                            style={{ padding: "8px 12px" }}
-                            onClick={handleOpenDoctorRemarksModal}
-                            title="Select Doctor Remarks Template"
+                            className="btn btn-sm btn-outline-success p-1 px-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openPopup("doctorRemark");
+                            }}
                           >
                             +
                           </button>
@@ -4547,13 +4706,6 @@ const handleSelect = (item) => {
           }}
         />
 
-        {/* Doctor's Remarks Modal */}
-        <DoctorRemarksModal
-          show={showDoctorRemarksModal}
-          onClose={handleCloseDoctorRemarksModal}
-          templates={doctorRemarksTemplates}
-          onSave={handleSaveDoctorRemarks}
-        />
 
         {/* OT Calendar Modal */}
         {showOtCalendarModal && (
@@ -4765,7 +4917,10 @@ const handleSelect = (item) => {
           <div className="card form-card">
             <div className="card-header">
               <div className="d-flex justify-content-between align-items-center">
-                <h4 className="card-title p-2 mb-0">GENERAL MEDICINE WAITING LIST</h4>
+                <h4 className="card-title p-2 mb-0">
+                  {departmentName ? `${departmentName} Waiting List` : "Waiting List"}
+                </h4>
+
 
               </div>
               {loading && <LoadingScreen />}
@@ -4859,63 +5014,67 @@ const handleSelect = (item) => {
                   </thead>
 
                   <tbody>
-                    {currentItems.map((item, index) => (
-                      <tr
-                        key={item.id}
-                        onClick={() => handleRowClick(item)}
-                        style={{ cursor: "pointer" }}
-                      >
-                        {/* SERIAL NUMBER */}
-                        <td>
-                          {(currentPage - 1) * itemsPerPage + index + 1}
-                        </td>
+                    {currentItems.length > 0 ? (
+                      currentItems.map((item, index) => (
+                        <tr
+                          key={item.id}
+                          onClick={() => handleRowClick(item)}
+                          style={{ cursor: "pointer" }}
+                        >
+                          {/* SERIAL NUMBER */}
+                          <td>
+                            {(currentPage - 1) * itemsPerPage + index + 1}
+                          </td>
 
-                        <td>
-                          <span className={`badge ${getPriorityColor(item.priority)}`}>
-                            {item.tokenNo}
-                          </span>
-                        </td>
+                          <td>
+                            <span className={`badge ${getPriorityColor(item.priority)}`}>
+                              {item.tokenNo}
+                            </span>
+                          </td>
 
-                        <td>{item.employeeNo}</td>
+                          <td>{item.employeeNo}</td>
+                          <td>{item.patientName}</td>
+                          <td>{item.relation}</td>
+                          <td>{item.age}</td>
+                          <td>{item.gender}</td>
+                          <td>{item.opdType}</td>
 
-                        <td>{item.patientName}</td>
+                          {/* RELEASE BUTTON */}
+                          <td>
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRelease(item.id);
+                              }}
+                            >
+                              RELEASE
+                            </button>
+                          </td>
 
-                        <td>{item.relation}</td>
-
-                        <td>{item.age}</td>
-
-                        <td>{item.gender}</td>
-
-                        <td>{item.opdType}</td>
-
-                        {/* RELEASE BUTTON */}
-                        <td>
-                          <button
-                            className="btn btn-primary btn-sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRelease(item.id);
-                            }}
-                          >
-                            RELEASE
-                          </button>
-                        </td>
-
-                        {/* CLOSE BUTTON */}
-                        <td>
-                          <button
-                            className="btn btn-danger btn-sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleClose(item.visitId);
-                            }}
-                          >
-                            CLOSE
-                          </button>
+                          {/* CLOSE BUTTON */}
+                          <td>
+                            <button
+                              className="btn btn-danger btn-sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleClose(item.visitId);
+                              }}
+                            >
+                              CLOSE
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="10" className="text-center text-muted">
+                          No records found
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
+
                 </table>
 
 

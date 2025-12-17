@@ -48,83 +48,78 @@ const OpdRRecallPatient = () => {
   const [duplicateItems, setDuplicateItems] = useState([]);
   const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
   const getToday = () => new Date().toISOString().split("T")[0]
-
+  const [doctorRemarksText, setDoctorRemarksText] = useState("");
   const [searchFilters, setSearchFilters] = useState({
     mobileNumber: "",
     patientName: "",
     date: getToday(),
   });
 
-  // Doctor's Remarks state
-  const [doctorRemarksTemplates, setDoctorRemarksTemplates] = useState([
-    "Minimize the intake of fried and spicy food",
-    "Do exercise for at least 30-45 minutes every morning",
-    "Take nutritious food daily and drink 2-3 liters of water",
-    "Do not consume tobacco, alcohol and narcotics",
-    "Must take 7-8 hours of sleep daily"
-  ])
-  const [selectedDoctorRemarks, setSelectedDoctorRemarks] = useState([])
-  const [showDoctorRemarksModal, setShowDoctorRemarksModal] = useState(false)
-  const [doctorRemarksText, setDoctorRemarksText] = useState("")
+  const [followUps, setFollowUps] = useState({
+    noOfFollowDays: "",
+    followUpFlag: "n",
+    FolloUpDate: getToday(),
+  });
+
 
   // Admission state
+
+
+  const [wardCategory, setWardCategory] = useState("")
+  const [wardCategories, setWardCategories] = useState([])
+
+  const [admissionCareLevel, setAdmissionCareLevel] = useState("")
+  const [admissionCareLevelName, setAdmissionCareLevelName] = useState("")
+
+  const [wardDepartments, setWardDepartments] = useState([])
+  const [wardName, setWardName] = useState("")
+
+  const [occupiedBeds, setOccupiedBeds] = useState("0")
+  const [vacantBeds, setVacantBeds] = useState("0")
+
+
+
   const [admissionDate, setAdmissionDate] = useState("")
   const [admissionRemarks, setAdmissionRemarks] = useState("")
-  const [wardCategory, setWardCategory] = useState("")
-  const [admissionCareLevel, setAdmissionCareLevel] = useState("")
-  const [wardName, setWardName] = useState("")
   const [admissionPriority, setAdmissionPriority] = useState("Normal")
   const [admissionAdvised, setAdmissionAdvised] = useState(false)
-  const [occupiedBeds, setOccupiedBeds] = useState(0)
-  const [vacantBeds, setVacantBeds] = useState(0)
-  const [wardCategories, setWardCategories] = useState([])
+  const [wardDepartment, setWardDepartment] = useState([])
   const [careLevels, setCareLevels] = useState([])
-  const [wardDepartments, setWardDepartments] = useState([])
   const [admissionPriorities, setAdmissionPriorities] = useState([
     "Normal", "Urgent", "Critical"
   ])
 
-  // Ward data with occupied/vacant beds
-  const wardData = {
-    1: { // General Ward
-      departments: [
-        { id: 1, name: "General Ward - Floor 1", occupied: 5, vacant: 15 },
-        { id: 2, name: "General Ward - Floor 2", occupied: 3, vacant: 17 },
-        { id: 3, name: "General Ward - Floor 3", occupied: 8, vacant: 12 }
-      ],
-      defaultCareLevel: "Low"
-    },
-    2: { // Private Ward
-      departments: [
-        { id: 4, name: "Private Room - 101", occupied: 0, vacant: 1 },
-        { id: 5, name: "Private Room - 102", occupied: 1, vacant: 0 },
-        { id: 6, name: "Private Room - 103", occupied: 0, vacant: 1 }
-      ],
-      defaultCareLevel: "Medium"
-    },
-    3: { // ICU
-      departments: [
-        { id: 7, name: "ICU - Unit A", occupied: 4, vacant: 2 },
-        { id: 8, name: "ICU - Unit B", occupied: 5, vacant: 1 },
-        { id: 9, name: "ICU - Unit C", occupied: 3, vacant: 3 }
-      ],
-      defaultCareLevel: "Critical"
-    },
-    4: { // Semi-Private
-      departments: [
-        { id: 10, name: "Semi-Private - Room 201", occupied: 1, vacant: 1 },
-        { id: 11, name: "Semi-Private - Room 202", occupied: 0, vacant: 2 }
-      ],
-      defaultCareLevel: "Medium"
-    },
-    5: { // Special Ward
-      departments: [
-        { id: 12, name: "Special Ward - Cardiac", occupied: 6, vacant: 4 },
-        { id: 13, name: "Special Ward - Neuro", occupied: 7, vacant: 3 }
-      ],
-      defaultCareLevel: "High"
+
+
+  const fetchWardCategoryData = async () => {
+    try {
+      const data = await getRequest(`${MASTERS}/masWardCategory/getAll/1`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setWardCategories(data.response);
+      } else {
+        setWardCategories([]);
+      }
+    } catch (error) {
+      console.error("Error fetching WardCategory data:", error);
+    }
+  };
+
+  const fetchWardData = async (categoryId) => {
+    try {
+      const data = await getRequest(
+        `${MASTERS}/ward-department/getAllBy/${categoryId}`
+      )
+
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setWardDepartments(data.response)
+      } else {
+        setWardDepartments([])
+      }
+    } catch (error) {
+      console.error("Error fetching Ward data:", error)
     }
   }
+
 
   const isOnlyDefaultTreatmentRow = (items) => {
     return (
@@ -138,62 +133,42 @@ const OpdRRecallPatient = () => {
     );
   };
 
-  const fetchWardCategories = async () => {
-    try {
-      setWardCategories([
-        { id: 1, name: "General" },
-        { id: 2, name: "Private" },
-        { id: 3, name: "ICU" },
-        { id: 4, name: "Semi-Private" },
-        { id: 5, name: "Special" }
-      ])
-    } catch (error) {
-      console.error("Error fetching ward categories:", error)
-    }
-  }
-
-  const fetchCareLevels = async () => {
-    try {
-      setCareLevels([
-        { id: 1, name: "Low" },
-        { id: 2, name: "Medium" },
-        { id: 3, name: "High" },
-        { id: 4, name: "Critical" }
-      ])
-    } catch (error) {
-      console.error("Error fetching care levels:", error)
-    }
-  }
-
   const handleWardCategoryChange = (categoryId) => {
     setWardCategory(categoryId)
     setWardName("")
-    setOccupiedBeds(0)
-    setVacantBeds(0)
+    setOccupiedBeds("0")
+    setVacantBeds("0")
+    setWardDepartments([])
 
-    if (wardData[categoryId]) {
-      const defaultCareLevel = wardData[categoryId].defaultCareLevel
-      const careLevel = careLevels.find(cl => cl.name === defaultCareLevel)
-      if (careLevel) {
-        setAdmissionCareLevel(careLevel.id)
-      }
-      setWardDepartments(wardData[categoryId].departments || [])
-    } else {
-      setWardDepartments([])
+    const selectedCategory = wardCategories.find(
+      (cat) => cat.categoryId === categoryId
+    )
+
+    if (selectedCategory) {
+      // store care id
+      setAdmissionCareLevel(selectedCategory.careId)
+
+      // show care level name
+      setAdmissionCareLevelName(selectedCategory.careLevelName)
+
+      // fetch ward list
+      fetchWardData(categoryId)
     }
   }
 
   const handleWardNameChange = (deptId) => {
     setWardName(deptId)
 
-    if (wardCategory && wardData[wardCategory]) {
-      const selectedDept = wardData[wardCategory].departments.find(d => d.id === deptId)
-      if (selectedDept) {
-        setOccupiedBeds(selectedDept.occupied)
-        setVacantBeds(selectedDept.vacant)
-      }
+    const selectedWard = wardDepartments.find(
+      (dept) => dept.id === deptId
+    )
+
+    if (selectedWard) {
+      setOccupiedBeds(selectedWard.occupiedBed)
+      setVacantBeds(selectedWard.vacantBed)
     }
   }
+
 
   const fatchDrugCodeOptions = async () => {
     try {
@@ -222,6 +197,101 @@ const OpdRRecallPatient = () => {
       setAllFrequencies([])
     }
   }
+
+  const fetchMasProcedureData = async (page, searchText = "") => {
+    try {
+      const data = await getRequest(
+        `${MASTERS}/masProcedureFilter/getAll?flag=0&page=${page}&size=20&search=${encodeURIComponent(searchText)}`
+      );
+
+      if (data.status === 200 && data.response?.content) {
+        return {
+          list: data.response.content,
+          last: data.response.last,
+        };
+      }
+
+      return { list: [], last: true };
+    } catch (error) {
+      console.error("Error fetching Procedures:", error);
+      return { list: [], last: true };
+    }
+  };
+
+
+  const loadProcedureFirstPage = async (index) => {
+    const searchText = procedureSearch[index] || "";
+    const result = await fetchMasProcedureData(0, searchText);
+
+    setProcedureDropdown(result.list);
+    setProcedureLastPage(result.last);
+    setProcedurePage(0);
+  };
+
+
+  const loadMoreProcedure = async () => {
+    if (procedureLastPage) return;
+
+    const nextPage = procedurePage + 1;
+    const result = await fetchMasProcedureData(nextPage, procedureSearch[openProcedureDropdown] || "");
+
+    setProcedureDropdown((prev) => [...prev, ...result.list]);
+    setProcedureLastPage(result.last);
+    setProcedurePage(nextPage);
+  };
+
+  const updateProcedure = (selected, index) => {
+    if (!selected) return;
+
+    // prevent duplicate procedureId
+    const exists = procedureCareItems.some(
+      (item, idx) =>
+        String(item.procedureId) === String(selected.procedureId) && idx !== index
+    );
+
+    if (exists) {
+      setDuplicateItems([{ icdDiagnosis: selected.procedureName }]);
+      setShowDuplicatePopup(true);
+      return;
+    }
+
+    setProcedureCareItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        procedureId: selected.procedureId,
+        procedureName: selected.procedureName
+      };
+      return updated;
+    });
+
+    // clear search text
+    setProcedureSearch((prev) => {
+      const updated = [...prev];
+      updated[index] = "";
+      return updated;
+    });
+  };
+
+
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      const refs = procedureDropdownRef.current;
+
+      const clickedInside = refs.some(
+        (ref) => ref && ref.contains && ref.contains(e.target)
+      );
+
+      if (!clickedInside) {
+        setOpenProcedureDropdown(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
 
   const fetchMasICDData = async (page, searchText = "") => {
     try {
@@ -368,9 +438,16 @@ const OpdRRecallPatient = () => {
       );
     }
 
+    if (popupType === "doctorRemark") {
+      setDoctorRemarksText(prev =>
+        mergeValues(prev, newNames)
+      );
+    }
+
     setModelShowPopup(false);
     setSelectedItems([]);
   };
+
 
   const handleSelect = (item) => {
     setSelectedItems(prev => {
@@ -457,8 +534,7 @@ const OpdRRecallPatient = () => {
     fetchAllFrequencies();
     fatchDrugCodeOptions();
     fetchMasICDData();
-    fetchWardCategories();
-    fetchCareLevels();
+    fetchWardCategoryData();
   }, []);
 
   const handleClearAllTreatmentTemplates = () => {
@@ -567,12 +643,27 @@ const OpdRRecallPatient = () => {
         workingDiagnosis,
         icdDiagnosis: icdDiagnosisStr,
         icdObj: icdObjList,
+        doctorRemarks: doctorRemarksText,
         treatments: treatmentItems,
+        // procedureCare: procedureCareItems,
+        followUpFlag: followUps.followUpFlag ? "y" : "n",
+        followUpDate: followUps.FolloUpDate ? new Date(followUps.FolloUpDate).toISOString() : null,
+        followUpDays: Number(followUps.noOfFollowDays),
+        // ===== Admission Details =====
+        admissionFlag: admissionAdvised ? "y" : "n",
+        admissionAdvisedDate: admissionAdvised && admissionDate ? new Date(admissionDate).toISOString() : null,
+        admissionRemarks: additionalAdvice || null,
+        admissionCareLevel: admissionAdvised ? Number(admissionCareLevel) : null,
+        admissionWardCategory: admissionAdvised ? Number(wardCategory) : null,
+        admissionWard: admissionAdvised ? Number(wardName) : null,
+        admissionPriority: admissionAdvised ? admissionPriority : null,
+        referralFlag: referralData.isReferred === "Yes" ? "y" : "n",
         investigations: investigationItems,
         treatmentAdvice: generalTreatmentAdvice,
         removeIcdIds,
         removedTreatmentIds,
         removedInvestigationIds,
+        removeprocedureCareIds: deletedProcedureCareIds,
         opdPatientId: selectedPatient.opdPatientId,
         patientId: selectedPatient.patientId,
         visitId: selectedPatient.visitId,
@@ -730,14 +821,28 @@ const OpdRRecallPatient = () => {
   const [physiotherapyTreatmentAdvice, setPhysiotherapyTreatmentAdvice] = useState("")
   const [selectedTreatmentAdviceItems, setSelectedTreatmentAdviceItems] = useState([])
 
+  const [procedureDropdown, setProcedureDropdown] = useState([]);
+  const [procedurePage, setProcedurePage] = useState(0);
+  const [procedureLastPage, setProcedureLastPage] = useState(true);
+  const [procedureSearch, setProcedureSearch] = useState([]);
+  const [openProcedureDropdown, setOpenProcedureDropdown] = useState(null);
+  const procedureDropdownRef = useRef([]);
   const [procedureCareItems, setProcedureCareItems] = useState([
     {
-      name: "",
-      frequency: "",
-      days: "",
-      remarks: "",
-    },
-  ])
+      id: null,
+      procedureId: null,
+      procedureName: "",
+      frequencyId: null,
+      noOfDays: "",
+      remarks: ""
+    }
+  ]);
+
+  // store deleted ids
+  const [deletedProcedureCareIds, setDeletedProcedureCareIds] = useState([]);
+
+  console.log("procedureCareItems", procedureCareItems)
+
 
   const [physiotherapyItems, setPhysiotherapyItems] = useState([
     {
@@ -830,31 +935,6 @@ const OpdRRecallPatient = () => {
     setShowCurrentMedicationModal(false)
   }
 
-  // Doctor's Remarks handlers
-  const handleOpenDoctorRemarksModal = () => {
-    setShowDoctorRemarksModal(true)
-  }
-
-  const handleCloseDoctorRemarksModal = () => {
-    setShowDoctorRemarksModal(false)
-  }
-
-  const handleSaveDoctorRemarks = (selectedRemarks) => {
-    setSelectedDoctorRemarks(selectedRemarks)
-    setDoctorRemarksText(selectedRemarks.join("\n"))
-  }
-
-  const handleInputFocus = (event, index) => {
-    const rect = event.target.getBoundingClientRect()
-    setDropdownPosition({
-      x: rect.left,
-      y: rect.top,
-      height: rect.height,
-    })
-    setDropdownWidth(rect.width)
-    setActiveInvestigationRowIndex(index)
-    setDropdownVisible(true)
-  }
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -918,6 +998,8 @@ const OpdRRecallPatient = () => {
       setAllInvestigations([])
     }
   }
+
+  console.log("allInvestigations", allInvestigations)
 
   const filterInvestigationsByMainChargeCode = () => {
     if (!investigationType || allInvestigations.length === 0) {
@@ -1165,69 +1247,68 @@ const OpdRRecallPatient = () => {
     handleFilterChange("mobileNumber", value);
   };
 
-  const handleRowClick = (patient) => {
-    setSelectedPatient(patient)
-    setFormData({
-      height: patient.height || "",
-      weight: patient.weight || "",
-      temperature: patient.temperature || "",
-      systolicBP: patient.bpSystolic || "",
-      diastolicBP: patient.bpDiastolic || "",
-      pulse: patient.pulse || "",
-      bmi: patient.bmi || "",
-      rr: patient.rr || "",
-      spo2: patient.spo2 || "",
-      patientSymptoms: patient.patientSignsSymptoms || "",
-      clinicalExamination: patient.clinicalExamination || "",
-      pastHistory: patient.pastMedicalHistory || "",
-      familyHistory: patient.familyHistory || "",
-      mlcCase: patient.mlcFlag === "y" ? true : false,
-    });
-    setGeneralTreatmentAdvice(patient.treatmentAdvice || "")
-    setWorkingDiagnosis(patient?.workingDiag || "")
-    setDiagnosisItems(
-      patient.icdDiag && patient.icdDiag.length > 0
-        ? patient.icdDiag.map(item => ({
+const handleRowClick = async (patient) => {
+  setSelectedPatient(patient);
+
+  /* -------------------- VITALS / BASIC DATA -------------------- */
+  setFormData({
+    height: patient.height || "",
+    weight: patient.weight || "",
+    temperature: patient.temperature || "",
+    systolicBP: patient.bpSystolic || "",
+    diastolicBP: patient.bpDiastolic || "",
+    pulse: patient.pulse || "",
+    bmi: patient.bmi || "",
+    rr: patient.rr || "",
+    spo2: patient.spo2 || "",
+    patientSymptoms: patient.patientSignsSymptoms || "",
+    clinicalExamination: patient.clinicalExamination || "",
+    pastHistory: patient.pastMedicalHistory || "",
+    familyHistory: patient.familyHistory || "",
+    mlcCase: patient.mlcFlag === "y",
+  });
+
+  setGeneralTreatmentAdvice(patient.treatmentAdvice || "");
+  setWorkingDiagnosis(patient?.workingDiag || "");
+
+  /* -------------------- DIAGNOSIS -------------------- */
+  setDiagnosisItems(
+    patient.icdDiag?.length
+      ? patient.icdDiag.map(item => ({
           id: item.id ?? null,
           icdDiagId: item.icdId ?? "",
           icdDiagnosis: item.icdDiagName ?? "",
           communicableDisease: false,
           infectiousDisease: false,
         }))
-        : [
-          {
-            id: null,
-            icdDiagId: "",
-            icdDiagnosis: "",
-            communicableDisease: false,
-            infectiousDisease: false,
-          }
-        ]
-    );
+      : [{
+          id: null,
+          icdDiagId: "",
+          icdDiagnosis: "",
+          communicableDisease: false,
+          infectiousDisease: false,
+        }]
+  );
 
-    const allDtItems =
-      patient.dgOrderHdList && patient.dgOrderHdList.length > 0
-        ? patient.dgOrderHdList.flatMap(hd =>
+  /* -------------------- INVESTIGATIONS -------------------- */
+  const investigationList =
+    patient.dgOrderHdList?.length
+      ? patient.dgOrderHdList.flatMap(hd =>
           hd.dgOrderDts.map(dt => ({
             id: dt.dgOrderDtId || "",
             name: dt.investigationName || "",
             date: dt.appointmentDate || getToday(),
-            investigationId: dt.investigationId
+            investigationId: dt.investigationId,
           }))
         )
-        : [
-          {
-            id: "",
-            name: "",
-            date: getToday(),
-          }
-        ];
+      : [{ id: "", name: "", date: getToday() }];
 
-    setInvestigationItems(allDtItems);
+  setInvestigationItems(investigationList);
 
-    setTreatmentItems(
-      patient.patientPrescriptionDts && patient.patientPrescriptionDts.length > 0
-        ? patient.patientPrescriptionDts.map(item => {
+  /* -------------------- TREATMENT -------------------- */
+  setTreatmentItems(
+    patient.patientPrescriptionDts?.length
+      ? patient.patientPrescriptionDts.map(item => {
           const drug = getDrugDetails(item.itemId);
           const freq = getFreqDetails(item.frequencyId);
 
@@ -1248,25 +1329,70 @@ const OpdRRecallPatient = () => {
           obj.total = calculateTotal(obj);
           return obj;
         })
-        : [
-          {
-            treatmentId: null,
-            drugId: "",
-            drugName: "",
-            dispUnit: "",
-            dosage: "",
-            frequency: "",
-            days: "",
-            total: "",
-            instruction: "",
-            stock: "",
-          }
-        ]
+      : [{
+          treatmentId: null,
+          drugId: "",
+          drugName: "",
+          dispUnit: "",
+          dosage: "",
+          frequency: "",
+          days: "",
+          total: "",
+          instruction: "",
+          stock: "",
+        }]
+  );
+
+  /*-------------------- final remark --------------- */
+  setDoctorRemarksText(patient.doctorRemarks || "")
+
+  /* -------------------- FOLLOW UP -------------------- */
+  setFollowUps({
+    followUpFlag: patient.followUpFlag === "y",
+    FolloUpDate: patient.followUpDate
+      ? patient.followUpDate.split("T")[0]
+      : "",
+    noOfFollowDays: patient.followUpDays
+      ? String(patient.followUpDays)
+      : "",
+  });
+
+  /* -------------------- REFERRAL -------------------- */
+  setReferralData(prev => ({
+    ...prev,
+    isReferred: patient.referralFlag === "y" ? "Yes" : "No",
+  }));
+
+  /* -------------------- ADMISSION ADVICE -------------------- */
+  const admissionAdvised = patient.admissionFlag === "y";
+  setAdmissionAdvised(admissionAdvised);
+
+  if (admissionAdvised) {
+    setAdmissionDate(
+      patient.admissionAdvisedDate
+        ? patient.admissionAdvisedDate.split("T")[0]
+        : ""
     );
+    setAdditionalAdvice(patient.admissionRemarks || "");
+    setAdmissionPriority(patient.admissionPriority || "Normal");
 
+    setWardCategory(patient.admissionWardCategory || "");
+    setAdmissionCareLevel(patient.admissionCareLevel || "");
+    setAdmissionCareLevelName(patient.admissionCareLevelName || "");
 
-    setShowDetailView(true)
+    if (patient.admissionWardCategory) {
+      await fetchWardData(patient.admissionWardCategory);
+    }
+
+    setWardName(patient.admissionWard || "");
+    setOccupiedBeds(String(patient.occupiedBed ?? "0"));
+    setVacantBeds(String(patient.vacantBed ?? "0"));
   }
+
+  /* -------------------- SHOW DETAIL VIEW -------------------- */
+  setShowDetailView(true);
+};
+
 
   const handleBackToList = () => {
     setShowDetailView(false)
@@ -1312,6 +1438,7 @@ const OpdRRecallPatient = () => {
         stock: "",
       }
     ]);
+    setGeneralTreatmentAdvice("")
     setExpandedSections({
       personalDetails: false,
       clinicalHistory: false,
@@ -1328,11 +1455,22 @@ const OpdRRecallPatient = () => {
       doctorRemark: false,
       remarks: false,
     })
+    setProcedureCareItems([
+      {
+        id: null,
+        procedureId: null,
+        procedureName: "",
+        frequencyId: null,
+        noOfDays: "",
+        remarks: ""
+      }
+    ]);
+    setDeletedProcedureCareIds([]);
+
     setSelectedHistoryType("")
     setRemovedInvestigationIds([])
     setSelectedTemplateIds(new Set())
     setSelectedTreatmentTemplateIds(new Set())
-    setSelectedDoctorRemarks([])
     setDoctorRemarksText("")
     setAdmissionAdvised(false)
     setAdmissionDate("")
@@ -1679,28 +1817,53 @@ const OpdRRecallPatient = () => {
   }
 
   const handleAddProcedureCareItem = () => {
-    setProcedureCareItems([
-      ...procedureCareItems,
+    setProcedureCareItems((prev) => [
+      ...prev,
       {
-        name: "",
-        frequency: "",
-        days: "",
-        remarks: "",
-      },
-    ])
-  }
+        id: null,
+        procedureId: null,
+        procedureName: "",
+        frequencyId: null,
+        noOfDays: "",
+        remarks: ""
+      }
+    ]);
+  };
+
+
+  const calculateFollowUpDate = (days) => {
+    const date = new Date();
+    date.setDate(date.getDate() + Number(days || 0));
+    return date.toISOString().split("T")[0];
+  };
+
+
 
   const handleRemoveProcedureCareItem = (index) => {
-    if (procedureCareItems.length === 1) return
-    const newItems = procedureCareItems.filter((_, i) => i !== index)
-    setProcedureCareItems(newItems)
-  }
+    if (procedureCareItems.length === 1) return;
+
+    const itemToDelete = procedureCareItems[index];
+
+    // collect id if exists (backend record)
+    if (itemToDelete.id !== null) {
+      setDeletedProcedureCareIds((prev) => [...prev, itemToDelete.id]);
+    }
+
+    const newItems = procedureCareItems.filter((_, i) => i !== index);
+    setProcedureCareItems(newItems);
+  };
 
   const handleProcedureCareChange = (index, field, value) => {
-    const newItems = [...procedureCareItems]
-    newItems[index] = { ...newItems[index], [field]: value }
-    setProcedureCareItems(newItems)
-  }
+    setProcedureCareItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        [field]: value
+      };
+      return updated;
+    });
+  };
+
 
   const handleAddPhysiotherapyItem = () => {
     setPhysiotherapyItems([
@@ -1822,97 +1985,7 @@ const OpdRRecallPatient = () => {
     }
   }
 
-  // Doctor's Remarks Modal Component
-  const DoctorRemarksModal = ({ show, onClose, templates, onSave }) => {
-    const [selectedItems, setSelectedItems] = useState(new Set())
 
-    const handleCheckboxChange = (index) => {
-      setSelectedItems(prev => {
-        const newSet = new Set(prev)
-        if (newSet.has(index)) {
-          newSet.delete(index)
-        } else {
-          newSet.add(index)
-        }
-        return newSet
-      })
-    }
-
-    const handleSelectAll = () => {
-      if (selectedItems.size === templates.length) {
-        setSelectedItems(new Set())
-      } else {
-        setSelectedItems(new Set(templates.map((_, index) => index)))
-      }
-    }
-
-    const handleSave = () => {
-      const selectedTemplates = Array.from(selectedItems).map(index => templates[index])
-      onSave(selectedTemplates)
-      onClose()
-    }
-
-    if (!show) return null
-
-    return (
-      <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-        <div className="modal-dialog modal-lg">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title">DOCTOR'S REMARKS TEMPLATE</h5>
-              <button
-                type="button"
-                className="btn-close"
-                onClick={onClose}
-              ></button>
-            </div>
-            <div className="modal-body">
-              <div className="table-responsive">
-                <table className="table table-bordered">
-                  <thead style={{ backgroundColor: "#b0c4de" }}>
-                    <tr>
-                      <th style={{ width: "5%" }}>
-                        <input
-                          type="checkbox"
-                          className="form-check-input"
-                          checked={selectedItems.size === templates.length}
-                          onChange={handleSelectAll}
-                        />
-                      </th>
-                      <th style={{ width: "95%" }}>Doctor Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {templates.map((remark, index) => (
-                      <tr key={index}>
-                        <td>
-                          <input
-                            type="checkbox"
-                            className="form-check-input"
-                            checked={selectedItems.has(index)}
-                            onChange={() => handleCheckboxChange(index)}
-                          />
-                        </td>
-                        <td>{remark}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-primary" onClick={handleSave}>
-                OK
-              </button>
-              <button className="btn btn-secondary" onClick={onClose}>
-                CLOSE
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   if (showDetailView && selectedPatient) {
     return (
@@ -2075,12 +2148,12 @@ const OpdRRecallPatient = () => {
                               <label className="form-label fw-bold m-0">
                                 Patient signs & symptoms
                               </label>
-                              <button
+                              {/* <button
                                 className="btn btn-sm btn-outline-success p-1 px-2"
                                 onClick={() => openPopup("symptoms")}
                               >
                                 +
-                              </button>
+                              </button> */}
                             </div>
                             <input
                               type="text"
@@ -2645,22 +2718,26 @@ const OpdRRecallPatient = () => {
                                     <input
                                       type="text"
                                       className="form-control"
-                                      value={item.name}
+                                      value={item.procedureName || ""}
                                       onChange={(e) => {
-                                        const newItems = [...investigationItems]
+                                        const newItems = [...procedureCareItems];
                                         newItems[index] = {
                                           ...newItems[index],
-                                          name: e.target.value,
-                                          investigationId: null,
-                                        }
-                                        setInvestigationItems(newItems)
-                                        setActiveInvestigationRowIndex(index)
+                                          procedureName: e.target.value,
+                                          procedureId: null,
+                                        };
+                                        setProcedureCareItems(newItems);
+                                        setOpenProcedureDropdown(index);
                                       }}
-                                      onFocus={(e) => handleInputFocus(e, index)}
-                                      placeholder="Enter investigation"
+                                      onFocus={() => {
+                                        setOpenProcedureDropdown(index);
+                                        loadProcedureFirstPage(index);
+                                      }}
+                                      placeholder="Enter procedure"
                                       autoComplete="off"
                                     />
-                                    {activeInvestigationRowIndex === index && dropdownVisible && (
+
+                                    {openProcedureDropdown === index && (
                                       <div
                                         style={{
                                           position: "fixed",
@@ -2674,26 +2751,33 @@ const OpdRRecallPatient = () => {
                                           left: `${dropdownPosition.x}px`,
                                           top: `${dropdownPosition.y + dropdownPosition.height}px`,
                                         }}
+                                        onScroll={(e) => {
+                                          if (e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight) {
+                                            loadMoreProcedure();
+                                          }
+                                        }}
                                       >
-                                        {filterInvestigationsBySearch(item.name).length > 0 ? (
+                                        {procedureDropdown.length > 0 ? (
                                           <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-                                            {filterInvestigationsBySearch(item.name).map((investigation) => (
+                                            {procedureDropdown.map((procedure) => (
                                               <li
-                                                key={investigation.investigationId}
+                                                key={procedure.procedureId}
                                                 style={{
                                                   backgroundColor: "#f8f9fa",
                                                   cursor: "pointer",
                                                   borderBottom: "1px solid #dee2e6",
                                                   padding: "8px 12px",
-                                                  transition: "background-color 0.2s",
                                                 }}
-                                                onMouseEnter={(e) => (e.target.style.backgroundColor = "#e9ecef")}
-                                                onMouseLeave={(e) => (e.target.style.backgroundColor = "#f8f9fa")}
-                                                onClick={() => handleInvestigationSelect(index, investigation)}
+                                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#e9ecef")}
+                                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#f8f9fa")}
+                                                onMouseDown={() => {
+                                                  updateProcedure(procedure, index);
+                                                  setOpenProcedureDropdown(null);
+                                                }}
                                               >
                                                 <div>
                                                   <strong style={{ color: "#3b82f6" }}>
-                                                    {investigation.investigationName}
+                                                    {procedure.procedureName}
                                                   </strong>
                                                   <div
                                                     style={{
@@ -2702,8 +2786,7 @@ const OpdRRecallPatient = () => {
                                                       marginTop: "2px",
                                                     }}
                                                   >
-                                                    {investigation.mainChargeCodeName} •{" "}
-                                                    {investigation.subChargeCodeName}
+                                                    {procedure.procedureCode}
                                                   </div>
                                                 </div>
                                               </li>
@@ -2711,7 +2794,9 @@ const OpdRRecallPatient = () => {
                                           </ul>
                                         ) : (
                                           <div style={{ textAlign: "center", padding: "12px", color: "#6c757d" }}>
-                                            {item.name.trim() ? "No investigations found" : "Start typing to search..."}
+                                            {item.procedureName?.trim()
+                                              ? "No procedures found"
+                                              : "Start typing to search..."}
                                           </div>
                                         )}
                                       </div>
@@ -3109,7 +3194,7 @@ const OpdRRecallPatient = () => {
                 </div>
 
                 {/* Procedure Care Section */}
-                <div className="card mb-3">
+                <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
                     className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
@@ -3119,7 +3204,7 @@ const OpdRRecallPatient = () => {
                     <span style={{ fontSize: "18px" }}>{expandedSections.procedureCare ? "−" : "+"}</span>
                   </div>
                   {expandedSections.procedureCare && (
-                    <div className="card-body">
+                    <div className="card-body" style={{ overflow: "visible" }}>
                       <div className="row mb-3">
                         <div className="col-12 d-flex gap-4">
                           <div className="form-check">
@@ -3152,7 +3237,7 @@ const OpdRRecallPatient = () => {
                       </div>
 
                       {procedureCareType === "procedure" ? (
-                        <div className="table-responsive">
+                        <div className="table-responsive" style={{ overflow: "visible" }}>
                           <table className="table table-bordered">
                             <thead style={{ backgroundColor: "#b0c4de" }}>
                               <tr>
@@ -3176,36 +3261,126 @@ const OpdRRecallPatient = () => {
                               {procedureCareItems.map((row, index) => (
                                 <tr key={index}>
                                   <td>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      value={row.name}
-                                      onChange={(e) => handleProcedureCareChange(index, "name", e.target.value)}
-                                      placeholder="Enter nursing care name"
-                                    />
+                                    <div
+                                      className="procedure-wrapper"
+                                      ref={(el) => (procedureDropdownRef.current[index] = el)}
+                                      style={{ position: "relative", width: "100%" }}
+                                    >
+
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Search Procedure..."
+                                        value={row.procedureName || procedureSearch[index] || ""}
+                                        onChange={async (e) => {
+                                          const val = e.target.value;
+                                          setProcedureSearch((prev) => {
+                                            const updated = [...prev];
+                                            updated[index] = val;
+                                            return updated;
+                                          });
+
+                                          const result = await fetchMasProcedureData(0, val);
+                                          setProcedureDropdown(result.list);
+                                          setProcedureLastPage(result.last);
+                                          setProcedurePage(0);
+                                          setOpenProcedureDropdown(index);
+                                        }}
+                                        onClick={() => {
+                                          loadProcedureFirstPage(index);
+                                          setOpenProcedureDropdown(index);
+                                        }}
+                                        onBlur={() => {
+                                          setTimeout(() => {
+                                            const selected = procedureCareItems[index];
+                                            const text = procedureSearch[index];
+
+                                            if ((!selected.id || selected.name !== text) && text !== "") {
+                                              setProcedureSearch((prev) => {
+                                                const updated = [...prev];
+                                                updated[index] = "";
+                                                return updated;
+                                              });
+
+                                              setProcedureCareItems((prev) => {
+                                                const updated = [...prev];
+                                                updated[index].id = "";
+                                                updated[index].name = "";
+                                                return updated;
+                                              });
+                                            }
+                                            setOpenProcedureDropdown(null);
+                                          }, 150);
+                                        }}
+                                      />
+
+                                      {openProcedureDropdown === index && (
+                                        <div
+                                          className="border rounded bg-white position-absolute w-100 shadow-lg"
+                                          style={{
+                                            maxHeight: "250px",
+                                            overflowY: "auto",
+                                            zIndex: 999999,
+                                            top: "100%",
+                                            left: 0
+                                          }}
+                                          onScroll={(e) => {
+                                            if (e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight) {
+                                              loadMoreProcedure();
+                                            }
+                                          }}
+                                        >
+                                          {procedureDropdown.length > 0 ? (
+                                            procedureDropdown.map((proc) => (
+                                              <div
+                                                key={proc.procedureId}
+                                                className="p-2 cursor-pointer hover:bg-light"
+                                                onMouseDown={() => {
+                                                  updateProcedure(proc, index);
+                                                  setOpenProcedureDropdown(null);
+                                                }}
+                                              >
+                                                {proc.procedureCode} - {proc.procedureName}
+                                              </div>
+                                            ))
+                                          ) : (
+                                            <div className="p-2 text-muted">No results found</div>
+                                          )}
+
+                                          {!procedureLastPage && (
+                                            <div className="text-center p-2 text-primary small">Loading...</div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
                                   </td>
+
                                   <td>
                                     <select
                                       className="form-select"
-                                      value={row.frequency}
+                                      value={row.frequencyId || ""}
                                       onChange={(e) =>
-                                        handleProcedureCareChange(index, "frequency", e.target.value)
+                                        handleProcedureCareChange(index, "frequencyId", e.target.value)
                                       }
                                     >
-                                      <option value="">Select</option>
-                                      <option value="OD">OD</option>
-                                      <option value="BID">BID</option>
-                                      <option value="TID">TID</option>
-                                      <option value="QID">QID</option>
+                                      <option value="">Select..</option>
+                                      {allFrequencies.map((f) => (
+                                        <option key={f.frequencyId} value={f.frequencyId}>
+                                          {f.frequencyName}
+                                        </option>
+                                      ))}
                                     </select>
                                   </td>
                                   <td>
                                     <input
                                       type="number"
                                       className="form-control"
-                                      value={row.days}
-                                      onChange={(e) => handleProcedureCareChange(index, "days", e.target.value)}
+                                      value={row.noOfDays}
+                                      onChange={(e) =>
+                                        handleProcedureCareChange(index, "noOfDays", e.target.value)
+                                      }
                                       placeholder="0"
+                                      min={0}
                                     />
                                   </td>
                                   <td>
@@ -3277,16 +3452,17 @@ const OpdRRecallPatient = () => {
                                   <td>
                                     <select
                                       className="form-select"
-                                      value={row.frequency}
+                                      value={row.frequency || ""}
                                       onChange={(e) =>
                                         handlePhysiotherapyChange(index, "frequency", e.target.value)
                                       }
                                     >
-                                      <option value="">Select</option>
-                                      <option value="OD">OD</option>
-                                      <option value="BID">BID</option>
-                                      <option value="TID">TID</option>
-                                      <option value="QID">QID</option>
+                                      <option value="">Select..</option>
+                                      {allFrequencies.map((f) => (
+                                        <option key={f.frequencyId} value={f.frequencyId}>
+                                          {f.frequencyName}
+                                        </option>
+                                      ))}
                                     </select>
                                   </td>
                                   <td>
@@ -3296,6 +3472,7 @@ const OpdRRecallPatient = () => {
                                       value={row.days}
                                       onChange={(e) => handlePhysiotherapyChange(index, "days", e.target.value)}
                                       placeholder="0"
+                                      min={0}
                                     />
                                   </td>
                                   <td>
@@ -3504,16 +3681,7 @@ const OpdRRecallPatient = () => {
                                 </label>
                               </div>
                             </div>
-                            <div className="col-md-9">
-                              <label className="form-label fw-bold">Admission Advice</label>
-                              <textarea
-                                className="form-control"
-                                rows={3}
-                                value={additionalAdvice}
-                                onChange={(e) => setAdditionalAdvice(e.target.value)}
-                                placeholder="Enter admission advice"
-                              ></textarea>
-                            </div>
+
                           </div>
 
                           {admissionAdvised && (
@@ -3528,16 +3696,15 @@ const OpdRRecallPatient = () => {
                                     onChange={(e) => setAdmissionDate(e.target.value)}
                                   />
                                 </div>
-                                <div className="col-md-3">
-                                  <label className="form-label fw-bold">Notes <span className="text-danger">*</span></label>
-                                  <input
-                                    type="text"
+                                <div className="col-md-9">
+                                  <label className="form-label fw-bold">Admission Notes <span className="text-danger">*</span></label>
+                                  <textarea
                                     className="form-control"
-                                    value={admissionRemarks}
-                                    onChange={(e) => setAdmissionRemarks(e.target.value)}
-                                    placeholder="Enter notes"
-                                    required
-                                  />
+                                    rows={3}
+                                    value={additionalAdvice}
+                                    onChange={(e) => setAdditionalAdvice(e.target.value)}
+                                    placeholder="Enter admission advice"
+                                  ></textarea>
                                 </div>
                               </div>
 
@@ -3551,20 +3718,22 @@ const OpdRRecallPatient = () => {
                                   >
                                     <option value="">Select Ward Category</option>
                                     {wardCategories.map((category) => (
-                                      <option key={category.id} value={category.id}>
-                                        {category.name}
+                                      <option key={category.categoryId} value={category.categoryId}>
+                                        {category.categoryName}
                                       </option>
                                     ))}
                                   </select>
+
                                 </div>
                                 <div className="col-md-3">
                                   <label className="form-label fw-bold">Care Level</label>
                                   <input
                                     type="text"
                                     className="form-control"
-                                    value={careLevels.find(cl => cl.id === admissionCareLevel)?.name || ""}
+                                    value={admissionCareLevelName}
                                     readOnly
                                   />
+
                                 </div>
                                 <div className="col-md-3">
                                   <label className="form-label fw-bold">Ward Name/Dept Name <span className="text-danger">*</span></label>
@@ -3573,15 +3742,15 @@ const OpdRRecallPatient = () => {
                                     value={wardName}
                                     onChange={(e) => handleWardNameChange(Number(e.target.value))}
                                     disabled={!wardCategory}
-                                    required
                                   >
                                     <option value="">Select Ward/Dept</option>
                                     {wardDepartments.map((dept) => (
                                       <option key={dept.id} value={dept.id}>
-                                        {dept.name}
+                                        {dept.departmentName}
                                       </option>
                                     ))}
                                   </select>
+
                                 </div>
                                 <div className="col-md-3">
                                   <label className="form-label fw-bold">Admission Priority (Optional)</label>
@@ -3599,26 +3768,30 @@ const OpdRRecallPatient = () => {
                                 </div>
                               </div>
 
-                              <div className="row g-3 mt-3">
-                                <div className="col-md-3">
-                                  <label className="form-label fw-bold">Occupied Bed</label>
-                                  <input
-                                    type="text"
-                                    className="form-control"
-                                    value={occupiedBeds}
-                                    readOnly
-                                  />
+                              {wardName && (
+                                <div className="row g-3 mt-3">
+                                  <div className="col-md-3">
+                                    <label className="form-label fw-bold">Occupied Bed</label>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      value={occupiedBeds}
+                                      readOnly
+                                    />
+                                  </div>
+
+                                  <div className="col-md-3">
+                                    <label className="form-label fw-bold">Vacant Bed</label>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      value={vacantBeds}
+                                      readOnly
+                                    />
+                                  </div>
                                 </div>
-                                <div className="col-md-3">
-                                  <label className="form-label fw-bold">Vacant Bed</label>
-                                  <input
-                                    type="text"
-                                    className="form-control"
-                                    value={vacantBeds}
-                                    readOnly
-                                  />
-                                </div>
-                              </div>
+                              )}
+
                             </div>
                           )}
                         </div>
@@ -3986,41 +4159,74 @@ const OpdRRecallPatient = () => {
                       {expandedSections.followUp ? "−" : "+"}
                     </span>
                   </div>
+
                   {expandedSections.followUp && (
                     <div className="card-body">
                       <div className="d-flex align-items-center justify-content-between">
+
+                        {/* Checkbox */}
                         <div className="d-flex align-items-center gap-2">
                           <input
                             type="checkbox"
                             className="form-check-input m-0"
+                            checked={followUps.followUpFlag}
+                            onChange={(e) =>
+                              setFollowUps({
+                                ...followUps,
+                                followUpFlag: e.target.checked,
+                                // reset when unchecked
+                                noOfFollowDays: e.target.checked ? followUps.noOfFollowDays : "",
+                                followUpDate: e.target.checked ? followUps.followUpDate : "",
+                              })
+                            }
                           />
+
                           <h6 className="fw-bold mb-0">Follow Up</h6>
                         </div>
+
                         <div className="d-flex align-items-center gap-4">
+
+                          {/* Number of Days */}
                           <div className="d-flex align-items-center gap-2">
                             <label className="form-label mb-0">Number of days</label>
-                            <select className="form-select" style={{ width: "150px" }}>
-                              <option value="">Select</option>
-                              <option value="1">1</option>
-                              <option value="2">2</option>
-                              <option value="3">3</option>
-                              <option value="4">4</option>
-                              <option value="5">5</option>
-                            </select>
+                            <input
+                              type="number"
+                              min={0}
+                              className="form-control"
+                              value={followUps.noOfFollowDays}
+                              onChange={(e) => {
+                                const days = e.target.value;
+                                setFollowUps({
+                                  ...followUps,
+                                  noOfFollowDays: days,
+                                  FolloUpDate: calculateFollowUpDate(days),
+                                });
+                              }}
+                              style={{ width: "120px" }}
+                              disabled={!followUps.followUpFlag}
+                            />
+
                           </div>
+
+                          {/* Follow Up Date (Read Only) */}
                           <div className="d-flex align-items-center gap-2">
-                            <label className="form-label mb-0">Next date</label>
+                            <label className="form-label mb-0">Follow Up date</label>
                             <input
                               type="date"
                               className="form-control"
                               style={{ width: "170px" }}
+                              value={followUps.FolloUpDate}
+                              readOnly
                             />
+
                           </div>
+
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
+
 
                 {/* Doctor's Remarks Section */}
                 <div className="card mb-3">
@@ -4029,7 +4235,7 @@ const OpdRRecallPatient = () => {
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("remarks")}
                   >
-                    <h6 className="mb-0 fw-bold">Remarks</h6>
+                    <h6 className="mb-0 fw-bold">Final Medicine Advice</h6>
                     <span style={{ fontSize: "18px" }}>
                       {expandedSections.remarks ? "−" : "+"}
                     </span>
@@ -4038,7 +4244,6 @@ const OpdRRecallPatient = () => {
                     <div className="card-body">
                       <div className="row align-items-end">
                         <div className="col-md-11">
-                          <label className="form-label fw-bold">Doctor's Remarks</label>
                           <textarea
                             className="form-control"
                             rows={4}
@@ -4049,10 +4254,11 @@ const OpdRRecallPatient = () => {
                         </div>
                         <div className="col-md-1 text-center">
                           <button
-                            className="btn btn-primary"
-                            style={{ padding: "8px 12px" }}
-                            onClick={handleOpenDoctorRemarksModal}
-                            title="Select Doctor Remarks Template"
+                            className="btn btn-sm btn-outline-success p-1 px-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openPopup("doctorRemark");
+                            }}
                           >
                             +
                           </button>
@@ -4109,13 +4315,6 @@ const OpdRRecallPatient = () => {
           }}
         />
 
-        {/* Doctor's Remarks Modal */}
-        <DoctorRemarksModal
-          show={showDoctorRemarksModal}
-          onClose={handleCloseDoctorRemarksModal}
-          templates={doctorRemarksTemplates}
-          onSave={handleSaveDoctorRemarks}
-        />
 
         {/* OT Calendar Modal */}
         {showOtCalendarModal && (
@@ -4405,22 +4604,31 @@ const OpdRRecallPatient = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {currentItems.map((item) => (
-                      <tr
-                        key={item.visitId}
-                        onClick={() => handleRowClick(item)}
-                        style={{ cursor: "pointer" }}
-                      >
-                        <td>{item.patientName}</td>
-                        <td>{item.age}</td>
-                        <td>{item.gender}</td>
-                        <td>{item.deptName}</td>
-                        <td>{item.mobileNo}</td>
-                        <td>{item.docterName}</td>
-                        <td>{item?.typeOfPatient || " "}</td>
+                    {currentItems && currentItems.length > 0 ? (
+                      currentItems.map((item) => (
+                        <tr
+                          key={item.visitId}
+                          onClick={() => handleRowClick(item)}
+                          style={{ cursor: "pointer" }}
+                        >
+                          <td>{item.patientName}</td>
+                          <td>{item.age}</td>
+                          <td>{item.gender}</td>
+                          <td>{item.deptName}</td>
+                          <td>{item.mobileNo}</td>
+                          <td>{item.docterName}</td>
+                          <td>{item?.typeOfPatient || " "}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="7" className="text-center text-muted">
+                          No records found
+                        </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
+
                 </table>
               </div>
 

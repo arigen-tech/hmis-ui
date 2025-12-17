@@ -30,6 +30,13 @@ const MasFamilyModel = ({ show, popupType, onOk, onClose, onSelect, selectedItem
             };
         }
 
+        if (type === "doctorRemark") {
+            return {
+                id: item.medicalAdviseId,
+                name: item.medicalAdviseName,
+            };
+        }
+
         return item;
     };
 
@@ -46,7 +53,7 @@ const MasFamilyModel = ({ show, popupType, onOk, onClose, onSelect, selectedItem
 
                 case "family":
                     url = `${MASTERS}/masMedicalHistory/getAll/1`;
-                    break; // ✅ FIXED MISSING BREAK
+                    break; 
 
                 case "symptoms":
                     url = `${MASTERS}/masMedicalHistory1/getAll/1`;
@@ -54,6 +61,10 @@ const MasFamilyModel = ({ show, popupType, onOk, onClose, onSelect, selectedItem
 
                 case "treatmentAdvice":
                     url = `${MASTERS}/masTreatmentAdvise/getAll/1`;
+                    break;
+
+                case "doctorRemark":
+                    url = `${MASTERS}/masOpdMedicalAdvise/getAll/0`;
                     break;
 
                 default:
@@ -94,12 +105,14 @@ const MasFamilyModel = ({ show, popupType, onOk, onClose, onSelect, selectedItem
         popupType === "symptoms"
             ? "Select Symptoms"
             : popupType === "past"
-            ? "Select Past History"
-            : popupType === "family"
-            ? "Select Family History"
-            : popupType === "treatmentAdvice"
-            ? "Select Treatment Advice"
-            : "Select Items";
+                ? "Select Past History"
+                : popupType === "family"
+                    ? "Select Family History"
+                    : popupType === "treatmentAdvice"
+                        ? "Select Treatment Advice"
+                        : popupType === "doctorRemark"
+                            ? "Select Doctor Remarks"
+                            : "Select Items";
 
     return (
         <>
