@@ -2438,7 +2438,7 @@ const GeneralMedicineWaitingList = () => {
                 {/* Clinical History Section */}
                 <div className="card mb-3 shadow-sm">
                   <div
-                    className="card-header py-3 bg-light d-flex justify-content-between align-items-center"
+                    className="card-header py-3   d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("clinicalHistory")}
                   >
@@ -2584,7 +2584,7 @@ const GeneralMedicineWaitingList = () => {
                 {/* Vital Detail Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("vitalDetail")}
                   >
@@ -2747,7 +2747,7 @@ const GeneralMedicineWaitingList = () => {
                 {/* Diagnosis Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("diagnosis")}
                   >
@@ -2859,7 +2859,7 @@ const GeneralMedicineWaitingList = () => {
                                           icdDropdown.map((icd) => (
                                             <div
                                               key={icd.icdId}
-                                              className="p-2 cursor-pointer hover:bg-light"
+                                              className="p-2 cursor-pointer hover: "
                                               onMouseDown={() => {
                                                 updateICD(icd, index);
                                                 setOpenDropdown(null);
@@ -2931,7 +2931,7 @@ const GeneralMedicineWaitingList = () => {
                 {/* Investigation Section - UPDATED WITH MULTIPLE TEMPLATE SUPPORT */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("investigation")}
                   >
@@ -2945,7 +2945,7 @@ const GeneralMedicineWaitingList = () => {
                         <div className="row mb-3">
                           <div className="col-12">
                             <div className="card">
-                              <div className="card-header py-2 bg-light">
+                              <div className="card-header py-2  ">
                                 <div className="d-flex justify-content-between align-items-center">
                                   <h6 className="mb-0 fw-bold">Selected Templates</h6>
                                   <button
@@ -3198,7 +3198,7 @@ const GeneralMedicineWaitingList = () => {
                 {/* Treatment Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("treatment")}
                   >
@@ -3216,7 +3216,7 @@ const GeneralMedicineWaitingList = () => {
                         <div className="row mb-3">
                           <div className="col-12">
                             <div className="card">
-                              <div className="card-header py-2 bg-light">
+                              <div className="card-header py-2  ">
                                 <div className="d-flex justify-content-between align-items-center">
                                   <h6 className="mb-0 fw-bold">Selected Templates</h6>
 
@@ -3544,7 +3544,7 @@ const GeneralMedicineWaitingList = () => {
                       {/* Treatment Advice Subsection */}
                       <div className="card mt-3">
                         <div
-                          className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                          className="card-header py-2   border-bottom-1 d-flex justify-content-between align-items-center"
                           style={{ cursor: "pointer" }}
                           onClick={() => toggleSection("treatmentAdvice")}
                         >
@@ -3587,7 +3587,7 @@ const GeneralMedicineWaitingList = () => {
                 {/* Procedure Care Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("procedureCare")}
                   >
@@ -3905,7 +3905,7 @@ const GeneralMedicineWaitingList = () => {
                 {/* Surgery Advice Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("surgeryAdvice")}
                   >
@@ -4044,7 +4044,7 @@ const GeneralMedicineWaitingList = () => {
                 {/* Admission Advice Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("admissionAdvice")}
                   >
@@ -4193,7 +4193,7 @@ const GeneralMedicineWaitingList = () => {
 
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("referral")}
                   >
@@ -4544,7 +4544,7 @@ const GeneralMedicineWaitingList = () => {
 
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("followUp")}
                   >
@@ -4619,7 +4619,7 @@ const GeneralMedicineWaitingList = () => {
                 {/* Doctor's Remarks Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("remarks")}
                   >

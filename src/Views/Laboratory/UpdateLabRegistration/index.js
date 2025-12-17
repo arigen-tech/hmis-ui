@@ -1091,7 +1091,7 @@ const UpdateLabRegistration = () => {
           <div className="row mb-3">
             <div className="col-sm-12">
               <div className="card shadow mb-3">
-                <div className="card-header py-3 bg-light border-bottom-1">
+                <div className="card-header py-3   border-bottom-1">
                   <h6 className="mb-0 fw-bold">Personal Details</h6>
                 </div>
                 <div className="card-body">
@@ -1301,7 +1301,7 @@ const UpdateLabRegistration = () => {
           <div className="row mb-3">
             <div className="col-sm-12">
               <div className="card shadow mb-3">
-                <div className="card-header py-3 bg-light border-bottom-1">
+                <div className="card-header py-3   border-bottom-1">
                   <h6 className="mb-0 fw-bold">Patient Address</h6>
                 </div>
                 <div className="card-body">
@@ -1424,7 +1424,7 @@ const UpdateLabRegistration = () => {
           <div className="row mb-3">
             <div className="col-sm-12">
               <div className="card shadow mb-3">
-                <div className="card-header py-3 bg-light border-bottom-1">
+                <div className="card-header py-3   border-bottom-1">
                   <h6 className="mb-0 fw-bold">NOK Details</h6>
                 </div>
                 <div className="card-body">
@@ -1607,7 +1607,7 @@ const UpdateLabRegistration = () => {
           <div className="row mb-3">
             <div className="col-sm-12">
               <div className="card shadow mb-3">
-                <div className="card-header py-3 bg-light border-bottom-1">
+                <div className="card-header py-3   border-bottom-1">
                   <h6 className="mb-0 fw-bold">Emergency Contact Details</h6>
                 </div>
                 <div className="card-body">
@@ -1663,7 +1663,7 @@ const UpdateLabRegistration = () => {
           <div className="row mb-3">
             <div className="col-sm-12">
               <div className="card shadow mb-3">
-                <div className="card-header bg-light border-bottom-1 py-3">
+                <div className="card-header   border-bottom-1 py-3">
                   <h6 className="fw-bold mb-0">
                     {formData.type === "investigation" ? "Investigation Details" : "Package Details"}
                   </h6>
@@ -2156,7 +2156,7 @@ const UpdateLabRegistration = () => {
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header py-3 bg-light border-bottom-1">
+              <div className="card-header py-3   border-bottom-1">
                 <h6 className="mb-0 fw-bold">Search Patient</h6>
               </div>
               <div className="card-body">

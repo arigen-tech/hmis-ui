@@ -843,7 +843,7 @@ const EmployeeRegistration = () => {
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header bg-light border-bottom-1 py-3">
+                                <div className="card-header   border-bottom-1 py-3">
                                     <h6 className="fw-bold mb-0">Employee Registration</h6>
                                 </div>
                                 <div className="card-body">
@@ -1268,7 +1268,7 @@ const EmployeeRegistration = () => {
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header bg-light border-bottom-1 py-3">
+                                <div className="card-header   border-bottom-1 py-3">
                                     <h6 className="fw-bold mb-0">Educational Qualification</h6>
                                 </div>
                                 <div className="card-body">
@@ -1350,7 +1350,7 @@ const EmployeeRegistration = () => {
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header bg-light border-bottom-1 py-3">
+                                <div className="card-header   border-bottom-1 py-3">
                                     <h6 className="fw-bold mb-0">Specialty Center Name</h6>
                                 </div>
                                 <div className="card-body">
@@ -1427,7 +1427,7 @@ const EmployeeRegistration = () => {
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header bg-light border-bottom-1 py-3">
+                                <div className="card-header   border-bottom-1 py-3">
                                     <h6 className="fw-bold mb-0">Work Experience</h6>
                                 </div>
                                 <div className="card-body">
@@ -1474,7 +1474,7 @@ const EmployeeRegistration = () => {
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header bg-light border-bottom-1 py-3">
+                                <div className="card-header   border-bottom-1 py-3">
                                     <h6 className="fw-bold mb-0">Memberships</h6>
                                 </div>
                                 <div className="card-body">
@@ -1521,7 +1521,7 @@ const EmployeeRegistration = () => {
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header bg-light border-bottom-1 py-3">
+                                <div className="card-header   border-bottom-1 py-3">
                                     <h6 className="fw-bold mb-0">Specialty Interest</h6>
                                 </div>
                                 <div className="card-body">
@@ -1568,7 +1568,7 @@ const EmployeeRegistration = () => {
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header bg-light border-bottom-1 py-3">
+                                <div className="card-header   border-bottom-1 py-3">
                                     <h6 className="fw-bold mb-0">Awards & Distinctions</h6>
                                 </div>
                                 <div className="card-body">
@@ -1615,7 +1615,7 @@ const EmployeeRegistration = () => {
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header bg-light border-bottom-1 py-3">
+                                <div className="card-header   border-bottom-1 py-3">
                                     <h6 className="fw-bold mb-0">Required Documents</h6>
                                 </div>
                                 <div className="card-body">

@@ -1139,7 +1139,7 @@ const PatientRegistration = () => {
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header py-3 bg-light border-bottom-1">
+              <div className="card-header py-3   border-bottom-1">
                 <h6 className="mb-0 fw-bold">Personal Details</h6>
               </div>
               <div className="card-body">
@@ -1268,7 +1268,7 @@ const PatientRegistration = () => {
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header py-3 bg-light border-bottom-1">
+              <div className="card-header py-3   border-bottom-1">
                 <h6 className="mb-0 fw-bold">Patient Address</h6>
               </div>
               <div className="card-body">
@@ -1345,7 +1345,7 @@ const PatientRegistration = () => {
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header py-3 bg-light border-bottom-1">
+              <div className="card-header py-3   border-bottom-1">
                 <h6 className="mb-0 fw-bold">NOK Details</h6>
               </div>
               <div className="card-body">
@@ -1452,7 +1452,7 @@ const PatientRegistration = () => {
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header py-3 bg-light border-bottom-1">
+              <div className="card-header py-3   border-bottom-1">
                 <h6 className="mb-0 fw-bold">Emergency Contact Details</h6>
               </div>
               <div className="card-body">
@@ -1482,7 +1482,7 @@ const PatientRegistration = () => {
           <div className="row mb-3">
             <div className="col-sm-12">
               <div className="card shadow mb-3">
-                <div className="card-header py-3 bg-light border-bottom-1">
+                <div className="card-header py-3   border-bottom-1">
                   <h6 className="mb-0 fw-bold">Vital Details</h6>
                 </div>
                 <div className="card-body">
@@ -1598,7 +1598,7 @@ const PatientRegistration = () => {
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header py-3 bg-light border-bottom-1 d-flex align-items-center justify-content-between">
+              <div className="card-header py-3   border-bottom-1 d-flex align-items-center justify-content-between">
                 <h6 className="mb-0 fw-bold">Appointment Details</h6>
                 <div className="d-flex gap-2">
                   <button type="button" className="btn btn-sm btn-outline-primary" onClick={addAppointmentRow}>

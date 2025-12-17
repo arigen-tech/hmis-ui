@@ -747,7 +747,7 @@ const ResultValidation = () => {
 
               <div className="card-body">
                 <div className="card mb-4">
-                  <div className="card-header bg-light">
+                  <div className="card-header  ">
                     <h5 className="mb-0">PATIENT DETAILS</h5>
                   </div>
                   <div className="card-body">
@@ -815,7 +815,7 @@ const ResultValidation = () => {
                 </div>
 
                 <div className="card mb-4">
-                  <div className="card-header bg-light">
+                  <div className="card-header  ">
                     <h5 className="mb-0">RESULT ENTRY DETAILS</h5>
                   </div>
                   <div className="card-body">
@@ -1102,7 +1102,7 @@ const ResultValidation = () => {
               ) : (
                 <>
                   <div className="card mb-3">
-                    <div className="card-header py-3 bg-light border-bottom-1">
+                    <div className="card-header py-3   border-bottom-1">
                       <h6 className="mb-0 fw-bold">PATIENT SEARCH</h6>
                     </div>
                     <div className="card-body">

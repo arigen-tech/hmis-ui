@@ -1205,7 +1205,7 @@ const ViewSearchEmployee = () => {
             <div className="row mb-3 mt-4">
               <div className="col-sm-12">
                 <div className="card shadow mb-3">
-                  <div className="card-header bg-light border-bottom-1 py-3">
+                  <div className="card-header   border-bottom-1 py-3">
                     <h6 className="fw-bold mb-0">Educational Qualification</h6>
                   </div>
                   <div className="card-body">
@@ -1314,7 +1314,7 @@ const ViewSearchEmployee = () => {
             <div className="row mb-3">
               <div className="col-sm-12">
                 <div className="card shadow mb-3">
-                  <div className="card-header bg-light border-bottom-1 py-3">
+                  <div className="card-header   border-bottom-1 py-3">
                     <h6 className="fw-bold mb-0">Required Documents</h6>
                   </div>
                   <div className="card-body">

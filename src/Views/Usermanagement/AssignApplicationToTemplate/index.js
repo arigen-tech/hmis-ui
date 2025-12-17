@@ -655,7 +655,7 @@ const Assignapplication = () => {
                         <div className="card form-card">
                             <div className="card-body">
                                 <form className="forms row">
-                                    <h5 className="bg-light p-3 rounded">Assign Application To Template</h5>
+                                    <h5 className="  p-3 rounded">Assign Application To Template</h5>
                                     <div className="row mt-4">
                                         <div className="form-group col-md-2 mt-2">
                                             <label>Template Name</label>

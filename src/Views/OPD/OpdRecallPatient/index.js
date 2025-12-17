@@ -2108,7 +2108,7 @@ const handleRowClick = async (patient) => {
                 {/* Clinical History Section */}
                 <div className="card mb-3 shadow-sm">
                   <div
-                    className="card-header py-3 bg-light d-flex justify-content-between align-items-center"
+                    className="card-header py-3   d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("clinicalHistory")}
                   >
@@ -2243,7 +2243,7 @@ const handleRowClick = async (patient) => {
                 {/* Vital Detail Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("vitalDetail")}
                   >
@@ -2406,7 +2406,7 @@ const handleRowClick = async (patient) => {
                 {/* Diagnosis Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("diagnosis")}
                   >
@@ -2500,7 +2500,7 @@ const handleRowClick = async (patient) => {
                                           icdDropdown.map((icd) => (
                                             <div
                                               key={icd.icdId}
-                                              className="p-2 cursor-pointer hover:bg-light"
+                                              className="p-2 cursor-pointer hover: "
                                               onMouseDown={() => {
                                                 updateICD(icd, index);
                                                 setOpenDropdown(null);
@@ -2565,7 +2565,7 @@ const handleRowClick = async (patient) => {
                 {/* Investigation Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("investigation")}
                   >
@@ -2578,7 +2578,7 @@ const handleRowClick = async (patient) => {
                         <div className="row mb-3">
                           <div className="col-12">
                             <div className="card">
-                              <div className="card-header py-2 bg-light">
+                              <div className="card-header py-2  ">
                                 <div className="d-flex justify-content-between align-items-center">
                                   <h6 className="mb-0 fw-bold">Selected Templates</h6>
                                   <button
@@ -2838,7 +2838,7 @@ const handleRowClick = async (patient) => {
                 {/* Treatment Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("treatment")}
                   >
@@ -2854,7 +2854,7 @@ const handleRowClick = async (patient) => {
                         <div className="row mb-3">
                           <div className="col-12">
                             <div className="card">
-                              <div className="card-header py-2 bg-light">
+                              <div className="card-header py-2  ">
                                 <div className="d-flex justify-content-between align-items-center">
                                   <h6 className="mb-0 fw-bold">Selected Templates</h6>
                                   <button
@@ -3155,7 +3155,7 @@ const handleRowClick = async (patient) => {
                       {/* Treatment Advice Subsection */}
                       <div className="card mt-3">
                         <div
-                          className="card-header py-2 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                          className="card-header py-2   border-bottom-1 d-flex justify-content-between align-items-center"
                           style={{ cursor: "pointer" }}
                           onClick={() => toggleSection("treatmentAdvice")}
                         >
@@ -3196,7 +3196,7 @@ const handleRowClick = async (patient) => {
                 {/* Procedure Care Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("procedureCare")}
                   >
@@ -3516,7 +3516,7 @@ const handleRowClick = async (patient) => {
                 {/* Surgery Advice Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("surgeryAdvice")}
                   >
@@ -3653,7 +3653,7 @@ const handleRowClick = async (patient) => {
                 {/* Admission Advice Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("admissionAdvice")}
                   >
@@ -3803,7 +3803,7 @@ const handleRowClick = async (patient) => {
                 {/* Referral Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("referral")}
                   >
@@ -4150,7 +4150,7 @@ const handleRowClick = async (patient) => {
                 {/* Follow Up Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("followUp")}
                   >
@@ -4231,7 +4231,7 @@ const handleRowClick = async (patient) => {
                 {/* Doctor's Remarks Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("remarks")}
                   >

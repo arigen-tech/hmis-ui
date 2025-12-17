@@ -119,7 +119,7 @@ const OpdPaymentSuccess = () => {
                 </div>
 
                 {/* Amount Display */}
-                <div className="bg-light border border-success border-2 rounded-3 p-3 mb-4 text-center">
+                <div className="  border border-success border-2 rounded-3 p-3 mb-4 text-center">
                   <p className="text-muted mb-1 small">Total Amount Paid</p>
                   <h2 className="text-success fw-bold mb-0">₹{amount.toFixed(2)}</h2>
                 </div>

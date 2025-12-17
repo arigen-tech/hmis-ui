@@ -244,7 +244,7 @@ const PaymentPage = () => {
             </div>
 
             <div className="card-body">
-              <div className="mb-4 p-3 bg-light rounded">
+              <div className="mb-4 p-3   rounded">
                 <h6 className="fw-bold mb-2">Payment Summary</h6>
 
                 <div className="d-flex justify-content-between">

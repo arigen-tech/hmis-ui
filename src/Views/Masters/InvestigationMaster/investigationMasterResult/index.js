@@ -441,7 +441,7 @@ const InvestigationMasterResult = () => {
                             <label className="form-label">Department Name</label>
                             <input
                               type="text"
-                              className="form-control bg-light"
+                              className="form-control  "
                               value={mainChargeCodeName || "Laboratory"}
                               readOnly
                             />
@@ -450,7 +450,7 @@ const InvestigationMasterResult = () => {
                             <label className="form-label">Modality</label>
                             <input
                               type="text"
-                              className="form-control bg-light"
+                              className="form-control  "
                               value={subChargeCodeName || "BIO-CHEMISTRY"}
                               readOnly
                             />
@@ -459,7 +459,7 @@ const InvestigationMasterResult = () => {
                             <label className="form-label">Investigation Name</label>
                             <input
                               type="text"
-                              className="form-control bg-light"
+                              className="form-control  "
                               value={investigationName || "No investigation selected"}
                               readOnly
                             />
@@ -468,7 +468,7 @@ const InvestigationMasterResult = () => {
                             <label className="form-label">Gender Applicable</label>
                             <input
                               type="text"
-                              className="form-control bg-light"
+                              className="form-control  "
                               value={mapGenderToDisplay(genderApplicable) || "Not specified"}
                               readOnly
                             />

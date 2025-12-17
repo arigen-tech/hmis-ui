@@ -300,7 +300,7 @@ const OpdPreconsultation = () => {
                 <div className="row mb-3 mt-3">
                   <div className="col-sm-12">
                     <div className="card shadow mb-3">
-                      <div className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center">
+                      <div className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center">
                         <h6 className="mb-0 fw-bold">Vital Details for {selectedPatient.patientName}</h6>
                         <button
                           type="button"

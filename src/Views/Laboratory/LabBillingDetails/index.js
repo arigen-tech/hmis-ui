@@ -581,7 +581,7 @@ const LabBillingDetails = () => {
                 {/* Patient Details Section */}
                 <div className="col-12 mt-4">
                   <div className="card">
-                    <div className="card-header bg-light">
+                    <div className="card-header  ">
                       <h5 className="mb-0">
                         <i className="mdi mdi-account"></i> Patient Details
                       </h5>
@@ -689,7 +689,7 @@ const LabBillingDetails = () => {
                 {/* Lab Investigation/Package Details */}
                 <div className="col-12 mt-4">
                   <div className="card">
-                    <div className="card-header bg-light">
+                    <div className="card-header  ">
                       <h5 className="mb-0">
                         <i className="mdi mdi-test-tube"></i>{" "}
                         {formData.type === "investigation" ? "Investigation Details" : "Package Details"}
