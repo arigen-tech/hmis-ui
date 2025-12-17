@@ -3,13 +3,14 @@ import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest } from "../../../service/apiService";
 import { OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
-
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"
 const DrugExpiry = () => {
+  const today = new Date().toISOString().split("T")[0];
   const [searchFormData, setSearchFormData] = useState({
     drugCode: "",
     drugName: "",
-    fromDate: "",
-    toDate: "",
+    fromDate: today,
+    toDate: today
   });
 
   const [drugCodeQuery, setDrugCodeQuery] = useState("");
@@ -18,6 +19,7 @@ const DrugExpiry = () => {
   const [showCodeDropdown, setShowCodeDropdown] = useState(false);
   const [showNameDropdown, setShowNameDropdown] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState(null);
 
 
   console.log("searchFormData", searchFormData)
@@ -198,76 +200,61 @@ const DrugExpiry = () => {
   const handlePrint = async () => {
     const fromDate = searchFormData.fromDate;
     const toDate = searchFormData.toDate;
-  if (!fromDate || !toDate) {
-    alert("Please select both From Date and To Date");
-    return;
-  }
 
-  if (new Date(fromDate) > new Date(toDate)) {
-    alert("From Date cannot be later than To Date");
-    return;
-  }
-
-  if (new Date(fromDate) > new Date() || new Date(toDate) > new Date()) {
-    alert("Dates cannot be in the future");
-    return;
-  }
-
-  const hospitalId =
-    localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
-  const departmentId =
-    localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
-
-  if (!hospitalId || !departmentId) {
-    alert("Hospital and Department must be selected.");
-    return;
-  }
-
-  setIsGeneratingPDF(true);
-
-  try {
-    // ✅ Fix: Format date as dd-MM-yyyy (required by backend)
-    const formatDate = (dateStr) => {
-      const date = new Date(dateStr);
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
-      return `${day}-${month}-${year}`;  // <-- backend expects this
-    };
-
-    const formattedFromDate = formatDate(fromDate);
-    const formattedToDate = formatDate(toDate);
-
-    const url = `${ALL_REPORTS}/drugExpiryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&itemId=0&fromDate=${formattedFromDate}&toDate=${formattedToDate}`;
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Accept: "application/pdf",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to generate PDF");
+    if (!fromDate || !toDate) {
+      alert("Please select both From Date and To Date");
+      return;
     }
 
-    const blob = await response.blob();
-    const fileURL = window.URL.createObjectURL(blob);
+    if (new Date(fromDate) > new Date(toDate)) {
+      alert("From Date cannot be later than To Date");
+      return;
+    }
 
-    const link = document.createElement("a");
-    link.href = fileURL;
-    link.setAttribute("download", "DrugExpiryReport.pdf");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (new Date(fromDate) > new Date() || new Date(toDate) > new Date()) {
+      alert("Dates cannot be in the future");
+      return;
+    }
 
-  } catch (error) {
-    console.error("Error generating PDF", error);
-    alert("Error generating PDF report. Please try again.");
-  } finally {
-    setIsGeneratingPDF(false);
-  }
-};
+    const hospitalId =
+      localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
+    const departmentId =
+      localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
+
+    setIsGeneratingPDF(true);
+
+    try {
+      const formatDate = (dateStr) => {
+        const date = new Date(dateStr);
+        return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
+      };
+
+      const url = `${ALL_REPORTS}/drugExpiryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&itemId=0&fromDate=${formatDate(fromDate)}&toDate=${formatDate(toDate)}`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      const blob = await response.blob();
+      const fileURL = window.URL.createObjectURL(blob);
+
+      setPdfUrl(fileURL);
+
+    } catch (error) {
+      console.error("Error generating PDF", error);
+      alert("Error generating PDF report. Please try again.");
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
 
 
   const filteredTotalPages = Math.ceil(filteredResults.length / itemsPerPage)
@@ -327,6 +314,15 @@ const DrugExpiry = () => {
             <div className="card-header" >
               <h4 className="card-title p-2 mb-0">Drug Expiry</h4>
             </div>
+            {pdfUrl && (
+              <PdfViewer
+                pdfUrl={pdfUrl}
+                onClose={() => setPdfUrl(null)}
+                name={"Drug Expiry Report"}
+              />
+            )}
+            {loading && <LoadingScreen />}
+
             <div className="card-body">
               <form className="forms row" >
                 <div className="row">
@@ -529,7 +525,7 @@ const DrugExpiry = () => {
                       type="button"
                       className="btn btn-warning"
                       onClick={handlePrint}
-                      disabled={isGeneratingPDF}
+                      disabled={isGeneratingPDF || filteredResults.length === 0}
                     >
                       {isGeneratingPDF ? (
                         <>

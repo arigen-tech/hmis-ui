@@ -57,6 +57,13 @@ const UpdateLabRegistration = () => {
     appointmentDate: "",
   })
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [mobileQuery, setMobileQuery] = useState("")
+  const [pageInput, setPageInput] = useState("")
+
   // Main form data
   const [formData, setFormData] = useState({
     id: null,
@@ -257,10 +264,20 @@ const UpdateLabRegistration = () => {
   }
 
   const handleSearchChange = (e) => {
+    const { name, value } = e.target
     setSearchFormData({
       ...searchFormData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     })
+
+    // Also update search query for filtering
+    if (name === "patientName") {
+      setSearchQuery(value)
+    }
+    if (name === "mobileNo") {
+      setMobileQuery(value)
+    }
+    setCurrentPage(1)
   }
 
   const handleChange = async (e) => {
@@ -611,78 +628,42 @@ const UpdateLabRegistration = () => {
     }
   }
 
-  // async function checkDuplicatePatient(firstName, dob, gender, mobile, relation) {
-  //   const params = new URLSearchParams({
-  //     firstName,
-  //     dob,
-  //     gender,
-  //     mobile,
-  //     relation,
-  //   }).toString()
-  //   const result = await getRequest(`/patient/check-duplicate?${params}`)
-  //   return result === true
-  // }
-
-  // useEffect(() => {
-  //   const { firstName, dob, gender, mobileNo, relation } = formData
-  //   if (firstName && dob && gender && mobileNo && relation) {
-  //     const timer = setTimeout(async () => {
-  //       try {
-  //         const isDuplicate = await checkDuplicatePatient(firstName, dob, gender, mobileNo, relation)
-  //         if (isDuplicate) {
-  //           Swal.fire("Duplicate Found!", "A patient with these details already exists.", "warning")
-  //           setIsDuplicatePatient(true)
-  //         } else {
-  //           setIsDuplicatePatient(false)
-  //         }
-  //       } catch (err) {
-  //         console.error("Duplicate check failed:", err)
-  //       }
-  //     }, 800)
-  //     return () => clearTimeout(timer)
-  //   } else {
-  //     setIsDuplicatePatient(false)
-  //   }
-  // }, [formData.firstName, formData.dob, formData.gender, formData.mobileNo, formData.relation])
-
   const handleSearch = async () => {
-  setLoading(true);
-  try {
-    const requestBody = {
-      mobileNo: searchFormData.mobileNo?.trim() || null,
-      patientName: searchFormData.patientName?.trim() || null,
-      uhidNo: searchFormData.uhidNo?.trim() || null,
-      appointmentDate: searchFormData.appointmentDate
-        ? new Date(searchFormData.appointmentDate).toISOString().split("T")[0]
-        : null,
-    };
+    setLoading(true);
+    try {
+      const requestBody = {
+        mobileNo: searchFormData.mobileNo?.trim() || null,
+        patientName: searchFormData.patientName?.trim() || null,
+        uhidNo: searchFormData.uhidNo?.trim() || null,
+        appointmentDate: searchFormData.appointmentDate
+          ? new Date(searchFormData.appointmentDate).toISOString().split("T")[0]
+          : null,
+      };
 
-    // Remove empty string values and replace with null
-    Object.keys(requestBody).forEach(key => {
-      if (requestBody[key] === "" || requestBody[key] === undefined) {
-        requestBody[key] = null;
+      Object.keys(requestBody).forEach(key => {
+        if (requestBody[key] === "" || requestBody[key] === undefined) {
+          requestBody[key] = null;
+        }
+      });
+
+      console.log("Search request:", requestBody);
+
+      const data = await postRequest(PATIENT_SEARCH, requestBody);
+
+      if (Array.isArray(data.response)) {
+        setPatients(data.response);
+      } else {
+        setPatients([]);
+        Swal.fire("Info", "No patients found matching your criteria", "info");
       }
-    });
-
-    console.log("Search request:", requestBody); // Debug log
-
-    const data = await postRequest(PATIENT_SEARCH, requestBody);
-
-    if (Array.isArray(data.response)) {
-      setPatients(data.response);
-    } else {
-      setPatients([]);
-      Swal.fire("Info", "No patients found matching your criteria", "info");
+    } catch (error) {
+      console.error("Search error:", error);
+      Swal.fire("Error", "Failed to search patients", "error");
+    } finally {
+      setLoading(false);
+      setCurrentPage(1); // Reset to first page after search
     }
-  } catch (error) {
-    console.error("Search error:", error);
-    Swal.fire("Error", "Failed to search patients", "error");
-  } finally {
-    setLoading(false);
-  }
-};
-
-
+  };
 
   const handleBook = (patient) => {
     const mappedData = {
@@ -720,8 +701,18 @@ const UpdateLabRegistration = () => {
       emergencyLastName: patient.emerLn || undefined,
       emergencyMobile: patient.emerMobile || undefined,
       type: "investigation",
-      rows: formData.rows,
-      paymentMode: formData.paymentMode,
+      rows: [
+        {
+          id: 1,
+          name: "",
+          date: "",
+          originalAmount: 0,
+          discountAmount: 0,
+          netAmount: 0,
+          type: "investigation",
+        },
+      ],
+      paymentMode: "",
     }
 
     setFormData(mappedData)
@@ -742,14 +733,66 @@ const UpdateLabRegistration = () => {
       })
     }
 
-
     if (mappedData.gender) {
-    fetchInvestigationDetails(mappedData.gender).then((data) => {
-      setInvestigationItems(data)
-    })
-  }
+      fetchInvestigationDetails(mappedData.gender).then((data) => {
+        setInvestigationItems(data)
+      })
+    }
 
     setShowPatientDetails(true)
+  }
+
+  const handleBackToList = () => {
+    setShowPatientDetails(false)
+    setFormData({
+      id: null,
+      imageurl: undefined,
+      firstName: undefined,
+      middleName: undefined,
+      lastName: undefined,
+      mobileNo: undefined,
+      gender: undefined,
+      relation: undefined,
+      dob: undefined,
+      age: undefined,
+      email: undefined,
+      address1: undefined,
+      address2: undefined,
+      country: undefined,
+      state: undefined,
+      district: undefined,
+      city: undefined,
+      pinCode: undefined,
+      nokFirstName: undefined,
+      nokMiddleName: undefined,
+      nokLastName: undefined,
+      nokEmail: undefined,
+      nokMobile: undefined,
+      nokAddress1: undefined,
+      nokAddress2: undefined,
+      nokCountry: undefined,
+      nokState: undefined,
+      nokDistrict: undefined,
+      nokCity: undefined,
+      nokPinCode: undefined,
+      emergencyFirstName: undefined,
+      emergencyLastName: undefined,
+      emergencyMobile: undefined,
+      type: "investigation",
+      rows: [
+        {
+          id: 1,
+          name: "",
+          date: "",
+          originalAmount: 0,
+          discountAmount: 0,
+          netAmount: 0,
+          type: "investigation",
+        },
+      ],
+      paymentMode: "",
+    })
+    setCheckedRows([true])
   }
 
   const validateForm = () => {
@@ -857,8 +900,7 @@ const UpdateLabRegistration = () => {
           })
         } else {
           Swal.fire("Success!", "Lab booking registered successfully!", "success").then(() => {
-            setShowPatientDetails(false)
-            handleReset()
+            handleBackToList()
           })
         }
       } catch (error) {
@@ -873,6 +915,17 @@ const UpdateLabRegistration = () => {
   const isMobileNoMissing = !formData.mobileNo || formData.mobileNo.trim() === ""
 
   const handleReset = () => {
+    setSearchFormData({
+      mobileNo: "",
+      patientName: "",
+      uhidNo: "",
+      appointmentDate: "",
+    })
+    setSearchQuery("")
+    setMobileQuery("")
+    setPatients([])
+    setCurrentPage(1)
+    setShowPatientDetails(false)
     setFormData({
       id: null,
       imageurl: undefined,
@@ -924,14 +977,7 @@ const UpdateLabRegistration = () => {
     setErrors({})
     setImage(placeholderImage)
     setImageURL("")
-    setShowPatientDetails(false)
-    setPatients([])
-    setSearchFormData({
-      mobileNo: "",
-      patientName: "",
-      uhidNo: "",
-      appointmentDate: "",
-    })
+    setCheckedRows([true])
   }
 
   const isAnyDateOrNameMissing = formData.rows.some(
@@ -954,10 +1000,1147 @@ const UpdateLabRegistration = () => {
     return missing
   }
 
+  // Pagination calculations
+  const filteredPatients = patients.filter(patient => {
+    const fullName = `${patient.patientFn || ""} ${patient.patientMn || ""} ${patient.patientLn || ""}`.toLowerCase();
+    const mobile = patient.patientMobileNumber || "";
+
+    return (
+      fullName.includes(searchQuery.toLowerCase()) ||
+      mobile.includes(mobileQuery)
+    );
+  });
+
+  const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
+  const currentItems = filteredPatients.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Render pagination numbers
+  const renderPagination = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    if (startPage > 1) {
+      pageNumbers.push(1);
+      if (startPage > 2) pageNumbers.push("...");
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) pageNumbers.push("...");
+      pageNumbers.push(totalPages);
+    }
+
+    return pageNumbers.map((number, index) => (
+      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
+        {typeof number === "number" ? (
+          <button className="page-link" onClick={() => setCurrentPage(number)}>
+            {number}
+          </button>
+        ) : (
+          <span className="page-link disabled">{number}</span>
+        )}
+      </li>
+    ));
+  };
+
+  const handlePageNavigation = () => {
+    const pageNumber = Number.parseInt(pageInput, 10);
+    if (pageNumber > 0 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+    } else {
+      Swal.fire("Invalid Page", "Please enter a valid page number.", "warning");
+    }
+  };
+
   if (loading) {
     return <LoadingScreen />
   }
 
+  // Show FORM VIEW when patient is selected
+  if (showPatientDetails) {
+    return (
+      <div className="body d-flex py-3">
+        <div className="container-xxl">
+          <div className="row align-items-center">
+            <div className="border-0 mb-4">
+              <div className="card-header py-3 no-bg bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
+                <div className="d-flex align-items-center w-100">
+                  <h3 className="fw-bold mb-0">Lab Booking - Follow up Patient</h3>
+
+                  <button className="btn btn-secondary ms-auto me-3" onClick={handleBackToList}>
+                    <i className="icofont-arrow-left me-1"></i> Back to Search
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Patient Personal Details */}
+          <div className="row mb-3">
+            <div className="col-sm-12">
+              <div className="card shadow mb-3">
+                <div className="card-header py-3 bg-light border-bottom-1">
+                  <h6 className="mb-0 fw-bold">Personal Details</h6>
+                </div>
+                <div className="card-body">
+                  <form>
+                    <div className="row g-3">
+                      <div className="col-md-9">
+                        <div className="row g-3">
+                          <div className="col-md-4">
+                            <label className="form-label" htmlFor="firstName">
+                              First Name <span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              className={`form-control ${errors.firstName ? "is-invalid" : ""}`}
+                              id="firstName"
+                              name="firstName"
+                              value={formData.firstName || ""}
+                              onChange={handleChange}
+                              placeholder="Enter First Name"
+                            />
+                            {errors.firstName && <div className="invalid-feedback">{errors.firstName}</div>}
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label" htmlFor="middleName">
+                              Middle Name
+                            </label>
+                            <input
+                              type="text"
+                              id="middleName"
+                              value={formData.middleName || ""}
+                              name="middleName"
+                              onChange={handleChange}
+                              className="form-control"
+                              placeholder="Enter Middle Name"
+                            />
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label" htmlFor="lastName">
+                              Last Name
+                            </label>
+                            <input
+                              type="text"
+                              id="lastName"
+                              value={formData.lastName || ""}
+                              name="lastName"
+                              onChange={handleChange}
+                              className="form-control"
+                              placeholder="Enter Last Name"
+                            />
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label" htmlFor="mobileNo">
+                              Mobile No.<span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              id="mobileNo"
+                              className={`form-control ${errors.mobileNo ? "is-invalid" : ""}`}
+                              name="mobileNo"
+                              value={formData.mobileNo || ""}
+                              maxLength={10}
+                              onChange={(e) => {
+                                if (/^\d*$/.test(e.target.value)) {
+                                  handleChange(e)
+                                }
+                              }}
+                              placeholder="Enter Mobile Number"
+                            />
+                            {errors.mobileNo && <div className="invalid-feedback">{errors.mobileNo}</div>}
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label" htmlFor="gender">
+                              Gender <span className="text-danger">*</span>
+                            </label>
+                            <select
+                              className={`form-select ${errors.gender ? "is-invalid" : ""}`}
+                              id="gender"
+                              name="gender"
+                              value={formData.gender || ""}
+                              onChange={handleChange}
+                            >
+                              <option value="">Select</option>
+                              {genderData.map((gender) => (
+                                <option key={gender.id} value={gender.id}>
+                                  {gender.genderName}
+                                </option>
+                              ))}
+                            </select>
+                            {errors.gender && <div className="invalid-feedback">{errors.gender}</div>}
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label" htmlFor="relation">
+                              Relation <span className="text-danger">*</span>
+                            </label>
+                            <select
+                              className={`form-select ${errors.relation ? "is-invalid" : ""}`}
+                              id="relation"
+                              name="relation"
+                              value={formData.relation || ""}
+                              onChange={handleChange}
+                            >
+                              <option value="">Select</option>
+                              {relationData.map((relation) => (
+                                <option key={relation.id} value={relation.id}>
+                                  {relation.relationName}
+                                </option>
+                              ))}
+                            </select>
+                            {errors.relation && <div className="invalid-feedback">{errors.relation}</div>}
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label" htmlFor="dob">
+                              DOB <span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="date"
+                              id="dob"
+                              name="dob"
+                              className={`form-control ${errors.dob ? "is-invalid" : ""}`}
+                              value={formData.dob || ""}
+                              max={new Date().toISOString().split("T")[0]}
+                              onChange={handleChange}
+                              placeholder="Select Date of Birth"
+                            />
+                            {errors.dob && <div className="invalid-feedback">{errors.dob}</div>}
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label" htmlFor="age">
+                              Age
+                            </label>
+                            <input
+                              type="text"
+                              id="age"
+                              name="age"
+                              className={`form-control ${errors.age ? "is-invalid" : ""}`}
+                              value={formData.age || ""}
+                              onChange={handleChange}
+                              placeholder="Enter Age"
+                            />
+                            {errors.age && <div className="invalid-feedback">{errors.age}</div>}
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label" htmlFor="email">
+                              Email <span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="email"
+                              id="email"
+                              name="email"
+                              className={`form-control ${errors.email ? "is-invalid" : ""}`}
+                              value={formData.email || ""}
+                              onChange={handleChange}
+                              placeholder="Enter Email Address"
+                            />
+                            {errors.email && <div className="invalid-feedback">{errors.email}</div>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-md-3">
+                        <div className="text-center">
+                          <div className="card p-3 shadow">
+                            {isCameraOn ? (
+                              <video
+                                ref={videoRef}
+                                autoPlay
+                                className="d-block mx-auto"
+                                style={{ width: "100%", height: "150px" }}
+                              ></video>
+                            ) : (
+                              <img
+                                src={image || "/default-profile.png"}
+                                alt="Profile"
+                                className="img-fluid border"
+                                style={{ width: "100%", height: "150px" }}
+                              />
+                            )}
+                            <canvas ref={canvasRef} width="300" height="150" style={{ display: "none" }}></canvas>
+                            <div className="mt-2">
+                              <button
+                                type="button"
+                                className="btn btn-primary me-2 mb-2"
+                                onClick={startCamera}
+                                disabled={isCameraOn}
+                              >
+                                Start Camera
+                              </button>
+                              {isCameraOn && (
+                                <button type="button" className="btn btn-success me-2 mb-2" onClick={capturePhoto}>
+                                  Take Photo
+                                </button>
+                              )}
+                              <button type="button" className="btn btn-danger mb-2" onClick={clearPhoto}>
+                                Clear Photo
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Patient address */}
+          <div className="row mb-3">
+            <div className="col-sm-12">
+              <div className="card shadow mb-3">
+                <div className="card-header py-3 bg-light border-bottom-1">
+                  <h6 className="mb-0 fw-bold">Patient Address</h6>
+                </div>
+                <div className="card-body">
+                  <form>
+                    <div className="row g-3">
+                      <div className="col-md-4">
+                        <label className="form-label">Address 1</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          name="address1"
+                          value={formData.address1 || ""}
+                          onChange={handleChange}
+                          placeholder="Enter Address 1"
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Address 2</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          name="address2"
+                          value={formData.address2 || ""}
+                          onChange={handleChange}
+                          placeholder="Enter Address 2"
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Country</label>
+                        <select
+                          className="form-select"
+                          name="country"
+                          value={formData.country || ""}
+                          onChange={(e) => {
+                            handleAddChange(e)
+                            fetchStates(e.target.value)
+                          }}
+                        >
+                          <option value="">Select Country</option>
+                          {countryData.map((country) => (
+                            <option key={country.id} value={country.id}>
+                              {country.countryName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">State</label>
+                        <select
+                          className="form-select"
+                          name="state"
+                          value={formData.state || ""}
+                          onChange={(e) => {
+                            handleAddChange(e)
+                            fetchDistrict(e.target.value)
+                          }}
+                        >
+                          <option value="">Select State</option>
+                          {stateData.map((state) => (
+                            <option key={state.id} value={state.id}>
+                              {state.stateName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">District</label>
+                        <select
+                          className="form-select"
+                          name="district"
+                          value={formData.district || ""}
+                          onChange={(e) => {
+                            handleAddChange(e)
+                          }}
+                        >
+                          <option value="">Select District</option>
+                          {districtData.map((district) => (
+                            <option key={district.id} value={district.id}>
+                              {district.districtName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">City</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          name="city"
+                          value={formData.city || ""}
+                          onChange={handleChange}
+                          placeholder="Enter City"
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Pin Code</label>
+                        <input
+                          type="text"
+                          className={`form-control ${errors.pinCode ? "is-invalid" : ""}`}
+                          name="pinCode"
+                          value={formData.pinCode || ""}
+                          maxLength={6}
+                          onChange={(e) => {
+                            if (/^\d*$/.test(e.target.value)) {
+                              handleChange(e)
+                            }
+                          }}
+                          placeholder="Enter Pin Code"
+                        />
+                        {errors.pinCode && <div className="invalid-feedback">{errors.pinCode}</div>}
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* NOK Details */}
+          <div className="row mb-3">
+            <div className="col-sm-12">
+              <div className="card shadow mb-3">
+                <div className="card-header py-3 bg-light border-bottom-1">
+                  <h6 className="mb-0 fw-bold">NOK Details</h6>
+                </div>
+                <div className="card-body">
+                  <form>
+                    <div className="row g-3">
+                      <div className="col-md-4">
+                        <label className="form-label">First Name</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Enter First Name"
+                          name="nokFirstName"
+                          value={formData.nokFirstName || ""}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Middle Name</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Enter Middle Name"
+                          name="nokMiddleName"
+                          value={formData.nokMiddleName || ""}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Last Name</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Enter Last Name"
+                          name="nokLastName"
+                          value={formData.nokLastName || ""}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Email</label>
+                        <input
+                          type="email"
+                          className="form-control"
+                          placeholder="Enter Email"
+                          name="nokEmail"
+                          value={formData.nokEmail || ""}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Mobile No.</label>
+                        <input
+                          type="text"
+                          className={`form-control ${errors.nokMobile ? "is-invalid" : ""}`}
+                          placeholder="Enter Mobile Number"
+                          name="nokMobile"
+                          value={formData.nokMobile || ""}
+                          onChange={(e) => {
+                            if (/^\d*$/.test(e.target.value)) {
+                              handleChange(e)
+                            }
+                          }}
+                        />
+                        {errors.nokMobile && <div className="invalid-feedback">{errors.nokMobile}</div>}
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Address 1</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Enter Address 1"
+                          name="nokAddress1"
+                          value={formData.nokAddress1 || ""}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Address 2</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Enter Address 2"
+                          name="nokAddress2"
+                          value={formData.nokAddress2 || ""}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Country</label>
+                        <select
+                          className="form-select"
+                          name="nokCountry"
+                          value={formData.nokCountry || ""}
+                          onChange={(e) => {
+                            handleAddChange(e)
+                            fetchNokStates(e.target.value)
+                          }}
+                        >
+                          <option value="">Select Country</option>
+                          {countryData.map((country) => (
+                            <option key={country.id} value={country.id}>
+                              {country.countryName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">State</label>
+                        <select
+                          className="form-select"
+                          name="nokState"
+                          value={formData.nokState || ""}
+                          onChange={(e) => {
+                            handleAddChange(e)
+                            fetchNokDistrict(e.target.value)
+                          }}
+                        >
+                          <option value="">Select State</option>
+                          {nokStateData.map((state) => (
+                            <option key={state.id} value={state.id}>
+                              {state.stateName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">District</label>
+                        <select
+                          className="form-select"
+                          name="nokDistrict"
+                          value={formData.nokDistrict || ""}
+                          onChange={(e) => {
+                            handleAddChange(e)
+                          }}
+                        >
+                          <option value="">Select District</option>
+                          {nokDistrictData.map((district) => (
+                            <option key={district.id} value={district.id}>
+                              {district.districtName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">City</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Enter City"
+                          name="nokCity"
+                          value={formData.nokCity || ""}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Pin Code</label>
+                        <input
+                          type="text"
+                          className={`form-control ${errors.nokPinCode ? "is-invalid" : ""}`}
+                          name="nokPinCode"
+                          value={formData.nokPinCode || ""}
+                          maxLength={6}
+                          onChange={(e) => {
+                            if (/^\d*$/.test(e.target.value)) {
+                              handleChange(e)
+                            }
+                          }}
+                          placeholder="Enter Pin Code"
+                        />
+                        {errors.nokPinCode && <div className="invalid-feedback">{errors.nokPinCode}</div>}
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Emergency Contact Details Section */}
+          <div className="row mb-3">
+            <div className="col-sm-12">
+              <div className="card shadow mb-3">
+                <div className="card-header py-3 bg-light border-bottom-1">
+                  <h6 className="mb-0 fw-bold">Emergency Contact Details</h6>
+                </div>
+                <div className="card-body">
+                  <form>
+                    <div className="row g-3">
+                      <div className="col-md-4">
+                        <label className="form-label">First Name</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Enter First Name"
+                          name="emergencyFirstName"
+                          value={formData.emergencyFirstName || ""}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Last Name</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Enter Last Name"
+                          name="emergencyLastName"
+                          value={formData.emergencyLastName || ""}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Mobile No.</label>
+                        <input
+                          type="text"
+                          className={`form-control ${errors.emergencyMobile ? "is-invalid" : ""}`}
+                          placeholder="Enter Mobile Number"
+                          name="emergencyMobile"
+                          value={formData.emergencyMobile || ""}
+                          maxLength={10}
+                          onChange={(e) => {
+                            if (/^\d*$/.test(e.target.value)) {
+                              handleChange(e)
+                            }
+                          }}
+                        />
+                        {errors.emergencyMobile && <div className="invalid-feedback">{errors.emergencyMobile}</div>}
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Lab Investigation/Package Details */}
+          <div className="row mb-3">
+            <div className="col-sm-12">
+              <div className="card shadow mb-3">
+                <div className="card-header bg-light border-bottom-1 py-3">
+                  <h6 className="fw-bold mb-0">
+                    {formData.type === "investigation" ? "Investigation Details" : "Package Details"}
+                  </h6>
+                </div>
+                <div className="card-body">
+                  <div className="mb-3">
+                    <div className="form-check form-check-inline">
+                      <input
+                        className="form-check-input"
+                        type="radio"
+                        name="type"
+                        id="investigation"
+                        value="investigation"
+                        checked={formData.type === "investigation"}
+                        onChange={() => handleTypeChange("investigation")}
+                      />
+                      <label className="form-check-label" htmlFor="investigation">
+                        Investigation
+                      </label>
+                    </div>
+                    <div className="form-check form-check-inline">
+                      <input
+                        className="form-check-input"
+                        type="radio"
+                        name="type"
+                        id="package"
+                        value="package"
+                        checked={formData.type === "package"}
+                        onChange={() => handleTypeChange("package")}
+                      />
+                      <label className="form-check-label" htmlFor="package">
+                        Package
+                      </label>
+                    </div>
+                  </div>
+                  <table className="table table-bordered">
+                    <thead>
+                      <tr>
+                        <th>
+                          {formData.type === "investigation" ? "Investigation Name" : "Package Name"}{" "}
+                          <span className="text-danger">*</span>
+                        </th>
+                        <th>
+                          Date <span className="text-danger">*</span>
+                        </th>
+                        <th>
+                          Original Amount <span className="text-danger">*</span>
+                        </th>
+                        <th>Discount Amount</th>
+                        <th>Net Amount</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {formData.rows.map((row, index) => (
+                        <tr key={index}>
+                          <td>
+                            <div className="d-flex align-items-center gap-2">
+                              <input
+                                type="checkbox"
+                                style={{ width: "20px", height: "20px", border: "2px solid black" }}
+                                className="form-check-input"
+                                checked={checkedRows[index] || false}
+                                onChange={(e) => {
+                                  const updated = [...checkedRows]
+                                  updated[index] = e.target.checked
+                                  setCheckedRows(updated)
+                                }}
+                              />
+                              <div className="dropdown-search-container position-relative flex-grow-1">
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={row.name}
+                                  autoComplete="off"
+                                  placeholder={
+                                    formData.type === "investigation" ? "Investigation Name" : "Package Name"
+                                  }
+                                  onChange={(e) => {
+                                    handleRowChange(index, "name", e.target.value)
+                                    if (e.target.value.trim() !== "") {
+                                      setActiveRowIndex(index)
+                                    } else {
+                                      setActiveRowIndex(null)
+                                    }
+                                  }}
+                                  onFocus={() => {
+                                    if (row.name.trim() !== "") {
+                                      setActiveRowIndex(index)
+                                    }
+                                  }}
+                                  onBlur={() => setTimeout(() => setActiveRowIndex(null), 200)}
+                                />
+                                {activeRowIndex === index && row.name.trim() !== "" && (
+                                  <ul
+                                    className="list-group position-absolute w-100 mt-1"
+                                    style={{
+                                      zIndex: 1000,
+                                      maxHeight: "200px",
+                                      overflowY: "auto",
+                                      backgroundColor: "#fff",
+                                      border: "1px solid #ccc",
+                                    }}
+                                  >
+                                    {formData.type === "investigation"
+                                      ? investigationItems
+                                        .filter((item) =>
+                                          item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
+                                        )
+                                        .map((item, i) => {
+                                          const hasDiscount = item.disc && item.disc > 0
+                                          const displayPrice = item.price || 0
+                                          const discountAmount = hasDiscount ? item.disc : 0
+                                          const finalPrice = hasDiscount
+                                            ? displayPrice - discountAmount
+                                            : displayPrice
+                                          return (
+                                            <li
+                                              key={i}
+                                              className="list-group-item list-group-item-action"
+                                              style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
+                                              onClick={() => {
+                                                if (item.price === null || item.price === 0 || item.price === "0") {
+                                                  Swal.fire(
+                                                    "Warning",
+                                                    "Price has not been configured for this Investigation",
+                                                    "warning",
+                                                  )
+                                                } else {
+                                                  handleRowChange(index, "name", item.investigationName)
+                                                  handleRowChange(index, "itemId", item.investigationId)
+                                                  handleRowChange(index, "originalAmount", displayPrice)
+                                                  handleRowChange(index, "discountAmount", discountAmount)
+                                                  handleRowChange(index, "netAmount", finalPrice)
+                                                  handleRowChange(index, "type", formData.type)
+                                                  setActiveRowIndex(null)
+                                                }
+                                              }}
+                                            >
+                                              <div>
+                                                <strong>{item.investigationName}</strong>
+                                                <div className="d-flex justify-content-between">
+                                                  <span>
+                                                    {item.price === null
+                                                      ? "Price not configured"
+                                                      : `₹${finalPrice.toFixed(2)}`}
+                                                  </span>
+                                                  {hasDiscount && (
+                                                    <span className="text-success">
+                                                      (Discount: ₹{discountAmount.toFixed(2)})
+                                                    </span>
+                                                  )}
+                                                </div>
+                                                {item.investigationType && (
+                                                  <small className="text-muted">
+                                                    Type: {item.investigationType}
+                                                  </small>
+                                                )}
+                                              </div>
+                                            </li>
+                                          )
+                                        })
+                                      : packageItems
+                                        .filter((item) =>
+                                          item.packName.toLowerCase().includes(row.name.toLowerCase()),
+                                        )
+                                        .map((item, i) => (
+                                          <li
+                                            key={i}
+                                            className="list-group-item list-group-item-action"
+                                            style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
+                                            onClick={async () => {
+                                              const priceDetails = await fetchPackagePrice(item.packName)
+                                              if (!priceDetails || !priceDetails.actualCost) {
+                                                Swal.fire(
+                                                  "Warning",
+                                                  "Price has not been configured for this Package",
+                                                  "warning",
+                                                )
+                                              } else {
+                                                handleRowChange(index, "name", item.packName)
+                                                handleRowChange(index, "itemId", item.id || priceDetails.packId)
+                                                handleRowChange(
+                                                  index,
+                                                  "originalAmount",
+                                                  priceDetails.baseCost || priceDetails.actualCost,
+                                                )
+                                                handleRowChange(index, "discountAmount", priceDetails.disc || 0)
+                                                handleRowChange(index, "netAmount", priceDetails.actualCost)
+                                                handleRowChange(index, "type", formData.type)
+                                                setActiveRowIndex(null)
+                                              }
+                                            }}
+                                          >
+                                            <div>
+                                              <strong>{item.packName}</strong>
+                                              <div className="d-flex justify-content-between">
+                                                <span>₹{item.actualCost.toFixed(2)}</span>
+                                              </div>
+                                            </div>
+                                          </li>
+                                        ))}
+                                  </ul>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <input
+                              type="date"
+                              className="form-control"
+                              value={row.date}
+                              onChange={(e) => handleRowChange(index, "date", e.target.value)}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="form-control"
+                              value={row.originalAmount}
+                              onChange={(e) => handleRowChange(index, "originalAmount", e.target.value)}
+                              min="0"
+                              step="0.01"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="form-control"
+                              value={row.discountAmount}
+                              onChange={(e) => handleRowChange(index, "discountAmount", e.target.value)}
+                              min="0"
+                              step="0.01"
+                            />
+                          </td>
+                          <td>
+                            <div className="font-weight-bold text-success">₹{row.netAmount || "0.00"}</div>
+                          </td>
+                          <td>
+                            <div className="d-flex align-item-center gap-2">
+                              <div className="form-check form-check-muted m-0"></div>
+                              <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={() => removeRow(index)}
+                                disabled={formData.rows.length === 1}
+                              >
+                                <i className="icofont-close"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <button type="button" className="btn btn-success" onClick={(e) => addRow(e, formData.type)}>
+                      Add {formData.type === "investigation" ? "Investigation" : "Package"} +
+                    </button>
+                    <div className="d-flex">
+                      <input
+                        type="text"
+                        className="form-control me-2"
+                        placeholder="Enter Coupon Code"
+                        style={{ width: "200px" }}
+                      />
+                      <button type="button" className="btn btn-primary me-2">
+                        <i className="icofont-ticket me-1"></i> Apply Coupon
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Enhanced Payment Summary Section */}
+          <div className="row mb-3">
+            <div className="col-sm-12">
+              <div
+                className="card shadow mb-3"
+                style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", border: "none" }}
+              >
+                <div
+                  className="card-header py-3 text-white"
+                  style={{ background: "rgba(255,255,255,0.1)", border: "none" }}
+                >
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="p-2 bg-white rounded" style={{ opacity: 0.9 }}>
+                      <i className="fa fa-calculator text-primary"></i>
+                    </div>
+                    <div>
+                      <h5 className="mb-0 fw-bold text-white">Payment Summary</h5>
+                      <small className="text-white" style={{ opacity: 0.8 }}>
+                        {paymentBreakdown.itemCount} item{paymentBreakdown.itemCount !== 1 ? "s" : ""} selected
+                      </small>
+                    </div>
+                  </div>
+                </div>
+                <div className="card-body text-white">
+                  <div className="row g-3 mb-4">
+                    <div className="col-md-3">
+                      <div
+                        className="card h-100"
+                        style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}
+                      >
+                        <div className="card-body text-center">
+                          <div className="mb-2">
+                            <i className="fa fa-receipt fa-2x text-white" style={{ opacity: 0.8 }}></i>
+                          </div>
+                          <h6 className="card-title text-white mb-1">Total Amount</h6>
+                          <h4 className="text-white fw-bold">₹{paymentBreakdown.totalOriginalAmount}</h4>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-md-3">
+                      <div
+                        className="card h-100"
+                        style={{ background: "rgba(40,167,69,0.2)", border: "1px solid rgba(40,167,69,0.3)" }}
+                      >
+                        <div className="card-body text-center">
+                          <div className="mb-2">
+                            <i className="fa fa-percent fa-2x text-success"></i>
+                          </div>
+                          <h6 className="card-title text-white mb-1">Total Discount</h6>
+                          <h4 className="text-success fw-bold">₹{paymentBreakdown.totalDiscountAmount}</h4>
+                        </div>
+                      </div>
+                    </div>
+                    {paymentBreakdown.gstApplicable && (
+                      <div className="col-md-3">
+                        <div
+                          className="card h-100"
+                          style={{ background: "rgba(255,193,7,0.2)", border: "1px solid rgba(255,193,7,0.3)" }}
+                        >
+                          <div className="card-body text-center">
+                            <div className="mb-2">
+                              <i className="fa fa-file-invoice fa-2x text-warning"></i>
+                            </div>
+                            <h6 className="card-title text-white mb-1">Tax ({paymentBreakdown.gstPercent}% GST)</h6>
+                            <h4 className="text-warning fw-bold">₹{paymentBreakdown.totalGstAmount}</h4>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div className="col-md-3">
+                      <div
+                        className="card h-100"
+                        style={{
+                          background: "linear-gradient(45deg, #28a745, #20c997)",
+                          border: "none",
+                          boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
+                        }}
+                      >
+                        <div className="card-body text-center">
+                          <div className="mb-2">
+                            <i className="fa fa-credit-card fa-2x text-white"></i>
+                          </div>
+                          <h6 className="card-title text-white mb-1">Final Amount</h6>
+                          <h4 className="text-white fw-bold">₹{paymentBreakdown.finalAmount}</h4>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="card" style={{ background: "rgba(255,255,255,0.95)", border: "none" }}>
+                    <div className="card-body">
+                      <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                        <i className="fa fa-list-alt text-primary"></i>
+                        Payment Breakdown
+                      </h6>
+                      <div className="row">
+                        <div className="col-md-8">
+                          <div className="d-flex justify-content-between py-2 border-bottom">
+                            <span className="text-muted">Subtotal ({paymentBreakdown.itemCount} items)</span>
+                            <span className="fw-medium text-dark">₹{paymentBreakdown.totalOriginalAmount}</span>
+                          </div>
+                          {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
+                            <div className="d-flex justify-content-between py-2 border-bottom">
+                              <span className="text-success">Discount Applied</span>
+                              <span className="fw-medium text-success">-₹{paymentBreakdown.totalDiscountAmount}</span>
+                            </div>
+                          )}
+                          <div className="d-flex justify-content-between py-2 border-bottom">
+                            <span className="text-muted">Amount after Discount</span>
+                            <span className="fw-medium text-dark">₹{paymentBreakdown.totalNetAmount}</span>
+                          </div>
+                          {paymentBreakdown.gstApplicable && (
+                            <div className="d-flex justify-content-between py-2 border-bottom">
+                              <span className="text-muted">GST ({paymentBreakdown.gstPercent}%)</span>
+                              <span className="fw-medium text-warning">+₹{paymentBreakdown.totalGstAmount}</span>
+                            </div>
+                          )}
+                          <div className="d-flex justify-content-between py-3 border-top">
+                            <span className="h5 fw-bold text-dark">Total Payable</span>
+                            <span className="h4 fw-bold text-primary">₹{paymentBreakdown.finalAmount}</span>
+                          </div>
+                        </div>
+                        <div className="col-md-4">
+                          <div className="d-flex flex-wrap gap-2">
+                            <span className="badge bg-secondary px-3 py-2">
+                              {paymentBreakdown.itemCount} Items Selected
+                            </span>
+                            {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
+                              <span className="badge bg-success px-3 py-2">Discount Applied</span>
+                            )}
+                            {paymentBreakdown.gstApplicable && (
+                              <span className="badge bg-info px-3 py-2">GST Included</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Submit and Reset Buttons */}
+          <div className="row mb-3">
+            <div className="col-sm-12">
+              <div className="card shadow mb-3">
+                <div className="card-body">
+                  <div className="row g-3">
+                    <div className="mt-4">
+                      <button
+                        type="button"
+                        className="btn btn-primary me-2"
+                        onClick={async () => {
+                          const missingFields = getMissingMandatoryFields()
+                          if (loading) return
+                          if (missingFields.length > 0) {
+                            Swal.fire(
+                              "Missing Mandatory Fields",
+                              "Please fill all mandatory fields before proceeding.",
+                              "warning"
+                            )
+                            return
+                          }
+                          try {
+                            await handleSubmit(true)
+                          } catch (error) {
+                            console.error("Error in payment flow:", error)
+                          }
+                        }}
+                      >
+                        <i className="fa fa-credit-card me-1"></i>
+                        {loading ? "Processing..." : `Pay Now - ₹${paymentBreakdown.finalAmount}`}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary me-2"
+                        onClick={() => handleSubmit(false)}
+                        disabled={loading}
+                      >
+                        {loading ? "Processing..." : "Confirm Lab Booking"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary"
+                        onClick={handleBackToList}
+                        disabled={loading}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div >
+    )
+  }
+
+  // Show SEARCH VIEW (default)
   return (
     <div className="body d-flex py-3">
       <div className="container-xxl">
@@ -1012,16 +2195,6 @@ const UpdateLabRegistration = () => {
                         onChange={handleSearchChange}
                       />
                     </div>
-                    {/* <div className="col-md-3">
-                      <label className="form-label">Date</label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        name="appointmentDate"
-                        value={searchFormData.appointmentDate}
-                        onChange={handleSearchChange}
-                      />
-                    </div> */}
                   </div>
                   <div className="mt-3 mb-3">
                     <button
@@ -1036,48 +2209,97 @@ const UpdateLabRegistration = () => {
                       Reset
                     </button>
                   </div>
-                  {patients.length > 0 && (
-                    <div className="col-md-12">
-                      <table className="table table-bordered">
-                        <thead className="table-secondary">
-                          <tr>
-                            <th>Patient Name</th>
-                            <th>Mobile No.</th>
-                            <th>UHID No.</th>
-                            <th>Age</th>
-                            <th>Gender</th>
-                            <th>Email</th>
-                            <th>Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {patients.map((patient, index) => (
-                            <tr key={index}>
-                              <td>
-                                {`${patient.patientFn || ""} ${patient.patientMn || ""} ${patient.patientLn || ""}`.trim()}
-                              </td>
 
-                              <td>{patient.patientMobileNumber || ""}</td>
-                              <td>{patient.uhidNo || ""}</td>
-                              <td>{patient.patientAge || ""}</td>
-                              <td>{patient.patientGender?.genderName || ""}</td>
-                              <td>{patient.patientEmailId || ""}</td>
-                              <td>
-                                <button
-                                  type="button"
-                                  className="btn btn-success btn-sm"
-                                  onClick={() => handleBook(patient)}
-                                >
-                                  Book
-                                  <span className="ms-2">
-                                    <i className="icofont-calendar"></i>
-                                  </span>
-                                </button>
-                              </td>
+                  {filteredPatients.length > 0 && (
+                    <div className="col-md-12">
+                      <div className="table-responsive packagelist">
+                        <table className="table table-bordered table-hover align-middle">
+                          <thead className="table-light">
+                            <tr>
+                              <th>Patient Name</th>
+                              <th>Mobile No.</th>
+                              <th>UHID No.</th>
+                              <th>Age</th>
+                              <th>Gender</th>
+                              <th>Email</th>
+                              <th>Action</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {currentItems.map((patient, index) => (
+                              <tr key={index} className="table-row-hover">
+                                <td>
+                                  {`${patient.patientFn || ""} ${patient.patientMn || ""} ${patient.patientLn || ""}`.trim()}
+                                </td>
+                                <td>{patient.patientMobileNumber || ""}</td>
+                                <td>{patient.uhidNo || ""}</td>
+                                <td>{patient.patientAge || ""}</td>
+                                <td>{patient.patientGender?.genderName || ""}</td>
+                                <td>{patient.patientEmailId || ""}</td>
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="btn btn-success btn-sm"
+                                    onClick={() => handleBook(patient)}
+                                  >
+                                    Book
+                                    <span className="ms-2">
+                                      <i className="icofont-calendar"></i>
+                                    </span>
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination */}
+                      {filteredPatients.length > itemsPerPage && (
+                        <nav className="d-flex justify-content-between align-items-center mt-3">
+                          <div>
+                            <span>
+                              Page {currentPage} of {totalPages} | Total Records: {filteredPatients.length}
+                            </span>
+                          </div>
+                          <ul className="pagination mb-0">
+                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                              <button
+                                className="page-link"
+                                onClick={() => setCurrentPage(currentPage - 1)}
+                                disabled={currentPage === 1}
+                              >
+                                &laquo; Previous
+                              </button>
+                            </li>
+                            {renderPagination()}
+                            <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                              <button
+                                className="page-link"
+                                onClick={() => setCurrentPage(currentPage + 1)}
+                                disabled={currentPage === totalPages}
+                              >
+                                Next &raquo;
+                              </button>
+                            </li>
+                          </ul>
+                          <div className="d-flex align-items-center">
+                            <input
+                              type="number"
+                              min="1"
+                              max={totalPages}
+                              value={pageInput}
+                              onChange={(e) => setPageInput(e.target.value)}
+                              placeholder="Go to page"
+                              className="form-control me-2"
+                              style={{ width: "120px" }}
+                            />
+                            <button className="btn btn-primary" onClick={handlePageNavigation}>
+                              GO
+                            </button>
+                          </div>
+                        </nav>
+                      )}
                     </div>
                   )}
                 </form>
@@ -1085,1061 +2307,8 @@ const UpdateLabRegistration = () => {
             </div>
           </div>
         </div>
-
-        {showPatientDetails && (
-          <>
-            {/* Patient Personal Details */}
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-header py-3 bg-light border-bottom-1">
-                    <h6 className="mb-0 fw-bold">Personal Details</h6>
-                  </div>
-                  <div className="card-body">
-                    <form>
-                      <div className="row g-3">
-                        <div className="col-md-9">
-                          <div className="row g-3">
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="firstName">
-                                First Name <span className="text-danger">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                className={`form-control ${errors.firstName ? "is-invalid" : ""}`}
-                                id="firstName"
-                                name="firstName"
-                                value={formData.firstName || ""}
-                                onChange={handleChange}
-                                placeholder="Enter First Name"
-                              />
-                              {errors.firstName && <div className="invalid-feedback">{errors.firstName}</div>}
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="middleName">
-                                Middle Name
-                              </label>
-                              <input
-                                type="text"
-                                id="middleName"
-                                value={formData.middleName || ""}
-                                name="middleName"
-                                onChange={handleChange}
-                                className="form-control"
-                                placeholder="Enter Middle Name"
-                              />
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="lastName">
-                                Last Name
-                              </label>
-                              <input
-                                type="text"
-                                id="lastName"
-                                value={formData.lastName || ""}
-                                name="lastName"
-                                onChange={handleChange}
-                                className="form-control"
-                                placeholder="Enter Last Name"
-                              />
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="mobileNo">
-                                Mobile No.<span className="text-danger">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                id="mobileNo"
-                                className={`form-control ${errors.mobileNo ? "is-invalid" : ""}`}
-                                name="mobileNo"
-                                value={formData.mobileNo || ""}
-                                maxLength={10}
-                                onChange={(e) => {
-                                  if (/^\d*$/.test(e.target.value)) {
-                                    handleChange(e)
-                                  }
-                                }}
-                                placeholder="Enter Mobile Number"
-                              />
-                              {errors.mobileNo && <div className="invalid-feedback">{errors.mobileNo}</div>}
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="gender">
-                                Gender <span className="text-danger">*</span>
-                              </label>
-                              <select
-                                className={`form-select ${errors.gender ? "is-invalid" : ""}`}
-                                id="gender"
-                                name="gender"
-                                value={formData.gender || ""}
-                                onChange={handleChange}
-                              >
-                                <option value="">Select</option>
-                                {genderData.map((gender) => (
-                                  <option key={gender.id} value={gender.id}>
-                                    {gender.genderName}
-                                  </option>
-                                ))}
-                              </select>
-                              {errors.gender && <div className="invalid-feedback">{errors.gender}</div>}
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="relation">
-                                Relation <span className="text-danger">*</span>
-                              </label>
-                              <select
-                                className={`form-select ${errors.relation ? "is-invalid" : ""}`}
-                                id="relation"
-                                name="relation"
-                                value={formData.relation || ""}
-                                onChange={handleChange}
-                              >
-                                <option value="">Select</option>
-                                {relationData.map((relation) => (
-                                  <option key={relation.id} value={relation.id}>
-                                    {relation.relationName}
-                                  </option>
-                                ))}
-                              </select>
-                              {errors.relation && <div className="invalid-feedback">{errors.relation}</div>}
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="dob">
-                                DOB <span className="text-danger">*</span>
-                              </label>
-                              <input
-                                type="date"
-                                id="dob"
-                                name="dob"
-                                className={`form-control ${errors.dob ? "is-invalid" : ""}`}
-                                value={formData.dob || ""}
-                                max={new Date().toISOString().split("T")[0]}
-                                onChange={handleChange}
-                                placeholder="Select Date of Birth"
-                              />
-                              {errors.dob && <div className="invalid-feedback">{errors.dob}</div>}
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="age">
-                                Age
-                              </label>
-                              <input
-                                type="text"
-                                id="age"
-                                name="age"
-                                className={`form-control ${errors.age ? "is-invalid" : ""}`}
-                                value={formData.age || ""}
-                                onChange={handleChange}
-                                placeholder="Enter Age"
-                              />
-                              {errors.age && <div className="invalid-feedback">{errors.age}</div>}
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="email">
-                                Email <span className="text-danger">*</span>
-                              </label>
-                              <input
-                                type="email"
-                                id="email"
-                                name="email"
-                                className={`form-control ${errors.email ? "is-invalid" : ""}`}
-                                value={formData.email || ""}
-                                onChange={handleChange}
-                                placeholder="Enter Email Address"
-                              />
-                              {errors.email && <div className="invalid-feedback">{errors.email}</div>}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="col-md-3">
-                          <div className="text-center">
-                            <div className="card p-3 shadow">
-                              {isCameraOn ? (
-                                <video
-                                  ref={videoRef}
-                                  autoPlay
-                                  className="d-block mx-auto"
-                                  style={{ width: "100%", height: "150px" }}
-                                ></video>
-                              ) : (
-                                <img
-                                  src={image || "/default-profile.png"}
-                                  alt="Profile"
-                                  className="img-fluid border"
-                                  style={{ width: "100%", height: "150px" }}
-                                />
-                              )}
-                              <canvas ref={canvasRef} width="300" height="150" style={{ display: "none" }}></canvas>
-                              <div className="mt-2">
-                                <button
-                                  type="button"
-                                  className="btn btn-primary me-2 mb-2"
-                                  onClick={startCamera}
-                                  disabled={isCameraOn}
-                                >
-                                  Start Camera
-                                </button>
-                                {isCameraOn && (
-                                  <button type="button" className="btn btn-success me-2 mb-2" onClick={capturePhoto}>
-                                    Take Photo
-                                  </button>
-                                )}
-                                <button type="button" className="btn btn-danger mb-2" onClick={clearPhoto}>
-                                  Clear Photo
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Patient address */}
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-header py-3 bg-light border-bottom-1">
-                    <h6 className="mb-0 fw-bold">Patient Address</h6>
-                  </div>
-                  <div className="card-body">
-                    <form>
-                      <div className="row g-3">
-                        <div className="col-md-4">
-                          <label className="form-label">Address 1</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            name="address1"
-                            value={formData.address1 || ""}
-                            onChange={handleChange}
-                            placeholder="Enter Address 1"
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Address 2</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            name="address2"
-                            value={formData.address2 || ""}
-                            onChange={handleChange}
-                            placeholder="Enter Address 2"
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Country</label>
-                          <select
-                            className="form-select"
-                            name="country"
-                            value={formData.country || ""}
-                            onChange={(e) => {
-                              handleAddChange(e)
-                              fetchStates(e.target.value)
-                            }}
-                          >
-                            <option value="">Select Country</option>
-                            {countryData.map((country) => (
-                              <option key={country.id} value={country.id}>
-                                {country.countryName}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">State</label>
-                          <select
-                            className="form-select"
-                            name="state"
-                            value={formData.state || ""}
-                            onChange={(e) => {
-                              handleAddChange(e)
-                              fetchDistrict(e.target.value)
-                            }}
-                          >
-                            <option value="">Select State</option>
-                            {stateData.map((state) => (
-                              <option key={state.id} value={state.id}>
-                                {state.stateName}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">District</label>
-                          <select
-                            className="form-select"
-                            name="district"
-                            value={formData.district || ""}
-                            onChange={(e) => {
-                              handleAddChange(e)
-                            }}
-                          >
-                            <option value="">Select District</option>
-                            {districtData.map((district) => (
-                              <option key={district.id} value={district.id}>
-                                {district.districtName}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">City</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            name="city"
-                            value={formData.city || ""}
-                            onChange={handleChange}
-                            placeholder="Enter City"
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Pin Code</label>
-                          <input
-                            type="text"
-                            className={`form-control ${errors.pinCode ? "is-invalid" : ""}`}
-                            name="pinCode"
-                            value={formData.pinCode || ""}
-                            maxLength={6}
-                            onChange={(e) => {
-                              if (/^\d*$/.test(e.target.value)) {
-                                handleChange(e)
-                              }
-                            }}
-                            placeholder="Enter Pin Code"
-                          />
-                          {errors.pinCode && <div className="invalid-feedback">{errors.pinCode}</div>}
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* NOK Details */}
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-header py-3 bg-light border-bottom-1">
-                    <h6 className="mb-0 fw-bold">NOK Details</h6>
-                  </div>
-                  <div className="card-body">
-                    <form>
-                      <div className="row g-3">
-                        <div className="col-md-4">
-                          <label className="form-label">First Name</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Enter First Name"
-                            name="nokFirstName"
-                            value={formData.nokFirstName || ""}
-                            onChange={handleChange}
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Middle Name</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Enter Middle Name"
-                            name="nokMiddleName"
-                            value={formData.nokMiddleName || ""}
-                            onChange={handleChange}
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Last Name</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Enter Last Name"
-                            name="nokLastName"
-                            value={formData.nokLastName || ""}
-                            onChange={handleChange}
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Email</label>
-                          <input
-                            type="email"
-                            className="form-control"
-                            placeholder="Enter Email"
-                            name="nokEmail"
-                            value={formData.nokEmail || ""}
-                            onChange={handleChange}
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Mobile No.</label>
-                          <input
-                            type="text"
-                            className={`form-control ${errors.nokMobile ? "is-invalid" : ""}`}
-                            placeholder="Enter Mobile Number"
-                            name="nokMobile"
-                            value={formData.nokMobile || ""}
-                            onChange={(e) => {
-                              if (/^\d*$/.test(e.target.value)) {
-                                handleChange(e)
-                              }
-                            }}
-                          />
-                          {errors.nokMobile && <div className="invalid-feedback">{errors.nokMobile}</div>}
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Address 1</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Enter Address 1"
-                            name="nokAddress1"
-                            value={formData.nokAddress1 || ""}
-                            onChange={handleChange}
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Address 2</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Enter Address 2"
-                            name="nokAddress2"
-                            value={formData.nokAddress2 || ""}
-                            onChange={handleChange}
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Country</label>
-                          <select
-                            className="form-select"
-                            name="nokCountry"
-                            value={formData.nokCountry || ""}
-                            onChange={(e) => {
-                              handleAddChange(e)
-                              fetchNokStates(e.target.value)
-                            }}
-                          >
-                            <option value="">Select Country</option>
-                            {countryData.map((country) => (
-                              <option key={country.id} value={country.id}>
-                                {country.countryName}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">State</label>
-                          <select
-                            className="form-select"
-                            name="nokState"
-                            value={formData.nokState || ""}
-                            onChange={(e) => {
-                              handleAddChange(e)
-                              fetchNokDistrict(e.target.value)
-                            }}
-                          >
-                            <option value="">Select State</option>
-                            {nokStateData.map((state) => (
-                              <option key={state.id} value={state.id}>
-                                {state.stateName}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">District</label>
-                          <select
-                            className="form-select"
-                            name="nokDistrict"
-                            value={formData.nokDistrict || ""}
-                            onChange={(e) => {
-                              handleAddChange(e)
-                            }}
-                          >
-                            <option value="">Select District</option>
-                            {nokDistrictData.map((district) => (
-                              <option key={district.id} value={district.id}>
-                                {district.districtName}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">City</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Enter City"
-                            name="nokCity"
-                            value={formData.nokCity || ""}
-                            onChange={handleChange}
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Pin Code</label>
-                          <input
-                            type="text"
-                            className={`form-control ${errors.nokPinCode ? "is-invalid" : ""}`}
-                            name="nokPinCode"
-                            value={formData.nokPinCode || ""}
-                            maxLength={6}
-                            onChange={(e) => {
-                              if (/^\d*$/.test(e.target.value)) {
-                                handleChange(e)
-                              }
-                            }}
-                            placeholder="Enter Pin Code"
-                          />
-                          {errors.nokPinCode && <div className="invalid-feedback">{errors.nokPinCode}</div>}
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Emergency Contact Details Section */}
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-header py-3 bg-light border-bottom-1">
-                    <h6 className="mb-0 fw-bold">Emergency Contact Details</h6>
-                  </div>
-                  <div className="card-body">
-                    <form>
-                      <div className="row g-3">
-                        <div className="col-md-4">
-                          <label className="form-label">First Name</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Enter First Name"
-                            name="emergencyFirstName"
-                            value={formData.emergencyFirstName || ""}
-                            onChange={handleChange}
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Last Name</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Enter Last Name"
-                            name="emergencyLastName"
-                            value={formData.emergencyLastName || ""}
-                            onChange={handleChange}
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Mobile No.</label>
-                          <input
-                            type="text"
-                            className={`form-control ${errors.emergencyMobile ? "is-invalid" : ""}`}
-                            placeholder="Enter Mobile Number"
-                            name="emergencyMobile"
-                            value={formData.emergencyMobile || ""}
-                            maxLength={10}
-                            onChange={(e) => {
-                              if (/^\d*$/.test(e.target.value)) {
-                                handleChange(e)
-                              }
-                            }}
-                          />
-                          {errors.emergencyMobile && <div className="invalid-feedback">{errors.emergencyMobile}</div>}
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Lab Investigation/Package Details */}
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-header bg-light border-bottom-1 py-3">
-                    <h6 className="fw-bold mb-0">
-                      {formData.type === "investigation" ? "Investigation Details" : "Package Details"}
-                    </h6>
-                  </div>
-                  <div className="card-body">
-                    <div className="mb-3">
-                      <div className="form-check form-check-inline">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          name="type"
-                          id="investigation"
-                          value="investigation"
-                          checked={formData.type === "investigation"}
-                          onChange={() => handleTypeChange("investigation")}
-                        />
-                        <label className="form-check-label" htmlFor="investigation">
-                          Investigation
-                        </label>
-                      </div>
-                      <div className="form-check form-check-inline">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          name="type"
-                          id="package"
-                          value="package"
-                          checked={formData.type === "package"}
-                          onChange={() => handleTypeChange("package")}
-                        />
-                        <label className="form-check-label" htmlFor="package">
-                          Package
-                        </label>
-                      </div>
-                    </div>
-                    <table className="table table-bordered">
-                      <thead>
-                        <tr>
-                          <th>
-                            {formData.type === "investigation" ? "Investigation Name" : "Package Name"}{" "}
-                            <span className="text-danger">*</span>
-                          </th>
-                          <th>
-                            Date <span className="text-danger">*</span>
-                          </th>
-                          <th>
-                            Original Amount <span className="text-danger">*</span>
-                          </th>
-                          <th>Discount Amount</th>
-                          <th>Net Amount</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.rows.map((row, index) => (
-                          <tr key={index}>
-                            <td>
-                              <div className="d-flex align-items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  style={{ width: "20px", height: "20px", border: "2px solid black" }}
-                                  className="form-check-input"
-                                  checked={checkedRows[index] || false}
-                                  onChange={(e) => {
-                                    const updated = [...checkedRows]
-                                    updated[index] = e.target.checked
-                                    setCheckedRows(updated)
-                                  }}
-                                />
-                                <div className="dropdown-search-container position-relative flex-grow-1">
-                                  <input
-                                    type="text"
-                                    className="form-control"
-                                    value={row.name}
-                                    autoComplete="off"
-                                    placeholder={
-                                      formData.type === "investigation" ? "Investigation Name" : "Package Name"
-                                    }
-                                    onChange={(e) => {
-                                      handleRowChange(index, "name", e.target.value)
-                                      if (e.target.value.trim() !== "") {
-                                        setActiveRowIndex(index)
-                                      } else {
-                                        setActiveRowIndex(null)
-                                      }
-                                    }}
-                                    onFocus={() => {
-                                      if (row.name.trim() !== "") {
-                                        setActiveRowIndex(index)
-                                      }
-                                    }}
-                                    onBlur={() => setTimeout(() => setActiveRowIndex(null), 200)}
-                                  />
-                                  {activeRowIndex === index && row.name.trim() !== "" && (
-                                    <ul
-                                      className="list-group position-absolute w-100 mt-1"
-                                      style={{
-                                        zIndex: 1000,
-                                        maxHeight: "200px",
-                                        overflowY: "auto",
-                                        backgroundColor: "#fff",
-                                        border: "1px solid #ccc",
-                                      }}
-                                    >
-                                      {formData.type === "investigation"
-                                        ? investigationItems
-                                          .filter((item) =>
-                                            item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
-                                          )
-                                          .map((item, i) => {
-                                            const hasDiscount = item.disc && item.disc > 0
-                                            const displayPrice = item.price || 0
-                                            const discountAmount = hasDiscount ? item.disc : 0
-                                            const finalPrice = hasDiscount
-                                              ? displayPrice - discountAmount
-                                              : displayPrice
-                                            return (
-                                              <li
-                                                key={i}
-                                                className="list-group-item list-group-item-action"
-                                                style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                                onClick={() => {
-                                                  if (item.price === null || item.price === 0 || item.price === "0") {
-                                                    Swal.fire(
-                                                      "Warning",
-                                                      "Price has not been configured for this Investigation",
-                                                      "warning",
-                                                    )
-                                                  } else {
-                                                    handleRowChange(index, "name", item.investigationName)
-                                                    handleRowChange(index, "itemId", item.investigationId)
-                                                    handleRowChange(index, "originalAmount", displayPrice)
-                                                    handleRowChange(index, "discountAmount", discountAmount)
-                                                    handleRowChange(index, "netAmount", finalPrice)
-                                                    handleRowChange(index, "type", formData.type)
-                                                    setActiveRowIndex(null)
-                                                  }
-                                                }}
-                                              >
-                                                <div>
-                                                  <strong>{item.investigationName}</strong>
-                                                  <div className="d-flex justify-content-between">
-                                                    <span>
-                                                      {item.price === null
-                                                        ? "Price not configured"
-                                                        : `₹${finalPrice.toFixed(2)}`}
-                                                    </span>
-                                                    {hasDiscount && (
-                                                      <span className="text-success">
-                                                        (Discount: ₹{discountAmount.toFixed(2)})
-                                                      </span>
-                                                    )}
-                                                  </div>
-                                                  {item.investigationType && (
-                                                    <small className="text-muted">
-                                                      Type: {item.investigationType}
-                                                    </small>
-                                                  )}
-                                                </div>
-                                              </li>
-                                            )
-                                          })
-                                        : packageItems
-                                          .filter((item) =>
-                                            item.packName.toLowerCase().includes(row.name.toLowerCase()),
-                                          )
-                                          .map((item, i) => (
-                                            <li
-                                              key={i}
-                                              className="list-group-item list-group-item-action"
-                                              style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                              onClick={async () => {
-                                                const priceDetails = await fetchPackagePrice(item.packName)
-                                                if (!priceDetails || !priceDetails.actualCost) {
-                                                  Swal.fire(
-                                                    "Warning",
-                                                    "Price has not been configured for this Package",
-                                                    "warning",
-                                                  )
-                                                } else {
-                                                  handleRowChange(index, "name", item.packName)
-                                                  handleRowChange(index, "itemId", item.id || priceDetails.packId)
-                                                  handleRowChange(
-                                                    index,
-                                                    "originalAmount",
-                                                    priceDetails.baseCost || priceDetails.actualCost,
-                                                  )
-                                                  handleRowChange(index, "discountAmount", priceDetails.disc || 0)
-                                                  handleRowChange(index, "netAmount", priceDetails.actualCost)
-                                                  handleRowChange(index, "type", formData.type)
-                                                  setActiveRowIndex(null)
-                                                }
-                                              }}
-                                            >
-                                              <div>
-                                                <strong>{item.packName}</strong>
-                                                <div className="d-flex justify-content-between">
-                                                  <span>₹{item.actualCost.toFixed(2)}</span>
-                                                </div>
-                                              </div>
-                                            </li>
-                                          ))}
-                                    </ul>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-                            <td>
-                              <input
-                                type="date"
-                                className="form-control"
-                                value={row.date}
-                                onChange={(e) => handleRowChange(index, "date", e.target.value)}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="number"
-                                className="form-control"
-                                value={row.originalAmount}
-                                onChange={(e) => handleRowChange(index, "originalAmount", e.target.value)}
-                                min="0"
-                                step="0.01"
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="number"
-                                className="form-control"
-                                value={row.discountAmount}
-                                onChange={(e) => handleRowChange(index, "discountAmount", e.target.value)}
-                                min="0"
-                                step="0.01"
-                              />
-                            </td>
-                            <td>
-                              <div className="font-weight-bold text-success">₹{row.netAmount || "0.00"}</div>
-                            </td>
-                            <td>
-                              <div className="d-flex align-item-center gap-2">
-                                <div className="form-check form-check-muted m-0"></div>
-                                <button
-                                  type="button"
-                                  className="btn btn-danger"
-                                  onClick={() => removeRow(index)}
-                                  disabled={formData.rows.length === 1}
-                                >
-                                  <i className="icofont-close"></i>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <div className="d-flex justify-content-between align-items-center">
-                      <button type="button" className="btn btn-success" onClick={(e) => addRow(e, formData.type)}>
-                        Add {formData.type === "investigation" ? "Investigation" : "Package"} +
-                      </button>
-                      <div className="d-flex">
-                        <input
-                          type="text"
-                          className="form-control me-2"
-                          placeholder="Enter Coupon Code"
-                          style={{ width: "200px" }}
-                        />
-                        <button type="button" className="btn btn-primary me-2">
-                          <i className="icofont-ticket me-1"></i> Apply Coupon
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Enhanced Payment Summary Section */}
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div
-                  className="card shadow mb-3"
-                  style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", border: "none" }}
-                >
-                  <div
-                    className="card-header py-3 text-white"
-                    style={{ background: "rgba(255,255,255,0.1)", border: "none" }}
-                  >
-                    <div className="d-flex align-items-center gap-3">
-                      <div className="p-2 bg-white rounded" style={{ opacity: 0.9 }}>
-                        <i className="fa fa-calculator text-primary"></i>
-                      </div>
-                      <div>
-                        <h5 className="mb-0 fw-bold text-white">Payment Summary</h5>
-                        <small className="text-white" style={{ opacity: 0.8 }}>
-                          {paymentBreakdown.itemCount} item{paymentBreakdown.itemCount !== 1 ? "s" : ""} selected
-                        </small>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="card-body text-white">
-                    <div className="row g-3 mb-4">
-                      <div className="col-md-3">
-                        <div
-                          className="card h-100"
-                          style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}
-                        >
-                          <div className="card-body text-center">
-                            <div className="mb-2">
-                              <i className="fa fa-receipt fa-2x text-white" style={{ opacity: 0.8 }}></i>
-                            </div>
-                            <h6 className="card-title text-white mb-1">Total Amount</h6>
-                            <h4 className="text-white fw-bold">₹{paymentBreakdown.totalOriginalAmount}</h4>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="col-md-3">
-                        <div
-                          className="card h-100"
-                          style={{ background: "rgba(40,167,69,0.2)", border: "1px solid rgba(40,167,69,0.3)" }}
-                        >
-                          <div className="card-body text-center">
-                            <div className="mb-2">
-                              <i className="fa fa-percent fa-2x text-success"></i>
-                            </div>
-                            <h6 className="card-title text-white mb-1">Total Discount</h6>
-                            <h4 className="text-success fw-bold">₹{paymentBreakdown.totalDiscountAmount}</h4>
-                          </div>
-                        </div>
-                      </div>
-                      {paymentBreakdown.gstApplicable && (
-                        <div className="col-md-3">
-                          <div
-                            className="card h-100"
-                            style={{ background: "rgba(255,193,7,0.2)", border: "1px solid rgba(255,193,7,0.3)" }}
-                          >
-                            <div className="card-body text-center">
-                              <div className="mb-2">
-                                <i className="fa fa-file-invoice fa-2x text-warning"></i>
-                              </div>
-                              <h6 className="card-title text-white mb-1">Tax ({paymentBreakdown.gstPercent}% GST)</h6>
-                              <h4 className="text-warning fw-bold">₹{paymentBreakdown.totalGstAmount}</h4>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      <div className="col-md-3">
-                        <div
-                          className="card h-100"
-                          style={{
-                            background: "linear-gradient(45deg, #28a745, #20c997)",
-                            border: "none",
-                            boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
-                          }}
-                        >
-                          <div className="card-body text-center">
-                            <div className="mb-2">
-                              <i className="fa fa-credit-card fa-2x text-white"></i>
-                            </div>
-                            <h6 className="card-title text-white mb-1">Final Amount</h6>
-                            <h4 className="text-white fw-bold">₹{paymentBreakdown.finalAmount}</h4>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="card" style={{ background: "rgba(255,255,255,0.95)", border: "none" }}>
-                      <div className="card-body">
-                        <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                          <i className="fa fa-list-alt text-primary"></i>
-                          Payment Breakdown
-                        </h6>
-                        <div className="row">
-                          <div className="col-md-8">
-                            <div className="d-flex justify-content-between py-2 border-bottom">
-                              <span className="text-muted">Subtotal ({paymentBreakdown.itemCount} items)</span>
-                              <span className="fw-medium text-dark">₹{paymentBreakdown.totalOriginalAmount}</span>
-                            </div>
-                            {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
-                              <div className="d-flex justify-content-between py-2 border-bottom">
-                                <span className="text-success">Discount Applied</span>
-                                <span className="fw-medium text-success">-₹{paymentBreakdown.totalDiscountAmount}</span>
-                              </div>
-                            )}
-                            <div className="d-flex justify-content-between py-2 border-bottom">
-                              <span className="text-muted">Amount after Discount</span>
-                              <span className="fw-medium text-dark">₹{paymentBreakdown.totalNetAmount}</span>
-                            </div>
-                            {paymentBreakdown.gstApplicable && (
-                              <div className="d-flex justify-content-between py-2 border-bottom">
-                                <span className="text-muted">GST ({paymentBreakdown.gstPercent}%)</span>
-                                <span className="fw-medium text-warning">+₹{paymentBreakdown.totalGstAmount}</span>
-                              </div>
-                            )}
-                            <div className="d-flex justify-content-between py-3 border-top">
-                              <span className="h5 fw-bold text-dark">Total Payable</span>
-                              <span className="h4 fw-bold text-primary">₹{paymentBreakdown.finalAmount}</span>
-                            </div>
-                          </div>
-                          <div className="col-md-4">
-                            <div className="d-flex flex-wrap gap-2">
-                              <span className="badge bg-secondary px-3 py-2">
-                                {paymentBreakdown.itemCount} Items Selected
-                              </span>
-                              {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
-                                <span className="badge bg-success px-3 py-2">Discount Applied</span>
-                              )}
-                              {paymentBreakdown.gstApplicable && (
-                                <span className="badge bg-info px-3 py-2">GST Included</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Submit and Reset Buttons */}
-            <div className="row mb-3">
-              <div className="col-sm-12"></div>
-              <div className="card shadow mb-3">
-                <div className="card-body">
-                  <div className="row g-3">
-                    <div className="mt-4">
-                      <button
-                        type="button"
-                        className="btn btn-primary me-2"
-                        onClick={async () => {
-                          const missingFields = getMissingMandatoryFields()
-                          if (loading) return
-                          if (missingFields.length > 0) {
-                            Swal.fire(
-                              "Missing Mandatory Fields",
-                              "Please fill all mandatory fields before proceeding.",
-                              "warning"
-                            )
-                            return
-                          }
-                          try {
-                            await handleSubmit(true)
-                          } catch (error) {
-                            console.error("Error in payment flow:", error)
-                          }
-                        }}
-                      >
-                        <i className="fa fa-credit-card me-1"></i>
-                        {loading ? "Processing..." : `Pay Now - ₹${paymentBreakdown.finalAmount}`}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary me-2"
-                        onClick={() => handleSubmit(false)}
-                        disabled={loading}
-                      >
-                        {loading ? "Processing..." : "Confirm Lab Booking"}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-outline-secondary"
-                        onClick={handleReset}
-                        disabled={loading}
-                      >
-                        Reset
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </>
-        )}
       </div>
-    </div >
+    </div>
   )
 }
 

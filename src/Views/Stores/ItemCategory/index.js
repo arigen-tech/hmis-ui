@@ -5,37 +5,7 @@ import { getRequest, putRequest, postRequest } from "../../../service/apiService
 import { MAS_ITEM_CATEGORY, MAS_ITEM_SECTION } from "../../../config/apiConfig";
 
 const ItemCategory = () => {
-    // const [itemCategories, setItemCategories] = useState([
-    //     { id: 1, sectionType: "DRUGS", categoryCode: "CA1", categoryName: "ANAESTHETICS - LOCAL & GENERAL", status: "y" },
-    //     {
-    //         id: 2,
-    //         sectionType: "DRUGS",
-    //         categoryCode: "CA2",
-    //         categoryName: "CNS DISEASES AND PSYCHOTHERAPEUTIC DRUGS",
-    //         status: "y",
-    //     },
-    //     {
-    //         id: 3,
-    //         sectionType: "DRUGS",
-    //         categoryCode: "CA3",
-    //         categoryName: "PAIN FEVER GOUT RHEUMATOID ARTHRITIS AND MIGRAINE DRUGS",
-    //         status: "y",
-    //     },
-    //     {
-    //         id: 4,
-    //         sectionType: "DRUGS",
-    //         categoryCode: "CA4",
-    //         categoryName: "ALLERGIC DISORDERS AND OTHER RESPIRATORY DISEASES DRUGS",
-    //         status: "y",
-    //     },
-    //     {
-    //         id: 5,
-    //         sectionType: "DRUGS",
-    //         categoryCode: "CA5",
-    //         categoryName: "ANTI-INFECTIVE AGENTS",
-    //         status: "y"
-    //     },
-    // ])
+
 
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, categoryId: null, newStatus: false })
     const [formData, setFormData] = useState({
@@ -59,7 +29,7 @@ const ItemCategory = () => {
 
     const [loading, setLoading] = useState(false);
 
-    const itemsPerPage = 3
+    const itemsPerPage = 5
 
 
 
@@ -87,7 +57,7 @@ const ItemCategory = () => {
     };
 
     const fetchItemSectionData = async () => {
-        setLoading(true);
+        // setLoading(true);
         try {
             const data = await getRequest(`${MAS_ITEM_SECTION}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
@@ -98,9 +68,10 @@ const ItemCategory = () => {
             }
         } catch (error) {
             console.error("Error fetching Item Section data:", error);
-        } finally {
-            setLoading(false);
         }
+        //  finally {
+        //     setLoading(false);
+        // }
     }
 
 
@@ -110,11 +81,24 @@ const ItemCategory = () => {
         setCurrentPage(1)
     }
 
-    const filteredItemCategories = itemCategories.filter(
-        (category) =>
-            category.itemCategoryCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            category.itemCategoryName.toLowerCase().includes(searchQuery.toLowerCase()),
-    )
+    const search = searchQuery.trim().toLowerCase();
+
+    const filteredItemCategories = itemCategories.filter((category) => {
+        const code = category?.itemCategoryCode?.toLowerCase() || "";
+        const name = category?.itemCategoryName?.toLowerCase() || "";
+        const section = category?.sectionName?.toLowerCase() || "";
+
+        // Convert status into readable text
+        const status = category?.status === "y" ? "active" : "deactivated";
+
+        return (
+            code.includes(search) ||
+            name.includes(search) ||
+            section.includes(search) ||
+            status.includes(search)
+        );
+    });
+
 
     const filteredTotalPages = Math.ceil(filteredItemCategories.length / itemsPerPage)
 
@@ -295,6 +279,7 @@ const ItemCategory = () => {
                     <div className="card form-card">
                         <div className="card-header">
                             <h4 className="card-title p-2">Item Category</h4>
+                            {loading && <LoadingScreen />}
                             {!showForm && (
                                 <div className="d-flex justify-content-between align-items-spacearound mt-3">
 
@@ -317,9 +302,9 @@ const ItemCategory = () => {
                                         <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                                             <i className="mdi mdi-plus"></i> Add
                                         </button>
-                                        <button type="button" className="btn btn-success me-2">
+                                        {/* <button type="button" className="btn btn-success me-2">
                                             <i className="mdi mdi-plus"></i> Generate Report
-                                        </button>
+                                        </button> */}
                                     </div>
                                 </div>
                             )}
@@ -330,9 +315,10 @@ const ItemCategory = () => {
                                     <table className="table table-bordered table-hover align-middle">
                                         <thead className="table-light">
                                             <tr>
-                                                <th>Section</th>
+
                                                 <th>Item Category Code</th>
                                                 <th>Item Category Name</th>
+                                                <th>Section</th>
                                                 <th>Status</th>
                                                 <th>Edit</th>
                                             </tr>
@@ -340,9 +326,10 @@ const ItemCategory = () => {
                                         <tbody>
                                             {currentItems.map((category) => (
                                                 <tr key={category.itemCategoryId}>
-                                                    <td>{category.sectionName}</td>
+
                                                     <td>{category.itemCategoryCode}</td>
                                                     <td>{category.itemCategoryName}</td>
+                                                    <td>{category.sectionName}</td>
                                                     <td>
                                                         <div className="form-check form-switch">
                                                             <input

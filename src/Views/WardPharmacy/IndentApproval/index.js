@@ -3,6 +3,7 @@ import ReactDOM from "react-dom"
 import Popup from "../../../Components/popup"
 import { Store_Internal_Indent, MAS_DRUG_MAS } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
+import LoadingScreen from "../../../Components/Loading"
 
 const IndentApproval = () => {
   const [currentView, setCurrentView] = useState("list")
@@ -384,6 +385,7 @@ const IndentApproval = () => {
     return date.toLocaleDateString("en-GB")
   }
 
+
   // Pagination
   const itemsPerPage = 10
   const currentItems = filteredIndentData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
@@ -432,6 +434,8 @@ const IndentApproval = () => {
 
     return (
       <div className="content-wrapper">
+      {loading && <LoadingScreen/>}
+
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">

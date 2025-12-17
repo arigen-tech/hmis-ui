@@ -67,6 +67,7 @@ const Login = () => {
           jwtTokenExpiry,
           hospitalId,
           departmentId,
+          departmentName,
         } = response.response;
 
         const currentTime = Date.now();
@@ -88,6 +89,7 @@ const Login = () => {
           localStorage.setItem("isTokenValid", isTokenValid);
           localStorage.setItem("hospitalId", hospitalId);
           localStorage.setItem("departmentId", departmentId);
+          localStorage.setItem("departmentName",departmentName);
         } else {
           sessionStorage.setItem("token", jwtToken);
           sessionStorage.setItem("refreshToken", refreshToken);
@@ -98,6 +100,7 @@ const Login = () => {
           sessionStorage.setItem("isTokenValid", isTokenValid);
           sessionStorage.setItem("hospitalId", hospitalId);
           sessionStorage.setItem("departmentId", departmentId);
+          sessionStorage.setItem("departmentName",departmentName);
         }
 
         // Set up a timeout to auto-mark the token as expired
@@ -165,7 +168,7 @@ const Login = () => {
                           className="btn btn-light btn-sm p-0 border-0"
                           data-bs-toggle="tooltip"
                           data-bs-placement="right"
-                          title="Now Release Version 1.0 — Under Testing"
+                          title="Now Release Version 2.2 — Under Testing"
                         >
                           <i className="bi bi-info-circle text-primary fs-4"></i>
                         </button>

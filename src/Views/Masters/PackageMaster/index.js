@@ -31,7 +31,7 @@ const PackageMaster = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [filteredTotalPages, setFilteredTotalPages] = useState(1)
   const [totalFilteredProducts, setTotalFilteredProducts] = useState(0)
-  const [itemsPerPage] = useState(10)
+  const [itemsPerPage] = useState(5)
   const [pageInput, setPageInput] = useState(1)
 
   useEffect(() => {
@@ -322,21 +322,25 @@ const PackageMaster = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Investigation Package Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search"
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>

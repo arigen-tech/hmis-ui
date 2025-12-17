@@ -7,16 +7,16 @@ import { postRequest, putRequest, getRequest } from "../../../service/apiService
 const BedStatusMaster = () => {
   const [bedStatusData, setBedStatusData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState({ 
-    isOpen: false, 
-    statusId: null, 
-    newStatus: false 
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    statusId: null,
+    newStatus: false
   });
-  
+
   const [formData, setFormData] = useState({
     statusName: "",
   });
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
@@ -31,19 +31,19 @@ const BedStatusMaster = () => {
   // Function to format date as dd-MM-YYYY
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
-    
+
     try {
       const date = new Date(dateString);
-      
+
       // Check if date is valid
       if (isNaN(date.getTime())) {
         return "N/A";
       }
-      
+
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
       const year = date.getFullYear();
-      
+
       return `${day}/${month}/${year}`;
     } catch (error) {
       console.error("Error formatting date:", error);
@@ -122,10 +122,10 @@ const BedStatusMaster = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    
+
     try {
       setLoading(true);
-      
+
       // Check for duplicates
       const isDuplicate = bedStatusData.some(
         (status) =>
@@ -160,7 +160,7 @@ const BedStatusMaster = () => {
           showPopup("New bed status added successfully!", "success");
         }
       }
-      
+
       setEditingStatus(null);
       setFormData({ statusName: "" });
       setShowForm(false);
@@ -181,7 +181,7 @@ const BedStatusMaster = () => {
       }
     });
   };
-  
+
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, statusId: id, newStatus });
   };
@@ -190,7 +190,7 @@ const BedStatusMaster = () => {
     if (confirmed && confirmDialog.statusId !== null) {
       try {
         setLoading(true);
-        
+
         const response = await putRequest(
           `${MAS_BED_STATUS}/status/${confirmDialog.statusId}?status=${confirmDialog.newStatus}`
         );
@@ -199,12 +199,12 @@ const BedStatusMaster = () => {
           // Update local state with formatted date
           setBedStatusData((prevData) =>
             prevData.map((status) =>
-              status.id === confirmDialog.statusId 
-                ? { 
-                    ...status, 
-                    status: confirmDialog.newStatus,
-                    lastUpdated: formatDate(new Date().toISOString())
-                  } 
+              status.id === confirmDialog.statusId
+                ? {
+                  ...status,
+                  status: confirmDialog.newStatus,
+                  lastUpdated: formatDate(new Date().toISOString())
+                }
                 : status
             )
           );
@@ -291,11 +291,11 @@ const BedStatusMaster = () => {
           </li>
         );
       }
-      
+
       return (
         <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-          <button 
-            className="page-link" 
+          <button
+            className="page-link"
             onClick={() => {
               setCurrentPage(number);
               setPageInput(number.toString());
@@ -316,27 +316,31 @@ const BedStatusMaster = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Bed Status Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search bed status..."
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
 
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2"
                         onClick={() => {
                           setEditingStatus(null);
@@ -346,8 +350,8 @@ const BedStatusMaster = () => {
                       >
                         <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2 flex-shrink-0"
                         onClick={handleRefresh}
                       >
@@ -419,7 +423,7 @@ const BedStatusMaster = () => {
                       </tbody>
                     </table>
                   </div>
-                  
+
                   {filteredBedStatusData.length > 0 && (
                     <nav className="d-flex justify-content-between align-items-center mt-3">
                       <div>
@@ -427,7 +431,7 @@ const BedStatusMaster = () => {
                           Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredBedStatusData.length)} of {filteredBedStatusData.length} entries
                         </span>
                       </div>
-                      
+
                       <ul className="pagination mb-0">
                         <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
                           <button
@@ -442,9 +446,9 @@ const BedStatusMaster = () => {
                             &laquo; Previous
                           </button>
                         </li>
-                        
+
                         {renderPagination()}
-                        
+
                         <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
                           <button
                             className="page-link"
@@ -459,7 +463,7 @@ const BedStatusMaster = () => {
                           </button>
                         </li>
                       </ul>
-                      
+
                       <div className="d-flex align-items-center">
                         <span className="me-2">Go to:</span>
                         <input
@@ -501,18 +505,18 @@ const BedStatusMaster = () => {
                       {formData.statusName.length}/{STATUS_NAME_MAX_LENGTH} characters
                     </small> */}
                   </div>
-                  
+
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
-                    <button 
-                      type="submit" 
-                      className="btn btn-primary me-2" 
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
                       disabled={!isFormValid || loading}
                     >
                       {loading ? "Saving..." : (editingStatus ? 'Update' : 'Save')}
                     </button>
-                    <button 
-                      type="button" 
-                      className="btn btn-danger" 
+                    <button
+                      type="button"
+                      className="btn btn-danger"
                       onClick={() => setShowForm(false)}
                       disabled={loading}
                     >
@@ -521,7 +525,7 @@ const BedStatusMaster = () => {
                   </div>
                 </form>
               )}
-              
+
               {popupMessage && (
                 <Popup
                   message={popupMessage.message}
@@ -529,7 +533,7 @@ const BedStatusMaster = () => {
                   onClose={popupMessage.onClose}
                 />
               )}
-              
+
               {confirmDialog.isOpen && (
                 <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                   <div className="modal-dialog modal-dialog-centered" role="document">
@@ -540,7 +544,7 @@ const BedStatusMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
+                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
                           <strong> {bedStatusData.find(status => status.id === confirmDialog.statusId)?.statusName}</strong> status?
                         </p>
                         {/* <p className="text-muted">

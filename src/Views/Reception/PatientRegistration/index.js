@@ -114,7 +114,8 @@ const PatientRegistration = () => {
     varation: "",
     department: "",
     selDoctorId: "",
-    selSession: ""
+    selSession: "",
+    registrationCost:"",
   });
   const [image, setImage] = useState(placeholderImage);
   const [isCameraOn, setIsCameraOn] = useState(false);
@@ -137,7 +138,13 @@ const PatientRegistration = () => {
         return false;
       }
     }
+    const hasValidAppointment = appointments.some(a =>
+      a.speciality && a.selDoctorId && a.selSession
+    );
 
+    if (!hasValidAppointment) {
+      return false;
+    }
     return true;
   };
 
@@ -329,9 +336,7 @@ const PatientRegistration = () => {
     }
 
     if (name === "email") {
-      if (!value.trim()) {
-        error = "Email is required.";
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
         error = "Invalid email format.";
       }
     }
@@ -494,6 +499,7 @@ const PatientRegistration = () => {
     // Check session validity
     checkSessionValid(id, doctorId, specialityId, value);
   };
+
 
   async function checkDoctorValid(rowId, doctorId, deptId) {
     let date = new Date().toISOString().split("T")[0];
@@ -737,9 +743,35 @@ const PatientRegistration = () => {
     console.log(formData);
     sendPatientData();
   }
+  const validateVitalDetails = () => {
+    if (preConsultationFlag) return true; // Not required when true
+
+    const vitalFields = [
+      "height",
+      "weight",
+      "temperature",
+      "systolicBP",
+      "diastolicBP",
+      "pulse"
+    ];
+
+    let valid = true;
+    const newErrors = {};
+
+    vitalFields.forEach((field) => {
+      if (!formData[field] || formData[field].toString().trim() === "") {
+        newErrors[field] = `${field} is required.`;
+        valid = false;
+      }
+    });
+
+    setErrors((prev) => ({ ...prev, ...newErrors }));
+    return valid;
+  };
+
 
   const validateForm = () => {
-    const requiredFields = ["firstName", "gender", "relation", "dob", "email", "mobileNo"];
+    const requiredFields = ["firstName", "gender", "relation", "dob", "mobileNo"];
     const numericFields = [
       "height",
       "weight",
@@ -825,7 +857,7 @@ const PatientRegistration = () => {
 
 
   const sendPatientData = async () => {
-    if (validateForm()) {
+    if (validateForm() && validateVitalDetails()) {
       const requestData = {
         patient: {
           id: 0,
@@ -852,7 +884,7 @@ const PatientRegistration = () => {
           patientCity: formData.city,
           patientPincode: formData.pinCode,
           patientDistrictId: formData.district,
-          patientStateId: formData.district,
+          patientStateId: formData.state,
           patientCountryId: formData.country,
           pincode: "string",
           emerFn: formData.emergencyFirstName,
@@ -885,30 +917,30 @@ const PatientRegistration = () => {
           varation: formData.varation,
           bpSystolic: formData.systolicBP,
           bpDiastolic: formData.diastolicBP,
-          icdDiag: "string",
-          workingDiag: "string",
-          followUpFlag: "string",
+          icdDiag: "",
+          workingDiag: "",
+          followUpFlag: "",
           followUpDays: 0,
-          pastMedicalHistory: "string",
-          presentComplaints: "string",
-          familyHistory: "string",
-          treatmentAdvice: "string",
-          sosFlag: "string",
-          recmmdMedAdvice: "string",
+          pastMedicalHistory: "",
+          presentComplaints: "",
+          familyHistory: "",
+          treatmentAdvice: "",
+          sosFlag: "",
+          recmmdMedAdvice: "",
           medicineFlag: "s",
           labFlag: "s",
           radioFlag: "s",
           referralFlag: "s",
           mlcFlag: "s",
-          policeStation: "string",
-          policeName: "string",
+          policeStation: "",
+          policeName: "",
           patientId: 0,
           visitId: 0,
           departmentId: 0,
           hospitalId: 0,
           doctorId: 0,
           doctorId: 0,
-          lastChgBy: "string"
+          lastChgBy: ""
         },
 
         visits: visitList,
@@ -961,7 +993,8 @@ const PatientRegistration = () => {
                       address: resp.address,
                       appointments: resp.appointments,
                       details: resp.details,
-                      billingHeaderIds: (resp.appointments || []).map(a => a.billingHdId)
+                      billingHeaderIds: (resp.appointments || []).map(a => a.billingHdId),
+                      registrationCost:resp.registrationCost
                     }
                   }
                 });
@@ -1118,7 +1151,7 @@ const PatientRegistration = () => {
                           <label className="form-label" htmlFor="firstName">First Name <span className="text-danger">*</span></label>
                           <input type="text" className={`form-control ${errors.firstName ? 'is-invalid' : ''}`}
                             id="firstName" name="firstName" value={formData.firstName} onChange={handleChange}
-                            placeholder="Enter First Name" />
+                            placeholder="Enter First Name" required />
                           {errors.firstName && <div className="invalid-feedback">{errors.firstName}</div>}
                         </div>
                         <div className="col-md-4">
@@ -1135,7 +1168,7 @@ const PatientRegistration = () => {
                           <label className="form-label" htmlFor="mobileNo">Mobile No.<span className="text-danger">*</span></label>
                           <input type="text" id="mobileNo"
                             className={`form-control ${errors.mobileNo ? 'is-invalid' : ''}`} name="mobileNo"
-                            value={formData.mobileNo} onChange={handleChange} placeholder="Enter Mobile Number" />
+                            value={formData.mobileNo} onChange={handleChange} placeholder="Enter Mobile Number" required />
                           {errors.mobileNo && <div className="invalid-feedback">{errors.mobileNo}</div>}
                         </div>
                         <div className="col-md-4">
@@ -1187,7 +1220,7 @@ const PatientRegistration = () => {
                           {errors.age && <div className="invalid-feedback">{errors.age}</div>}
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="email">Email <span className="text-danger">*</span></label>
+                          <label className="form-label" htmlFor="email">Email </label>
                           <input type="email" id="email" name="email"
                             className={`form-control ${errors.email ? 'is-invalid' : ''}`} value={formData.email}
                             onChange={handleChange} placeholder="Enter Email Address" />
@@ -1534,7 +1567,7 @@ const PatientRegistration = () => {
 
                       {/* RR */}
                       <div className="col-md-4 d-flex">
-                        <label className="form-label me-2">RR</label>
+                        <label className="form-label me-2">RR<span className="text-danger">*</span></label>
                         <input type="number" min={0} className={`form-control ${errors.rr ? 'is-invalid' : ''}`}
                           placeholder="RR" name="rr" value={formData.rr} onChange={handleChange} />
                         <span className="input-group-text">/min</span>
@@ -1545,7 +1578,7 @@ const PatientRegistration = () => {
 
                       {/* SpO2 */}
                       <div className="col-md-4 d-flex">
-                        <label className="form-label me-2">SpO2</label>
+                        <label className="form-label me-2">SpO2<span className="text-danger">*</span></label>
                         <input type="number" min={0} className={`form-control ${errors.spo2 ? 'is-invalid' : ''}`}
                           placeholder="SpO2" name="spo2" value={formData.spo2} onChange={handleChange} />
                         <span className="input-group-text">%</span>

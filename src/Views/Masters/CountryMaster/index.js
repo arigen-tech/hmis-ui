@@ -21,7 +21,7 @@ const CountryMaster = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageInput, setPageInput] = useState("");
     const [isLoading, setIsLoading] = useState(true);
-    const itemsPerPage = 4;
+    const itemsPerPage = 5;
 
     const COUNTRY_CODE_MAX_LENGTH = 8;
     const COUNTRY_NAME_MAX_LENGTH = 30;
@@ -225,9 +225,9 @@ const CountryMaster = () => {
                                             <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                                                 <i className="mdi mdi-plus"></i> ADD
                                             </button>
-                                            <button type="button" className="btn btn-success me-2 flex-shrink-0">
+                                            {/* <button type="button" className="btn btn-success me-2 flex-shrink-0">
                                                 <i className="mdi mdi-plus"></i> Generate Report
-                                            </button>
+                                            </button> */}
                                         </>
                                     ) : (
                                         <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>

@@ -266,9 +266,9 @@ const MainChargeCode = () => {
                     <button type="button" className="btn btn-success me-2" onClick={handleRefresh}>
                       <i className="mdi mdi-refresh"></i> Show All
                     </button>
-                    <button type="button" className="btn btn-success me-2">
+                    {/* <button type="button" className="btn btn-success me-2">
                       <i className="mdi mdi-plus"></i> Generate Report
-                    </button>
+                    </button> */}
                   </>
                 )}
               </div>

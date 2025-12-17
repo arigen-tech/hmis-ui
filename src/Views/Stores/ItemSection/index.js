@@ -73,13 +73,23 @@ const ItemSection = () => {
   }
 
 
-  const filteredSections = itemSectionData.filter((section) => {
-    if (searchType === "code") {
-      return section.sectionCode.toLowerCase().includes(searchQuery.toLowerCase())
-    } else {
-      return section.sectionName.toLowerCase().includes(searchQuery.toLowerCase())
-    }
-  })
+ const search = searchQuery.trim().toLowerCase();
+
+const filteredSections = itemSectionData.filter((section) => {
+  const code = section?.sectionCode?.toLowerCase() || "";
+  const name = section?.sectionName?.toLowerCase() || "";
+  const typeName = section?.masItemTypeName?.toLowerCase() || "";
+
+  const status = section?.status === "y" ? "active" : "deactivated";
+
+  return (
+    code.includes(search) ||
+    name.includes(search) ||
+    typeName.includes(search) ||
+    status.includes(search)
+  );
+});
+
 
   const filteredTotalPages = Math.ceil(filteredSections.length / itemsPerPage)
 
@@ -294,9 +304,9 @@ const ItemSection = () => {
                     }}>
                       <i className="mdi mdi-plus"></i> Add
                     </button>
-                    <button type="button" className="btn btn-success me-2">
+                    {/* <button type="button" className="btn btn-success me-2">
                       <i className="mdi mdi-plus"></i> Generate Report
-                    </button>
+                    </button> */}
                   </div>
                 </div>
               )}

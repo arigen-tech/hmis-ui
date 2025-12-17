@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, Store_Internal_Indent, MAS_DRUG_MAS } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService"
+import LoadingScreen from "../../../Components/Loading";
 
 const IndentCreation = () => {
   const [currentView, setCurrentView] = useState("form") // "form" or "detail"
@@ -34,6 +35,8 @@ const IndentCreation = () => {
   const [showROLPopup, setShowROLPopup] = useState(false);
   const [rolItems, setRolItems] = useState([]);
   const [selectedRolItems, setSelectedRolItems] = useState([]);
+
+
 
   // Fetch current department by ID
   const fetchCurrentDepartment = async () => {
@@ -658,6 +661,7 @@ const IndentCreation = () => {
 
   return (
     <div className="content-wrapper">
+      {loading && <LoadingScreen/>}
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -672,17 +676,18 @@ const IndentCreation = () => {
                 <div className="col-md-3">
                   <label className="form-label fw-bold">Indent Date</label>
                   <input
-                    type="date"
-                    className={`form-control ${errors.indentDate ? 'is-invalid' : ''}`}
-                    value={indentDate}
-                    onChange={(e) => {
-                      setIndentDate(e.target.value);
-                      if (errors.indentDate) {
-                        const newErrors = { ...errors };
-                        delete newErrors.indentDate;
-                        setErrors(newErrors);
-                      }
-                    }}
+                                       type="date"
+                                       className={`form-control ${errors.indentDate ? 'is-invalid' : ''}`}
+                                       value={indentDate}
+                                       onChange={(e) => {
+                                         setIndentDate(e.target.value);
+                                         if (errors.indentDate) {
+                                           const newErrors = { ...errors };
+                                           delete newErrors.indentDate;
+                                           setErrors(newErrors);
+                                         }
+                                       }}
+                   
                   />
                   {errors.indentDate && <div className="invalid-feedback">{errors.indentDate}</div>}
                 </div>

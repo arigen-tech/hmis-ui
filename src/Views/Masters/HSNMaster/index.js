@@ -53,8 +53,8 @@ const HSNMaster = () => {
   };
 
   const validateDates = () => {
-    if (formData.effectiveTo && formData.effectiveFrom && 
-        new Date(formData.effectiveTo) < new Date(formData.effectiveFrom)) {
+    if (formData.effectiveTo && formData.effectiveFrom &&
+      new Date(formData.effectiveTo) < new Date(formData.effectiveFrom)) {
       setDateError("Effective To date cannot be before From date");
       return false;
     }
@@ -91,90 +91,90 @@ const HSNMaster = () => {
     setShowForm(true);
   };
 
- const handleSave = async (e) => {
-  e.preventDefault();
+  const handleSave = async (e) => {
+    e.preventDefault();
 
-  // ✅ 1️⃣ Validate date fields first (your own function)
-  if (!validateDates()) return;
+    // ✅ 1️⃣ Validate date fields first (your own function)
+    if (!validateDates()) return;
 
-  // ✅ 2️⃣ Validate GST rate
-  const gstRateValue = parseFloat(formData.gstRate);
-  if (
-    isNaN(gstRateValue) ||
-    gstRateValue < 0 ||
-    gstRateValue > 100
-  ) {
-    showPopup("Please enter a valid GST Rate between 0 and 100.", "error");
-    return;
-  }
-
-  try {
-    setLoading(true);
-
-    // ✅ 3️⃣ Build payload
-    const payload = {
-      hsnCode: formData.hsnCode,
-      gstRate: gstRateValue, // use validated value
-      isMedicine: formData.isMedicine,
-      hsnCategory: formData.hsnCategory,
-      hsnSubcategory: formData.hsnSubcategory,
-      effectiveFrom: formData.effectiveFrom,
-      effectiveTo: formData.effectiveTo || null,
-      status: editingHsn ? editingHsn.status : "y", // preserve status if updating
-    };
-
-    // ✅ 4️⃣ Make request: PUT for update, POST for create
-    let response;
-    if (editingHsn) {
-      response = await putRequest(
-        `${MAS_HSN}/update/${editingHsn.hsnCode}`,
-        payload
-      );
-
-      if (response && response.response) {
-        setHsnData((prevData) =>
-          prevData.map((hsn) =>
-            hsn.hsnCode === editingHsn.hsnCode ? response.response : hsn
-          )
-        );
-        showPopup("HSN updated successfully!", "success");
-      }
-    } else {
-      response = await postRequest(`${MAS_HSN}/create`, payload);
-
-      if (response && response.response) {
-        setHsnData((prevData) => [...prevData, response.response]);
-        showPopup("New HSN added successfully!", "success");
-      }
+    // ✅ 2️⃣ Validate GST rate
+    const gstRateValue = parseFloat(formData.gstRate);
+    if (
+      isNaN(gstRateValue) ||
+      gstRateValue < 0 ||
+      gstRateValue > 100
+    ) {
+      showPopup("Please enter a valid GST Rate between 0 and 100.", "error");
+      return;
     }
 
-    // ✅ 5️⃣ Reset form & close modal
-    setEditingHsn(null);
-    setFormData({
-      hsnCode: "",
-      gstRate: "",
-      isMedicine: false,
-      hsnCategory: "",
-      hsnSubcategory: "",
-      effectiveFrom: "",
-      effectiveTo: "",
-    });
-    setShowForm(false);
+    try {
+      setLoading(true);
 
-    // ✅ 6️⃣ Refresh table data
-    fetchHsnData();
+      // ✅ 3️⃣ Build payload
+      const payload = {
+        hsnCode: formData.hsnCode,
+        gstRate: gstRateValue, // use validated value
+        isMedicine: formData.isMedicine,
+        hsnCategory: formData.hsnCategory,
+        hsnSubcategory: formData.hsnSubcategory,
+        effectiveFrom: formData.effectiveFrom,
+        effectiveTo: formData.effectiveTo || null,
+        status: editingHsn ? editingHsn.status : "y", // preserve status if updating
+      };
 
-  } catch (err) {
-    console.error("Error saving HSN data:", err);
-    const errorMessage =
-      err.response?.data?.message ||
-      err.message ||
-      "Failed to save changes due to server error";
-    showPopup(errorMessage, "error");
-  } finally {
-    setLoading(false);
-  }
-};
+      // ✅ 4️⃣ Make request: PUT for update, POST for create
+      let response;
+      if (editingHsn) {
+        response = await putRequest(
+          `${MAS_HSN}/update/${editingHsn.hsnCode}`,
+          payload
+        );
+
+        if (response && response.response) {
+          setHsnData((prevData) =>
+            prevData.map((hsn) =>
+              hsn.hsnCode === editingHsn.hsnCode ? response.response : hsn
+            )
+          );
+          showPopup("HSN updated successfully!", "success");
+        }
+      } else {
+        response = await postRequest(`${MAS_HSN}/create`, payload);
+
+        if (response && response.response) {
+          setHsnData((prevData) => [...prevData, response.response]);
+          showPopup("New HSN added successfully!", "success");
+        }
+      }
+
+      // ✅ 5️⃣ Reset form & close modal
+      setEditingHsn(null);
+      setFormData({
+        hsnCode: "",
+        gstRate: "",
+        isMedicine: false,
+        hsnCategory: "",
+        hsnSubcategory: "",
+        effectiveFrom: "",
+        effectiveTo: "",
+      });
+      setShowForm(false);
+
+      // ✅ 6️⃣ Refresh table data
+      fetchHsnData();
+
+    } catch (err) {
+      console.error("Error saving HSN data:", err);
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to save changes due to server error";
+      showPopup(errorMessage, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
   const showPopup = (message, type = 'info') => {
@@ -186,7 +186,7 @@ const HSNMaster = () => {
       }
     });
   };
-  
+
   const handleSwitchChange = (hsnCode, newStatus) => {
     setConfirmDialog({ isOpen: true, hsnId: hsnCode, newStatus });
   };
@@ -195,16 +195,16 @@ const HSNMaster = () => {
     if (confirmed && confirmDialog.hsnId !== null) {
       try {
         setLoading(true);
-        
+
         const response = await putRequest(
           `${MAS_HSN}/status/${confirmDialog.hsnId}?status=${confirmDialog.newStatus}`
         );
-        
+
         if (response && response.response) {
           setHsnData(prevData =>
             prevData.map(hsn =>
-              hsn.hsnCode === confirmDialog.hsnId ? 
-                { ...hsn, status: confirmDialog.newStatus } : 
+              hsn.hsnCode === confirmDialog.hsnId ?
+                { ...hsn, status: confirmDialog.newStatus } :
                 hsn
             )
           );
@@ -212,9 +212,9 @@ const HSNMaster = () => {
         }
       } catch (err) {
         console.error("Error updating HSN status:", err);
-        const errorMessage = err.response?.data?.message || 
-                           err.message || 
-                           "Failed to update status due to server error";
+        const errorMessage = err.response?.data?.message ||
+          err.message ||
+          "Failed to update status due to server error";
         showPopup(errorMessage, "error");
       } finally {
         setLoading(false);
@@ -297,31 +297,35 @@ const HSNMaster = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">HSN Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search"
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
 
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2"
                         onClick={() => {
                           setEditingHsn(null);
-                          setFormData({ 
+                          setFormData({
                             hsnCode: "",
                             gstRate: "",
                             isMedicine: false,
@@ -335,8 +339,8 @@ const HSNMaster = () => {
                       >
                         <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2 flex-shrink-0"
                         onClick={handleRefresh}
                       >
@@ -353,7 +357,7 @@ const HSNMaster = () => {
             </div>
             <div className="card-body">
               {loading ? (
-                <LoadingScreen /> 
+                <LoadingScreen />
               ) : !showForm ? (
                 <div className="table-responsive packagelist">
                   <table className="table table-bordered table-hover align-middle">
@@ -500,7 +504,7 @@ const HSNMaster = () => {
                         className="form-control mt-1"
                         id="isMedicine"
                         value={formData.isMedicine}
-                        onChange={(e) => setFormData({...formData, isMedicine: e.target.value === "true"})}
+                        onChange={(e) => setFormData({ ...formData, isMedicine: e.target.value === "true" })}
                         required
                       >
                         <option value="">Select</option>

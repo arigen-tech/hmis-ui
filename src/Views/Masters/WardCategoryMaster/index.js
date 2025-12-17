@@ -7,18 +7,18 @@ import { postRequest, putRequest, getRequest } from "../../../service/apiService
 const WardCategoryMaster = () => {
   const [wardCategoryData, setWardCategoryData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState({ 
-    isOpen: false, 
-    categoryId: null, 
-    newStatus: false 
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    categoryId: null,
+    newStatus: false
   });
-  
+
   const [formData, setFormData] = useState({
     categoryName: "",
     description: "",
     careId: "",
   });
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
@@ -37,19 +37,19 @@ const WardCategoryMaster = () => {
   // Function to format date as dd-MM-YYYY
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
-    
+
     try {
       const date = new Date(dateString);
-      
+
       // Check if date is valid
       if (isNaN(date.getTime())) {
         return "N/A";
       }
-      
+
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
       const year = date.getFullYear();
-      
+
       return `${day}/${month}/${year}`;
     } catch (error) {
       console.error("Error formatting date:", error);
@@ -108,7 +108,7 @@ const WardCategoryMaster = () => {
 
   // Filter data based on search query
   const filteredWardCategoryData = wardCategoryData.filter(category =>
-    category.categoryName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    category.categoryName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (category.description && category.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (category.careLevel && category.careLevel.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -160,10 +160,10 @@ const WardCategoryMaster = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    
+
     try {
       setLoading(true);
-      
+
       // Check for duplicates
       const isDuplicate = wardCategoryData.some(
         (category) =>
@@ -202,7 +202,7 @@ const WardCategoryMaster = () => {
           showPopup("New ward category added successfully!", "success");
         }
       }
-      
+
       setEditingCategory(null);
       setFormData({ categoryName: "", description: "", careId: "" });
       setShowForm(false);
@@ -223,7 +223,7 @@ const WardCategoryMaster = () => {
       }
     });
   };
-  
+
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, categoryId: id, newStatus });
   };
@@ -232,7 +232,7 @@ const WardCategoryMaster = () => {
     if (confirmed && confirmDialog.categoryId !== null) {
       try {
         setLoading(true);
-        
+
         const response = await putRequest(
           `${MAS_WARD_CATEGORY}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
         );
@@ -241,12 +241,12 @@ const WardCategoryMaster = () => {
           // Update local state with formatted date
           setWardCategoryData((prevData) =>
             prevData.map((category) =>
-              category.id === confirmDialog.categoryId 
-                ? { 
-                    ...category, 
-                    status: confirmDialog.newStatus,
-                    lastUpdated: formatDate(new Date().toISOString())
-                  } 
+              category.id === confirmDialog.categoryId
+                ? {
+                  ...category,
+                  status: confirmDialog.newStatus,
+                  lastUpdated: formatDate(new Date().toISOString())
+                }
                 : category
             )
           );
@@ -338,11 +338,11 @@ const WardCategoryMaster = () => {
           </li>
         );
       }
-      
+
       return (
         <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-          <button 
-            className="page-link" 
+          <button
+            className="page-link"
             onClick={() => {
               setCurrentPage(number);
               setPageInput(number.toString());
@@ -363,27 +363,31 @@ const WardCategoryMaster = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Ward Category Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search ward category..."
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
 
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2"
                         onClick={() => {
                           setEditingCategory(null);
@@ -393,8 +397,8 @@ const WardCategoryMaster = () => {
                       >
                         <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2 flex-shrink-0"
                         onClick={handleRefresh}
                       >
@@ -472,7 +476,7 @@ const WardCategoryMaster = () => {
                       </tbody>
                     </table>
                   </div>
-                  
+
                   {filteredWardCategoryData.length > 0 && (
                     <nav className="d-flex justify-content-between align-items-center mt-3">
                       <div>
@@ -480,7 +484,7 @@ const WardCategoryMaster = () => {
                           Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredWardCategoryData.length)} of {filteredWardCategoryData.length} entries
                         </span>
                       </div>
-                      
+
                       <ul className="pagination mb-0">
                         <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
                           <button
@@ -495,9 +499,9 @@ const WardCategoryMaster = () => {
                             &laquo; Previous
                           </button>
                         </li>
-                        
+
                         {renderPagination()}
-                        
+
                         <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
                           <button
                             className="page-link"
@@ -512,7 +516,7 @@ const WardCategoryMaster = () => {
                           </button>
                         </li>
                       </ul>
-                      
+
                       <div className="d-flex align-items-center">
                         <span className="me-2">Go to:</span>
                         <input
@@ -591,18 +595,18 @@ const WardCategoryMaster = () => {
                       {formData.description.length}/{DESCRIPTION_MAX_LENGTH} characters
                     </small> */}
                   </div>
-                  
+
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
-                    <button 
-                      type="submit" 
-                      className="btn btn-primary me-2" 
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
                       disabled={!isFormValid || loading}
                     >
                       {loading ? "Saving..." : (editingCategory ? 'Update' : 'Save')}
                     </button>
-                    <button 
-                      type="button" 
-                      className="btn btn-danger" 
+                    <button
+                      type="button"
+                      className="btn btn-danger"
                       onClick={() => setShowForm(false)}
                       disabled={loading}
                     >
@@ -611,7 +615,7 @@ const WardCategoryMaster = () => {
                   </div>
                 </form>
               )}
-              
+
               {popupMessage && (
                 <Popup
                   message={popupMessage.message}
@@ -619,7 +623,7 @@ const WardCategoryMaster = () => {
                   onClose={popupMessage.onClose}
                 />
               )}
-              
+
               {confirmDialog.isOpen && (
                 <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                   <div className="modal-dialog modal-dialog-centered" role="document">
@@ -630,7 +634,7 @@ const WardCategoryMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
+                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
                           <strong> {wardCategoryData.find(category => category.id === confirmDialog.categoryId)?.categoryName}</strong>?
                         </p>
                       </div>

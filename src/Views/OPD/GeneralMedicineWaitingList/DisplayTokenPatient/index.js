@@ -137,7 +137,7 @@ const PatientWaitingList = () => {
 
   return (
     <div className="container mt-4">
-      <h3 className="fw-bold mb-4">PATIENT WAITING LIST</h3>
+      <h3 className="fw-bold mb-4">TOKEN DISPLAY WAITING LIST</h3>
 
       {loadingData && <LoadingScreen />}
 
@@ -242,7 +242,7 @@ const PatientWaitingList = () => {
           <tbody>
             {list?.length === 0 ? (
               <tr>
-                <td colSpan="10" className="text-muted fst-italic">
+                <td colSpan="7" className="text-center text-muted">
                   No records found
                 </td>
               </tr>
@@ -276,3 +276,16 @@ const PatientWaitingList = () => {
 };
 
 export default PatientWaitingList;
+
+
+
+
+
+
+
+
+
+
+
+
+

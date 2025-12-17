@@ -109,6 +109,18 @@ const validRoutes = [
   "/PatientAdmission",
   "/TokenDisplay",
   "/NewPatientAppointment",
+  "/MealTypeMaster",
+  "/DietTypeMaster",
+  "/DietPreferenceMaster",
+  "/DietScheduleMaster",
+  "/ItemReceivingMainScreen",
+  "/AdmissionStatusMaster",
+  "/IntakeItemMaster",
+  "/PatientacuityMaster",
+  "/OutputTypeMaster",
+  "/IntakeTypeMaster",
+  "/InpatientMaster",
+  "/SpecialityMaster",
 
   
 ];

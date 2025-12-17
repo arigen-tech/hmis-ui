@@ -103,6 +103,18 @@ import FamilyHistoryMaster from './Views/Masters/FamilyHistoryMaster';
 import PatientAdmission from './Views/Masters/PatientAdmission';
 import ProcedureMaster from './Views/Masters/ProcedureMaster';
 import ProcedureTypeMaster from './Views/Masters/ProcedureTypeMaster';
+import MealTypeMaster from './Views/Masters/MealTypeMaster';
+import DietTypeMaster from './Views/Masters/DietTypeMaster';
+import DietPreferenceMaster from './Views/Masters/DietPreferenceMaster';
+import DietScheduleMaster from './Views/Masters/DietScheduleMaster'; 
+import ItemReceivingMainScreen from './Views/WardPharmacy/ItemReceivingMainScreen';
+import AdmissionStatusMaster from './Views/Masters/AdmissionStatusMaster'; 
+import IntakeItemMaster from './Views/Masters/IntakeItemMaster';
+import PatientacuityMaster from './Views/Masters/PatientacuityMaster';
+import OutputTypeMaster from './Views/Masters/OutputTypeMaster';
+import IntakeTypeMaster from './Views/Masters/IntakeTypeMaster';
+import InpatientMaster from  './Views/Masters/InpatientMaster';
+import SpecialityMaster from './Views/Masters/SpecialityMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -240,6 +252,18 @@ function App() {
                 <Route path="/ProcedureTypeMaster" element={<ProcedureTypeMaster/>} />
                 <Route path="/BedTypeMaster" element={<BedTypeMaster/>} />
                 <Route path="/PatientAdmission" element={<PatientAdmission/>} />
+                <Route path="/MealTypeMaster" element={<MealTypeMaster/>} />
+                <Route path="/DietTypeMaster" element={<DietTypeMaster/>} />
+                <Route path="/DietPreferenceMaster" element={<DietPreferenceMaster/>} />
+                <Route path="/DietScheduleMaster" element={<DietScheduleMaster/>} />
+                <Route path="ItemReceivingMainScreen" element={<ItemReceivingMainScreen/>} />
+                <Route path="/AdmissionStatusMaster" element={<AdmissionStatusMaster/>} />
+                <Route path ="/IntakeItemMaster" element={<IntakeItemMaster/>} />
+                <Route path="/PatientacuityMaster" element={<PatientacuityMaster/>} />
+                <Route path="/OutputTypeMaster" element={<OutputTypeMaster/>} />
+                <Route path="/IntakeTypeMaster" element={<IntakeTypeMaster/>} />
+                <Route path="/InpatientMaster" element={<InpatientMaster/>} />
+                <Route path="/SpecialityMaster" element={<SpecialityMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>

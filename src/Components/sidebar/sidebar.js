@@ -82,7 +82,6 @@ const Sidebar = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setMenuData(data.response)
 
-        // Flatten URLs
         const extractUrls = (items) => {
           const urls = []
           for (const item of items) {
@@ -95,7 +94,6 @@ const Sidebar = () => {
         sessionStorage.setItem("allowedUrls", JSON.stringify(extractUrls(data.response)))
       } else {
         setMenuData([])
-        console.error("Unexpected API response:", data)
       }
     } catch (error) {
       console.error("Error fetching Menu data:", error)
@@ -106,22 +104,23 @@ const Sidebar = () => {
 
   const isActive = (path) => location.pathname === path
 
-  // ✅ Recursive filtering for search
   const filterMenu = (items, searchText) => {
     if (!searchText.trim()) return items
+
     return items
       .map((item) => {
         const matches = item.name.toLowerCase().includes(searchText.toLowerCase())
         const filteredChildren = item.children ? filterMenu(item.children, searchText) : []
+
         if (matches || filteredChildren.length > 0) {
           return { ...item, children: filteredChildren }
         }
+
         return null
       })
       .filter(Boolean)
   }
 
-  // ✅ UseMemo to avoid unnecessary re-renders
   const filteredMenu = useMemo(() => filterMenu(menuData, searchText), [menuData, searchText])
 
   const renderMenuItems = (items, parentId = "") => {
@@ -131,6 +130,7 @@ const Sidebar = () => {
 
       return (
         <li key={`${parentId}-${index}`} className="collapsed">
+
           {hasChildren ? (
             <>
               <Link
@@ -141,16 +141,18 @@ const Sidebar = () => {
               >
                 <i className={`${getIconClass(item.name)} fs-5`} />
                 <span>{item.name}</span>
+
                 <span
-                  className={`arrow icofont-rounded-down ms-auto text-end fs-5 ${
-                    hasChildren ? "collapse-arrow" : ""
-                  }`}
+                  className="arrow icofont-rounded-down ms-auto text-end fs-5 collapse-arrow"
                   data-bs-toggle="collapse"
-                />
+                  data-bs-target={`#${collapseId}`}
+                ></span>
               </Link>
-              <ul className="sub-menu collapse " id={collapseId}>
+
+              <ul className="sub-menu collapse" id={collapseId}>
                 {renderMenuItems(item.children, `${parentId}-${index}`)}
               </ul>
+
             </>
           ) : (
             <Link className={`ms-link ${isActive(item.url) ? "active" : ""}`} to={item.url}>
@@ -166,6 +168,7 @@ const Sidebar = () => {
   return (
     <div className="sidebar px-4 py-4 py-md-5 me-0 ms-1">
       <div className="d-flex flex-column h-100">
+
         <Link to="index" className="mb-0 brand-icon">
           <span className="logo-icon">
             <i className="icofont-heart-beat fs-2" />
@@ -188,20 +191,21 @@ const Sidebar = () => {
         </div>
 
         <ul className="menu-list flex-grow-1 mt-3">
-          {loading
-            ? Array.from({ length: 6 }).map((_, i) => (
-                <li key={i} className="d-flex align-items-center mb-3">
-                  <div className="skeleton-icon bg-custom me-3 rounded-circle"></div>
-                  <div className="skeleton-text bg-custom rounded w-75"></div>
-                </li>
-              ))
-            : filteredMenu.length > 0
-            ? renderMenuItems(filteredMenu)
-            : !loading && (
-                <li className="text-center text-muted mt-3">
-                  <i className="icofont-search-document fs-4 me-2"></i> No matching results
-                </li>
-              )}
+
+          {loading ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <li key={i} className="d-flex align-items-center mb-3">
+                <div className="skeleton-icon bg-custom me-3 rounded-circle"></div>
+                <div className="skeleton-text bg-custom rounded w-75"></div>
+              </li>
+            ))
+          ) : filteredMenu.length > 0 ? (
+            renderMenuItems(filteredMenu)
+          ) : (
+            <li className="text-center text-muted mt-3">
+              <i className="icofont-search-document fs-4 me-2"></i> No matching results
+            </li>
+          )}
         </ul>
 
         <button type="button" className="btn btn-link sidebar-mini-btn text-light">
@@ -209,6 +213,7 @@ const Sidebar = () => {
             <i className="icofont-bubble-right" />
           </span>
         </button>
+
       </div>
     </div>
   )

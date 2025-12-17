@@ -7,17 +7,17 @@ import { postRequest, putRequest, getRequest } from "../../../service/apiService
 const BedTypeMaster = () => {
   const [bedTypeData, setBedTypeData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState({ 
-    isOpen: false, 
-    typeId: null, 
-    newStatus: false 
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    typeId: null,
+    newStatus: false
   });
-  
+
   const [formData, setFormData] = useState({
     bedTypeName: "",
     description: ""
   });
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
@@ -33,19 +33,19 @@ const BedTypeMaster = () => {
   // Function to format date as dd-MM-YYYY
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
-    
+
     try {
       const date = new Date(dateString);
-      
+
       // Check if date is valid
       if (isNaN(date.getTime())) {
         return "N/A";
       }
-      
+
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
       const year = date.getFullYear();
-      
+
       return `${day}/${month}/${year}`;
     } catch (error) {
       console.error("Error formatting date:", error);
@@ -110,7 +110,7 @@ const BedTypeMaster = () => {
     const validateForm = () => {
       const { bedTypeName, description } = formData;
       return (
-        bedTypeName.trim() !== "" && 
+        bedTypeName.trim() !== "" &&
         description.trim() !== ""
       );
     };
@@ -133,10 +133,10 @@ const BedTypeMaster = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    
+
     try {
       setLoading(true);
-      
+
       // Check for duplicates
       const isDuplicate = bedTypeData.some(
         (type) =>
@@ -173,7 +173,7 @@ const BedTypeMaster = () => {
           showPopup("New bed type added successfully!", "success");
         }
       }
-      
+
       setEditingType(null);
       setFormData({ bedTypeName: "", description: "" });
       setShowForm(false);
@@ -194,7 +194,7 @@ const BedTypeMaster = () => {
       }
     });
   };
-  
+
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, typeId: id, newStatus });
   };
@@ -203,7 +203,7 @@ const BedTypeMaster = () => {
     if (confirmed && confirmDialog.typeId !== null) {
       try {
         setLoading(true);
-        
+
         const response = await putRequest(
           `${MAS_BED_TYPE}/status/${confirmDialog.typeId}?status=${confirmDialog.newStatus}`
         );
@@ -212,12 +212,12 @@ const BedTypeMaster = () => {
           // Update local state with formatted date
           setBedTypeData((prevData) =>
             prevData.map((type) =>
-              type.id === confirmDialog.typeId 
-                ? { 
-                    ...type, 
-                    status: confirmDialog.newStatus,
-                    lastUpdated: formatDate(new Date().toISOString())
-                  } 
+              type.id === confirmDialog.typeId
+                ? {
+                  ...type,
+                  status: confirmDialog.newStatus,
+                  lastUpdated: formatDate(new Date().toISOString())
+                }
                 : type
             )
           );
@@ -304,11 +304,11 @@ const BedTypeMaster = () => {
           </li>
         );
       }
-      
+
       return (
         <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-          <button 
-            className="page-link" 
+          <button
+            className="page-link"
             onClick={() => {
               setCurrentPage(number);
               setPageInput(number.toString());
@@ -329,27 +329,31 @@ const BedTypeMaster = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Bed Type Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search bed type..."
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
 
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2"
                         onClick={() => {
                           setEditingType(null);
@@ -359,8 +363,8 @@ const BedTypeMaster = () => {
                       >
                         <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2 flex-shrink-0"
                         onClick={handleRefresh}
                       >
@@ -434,7 +438,7 @@ const BedTypeMaster = () => {
                       </tbody>
                     </table>
                   </div>
-                  
+
                   {filteredBedTypeData.length > 0 && (
                     <nav className="d-flex justify-content-between align-items-center mt-3">
                       <div>
@@ -442,7 +446,7 @@ const BedTypeMaster = () => {
                           Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredBedTypeData.length)} of {filteredBedTypeData.length} entries
                         </span>
                       </div>
-                      
+
                       <ul className="pagination mb-0">
                         <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
                           <button
@@ -457,9 +461,9 @@ const BedTypeMaster = () => {
                             &laquo; Previous
                           </button>
                         </li>
-                        
+
                         {renderPagination()}
-                        
+
                         <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
                           <button
                             className="page-link"
@@ -474,7 +478,7 @@ const BedTypeMaster = () => {
                           </button>
                         </li>
                       </ul>
-                      
+
                       <div className="d-flex align-items-center">
                         <span className="me-2">Go to:</span>
                         <input
@@ -512,11 +516,11 @@ const BedTypeMaster = () => {
                       maxLength={BED_TYPE_NAME_MAX_LENGTH}
                       required
                     />
-                    <small className="text-muted">
+                    {/* <small className="text-muted">
                       {formData.bedTypeName.length}/{BED_TYPE_NAME_MAX_LENGTH} characters
-                    </small>
+                    </small> */}
                   </div>
-                  
+
                   <div className="form-group col-md-6">
                     <label>Description <span className="text-danger">*</span></label>
                     <textarea
@@ -530,22 +534,22 @@ const BedTypeMaster = () => {
                       rows="2"
                       required
                     />
-                    <small className="text-muted">
+                    {/* <small className="text-muted">
                       {formData.description.length}/{DESCRIPTION_MAX_LENGTH} characters
-                    </small>
+                    </small> */}
                   </div>
-                  
+
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
-                    <button 
-                      type="submit" 
-                      className="btn btn-primary me-2" 
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
                       disabled={!isFormValid || loading}
                     >
                       {loading ? "Saving..." : (editingType ? 'Update' : 'Save')}
                     </button>
-                    <button 
-                      type="button" 
-                      className="btn btn-danger" 
+                    <button
+                      type="button"
+                      className="btn btn-danger"
                       onClick={() => setShowForm(false)}
                       disabled={loading}
                     >
@@ -554,7 +558,7 @@ const BedTypeMaster = () => {
                   </div>
                 </form>
               )}
-              
+
               {popupMessage && (
                 <Popup
                   message={popupMessage.message}
@@ -562,7 +566,7 @@ const BedTypeMaster = () => {
                   onClose={popupMessage.onClose}
                 />
               )}
-              
+
               {confirmDialog.isOpen && (
                 <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                   <div className="modal-dialog modal-dialog-centered" role="document">
@@ -573,7 +577,7 @@ const BedTypeMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
+                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
                           <strong> {bedTypeData.find(type => type.id === confirmDialog.typeId)?.bedTypeName}</strong> bed type?
                         </p>
                         {/* <p className="text-muted">

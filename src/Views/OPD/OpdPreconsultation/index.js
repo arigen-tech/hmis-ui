@@ -31,7 +31,7 @@ const OpdPreconsultation = () => {
     // Fetching gender data (simulated API response)
     fetchPendingPreconsultation();
   }, []);
-  const [visits,setVisits]=useState([]);
+  const [visits, setVisits] = useState([]);
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
@@ -86,7 +86,7 @@ const OpdPreconsultation = () => {
         spo2: "",
       })
     } else {
-      setSelectedPatient(patient) 
+      setSelectedPatient(patient)
       setVitalFormData({
         height: "",
         weight: "",
@@ -210,8 +210,8 @@ const OpdPreconsultation = () => {
       const data = await postRequest(`${SET_VITALS}`, requestData);
       if (data.status === 200) {
         fetchPendingPreconsultation();
-          await Swal.fire("Vitals saved for appointment", "", "success");
-          setSelectedPatient(null);
+        await Swal.fire("Vitals saved for appointment", "", "success");
+        setSelectedPatient(null);
       } else {
         console.error("Unexpected API response format:", data);
       }
@@ -266,35 +266,39 @@ const OpdPreconsultation = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {visits.map((item) => (
+                    {visits && visits.length > 0 ? (
+                      visits.map((item) => (
                         <tr
-                            key={item.id}
-                            onClick={() => handleRowClick(item)}
-                            className={selectedPatient && selectedPatient.id === item.id ? "table-primary" : ""}
-                            style={{cursor: "pointer"}}
+                          key={item.id}
+                          onClick={() => handleRowClick(item)}
+                          className={selectedPatient && selectedPatient.id === item.id ? "table-primary" : ""}
+                          style={{ cursor: "pointer" }}
                         >
-                          <td>{`${item.patient.patientFn} ${item.patient.patientMn != null ? item.patient.patientMn : ""} ${item.patient.patientLn != null ? item.patient.patientLn : ""}`}</td>
+                          <td>{`${item.patient.patientFn} ${item.patient.patientMn ?? ""} ${item.patient.patientLn ?? ""}`}</td>
                           <td>{item.patient.patientAge}</td>
                           <td>{item.patient.patientGender.genderName}</td>
                           <td>{item.department.departmentName}</td>
                           <td>{item.patient.patientMobileNumber}</td>
                           <td>{item.typeOfPatient}</td>
-                          <td>{`${item.doctor.employee.firstName} ${item.doctor.employee.middleName != null ? item.doctor.employee.middleName : ""} ${item.doctor.employee.lastName != null ? item.doctor.employee.middleName : ""}`}</td>
-                          {/*<td>{`${item.startTime} - ${item.endTime}`}</td>*/}
-                          <td>
-                            {`${item.startTime.substring(11, 16)} - ${item.endTime.substring(11, 16)}`}
-                          </td>
-
-
+                          <td>{`${item.doctor.employee.firstName} ${item.doctor.employee.middleName ?? ""} ${item.doctor.employee.lastName ?? ""}`}</td>
+                          <td>{`${item.startTime.substring(11, 16)} - ${item.endTime.substring(11, 16)}`}</td>
                         </tr>
-                    ))}
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="8" className="text-center text-muted">
+                          No records found
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
+
                 </table>
               </div>
 
               {selectedPatient && (
-                  <div className="row mb-3 mt-3">
-                    <div className="col-sm-12">
+                <div className="row mb-3 mt-3">
+                  <div className="col-sm-12">
                     <div className="card shadow mb-3">
                       <div className="card-header py-3 bg-light border-bottom-1 d-flex justify-content-between align-items-center">
                         <h6 className="mb-0 fw-bold">Vital Details for {selectedPatient.patientName}</h6>

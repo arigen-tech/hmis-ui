@@ -7,17 +7,17 @@ import { postRequest, putRequest, getRequest } from "../../../service/apiService
 const ProcedureTypeMaster = () => {
   const [procedureTypeData, setProcedureTypeData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState({ 
-    isOpen: false, 
-    procedureTypeId: null, 
-    newStatus: false 
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    procedureTypeId: null,
+    newStatus: false
   });
-  
+
   const [formData, setFormData] = useState({
     procedureTypeName: "",
     description: "",
   });
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
@@ -32,19 +32,19 @@ const ProcedureTypeMaster = () => {
   // Function to format date as dd-MM-YYYY
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
-    
+
     try {
       const date = new Date(dateString);
-      
+
       // Check if date is valid
       if (isNaN(date.getTime())) {
         return "N/A";
       }
-      
+
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
       const year = date.getFullYear();
-      
+
       return `${day}/${month}/${year}`;
     } catch (error) {
       console.error("Error formatting date:", error);
@@ -84,9 +84,9 @@ const ProcedureTypeMaster = () => {
 
   // Filter data based on search query
   const filteredProcedureTypeData = procedureTypeData.filter(procedureType =>
-    procedureType.procedureTypeName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    procedureType.description?.toLowerCase().includes(searchQuery.toLowerCase()) 
-    
+    procedureType.procedureTypeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    procedureType.description?.toLowerCase().includes(searchQuery.toLowerCase())
+
   );
 
   // Calculate pagination values
@@ -134,10 +134,10 @@ const ProcedureTypeMaster = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    
+
     try {
       setLoading(true);
-      
+
       // Check for duplicates (case-insensitive)
       const isDuplicate = procedureTypeData.some(
         (procedureType) =>
@@ -160,7 +160,7 @@ const ProcedureTypeMaster = () => {
       if (editingProcedureType) {
         // Update existing procedure type
         const response = await putRequest(`${MAS_PROCEDURE_TYPE}/update/${editingProcedureType.id}`, requestData);
-        
+
         if (response && response.status === 200) {
           fetchProcedureTypeData();
           showPopup("Procedure type updated successfully!", "success");
@@ -168,13 +168,13 @@ const ProcedureTypeMaster = () => {
       } else {
         // Add new procedure type
         const response = await postRequest(`${MAS_PROCEDURE_TYPE}/create`, requestData);
-        
+
         if ((response && response.status === 200) || (response && response.status === 201)) {
           fetchProcedureTypeData();
           showPopup("New procedure type added successfully!", "success");
         }
       }
-      
+
       setEditingProcedureType(null);
       setFormData({ procedureTypeName: "", description: "" });
       setShowForm(false);
@@ -195,7 +195,7 @@ const ProcedureTypeMaster = () => {
       }
     });
   };
-  
+
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, procedureTypeId: id, newStatus });
   };
@@ -204,7 +204,7 @@ const ProcedureTypeMaster = () => {
     if (confirmed && confirmDialog.procedureTypeId !== null) {
       try {
         setLoading(true);
-        
+
         const response = await putRequest(
           `${MAS_PROCEDURE_TYPE}/status/${confirmDialog.procedureTypeId}?status=${confirmDialog.newStatus}`
         );
@@ -213,12 +213,12 @@ const ProcedureTypeMaster = () => {
           // Update local state with formatted date
           setProcedureTypeData((prevData) =>
             prevData.map((procedureType) =>
-              procedureType.id === confirmDialog.procedureTypeId 
-                ? { 
-                    ...procedureType, 
-                    status: confirmDialog.newStatus,
-                    lastUpdated: formatDate(new Date().toISOString())
-                  } 
+              procedureType.id === confirmDialog.procedureTypeId
+                ? {
+                  ...procedureType,
+                  status: confirmDialog.newStatus,
+                  lastUpdated: formatDate(new Date().toISOString())
+                }
                 : procedureType
             )
           );
@@ -305,11 +305,11 @@ const ProcedureTypeMaster = () => {
           </li>
         );
       }
-      
+
       return (
         <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-          <button 
-            className="page-link" 
+          <button
+            className="page-link"
             onClick={() => {
               setCurrentPage(number);
               setPageInput(number.toString());
@@ -327,7 +327,7 @@ const ProcedureTypeMaster = () => {
     if (editingProcedureType && editingProcedureType.status === "n") {
       try {
         setLoading(true);
-        
+
         const response = await putRequest(
           `${MAS_PROCEDURE_TYPE}/status/${editingProcedureType.id}?status=y`
         );
@@ -356,27 +356,31 @@ const ProcedureTypeMaster = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Procedure Type Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search procedure type name, description, or created by..."
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
 
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2"
                         onClick={() => {
                           setEditingProcedureType(null);
@@ -386,8 +390,8 @@ const ProcedureTypeMaster = () => {
                       >
                         <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2 flex-shrink-0"
                         onClick={handleRefresh}
                       >
@@ -468,7 +472,7 @@ const ProcedureTypeMaster = () => {
                       </tbody>
                     </table>
                   </div>
-                  
+
                   {filteredProcedureTypeData.length > 0 && (
                     <nav className="d-flex justify-content-between align-items-center mt-3">
                       <div>
@@ -476,7 +480,7 @@ const ProcedureTypeMaster = () => {
                           Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredProcedureTypeData.length)} of {filteredProcedureTypeData.length} entries
                         </span>
                       </div>
-                      
+
                       <ul className="pagination mb-0">
                         <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
                           <button
@@ -491,9 +495,9 @@ const ProcedureTypeMaster = () => {
                             &laquo; Previous
                           </button>
                         </li>
-                        
+
                         {renderPagination()}
-                        
+
                         <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
                           <button
                             className="page-link"
@@ -508,7 +512,7 @@ const ProcedureTypeMaster = () => {
                           </button>
                         </li>
                       </ul>
-                      
+
                       <div className="d-flex align-items-center">
                         <span className="me-2">Go to:</span>
                         <input
@@ -551,7 +555,7 @@ const ProcedureTypeMaster = () => {
                       {formData.procedureTypeName.length}/{PROCEDURE_TYPE_NAME_MAX_LENGTH} characters
                     </small> */}
                   </div>
-                  
+
                   <div className="form-group col-md-6">
                     <label>Description <span className="text-danger">*</span></label>
                     <textarea
@@ -567,30 +571,30 @@ const ProcedureTypeMaster = () => {
                     />
                     {/* <small className="text-muted">Enter detailed description of the procedure type</small> */}
                   </div>
-                  
+
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
-                    <button 
-                      type="submit" 
-                      className="btn btn-primary me-2" 
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
                       disabled={!isFormValid || loading}
                     >
                       {loading ? "Saving..." : (editingProcedureType ? 'Update' : 'Save')}
                     </button>
-                    
+
                     {editingProcedureType && editingProcedureType.status === "n" && (
-                      <button 
-                        type="button" 
-                        className="btn btn-success me-2" 
+                      <button
+                        type="button"
+                        className="btn btn-success me-2"
                         onClick={handleActivate}
                         disabled={loading}
                       >
                         Activate
                       </button>
                     )}
-                    
-                    <button 
-                      type="button" 
-                      className="btn btn-danger" 
+
+                    <button
+                      type="button"
+                      className="btn btn-danger"
                       onClick={() => setShowForm(false)}
                       disabled={loading}
                     >
@@ -599,7 +603,7 @@ const ProcedureTypeMaster = () => {
                   </div>
                 </form>
               )}
-              
+
               {popupMessage && (
                 <Popup
                   message={popupMessage.message}
@@ -607,24 +611,24 @@ const ProcedureTypeMaster = () => {
                   onClose={popupMessage.onClose}
                 />
               )}
-              
+
               {confirmDialog.isOpen && (
                 <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                   <div className="modal-dialog modal-dialog-centered" role="document">
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Status Change</h5>
-                        <button 
-                          type="button" 
-                          className="btn-close" 
-                          onClick={() => handleConfirm(false)} 
+                        <button
+                          type="button"
+                          className="btn-close"
+                          onClick={() => handleConfirm(false)}
                           aria-label="Close"
                           disabled={loading}
                         ></button>
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
+                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
                           <strong> {procedureTypeData.find(pt => pt.id === confirmDialog.procedureTypeId)?.procedureTypeName}</strong> procedure type?
                         </p>
                         {/* <p className="text-muted">
@@ -634,17 +638,17 @@ const ProcedureTypeMaster = () => {
                         </p> */}
                       </div>
                       <div className="modal-footer">
-                        <button 
-                          type="button" 
-                          className="btn btn-secondary" 
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
                           onClick={() => handleConfirm(false)}
                           disabled={loading}
                         >
                           Cancel
                         </button>
-                        <button 
-                          type="button" 
-                          className="btn btn-primary" 
+                        <button
+                          type="button"
+                          className="btn btn-primary"
                           onClick={() => handleConfirm(true)}
                           disabled={loading}
                         >

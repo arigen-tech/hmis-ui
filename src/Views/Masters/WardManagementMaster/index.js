@@ -131,18 +131,18 @@ const WardManagement = () => {
 
   const [wardData, setWardData] = useState(initialWardData);
   const [loading, setLoading] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState({ 
-    isOpen: false, 
-    wardId: null, 
-    newStatus: false 
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    wardId: null,
+    newStatus: false
   });
-  
+
   const [formData, setFormData] = useState({
     wardName: "",
     category: "",
     careLevel: "",
   });
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
@@ -156,7 +156,7 @@ const WardManagement = () => {
 
   // Filter data based on search query
   const filteredWardData = wardData.filter(ward =>
-    ward.wardName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    ward.wardName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     ward.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
     ward.careLevel.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -208,35 +208,35 @@ const WardManagement = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    
+
     try {
       setLoading(true);
-      
+
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       if (editingWard) {
         // Update existing ward
         const updatedData = wardData.map(item =>
-          item.id === editingWard.id 
-            ? { 
-                ...item, 
-                wardName: formData.wardName,
-                category: formData.category,
-                careLevel: formData.careLevel,
-                lastUpdated: new Date().toLocaleString('en-IN', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false
-                }).replace(',', '')
-              }
+          item.id === editingWard.id
+            ? {
+              ...item,
+              wardName: formData.wardName,
+              category: formData.category,
+              careLevel: formData.careLevel,
+              lastUpdated: new Date().toLocaleString('en-IN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+              }).replace(',', '')
+            }
             : item
         );
-        
+
         setWardData(updatedData);
         showPopup("Ward updated successfully!", "success");
       } else {
@@ -257,11 +257,11 @@ const WardManagement = () => {
             hour12: false
           }).replace(',', '')
         };
-        
+
         setWardData([...wardData, newWard]);
         showPopup("New ward added successfully!", "success");
       }
-      
+
       setEditingWard(null);
       setFormData({ wardName: "", category: "", careLevel: "" });
       setShowForm(false);
@@ -282,7 +282,7 @@ const WardManagement = () => {
       }
     });
   };
-  
+
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, wardId: id, newStatus });
   };
@@ -291,28 +291,28 @@ const WardManagement = () => {
     if (confirmed && confirmDialog.wardId !== null) {
       try {
         setLoading(true);
-        
+
         // Simulate API call delay
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         const updatedData = wardData.map((ward) =>
-          ward.id === confirmDialog.wardId 
-            ? { 
-                ...ward, 
-                status: confirmDialog.newStatus,
-                lastUpdated: new Date().toLocaleString('en-IN', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false
-                }).replace(',', '')
-              } 
+          ward.id === confirmDialog.wardId
+            ? {
+              ...ward,
+              status: confirmDialog.newStatus,
+              lastUpdated: new Date().toLocaleString('en-IN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+              }).replace(',', '')
+            }
             : ward
         );
-        
+
         setWardData(updatedData);
         showPopup(`Ward ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
       } catch (err) {
@@ -401,11 +401,11 @@ const WardManagement = () => {
           </li>
         );
       }
-      
+
       return (
         <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-          <button 
-            className="page-link" 
+          <button
+            className="page-link"
             onClick={() => {
               setCurrentPage(number);
               setPageInput(number.toString());
@@ -426,27 +426,31 @@ const WardManagement = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Ward Management</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search ward name, category, or care level..."
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
 
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2"
                         onClick={() => {
                           setEditingWard(null);
@@ -456,8 +460,8 @@ const WardManagement = () => {
                       >
                         <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2 flex-shrink-0"
                         onClick={handleRefresh}
                       >
@@ -533,7 +537,7 @@ const WardManagement = () => {
                       </tbody>
                     </table>
                   </div>
-                  
+
                   {filteredWardData.length > 0 && (
                     <nav className="d-flex justify-content-between align-items-center mt-3">
                       <div>
@@ -541,7 +545,7 @@ const WardManagement = () => {
                           Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredWardData.length)} of {filteredWardData.length} entries
                         </span>
                       </div>
-                      
+
                       <ul className="pagination mb-0">
                         <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
                           <button
@@ -556,9 +560,9 @@ const WardManagement = () => {
                             &laquo; Previous
                           </button>
                         </li>
-                        
+
                         {renderPagination()}
-                        
+
                         <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
                           <button
                             className="page-link"
@@ -573,7 +577,7 @@ const WardManagement = () => {
                           </button>
                         </li>
                       </ul>
-                      
+
                       <div className="d-flex align-items-center">
                         <span className="me-2">Go to:</span>
                         <input
@@ -615,7 +619,7 @@ const WardManagement = () => {
                       {formData.wardName.length}/{WARD_NAME_MAX_LENGTH} characters
                     </small>
                   </div>
-                  
+
                   <div className="form-group col-md-4">
                     <label>Category <span className="text-danger">*</span></label>
                     <select
@@ -634,7 +638,7 @@ const WardManagement = () => {
                     </select>
                     <small className="text-muted">Select a ward category</small>
                   </div>
-                  
+
                   <div className="form-group col-md-4">
                     <label>Care Level <span className="text-danger">*</span></label>
                     <select
@@ -653,18 +657,18 @@ const WardManagement = () => {
                     </select>
                     <small className="text-muted">Select care level for this ward</small>
                   </div>
-                  
+
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
-                    <button 
-                      type="submit" 
-                      className="btn btn-primary me-2" 
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
                       disabled={!isFormValid}
                     >
                       {editingWard ? 'Update' : 'Save'}
                     </button>
-                    <button 
-                      type="button" 
-                      className="btn btn-danger" 
+                    <button
+                      type="button"
+                      className="btn btn-danger"
                       onClick={() => setShowForm(false)}
                     >
                       Cancel
@@ -672,7 +676,7 @@ const WardManagement = () => {
                   </div>
                 </form>
               )}
-              
+
               {popupMessage && (
                 <Popup
                   message={popupMessage.message}
@@ -680,7 +684,7 @@ const WardManagement = () => {
                   onClose={popupMessage.onClose}
                 />
               )}
-              
+
               {confirmDialog.isOpen && (
                 <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                   <div className="modal-dialog modal-dialog-centered" role="document">
@@ -691,12 +695,12 @@ const WardManagement = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
+                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
                           <strong> {wardData.find(ward => ward.id === confirmDialog.wardId)?.wardName}</strong>?
                         </p>
                         <p className="text-muted">
-                          {confirmDialog.newStatus === "y" 
-                            ? "This will make the ward available for patient allocation." 
+                          {confirmDialog.newStatus === "y"
+                            ? "This will make the ward available for patient allocation."
                             : "This will hide the ward from patient allocation."}
                         </p>
                       </div>

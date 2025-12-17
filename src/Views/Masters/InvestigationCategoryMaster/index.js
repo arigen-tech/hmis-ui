@@ -17,7 +17,7 @@ const InvestigationCategory = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const itemsPerPage = 4;
+  const itemsPerPage = 5;
 
   const CATEGORY_NAME_MAX_LENGTH = 30;
 
@@ -197,7 +197,7 @@ const InvestigationCategory = () => {
                           setShowForm(true);
                         }}
                       >
-                        <i className="mdi mdi-plus"></i> ADD
+                        <i className="mdi mdi-plus"></i> Add
                       </button>
                       <button 
                         type="button" 

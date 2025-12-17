@@ -210,12 +210,12 @@ const PatientAdmission = () => {
 
   const [patientData, setPatientData] = useState(initialPatientData);
   const [loading, setLoading] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState({ 
-    isOpen: false, 
-    patientId: null, 
-    newStatus: false 
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    patientId: null,
+    newStatus: false
   });
-  
+
   const [formData, setFormData] = useState({
     patientName: "",
     mobileNo: "",
@@ -230,7 +230,7 @@ const PatientAdmission = () => {
     ward: "",
     bedNo: ""
   });
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
@@ -248,7 +248,7 @@ const PatientAdmission = () => {
 
   // Filter data based on search query
   const filteredPatientData = patientData.filter(patient =>
-    patient.patientName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    patient.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     patient.mobileNo.includes(searchQuery) ||
     patient.doctor.toLowerCase().includes(searchQuery.toLowerCase()) ||
     patient.diagnosis.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -287,15 +287,15 @@ const PatientAdmission = () => {
         formData.ward.trim(),
         formData.bedNo.trim()
       ];
-      
+
       const allFilled = requiredFields.every(field => field !== "");
       const mobileValid = /^\d{10}$/.test(formData.mobileNo);
       const ageValid = parseInt(formData.age) > 0 && parseInt(formData.age) <= 120;
       const dateValid = new Date(formData.fromDate) <= new Date(formData.toDate);
-      
+
       return allFilled && mobileValid && ageValid && dateValid;
     };
-    
+
     setIsFormValid(validateForm());
   }, [formData]);
 
@@ -325,34 +325,34 @@ const PatientAdmission = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    
+
     try {
       setLoading(true);
-      
+
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       if (editingPatient) {
         // Update existing patient admission
         const updatedData = patientData.map(item =>
-          item.id === editingPatient.id 
-            ? { 
-                ...item, 
-                ...formData,
-                age: parseInt(formData.age),
-                lastUpdated: new Date().toLocaleString('en-IN', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false
-                }).replace(',', '')
-              }
+          item.id === editingPatient.id
+            ? {
+              ...item,
+              ...formData,
+              age: parseInt(formData.age),
+              lastUpdated: new Date().toLocaleString('en-IN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+              }).replace(',', '')
+            }
             : item
         );
-        
+
         setPatientData(updatedData);
         showPopup("Patient admission updated successfully!", "success");
       } else {
@@ -372,11 +372,11 @@ const PatientAdmission = () => {
             hour12: false
           }).replace(',', '')
         };
-        
+
         setPatientData([...patientData, newPatient]);
         showPopup("New patient admission added successfully!", "success");
       }
-      
+
       setEditingPatient(null);
       setFormData({
         patientName: "",
@@ -410,7 +410,7 @@ const PatientAdmission = () => {
       }
     });
   };
-  
+
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, patientId: id, newStatus });
   };
@@ -419,28 +419,28 @@ const PatientAdmission = () => {
     if (confirmed && confirmDialog.patientId !== null) {
       try {
         setLoading(true);
-        
+
         // Simulate API call delay
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         const updatedData = patientData.map((patient) =>
-          patient.id === confirmDialog.patientId 
-            ? { 
-                ...patient, 
-                status: confirmDialog.newStatus,
-                lastUpdated: new Date().toLocaleString('en-IN', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false
-                }).replace(',', '')
-              } 
+          patient.id === confirmDialog.patientId
+            ? {
+              ...patient,
+              status: confirmDialog.newStatus,
+              lastUpdated: new Date().toLocaleString('en-IN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+              }).replace(',', '')
+            }
             : patient
         );
-        
+
         setPatientData(updatedData);
         showPopup(`Patient admission ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
       } catch (err) {
@@ -534,11 +534,11 @@ const PatientAdmission = () => {
           </li>
         );
       }
-      
+
       return (
         <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-          <button 
-            className="page-link" 
+          <button
+            className="page-link"
             onClick={() => {
               setCurrentPage(number);
               setPageInput(number.toString());
@@ -559,27 +559,31 @@ const PatientAdmission = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Patient Admission </h4>
               <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search patient, mobile, doctor..."
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
 
                 <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2"
                         onClick={() => {
                           setEditingPatient(null);
@@ -600,10 +604,10 @@ const PatientAdmission = () => {
                           setShowForm(true);
                         }}
                       >
-                        <i className="mdi mdi-plus"></i> Add 
+                        <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2 flex-shrink-0"
                         onClick={handleRefresh}
                       >
@@ -693,7 +697,7 @@ const PatientAdmission = () => {
                       </tbody>
                     </table>
                   </div>
-                  
+
                   {filteredPatientData.length > 0 && (
                     <nav className="d-flex justify-content-between align-items-center mt-3">
                       <div>
@@ -701,7 +705,7 @@ const PatientAdmission = () => {
                           Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredPatientData.length)} of {filteredPatientData.length} entries
                         </span>
                       </div>
-                      
+
                       <ul className="pagination mb-0">
                         <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
                           <button
@@ -716,9 +720,9 @@ const PatientAdmission = () => {
                             &laquo; Previous
                           </button>
                         </li>
-                        
+
                         {renderPagination()}
-                        
+
                         <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
                           <button
                             className="page-link"
@@ -733,7 +737,7 @@ const PatientAdmission = () => {
                           </button>
                         </li>
                       </ul>
-                      
+
                       <div className="d-flex align-items-center">
                         <span className="me-2">Go to:</span>
                         <input
@@ -775,7 +779,7 @@ const PatientAdmission = () => {
                       {formData.patientName.length}/{PATIENT_NAME_MAX_LENGTH} characters
                     </small>
                   </div>
-                  
+
                   <div className="form-group col-md-2">
                     <label>Mobile No <span className="text-danger">*</span></label>
                     <input
@@ -791,7 +795,7 @@ const PatientAdmission = () => {
                     />
                     <small className="text-muted">10 digits required</small>
                   </div>
-                  
+
                   <div className="form-group col-md-2">
                     <label>Age <span className="text-danger">*</span></label>
                     <input
@@ -806,7 +810,7 @@ const PatientAdmission = () => {
                       required
                     />
                   </div>
-                  
+
                   <div className="form-group col-md-2">
                     <label>Gender</label>
                     <select
@@ -821,7 +825,7 @@ const PatientAdmission = () => {
                       <option value="Other">Other</option>
                     </select>
                   </div>
-                  
+
                   <div className="form-group col-md-2">
                     <label>Relation</label>
                     <select
@@ -836,7 +840,7 @@ const PatientAdmission = () => {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div className="form-group col-md-4">
                     <label>Doctor <span className="text-danger">*</span></label>
                     <select
@@ -853,7 +857,7 @@ const PatientAdmission = () => {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div className="form-group col-md-8">
                     <label>Diagnosis <span className="text-danger">*</span></label>
                     <textarea
@@ -871,7 +875,7 @@ const PatientAdmission = () => {
                       {formData.diagnosis.length}/{DIAGNOSIS_MAX_LENGTH} characters
                     </small>
                   </div>
-                  
+
                   <div className="form-group col-md-3">
                     <label>Admission Date <span className="text-danger">*</span></label>
                     <input
@@ -884,7 +888,7 @@ const PatientAdmission = () => {
                       required
                     />
                   </div>
-                  
+
                   <div className="form-group col-md-3">
                     <label>From Date <span className="text-danger">*</span></label>
                     <input
@@ -897,7 +901,7 @@ const PatientAdmission = () => {
                       required
                     />
                   </div>
-                  
+
                   <div className="form-group col-md-3">
                     <label>To Date <span className="text-danger">*</span></label>
                     <input
@@ -911,7 +915,7 @@ const PatientAdmission = () => {
                       required
                     />
                   </div>
-                  
+
                   <div className="form-group col-md-3">
                     <label>Ward <span className="text-danger">*</span></label>
                     <select
@@ -928,7 +932,7 @@ const PatientAdmission = () => {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div className="form-group col-md-12">
                     <label>Bed No <span className="text-danger">*</span></label>
                     <input
@@ -943,18 +947,18 @@ const PatientAdmission = () => {
                       required
                     />
                   </div>
-                  
+
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
-                    <button 
-                      type="submit" 
-                      className="btn btn-primary me-2" 
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
                       disabled={!isFormValid}
                     >
                       {editingPatient ? 'Update' : 'Save'}
                     </button>
-                    <button 
-                      type="button" 
-                      className="btn btn-danger" 
+                    <button
+                      type="button"
+                      className="btn btn-danger"
                       onClick={() => setShowForm(false)}
                     >
                       Cancel
@@ -962,7 +966,7 @@ const PatientAdmission = () => {
                   </div>
                 </form>
               )}
-              
+
               {popupMessage && (
                 <Popup
                   message={popupMessage.message}
@@ -970,7 +974,7 @@ const PatientAdmission = () => {
                   onClose={popupMessage.onClose}
                 />
               )}
-              
+
               {confirmDialog.isOpen && (
                 <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                   <div className="modal-dialog modal-dialog-centered" role="document">
@@ -981,12 +985,12 @@ const PatientAdmission = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
+                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
                           <strong> {patientData.find(patient => patient.id === confirmDialog.patientId)?.patientName}</strong>?
                         </p>
                         <p className="text-muted">
-                          {confirmDialog.newStatus === "y" 
-                            ? "This will make the patient admission active." 
+                          {confirmDialog.newStatus === "y"
+                            ? "This will make the patient admission active."
                             : "This will mark the patient admission as inactive."}
                         </p>
                       </div>

@@ -12,7 +12,7 @@ const Itemclass = () => {
     const [searchQuery, setSearchQuery] = useState("")
     const [pageInput, setPageInput] = useState("")
     const [currentPage, setCurrentPage] = useState(1)
-    const itemsPerPage = 3
+    const itemsPerPage = 5
     const [showForm, setShowForm] = useState(false)
     const [isFormValid, setIsFormValid] = useState(false)
     const [loading, setLoading] = useState(false);
@@ -48,7 +48,7 @@ const Itemclass = () => {
     };
 
     const fetchItemSectionData = async () => {
-        setLoading(true);
+        // setLoading(true);
         try {
             const data = await getRequest(`${MAS_ITEM_SECTION}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
@@ -59,9 +59,10 @@ const Itemclass = () => {
             }
         } catch (error) {
             console.error("Error fetching Item Section data:", error);
-        } finally {
-            setLoading(false);
-        }
+        } 
+        // finally {
+        //     setLoading(false);
+        // }
     }
 
 
@@ -82,7 +83,8 @@ const Itemclass = () => {
     const filtereditemClassData = itemClassData.filter(
         (Class) =>
             Class.itemClassName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            Class.itemClassCode.toLowerCase().includes(searchQuery.toLowerCase()),
+            Class.itemClassCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            Class.sectionName.toLowerCase().includes(searchQuery.toLowerCase()),
     )
 
     const filteredTotalPages = Math.ceil(filtereditemClassData.length / itemsPerPage)
@@ -252,6 +254,7 @@ const Itemclass = () => {
                     <div className="card form-card">
                         <div className="card-header">
                             <h4 className="card-title p-2">Item Class Master</h4>
+                            {loading && <LoadingScreen />}
                             {!showForm && (
                                 <div className="d-flex justify-content-end align-items-center mt-3">
 
@@ -274,9 +277,9 @@ const Itemclass = () => {
                                         <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                                             <i className="mdi mdi-plus"></i> Add
                                         </button>
-                                        <button type="button" className="btn btn-success me-2">
+                                        {/* <button type="button" className="btn btn-success me-2">
                                             <i className="mdi mdi-plus"></i> Generate Report
-                                        </button>
+                                        </button> */}
                                     </div>
                                 </div>
                             )}

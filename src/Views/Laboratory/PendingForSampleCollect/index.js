@@ -8,16 +8,17 @@ const PendingForSampleCollection = () => {
   const [samples, setSamples] = useState([])
   const [containerOptions, setContainerOptions] = useState([])
   const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [mobileQuery, setMobileQuery] = useState("")
+  const [searchData, setSearchData] = useState({
+    patientName: "",
+    mobileNo: "",
+  })
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
   const [selectedSample, setSelectedSample] = useState(null)
   const [showDetailView, setShowDetailView] = useState(false)
   const [popupMessage, setPopupMessage] = useState(null)
-  const [shouldRefresh, setShouldRefresh] = useState(false) // New state to control refresh
 
-  const itemsPerPage = 10
+  const itemsPerPage = 5
 
   const showPopup = (message, type = "info", shouldRefreshData = false) => {
     setPopupMessage({
@@ -25,7 +26,6 @@ const PendingForSampleCollection = () => {
       type,
       onClose: () => {
         setPopupMessage(null)
-        // Only refresh data if shouldRefreshData is true AND when popup closes
         if (shouldRefreshData) {
           fetchPendingSamples()
         }
@@ -33,7 +33,6 @@ const PendingForSampleCollection = () => {
     })
   }
 
-  // Fetch pending samples data - only on initial mount and when shouldRefresh changes
   useEffect(() => {
     fetchPendingSamples()
     fetchContainerOptions()
@@ -78,7 +77,6 @@ const PendingForSampleCollection = () => {
     }
   };
 
-  // Group investigations by patient
   const groupInvestigationsByPatient = (apiData) => {
     const grouped = {}
     let counter = 1
@@ -109,7 +107,6 @@ const PendingForSampleCollection = () => {
         }
       }
 
-      // Add investigation to the patient's investigations array
       grouped[patientKey].investigations.push({
         id: grouped[patientKey].investigations.length + 1,
         siNo: grouped[patientKey].investigations.length + 1,
@@ -138,12 +135,8 @@ const PendingForSampleCollection = () => {
   }
 
   const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value)
-    setCurrentPage(1)
-  }
-
-  const handleMobileSearchChange = (e) => {
-    setMobileQuery(e.target.value)
+    const { id, value } = e.target
+    setSearchData((prevData) => ({ ...prevData, [id]: value }))
     setCurrentPage(1)
   }
 
@@ -171,7 +164,6 @@ const PendingForSampleCollection = () => {
       try {
         setLoading(true)
 
-        // Prepare the request payload
         const requestPayload = {
           visitId: selectedSample.vistId,
           orderHdId: selectedSample.orderhdId,
@@ -191,14 +183,10 @@ const PendingForSampleCollection = () => {
 
         console.log("Submitting payload:", JSON.stringify(requestPayload, null, 2));
 
-        // Make the API call
         const response = await postRequest(`${LAB}/savesamplecollection`, requestPayload)
 
         if (response.status === 200) {
-          // Show success message with refresh flag - data will refresh ONLY when popup closes
           showPopup("Sample collection data saved successfully!", "success", true)
-          
-          // Close the detail view and go back to list immediately
           setShowDetailView(false)
           setSelectedSample(null)
         } else {
@@ -220,16 +208,19 @@ const PendingForSampleCollection = () => {
     }
   }
 
-  const filteredSamples = samples.filter(
-    (item) =>
-      item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.doctorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.mobile.includes(mobileQuery),
-  )
+  const filteredSamples = samples.filter((item) => {
+    const patientNameMatch =
+      searchData.patientName === "" || 
+      item.patientName.toLowerCase().includes(searchData.patientName.toLowerCase())
 
-  const filteredTotalPages = Math.ceil(filteredSamples.length / itemsPerPage)
+    const mobileNoMatch = 
+      searchData.mobileNo === "" || 
+      (item.mobile && item.mobile.includes(searchData.mobileNo))
+
+    return patientNameMatch && mobileNoMatch
+  })
+
+  const filteredTotalPages = Math.ceil(filteredSamples.length / itemsPerPage) || 1
   const currentItems = filteredSamples.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const handlePageNavigation = () => {
@@ -291,7 +282,6 @@ const PendingForSampleCollection = () => {
     }
   }
 
-  // Rest of your JSX remains the same...
   if (showDetailView && selectedSample) {
     return (
       <div className="content-wrapper">
@@ -315,7 +305,6 @@ const PendingForSampleCollection = () => {
                 </div>
               </div>
               <div className="card-body">
-                {/* Patient Details */}
                 <div className="card mb-4">
                   <div className="card-header">
                     <h5 className="mb-0">PATIENT DETAILS</h5>
@@ -331,7 +320,7 @@ const PendingForSampleCollection = () => {
                           value={selectedSample.patientName}
                         />
                       </div>
-                       <div className="col-md-4">
+                      <div className="col-md-4">
                         <label className="form-label fw-bold">Mobile No.</label>
                         <input
                           type="text"
@@ -369,11 +358,26 @@ const PendingForSampleCollection = () => {
                           value={selectedSample.gender}
                         />
                       </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">Priority</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          readOnly
+                          value={selectedSample.priority}
+                          style={{ 
+                            backgroundColor: getPriorityColor(selectedSample.priority).includes('danger') ? '#dc3545' : 
+                                           getPriorityColor(selectedSample.priority).includes('warning') ? '#ffc107' : 
+                                           getPriorityColor(selectedSample.priority).includes('success') ? '#28a745' : '#6c757d',
+                            color: getPriorityColor(selectedSample.priority).includes('warning') ? '#000' : '#fff',
+                            fontWeight: 'bold'
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Investigations Table */}
                 <div className="table-responsive">
                   <table className="table table-bordered table-hover">
                     <thead className="table-light">
@@ -396,9 +400,7 @@ const PendingForSampleCollection = () => {
                               type="text"
                               className="form-control"
                               value={investigation.investigation}
-                              onChange={(e) =>
-                                handleInvestigationChange(investigation.id, "investigation", e.target.value)
-                              }
+                              readOnly
                             />
                           </td>
                           <td>
@@ -406,7 +408,7 @@ const PendingForSampleCollection = () => {
                               type="text"
                               className="form-control"
                               value={investigation.sample}
-                              onChange={(e) => handleInvestigationChange(investigation.id, "sample", e.target.value)}
+                              readOnly
                             />
                           </td>
                           <td>
@@ -424,7 +426,7 @@ const PendingForSampleCollection = () => {
                             </select>
                           </td>
                           <td>
-                            <div className="form-check">
+                            <div className="form-check d-flex justify-content-center">
                               <input
                                 className="form-check-input"
                                 type="checkbox"
@@ -432,11 +434,12 @@ const PendingForSampleCollection = () => {
                                 onChange={(e) =>
                                   handleInvestigationChange(investigation.id, "collected", e.target.checked)
                                 }
+                                style={{ width: "20px", height: "20px" }}
                               />
                             </div>
                           </td>
                           <td>
-                            <div className="form-check">
+                            <div className="form-check d-flex justify-content-center">
                               <input
                                 className="form-check-input"
                                 type="checkbox"
@@ -444,6 +447,7 @@ const PendingForSampleCollection = () => {
                                 onChange={(e) =>
                                   handleInvestigationChange(investigation.id, "empanelled", e.target.checked)
                                 }
+                                style={{ width: "20px", height: "20px" }}
                               />
                             </div>
                           </td>
@@ -453,6 +457,7 @@ const PendingForSampleCollection = () => {
                               className="form-control"
                               value={investigation.remarks}
                               onChange={(e) => handleInvestigationChange(investigation.id, "remarks", e.target.value)}
+                              placeholder="Enter remarks"
                             />
                           </td>
                         </tr>
@@ -461,13 +466,15 @@ const PendingForSampleCollection = () => {
                   </table>
                 </div>
 
-                {/* Action Buttons */}
                 <div className="text-center mt-4">
                   <button className="btn btn-primary me-3" onClick={handleSubmit} disabled={loading}>
                     <i className="mdi mdi-content-save"></i> SUBMIT
                   </button>
-                  <button className="btn btn-secondary" onClick={handleReset} disabled={loading}>
+                  <button className="btn btn-secondary me-3" onClick={handleReset} disabled={loading}>
                     <i className="mdi mdi-refresh"></i> RESET
+                  </button>
+                  <button className="btn btn-secondary" onClick={handleBackToList}>
+                    <i className="mdi mdi-arrow-left"></i> BACK
                   </button>
                 </div>
               </div>
@@ -490,29 +497,30 @@ const PendingForSampleCollection = () => {
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            <div className="card-header">
+            <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">PENDING FOR SAMPLE COLLECTION</h4>
             </div>
+
             <div className="card-body">
               {loading ? (
                 <LoadingScreen />
               ) : (
                 <>
-                  {/* Patient Search Section */}
                   <div className="card mb-3">
                     <div className="card-header py-3 bg-light border-bottom-1">
                       <h6 className="mb-0 fw-bold">PATIENT SEARCH</h6>
                     </div>
                     <div className="card-body">
-                      <div>
+                      <form>
                         <div className="row g-4 align-items-end">
                           <div className="col-md-4">
                             <label className="form-label">Patient Name</label>
                             <input
                               type="text"
                               className="form-control"
+                              id="patientName"
                               placeholder="Enter patient name"
-                              value={searchQuery}
+                              value={searchData.patientName}
                               onChange={handleSearchChange}
                             />
                           </div>
@@ -521,9 +529,10 @@ const PendingForSampleCollection = () => {
                             <input
                               type="text"
                               className="form-control"
+                              id="mobileNo"
                               placeholder="Enter mobile number"
-                              value={mobileQuery}
-                              onChange={handleMobileSearchChange}
+                              value={searchData.mobileNo}
+                              onChange={handleSearchChange}
                             />
                           </div>
                           <div className="col-md-4 d-flex">
@@ -534,19 +543,20 @@ const PendingForSampleCollection = () => {
                               type="button"
                               className="btn btn-secondary"
                               onClick={() => {
-                                setSearchQuery("")
-                                setMobileQuery("")
+                                setSearchData({
+                                  patientName: "",
+                                  mobileNo: "",
+                                })
                               }}
                             >
                               <i className="mdi mdi-refresh"></i> Reset
                             </button>
                           </div>
                         </div>
-                      </div>
+                      </form>
                     </div>
                   </div>
 
-                  {/* Priority Legend */}
                   <div className="d-flex mb-3">
                     <span className="badge bg-danger me-2">Priority-1</span>
                     <span className="badge bg-warning text-dark me-2">Priority-2</span>
@@ -601,7 +611,6 @@ const PendingForSampleCollection = () => {
                     </table>
                   </div>
 
-                  {/* Pagination */}
                   {filteredSamples.length > 0 && (
                     <nav className="d-flex justify-content-between align-items-center mt-3">
                       <div>

@@ -1,401 +1,663 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
+import LoadingScreen from "../../../Components/Loading";
+import { MAS_TREATMENT_ADVISE, MAS_DEPARTMENT } from "../../../config/apiConfig";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 
 const TreatmentAdviceMaster = () => {
-    const [formData, setFormData] = useState({
-        treatmentName: "",
-        department: "General",
-        status: "y"
+  const [treatmentData, setTreatmentData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    treatmentAdviseId: null,
+    newStatus: false
+  });
+
+  const [formData, setFormData] = useState({
+    treatmentAdvice: "",
+    departmentId: "",
+  });
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [editingTreatment, setEditingTreatment] = useState(null);
+  const [popupMessage, setPopupMessage] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
+  const [pageInput, setPageInput] = useState("1");
+
+  // Dropdown options
+  const [departmentOptions, setDepartmentOptions] = useState([]);
+
+  const TREATMENT_ADVICE_MAX_LENGTH = 500;
+
+  // Function to format date as dd-MM-YYYY
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+
+    try {
+      const date = new Date(dateString);
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return "N/A";
+      }
+
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+      const year = date.getFullYear();
+
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "N/A";
+    }
+  };
+
+  // Fetch dropdown data
+  const fetchDropdownData = async () => {
+    try {
+      // Fetch departments (active only, flag=1)
+      const departmentResponse = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
+      if (departmentResponse && departmentResponse.response) {
+        setDepartmentOptions(departmentResponse.response.map(dept => ({
+          id: dept.id,
+          name: dept.departmentName,
+          code: dept.departmentCode,
+          deptType: dept.departmentTypeName
+        })));
+      }
+    } catch (err) {
+      console.error("Error fetching dropdown data:", err);
+      showPopup("Failed to load department data", "error");
+    }
+  };
+
+  // Fetch treatment advice data
+  const fetchTreatmentData = async (flag = 0) => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${MAS_TREATMENT_ADVISE}/getAll/${flag}`);
+      if (response && response.response) {
+        const mappedData = response.response.map(item => ({
+          id: item.treatmentAdviseId,
+          treatmentAdvice: item.treatmentAdvice,
+          department: item.departmentName,
+          departmentId: item.departmentId,
+          status: item.status,
+          lastUpdated: formatDate(item.lastUpdateDate),
+          createdBy: item.createdBy || "",
+          lastUpdatedBy: item.lastUpdatedBy || ""
+        }));
+        setTreatmentData(mappedData);
+      }
+    } catch (err) {
+      console.error("Error fetching treatment advice data:", err);
+      showPopup("Failed to load treatment advice data", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial data load
+  useEffect(() => {
+    fetchTreatmentData(0);
+    fetchDropdownData();
+  }, []);
+
+  // Filter data based on search query
+  const filteredTreatmentData = treatmentData.filter(treatment =>
+    treatment.treatmentAdvice?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    treatment.department?.toLowerCase().includes(searchQuery.toLowerCase())
+
+  );
+
+  // Calculate pagination values
+  const totalPages = Math.ceil(filteredTreatmentData.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredTreatmentData.slice(indexOfFirstItem, indexOfLastItem);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+    setPageInput("1");
+  }, [searchQuery]);
+
+  // Update page input when current page changes
+  useEffect(() => {
+    setPageInput(currentPage.toString());
+  }, [currentPage]);
+
+  // Validate form whenever formData changes
+  useEffect(() => {
+    const validateForm = () => {
+      const { treatmentAdvice, departmentId } = formData;
+      return (
+        treatmentAdvice.trim() !== "" &&
+        departmentId.trim() !== ""
+      );
+    };
+    setIsFormValid(validateForm());
+  }, [formData]);
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleEdit = (treatment) => {
+    setEditingTreatment(treatment);
+    setFormData({
+      treatmentAdvice: treatment.treatmentAdvice || "",
+      departmentId: treatment.departmentId?.toString() || "",
     });
-    const [showForm, setShowForm] = useState(false);
-    const [isFormValid, setIsFormValid] = useState(false);
-    const [showModal, setShowModal] = useState(false);
-    const [editingTreatment, setEditingTreatment] = useState(null);
-    const [popupMessage, setPopupMessage] = useState(null);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [pageInput, setPageInput] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
+    setShowForm(true);
+  };
 
-    const [treatmentData, setTreatmentData] = useState([
-        { id: 1, treatmentName: "Paracetamol", department: "General Medicine", status: "y" },
-        { id: 2, treatmentName: "Insulin Therapy", department: "Endocrinology", status: "y" },
-        { id: 3, treatmentName: "Physiotherapy", department: "Orthopedics", status: "y" },
-        { id: 4, treatmentName: "Chemotherapy", department: "Oncology", status: "y" },
-        { id: 5, treatmentName: "Dialysis", department: "Nephrology", status: "y" },
-    ]);
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
 
-    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, treatmentId: null, newStatus: false });
+    try {
+      setLoading(true);
 
-    const filteredTreatments = treatmentData.filter(treatment =>
-        treatment.treatmentName.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+      // Check for duplicates (treatment advice should be unique within same department)
+      const isDuplicate = treatmentData.some(
+        (treatment) =>
+          treatment.treatmentAdvice.toLowerCase() === formData.treatmentAdvice.toLowerCase() &&
+          treatment.departmentId?.toString() === formData.departmentId &&
+          (!editingTreatment || editingTreatment.id !== treatment.id)
+      );
 
-    const handleSearch = (e) => {
-        setSearchQuery(e.target.value);
-        setCurrentPage(1);
-    };
+      if (isDuplicate) {
+        showPopup("Treatment advice already exists for this department!", "error");
+        setLoading(false);
+        return;
+      }
 
-    const handleEdit = (treatment) => {
-        setEditingTreatment(treatment);
-        setFormData(treatment);
-        setShowForm(true);
-    };
+      // Prepare request data
+      const requestData = {
+        treatmentAdvice: formData.treatmentAdvice,
+        departmentId: parseInt(formData.departmentId)
+      };
 
-    const handleSave = (e) => {
-        e.preventDefault();
-        if (!isFormValid) return;
+      if (editingTreatment) {
+        // Update existing treatment advice
+        const response = await putRequest(`${MAS_TREATMENT_ADVISE}/update/${editingTreatment.id}`, requestData);
 
-        const updatedTreatmentName = e.target.elements.treatmentName.value;
-        const updatedDepartment = e.target.elements.department.value;
-
-        if (editingTreatment) {
-            setTreatmentData(treatmentData.map(treatment =>
-                treatment.id === editingTreatment.id
-                    ? { ...treatment, treatmentName: updatedTreatmentName, department: updatedDepartment }
-                    : treatment
-            ));
-        } else {
-            const newTreatment = {
-                id: treatmentData.length + 1,
-                treatmentName: updatedTreatmentName,
-                department: updatedDepartment,
-                status: "y"
-            };
-            setTreatmentData([...treatmentData, newTreatment]);
+        if (response && response.status === 200) {
+          fetchTreatmentData();
+          showPopup("Treatment advice updated successfully!", "success");
         }
+      } else {
+        // Add new treatment advice
+        const response = await postRequest(`${MAS_TREATMENT_ADVISE}/create`, requestData);
 
-        setEditingTreatment(null);
-        setShowForm(false);
-        setIsFormValid(false);
-        showPopup("Treatment advice saved successfully!", "success");
-    };
-
-    const showPopup = (message, type = 'info') => {
-        setPopupMessage({
-            message,
-            type,
-            onClose: () => {
-                setPopupMessage(null);
-            }
-        });
-    };
-
-    const handleInputChange = (e) => {
-        const { id, value } = e.target;
-        setFormData((prevData) => ({ ...prevData, [id]: value }));
-
-        const isTreatmentNameValid = id === "treatmentName" ? value.trim() !== "" : formData.treatmentName.trim() !== "";
-        const isDepartmentValid = id === "department" ? value.trim() !== "" : formData.department.trim() !== "";
-
-        setIsFormValid(isTreatmentNameValid && isDepartmentValid);
-    };
-
-    const handleSwitchChange = (id, newStatus) => {
-        setConfirmDialog({ isOpen: true, treatmentId: id, newStatus });
-    };
-
-    const handleConfirm = (confirmed) => {
-        if (confirmed && confirmDialog.treatmentId !== null) {
-            setTreatmentData((prevData) =>
-                prevData.map((treatment) =>
-                    treatment.id === confirmDialog.treatmentId ? { ...treatment, status: confirmDialog.newStatus } : treatment
-                )
-            );
+        if (response && (response.status === 200 || response.status === 201)) {
+          fetchTreatmentData();
+          showPopup("New treatment advice added successfully!", "success");
         }
-        setConfirmDialog({ isOpen: false, treatmentId: null, newStatus: null });
-    };
+      }
 
-    const filteredTotalPages = Math.ceil(filteredTreatments.length / itemsPerPage);
+      setEditingTreatment(null);
+      setFormData({ treatmentAdvice: "", departmentId: "" });
+      setShowForm(false);
+    } catch (err) {
+      console.error("Error saving treatment advice data:", err);
+      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const currentItems = filteredTreatments.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
+  const showPopup = (message, type = 'info') => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+      }
+    });
+  };
 
-    const handlePageNavigation = () => {
-        const pageNumber = parseInt(pageInput, 10);
-        if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-            setCurrentPage(pageNumber);
-        } else {
-            alert("Please enter a valid page number.");
+  const handleSwitchChange = (id, newStatus) => {
+    setConfirmDialog({ isOpen: true, treatmentAdviseId: id, newStatus });
+  };
+
+  const handleConfirm = async (confirmed) => {
+    if (confirmed && confirmDialog.treatmentAdviseId !== null) {
+      try {
+        setLoading(true);
+
+        const response = await putRequest(
+          `${MAS_TREATMENT_ADVISE}/status/${confirmDialog.treatmentAdviseId}?status=${confirmDialog.newStatus}`
+        );
+
+        if (response && response.response) {
+          // Update local state with formatted date
+          setTreatmentData((prevData) =>
+            prevData.map((treatment) =>
+              treatment.id === confirmDialog.treatmentAdviseId
+                ? {
+                  ...treatment,
+                  status: confirmDialog.newStatus,
+                  lastUpdated: formatDate(new Date().toISOString())
+                }
+                : treatment
+            )
+          );
+          showPopup(`Treatment advice ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
         }
-    };
+      } catch (err) {
+        console.error("Error updating treatment advice status:", err);
+        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+    setConfirmDialog({ isOpen: false, treatmentAdviseId: null, newStatus: null });
+  };
 
-    const renderPagination = () => {
-        const pageNumbers = [];
-        const maxVisiblePages = 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-        const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
+  const handleInputChange = (e) => {
+    const { id, value } = e.target;
+    setFormData((prevData) => ({ ...prevData, [id]: value }));
+  };
 
-        if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
-        }
+  const handleSelectChange = (e) => {
+    const { id, value } = e.target;
+    setFormData((prevData) => ({ ...prevData, [id]: value }));
+  };
 
-        if (startPage > 1) {
-            pageNumbers.push(1);
-            if (startPage > 2) pageNumbers.push("...");
-        }
+  const handleRefresh = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+    setPageInput("1");
+    fetchTreatmentData(); // Refresh from API
+    fetchDropdownData(); // Refresh dropdowns
+  };
 
-        for (let i = startPage; i <= endPage; i++) {
-            pageNumbers.push(i);
-        }
+  const handlePageNavigation = () => {
+    const pageNumber = parseInt(pageInput);
+    if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+    } else {
+      showPopup(`Please enter a valid page number between 1 and ${totalPages}`, "error");
+      setPageInput(currentPage.toString());
+    }
+  };
 
-        if (endPage < filteredTotalPages) {
-            if (endPage < filteredTotalPages - 1) pageNumbers.push("...");
-            pageNumbers.push(filteredTotalPages);
-        }
+  const handlePageInputChange = (e) => {
+    setPageInput(e.target.value);
+  };
 
-        return pageNumbers.map((number, index) => (
-            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-                {typeof number === "number" ? (
-                    <button className="page-link" onClick={() => setCurrentPage(number)}>
-                        {number}
-                    </button>
-                ) : (
-                    <span className="page-link disabled">{number}</span>
-                )}
-            </li>
-        ));
-    };
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handlePageNavigation();
+    }
+  };
 
-    return (
-        <div className="content-wrapper">
-            <div className="row">
-                <div className="col-12 grid-margin stretch-card">
-                    <div className="card form-card">
-                        <div className="card-header d-flex justify-content-between align-items-center">
-                            <h4 className="card-title">Treatment Advice Master</h4>
-                            <div className="d-flex justify-content-between align-items-center">
-                                {!showForm ? (
-                                    <form className="d-inline-block searchform me-4" role="search">
-                                        <div className="input-group searchinput">
-                                            <input
-                                                type="search"
-                                                className="form-control"
-                                                placeholder="Search Treatments"
-                                                aria-label="Search"
-                                                value={searchQuery}
-                                                onChange={handleSearch}
-                                            />
-                                            <span className="input-group-text" id="search-icon">
-                                                <i className="fa fa-search"></i>
-                                            </span>
-                                        </div>
-                                    </form>
-                                ) : (
-                                    <></>
-                                )}
+  const renderPagination = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
-                                <div className="d-flex align-items-center">
-                                    {!showForm ? (
-                                        <>
-                                            <button type="button" className="btn btn-success me-2" onClick={() => { setShowForm(true); setFormData({ treatmentName: "", department: "General", status: "y" }); }}>
-                                                <i className="mdi mdi-plus"></i> Add
-                                            </button>
-                                            <button type="button" className="btn btn-success me-2 flex-shrink-0">
-                                                <i className="mdi mdi-plus"></i> Show All
-                                            </button>
-                                            <button type="button" className="btn btn-success me-2" onClick={() => setShowModal(true)}>
-                                                <i className="mdi mdi-plus"></i> Reports
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
-                                            <i className="mdi mdi-arrow-left"></i> Back
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="card-body">
-                            {!showForm ? (
-                                <div className="table-responsive packagelist">
-                                    <table className="table table-bordered table-hover align-middle">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th>Treatment Name</th>
-                                                <th>Department</th>
-                                                <th>Status</th>
-                                                <th>Edit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentItems.map((treatment) => (
-                                                <tr key={treatment.id}>
-                                                    <td>{treatment.treatmentName}</td>
-                                                    <td>{treatment.department}</td>
-                                                    <td>
-                                                        <div className="form-check form-switch">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={treatment.status === "y"}
-                                                                onChange={() => handleSwitchChange(treatment.id, treatment.status === "y" ? "n" : "y")}
-                                                                id={`switch-${treatment.id}`}
-                                                            />
-                                                            <label
-                                                                className="form-check-label px-0"
-                                                                htmlFor={`switch-${treatment.id}`}
-                                                            >
-                                                                {treatment.status === "y" ? 'Active' : 'Inactive'}
-                                                            </label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-success me-2"
-                                                            onClick={() => handleEdit(treatment)}
-                                                            disabled={treatment.status !== "y"}
-                                                        >
-                                                            <i className="fa fa-pencil"></i>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                                        <div>
-                                            <span>
-                                                Page {currentPage} of {filteredTotalPages} | Total Records: {filteredTreatments.length}
-                                            </span>
-                                        </div>
-                                        <ul className="pagination mb-0">
-                                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                                <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage - 1)}
-                                                    disabled={currentPage === 1}
-                                                >
-                                                    &laquo; Previous
-                                                </button>
-                                            </li>
-                                            {renderPagination()}
-                                            <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                                <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage + 1)}
-                                                    disabled={currentPage === filteredTotalPages}
-                                                >
-                                                    Next &raquo;
-                                                </button>
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex align-items-center">
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max={filteredTotalPages}
-                                                value={pageInput}
-                                                onChange={(e) => setPageInput(e.target.value)}
-                                                placeholder="Go to page"
-                                                className="form-control me-2"
-                                            />
-                                            <button
-                                                className="btn btn-primary"
-                                                onClick={handlePageNavigation}
-                                            >
-                                                Go
-                                            </button>
-                                        </div>
-                                    </nav>
-                                </div>
-                            ) : (
-                                <form className="forms row" onSubmit={handleSave}>
-                                    <div className="form-group col-md-4">
-                                        <label>Treatment Name <span className="text-danger">*</span></label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            id="treatmentName"
-                                            placeholder="Treatment Name"
-                                            value={formData.treatmentName}
-                                            onChange={handleInputChange}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="form-group col-md-4">
-                                        <label>Department <span className="text-danger">*</span></label>
-                                        <select
-                                            className="form-control"
-                                            id="department"
-                                            value={formData.department}
-                                            onChange={handleInputChange}
-                                            required
-                                        >
-                                            <option value="General">General</option>
-                                            <option value="Endocrinology">Endocrinology</option>
-                                            <option value="Orthopedics">Orthopedics</option>
-                                            <option value="Oncology">Oncology</option>
-                                            <option value="Nephrology">Nephrology</option>
-                                        </select>
-                                    </div>
-                                    <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                                        <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                                            Save
-                                        </button>
-                                        <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
-                                            Cancel
-                                        </button>
-                                    </div>
-                                </form>
-                            )}
-                            {showModal && (
-                                <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
-                                    <div className="modal-dialog">
-                                        <div className="modal-content">
-                                            <div className="modal-header">
-                                                <h1 className="modal-title fs-5" id="staticBackdropLabel">Reports</h1>
-                                                <button type="button" className="btn-close" onClick={() => setShowModal(false)} aria-label="Close"></button>
-                                            </div>
-                                            <div className="modal-body">
-                                                ...
-                                            </div>
-                                            <div className="modal-footer">
-                                                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
-                                                <button type="button" className="btn btn-primary">Generate</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            {popupMessage && (
-                                <Popup
-                                    message={popupMessage.message}
-                                    type={popupMessage.type}
-                                    onClose={popupMessage.onClose}
-                                />
-                            )}
-                            {confirmDialog.isOpen && (
-                                <div className="modal d-block" tabIndex="-1" role="dialog">
-                                    <div className="modal-dialog" role="document">
-                                        <div className="modal-content">
-                                            <div className="modal-header">
-                                                <h5 className="modal-title">Confirm Status Change</h5>
-                                                <button type="button" className="close" onClick={() => handleConfirm(false)}>
-                                                    <span>&times;</span>
-                                                </button>
-                                            </div>
-                                            <div className="modal-body">
-                                                <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{treatmentData.find(treatment => treatment.id === confirmDialog.treatmentId)?.treatmentName}</strong>?
-                                                </p>
-                                            </div>
-                                            <div className="modal-footer">
-                                                <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                                                <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    // Add first page and ellipsis if needed
+    if (startPage > 1) {
+      pageNumbers.push(1);
+      if (startPage > 2) {
+        pageNumbers.push("ellipsis-left");
+      }
+    }
+
+    // Add page numbers
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    // Add last page and ellipsis if needed
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        pageNumbers.push("ellipsis-right");
+      }
+      pageNumbers.push(totalPages);
+    }
+
+    return pageNumbers.map((number, index) => {
+      if (number === "ellipsis-left" || number === "ellipsis-right") {
+        return (
+          <li key={index} className="page-item disabled">
+            <span className="page-link">...</span>
+          </li>
+        );
+      }
+
+      return (
+        <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
+          <button
+            className="page-link"
+            onClick={() => {
+              setCurrentPage(number);
+              setPageInput(number.toString());
+            }}
+          >
+            {number}
+          </button>
+        </li>
+      );
+    });
+  };
+
+  return (
+    <div className="content-wrapper">
+      <div className="row">
+        <div className="col-12 grid-margin stretch-card">
+          <div className="card form-card">
+            <div className="card-header d-flex justify-content-between align-items-center">
+              <h4 className="card-title">Treatment Advice Master</h4>
+              <div className="d-flex justify-content-between align-items-center">
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Religions"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
                     </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
+
+                <div className="d-flex align-items-center">
+                  {!showForm ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-success me-2"
+                        onClick={() => {
+                          setEditingTreatment(null);
+                          setFormData({ treatmentAdvice: "", departmentId: "" });
+                          setShowForm(true);
+                        }}
+                      >
+                        <i className="mdi mdi-plus"></i> Add
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-success me-2 flex-shrink-0"
+                        onClick={handleRefresh}
+                      >
+                        <i className="mdi mdi-refresh"></i> Show All
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                      <i className="mdi mdi-arrow-left"></i> Back
+                    </button>
+                  )}
                 </div>
+              </div>
             </div>
+            <div className="card-body">
+              {loading ? (
+                <LoadingScreen />
+              ) : !showForm ? (
+                <>
+                  <div className="table-responsive packagelist">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Treatment Advice</th>
+                          <th>Department</th>
+                          <th>Status</th>
+                          {/* <th>Last Updated By</th> */}
+                          <th>Last Updated</th>
+                          <th>Edit</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((treatment) => (
+                            <tr key={treatment.id}>
+                              <td>{treatment.treatmentAdvice || "N/A"}</td>
+                              <td>{treatment.department}</td>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={treatment.status === "y"}
+                                    onChange={() => handleSwitchChange(treatment.id, treatment.status === "y" ? "n" : "y")}
+                                    id={`switch-${treatment.id}`}
+                                  />
+                                  <label
+                                    className="form-check-label px-0"
+                                    htmlFor={`switch-${treatment.id}`}
+                                  >
+                                    {treatment.status === "y" ? 'Active' : 'Inactive'}
+                                  </label>
+                                </div>
+                              </td>
+                              {/* <td>{treatment.lastUpdatedBy}</td> */}
+                              <td>{treatment.lastUpdated}</td>
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-success me-2"
+                                  onClick={() => handleEdit(treatment)}
+                                  disabled={treatment.status !== "y"}
+                                >
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="6" className="text-center">No treatment advice data found</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {filteredTreatmentData.length > 0 && (
+                    <nav className="d-flex justify-content-between align-items-center mt-3">
+                      <div>
+                        <span className="text-muted">
+                          Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredTreatmentData.length)} of {filteredTreatmentData.length} entries
+                        </span>
+                      </div>
+
+                      <ul className="pagination mb-0">
+                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={() => {
+                              if (currentPage > 1) {
+                                setCurrentPage(currentPage - 1);
+                              }
+                            }}
+                            disabled={currentPage === 1}
+                          >
+                            &laquo; Previous
+                          </button>
+                        </li>
+
+                        {renderPagination()}
+
+                        <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={() => {
+                              if (currentPage < totalPages) {
+                                setCurrentPage(currentPage + 1);
+                              }
+                            }}
+                            disabled={currentPage === totalPages}
+                          >
+                            Next &raquo;
+                          </button>
+                        </li>
+                      </ul>
+
+                      <div className="d-flex align-items-center">
+                        <span className="me-2">Go to:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max={totalPages}
+                          value={pageInput}
+                          onChange={handlePageInputChange}
+                          onKeyPress={handleKeyPress}
+                          className="form-control me-2"
+                          style={{ width: "80px" }}
+                        />
+                        <button
+                          className="btn btn-primary"
+                          onClick={handlePageNavigation}
+                        >
+                          Go
+                        </button>
+                      </div>
+                    </nav>
+                  )}
+                </>
+              ) : (
+                <form className="forms row" onSubmit={handleSave}>
+                  <div className="form-group col-md-6">
+                    <label>Treatment Advice <span className="text-danger">*</span></label>
+                    <textarea
+                      className="form-control mt-1"
+                      id="treatmentAdvice"
+                      name="treatmentAdvice"
+                      placeholder="Enter treatment advice"
+                      value={formData.treatmentAdvice}
+                      onChange={handleInputChange}
+                      maxLength={TREATMENT_ADVICE_MAX_LENGTH}
+                      rows="3"
+                      required
+                      disabled={loading}
+                    />
+                    {/* <small className="text-muted">
+                      {formData.treatmentAdvice.length}/{TREATMENT_ADVICE_MAX_LENGTH} characters
+                    </small> */}
+                  </div>
+
+                  <div className="form-group col-md-6">
+                    <label>Department <span className="text-danger">*</span></label>
+                    <select
+                      className="form-select mt-1"
+                      id="departmentId"
+                      name="departmentId"
+                      value={formData.departmentId}
+                      onChange={handleSelectChange}
+                      required
+                      disabled={loading || departmentOptions.length === 0}
+                    >
+                      <option value="">Select Department</option>
+                      {departmentOptions.map((dept) => (
+                        <option key={dept.id} value={dept.id}>
+                          {dept.name} ({dept.code})
+                        </option>
+                      ))}
+                    </select>
+                    {/* <small className="text-muted">Select department for this treatment advice</small> */}
+                  </div>
+
+                  <div className="form-group col-md-12 d-flex justify-content-end mt-3">
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
+                      disabled={!isFormValid || loading}
+                    >
+                      {loading ? "Saving..." : (editingTreatment ? 'Update' : 'Save')}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      onClick={() => setShowForm(false)}
+                      disabled={loading}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {popupMessage && (
+                <Popup
+                  message={popupMessage.message}
+                  type={popupMessage.type}
+                  onClose={popupMessage.onClose}
+                />
+              )}
+
+              {confirmDialog.isOpen && (
+                <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                  <div className="modal-dialog modal-dialog-centered" role="document">
+                    <div className="modal-content">
+                      <div className="modal-header">
+                        <h5 className="modal-title">Confirm Status Change</h5>
+                        <button
+                          type="button"
+                          className="btn-close"
+                          onClick={() => handleConfirm(false)}
+                          aria-label="Close"
+                          disabled={loading}
+                        ></button>
+                      </div>
+                      <div className="modal-body">
+                        <p>
+                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+                          <strong> {treatmentData.find(treatment => treatment.id === confirmDialog.treatmentAdviseId)?.treatmentAdvice}</strong> treatment advice?
+                        </p>
+                        {/* <p className="text-muted">
+                          {confirmDialog.newStatus === "y" 
+                            ? "This will make the treatment advice available for selection." 
+                            : "This will hide the treatment advice from selection."}
+                        </p> */}
+                      </div>
+                      <div className="modal-footer">
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => handleConfirm(false)}
+                          disabled={loading}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => handleConfirm(true)}
+                          disabled={loading}
+                        >
+                          {loading ? "Processing..." : "Confirm"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
 export default TreatmentAdviceMaster;

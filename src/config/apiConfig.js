@@ -1,9 +1,9 @@
-export const API_HOST = 'http://103.133.215.182:8081/hims';
+// export const API_HOST = 'http://103.133.215.182:8081/hims';
 
 //  export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://192.168.1.8:8080';
 
-// export const API_HOST = 'http://localhost:8080';
+export const API_HOST = 'http://localhost:8080';
 // export const API_HOST = 'http://103.133.215.182:8081/hims';
 
 // export const API_HOST = 'http://192.168.1.8:8080';
@@ -172,6 +172,7 @@ export const INVESTIGATION_PACKAGE_API = `/investigation-package`;
 export const LAB = `/lab`;
 export const OPD_TEMPLATE = `/opdTemplate`
 export const Store_Internal_Indent = `/storeInternalIndent`
+export const PATIENT_FOLLOW_UP_DETAILS = "/patient/getFullDetails";
 
 
 
@@ -201,4 +202,12 @@ export const MAS_BED = `${MASTERS}/masBed`;
 export const MAS_PROCEDURE_TYPE = `${MASTERS}/masProcedureType`;
 export const MAS_PROCEDURE = `${MASTERS}/masProcedure`;
 export const MAS_MEDICAL_HISTORY = `${MASTERS}/masMedicalHistory`;
+export const MAS_TREATMENT_ADVISE = `${MASTERS}/masTreatmentAdvise`;
+export const MAS_MEAL_TYPE = `${MASTERS}/masMealType`;
+export const MAS_DIET_SCHEDULE = `${MASTERS}/masDietSchedule`;
+export const MAS_DIET_TYPE = `${MASTERS}/masDietType`;
+export const MAS_DIET_PREFERENCE = `${MASTERS}/masDietPreference`;
+export const MAS_INTAKE_ITEM = `${MASTERS}/masIntakeItem`;
+export const MAS_INTAKE_TYPE = `${MASTERS}/masIntakeType`;
+export const MAS_PATIENT_ACUITY = `${MASTERS}/masPatientAcuity`;
 
