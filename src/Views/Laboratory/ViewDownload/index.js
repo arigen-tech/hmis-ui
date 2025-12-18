@@ -1,45 +1,51 @@
 import React from 'react';
 
 const ViewDownload = () => {
-  
+
   const handleView = () => {
     // Your view logic here
     alert("View/Download action triggered");
   };
 
   const handlePrint = () => {
-    // Your download logic here
-    alert("print action triggered");
+    // Your print logic here
+    alert("Print action triggered");
   };
 
   return (
-    <div className="content-wrapper d-flex justify-content-center align-items-center min-vh-100">
-      <div className="card form-card">
-        <div className="card-header">
-          <h4>Do You Want Print</h4>
-        </div>
-        
-        <div className="card-body text-center py-5">
-          
-          {/* Two main buttons - centered and spaced */}
-          <div className="d-flex justify-content-center gap-4">
-            <button 
-              className="btn btn-primary btn-sm"
-              onClick={handleView}
-              style={{ minWidth: '150px' }}
-            >
-              <i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD
-            </button>
-            
-            <button 
-              className="btn btn-success btn-sm"
-              onClick={handlePrint}
-              style={{ minWidth: '150px' }}
-            >
-              <i className="fa fa-download me-2"></i> PRINT
-            </button>
-          </div>
+    <div className="content-wrapper">
+      <div className="row">
+        <div className="col-12 grid-margin stretch-card">
+          <div className="card form-card">
+            <div className="card-header d-flex justify-content-between align-items-center">
+              <h4 className="lead">Result validated. Do you want to print?</h4>
 
+            </div>
+
+            <div className="card-body">
+              {/* Message aligned to left top */}
+              <div className="mb-4">
+              </div>
+
+              {/* Buttons aligned to left top */}
+              <div className="d-flex gap-4">
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={handleView}
+                >
+                  <i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD
+                </button>
+
+                <button
+                  className="btn btn-success btn-sm"
+                  onClick={handlePrint}
+                >
+                  <i className="fa fa-print me-2"></i> PRINT
+                </button>
+              </div>
+
+            </div>
+          </div>
         </div>
       </div>
     </div>
