@@ -210,4 +210,6 @@ export const MAS_DIET_PREFERENCE = `${MASTERS}/masDietPreference`;
 export const MAS_INTAKE_ITEM = `${MASTERS}/masIntakeItem`;
 export const MAS_INTAKE_TYPE = `${MASTERS}/masIntakeType`;
 export const MAS_PATIENT_ACUITY = `${MASTERS}/masPatientAcuity`;
+export const MAS_OUTPUT_TYPE = `${MASTERS}/masOutputType`;
+export const PRINT = `/print`;
 
