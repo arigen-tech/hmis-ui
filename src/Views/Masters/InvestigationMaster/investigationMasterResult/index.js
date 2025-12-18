@@ -26,7 +26,7 @@ const InvestigationMasterResult = () => {
     subChargeCodeName,
     collectionId,
     interpretation,
-    genderApplicable // Add genderApplicable from location state
+    genderApplicable
   } = location.state || {}
 
   const [subTests, setSubTests] = useState([])
@@ -38,6 +38,7 @@ const InvestigationMasterResult = () => {
   const [uomOptions, setUomOptions] = useState([])
   const [loading, setLoading] = useState(false)
   const [popupMessage, setPopupMessage] = useState(null)
+  const [hasUpdated, setHasUpdated] = useState(false) // Track if update has been performed in current session
 
   // Gender mapping functions
   const mapGenderToDisplay = (genderCode) => {
@@ -66,12 +67,11 @@ const InvestigationMasterResult = () => {
     })
   }
 
-  // Fetch UOM options from API same as the first file
+  // Fetch UOM options from API
   useEffect(() => {
     const fetchUomOptions = async () => {
       try {
         setLoading(true)
-        // Fetch UOM data from backend API - same as first file
         const uomsRes = await getRequest(`${DG_UOM}/getAll/1`)
         
         if (uomsRes && uomsRes.response) {
@@ -82,12 +82,11 @@ const InvestigationMasterResult = () => {
             }))
           )
         } else {
-          // Fallback to empty array if API fails
           setUomOptions([])
         }
       } catch (error) {
         console.error("Error fetching UOM options:", error)
-        setUomOptions([]) // Fallback to empty array
+        setUomOptions([])
       } finally {
         setLoading(false)
       }
@@ -99,7 +98,6 @@ const InvestigationMasterResult = () => {
   // Initialize subTests from API data when component mounts
   useEffect(() => {
     if (subInvestigations && subInvestigations.length > 0) {
-      // Map API subInvestigationResponseList to subTests format
       const mappedSubTests = subInvestigations.map((subInv, index) => ({
         id: subInv.subInvestigationId || index + 1,
         printOrder: subInv.orderNo || index + 1,
@@ -110,9 +108,7 @@ const InvestigationMasterResult = () => {
         resultType: mapResultType(subInv.resultType) || '',
         comparisonType: mapComparisonType(subInv.comparisonType) ||'',
         fixedValueExpectedResult:subInv.fixedValueExpectedResult || '',
-        // Store original API data for reference
         originalData: subInv,
-        // Store existing fixed and normal values
         fixedValues: subInv.fixedValueResponseList?.map(fv => ({
           fixedId: fv.fixedId,
           fixedValue: fv.fixedValue
@@ -129,7 +125,6 @@ const InvestigationMasterResult = () => {
       }))
       setSubTests(mappedSubTests)
     } else {
-      // Default empty state if no sub-investigations
       setSubTests([
         {
           id: 1,
@@ -148,7 +143,6 @@ const InvestigationMasterResult = () => {
     }
   }, [subInvestigations, uomOptions])
 
-  // Helper function to map result type from API to UI
   const mapResultType = (apiResultType) => {
     const typeMap = {
       's': 'Single Parameter',
@@ -158,7 +152,6 @@ const InvestigationMasterResult = () => {
     return typeMap[apiResultType] || "Single Parameter"
   }
 
-  // Helper function to map comparison type from API to UI
   const mapComparisonType = (apiComparisonType) => {
     const typeMap = {
       'f': 'Fixed Value',
@@ -168,19 +161,16 @@ const InvestigationMasterResult = () => {
     return typeMap[apiComparisonType] || "None"
   }
 
-  // Helper function to get unit name from ID using fetched UOM options
   const getUnitName = (uomId) => {
     const uom = uomOptions.find(option => option.id === uomId)
     return uom ? uom.name : "mg/dl"
   }
 
-  // Helper function to get UOM ID from name using fetched UOM options
   const getUomIdFromName = (unitName) => {
     const uom = uomOptions.find(option => option.name === unitName)
     return uom ? uom.id : uomOptions[0]?.id || 1
   }
 
-  // Helper function to check if fixed value expected result should be enabled
   const isFixedValueExpectedResultEnabled = (comparisonType) => {
     return comparisonType === "Fixed Value";
   }
@@ -216,13 +206,17 @@ const InvestigationMasterResult = () => {
   }
 
   const handleUpdate = async () => {
-    try {
-      setLoading(true);
+    // Prevent multiple updates in current session
+    if (hasUpdated) {
+      showPopup("Update can only be performed once in this session!", "error")
+      return
+    }
 
-      // Map gender to code before sending to API
+    try {
+      setLoading(true)
+
       const genderCode = mapGenderToCode(genderApplicable)
 
-      // Prepare the main investigation data for multiple update
       const mainInvestigationData = {
         investigationId: investigationId,
         investigationName: investigationName,
@@ -235,18 +229,16 @@ const InvestigationMasterResult = () => {
         subChargeCodeId: subChargeCodeId,
         sampleId: sampleId,
         collectionId: collectionId,
-        methodId:methodId,
-        categoryId:categoryId,
-        interpretation:interpretation,
-        genderApplicable: genderCode, // Add gender applicable field
+        methodId: methodId,
+        categoryId: categoryId,
+        interpretation: interpretation,
+        genderApplicable: genderCode,
         masInvestReq: subTests.map(test => {
-          // Prepare fixed values
           const fixedValues = test.fixedValues?.map(fv => ({
             fixedId: fv.fixedId || null,
             fixedValue: fv.fixedValue || ""
-          })) || [];
+          })) || []
 
-          // Prepare normal values
           const normalValues = test.normalValues?.map(nv => ({
             normalId: nv.normalId || null,
             sex: nv.gender === "MALE" ? "M" : "F",
@@ -256,7 +248,7 @@ const InvestigationMasterResult = () => {
             maxNormalValue: nv.maxNormalValue || "",
             normalValue: nv.normalValue || "",
             mainChargeCodeId: mainChargeCodeId
-          })) || [];
+          })) || []
 
           return {
             subInvestigationId: test.originalData?.subInvestigationId || null,
@@ -264,7 +256,7 @@ const InvestigationMasterResult = () => {
             subInvestigationName: test.enterable || "",
             resultType: getApiResultType(test.resultType),
             comparisonType: getApiComparisonType(test.comparisonType),
-            fixedValueExpectedResult:test.fixedValueExpectedResult || '',
+            fixedValueExpectedResult: test.fixedValueExpectedResult || '',
             mainChargeCodeId: mainChargeCodeId,
             subChargeCodeId: subChargeCodeId,
             uomId: getUomIdFromName(test.unit),
@@ -272,33 +264,33 @@ const InvestigationMasterResult = () => {
             normalValues: normalValues,
             fixedValueIdsToDelete: test.fixedValueIdsToDelete || [],
             normalValueIdsToDelete: test.normalValueIdsToDelete || []
-          };
+          }
         }),
         subInvestigationIdsToDelete: []
-      };
+      }
 
-      console.log("Update payload:", mainInvestigationData);
+      console.log("Update payload:", mainInvestigationData)
 
-      // Make API call to update multiple investigation
       const response = await putRequest(
         `${MAS_INVESTIGATION}/update-multiple-investigation/${investigationId}`,
         mainInvestigationData
-      );
+      )
 
       if (response && response.status === 200) {
-        showPopup("Sub-investigations updated successfully!", "success");
+        // Set the flag to true after successful update (current session only)
+        setHasUpdated(true)
+        showPopup("Sub-investigations updated successfully!", "success")
       } else {
-        throw new Error(response?.message || "Failed to update sub-investigations");
+        throw new Error(response?.message || "Failed to update sub-investigations")
       }
     } catch (error) {
-      console.error("Error updating sub-investigations:", error);
-      showPopup("Failed to update sub-investigations", "error");
+      console.error("Error updating sub-investigations:", error)
+      showPopup("Failed to update sub-investigations", "error")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
-  // Helper function to convert UI result type to API format
   const getApiResultType = (uiResultType) => {
     const typeMap = {
       'Single Parameter': 's',
@@ -309,7 +301,6 @@ const InvestigationMasterResult = () => {
     return typeMap[uiResultType] || 's'
   }
 
-  // Helper function to convert UI comparison type to API format
   const getApiComparisonType = (uiComparisonType) => {
     const typeMap = {
       'Fixed Value': 'f',
@@ -325,7 +316,6 @@ const InvestigationMasterResult = () => {
     setSelectedTestId(testId)
 
     if (test.comparisonType === "Normal Value") {
-      // Load existing normal values if available
       const existingNormalValues = test.normalValues || []
       if (existingNormalValues.length > 0) {
         setNormalValues(existingNormalValues)
@@ -336,7 +326,6 @@ const InvestigationMasterResult = () => {
       }
       setShowNormalValueModal(true)
     } else if (test.comparisonType === "Fixed Value") {
-      // Load existing fixed values if available
       const existingFixedValues = test.fixedValues || []
       if (existingFixedValues.length > 0) {
         setFixedValues(existingFixedValues)
@@ -380,13 +369,11 @@ const InvestigationMasterResult = () => {
   }
 
   const handleNormalValueSubmit = () => {
-    // Update the selected test with normal values
     const updatedTests = subTests.map(test => {
       if (test.id === selectedTestId) {
         return {
           ...test,
           normalValues: normalValues,
-          // Clear fixed values when switching to normal values
           fixedValues: [],
           fixedValueIdsToDelete: test.fixedValues?.map(fv => fv.fixedId).filter(id => id) || []
         }
@@ -398,13 +385,11 @@ const InvestigationMasterResult = () => {
   }
 
   const handleFixedValueSubmit = () => {
-    // Update the selected test with fixed values
     const updatedTests = subTests.map(test => {
       if (test.id === selectedTestId) {
         return {
           ...test,
           fixedValues: fixedValues,
-          // Clear normal values when switching to fixed values
           normalValues: [],
           normalValueIdsToDelete: test.normalValues?.map(nv => nv.normalId).filter(id => id) || []
         }
@@ -441,7 +426,7 @@ const InvestigationMasterResult = () => {
                             <label className="form-label">Department Name</label>
                             <input
                               type="text"
-                              className="form-control  "
+                              className="form-control"
                               value={mainChargeCodeName || "Laboratory"}
                               readOnly
                             />
@@ -450,7 +435,7 @@ const InvestigationMasterResult = () => {
                             <label className="form-label">Modality</label>
                             <input
                               type="text"
-                              className="form-control  "
+                              className="form-control"
                               value={subChargeCodeName || "BIO-CHEMISTRY"}
                               readOnly
                             />
@@ -459,20 +444,11 @@ const InvestigationMasterResult = () => {
                             <label className="form-label">Investigation Name</label>
                             <input
                               type="text"
-                              className="form-control  "
+                              className="form-control"
                               value={investigationName || "No investigation selected"}
                               readOnly
                             />
                           </div>
-                          {/* <div className="col-md-3">
-                            <label className="form-label">Gender Applicable</label>
-                            <input
-                              type="text"
-                              className="form-control  "
-                              value={mapGenderToDisplay(genderApplicable) || "Not specified"}
-                              readOnly
-                            />
-                          </div> */}
                         </div>
 
                         <div className="table-responsive">
@@ -644,8 +620,16 @@ const InvestigationMasterResult = () => {
                         </div>
 
                         <div className="d-flex justify-content-end mt-4">
-                          <button className="btn btn-success me-2" onClick={handleUpdate} disabled={loading}>
-                            {loading ? "Updating..." : "Update"}
+                          <button 
+                            className="btn btn-success me-2" 
+                            onClick={handleUpdate} 
+                            disabled={loading || hasUpdated}
+                            style={{
+                              opacity: hasUpdated ? 0.6 : 1,
+                              cursor: hasUpdated ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            {loading ? "Updating..." : hasUpdated ? "Updated" : "Update"}
                           </button>
                           <button className="btn btn-secondary" onClick={handleBack} disabled={loading}>
                             Back
