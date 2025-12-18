@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { useNavigate } from 'react-router-dom'
 import { getRequest, putRequest } from "../../../service/apiService"
 import { LAB, ALL_REPORTS } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
@@ -24,6 +25,7 @@ const ResultValidation = () => {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const [pdfUrl, setPdfUrl] = useState(null)
   const itemsPerPage = 5
+  const navigate = useNavigate()
 
   // Fetch unvalidated results data
   useEffect(() => {
@@ -710,7 +712,7 @@ const ResultValidation = () => {
                       confirmationPopup.type === 'warning' ? 'btn-warning' : 
                       confirmationPopup.type === 'danger' ? 'btn-danger' : 'btn-primary'
                     }`} 
-                    onClick={confirmationPopup.onConfirm}
+                    onClick={() => { if (confirmationPopup.onConfirm) confirmationPopup.onConfirm(); navigate('/ViewDownwload'); }}
                   >
                     {confirmationPopup.confirmText || "Yes"}
                   </button>
