@@ -4,6 +4,8 @@ const IssueReferenceReport = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [isPrinting, setIsPrinting] = useState(false);
+  const [department, setDepartment] = useState("");
+  const [issueNo, setIssueNo] = useState("");
 
   const handlePrint = () => {
     if (!fromDate || !toDate) {
@@ -76,29 +78,27 @@ const IssueReferenceReport = () => {
           <div className="card form-card">
             <div className="card-header">
               <h4 className="card-title p-2 mb-0">
-                Issue Reference Report
+                Indent Issue Report
               </h4>
             </div>
             <div className="card-body">
               <div className="row mb-4">
                 <div className="col-md-4">
-                  <label className="form-label fw-bold">City</label>
-                  <select className="form-select">
-                    <option>Select</option>
-                  
-                  </select>
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label fw-bold">Issue Reference No*</label>
-                  <select className="form-select">
-                    <option>Select</option>
-                      <option>Indent-no</option>
-                    <option>Issue No</option>
-                    <option>Issue date</option>
+                  <label className="form-label fw-bold">Department</label>
+                  <select className="form-select" value={department} onChange={(e) => setDepartment(e.target.value)}>
+                    <option value="">Select Department</option>
+                    <option value="emergency">Emergency Department</option>
+                    <option value="icu">Intensive Care Unit</option>
+                    <option value="surgery">Surgery Department</option>
+                    <option value="pediatrics">Pediatrics Department</option>
+                    <option value="cardiology">Cardiology Department</option>
+                    <option value="orthopedics">Orthopedics Department</option>
+                    <option value="pharmacy">Pharmacy Department</option>
                   </select>
                 </div>
 
-                <div className="col-md-2">
+
+                <div className="col-md-4">
                   <label className="form-label fw-bold">From Date</label>
                   <input
                     type="date"
@@ -108,7 +108,7 @@ const IssueReferenceReport = () => {
                     onChange={handleFromDateChange}
                   />
                 </div>
-                <div className="col-md-2">
+                <div className="col-md-4">
                   <label className="form-label fw-bold">To Date</label>
                   <input
                     type="date"
@@ -119,6 +119,16 @@ const IssueReferenceReport = () => {
                     disabled={!fromDate}
                     onFocus={handleToDateFocus}
                   />
+                </div>
+
+                <div className="col-md-4 mt-3">
+                  <label className="form-label fw-bold">Issue Reference No</label>
+                  <select className="form-select" value={issueNo} onChange={(e) => setIssueNo(e.target.value)}>
+                    <option value="">Select</option>
+                    <option value="indent-no">Indent-no</option>
+                    <option value="issue-no">Issue No</option>
+                    <option value="issue-date">Issue date</option>
+                  </select>
                 </div>
               </div>
 

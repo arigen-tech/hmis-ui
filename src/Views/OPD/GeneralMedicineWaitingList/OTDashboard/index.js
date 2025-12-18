@@ -82,7 +82,7 @@ const OTDashboard = () => {
       case "working-not-booked":
         return "bg-success"
       default:
-        return "bg-light"
+        return " "
     }
   }
 

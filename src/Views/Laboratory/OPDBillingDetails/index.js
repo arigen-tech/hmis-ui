@@ -332,7 +332,7 @@ const OPDBillingDetails = () => {
                 {/* Patient Details */}
                 <div className="col-12 mt-4">
                   <div className="card">
-                    <div className="card-header bg-light">
+                    <div className="card-header  ">
                       <h5 className="mb-0"><i className="mdi mdi-account"></i> Patient Details</h5>
                     </div>
                     <div className="card-body">
@@ -392,7 +392,7 @@ const OPDBillingDetails = () => {
                 {appointments.map((appointment, index) => (
                   <div className="col-12 mt-4" key={appointment.visitId || index}>
                     <div className="card">
-                      <div className="card-header bg-light d-flex justify-content-between align-items-center">
+                      <div className="card-header   d-flex justify-content-between align-items-center">
                         <h5 className="mb-0">
                           <i className="mdi mdi-hospital-building"></i> OPD Visit
                           {appointments.length > 1 ? ` ${index + 1}` : ""}
@@ -439,7 +439,7 @@ const OPDBillingDetails = () => {
 
                     {/* Billing for this appointment */}
                     <div className="card mt-2">
-                      <div className="card-header bg-light">
+                      <div className="card-header  ">
                         <h5 className="mb-0"><i className="mdi mdi-currency-inr"></i> Billing Details</h5>
                       </div>
                       <div className="card-body">
@@ -493,7 +493,7 @@ const OPDBillingDetails = () => {
                             <label><strong>Net Amount</strong></label>
                             <input
                               type="number"
-                              className="form-control bg-light"
+                              className="form-control  "
                               value={appointment.netAmount.toFixed(2)}
                               readOnly
                             />

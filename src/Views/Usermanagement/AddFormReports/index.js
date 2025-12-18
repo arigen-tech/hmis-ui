@@ -376,7 +376,7 @@ const Addformreports = () => {
                                 <LoadingScreen />
                             ) : (
                                 <form className="forms row" onSubmit={handleSubmit}>
-                                    <h5 className="bg-light p-3 rounded">{isEditMode ? "Edit" : "Add"} Forms/Reports</h5>
+                                    <h5 className="  p-3 rounded">{isEditMode ? "Edit" : "Add"} Forms/Reports</h5>
 
                                     {isEditMode && (
                                         <div className="row mb-3">

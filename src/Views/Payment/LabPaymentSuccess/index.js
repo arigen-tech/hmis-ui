@@ -76,7 +76,7 @@ const LabPaymentSuccess = () => {
                   Your payment of ₹{amount.toFixed(2)} has been processed successfully.
                 </p>
 
-                <div className="bg-light p-3 rounded mb-4">
+                <div className="  p-3 rounded mb-4">
                   <h5 className="mb-3">Payment Details</h5>
                   <div className="row justify-content-center">
                     <div className="col-sm-6">

@@ -507,7 +507,7 @@ const PendingForSampleCollection = () => {
               ) : (
                 <>
                   <div className="card mb-3">
-                    <div className="card-header py-3 bg-light border-bottom-1">
+                    <div className="card-header py-3   border-bottom-1">
                       <h6 className="mb-0 fw-bold">PATIENT SEARCH</h6>
                     </div>
                     <div className="card-body">

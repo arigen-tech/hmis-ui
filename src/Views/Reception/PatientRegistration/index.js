@@ -115,7 +115,7 @@ const PatientRegistration = () => {
     department: "",
     selDoctorId: "",
     selSession: "",
-    registrationCost:"",
+    registrationCost: "",
   });
   const [image, setImage] = useState(placeholderImage);
   const [isCameraOn, setIsCameraOn] = useState(false);
@@ -965,69 +965,87 @@ const PatientRegistration = () => {
           const resp = data.response?.opdBillingPatientResponse;
           const patientResp = data.response?.patient || data.response;
 
-          if (resp) {
-            // Existing billing flow
+          const visits = data.response?.patient?.visits || data.response?.visits || [];
+          const hasBillingStatusY = visits.length > 0 && visits[0]?.billingStatus === 'y';
+
+          if (hasBillingStatusY) {
+            // Direct redirect to PendingForBilling without showing dialog
             Swal.fire({
               title: "Patient Registered Successfully!",
-              html: `
-          <p><strong>${resp.patientName}</strong> has been registered successfully.</p>
-          <p>Do you want to proceed to billing?</p>
-        `,
+              html: `<p>Patient has been registered successfully.</p>
+               <p>Redirecting to pending billing...</p>`,
               icon: "success",
-              showCancelButton: true,
-              confirmButtonText: "Proceed to Billing",
-              cancelButtonText: "Close",
-              allowOutsideClick: false,
-            }).then((result) => {
-              if (result.isConfirmed) {
-                navigate("/OPDBillingDetails", {
-                  state: {
-                    billingData: {
-                      patientUhid: patientResp.uhidNo,
-                      patientId: resp.patientid,
-                      patientName: resp.patientName,
-                      mobileNo: resp.mobileNo,
-                      age: resp.age,
-                      sex: resp.sex,
-                      relation: resp.relation,
-                      address: resp.address,
-                      appointments: resp.appointments,
-                      details: resp.details,
-                      billingHeaderIds: (resp.appointments || []).map(a => a.billingHdId),
-                      registrationCost:resp.registrationCost
-                    }
-                  }
-                });
-              } else if (result.dismiss === Swal.DismissReason.cancel) {
-                window.location.reload();
-              }
-            });
-
-          } else if (patientResp) {
-            // Case: no billing response but patient saved
-            const displayName =
-              patientResp.patientFn ||
-              patientResp.patientName ||
-              `${formData.firstName} ${formData.lastName}`.trim();
-
-            Swal.fire({
-              title: "Patient Registered Successfully!",
-              html: `<p><strong>${displayName || "Patient"}</strong> has been registered successfully.</p>`,
-              icon: "success",
-              confirmButtonText: "OK",
+              showConfirmButton: false,
+              timer: 1000,
               allowOutsideClick: false,
             }).then(() => {
+              navigate("/PendingForBilling");
               window.location.reload();
             });
 
-          } else {
-            // Fallback
-            Swal.fire({
-              icon: "success",
-              title: "Patient Registered",
-              text: "Patient registered successfully.",
-            }).then(() => window.location.reload());
-          }
+          } else if (resp) {
+              // Existing billing flow
+              Swal.fire({
+                title: "Patient Registered Successfully!",
+                html: `
+          <p><strong>${resp.patientName}</strong> has been registered successfully.</p>
+          <p>Do you want to proceed to billing?</p>
+        `,
+                icon: "success",
+                showCancelButton: true,
+                confirmButtonText: "Proceed to Billing",
+                cancelButtonText: "Close",
+                allowOutsideClick: false,
+              }).then((result) => {
+                if (result.isConfirmed) {
+                  navigate("/OPDBillingDetails", {
+                    state: {
+                      billingData: {
+                        patientUhid: patientResp.uhidNo,
+                        patientId: resp.patientid,
+                        patientName: resp.patientName,
+                        mobileNo: resp.mobileNo,
+                        age: resp.age,
+                        sex: resp.sex,
+                        relation: resp.relation,
+                        address: resp.address,
+                        appointments: resp.appointments,
+                        details: resp.details,
+                        billingHeaderIds: (resp.appointments || []).map(a => a.billingHdId),
+                        registrationCost: resp.registrationCost
+                      }
+                    }
+                  });
+                } else if (result.dismiss === Swal.DismissReason.cancel) {
+                  window.location.reload();
+                }
+              });
+
+            } else if (patientResp) {
+              // Case: no billing response but patient saved
+              const displayName =
+                patientResp.patientFn ||
+                patientResp.patientName ||
+                `${formData.firstName} ${formData.lastName}`.trim();
+
+              Swal.fire({
+                title: "Patient Registered Successfully!",
+                html: `<p><strong>${displayName || "Patient"}</strong> has been registered successfully.</p>`,
+                icon: "success",
+                confirmButtonText: "OK",
+                allowOutsideClick: false,
+              }).then(() => {
+                window.location.reload();
+              });
+
+            } else {
+              // Fallback
+              Swal.fire({
+                icon: "success",
+                title: "Patient Registered",
+                text: "Patient registered successfully.",
+              }).then(() => window.location.reload());
+            }
 
         } else {
           Swal.fire({
@@ -1139,7 +1157,7 @@ const PatientRegistration = () => {
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header py-3 bg-light border-bottom-1">
+              <div className="card-header py-3   border-bottom-1">
                 <h6 className="mb-0 fw-bold">Personal Details</h6>
               </div>
               <div className="card-body">
@@ -1268,7 +1286,7 @@ const PatientRegistration = () => {
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header py-3 bg-light border-bottom-1">
+              <div className="card-header py-3   border-bottom-1">
                 <h6 className="mb-0 fw-bold">Patient Address</h6>
               </div>
               <div className="card-body">
@@ -1345,7 +1363,7 @@ const PatientRegistration = () => {
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header py-3 bg-light border-bottom-1">
+              <div className="card-header py-3   border-bottom-1">
                 <h6 className="mb-0 fw-bold">NOK Details</h6>
               </div>
               <div className="card-body">
@@ -1452,7 +1470,7 @@ const PatientRegistration = () => {
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header py-3 bg-light border-bottom-1">
+              <div className="card-header py-3   border-bottom-1">
                 <h6 className="mb-0 fw-bold">Emergency Contact Details</h6>
               </div>
               <div className="card-body">
@@ -1482,7 +1500,7 @@ const PatientRegistration = () => {
           <div className="row mb-3">
             <div className="col-sm-12">
               <div className="card shadow mb-3">
-                <div className="card-header py-3 bg-light border-bottom-1">
+                <div className="card-header py-3   border-bottom-1">
                   <h6 className="mb-0 fw-bold">Vital Details</h6>
                 </div>
                 <div className="card-body">
@@ -1598,7 +1616,7 @@ const PatientRegistration = () => {
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header py-3 bg-light border-bottom-1 d-flex align-items-center justify-content-between">
+              <div className="card-header py-3   border-bottom-1 d-flex align-items-center justify-content-between">
                 <h6 className="mb-0 fw-bold">Appointment Details</h6>
                 <div className="d-flex gap-2">
                   <button type="button" className="btn btn-sm btn-outline-primary" onClick={addAppointmentRow}>

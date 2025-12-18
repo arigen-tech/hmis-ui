@@ -17,7 +17,7 @@ return(
     <div className="row mb-3">
       <div className="col-sm-12">
         <div className="card shadow mb-3">
-          <div className="card-header py-3 d-flex justify-content-between bg-light border-bottom-1">
+          <div className="card-header py-3 d-flex justify-content-between   border-bottom-1">
             <h6 className="mb-0 fw-bold ">Doctor Basic Inforamtion</h6>
           </div>
           <div className="card-body">
@@ -161,7 +161,7 @@ return(
           </div>
         </div>
         <div className="card shadow mb-3">
-          <div className="card-header py-3 d-flex justify-content-between bg-light border-bottom-1">
+          <div className="card-header py-3 d-flex justify-content-between   border-bottom-1">
             <h6 className="mb-0 fw-bold ">Personal Information</h6>
           </div>
           <div className="card-body">
@@ -285,7 +285,7 @@ return(
           </div>
         </div>
         <div className="card shadow mb-3">
-          <div className="card-header py-3 d-flex justify-content-between bg-light border-bottom-1">
+          <div className="card-header py-3 d-flex justify-content-between   border-bottom-1">
             <h6 className="mb-0 fw-bold ">Authentication Information</h6>
           </div>
           <div className="card-body">

@@ -164,7 +164,7 @@ const AdmissionStatusMaster = () => {
                 type="text"
                 className="form-control me-2"
                 style={{ width: "220px" }}
-                placeholder="Search by Status Code"
+                placeholder="Search"
                 value={searchQuery}
                 onChange={handleSearchChange}
               />

@@ -153,31 +153,29 @@ const IndentIssue = () => {
     const approvedQtyNum = Number(approvedQty) || 0;
     const previousIssuedQtyNum = Number(previousIssuedQty) || 0;
     const availableStockNum = Number(availableStock) || 0;
-    
+
     const remainingQty = Math.max(0, approvedQtyNum - previousIssuedQtyNum);
 
-    console.log("Calculating auto qty issued - batchStock:", batchStockNum, 
-                "approvedQty:", approvedQtyNum, 
-                "previousIssued:", previousIssuedQtyNum, 
-                "remainingQty:", remainingQty,
-                "availableStock:", availableStockNum);
+    console.log("Calculating auto qty issued - batchStock:", batchStockNum,
+      "approvedQty:", approvedQtyNum,
+      "previousIssued:", previousIssuedQtyNum,
+      "remainingQty:", remainingQty,
+      "availableStock:", availableStockNum);
 
-    if (batchStockNum === 0 || remainingQty === 0) return "";
+    if (remainingQty === 0) return "";
+
+    // If there's no batch selected yet, return empty
+    if (batchStockNum === 0) return "";
 
     // Check if we have enough total stock for full issue
     if (availableStockNum >= remainingQty) {
-        // We have enough stock - suggest min of batch stock or remaining qty
-        if (batchStockNum > remainingQty) {
-            return remainingQty.toString();
-        } else {
-            return batchStockNum.toString();
-        }
+      // Return the full remaining quantity (approved qty)
+      return remainingQty.toString();
     } else {
-        // Not enough stock - leave empty (user should set to 0)
-        return "";
+      // Not enough total stock - suggest what's available
+      return Math.min(batchStockNum, availableStockNum).toString();
     }
   };
-
   const handleIndentEntryChange = (index, field, value) => {
     const updatedEntries = [...indentEntries];
 
@@ -213,14 +211,14 @@ const IndentIssue = () => {
         const previousIssuedQty = Number(updatedEntries[index].previousIssuedQty) || 0;
         const availableStock = Number(updatedEntries[index].availableStock) || 0;
 
-        // Auto-calculate qty issued based on batch stock, approved qty, and total available stock
+        // Auto-calculate qty issued based on approved qty and total available stock
         const autoQtyIssued = calculateAutoQtyIssued(newBatchStock, approvedQty, previousIssuedQty, availableStock);
 
-        console.log("Auto calculating qty issued - batchStock:", newBatchStock, 
-                   "approvedQty:", approvedQty, 
-                   "previousIssued:", previousIssuedQty, 
-                   "availableStock:", availableStock, 
-                   "autoQtyIssued:", autoQtyIssued);
+        console.log("Auto calculating qty issued - batchStock:", newBatchStock,
+          "approvedQty:", approvedQty,
+          "previousIssued:", previousIssuedQty,
+          "availableStock:", availableStock,
+          "autoQtyIssued:", autoQtyIssued);
 
         updatedEntries[index] = {
           ...updatedEntries[index],
@@ -232,6 +230,7 @@ const IndentIssue = () => {
           balanceAfterIssue: Math.max(0, approvedQty - previousIssuedQty - Number(autoQtyIssued)),
         };
       }
+
     } else if (field === "qtyIssued") {
       const qtyIssued = value === "" ? "" : Number(value) || 0;
       const approvedQty = Number(updatedEntries[index].approvedQty) || 0;
@@ -281,8 +280,8 @@ const IndentIssue = () => {
       if (!record || !Array.isArray(record.items)) return;
 
       const entries = record.items.map((item) => {
-        const defaultBatch =
-          item.batches && item.batches.length > 0 ? item.batches[0] : null;
+        // Get the first batch (FEFO sorted) but we'll allow multiple batches
+        const defaultBatch = item.batches && item.batches.length > 0 ? item.batches[0] : null;
         const defaultBatchStock = defaultBatch ? defaultBatch.batchstock : 0;
         const approvedQty = item.approvedQty || 0;
         const previousIssuedQty = item.issuedQty || 0;
@@ -294,13 +293,11 @@ const IndentIssue = () => {
           }, 0);
         }
 
-        // Pass availableStock to the function
-        const autoQtyIssued = calculateAutoQtyIssued(
-          defaultBatchStock,
-          approvedQty,
-          previousIssuedQty,
-          totalAvailableStock
-        );
+        // Calculate the remaining quantity to issue
+        const remainingQty = Math.max(0, approvedQty - previousIssuedQty);
+
+        // Auto-suggest the full remaining quantity if we have enough stock
+        const autoQtyIssued = totalAvailableStock >= remainingQty ? remainingQty.toString() : "";
 
         return {
           id: item.indentTId || null,
@@ -315,10 +312,7 @@ const IndentIssue = () => {
           dom: defaultBatch ? defaultBatch.manufactureDate : "",
           doe: defaultBatch ? defaultBatch.expiryDate : "",
           qtyIssued: autoQtyIssued,
-          balanceAfterIssue: Math.max(
-            0,
-            approvedQty - previousIssuedQty - Number(autoQtyIssued)
-          ),
+          balanceAfterIssue: Math.max(0, remainingQty - Number(autoQtyIssued)),
           batchStock: defaultBatchStock,
           availableStock: totalAvailableStock,
         };
@@ -460,20 +454,21 @@ const IndentIssue = () => {
               errors.push(`Row ${index + 1}: Must issue full remaining quantity (${remainingQty})`);
             }
 
-            if (qtyIssued > batchStock) {
-              errors.push(`Row ${index + 1}: Qty Issued (${qtyIssued}) cannot exceed Batch Stock (${batchStock})`);
-            }
+            // REMOVED: Batch stock limitation check
+            // if (qtyIssued > batchStock) {
+            //   errors.push(`Row ${index + 1}: Qty Issued (${qtyIssued}) cannot exceed Batch Stock (${batchStock})`);
+            // }
 
             if (qtyIssued > remainingQty) {
               errors.push(`Row ${index + 1}: Qty Issued (${qtyIssued}) cannot exceed Remaining Approved Qty (${remainingQty})`);
             }
 
-            // Check if sufficient stock available
-            if (availableStock < remainingQty) {
+            // Check if sufficient total stock available
+            if (availableStock < qtyIssued) {
               insufficientItems.push({
                 index: index + 1,
                 itemName: entry.itemName,
-                required: remainingQty,
+                required: qtyIssued,
                 available: availableStock
               });
             } else {
@@ -491,11 +486,11 @@ const IndentIssue = () => {
 
     // Show warning for insufficient items that user is trying to issue
     if (insufficientItems.length > 0) {
-      const insufficientList = insufficientItems.map(item => 
+      const insufficientList = insufficientItems.map(item =>
         `Row ${item.index}: ${item.itemName} - Required: ${item.required}, Available: ${item.available}`
       ).join('\n');
-      
-      errors.push(`Cannot issue these items due to insufficient stock:\n${insufficientList}\n\nPlease set Qty Issued to 0 for these items.`);
+
+      errors.push(`Cannot issue these items due to insufficient total stock:\n${insufficientList}\n\nPlease adjust Qty Issued or set to 0 for these items.`);
     }
 
     // Check if at least one item can be issued
@@ -955,7 +950,7 @@ const IndentIssue = () => {
                     <input
                       type="text"
                       className="form-control"
-                       value={selectedRecord?.storeApprovedDate ? formatDateTime(selectedRecord.storeApprovedDate) : ""}
+                      value={selectedRecord?.storeApprovedDate ? formatDateTime(selectedRecord.storeApprovedDate) : ""}
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -985,9 +980,9 @@ const IndentIssue = () => {
                         <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1" }}>DOE</th>
                         <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Qty<br />Demanded</th>
                         <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Approved<br />Qty</th>
-                        <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Qty<br />Issued</th>
+                        <th style={{ width: "120px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Qty<br />Issued</th>
                         <th style={{ width: "110px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Balance<br />After Issue</th>
-                        <th style={{ width: "120px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Batch Stock</th>
+                        <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Batch Stock</th>
                         <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Available<br />Stock</th>
                         <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Previous<br />Issued Qty</th>
                         <th style={{ width: "40px", textAlign: "center" }}>Add</th>
@@ -1246,15 +1241,18 @@ const IndentIssue = () => {
                             />
                           </td>
 
+
                           <td>
                             <input
                               type="number"
                               className="form-control form-control-sm"
                               value={entry.qtyIssued}
+                              style={{width: "60px"}}
                               onChange={(e) => handleIndentEntryChange(index, "qtyIssued", e.target.value)}
                               placeholder="0"
                               min="0"
-                              title="Enter quantity to issue"
+                              max={Math.max(0, entry.approvedQty - entry.previousIssuedQty)}
+                              title={`Enter quantity to issue (max: ${Math.max(0, entry.approvedQty - entry.previousIssuedQty)})`}
                             />
                           </td>
 

@@ -122,7 +122,7 @@ const MasFamilyModel = ({ show, popupType, onOk, onClose, onSelect, selectedItem
                 <div className="modal-dialog modal-lg">
                     <div className="modal-content">
 
-                        <div className="modal-header bg-light">
+                        <div className="modal-header  ">
                             <h5 className="modal-title fw-bold">{title}</h5>
                             <button className="btn-close" onClick={onClose}></button>
                         </div>
