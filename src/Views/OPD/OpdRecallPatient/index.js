@@ -54,6 +54,7 @@ const OpdRRecallPatient = () => {
     patientName: "",
     date: getToday(),
   });
+  const debounceRef = useRef({});
 
   const [followUps, setFollowUps] = useState({
     noOfFollowDays: "",
@@ -61,6 +62,8 @@ const OpdRRecallPatient = () => {
     FolloUpDate: getToday(),
   });
 
+  const [labFlag, setLabFlag] = useState("")
+  const [radioFlag, setRadioFlag] = useState("")
 
   // Admission state
 
@@ -322,16 +325,49 @@ const OpdRRecallPatient = () => {
     setPage(0);
   };
 
+
+  const handleIcdSearch = (value, index) => {
+    // Update text
+    setSearch((prev) => {
+      const updated = [...prev];
+      updated[index] = value;
+      return updated;
+    });
+
+    // Clear previous debounce for this row
+    if (debounceRef.current[index]) {
+      clearTimeout(debounceRef.current[index]);
+    }
+
+    debounceRef.current[index] = setTimeout(async () => {
+      if (!value.trim()) {
+        setIcdDropdown([]);
+        return;
+      }
+
+      const result = await fetchMasICDData(0, value);
+      setIcdDropdown(result.list);
+      setLastPage(result.last);
+      setPage(0);
+      setOpenDropdown(index);
+    }, 700);
+  };
+
+
   const loadMore = async () => {
-    if (lastPage) return;
+    if (lastPage || openDropdown === null) return;
 
     const nextPage = page + 1;
-    const result = await fetchMasICDData(nextPage, search[openDropdown] || "");
+    const result = await fetchMasICDData(
+      nextPage,
+      search[openDropdown] || ""
+    );
 
     setIcdDropdown((prev) => [...prev, ...result.list]);
     setLastPage(result.last);
     setPage(nextPage);
   };
+
 
   const updateICD = (selectedICD, index) => {
     if (!selectedICD) return;
@@ -342,7 +378,9 @@ const OpdRRecallPatient = () => {
     );
 
     if (exists) {
-      setDuplicateItems([{ icdDiagnosis: selectedICD.icdName }]);
+      setDuplicateItems([
+        { icdDiagnosis: `${selectedICD.icdCode} - ${selectedICD.icdName}` }
+      ]);
       setShowDuplicatePopup(true);
       return;
     }
@@ -352,7 +390,7 @@ const OpdRRecallPatient = () => {
       updated[index] = {
         ...updated[index],
         icdDiagId: selectedICD.icdId,
-        icdDiagnosis: selectedICD.icdName,
+        icdDiagnosis: `${selectedICD.icdCode} - ${selectedICD.icdName}`, // ✅ code + name
       };
       return updated;
     });
@@ -364,6 +402,7 @@ const OpdRRecallPatient = () => {
     });
   };
 
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -373,6 +412,19 @@ const OpdRRecallPatient = () => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+
+
+  const [investigationDropdown, setInvestigationDropdown] = useState([]);
+  const [investigationSearch, setInvestigationSearch] = useState([]);
+  const [investigationPage, setInvestigationPage] = useState(0);
+  const [investigationLastPage, setInvestigationLastPage] = useState(true);
+  const [openInvestigationDropdown, setOpenInvestigationDropdown] = useState(null);
+
+  const debounceInvestigationRef = useRef([]);
+  const dropdownInvestigationRef = useRef(null);
+
+
 
   const fetchOpdTemplateData = async () => {
     try {
@@ -658,7 +710,11 @@ const OpdRRecallPatient = () => {
         admissionWard: admissionAdvised ? Number(wardName) : null,
         admissionPriority: admissionAdvised ? admissionPriority : null,
         referralFlag: referralData.isReferred === "Yes" ? "y" : "n",
+        referralRemarks: referralNotes,
+        referralDate: referralData.referralDate ? new Date(referralData.referralDate).toISOString() : null,
         investigations: investigationItems,
+        labFlag: labFlag,
+        radioFlag: radioFlag,
         treatmentAdvice: generalTreatmentAdvice,
         removeIcdIds,
         removedTreatmentIds,
@@ -702,7 +758,7 @@ const OpdRRecallPatient = () => {
   const [showTreatmentModal, setShowTreatmentModal] = useState(false)
   const [investigationModalType, setInvestigationModalType] = useState("create")
   const [treatmentModalType, setTreatmentModalType] = useState("create")
-  const [investigationType, setInvestigationType] = useState("lab")
+  const [investigationType, setInvestigationType] = useState(null)
   const [procedureCareType, setProcedureCareType] = useState("procedure")
   const [investigationTemplates, setInvestigationTemplates] = useState([])
   const [selectedInvestigationTemplate, setSelectedInvestigationTemplate] = useState("Select..")
@@ -714,9 +770,9 @@ const OpdRRecallPatient = () => {
 
   const [expandedSections, setExpandedSections] = useState({
     personalDetails: false,
-    clinicalHistory: false,
-    vitalDetail: false,
-    diagnosis: false,
+    clinicalHistory: true,
+    vitalDetail: true,
+    diagnosis: true,
     investigation: false,
     treatment: false,
     treatmentAdvice: false,
@@ -946,26 +1002,15 @@ const OpdRRecallPatient = () => {
     return () => window.removeEventListener("click", handleClickOutside)
   }, [])
 
-  const extractInvestigationTypes = (investigations) => {
-    const uniqueTypes = []
-    const typeMap = new Map()
-
-    investigations.forEach(inv => {
-      const typeId = inv.mainChargeCodeId
-      const typeName = inv.mainChargeCodeName
-
-      if (typeId && typeName && !typeMap.has(typeId)) {
-        typeMap.set(typeId, typeName)
-        uniqueTypes.push({
-          id: typeId,
-          name: typeName,
-          value: typeName.toLowerCase().replace(/\s+/g, '-')
-        })
-      }
-    })
-
-    setInvestigationTypes(uniqueTypes)
+  const fetchInvestigationTypes = async () => {
+    const res = await getRequest("/DgMasInvestigation/uniqueInvestigation/types")
+    if (res?.response) {
+      setInvestigationTypes(res.response)
+    }
   }
+  useEffect(() => {
+    fetchInvestigationTypes();
+  }, []);
 
   const fetchInvestigationTemplates = async (flag = 1) => {
     try {
@@ -984,20 +1029,120 @@ const OpdRRecallPatient = () => {
     }
   }
 
-  const fetchAllInvestigations = async () => {
+  const fetchInvestigations = async (page, searchText = "") => {
     try {
-      const response = await getRequest(`${MAS_INVESTIGATION}/getAll/1`)
-      if (response && response.response) {
-        setAllInvestigations(response.response)
-        extractInvestigationTypes(response.response)
-      } else {
-        setAllInvestigations([])
+      let url = `${MAS_INVESTIGATION}/dynamic/all?flag=1&page=${page}&size=20`;
+
+      if (searchText) {
+        url += `&search=${encodeURIComponent(searchText)}`;
       }
+
+      if (investigationType) {
+        url += `&mainChargeCodeId=${investigationType}`;
+      }
+
+      const data = await getRequest(url);
+
+      if (data.status === 200 && data.response?.content) {
+        return {
+          list: data.response.content,
+          last: data.response.last,
+        };
+      }
+
+      return { list: [], last: true };
     } catch (error) {
-      console.error("Error fetching investigations:", error)
-      setAllInvestigations([])
+      console.error("Error fetching investigations:", error);
+      return { list: [], last: true };
     }
-  }
+  };
+
+  const loadFirstInvestigationPage = async (index) => {
+    const searchText = investigationSearch[index] || "";
+    const result = await fetchInvestigations(0, searchText);
+
+    setInvestigationDropdown(result.list);
+    setInvestigationLastPage(result.last);
+    setInvestigationPage(0);
+  };
+
+
+
+  const handleInvestigationSearch = (value, index) => {
+    setInvestigationSearch((prev) => {
+      const updated = [...prev];
+      updated[index] = value;
+      return updated;
+    });
+
+    if (debounceInvestigationRef.current[index]) {
+      clearTimeout(debounceInvestigationRef.current[index]);
+    }
+
+    debounceInvestigationRef.current[index] = setTimeout(async () => {
+      if (!value.trim()) {
+        setInvestigationDropdown([]);
+        return;
+      }
+
+      const result = await fetchInvestigations(0, value);
+      setInvestigationDropdown(result.list);
+      setInvestigationLastPage(result.last);
+      setInvestigationPage(0);
+      setOpenInvestigationDropdown(index);
+    }, 700);
+  };
+
+
+  const loadMoreInvestigations = async () => {
+    if (investigationLastPage || openInvestigationDropdown === null) return;
+
+    const nextPage = investigationPage + 1;
+    const result = await fetchInvestigations(
+      nextPage,
+      investigationSearch[openInvestigationDropdown] || ""
+    );
+
+    setInvestigationDropdown((prev) => [...prev, ...result.list]);
+    setInvestigationLastPage(result.last);
+    setInvestigationPage(nextPage);
+  };
+
+
+  const updateInvestigation = (selected, index) => {
+    if (!selected) return;
+
+    setInvestigationItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        investigationId: selected.investigationId,
+        name: selected.investigationName,
+      };
+      return updated;
+    });
+
+    setInvestigationSearch((prev) => {
+      const updated = [...prev];
+      updated[index] = "";
+      return updated;
+    });
+
+    setOpenInvestigationDropdown(null);
+  };
+
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownInvestigationRef.current && !dropdownInvestigationRef.current.contains(e.target)) {
+        setOpenInvestigationDropdown(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
 
   console.log("allInvestigations", allInvestigations)
 
@@ -1035,6 +1180,7 @@ const OpdRRecallPatient = () => {
   const handleInvestigationTemplateSelect = (template) => {
     const templateId = template.templateId;
 
+    // Prevent selecting same template twice
     if (selectedTemplateIds.has(templateId)) {
       alert("This template is already selected");
       setSelectedInvestigationTemplate("Select..");
@@ -1044,28 +1190,48 @@ const OpdRRecallPatient = () => {
     setSelectedTemplateIds(prev => new Set([...prev, templateId]));
     setSelectedInvestigationTemplate(templateId);
 
-    if (!template.investigationResponseList) return;
+    if (!template.investigationResponseList) {
+      setSelectedInvestigationTemplate("Select..");
+      return;
+    }
 
     let duplicateItemsBuffer = [];
 
     setInvestigationItems(prev => {
       const updated = [...prev];
-      const existingMap = new Map(prev.map(item => [item.investigationId, item]));
+
+      const existingMap = new Map(
+        prev.map(item => [item.investigationId, item])
+      );
 
       template.investigationResponseList.forEach(item => {
         const existing = existingMap.get(item.investigationId);
 
         if (existing) {
-          if (!existing.templateIds.includes(templateId)) {
-            existing.templateIds = [...existing.templateIds, templateId];
+          // ✅ SAFE templateIds handling
+          const templateIds = Array.isArray(existing.templateIds)
+            ? existing.templateIds
+            : [];
+
+          if (!templateIds.includes(templateId)) {
+            const index = updated.findIndex(
+              i => i.investigationId === item.investigationId
+            );
+
+            updated[index] = {
+              ...existing,
+              templateIds: [...templateIds, templateId]
+            };
           }
 
           duplicateItemsBuffer.push({
             investigationId: item.investigationId,
-            investigationName: existing.name ?? item.investigationName
+            investigationName:
+              existing.name ?? item.investigationName
           });
 
         } else {
+          // ✅ Always initialize templateIds
           updated.push({
             id: null,
             name: item.investigationName ?? `Investigation #${item.investigationId}`,
@@ -1082,7 +1248,9 @@ const OpdRRecallPatient = () => {
 
     setTimeout(() => {
       const unique = Array.from(
-        new Map(duplicateItemsBuffer.map(d => [d.investigationId, d])).values()
+        new Map(
+          duplicateItemsBuffer.map(d => [d.investigationId, d])
+        ).values()
       );
 
       if (unique.length > 0) {
@@ -1093,6 +1261,7 @@ const OpdRRecallPatient = () => {
       setSelectedInvestigationTemplate("Select..");
     }, 50);
   };
+
 
   const handleClearAllTemplates = () => {
     setSelectedTemplateIds(new Set());
@@ -1202,29 +1371,15 @@ const OpdRRecallPatient = () => {
   useEffect(() => {
     if (showDetailView && selectedPatient) {
       fetchInvestigationTemplates()
-      fetchAllInvestigations()
     }
   }, [showDetailView, selectedPatient])
 
-  useEffect(() => {
-    if (allInvestigations.length > 0) {
-      extractInvestigationTypes(allInvestigations)
-    }
-  }, [allInvestigations])
 
   useEffect(() => {
-    if (investigationTypes.length > 0) {
-      const labType = investigationTypes.find(type =>
-        type.name.toLowerCase().includes('laboratory') ||
-        type.name.toLowerCase().includes('lab')
-      )
-      if (labType && investigationType !== labType.value) {
-        setInvestigationType(labType.value)
-      } else if (investigationTypes.length > 0 && !investigationType) {
-        setInvestigationType(investigationTypes[0].value)
-      }
+    if (investigationTypes.length > 0 && !investigationType) {
+      setInvestigationType(investigationTypes[0].id);
     }
-  }, [investigationTypes])
+  }, [investigationTypes]);
 
   useEffect(() => {
     filterInvestigationsByMainChargeCode()
@@ -1247,53 +1402,53 @@ const OpdRRecallPatient = () => {
     handleFilterChange("mobileNumber", value);
   };
 
-const handleRowClick = async (patient) => {
-  setSelectedPatient(patient);
+  const handleRowClick = async (patient) => {
+    setSelectedPatient(patient);
 
-  /* -------------------- VITALS / BASIC DATA -------------------- */
-  setFormData({
-    height: patient.height || "",
-    weight: patient.weight || "",
-    temperature: patient.temperature || "",
-    systolicBP: patient.bpSystolic || "",
-    diastolicBP: patient.bpDiastolic || "",
-    pulse: patient.pulse || "",
-    bmi: patient.bmi || "",
-    rr: patient.rr || "",
-    spo2: patient.spo2 || "",
-    patientSymptoms: patient.patientSignsSymptoms || "",
-    clinicalExamination: patient.clinicalExamination || "",
-    pastHistory: patient.pastMedicalHistory || "",
-    familyHistory: patient.familyHistory || "",
-    mlcCase: patient.mlcFlag === "y",
-  });
+    /* -------------------- VITALS / BASIC DATA -------------------- */
+    setFormData({
+      height: patient.height || "",
+      weight: patient.weight || "",
+      temperature: patient.temperature || "",
+      systolicBP: patient.bpSystolic || "",
+      diastolicBP: patient.bpDiastolic || "",
+      pulse: patient.pulse || "",
+      bmi: patient.bmi || "",
+      rr: patient.rr || "",
+      spo2: patient.spo2 || "",
+      patientSymptoms: patient.patientSignsSymptoms || "",
+      clinicalExamination: patient.clinicalExamination || "",
+      pastHistory: patient.pastMedicalHistory || "",
+      familyHistory: patient.familyHistory || "",
+      mlcCase: patient.mlcFlag === "y",
+    });
 
-  setGeneralTreatmentAdvice(patient.treatmentAdvice || "");
-  setWorkingDiagnosis(patient?.workingDiag || "");
+    setGeneralTreatmentAdvice(patient.treatmentAdvice || "");
+    setWorkingDiagnosis(patient?.workingDiag || "");
 
-  /* -------------------- DIAGNOSIS -------------------- */
-  setDiagnosisItems(
-    patient.icdDiag?.length
-      ? patient.icdDiag.map(item => ({
+    /* -------------------- DIAGNOSIS -------------------- */
+    setDiagnosisItems(
+      patient.icdDiag?.length
+        ? patient.icdDiag.map(item => ({
           id: item.id ?? null,
           icdDiagId: item.icdId ?? "",
           icdDiagnosis: item.icdDiagName ?? "",
           communicableDisease: false,
           infectiousDisease: false,
         }))
-      : [{
+        : [{
           id: null,
           icdDiagId: "",
           icdDiagnosis: "",
           communicableDisease: false,
           infectiousDisease: false,
         }]
-  );
+    );
 
-  /* -------------------- INVESTIGATIONS -------------------- */
-  const investigationList =
-    patient.dgOrderHdList?.length
-      ? patient.dgOrderHdList.flatMap(hd =>
+    /* -------------------- INVESTIGATIONS -------------------- */
+    const investigationList =
+      patient.dgOrderHdList?.length
+        ? patient.dgOrderHdList.flatMap(hd =>
           hd.dgOrderDts.map(dt => ({
             id: dt.dgOrderDtId || "",
             name: dt.investigationName || "",
@@ -1301,35 +1456,34 @@ const handleRowClick = async (patient) => {
             investigationId: dt.investigationId,
           }))
         )
-      : [{ id: "", name: "", date: getToday() }];
+        : [{ id: "", name: "", date: getToday() }];
 
-  setInvestigationItems(investigationList);
+    setInvestigationItems(investigationList);
 
-  /* -------------------- TREATMENT -------------------- */
-  setTreatmentItems(
-    patient.patientPrescriptionDts?.length
-      ? patient.patientPrescriptionDts.map(item => {
-          const drug = getDrugDetails(item.itemId);
+    /* -------------------- TREATMENT -------------------- */
+    setTreatmentItems(
+      patient.patientPrescriptionDts?.length
+        ? patient.patientPrescriptionDts.map(item => {
           const freq = getFreqDetails(item.frequencyId);
 
           const obj = {
             treatmentId: item.prescriptionDtId,
             drugId: item.itemId,
             drugName: item.itemName,
-            dispUnit: drug?.dispUnitName ?? item.depUnit ?? "",
+            dispUnit: item.dispUnit ?? "",
             dosage: Number(item.dosage) || "",
             frequency: freq?.frequencyName ?? item.frequencyId ?? "",
             days: Number(item.days) || "",
             instruction: item.instraction ?? "",
             stock: item.stocks ?? "",
-            itemClassId: drug?.itemClassId ?? null,
-            aDispQty: drug?.aDispQty ?? 1,
+            itemClassId: item.itemClassId ?? null,
+            aDispQty: item.adispQty ?? 1,
           };
 
           obj.total = calculateTotal(obj);
           return obj;
         })
-      : [{
+        : [{
           treatmentId: null,
           drugId: "",
           drugName: "",
@@ -1341,57 +1495,61 @@ const handleRowClick = async (patient) => {
           instruction: "",
           stock: "",
         }]
-  );
-
-  /*-------------------- final remark --------------- */
-  setDoctorRemarksText(patient.doctorRemarks || "")
-
-  /* -------------------- FOLLOW UP -------------------- */
-  setFollowUps({
-    followUpFlag: patient.followUpFlag === "y",
-    FolloUpDate: patient.followUpDate
-      ? patient.followUpDate.split("T")[0]
-      : "",
-    noOfFollowDays: patient.followUpDays
-      ? String(patient.followUpDays)
-      : "",
-  });
-
-  /* -------------------- REFERRAL -------------------- */
-  setReferralData(prev => ({
-    ...prev,
-    isReferred: patient.referralFlag === "y" ? "Yes" : "No",
-  }));
-
-  /* -------------------- ADMISSION ADVICE -------------------- */
-  const admissionAdvised = patient.admissionFlag === "y";
-  setAdmissionAdvised(admissionAdvised);
-
-  if (admissionAdvised) {
-    setAdmissionDate(
-      patient.admissionAdvisedDate
-        ? patient.admissionAdvisedDate.split("T")[0]
-        : ""
     );
-    setAdditionalAdvice(patient.admissionRemarks || "");
-    setAdmissionPriority(patient.admissionPriority || "Normal");
 
-    setWardCategory(patient.admissionWardCategory || "");
-    setAdmissionCareLevel(patient.admissionCareLevel || "");
-    setAdmissionCareLevelName(patient.admissionCareLevelName || "");
+    /*-------------------- final remark --------------- */
+    setDoctorRemarksText(patient.doctorRemarks || "")
 
-    if (patient.admissionWardCategory) {
-      await fetchWardData(patient.admissionWardCategory);
+    /* -------------------- FOLLOW UP -------------------- */
+    setFollowUps({
+      followUpFlag: patient.followUpFlag === "y",
+      FolloUpDate: patient.followUpDate
+        ? patient.followUpDate.split("T")[0]
+        : "",
+      noOfFollowDays: patient.followUpDays
+        ? String(patient.followUpDays)
+        : "",
+    });
+
+    /* -------------------- REFERRAL -------------------- */
+    setReferralData(prev => ({
+      ...prev,
+      isReferred: patient.referralFlag === "y" ? "Yes" : "No",
+      referralDate: patient.referralDate
+        ? patient.referralDate.split("T")[0]
+        : "",
+    }));
+    setReferralNotes(patient.referralRemarks);
+
+    /* -------------------- ADMISSION ADVICE -------------------- */
+    const admissionAdvised = patient.admissionFlag === "y";
+    setAdmissionAdvised(admissionAdvised);
+
+    if (admissionAdvised) {
+      setAdmissionDate(
+        patient.admissionAdvisedDate
+          ? patient.admissionAdvisedDate.split("T")[0]
+          : ""
+      );
+      setAdditionalAdvice(patient.admissionRemarks || "");
+      setAdmissionPriority(patient.admissionPriority || "Normal");
+
+      setWardCategory(patient.admissionWardCategory || "");
+      setAdmissionCareLevel(patient.admissionCareLevel || "");
+      setAdmissionCareLevelName(patient.admissionCareLevelName || "");
+
+      if (patient.admissionWardCategory) {
+        await fetchWardData(patient.admissionWardCategory);
+      }
+
+      setWardName(patient.admissionWard || "");
+      setOccupiedBeds(String(patient.occupiedBed ?? "0"));
+      setVacantBeds(String(patient.vacantBed ?? "0"));
     }
 
-    setWardName(patient.admissionWard || "");
-    setOccupiedBeds(String(patient.occupiedBed ?? "0"));
-    setVacantBeds(String(patient.vacantBed ?? "0"));
-  }
-
-  /* -------------------- SHOW DETAIL VIEW -------------------- */
-  setShowDetailView(true);
-};
+    /* -------------------- SHOW DETAIL VIEW -------------------- */
+    setShowDetailView(true);
+  };
 
 
   const handleBackToList = () => {
@@ -1465,6 +1623,21 @@ const handleRowClick = async (patient) => {
         remarks: ""
       }
     ]);
+    setReferralNotes("");
+    setReferralData({
+      isReferred: "No",
+      referTo: "",
+      referralType: "Internal",
+      referralScope: "Internal",
+      referralDate: getToday(),
+      empanel: false,
+      currentPriorityNo: "",
+      select: "",
+      noOfDays: "",
+      treatmentType: "OPD",
+      referredFor: "",
+      hospital: "",
+    });
     setDeletedProcedureCareIds([]);
 
     setSelectedHistoryType("")
@@ -1482,6 +1655,8 @@ const handleRowClick = async (patient) => {
     setOccupiedBeds(0)
     setVacantBeds(0)
   }
+
+
 
   const toggleSection = (section) => {
     setExpandedSections((prev) => ({
@@ -1707,15 +1882,15 @@ const handleRowClick = async (patient) => {
           treatmentId: null,
           drugId: t.itemId,
           drugName: t.itemName,
-          dispUnit: drug?.dispUnitName ?? t.dispU ?? "",
+          dispUnit: t.dispUnit ?? "",
           dosage: t.dosage ?? "",
           frequency: freName?.frequencyName ?? "",
           days: t.noOfDays ?? "",
           instruction: t.instruction ?? "",
           stock: t.stocks ?? "",
           templateId: String(templateId),
-          itemClassId: drug?.itemClassId ?? null,
-          aDispQty: drug?.aDispQty ?? 1,
+          itemClassId: t?.itemClassId ?? null,
+          aDispQty: t?.aDispQty ?? 1,
         };
         newItem.total = calculateTotal(newItem);
         return newItem;
@@ -1933,6 +2108,18 @@ const handleRowClick = async (patient) => {
     if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
       setCurrentPage(pageNumber)
     }
+  }
+
+  const handleInputFocus = (event, index) => {
+    const rect = event.target.getBoundingClientRect()
+    setDropdownPosition({
+      x: rect.left,
+      y: rect.top,
+      height: rect.height,
+    })
+    setDropdownWidth(rect.width)
+    setActiveInvestigationRowIndex(index)
+    setDropdownVisible(true)
   }
 
   const renderPagination = () => {
@@ -2449,43 +2636,18 @@ const handleRowClick = async (patient) => {
                                       className="form-control"
                                       placeholder="Search ICD..."
                                       value={diagnosisItems[index].icdDiagnosis || search[index] || ""}
-                                      onChange={async (e) => {
-                                        const val = e.target.value;
-                                        setSearch((prev) => {
-                                          const updated = [...prev];
-                                          updated[index] = val;
-                                          return updated;
-                                        });
-                                        const result = await fetchMasICDData(0, val);
-                                        setIcdDropdown(result.list);
-                                        setLastPage(result.last);
-                                        setPage(0);
-                                        setOpenDropdown(index);
-                                      }}
+                                      onChange={(e) => handleIcdSearch(e.target.value, index)}
                                       onClick={() => {
-                                        loadFirstPage();
+                                        loadFirstPage(index);
                                         setOpenDropdown(index);
                                       }}
                                       onBlur={() => {
                                         setTimeout(() => {
-                                          const selectedIcd = diagnosisItems[index];
-                                          const searchText = search[index];
-                                          if (
-                                            (!selectedIcd.icdId || selectedIcd.icdDiagnosis !== searchText) &&
-                                            searchText !== ""
-                                          ) {
-                                            setSearch((prev) => {
-                                              const updated = [...prev];
-                                              updated[index] = "";
-                                              return updated;
-                                            });
-                                            handleDiagnosisChange(index, "icdId", null);
-                                            handleDiagnosisChange(index, "icdDiagnosis", "");
-                                          }
                                           setOpenDropdown(null);
-                                        }, 150);
+                                        }, 200);
                                       }}
                                     />
+
                                     {openDropdown === index && (
                                       <div
                                         className="border rounded mt-1 bg-white position-absolute w-100"
@@ -2501,13 +2663,15 @@ const handleRowClick = async (patient) => {
                                             <div
                                               key={icd.icdId}
                                               className="p-2 cursor-pointer hover: "
-                                              onMouseDown={() => {
+                                              onMouseDown={(e) => {
+                                                e.preventDefault();
                                                 updateICD(icd, index);
                                                 setOpenDropdown(null);
                                               }}
                                             >
                                               {icd.icdCode} - {icd.icdName}
                                             </div>
+
                                           ))
                                         ) : (
                                           <div className="p-2 text-muted">No results found</div>
@@ -2563,7 +2727,7 @@ const handleRowClick = async (patient) => {
                 </div>
 
                 {/* Investigation Section */}
-                <div className="card mb-3">
+                <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
                     className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
@@ -2573,7 +2737,7 @@ const handleRowClick = async (patient) => {
                     <span style={{ fontSize: "18px" }}>{expandedSections.investigation ? "−" : "+"}</span>
                   </div>
                   {expandedSections.investigation && (
-                    <div className="card-body">
+                    <div className="card-body" style={{ overflow: "visible" }}>
                       {selectedTemplateIds.size > 0 && (
                         <div className="row mb-3">
                           <div className="col-12">
@@ -2670,37 +2834,51 @@ const handleRowClick = async (patient) => {
                         <div className="col-12">
                           <div className="d-flex gap-4 flex-wrap">
                             {investigationTypes.length > 0 ? (
-                              <>
-                                {investigationTypes.map((type) => (
-                                  <div key={type.value} className="form-check">
-                                    <input
-                                      className="form-check-input"
-                                      type="radio"
-                                      name="investigationType"
-                                      id={`inv-type-${type.value}`}
-                                      value={type.value}
-                                      checked={investigationType === type.value}
-                                      onChange={(e) => {
-                                        setInvestigationType(e.target.value)
-                                      }}
-                                    />
-                                    <label className="form-check-label fw-bold" htmlFor={`inv-type-${type.value}`}>
-                                      {type.name.toUpperCase()}
-                                    </label>
-                                  </div>
-                                ))}
-                              </>
+                              investigationTypes.map((type) => (
+                                <div key={type.id} className="form-check">
+                                  <input
+                                    className="form-check-input"
+                                    type="radio"
+                                    name="investigationType"
+                                    id={`inv-type-${type.id}`}
+                                    value={type.id}
+                                    checked={investigationType === type.id}
+                                    onChange={() => {
+                                      setInvestigationType(type.id);
+
+                                      if (type.name === "Laboratory") {
+                                        setLabFlag("y");
+                                        setRadioFlag("n");
+                                      } else if (type.name === "Radiology") {
+                                        setRadioFlag("y");
+                                        setLabFlag("n");
+                                      } else {
+                                        setLabFlag("n");
+                                        setRadioFlag("n");
+                                      }
+                                    }}
+                                  />
+
+                                  <label
+                                    className="form-check-label fw-bold"
+                                    htmlFor={`inv-type-${type.id}`}
+                                  >
+                                    {type.name.toUpperCase()}
+                                  </label>
+                                </div>
+                              ))
                             ) : (
                               <div className="text-muted small">
                                 Loading investigation types...
-                                {allInvestigations.length > 0 && ` (${allInvestigations.length} investigations loaded)`}
                               </div>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      <div className="table-responsive">
+
+
+                      <div className="table-responsive" style={{ overflow: "visible" }}>
                         <table className="table table-bordered">
                           <thead style={{ backgroundColor: "#b0c4de" }}>
                             <tr>
@@ -2714,96 +2892,64 @@ const handleRowClick = async (patient) => {
                             {investigationItems.map((item, index) => (
                               <tr key={index}>
                                 <td>
-                                  <div style={{ position: "relative" }}>
+                                  <div className="position-relative w-100" ref={dropdownInvestigationRef}>
+
+                                    {/* INPUT */}
                                     <input
                                       type="text"
                                       className="form-control"
-                                      value={item.procedureName || ""}
-                                      onChange={(e) => {
-                                        const newItems = [...procedureCareItems];
-                                        newItems[index] = {
-                                          ...newItems[index],
-                                          procedureName: e.target.value,
-                                          procedureId: null,
-                                        };
-                                        setProcedureCareItems(newItems);
-                                        setOpenProcedureDropdown(index);
+                                      placeholder="Search Investigation..."
+                                      value={investigationItems[index].name || investigationSearch[index] || ""}
+                                      onChange={(e) => handleInvestigationSearch(e.target.value, index)}
+                                      onClick={() => {
+                                        loadFirstInvestigationPage(index);
+                                        setOpenInvestigationDropdown(index);
                                       }}
-                                      onFocus={() => {
-                                        setOpenProcedureDropdown(index);
-                                        loadProcedureFirstPage(index);
+                                      onBlur={() => {
+                                        setTimeout(() => setOpenInvestigationDropdown(null), 200);
                                       }}
-                                      placeholder="Enter procedure"
-                                      autoComplete="off"
                                     />
 
-                                    {openProcedureDropdown === index && (
+                                    {/* DROPDOWN */}
+                                    {openInvestigationDropdown === index && (
                                       <div
-                                        style={{
-                                          position: "fixed",
-                                          zIndex: 99999,
-                                          backgroundColor: "white",
-                                          borderRadius: "4px",
-                                          boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
-                                          maxHeight: "200px",
-                                          overflowY: "auto",
-                                          width: `${dropdownWidth}px`,
-                                          left: `${dropdownPosition.x}px`,
-                                          top: `${dropdownPosition.y + dropdownPosition.height}px`,
-                                        }}
+                                        className="border rounded mt-1 bg-white position-absolute w-100"
+                                        style={{ maxHeight: "220px", zIndex: 9999, overflowY: "auto" }}
                                         onScroll={(e) => {
-                                          if (e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight) {
-                                            loadMoreProcedure();
+                                          if (
+                                            e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight
+                                          ) {
+                                            loadMoreInvestigations();
                                           }
                                         }}
                                       >
-                                        {procedureDropdown.length > 0 ? (
-                                          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-                                            {procedureDropdown.map((procedure) => (
-                                              <li
-                                                key={procedure.procedureId}
-                                                style={{
-                                                  backgroundColor: "#f8f9fa",
-                                                  cursor: "pointer",
-                                                  borderBottom: "1px solid #dee2e6",
-                                                  padding: "8px 12px",
-                                                }}
-                                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#e9ecef")}
-                                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#f8f9fa")}
-                                                onMouseDown={() => {
-                                                  updateProcedure(procedure, index);
-                                                  setOpenProcedureDropdown(null);
-                                                }}
-                                              >
-                                                <div>
-                                                  <strong style={{ color: "#3b82f6" }}>
-                                                    {procedure.procedureName}
-                                                  </strong>
-                                                  <div
-                                                    style={{
-                                                      color: "#6c757d",
-                                                      fontSize: "0.8rem",
-                                                      marginTop: "2px",
-                                                    }}
-                                                  >
-                                                    {procedure.procedureCode}
-                                                  </div>
-                                                </div>
-                                              </li>
-                                            ))}
-                                          </ul>
+                                        {investigationDropdown.length > 0 ? (
+                                          investigationDropdown.map((inv) => (
+                                            <div
+                                              key={inv.investigationId}
+                                              className="p-2 cursor-pointer hover:bg-light"
+                                              onMouseDown={(e) => {
+                                                e.preventDefault(); // prevent blur
+                                                updateInvestigation(inv, index);
+                                              }}
+                                            >
+                                              <strong>{inv.investigationName}</strong>
+                                              <div className="text-muted small">
+                                                {inv.mainChargeCodeName} • {inv.subChargeCodeName}
+                                              </div>
+                                            </div>
+                                          ))
                                         ) : (
-                                          <div style={{ textAlign: "center", padding: "12px", color: "#6c757d" }}>
-                                            {item.procedureName?.trim()
-                                              ? "No procedures found"
-                                              : "Start typing to search..."}
-                                          </div>
+                                          <div className="p-2 text-muted">No results found</div>
+                                        )}
+
+                                        {!investigationLastPage && (
+                                          <div className="text-center p-2 text-primary small">Loading...</div>
                                         )}
                                       </div>
                                     )}
                                   </div>
                                 </td>
-
                                 <td>
                                   <input
                                     type="date"
@@ -3159,20 +3305,19 @@ const handleRowClick = async (patient) => {
                           style={{ cursor: "pointer" }}
                           onClick={() => toggleSection("treatmentAdvice")}
                         >
-                          <h6 className="mb-0 fw-bold">Treatment Advice</h6>
-                          <span style={{ fontSize: "16px" }}>{expandedSections.treatmentAdvice ? "−" : "+"}</span>
+                          <h6 className="mb-0 fw-bold ">Treatment Advice</h6>
                         </div>
-                        {expandedSections.treatmentAdvice && (
                           <div className="card-body">
                             <div className="row align-items-end">
                               <div className="col-md-11">
                                 <textarea
-                                  className="form-control"
-                                  rows={3}
-                                  value={generalTreatmentAdvice}
-                                  placeholder="Treatment advice will be populated here"
-                                  readOnly
-                                ></textarea>
+  className="form-control"
+  rows={3}
+  value={generalTreatmentAdvice}
+  placeholder="Treatment advice will be populated here"
+  onChange={(e) => setGeneralTreatmentAdvice(e.target.value)}
+></textarea>
+
                               </div>
                               <div className="col-md-1 text-center">
                                 <button
@@ -3185,9 +3330,10 @@ const handleRowClick = async (patient) => {
                                   +
                                 </button>
                               </div>
+
+
                             </div>
                           </div>
-                        )}
                       </div>
                     </div>
                   )}

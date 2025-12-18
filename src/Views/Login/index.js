@@ -23,10 +23,15 @@ const Login = () => {
 
 
   useEffect(() => {
-    if (formData.username?.trim()) {
-      fetchDepartments();
+    if (formData.username?.trim().length === 10) {
+      const timer = setTimeout(() => {
+        fetchDepartments();
+      }, 500);
+
+      return () => clearTimeout(timer);
     }
   }, [formData.username]);
+
 
 
   const fetchDepartments = async (flag = 1) => {
@@ -89,7 +94,7 @@ const Login = () => {
           localStorage.setItem("isTokenValid", isTokenValid);
           localStorage.setItem("hospitalId", hospitalId);
           localStorage.setItem("departmentId", departmentId);
-          localStorage.setItem("departmentName",departmentName);
+          localStorage.setItem("departmentName", departmentName);
         } else {
           sessionStorage.setItem("token", jwtToken);
           sessionStorage.setItem("refreshToken", refreshToken);
@@ -100,7 +105,7 @@ const Login = () => {
           sessionStorage.setItem("isTokenValid", isTokenValid);
           sessionStorage.setItem("hospitalId", hospitalId);
           sessionStorage.setItem("departmentId", departmentId);
-          sessionStorage.setItem("departmentName",departmentName);
+          sessionStorage.setItem("departmentName", departmentName);
         }
 
         // Set up a timeout to auto-mark the token as expired
@@ -183,13 +188,15 @@ const Login = () => {
                           <input
                             type="text"
                             name="username"
+                            maxLength={10}
+                            pattern="\d*"
                             className="form-control form-control-sm"
-                            style={{ fontSize: "0.95rem", padding: "0.375rem 0.75rem" }}
                             placeholder="6209150953"
                             value={formData.username}
                             onChange={handleInputChange}
                             required
                           />
+
                         </div>
                       </div>
 

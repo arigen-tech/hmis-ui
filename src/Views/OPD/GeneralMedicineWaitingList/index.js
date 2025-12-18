@@ -41,14 +41,17 @@ const GeneralMedicineWaitingList = () => {
   const [selectedItems, setSelectedItems] = useState([]);
   const dropdownRef = useRef(null);
   const [doctorRemarksText, setDoctorRemarksText] = useState("")
+  const [labFlag, setLabFlag] = useState("")
+  const [radioFlag, setRadioFlag] = useState("")
+
   const departmentName =
     localStorage.getItem("departmentName") ||
     sessionStorage.getItem("departmentName") ||
     "";
 
-    const searchTimeoutRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
 
-
+  const debounceRef = useRef({});
 
   // Add state variables for Admission
 
@@ -318,17 +321,49 @@ const GeneralMedicineWaitingList = () => {
     setPage(0);
   };
 
-  // LOAD MORE FOR INFINITE SCROLL
+
+  const handleIcdSearch = (value, index) => {
+    // Update text
+    setSearch((prev) => {
+      const updated = [...prev];
+      updated[index] = value;
+      return updated;
+    });
+
+    // Clear previous debounce for this row
+    if (debounceRef.current[index]) {
+      clearTimeout(debounceRef.current[index]);
+    }
+
+    debounceRef.current[index] = setTimeout(async () => {
+      if (!value.trim()) {
+        setIcdDropdown([]);
+        return;
+      }
+
+      const result = await fetchMasICDData(0, value);
+      setIcdDropdown(result.list);
+      setLastPage(result.last);
+      setPage(0);
+      setOpenDropdown(index);
+    }, 700);
+  };
+
+
   const loadMore = async () => {
-    if (lastPage) return;
+    if (lastPage || openDropdown === null) return;
 
     const nextPage = page + 1;
-    const result = await fetchMasICDData(nextPage, search[openDropdown] || "");
+    const result = await fetchMasICDData(
+      nextPage,
+      search[openDropdown] || ""
+    );
 
     setIcdDropdown((prev) => [...prev, ...result.list]);
     setLastPage(result.last);
     setPage(nextPage);
   };
+
 
   // UPDATE SELECTED ICD
   const updateICD = (selectedICD, index) => {
@@ -340,7 +375,9 @@ const GeneralMedicineWaitingList = () => {
     );
 
     if (exists) {
-      setDuplicateItems([{ icdDiagnosis: selectedICD.icdName }]);
+      setDuplicateItems([
+        { icdDiagnosis: `${selectedICD.icdCode} - ${selectedICD.icdName}` }
+      ]);
       setShowDuplicatePopup(true);
       return;
     }
@@ -350,12 +387,11 @@ const GeneralMedicineWaitingList = () => {
       updated[index] = {
         ...updated[index],
         icdDiagId: selectedICD.icdId,
-        icdDiagnosis: selectedICD.icdName,
+        icdDiagnosis: `${selectedICD.icdCode} - ${selectedICD.icdName}`, // ✅ code + name
       };
       return updated;
     });
 
-    // clear search after selecting
     setSearch((prev) => {
       const updated = [...prev];
       updated[index] = "";
@@ -463,7 +499,7 @@ const GeneralMedicineWaitingList = () => {
   const [investigationModalType, setInvestigationModalType] = useState("create")
   const [treatmentModalType, setTreatmentModalType] = useState("create")
 
-  const [investigationType, setInvestigationType] = useState("lab")
+  const [investigationType, setInvestigationType] = useState(null)
   const [procedureCareType, setProcedureCareType] = useState("procedure")
 
   const [investigationTemplates, setInvestigationTemplates] = useState([])
@@ -477,7 +513,7 @@ const GeneralMedicineWaitingList = () => {
   const [expandedSections, setExpandedSections] = useState({
     personalDetails: false,
     clinicalHistory: true,
-    vitalDetail: false,
+    vitalDetail: true,
     diagnosis: true,
     investigation: false,
     treatment: false,
@@ -547,7 +583,7 @@ const GeneralMedicineWaitingList = () => {
     FolloUpDate: getToday(),
   });
 
-  console.log("followUps",followUps)
+  console.log("followUps", followUps)
 
   const [diagnosisItems, setDiagnosisItems] = useState([
     {
@@ -671,6 +707,17 @@ const GeneralMedicineWaitingList = () => {
   const [procedureSearch, setProcedureSearch] = useState([]);
   const [openProcedureDropdown, setOpenProcedureDropdown] = useState(null);
   const procedureDropdownRef = useRef([]);
+
+
+  const [investigationDropdown, setInvestigationDropdown] = useState([]);
+  const [investigationSearch, setInvestigationSearch] = useState([]);
+  const [investigationPage, setInvestigationPage] = useState(0);
+  const [investigationLastPage, setInvestigationLastPage] = useState(true);
+  const [openInvestigationDropdown, setOpenInvestigationDropdown] = useState(null);
+
+  const debounceInvestigationRef = useRef([]);
+  const dropdownInvestigationRef = useRef(null);
+
 
 
   const [procedureCareItems, setProcedureCareItems] = useState([
@@ -799,26 +846,38 @@ const GeneralMedicineWaitingList = () => {
     return () => window.removeEventListener("click", handleClickOutside)
   }, [])
 
-  const extractInvestigationTypes = (investigations) => {
-    const uniqueTypes = []
-    const typeMap = new Map()
+  // const extractInvestigationTypes = (investigations) => {
+  //   const uniqueTypes = []
+  //   const typeMap = new Map()
 
-    investigations.forEach(inv => {
-      const typeId = inv.mainChargeCodeId
-      const typeName = inv.mainChargeCodeName
+  //   investigations.forEach(inv => {
+  //     const typeId = inv.mainChargeCodeId
+  //     const typeName = inv.mainChargeCodeName
 
-      if (typeId && typeName && !typeMap.has(typeId)) {
-        typeMap.set(typeId, typeName)
-        uniqueTypes.push({
-          id: typeId,
-          name: typeName,
-          value: typeName.toLowerCase().replace(/\s+/g, '-')
-        })
-      }
-    })
+  //     if (typeId && typeName && !typeMap.has(typeId)) {
+  //       typeMap.set(typeId, typeName)
+  //       uniqueTypes.push({
+  //         id: typeId,
+  //         name: typeName,
+  //         value: typeName.toLowerCase().replace(/\s+/g, '-')
+  //       })
+  //     }
+  //   })
 
-    setInvestigationTypes(uniqueTypes)
+  //   setInvestigationTypes(uniqueTypes)
+  // }
+
+  const fetchInvestigationTypes = async () => {
+    const res = await getRequest("/DgMasInvestigation/uniqueInvestigation/types")
+    if (res?.response) {
+      setInvestigationTypes(res.response)
+    }
   }
+  useEffect(() => {
+    fetchInvestigationTypes();
+  }, []);
+
+
 
   const fetchInvestigationTemplates = async (flag = 1) => {
     try {
@@ -837,20 +896,121 @@ const GeneralMedicineWaitingList = () => {
     }
   }
 
-  const fetchAllInvestigations = async () => {
+  const fetchInvestigations = async (page, searchText = "") => {
     try {
-      const response = await getRequest(`${MAS_INVESTIGATION}/getAll/1`)
-      if (response && response.response) {
-        setAllInvestigations(response.response)
-        extractInvestigationTypes(response.response)
-      } else {
-        setAllInvestigations([])
+      let url = `${MAS_INVESTIGATION}/dynamic/all?flag=1&page=${page}&size=20`;
+
+      if (searchText) {
+        url += `&search=${encodeURIComponent(searchText)}`;
       }
+
+      if (investigationType) {
+        url += `&mainChargeCodeId=${investigationType}`;
+      }
+
+      const data = await getRequest(url);
+
+      if (data.status === 200 && data.response?.content) {
+        return {
+          list: data.response.content,
+          last: data.response.last,
+        };
+      }
+
+      return { list: [], last: true };
     } catch (error) {
-      console.error("Error fetching investigations:", error)
-      setAllInvestigations([])
+      console.error("Error fetching investigations:", error);
+      return { list: [], last: true };
     }
-  }
+  };
+
+  const loadFirstInvestigationPage = async (index) => {
+    const searchText = investigationSearch[index] || "";
+    const result = await fetchInvestigations(0, searchText);
+
+    setInvestigationDropdown(result.list);
+    setInvestigationLastPage(result.last);
+    setInvestigationPage(0);
+  };
+
+
+
+  const handleInvestigationSearch = (value, index) => {
+    setInvestigationSearch((prev) => {
+      const updated = [...prev];
+      updated[index] = value;
+      return updated;
+    });
+
+    if (debounceInvestigationRef.current[index]) {
+      clearTimeout(debounceInvestigationRef.current[index]);
+    }
+
+    debounceInvestigationRef.current[index] = setTimeout(async () => {
+      if (!value.trim()) {
+        setInvestigationDropdown([]);
+        return;
+      }
+
+      const result = await fetchInvestigations(0, value);
+      setInvestigationDropdown(result.list);
+      setInvestigationLastPage(result.last);
+      setInvestigationPage(0);
+      setOpenInvestigationDropdown(index);
+    }, 700);
+  };
+
+
+  const loadMoreInvestigations = async () => {
+    if (investigationLastPage || openInvestigationDropdown === null) return;
+
+    const nextPage = investigationPage + 1;
+    const result = await fetchInvestigations(
+      nextPage,
+      investigationSearch[openInvestigationDropdown] || ""
+    );
+
+    setInvestigationDropdown((prev) => [...prev, ...result.list]);
+    setInvestigationLastPage(result.last);
+    setInvestigationPage(nextPage);
+  };
+
+
+  const updateInvestigation = (selected, index) => {
+    if (!selected) return;
+
+    setInvestigationItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        investigationId: selected.investigationId,
+        name: selected.investigationName,
+      };
+      return updated;
+    });
+
+    setInvestigationSearch((prev) => {
+      const updated = [...prev];
+      updated[index] = "";
+      return updated;
+    });
+
+    setOpenInvestigationDropdown(null);
+  };
+
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownInvestigationRef.current && !dropdownInvestigationRef.current.contains(e.target)) {
+        setOpenInvestigationDropdown(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+
 
   const filterInvestigationsByMainChargeCode = () => {
     //console.log("Filtering investigations by type:", investigationType)
@@ -1145,47 +1305,15 @@ const GeneralMedicineWaitingList = () => {
     setDepartmentData(newData)
   }
 
-  // ADD THESE USEEFFECT HOOKS
-
-  // DEBUGGING: Add this at the top of your component to see what's happening
-  //console.log("Component render - investigationType:", investigationType, "investigationTypes:", investigationTypes)
-
   useEffect(() => {
     if (showDetailView && selectedPatient) {
-      //console.log("Fetching investigation data...")
       fetchInvestigationTemplates()
-      fetchAllInvestigations()
     }
   }, [showDetailView, selectedPatient])
 
-  useEffect(() => {
-    //console.log("All investigations loaded:", allInvestigations.length)
-    if (allInvestigations.length > 0) {
-      extractInvestigationTypes(allInvestigations)
-    }
-  }, [allInvestigations])
+
 
   useEffect(() => {
-    //console.log("Investigation types updated:", investigationTypes)
-    if (investigationTypes.length > 0) {
-      // FORCE SELECT LABORATORY
-      const labType = investigationTypes.find(type =>
-        type.name.toLowerCase().includes('laboratory') ||
-        type.name.toLowerCase().includes('lab')
-      )
-
-      if (labType && investigationType !== labType.value) {
-        //console.log("Setting default to Laboratory:", labType)
-        setInvestigationType(labType.value)
-      } else if (investigationTypes.length > 0 && !investigationType) {
-        //console.log("Setting to first type:", investigationTypes[0])
-        setInvestigationType(investigationTypes[0].value)
-      }
-    }
-  }, [investigationTypes])
-
-  useEffect(() => {
-    //console.log("Investigation type changed to:", investigationType)
     filterInvestigationsByMainChargeCode()
   }, [investigationType])
 
@@ -1588,8 +1716,8 @@ const GeneralMedicineWaitingList = () => {
         pastMedicalHistory: formData.pastHistory ?? null,
 
         // ===== Investigation =====
-        labFlag: "y",
-        radioFlag: "n",
+        labFlag: labFlag,
+        radioFlag: radioFlag,
         investigation: investigationList,
 
         // ===== Treatment =====
@@ -1625,6 +1753,8 @@ const GeneralMedicineWaitingList = () => {
 
         // ================= Referal ================
         referralFlag: referralData.isReferred === "Yes" ? "y" : "n",
+        referralRemarks: referralNotes,
+        referralDate: referralData.referralDate ? new Date(referralData.referralDate).toISOString() : null,
 
         // ===== Mapping IDs =====
         opdPatientDetailId: vitalsAvlaible ? opdVitalsData.opdPatientDetailsId : null,
@@ -1635,7 +1765,7 @@ const GeneralMedicineWaitingList = () => {
         doctorId: selectedPatient.docterId
       };
 
-      const response = await postRequest(`${OPD_PATIENT}/patient-details`, payload);
+      const response = await postRequest(`${OPD_PATIENT}/patient-detailsdd`, payload);
 
       if (response?.status === 200 || response?.success === true) {
         showPopup(
@@ -2012,6 +2142,13 @@ const GeneralMedicineWaitingList = () => {
     handleCloseModal()
   }
 
+  useEffect(() => {
+    if (investigationTypes.length > 0 && !investigationType) {
+      setInvestigationType(investigationTypes[0].id);
+    }
+  }, [investigationTypes]);
+
+
   const handleClearAllTreatmentTemplates = () => {
     setSelectedTreatmentTemplateIds(new Set());
 
@@ -2156,14 +2293,13 @@ const GeneralMedicineWaitingList = () => {
       const formattedNew = newItemsToAdd.map(t => {
 
         // 🟢 FETCH FULL DRUG DETAILS FROM DROPDOWN SOURCE
-        const drug = getDrugDetails(t.itemId);
         const freName = getFreqDetails(t.frequencyId);
 
         const newItem = {
           treatmentId: null,
           drugId: t.itemId,
           drugName: t.itemName,
-          dispUnit: drug?.dispUnitName ?? t.dispU ?? "",
+          dispUnit: t?.dispUnit ?? "",
           dosage: t.dosage ?? "",
           frequency: freName?.frequencyName ?? "",
           days: t.noOfDays ?? "",
@@ -2172,8 +2308,8 @@ const GeneralMedicineWaitingList = () => {
           templateId: String(templateId),
 
           // 🟢 MOST IMPORTANT FIELDS (MISSING EARLIER)
-          itemClassId: drug?.itemClassId ?? null,
-          aDispQty: drug?.aDispQty ?? 1,
+          itemClassId: t?.itemClassId ?? null,
+          aDispQty: t?.adispQty ?? 1,
         };
 
         // 🟢 AUTO CALCULATE TOTAL
@@ -2796,49 +2932,15 @@ const GeneralMedicineWaitingList = () => {
                                       className="form-control"
                                       placeholder="Search ICD..."
                                       value={diagnosisItems[index].icdDiagnosis || search[index] || ""}
-                                      onChange={async (e) => {
-                                        const val = e.target.value;
-
-                                        setSearch((prev) => {
-                                          const updated = [...prev];
-                                          updated[index] = val;
-                                          return updated;
-                                        });
-
-                                        const result = await fetchMasICDData(0, val);
-                                        setIcdDropdown(result.list);
-                                        setLastPage(result.last);
-                                        setPage(0);
-                                        setOpenDropdown(index);
-                                      }}
+                                      onChange={(e) => handleIcdSearch(e.target.value, index)}
                                       onClick={() => {
-                                        loadFirstPage();
+                                        loadFirstPage(index);
                                         setOpenDropdown(index);
                                       }}
                                       onBlur={() => {
                                         setTimeout(() => {
-                                          const selectedIcd = diagnosisItems[index];
-                                          const searchText = search[index];
-
-                                          // If user typed but did NOT select → clear input
-                                          if (
-                                            (!selectedIcd.icdId || selectedIcd.icdDiagnosis !== searchText) &&
-                                            searchText !== ""
-                                          ) {
-                                            // Clear search text
-                                            setSearch((prev) => {
-                                              const updated = [...prev];
-                                              updated[index] = "";
-                                              return updated;
-                                            });
-
-                                            // Clear diagnosis item fields
-                                            handleDiagnosisChange(index, "icdId", null);
-                                            handleDiagnosisChange(index, "icdDiagnosis", "");
-                                          }
-
                                           setOpenDropdown(null);
-                                        }, 150);
+                                        }, 200);
                                       }}
                                     />
 
@@ -2860,7 +2962,8 @@ const GeneralMedicineWaitingList = () => {
                                             <div
                                               key={icd.icdId}
                                               className="p-2 cursor-pointer hover: "
-                                              onMouseDown={() => {
+                                              onMouseDown={(e) => {
+                                                e.preventDefault(); // 👈 prevents blur
                                                 updateICD(icd, index);
                                                 setOpenDropdown(null);
                                               }}
@@ -2929,7 +3032,7 @@ const GeneralMedicineWaitingList = () => {
 
 
                 {/* Investigation Section - UPDATED WITH MULTIPLE TEMPLATE SUPPORT */}
-                <div className="card mb-3">
+                <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
                     className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
@@ -2939,7 +3042,7 @@ const GeneralMedicineWaitingList = () => {
                     <span style={{ fontSize: "18px" }}>{expandedSections.investigation ? "−" : "+"}</span>
                   </div>
                   {expandedSections.investigation && (
-                    <div className="card-body">
+                    <div className="card-body" style={{ overflow: "visible" }}>
                       {/* Selected Templates Display */}
                       {selectedTemplateIds.size > 0 && (
                         <div className="row mb-3">
@@ -3038,39 +3141,52 @@ const GeneralMedicineWaitingList = () => {
                         <div className="col-12">
                           <div className="d-flex gap-4 flex-wrap">
                             {investigationTypes.length > 0 ? (
-                              <>
-                                {investigationTypes.map((type) => (
-                                  <div key={type.value} className="form-check">
-                                    <input
-                                      className="form-check-input"
-                                      type="radio"
-                                      name="investigationType"
-                                      id={`inv-type-${type.value}`}
-                                      value={type.value}
-                                      checked={investigationType === type.value}
-                                      onChange={(e) => {
-                                        //console.log("Radio button selected:", e.target.value)
-                                        setInvestigationType(e.target.value)
-                                      }}
-                                    />
-                                    <label className="form-check-label fw-bold" htmlFor={`inv-type-${type.value}`}>
-                                      {type.name.toUpperCase()}
-                                    </label>
-                                  </div>
-                                ))}
-                              </>
+                              investigationTypes.map((type) => (
+                                <div key={type.id} className="form-check">
+                                  <input
+                                    className="form-check-input"
+                                    type="radio"
+                                    name="investigationType"
+                                    id={`inv-type-${type.id}`}
+                                    value={type.id}
+                                    checked={investigationType === type.id}
+                                    onChange={() => {
+                                      setInvestigationType(type.id);
+
+                                      if (type.name === "Laboratory") {
+                                        setLabFlag("y");
+                                        setRadioFlag("n");
+                                      } else if (type.name === "Radiology") {
+                                        setRadioFlag("y");
+                                        setLabFlag("n");
+                                      } else {
+                                        setLabFlag("n");
+                                        setRadioFlag("n");
+                                      }
+                                    }}
+                                  />
+
+                                  <label
+                                    className="form-check-label fw-bold"
+                                    htmlFor={`inv-type-${type.id}`}
+                                  >
+                                    {type.name.toUpperCase()}
+                                  </label>
+                                </div>
+                              ))
                             ) : (
                               <div className="text-muted small">
                                 Loading investigation types...
-                                {allInvestigations.length > 0 && ` (${allInvestigations.length} investigations loaded)`}
                               </div>
                             )}
                           </div>
                         </div>
                       </div>
 
+
+
                       {/* Investigation Table */}
-                      <div className="table-responsive">
+                      <div className="table-responsive" style={{ overflow: "visible" }}>
                         <table className="table table-bordered">
                           <thead style={{ backgroundColor: "#b0c4de" }}>
                             <tr>
@@ -3084,85 +3200,65 @@ const GeneralMedicineWaitingList = () => {
                             {investigationItems.map((item, index) => (
                               <tr key={index}>
                                 <td>
-                                  <div style={{ position: "relative" }}>
+                                  <div className="position-relative w-100" ref={dropdownInvestigationRef}>
+
+                                    {/* INPUT */}
                                     <input
                                       type="text"
                                       className="form-control"
-                                      value={item.name}
-                                      onChange={(e) => {
-                                        const newItems = [...investigationItems]
-                                        newItems[index] = {
-                                          ...newItems[index],
-                                          name: e.target.value,
-                                          investigationId: null,
-                                        }
-                                        setInvestigationItems(newItems)
-                                        setActiveInvestigationRowIndex(index)
+                                      placeholder="Search Investigation..."
+                                      value={investigationItems[index].name || investigationSearch[index] || ""}
+                                      onChange={(e) => handleInvestigationSearch(e.target.value, index)}
+                                      onClick={() => {
+                                        loadFirstInvestigationPage(index);
+                                        setOpenInvestigationDropdown(index);
                                       }}
-                                      onFocus={(e) => handleInputFocus(e, index)}
-                                      placeholder="Enter investigation"
-                                      autoComplete="off"
+                                      onBlur={() => {
+                                        setTimeout(() => setOpenInvestigationDropdown(null), 200);
+                                      }}
                                     />
 
-                                    {/* Dropdown displayed as fixed overlay */}
-                                    {activeInvestigationRowIndex === index && dropdownVisible && (
+                                    {/* DROPDOWN */}
+                                    {openInvestigationDropdown === index && (
                                       <div
-                                        style={{
-                                          position: "fixed",
-                                          zIndex: 99999,
-                                          backgroundColor: "white",
-                                          borderRadius: "4px",
-                                          boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
-                                          maxHeight: "200px",
-                                          overflowY: "auto",
-                                          width: `${dropdownWidth}px`,
-                                          left: `${dropdownPosition.x}px`,
-                                          top: `${dropdownPosition.y + dropdownPosition.height}px`,
+                                        className="border rounded mt-1 bg-white position-absolute w-100"
+                                        style={{ maxHeight: "220px", zIndex: 9999, overflowY: "auto" }}
+                                        onScroll={(e) => {
+                                          if (
+                                            e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight
+                                          ) {
+                                            loadMoreInvestigations();
+                                          }
                                         }}
                                       >
-                                        {filterInvestigationsBySearch(item.name).length > 0 ? (
-                                          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-                                            {filterInvestigationsBySearch(item.name).map((investigation) => (
-                                              <li
-                                                key={investigation.investigationId}
-                                                style={{
-                                                  backgroundColor: "#f8f9fa",
-                                                  cursor: "pointer",
-                                                  borderBottom: "1px solid #dee2e6",
-                                                  padding: "8px 12px",
-                                                  transition: "background-color 0.2s",
-                                                }}
-                                                onMouseEnter={(e) => (e.target.style.backgroundColor = "#e9ecef")}
-                                                onMouseLeave={(e) => (e.target.style.backgroundColor = "#f8f9fa")}
-                                                onClick={() => handleInvestigationSelect(index, investigation)}
-                                              >
-                                                <div>
-                                                  <strong style={{ color: "#3b82f6" }}>
-                                                    {investigation.investigationName}
-                                                  </strong>
-                                                  <div
-                                                    style={{
-                                                      color: "#6c757d",
-                                                      fontSize: "0.8rem",
-                                                      marginTop: "2px",
-                                                    }}
-                                                  >
-                                                    {investigation.mainChargeCodeName} •{" "}
-                                                    {investigation.subChargeCodeName}
-                                                  </div>
-                                                </div>
-                                              </li>
-                                            ))}
-                                          </ul>
+                                        {investigationDropdown.length > 0 ? (
+                                          investigationDropdown.map((inv) => (
+                                            <div
+                                              key={inv.investigationId}
+                                              className="p-2 cursor-pointer hover:bg-light"
+                                              onMouseDown={(e) => {
+                                                e.preventDefault(); // prevent blur
+                                                updateInvestigation(inv, index);
+                                              }}
+                                            >
+                                              <strong>{inv.investigationName}</strong>
+                                              <div className="text-muted small">
+                                                {inv.mainChargeCodeName} • {inv.subChargeCodeName}
+                                              </div>
+                                            </div>
+                                          ))
                                         ) : (
-                                          <div style={{ textAlign: "center", padding: "12px", color: "#6c757d" }}>
-                                            {item.name.trim() ? "No investigations found" : "Start typing to search..."}
-                                          </div>
+                                          <div className="p-2 text-muted">No results found</div>
+                                        )}
+
+                                        {!investigationLastPage && (
+                                          <div className="text-center p-2 text-primary small">Loading...</div>
                                         )}
                                       </div>
                                     )}
                                   </div>
                                 </td>
+
 
                                 <td>
                                   <input
@@ -3549,36 +3645,34 @@ const GeneralMedicineWaitingList = () => {
                           onClick={() => toggleSection("treatmentAdvice")}
                         >
                           <h6 className="mb-0 fw-bold ">Treatment Advice</h6>
-                          <span style={{ fontSize: "16px" }} >{expandedSections.treatmentAdvice ? "−" : "+"}</span>
                         </div>
-                        {expandedSections.treatmentAdvice && (
-                          <div className="card-body">
-                            <div className="row align-items-end">
-                              <div className="col-md-11">
-                                <textarea
-                                  className="form-control"
-                                  rows={3}
-                                  value={generalTreatmentAdvice}
-                                  placeholder="Treatment advice will be populated here"
-                                  readOnly
-                                ></textarea>
-                              </div>
-                              <div className="col-md-1 text-center">
-                                <button
-                                  className="btn btn-sm btn-outline-success p-1 px-2"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openPopup("treatmentAdvice");
-                                  }}
-                                >
-                                  +
-                                </button>
-                              </div>
-
+                        <div className="card-body">
+                          <div className="row align-items-end">
+                            <div className="col-md-11">
+                              <textarea
+                                className="form-control"
+                                rows={3}
+                                value={generalTreatmentAdvice}
+                                placeholder="Treatment advice will be populated here"
+                                onChange={(e) => setGeneralTreatmentAdvice(e.target.value)}
+                              ></textarea>
 
                             </div>
+                            <div className="col-md-1 text-center">
+                              <button
+                                className="btn btn-sm btn-outline-success p-1 px-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openPopup("treatmentAdvice");
+                                }}
+                              >
+                                +
+                              </button>
+                            </div>
+
+
                           </div>
-                        )}
+                        </div>
                       </div>
                     </div>
                   )}
