@@ -531,50 +531,16 @@ const ResultValidation = () => {
     setMasterReject(false);
   };
 
-  const generateLabReport = async () => {
-    if (!selectedResult) return;
-    
-    const orderhd_id = selectedResult.orderHdId;
-    
-    if (!orderhd_id) {
-      showPopup("Order ID not found for generating report", "error");
-      return;
-    }
-    
-    setIsGeneratingPDF(true);
-    
-    try {
-      const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
-      const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
-      
-      const url = `${ALL_REPORTS}/labInvestigationReport?orderhd_id=${orderhd_id}&hospitalId=${hospitalId}&departmentId=${departmentId}`;
-      
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/pdf",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to generate PDF");
-      }
-
-      const blob = await response.blob();
-      const fileURL = window.URL.createObjectURL(blob);
-      setPdfUrl(fileURL);
-      
-    } catch (error) {
-      console.error("Error generating PDF", error);
-      showPopup("Error generating lab report. Please try again.", "error");
-    } finally {
-      setIsGeneratingPDF(false);
-    }
-  };
-
   const onConfirmPrint = () => {
-    generateLabReport();
+    // Navigate to ViewDownload page with the selected result data
+    navigate('/ViewDownwload', { 
+      state: { 
+        resultData: selectedResult,
+        orderHdId: selectedResult.orderHdId 
+      } 
+    });
     setConfirmationPopup(null);
+    handleValidationSuccess(); // This will refresh the list
   };
 
   const getPriorityColor = (priority) => {
@@ -712,7 +678,7 @@ const ResultValidation = () => {
                       confirmationPopup.type === 'warning' ? 'btn-warning' : 
                       confirmationPopup.type === 'danger' ? 'btn-danger' : 'btn-primary'
                     }`} 
-                    onClick={() => { if (confirmationPopup.onConfirm) confirmationPopup.onConfirm(); navigate('/ViewDownwload'); }}
+                    onClick={() => { if (confirmationPopup.onConfirm) confirmationPopup.onConfirm(); }}
                   >
                     {confirmationPopup.confirmText || "Yes"}
                   </button>
@@ -724,17 +690,6 @@ const ResultValidation = () => {
 
         {loading && <LoadingScreen />}
         
-        {pdfUrl && (
-          <PdfViewer
-            pdfUrl={pdfUrl}
-            onClose={() => {
-              setPdfUrl(null);
-              handleValidationSuccess();
-            }}
-            name={`Lab Report - ${selectedResult?.patient_name || 'Patient'}`}
-          />
-        )}
-
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
@@ -1057,11 +1012,11 @@ const ResultValidation = () => {
                 </div>
 
                 <div className="text-end mt-4">
-                  <button className="btn btn-success me-3" onClick={handleSubmit} disabled={loading || isGeneratingPDF}>
-                    {isGeneratingPDF ? (
+                  <button className="btn btn-success me-3" onClick={handleSubmit} disabled={loading}>
+                    {loading ? (
                       <>
                         <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Generating Report...
+                        Processing...
                       </>
                     ) : (
                       <>
