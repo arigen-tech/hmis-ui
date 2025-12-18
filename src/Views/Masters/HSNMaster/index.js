@@ -303,7 +303,7 @@ const HSNMaster = () => {
                       <input
                         type="search"
                         className="form-control"
-                        placeholder="Search Religions"
+                        placeholder="Search"
                         aria-label="Search"
                         value={searchQuery}
                         onChange={handleSearchChange}

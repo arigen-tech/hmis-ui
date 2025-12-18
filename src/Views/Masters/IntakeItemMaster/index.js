@@ -382,7 +382,7 @@ const IntakeItemMaster = () => {
                       <input
                         type="search"
                         className="form-control"
-                        placeholder="Search Intake item name , Intake type"
+                        placeholder="Search"
                         aria-label="Search"
                         value={searchQuery}
                         onChange={handleSearchChange}
