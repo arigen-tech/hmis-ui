@@ -30,7 +30,6 @@ const HospitalMaster = () => {
     regCostApplicable: "",
     appCostApplicable: "",
     preConsultationAvailable: "",
-   // registrationCost:"",
   })
   const [searchQuery, setSearchQuery] = useState("")
   const [showForm, setShowForm] = useState(false)
@@ -38,10 +37,7 @@ const HospitalMaster = () => {
   const [editingHospital, setEditingHospital] = useState(null)
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [searchType, setSearchType] = useState("code")
-  const [pageInput, setPageInput] = useState("")
   const [loading, setLoading] = useState(true)
-  const itemsPerPage = 5
   const [filteredStates, setFilteredStates] = useState([])
   const [filteredDistricts, setFilteredDistricts] = useState([])
 
@@ -51,6 +47,7 @@ const HospitalMaster = () => {
   const PINCODE_MAX_LENGTH = 10
   const CONTACT_NUMBER_MAX_LENGTH = 10
   const EMAIL_MAX_LENGTH = 50
+  const itemsPerPage = 10
 
   useEffect(() => {
     fetchHospitals(0)
@@ -84,7 +81,6 @@ const HospitalMaster = () => {
     }
   }
 
-  // Fetch states by country ID using the API endpoint
   const fetchStatesByCountryId = async (countryId) => {
     try {
       setLoading(true)
@@ -104,7 +100,6 @@ const HospitalMaster = () => {
     }
   }
 
-  // Fetch districts by state ID using the API endpoint
   const fetchDistrictsByStateId = async (stateId) => {
     try {
       setLoading(true)
@@ -124,49 +119,30 @@ const HospitalMaster = () => {
     }
   }
 
-  const getFilteredHospitals = () => {
-    if (!searchQuery) return hospitals
-
-    return hospitals.filter((hospital) => {
-      if (searchType === "code") {
-        return hospital.hospitalCode.toLowerCase().includes(searchQuery.toLowerCase())
-      } else if (searchType === "description") {
-        return hospital.hospitalName.toLowerCase().includes(searchQuery.toLowerCase())
-      }
-      return true
-    })
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value)
+    setCurrentPage(1)
   }
 
-  const filteredHospitals = getFilteredHospitals()
+  const handleRefresh = () => {
+    setSearchQuery("")
+    setCurrentPage(1)
+    fetchHospitals()
+  }
+
+  const filteredHospitals = hospitals.filter(hospital =>
+    hospital.hospitalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    hospital.hospitalCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    hospital.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    hospital.stateName.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
   const filteredTotalPages = Math.ceil(filteredHospitals.length / itemsPerPage)
   const totalFilteredItems = filteredHospitals.length
 
-  const getCurrentItems = () => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    return filteredHospitals.slice(startIndex, endIndex)
-  }
-
-  const currentItems = getCurrentItems()
-
-  const handleSearchChange = (value) => {
-    setSearchQuery(value)
-    setCurrentPage(1)
-  }
-
-  const handleSearchTypeChange = (value) => {
-    setSearchType(value)
-    setCurrentPage(1)
-  }
-
-  const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10)
-    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-      setCurrentPage(pageNumber)
-    } else {
-      alert("Please enter a valid page number.")
-    }
-  }
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentItems = filteredHospitals.slice(indexOfFirstItem, indexOfLastItem)
 
   const handleCountryChange = (e) => {
     const selectedIndex = e.target.selectedIndex
@@ -183,7 +159,6 @@ const HospitalMaster = () => {
       districtId: "",
     }))
 
-    // Fetch states for the selected country
     if (!isNaN(countryId)) {
       fetchStatesByCountryId(countryId)
     }
@@ -202,7 +177,6 @@ const HospitalMaster = () => {
       districtId: "",
     }))
 
-    // Fetch districts for the selected state
     if (!isNaN(stateId)) {
       fetchDistrictsByStateId(stateId)
     }
@@ -283,14 +257,12 @@ const HospitalMaster = () => {
   }
 
   const handleEdit = (hospital) => {
-    // Convert backend "y"/"n" values to "Yes"/"No" for form display
     const regCostValue = hospital.regCostApplicable === "y" ? "Yes" : "No"
     const appCostValue = hospital.appCostApplicable === "y" ? "Yes" : "No"
     const preConsultationValue = hospital.preConsultationAvailable === "y" ? "Yes" : "No"
 
     setEditingHospital(hospital)
 
-    // Set form data with proper format for dropdowns
     setFormData({
       hospitalCode: hospital.hospitalCode,
       hospitalName: hospital.hospitalName,
@@ -311,7 +283,6 @@ const HospitalMaster = () => {
       preConsultationAvailable: preConsultationValue,
     })
 
-    // Fetch states and districts for the selected country and state
     if (hospital.countryId) {
       fetchStatesByCountryId(hospital.countryId)
     }
@@ -330,7 +301,6 @@ const HospitalMaster = () => {
     try {
       setLoading(true)
 
-      // Check for duplicate hospital before saving
       const isDuplicate = hospitals.some(
         (hospital) =>
           hospital.id !== (editingHospital ? editingHospital.id : null) &&
@@ -345,13 +315,11 @@ const HospitalMaster = () => {
         return
       }
 
-      // Convert Yes/No values to y/n for backend
       const regCostValue = formData.regCostApplicable === "Yes" ? "y" : "n"
       const appCostValue = formData.appCostApplicable === "Yes" ? "y" : "n"
       const preConsultationValue = formData.preConsultationAvailable === "Yes" ? "y" : "n"
 
       if (editingHospital) {
-        // Update existing hospital
         const response = await putRequest(`${MAS_HOSPITAL}/updateById/${editingHospital.id}`, {
           hospitalCode: formData.hospitalCode,
           hospitalName: formData.hospitalName,
@@ -365,7 +333,6 @@ const HospitalMaster = () => {
           contactNumber2: formData.contactNumber2,
           email: formData.email,
           regCostApplicable: regCostValue,
-          //registrationCost: formData.regCostApplicable === "Yes" ? Number(formData.registrationCost) || 0 : 0,
           appCostApplicable: appCostValue,
           preConsultationAvailable: preConsultationValue,
           status: editingHospital.status,
@@ -378,7 +345,6 @@ const HospitalMaster = () => {
           showPopup("Hospital updated successfully!", "success")
         }
       } else {
-        // Add new hospital
         const response = await postRequest(`${MAS_HOSPITAL}/create`, {
           hospitalCode: formData.hospitalCode,
           hospitalName: formData.hospitalName,
@@ -392,11 +358,9 @@ const HospitalMaster = () => {
           contactNumber2: formData.contactNumber2,
           email: formData.email,
           regCostApplicable: regCostValue,
-          //registrationCost: formData.regCostApplicable === "Yes" ? Number(formData.registrationCost) || 0 : 0,
           appCostApplicable: appCostValue,
           preConsultationAvailable: preConsultationValue,
           status: "y",
-
         })
 
         if (response && response.response) {
@@ -405,7 +369,6 @@ const HospitalMaster = () => {
         }
       }
 
-     
       setEditingHospital(null)
       setFormData({
         hospitalCode: "",
@@ -427,7 +390,7 @@ const HospitalMaster = () => {
         preConsultationAvailable: "",
       })
       setShowForm(false)
-      fetchHospitals() 
+      fetchHospitals()
     } catch (err) {
       console.error("Error saving hospital:", err)
       showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error")
@@ -478,96 +441,93 @@ const HospitalMaster = () => {
     setConfirmDialog({ isOpen: false, hospitalId: null, newStatus: null })
   }
 
+  const handlePageNavigation = () => {
+    const pageNumber = Number.parseInt(currentPage, 10)
+    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
+      setCurrentPage(pageNumber)
+    } else {
+      alert("Please enter a valid page number.")
+    }
+  }
+
   return (
     <div className="content-wrapper">
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            <div className="card-header">
-              <h4 className="card-title p-2">Hospital Master</h4>
-              <div className="d-flex justify-content-between align-items-spacearound mt-3">
-                {!showForm && (
-                  <div className="d-flex align-items-center">
-                    <div className="me-3">
-                      <label>
-                        <input
-                          type="radio"
-                          name="searchType"
-                          value="code"
-                          checked={searchType === "code"}
-                          onChange={() => handleSearchTypeChange("code")}
-                        />
-                        <span style={{ marginLeft: "5px" }}>Hospital Code</span>
-                      </label>
-                    </div>
-                    <div className="me-3">
-                      <label>
-                        <input
-                          type="radio"
-                          name="searchType"
-                          value="description"
-                          checked={searchType === "description"}
-                          onChange={() => handleSearchTypeChange("description")}
-                        />
-                        <span style={{ marginLeft: "5px" }}>Hospital Name</span>
-                      </label>
-                    </div>
-
-                    <div className="d-flex align-items-center me-3">
+            <div className="card-header d-flex justify-content-between align-items-center">
+              <h4 className="card-title">Hospital Master</h4>
+              <div className="d-flex justify-content-between align-items-center">
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
                       <input
-                        type="text"
+                        type="search"
                         className="form-control"
-                        placeholder="Search..."
+                        placeholder="Search"
+                        aria-label="Search"
                         value={searchQuery}
-                        onChange={(e) => handleSearchChange(e.target.value)}
+                        onChange={handleSearchChange}
                       />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
                     </div>
-                  </div>
+                  </form>
+                ) : (
+                  <></>
                 )}
-                {!showForm && (
-                  <div className="d-flex flex-wrap align-items-center gap-2">
-                    <button
-                      type="button"
-                      className="btn btn-success me-2"
-                      onClick={() => handleSearchChange(searchQuery)}
-                    >
-                      <i className="mdi mdi-magnify"></i> Search
+
+                <div className="d-flex align-items-center">
+                  {!showForm ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-success me-2"
+                        onClick={() => {
+                          setEditingHospital(null);
+                          setFormData({
+                            hospitalCode: "",
+                            hospitalName: "",
+                            address: "",
+                            country: "",
+                            countryId: "",
+                            state: "",
+                            stateId: "",
+                            district: "",
+                            districtId: "",
+                            city: "",
+                            pincode: "",
+                            contactNumber1: "",
+                            contactNumber2: "",
+                            email: "",
+                            regCostApplicable: "",
+                            appCostApplicable: "",
+                            preConsultationAvailable: "",
+                          });
+                          setIsFormValid(false);
+                          setShowForm(true);
+                        }}
+                      >
+                        <i className="mdi mdi-plus"></i> Add
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-success me-2 flex-shrink-0"
+                        onClick={handleRefresh}
+                      >
+                        <i className="mdi mdi-refresh"></i> Show All
+                      </button>
+                      <button type="button" className="btn btn-success d-flex align-items-center">
+                        <i className="mdi mdi-file-export d-sm-inlined-sm-inline ms-1"></i> Generate Report
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                      <i className="mdi mdi-arrow-left"></i> Back
                     </button>
-                    <button
-                      type="button"
-                      className="btn btn-success me-2"
-                      onClick={() => {
-                        setShowForm(true)
-                        setEditingHospital(null)
-                        setFormData({
-                          hospitalCode: "",
-                          hospitalName: "",
-                          address: "",
-                          country: "",
-                          countryId: "",
-                          state: "",
-                          stateId: "",
-                          district: "",
-                          districtId: "",
-                          city: "",
-                          pincode: "",
-                          contactNumber1: "",
-                          contactNumber2: "",
-                          email: "",
-                          regCostApplicable: "",
-                          appCostApplicable: "",
-                          preConsultationAvailable: "",
-                        })
-                        setIsFormValid(false)
-                      }}
-                    >
-                      <i className="mdi mdi-plus"></i> Add
-                    </button>
-                    <button type="button" className="btn btn-success d-flex align-items-center">
-                      <i className="mdi mdi-file-export d-sm-inlined-sm-inline ms-1"></i> Generate Report
-                    </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
             <div className="card-body">
@@ -634,15 +594,54 @@ const HospitalMaster = () => {
                       )}
                     </tbody>
                   </table>
+                  {filteredHospitals.length > 0 && (
+                    <nav className="d-flex justify-content-between align-items-center mt-3">
+                      <div>
+                        <span>
+                          Page {currentPage} of {filteredTotalPages} | Total Records: {filteredHospitals.length}
+                        </span>
+                      </div>
+                      <ul className="pagination mb-0">
+                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                          >
+                            &laquo; Previous
+                          </button>
+                        </li>
+                        {renderPagination()}
+                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                          <button
+                            className="page-link"
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            disabled={currentPage === filteredTotalPages}
+                          >
+                            Next &raquo;
+                          </button>
+                        </li>
+                      </ul>
+                      <div className="d-flex align-items-center">
+                        <input
+                          type="number"
+                          min="1"
+                          max={filteredTotalPages}
+                          value={currentPage}
+                          onChange={(e) => setCurrentPage(e.target.value)}
+                          placeholder="Go to page"
+                          className="form-control me-2"
+                          style={{ width: '100px' }}
+                        />
+                        <button className="btn btn-primary" onClick={handlePageNavigation}>
+                          Go
+                        </button>
+                      </div>
+                    </nav>
+                  )}
                 </div>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
-                  <div className="d-flex justify-content-end">
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
-                      <i className="mdi mdi-arrow-left"></i> Back
-                    </button>
-                  </div>
-
                   <div className="card-body">
                     <div className="row g-3 align-items-center">
                       <div className="col-md-6">
@@ -836,50 +835,23 @@ const HospitalMaster = () => {
                         />
                       </div>
                       {/* Registration Cost */}
-                  <div className="col-md-6">
-                    <label htmlFor="regCostApplicable" className="form-label">
-                      Registration Cost <span className="text-danger">*</span>
-                    </label>
-                    <select
-                      className="form-control"
-                      id="regCostApplicable"
-                      name="regCostApplicable"
-                      value={formData.regCostApplicable}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">Select</option>
-                      <option value="Yes">Yes</option>
-                      <option value="No">No</option>
-                    </select>
-                  </div>
-                  {/* Registration Cost Amount (visible only when Yes)
-                  {formData.regCostApplicable === "Yes" && (
-                    <div className="col-md-6">
-                      <label htmlFor="registrationCost" className="form-label">
-                        Registration Cost Amount <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        id="registrationCost"
-                        name="registrationCost"
-                        value={formData.registrationCost || ""}
-                        onChange={(e) => {
-                          const value = e.target.value
-                          if (value === "" || (/^\d*\.?\d*$/.test(value) && parseFloat(value) >= 0)) {
-                            setFormData((prev) => ({
-                              ...prev,
-                              registrationCost: value,
-                            }))
-                          }
-                        }}
-                        placeholder="Enter registration amount"
-                        min="0"
-                        required
-                      />
-                    </div>
-                  )} */}
+                      <div className="col-md-6">
+                        <label htmlFor="regCostApplicable" className="form-label">
+                          Registration Cost <span className="text-danger">*</span>
+                        </label>
+                        <select
+                          className="form-control"
+                          id="regCostApplicable"
+                          name="regCostApplicable"
+                          value={formData.regCostApplicable}
+                          onChange={handleInputChange}
+                          required
+                        >
+                          <option value="">Select</option>
+                          <option value="Yes">Yes</option>
+                          <option value="No">No</option>
+                        </select>
+                      </div>
 
                       <div className="col-md-6">
                         <label htmlFor="appCostApplicable" className="form-label">
@@ -927,50 +899,6 @@ const HospitalMaster = () => {
                   </div>
                 </form>
               )}
-              {!showForm && filteredHospitals.length > 0 && (
-                <nav className="d-flex justify-content-between align-items-center mt-3">
-                  <div>
-                    <span>
-                      Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredItems}
-                    </span>
-                  </div>
-                  <ul className="pagination mb-0">
-                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                      <button
-                        className="page-link"
-                        onClick={() => setCurrentPage(currentPage - 1)}
-                        disabled={currentPage === 1}
-                      >
-                        &laquo; Previous
-                      </button>
-                    </li>
-                    {renderPagination()}
-                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                      <button
-                        className="page-link"
-                        onClick={() => setCurrentPage(currentPage + 1)}
-                        disabled={currentPage === filteredTotalPages}
-                      >
-                        Next &raquo;
-                      </button>
-                    </li>
-                  </ul>
-                  <div className="d-flex align-items-center">
-                    <input
-                      type="number"
-                      min="1"
-                      max={filteredTotalPages}
-                      value={pageInput}
-                      onChange={(e) => setPageInput(e.target.value)}
-                      placeholder="Go to page"
-                      className="form-control me-2"
-                    />
-                    <button className="btn btn-primary" onClick={handlePageNavigation}>
-                      Go
-                    </button>
-                  </div>
-                </nav>
-              )}
             </div>
           </div>
         </div>
@@ -1012,4 +940,3 @@ const HospitalMaster = () => {
 }
 
 export default HospitalMaster
-
