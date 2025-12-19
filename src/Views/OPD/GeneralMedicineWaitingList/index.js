@@ -16,7 +16,6 @@ const GeneralMedicineWaitingList = () => {
   const [loading, setLoading] = useState(false);
   const [doctorData, setDoctorData] = useState([]);
   const [sessionData, setSessionData] = useState([]);
-  const [masICDData, setMasICDData] = useState([]);
   const [opdVitalsData, setOpdVitalsData] = useState([]);
   const [duplicateItems, setDuplicateItems] = useState([]);
   const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
@@ -28,7 +27,6 @@ const GeneralMedicineWaitingList = () => {
   const tableContainerRef = useRef(null);
   const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null);
   const drugNameDropdownClickedRef = useRef(false);
-  const [drugCodeOptions, setDrugCodeOptions] = useState([]);
   const [allFrequencies, setAllFrequencies] = useState([])
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [icdDropdown, setIcdDropdown] = useState([]);
@@ -43,6 +41,14 @@ const GeneralMedicineWaitingList = () => {
   const [doctorRemarksText, setDoctorRemarksText] = useState("")
   const [labFlag, setLabFlag] = useState("")
   const [radioFlag, setRadioFlag] = useState("")
+
+  const [drugDropdown, setDrugDropdown] = useState([]);
+  const [drugSearch, setDrugSearch] = useState([]);
+  const [drugPage, setDrugPage] = useState(0);
+  const [drugLastPage, setDrugLastPage] = useState(true);
+  const [activeDrugDropdown, setActiveDrugDropdown] = useState(null);
+  const drugDebounceRef = useRef([]);
+  const drugDropdownRef = useRef(null);
 
   const departmentName =
     localStorage.getItem("departmentName") ||
@@ -158,18 +164,107 @@ const GeneralMedicineWaitingList = () => {
     }
   }
 
-  const fatchDrugCodeOptions = async () => {
+  const fetchDrugOptions = async (searchText = "", page = 0) => {
     try {
-      setLoading(true);
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAllBySectionOnly/1`);
-      if (response && response.response) {
-        setDrugCodeOptions(response.response);
+      const response = await getRequest(
+        `${MAS_DRUG_MAS}/getAllBySectionOnlyDynamic?flag=1&search=${encodeURIComponent(searchText)}&page=${page}&size=20`
+      );
+
+      if (response.status === 200 && response.response?.content) {
+        return {
+          list: response.response.content,
+          last: response.response.last,
+        };
       }
+
+      return { list: [], last: true };
     } catch (err) {
       console.error("Error fetching drug options:", err);
-    } finally {
-      setLoading(false);
+      return { list: [], last: true };
     }
+  };
+
+
+  const handleDrugSearch = (value, index) => {
+    setDrugSearch((prev) => {
+      const updated = [...prev];
+      updated[index] = value;
+      return updated;
+    });
+
+    if (drugDebounceRef.current[index]) clearTimeout(drugDebounceRef.current[index]);
+
+    drugDebounceRef.current[index] = setTimeout(async () => {
+      if (!value.trim()) {
+        setDrugDropdown([]);
+        return;
+      }
+
+      const result = await fetchDrugOptions(value, 0);
+      setDrugDropdown(result.list);
+      setDrugLastPage(result.last);
+      setDrugPage(0);
+      setActiveDrugDropdown(index);
+    }, 700);
+  };
+
+
+  const loadFirstDrugPage = async (index) => {
+    const searchText = drugSearch[index] || "";
+    const result = await fetchDrugOptions(searchText, 0);
+
+    setDrugDropdown(result.list);
+    setDrugLastPage(result.last);
+    setDrugPage(0);
+    setActiveDrugDropdown(index);
+  };
+
+
+
+  const loadMoreDrugs = async () => {
+    if (drugLastPage || activeDrugDropdown === null) return;
+
+    const nextPage = drugPage + 1;
+    const result = await fetchDrugOptions(drugSearch[activeDrugDropdown] || "", nextPage);
+
+    setDrugDropdown((prev) => [...prev, ...result.list]);
+    setDrugLastPage(result.last);
+    setDrugPage(nextPage);
+  };
+
+
+
+  const updateDrug = (selectedDrug, index) => {
+    if (!selectedDrug) return;
+
+    const isDuplicate = treatmentItems.some(
+      (item, i) => item.drugId === selectedDrug.itemId && i !== index
+    );
+
+    if (isDuplicate) {
+      setDuplicateItems([selectedDrug]);
+      setShowDuplicatePopup(true);
+      return;
+    }
+
+    setTreatmentItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        drugName: selectedDrug.nomenclature,
+        dispUnit: selectedDrug.dispUnitName,
+        drugId: selectedDrug.itemId,
+        itemClassId: selectedDrug.itemClassId,
+        aDispQty: selectedDrug.aDispQty ?? 1,
+        total: calculateTotal({
+          ...updated[index],
+          aDispQty: selectedDrug.aDispQty ?? 1,
+        }),
+      };
+      return updated;
+    });
+
+    setActiveDrugDropdown(null);
   };
 
   const fetchAllFrequencies = async () => {
@@ -474,7 +569,7 @@ const GeneralMedicineWaitingList = () => {
     fetchMasICDData();
     fetchMasProcedureData();
     fetchOpdTemplateData();
-    fatchDrugCodeOptions();
+    fetchDrugOptions();
     fetchAllFrequencies();
     fetchWardCategoryData();
   }, []);
@@ -1230,13 +1325,22 @@ const GeneralMedicineWaitingList = () => {
   };
 
 
-  // Referral handlers - UPDATED
   const handleReferralChange = (field, value) => {
-    setReferralData(prev => ({
-      ...prev,
-      [field]: value
-    }))
-  }
+    if (field === "isReferred" && value === "No") {
+      setReferralData(prev => ({
+        ...prev,
+        isReferred: "No",
+        referralDate: "",
+      }));
+      setReferralNotes("");
+    } else {
+      setReferralData(prev => ({
+        ...prev,
+        [field]: value,
+      }));
+    }
+  };
+
 
   const handleDepartmentChange = (index, field, value) => {
     const newData = [...departmentData]
@@ -1502,6 +1606,18 @@ const GeneralMedicineWaitingList = () => {
 
     // Reset Doctor's Remarks
     setDoctorRemarksText("");
+    setGeneralTreatmentAdvice("");
+    setReferralNotes("");
+    setReferralData({
+      isReferred: "No",
+      referralDate: getToday(),
+    });
+    setFollowUps({
+      noOfFollowDays: "",
+      followUpFlag: false,
+      FolloUpDate: getToday(),
+    });
+
 
     // Reset Admission fields
     setAdmissionAdvised(false);
@@ -1531,13 +1647,8 @@ const GeneralMedicineWaitingList = () => {
     ]);
 
     setWorkingDiagnosis("");
+    // setTreat
 
-    // Reset followUps
-    setFollowUps({
-      noOfFollowDays: "",
-      followUpFlag: "n",
-      FolloUpDate: getToday(),
-    });
 
     // Reset investigations / treatments with default one row each
     setInvestigationItems([
@@ -1586,7 +1697,7 @@ const GeneralMedicineWaitingList = () => {
 
     setErrors({});
   };
-
+  
 
   const toggleSection = (section) => {
     setExpandedSections((prev) => ({
@@ -1826,9 +1937,15 @@ const GeneralMedicineWaitingList = () => {
     ]);
 
     // Reset followUps to default
+       setGeneralTreatmentAdvice("");
+    setReferralNotes("");
+    setReferralData({
+      isReferred: "No",
+      referralDate: getToday(),
+    });
     setFollowUps({
       noOfFollowDays: "",
-      followUpFlag: "n",
+      followUpFlag: false,
       FolloUpDate: getToday(),
     });
 
@@ -1886,36 +2003,40 @@ const GeneralMedicineWaitingList = () => {
 
 
 
-  const handleRelease = (patientId) => {
-    setWaitingList((prevList) => {
-      // Copy the list to avoid mutation
-      const updatedList = [...prevList];
+const handleRelease = (patientId) => {
+  setWaitingList((prevList) => {
+    // Copy the list to avoid mutation
+    const updatedList = [...prevList];
 
-      // Find index of clicked item
-      const index = updatedList.findIndex((item) => item.id === patientId);
-      if (index === -1) return prevList;
+    // Find index of clicked item
+    const index = updatedList.findIndex((item) => item.id === patientId);
+    if (index === -1) return prevList;
 
-      // Take out that item
-      const itemToMove = { ...updatedList[index], visitStatus: "released" };
+    // Take out that item and update status
+    const itemToMove = { ...updatedList[index], visitStatus: "released" };
 
-      // Remove from current position
-      updatedList.splice(index, 1);
+    // Remove from current position
+    updatedList.splice(index, 1);
 
-      // Add to LAST position
-      updatedList.push(itemToMove);
+    // Determine the target index (after 5th item → index 5)
+    const targetIndex = Math.min(5, updatedList.length); // in case list has <5 items
 
-      // ---- Keep pagination stable ----
-      const totalPagesNow = Math.ceil(updatedList.length / itemsPerPage);
-      const firstIndexOfPage = (currentPage - 1) * itemsPerPage;
+    // Insert item at target position
+    updatedList.splice(targetIndex, 0, itemToMove);
 
-      // If current page becomes empty → go to previous page
-      if (firstIndexOfPage >= updatedList.length && currentPage > 1) {
-        setCurrentPage(currentPage - 1);
-      }
+    // ---- Keep pagination stable ----
+    const totalPagesNow = Math.ceil(updatedList.length / itemsPerPage);
+    const firstIndexOfPage = (currentPage - 1) * itemsPerPage;
 
-      return updatedList;
-    });
-  };
+    // If current page becomes empty → go to previous page
+    if (firstIndexOfPage >= updatedList.length && currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+
+    return updatedList;
+  });
+};
+
 
 
   // CLOSE BUTTON
@@ -1953,9 +2074,28 @@ const GeneralMedicineWaitingList = () => {
   }
 
   const handleRemoveInvestigationItem = (index) => {
-    const newItems = investigationItems.filter((_, i) => i !== index)
-    setInvestigationItems(newItems)
-  }
+    const itemToRemove = investigationItems[index];
+    const onlyOneRow = investigationItems.length === 1;
+    const isEmptyRow =
+      !itemToRemove.name &&
+      (!itemToRemove.templateIds || itemToRemove.templateIds.length === 0) &&
+      !itemToRemove.date;
+
+    if (onlyOneRow && isEmptyRow) {
+      return;
+    }
+
+
+    let updatedItems = investigationItems.filter((_, i) => i !== index);
+
+    if (onlyOneRow) {
+      updatedItems = [{ id: null, templateIds: [], name: "", date: getToday() }];
+    }
+
+    setInvestigationItems(updatedItems);
+  };
+
+
 
   const handleInvestigationItemChange = (index, field, value) => {
     const newItems = [...investigationItems]
@@ -2002,9 +2142,37 @@ const GeneralMedicineWaitingList = () => {
   }
 
   const handleRemoveDiagnosisItem = (index) => {
-    const newItems = diagnosisItems.filter((_, i) => i !== index)
-    setDiagnosisItems(newItems)
-  }
+    const itemToRemove = diagnosisItems[index];
+    const onlyOneRow = diagnosisItems.length === 1;
+    const isEmptyRow =
+      !itemToRemove.icdDiagId &&
+      !itemToRemove.icdDiagnosis &&
+      !itemToRemove.communicableDisease &&
+      !itemToRemove.infectiousDisease;
+
+    if (onlyOneRow && isEmptyRow) {
+      return;
+    }
+
+
+    let newItems = diagnosisItems.filter((_, i) => i !== index);
+
+    if (onlyOneRow) {
+      newItems = [
+        {
+          id: null,
+          icdDiagId: "",
+          icdDiagnosis: "",
+          communicableDisease: false,
+          infectiousDisease: false,
+        },
+      ];
+    }
+
+    setDiagnosisItems(newItems);
+  };
+
+
 
   const handleDiagnosisChange = (index, field, value) => {
     const newItems = [...diagnosisItems];
@@ -2087,12 +2255,46 @@ const GeneralMedicineWaitingList = () => {
 
 
 
-
   const handleRemoveTreatmentItem = (index) => {
-    if (treatmentItems.length === 1) return
-    const newItems = treatmentItems.filter((_, i) => i !== index)
-    setTreatmentItems(newItems)
-  }
+    const itemToRemove = treatmentItems[index];
+    const isLastRow = index === treatmentItems.length - 1;
+    const onlyOneRow = treatmentItems.length === 1;
+    const isEmptyRow =
+      !itemToRemove.drugName &&
+      !itemToRemove.dispUnit &&
+      !itemToRemove.dosage &&
+      !itemToRemove.frequency &&
+      !itemToRemove.days &&
+      !itemToRemove.total &&
+      !itemToRemove.instruction &&
+      itemToRemove.stock === "0" &&
+      !itemToRemove.treatmentId;
+
+    if (onlyOneRow && isEmptyRow) {
+      return;
+    }
+
+
+    let newItems = treatmentItems.filter((_, i) => i !== index);
+
+    if (onlyOneRow) {
+      newItems = [
+        {
+          drugName: "",
+          dispUnit: "",
+          dosage: "",
+          frequency: "",
+          days: "",
+          total: "",
+          instruction: "",
+          stock: "0",
+          treatmentId: "",
+        },
+      ];
+    }
+
+    setTreatmentItems(newItems);
+  };
 
 
   const handleTreatmentChange = (index, field, value) => {
@@ -2216,10 +2418,39 @@ const GeneralMedicineWaitingList = () => {
   }
 
   const handleRemoveProcedureCareItem = (index) => {
-    if (procedureCareItems.length === 1) return
-    const newItems = procedureCareItems.filter((_, i) => i !== index)
-    setProcedureCareItems(newItems)
-  }
+    const itemToDelete = procedureCareItems[index];
+    const onlyOneRow = procedureCareItems.length === 1;
+    const isEmptyRow =
+      !itemToDelete.procedureId &&
+      !itemToDelete.procedureName &&
+      !itemToDelete.frequencyId &&
+      !itemToDelete.noOfDays &&
+      !itemToDelete.remarks;
+
+    if (onlyOneRow && isEmptyRow) {
+      return;
+    }
+
+
+
+    let newItems = procedureCareItems.filter((_, i) => i !== index);
+
+    if (onlyOneRow) {
+      newItems = [
+        {
+          id: null,
+          procedureId: null,
+          procedureName: "",
+          frequencyId: null,
+          noOfDays: "",
+          remarks: "",
+        },
+      ];
+    }
+
+    setProcedureCareItems(newItems);
+  };
+
 
   const handleProcedureCareChange = (index, field, value) => {
     const newItems = [...procedureCareItems]
@@ -2238,10 +2469,6 @@ const GeneralMedicineWaitingList = () => {
       },
     ])
   }
-
-  const getDrugDetails = (itemId) => {
-    return drugCodeOptions.find(d => d.itemId === itemId);
-  };
 
   const getFreqDetails = (feqId) => {
     return allFrequencies.find(d => d.frequencyId === feqId);
@@ -2332,11 +2559,65 @@ const GeneralMedicineWaitingList = () => {
   };
 
 
+  const handleAdmissionAdvisedChange = (e) => {
+    const checked = e.target.checked;
+    setAdmissionAdvised(checked);
+
+    if (!checked) {
+      // Reset all related fields
+      setAdmissionDate("");
+      setAdditionalAdvice("");
+      setWardCategory("");
+      setAdmissionCareLevelName("");
+      setWardName("");
+      setWardDepartments([]);
+      setAdmissionPriority("");
+      setOccupiedBeds("");
+      setVacantBeds("");
+    }
+  };
+
+
+  const handleFollowUpChange = (e) => {
+    const checked = e.target.checked;
+
+    setFollowUps({
+      followUpFlag: checked,
+      noOfFollowDays: checked ? followUps.noOfFollowDays : "",
+      followUpDate: checked ? followUps.followUpDate : "",
+    });
+  };
+
+
   const handleRemovePhysiotherapyItem = (index) => {
-    if (physiotherapyItems.length === 1) return
-    const newItems = physiotherapyItems.filter((_, i) => i !== index)
-    setPhysiotherapyItems(newItems)
-  }
+    const itemToRemove = physiotherapyItems[index];
+    const onlyOneRow = physiotherapyItems.length === 1;
+    const isEmptyRow =
+      !itemToRemove.name &&
+      !itemToRemove.frequency &&
+      !itemToRemove.days &&
+      !itemToRemove.remarks;
+
+    if (onlyOneRow && isEmptyRow) {
+      return;
+    }
+
+    let newItems = physiotherapyItems.filter((_, i) => i !== index);
+
+    if (onlyOneRow) {
+      newItems = [
+        {
+          name: "",
+          frequency: "",
+          days: "",
+          remarks: "",
+        },
+      ];
+    }
+
+    setPhysiotherapyItems(newItems);
+  };
+
 
   const handlePhysiotherapyChange = (index, field, value) => {
     const newItems = [...physiotherapyItems]
@@ -3016,10 +3297,18 @@ const GeneralMedicineWaitingList = () => {
                                   <button
                                     className="btn btn-sm btn-danger"
                                     onClick={() => handleRemoveDiagnosisItem(index)}
-                                    disabled={diagnosisItems.length === 1}
+                                    disabled={
+                                      diagnosisItems.length === 1 &&
+                                      !diagnosisItems[0].icdDiagId &&
+                                      !diagnosisItems[0].icdDiagnosis &&
+                                      !diagnosisItems[0].communicableDisease &&
+                                      !diagnosisItems[0].infectiousDisease
+                                    }
                                   >
                                     −
                                   </button>
+
+
                                 </td>
                               </tr>
                             ))}
@@ -3277,10 +3566,16 @@ const GeneralMedicineWaitingList = () => {
                                   <button
                                     className="btn btn-sm btn-danger"
                                     onClick={() => handleRemoveInvestigationItem(index)}
-                                    disabled={investigationItems.length === 1}
+                                    disabled={
+                                      investigationItems.length === 1 &&
+                                      !investigationItems[0].name &&
+                                      (!investigationItems[0].templateIds || investigationItems[0].templateIds.length === 0)
+                                    }
                                   >
                                     −
                                   </button>
+
+
                                 </td>
                               </tr>
                             ))}
@@ -3292,7 +3587,7 @@ const GeneralMedicineWaitingList = () => {
                 </div>
 
                 {/* Treatment Section */}
-                <div className="card mb-3">
+                <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
                     className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
@@ -3305,7 +3600,7 @@ const GeneralMedicineWaitingList = () => {
                   </div>
 
                   {expandedSections.treatment && (
-                    <div className="card-body">
+                    <div className="card-body" style={{ overflow: "visible" }}>
 
                       {/* Selected Templates Display */}
                       {selectedTreatmentTemplateIds.size > 0 && (
@@ -3403,7 +3698,7 @@ const GeneralMedicineWaitingList = () => {
                       </div>
 
                       {/* Treatment Table */}
-                      <div className="table-responsive" ref={tableContainerRef}>
+                      <div className="table-responsive" ref={tableContainerRef} style={{ overflow: "visible" }}>
                         <table className="table table-bordered">
                           <thead style={{ backgroundColor: "#b0c4de" }}>
                             <tr>
@@ -3424,115 +3719,60 @@ const GeneralMedicineWaitingList = () => {
                           <tbody>
                             {treatmentItems.map((row, index) => (
                               <tr key={index}>
-                                <td style={{ position: "relative" }}>
-                                  <input
-                                    id={`drug-name-${index}`}
-                                    type="text"
-                                    className="form-control form-control-sm"
-                                    value={row.drugName}
-                                    onChange={(e) => {
-                                      const value = e.target.value;
-                                      handleTreatmentChange(index, "drugName", value);
-
-                                      if (value.length > 0) {
-                                        setActiveDrugNameDropdown(index);
-                                      } else {
-                                        setActiveDrugNameDropdown(null);
-                                      }
-                                    }}
-                                    placeholder="Drug Name"
-                                    style={{ width: "100%" }}
-                                    autoComplete="off"
-                                    onFocus={() => setActiveDrugNameDropdown(index)}
-                                    onBlur={() => {
-                                      setTimeout(() => {
-                                        if (!drugNameDropdownClickedRef.current) {
-                                          setActiveDrugNameDropdown(null);
-                                        }
-                                        drugNameDropdownClickedRef.current = false;
-                                      }, 150);
-                                    }}
-                                  />
-
-                                  {activeDrugNameDropdown === index && (
-                                    <ul
-                                      className="list-group"
-                                      style={{
-                                        position: "absolute",
-                                        top: "100%",
-                                        left: 0,
-                                        width: "100%",
-                                        maxHeight: "130px",
-                                        overflowY: "auto",
-                                        backgroundColor: "white",
-                                        border: "1px solid #dee2e6",
-                                        borderRadius: "0.375rem",
-                                        zIndex: 9999,
-                                        boxShadow: "0 0.5rem 1rem rgba(0,0,0,0.15)",
+                                <td>
+                                  <div className="position-relative" style={{ width: "100%", zIndex: 20 }} ref={drugDropdownRef}>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      placeholder="Search Drug..."
+                                      value={treatmentItems[index].drugName || drugSearch[index] || ""}
+                                      onChange={(e) => handleDrugSearch(e.target.value, index)}
+                                      onClick={() => {
+                                        loadFirstDrugPage(index);
+                                        setActiveDrugDropdown(index);
                                       }}
-                                    >
-                                      {drugCodeOptions
-                                        .filter((opt) =>
-                                          opt.nomenclature.toLowerCase().includes(row.drugName.toLowerCase())
-                                        )
-                                        .map((opt) => (
-                                          <li
-                                            key={opt.itemId}
-                                            className="list-group-item list-group-item-action"
-                                            style={{ cursor: "pointer" }}
-                                            onMouseDown={(e) => {
-                                              e.preventDefault();
-                                              drugNameDropdownClickedRef.current = true;
-                                            }}
-                                            onClick={() => {
-                                              const isDuplicate = treatmentItems.some(
-                                                (item, i) => item.drugId === opt.itemId && i !== index
-                                              );
+                                      onBlur={() => {
+                                        setTimeout(() => {
+                                          setActiveDrugDropdown(null);
+                                        }, 200);
+                                      }}
+                                      autoComplete="off"
+                                    />
 
-                                              if (isDuplicate) {
-                                                setDuplicateItems([opt]);
-                                                setShowDuplicatePopup(true);
-                                                return;
-                                              }
-                                              const updatedRows = treatmentItems.map((r, i) => {
-                                                if (i === index) {
-                                                  const updatedItem = {
-                                                    ...r,
-                                                    drugName: opt.nomenclature,
-                                                    dispUnit: opt.dispUnitName,
-                                                    drugId: opt.itemId,
-                                                    itemClassId: opt.itemClassId,
-                                                    aDispQty: opt.aDispQty ?? 1,   // FIXED
-                                                  };
-
-                                                  updatedItem.total = calculateTotal(updatedItem);
-                                                  return updatedItem;
-                                                }
-                                                return r;
-                                              });
-
-                                              setTreatmentItems(updatedRows);
-                                              setActiveDrugNameDropdown(null);
-                                              drugNameDropdownClickedRef.current = false;
-                                            }}
-
-
-
-                                          >
-                                            <strong>{opt.nomenclature}</strong> — {opt.pvmsNo}
-                                          </li>
-                                        ))}
-
-                                      {drugCodeOptions.filter((opt) =>
-                                        opt.nomenclature.toLowerCase().includes(row.drugName.toLowerCase())
-                                      ).length === 0 &&
-                                        row.drugName !== "" && (
-                                          <li className="list-group-item text-muted">No matches found</li>
+                                    {activeDrugDropdown === index && (
+                                      <div
+                                        className="border rounded mt-1 bg-white position-absolute w-100"
+                                        style={{ maxHeight: "220px", zIndex: 9999, overflowY: "auto" }}
+                                        onScroll={(e) => {
+                                          if (e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight) {
+                                            loadMoreDrugs();
+                                          }
+                                        }}
+                                      >
+                                        {drugDropdown.length > 0 ? (
+                                          drugDropdown.map((drug) => (
+                                            <div
+                                              key={drug.itemId}
+                                              className="p-2 cursor-pointer"
+                                              onMouseDown={(e) => e.preventDefault()} // prevent blur
+                                              onClick={() => {
+                                                updateDrug(drug, index);
+                                                setActiveDrugDropdown(null);
+                                              }}
+                                            >
+                                              <strong>{drug.nomenclature}</strong> — {drug.pvmsNo}
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <div className="p-2 text-muted">No results found</div>
                                         )}
-                                    </ul>
-                                  )}
+                                        {!drugLastPage && (
+                                          <div className="text-center p-2 small text-primary">Loading...</div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </td>
-
                                 <td style={{ width: "90px" }}>
                                   <input
                                     type="text"
@@ -3608,6 +3848,7 @@ const GeneralMedicineWaitingList = () => {
                                     <option value="After Meal">After Meal</option>
                                     <option value="Before Meal">Before Meal</option>
                                     <option value="With Food">With Food</option>
+                                    <option value="both">both</option>
                                   </select>
                                 </td>
 
@@ -3625,10 +3866,21 @@ const GeneralMedicineWaitingList = () => {
                                   <button
                                     className="btn btn-sm btn-danger"
                                     onClick={() => handleRemoveTreatmentItem(index)}
-                                    disabled={treatmentItems.length === 1}
+                                    disabled={treatmentItems.length === 1 &&
+                                      !treatmentItems[0].drugName &&
+                                      !treatmentItems[0].dispUnit &&
+                                      !treatmentItems[0].dosage &&
+                                      !treatmentItems[0].frequency &&
+                                      !treatmentItems[0].days &&
+                                      !treatmentItems[0].total &&
+                                      !treatmentItems[0].instruction &&
+                                      treatmentItems[0].stock === "0" &&
+                                      !treatmentItems[0].treatmentId}
                                   >
                                     −
                                   </button>
+
+
                                 </td>
                               </tr>
 
@@ -3639,41 +3891,31 @@ const GeneralMedicineWaitingList = () => {
 
                       {/* Treatment Advice Subsection */}
                       <div className="card mt-3">
-                        <div
-                          className="card-header py-2   border-bottom-1 d-flex justify-content-between align-items-center"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => toggleSection("treatmentAdvice")}
-                        >
-                          <h6 className="mb-0 fw-bold ">Treatment Advice</h6>
-                        </div>
-                        <div className="card-body">
-                          <div className="row align-items-end">
-                            <div className="col-md-11">
-                              <textarea
-                                className="form-control"
-                                rows={3}
-                                value={generalTreatmentAdvice}
-                                placeholder="Treatment advice will be populated here"
-                                onChange={(e) => setGeneralTreatmentAdvice(e.target.value)}
-                              ></textarea>
+                        <h6 className="mb-0 fw-bold p-3">Treatment Advice</h6>
 
-                            </div>
-                            <div className="col-md-1 text-center">
-                              <button
-                                className="btn btn-sm btn-outline-success p-1 px-2"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openPopup("treatmentAdvice");
-                                }}
-                              >
-                                +
-                              </button>
-                            </div>
+                        <div className="card-body pt-0">
+                          <div className="d-flex align-items-end">
+                            <textarea
+                              className="form-control me-2"
+                              rows={3}
+                              value={generalTreatmentAdvice}
+                              placeholder="Treatment advice will be populated here"
+                              onChange={(e) => setGeneralTreatmentAdvice(e.target.value)}
+                            />
 
-
+                            <button
+                              className="btn btn-sm btn-outline-success p-1 px-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openPopup("treatmentAdvice");
+                              }}
+                            >
+                              +
+                            </button>
                           </div>
                         </div>
                       </div>
+
                     </div>
                   )}
                 </div>
@@ -3889,10 +4131,18 @@ const GeneralMedicineWaitingList = () => {
                                     <button
                                       className="btn btn-sm btn-danger"
                                       onClick={() => handleRemoveProcedureCareItem(index)}
-                                      disabled={procedureCareItems.length === 1}
+                                      disabled={
+                                        procedureCareItems.length === 1 &&
+                                        !procedureCareItems[0].procedureId &&
+                                        !procedureCareItems[0].procedureName &&
+                                        !procedureCareItems[0].frequencyId &&
+                                        procedureCareItems[0].noOfDays === "0" &&
+                                        !procedureCareItems[0].remarks
+                                      }
                                     >
                                       −
                                     </button>
+
                                   </td>
                                 </tr>
                               ))}
@@ -3981,10 +4231,17 @@ const GeneralMedicineWaitingList = () => {
                                     <button
                                       className="btn btn-sm btn-danger"
                                       onClick={() => handleRemovePhysiotherapyItem(index)}
-                                      disabled={physiotherapyItems.length === 1}
+                                      disabled={
+                                        physiotherapyItems.length === 1 &&
+                                        !physiotherapyItems[0].name &&
+                                        !physiotherapyItems[0].frequency &&
+                                        physiotherapyItems[0].days === "0" &&
+                                        !physiotherapyItems[0].remarks
+                                      }
                                     >
                                       −
                                     </button>
+
                                   </td>
                                 </tr>
                               ))}
@@ -4159,8 +4416,9 @@ const GeneralMedicineWaitingList = () => {
                                   type="checkbox"
                                   id="admissionAdvised"
                                   checked={admissionAdvised}
-                                  onChange={(e) => setAdmissionAdvised(e.target.checked)}
+                                  onChange={handleAdmissionAdvisedChange}
                                 />
+
                                 <label className="form-check-label fw-bold" htmlFor="admissionAdvised">
                                   Admission Advised
                                 </label>
@@ -4657,14 +4915,10 @@ const GeneralMedicineWaitingList = () => {
                           <input
                             type="checkbox"
                             className="form-check-input m-0"
-                            checked={followUps.followUpFlag === "y"}
-                            onChange={(e) =>
-                              setFollowUps({
-                                ...followUps,
-                                followUpFlag: e.target.checked ? "y" : "n",
-                              })
-                            }
+                            checked={followUps.followUpFlag}
+                            onChange={handleFollowUpChange}
                           />
+
                           <h6 className="fw-bold mb-0">Follow Up</h6>
                         </div>
 
@@ -4683,12 +4937,13 @@ const GeneralMedicineWaitingList = () => {
                                 setFollowUps({
                                   ...followUps,
                                   noOfFollowDays: days,
-                                  FolloUpDate: calculateFollowUpDate(days),
+                                  followUpDate: calculateFollowUpDate(days),
                                 });
                               }}
                               style={{ width: "120px" }}
-                              disabled={followUps.followUpFlag !== "y"}
+                              disabled={!followUps.followUpFlag}
                             />
+
                           </div>
 
                           {/* Follow Up Date (Read Only) */}
@@ -4698,9 +4953,10 @@ const GeneralMedicineWaitingList = () => {
                               type="date"
                               className="form-control"
                               style={{ width: "170px" }}
-                              value={followUps.FolloUpDate}
+                              value={followUps.followUpDate}
                               readOnly
                             />
+
                           </div>
 
                         </div>
