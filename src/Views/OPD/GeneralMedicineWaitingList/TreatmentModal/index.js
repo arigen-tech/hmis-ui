@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Popup from "../../../../Components/popup";
 import ReactDOM from "react-dom"
 import LoadingScreen from "../../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../../service/apiService"
 import { MAS_FREQUENCY, MAS_DRUG_MAS, OPD_TEMPLATE, ITEM_CLASS, DRUG_TYPE } from "../../../../config/apiConfig";
+import DuplicatePopup from "../DuplicatePopup";
 
 // Portal Component for dropdown
 const Portal = ({ children }) => {
@@ -52,6 +53,19 @@ const TreatmentModal = ({
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const [dataLoaded, setDataLoaded] = useState(false); // Track if data is fully loaded
+  const [duplicateItems, setDuplicateItems] = useState([]);
+  const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
+
+
+  const [drugDropdown, setDrugDropdown] = useState([]);
+  const [drugSearch, setDrugSearch] = useState([]);
+  const [drugPage, setDrugPage] = useState(0);
+  const [drugLastPage, setDrugLastPage] = useState(true);
+  const [activeDrugDropdown, setActiveDrugDropdown] = useState(null);
+
+  const drugDebounceRef = useRef([]);
+  const drugDropdownRef = useRef(null);
+
 
   const handleDrugInputFocus = (event, index) => {
     const rect = event.target.getBoundingClientRect();
@@ -86,11 +100,11 @@ const TreatmentModal = ({
         try {
           await Promise.all([
             fetchTemplates(),
-            fetchAllDrugs(),
+            fetchDrugOptions(),
             fetchAllFrequencies()
           ]);
           setDataLoaded(true);
-          
+
           // After data is loaded, load template if needed
           if (templateType === "edit" && selectedTemplate) {
             setSelectedTemplateId(selectedTemplate.templateId);
@@ -103,7 +117,7 @@ const TreatmentModal = ({
           setLoading(false);
         }
       };
-      
+
       fetchData();
     }
   }, [show, templateType]);
@@ -146,40 +160,130 @@ const TreatmentModal = ({
     }
   };
 
-  const fetchAllDrugs = async () => {
+  const fetchDrugOptions = async (searchText = "", page = 0) => {
     try {
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAllBySectionOnly/1`);
-      if (response && response.response) {
-        // Map API response - ensure consistent ID mapping
-        const mappedDrugs = response.response.map(drug => ({
-          id: drug.itemId,
-          itemId: drug.itemId,
-          drugId: drug.itemId,
-          name: drug.nomenclature,
-          code: drug.pvmsNo,
-          dispUnitName: drug.dispUnitName,
-          dispUnitId: drug.dispUnit,
-          itemClassId: drug.itemClassId,
-          adispQty: drug.adispQty,
-          nomenclature: drug.nomenclature,
-          pvmsNo: drug.pvmsNo,
-          ...drug
-        }));
-        setAllDrugs(mappedDrugs);
-        console.log("Drugs loaded successfully:", mappedDrugs.length, "drugs");
-        return true;
-      } else {
-        console.warn("No drugs found in response");
-        setAllDrugs([]);
-        return false;
+      const response = await getRequest(
+        `${MAS_DRUG_MAS}/getAllBySectionOnlyDynamic?flag=1&search=${encodeURIComponent(
+          searchText
+        )}&page=${page}&size=20`
+      );
+
+      if (response.status === 200 && response.response?.content) {
+        return {
+          list: response.response.content,
+          last: response.response.last,
+        };
       }
-    } catch (error) {
-      console.error("Error fetching drugs:", error);
-      showPopup("Failed to load drugs", "error");
-      setAllDrugs([]);
-      return false;
+
+      return { list: [], last: true };
+    } catch (err) {
+      console.error("Error fetching drug options:", err);
+      return { list: [], last: true };
     }
   };
+
+
+  const handleDrugSearch = (value, index) => {
+    setDrugSearch((prev) => {
+      const updated = [...prev];
+      updated[index] = value;
+      return updated;
+    });
+
+    if (drugDebounceRef.current[index]) {
+      clearTimeout(drugDebounceRef.current[index]);
+    }
+
+    drugDebounceRef.current[index] = setTimeout(async () => {
+      if (!value.trim()) {
+        setDrugDropdown([]);
+        return;
+      }
+
+      const result = await fetchDrugOptions(value, 0);
+      setDrugDropdown(result.list);
+      setDrugLastPage(result.last);
+      setDrugPage(0);
+      setActiveDrugDropdown(index);
+    }, 700);
+  };
+
+
+  const loadFirstDrugPage = async (index) => {
+    const searchText = drugSearch[index] || "";
+    const result = await fetchDrugOptions(searchText, 0);
+
+    setDrugDropdown(result.list);
+    setDrugLastPage(result.last);
+    setDrugPage(0);
+    setActiveDrugDropdown(index);
+  };
+
+  const loadMoreDrugs = async () => {
+    if (drugLastPage || activeDrugDropdown === null) return;
+
+    const nextPage = drugPage + 1;
+    const result = await fetchDrugOptions(
+      drugSearch[activeDrugDropdown] || "",
+      nextPage
+    );
+
+    setDrugDropdown((prev) => [...prev, ...result.list]);
+    setDrugLastPage(result.last);
+    setDrugPage(nextPage);
+  };
+
+
+  const updateDrug = (selectedDrug, index) => {
+    if (!selectedDrug) return;
+
+    const isDuplicate = treatmentItems.some(
+      (item, i) => item.drugId === selectedDrug.itemId && i !== index
+    );
+
+    if (isDuplicate) {
+      setDuplicateItems([selectedDrug]);
+      setShowDuplicatePopup(true);
+      return;
+    }
+
+    setTreatmentItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        drugName: selectedDrug.nomenclature,
+        dispUnit: selectedDrug.dispUnitName,
+        drugId: selectedDrug.itemId,
+        itemClassId: selectedDrug.itemClassId,
+        aDispQty: selectedDrug.aDispQty ?? 1,
+        total: calculateTotal({
+          ...updated[index],
+          aDispQty: selectedDrug.aDispQty ?? 1,
+        }),
+      };
+      return updated;
+    });
+
+    setActiveDrugDropdown(null);
+  };
+
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (
+        drugDropdownRef.current &&
+        !drugDropdownRef.current.contains(e.target)
+      ) {
+        setActiveDrugDropdown(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+
+
 
   const fetchAllFrequencies = async () => {
     try {
@@ -213,12 +317,12 @@ const TreatmentModal = ({
     if (template.treatments && template.treatments.length > 0) {
       const items = template.treatments.map(item => {
         // Find drug - use multiple possible properties for compatibility
-        const drug = allDrugs.find(d => 
-          d.id === item.itemId || 
+        const drug = allDrugs.find(d =>
+          d.id === item.itemId ||
           d.itemId === item.itemId ||
           d.drugId === item.itemId
         );
-        
+
         // Find frequency
         const frequency = allFrequencies.find(f => f.frequencyId === item.frequencyId);
 
@@ -256,15 +360,15 @@ const TreatmentModal = ({
           adispQty: drug ? drug.adispQty : null,
         };
       });
-      
+
       setTreatmentItems(items);
-      
+
       // Extract selected drug IDs
       const drugIds = template.treatments
         .map(item => item.itemId)
         .filter(id => id !== null);
       setSelectedDrugs(drugIds);
-      
+
       console.log("Template loaded successfully:", {
         templateName: template.opdTemplateName,
         itemsCount: items.length,
@@ -333,17 +437,57 @@ const TreatmentModal = ({
     ]);
   };
 
-  const handleRemoveTreatmentItem = (index) => {
-    if (treatmentItems.length === 1) return;
-    const newItems = treatmentItems.filter((_, i) => i !== index);
-    setTreatmentItems(newItems);
+const handleRemoveTreatmentItem = (index) => {
+  const itemToRemove = treatmentItems[index];
+  const onlyOneRow = treatmentItems.length === 1;
 
-    if (treatmentItems[index].drugId) {
-      setSelectedDrugs(prev =>
-        prev.filter(id => id !== treatmentItems[index].drugId)
-      );
-    }
-  };
+  const isEmptyRow =
+    !itemToRemove.drugName &&
+    !itemToRemove.drugId &&
+    !itemToRemove.dispUnit &&
+    !itemToRemove.dosage &&
+    !itemToRemove.days &&
+    !itemToRemove.total &&
+    !itemToRemove.instruction &&
+    !itemToRemove.stock &&
+    !itemToRemove.itemClassId &&
+    !itemToRemove.adispQty;
+
+  // Only one row & empty → do nothing
+  if (onlyOneRow && isEmptyRow) return;
+
+  // Remove from selected drugs if exists
+  if (itemToRemove.drugId) {
+    setSelectedDrugs((prev) =>
+      prev.filter((id) => id !== itemToRemove.drugId)
+    );
+  }
+
+  let newItems = treatmentItems.filter((_, i) => i !== index);
+
+  // Only one row existed and had data → reset to empty row
+  if (onlyOneRow) {
+    newItems = [
+      {
+        drugName: "",
+        drugId: null,
+        dispUnit: "",
+        dosage: "",
+        frequency: "OD",
+        frequencyId: null,
+        days: "",
+        total: "",
+        instruction: "",
+        stock: "",
+        itemClassId: null,
+        adispQty: null,
+      },
+    ];
+  }
+
+  setTreatmentItems(newItems);
+};
+
 
   // Calculate total based on itemClassId and adispQty
   const calculateTotal = (item) => {
@@ -654,7 +798,11 @@ const TreatmentModal = ({
             overflow: 'auto'
           }}>
             {loading && <LoadingScreen />}
-
+            <DuplicatePopup
+              show={showDuplicatePopup}
+              duplicates={duplicateItems}
+              onClose={() => setShowDuplicatePopup(false)}
+            />
             {/* Template Selection Dropdown - Only for edit mode without preselected template */}
             {templateType === 'edit' && !selectedTemplate && (
               <div className="row mb-3 align-items-center">
@@ -728,7 +876,7 @@ const TreatmentModal = ({
                   <tr>
                     <th style={{ minWidth: 370 }}>DRUGS NAME/DRUGS CODE</th>
                     <th style={{ minWidth: '74px', maxWidth: '74px' }}>DISP. UNIT</th>
-                    <th style={{ minWidth: '74px', maxWidth: '74px'  }}>DOSAGE</th>
+                    <th style={{ minWidth: '74px', maxWidth: '74px' }}>DOSAGE</th>
                     <th style={{ minWidth: '90px' }}>FREQUENCY</th>
                     <th style={{ minWidth: '12px', maxWidth: '12px' }}>DAYS</th>
                     <th style={{ minWidth: '80px' }}>TOTAL</th>
@@ -741,113 +889,78 @@ const TreatmentModal = ({
                   {treatmentItems.map((row, index) => (
                     <tr key={index}>
                       {/* Drug Name with Search Dropdown */}
-                      <td style={{ position: 'relative' }}>
-                        <div className="dropdown-search-container position-relative">
+                      <td>
+                        <div
+                          className="position-relative"
+                          style={{ width: "100%", zIndex: 20 }}
+                          ref={drugDropdownRef}
+                        >
                           <input
                             type="text"
                             className="form-control"
-                            value={row.drugName}
+                            placeholder="Search Drug..."
+                            value={
+                              treatmentItems[index].drugName ||
+                              drugSearch[index] ||
+                              ""
+                            }
+                            onChange={(e) =>
+                              handleDrugSearch(e.target.value, index)
+                            }
+                            onClick={() => {
+                              loadFirstDrugPage(index);
+                              setActiveDrugDropdown(index);
+                            }}
+                            onBlur={() => {
+                              setTimeout(() => setActiveDrugDropdown(null), 200);
+                            }}
                             autoComplete="off"
-                            onChange={(e) => {
-                              const newItems = [...treatmentItems];
-                              newItems[index] = {
-                                ...newItems[index],
-                                drugName: e.target.value,
-                                drugId: null,
-                                dispUnit: "",
-                                itemClassId: null,
-                                adispQty: null,
-                                total: "" // Reset total when drug is cleared
-                              };
-                              setTreatmentItems(newItems);
-                              if (e.target.value.trim() !== "") {
-                                setActiveRowIndex(index);
-                              }
-                            }}
-                            onFocus={(e) => handleDrugInputFocus(e, index)}
-                            placeholder={!dataLoaded ? "Loading drugs..." : "Enter drug name or code"}
-                            style={{ 
-                              borderRadius: "4px", 
-                              minWidth: "180px",
-                              backgroundColor: !dataLoaded ? '#f8f9fa' : 'white'
-                            }}
-                            disabled={!dataLoaded}
                           />
-                          
-                          {!dataLoaded && (
-                            <div className="position-absolute top-50 end-0 translate-middle-y me-2">
-                              <div className="spinner-border spinner-border-sm text-primary" role="status">
-                                <span className="visually-hidden">Loading...</span>
-                              </div>
-                            </div>
-                          )}
 
-                          {/* Search Dropdown using Portal */}
-                          {dropdownVisible && activeRowIndex === index && row.drugName.trim() !== "" && dataLoaded && (
-                            <Portal>
-                              <ul
-                                className="list-group position-fixed dropdown-list"
-                                style={{
-                                  top: `${dropdownPosition.y}px`,
-                                  left: `${dropdownPosition.x}px`,
-                                  width: `${dropdownPosition.width}px`,
-                                  zIndex: 99999,
-                                  backgroundColor: "#fff",
-                                  border: "1px solid #ccc",
-                                  borderRadius: "4px",
-                                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                                  maxHeight: "250px",
-                                  overflowY: "auto",
-                                }}
-                              >
-                                {filterDrugsBySearch(row.drugName).length > 0 ? (
-                                  filterDrugsBySearch(row.drugName).map((drug) => {
-                                    const isSelectedInOtherRow = selectedDrugs.some(
-                                      (id) => id === drug.id && treatmentItems[index]?.drugId !== drug.id
-                                    );
-                                    return (
-                                      <li
-                                        key={drug.id}
-                                        className="list-group-item list-group-item-action"
-                                        style={{
-                                          backgroundColor: isSelectedInOtherRow ? "#ffc107" : "#f8f9fa",
-                                          cursor: isSelectedInOtherRow ? "not-allowed" : "pointer",
-                                          padding: "8px 12px",
-                                        }}
-                                        onClick={() => {
-                                          if (!isSelectedInOtherRow) handleDrugSelect(index, drug);
-                                        }}
-                                      >
-                                        <div>
-                                          <strong>{drug.name}</strong>
-                                          <div
-                                            style={{
-                                              color: "#6c757d",
-                                              fontSize: "0.8rem",
-                                              marginTop: "2px",
-                                            }}
-                                          >
-                                            {drug.code}
-                                            {isSelectedInOtherRow && (
-                                              <span className="text-success ms-2">
-                                                <i className="fas fa-check-circle me-1"></i> Added
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </li>
-                                    );
-                                  })
-                                ) : (
-                                  <li className="list-group-item text-muted text-center">
-                                    {allDrugs.length === 0 ? "No drugs available" : "No drugs found"}
-                                  </li>
-                                )}
-                              </ul>
-                            </Portal>
+                          {activeDrugDropdown === index && (
+                            <div
+                              className="border rounded mt-1 bg-white position-absolute w-100"
+                              style={{
+                                maxHeight: "220px",
+                                zIndex: 9999,
+                                overflowY: "auto",
+                              }}
+                              onScroll={(e) => {
+                                if (
+                                  e.target.scrollHeight - e.target.scrollTop ===
+                                  e.target.clientHeight
+                                ) {
+                                  loadMoreDrugs();
+                                }
+                              }}
+                            >
+                              {drugDropdown.length > 0 ? (
+                                drugDropdown.map((drug) => (
+                                  <div
+                                    key={drug.itemId}
+                                    className="p-2 cursor-pointer"
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => updateDrug(drug, index)}
+                                  >
+                                    <strong>{drug.nomenclature}</strong> — {drug.pvmsNo}
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="p-2 text-muted">
+                                  No results found
+                                </div>
+                              )}
+
+                              {!drugLastPage && (
+                                <div className="text-center p-2 small text-primary">
+                                  Loading...
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
                       </td>
+
 
                       {/* Disp Unit */}
                       <td>
@@ -856,7 +969,7 @@ const TreatmentModal = ({
                           className="form-control"
                           value={row.dispUnit}
                           readOnly
-                          style={{ borderRadius: '4px', minWidth: '20px', maxWidth:'80px', backgroundColor: '#f8f9fa' }}
+                          style={{ borderRadius: '4px', minWidth: '20px', maxWidth: '80px', backgroundColor: '#f8f9fa' }}
                         />
                       </td>
 
@@ -962,21 +1075,37 @@ const TreatmentModal = ({
                       {/* Delete Button */}
                       <td className="text-center align-middle">
                         <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => handleRemoveTreatmentItem(index)}
-                          disabled={treatmentItems.length === 1 || !dataLoaded}
-                          style={{
-                            borderRadius: '4px',
-                            width: '35px',
-                            height: '35px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            margin: '0 auto'
-                          }}
-                        >
-                          −
-                        </button>
+  className="btn btn-danger btn-sm"
+  onClick={() => handleRemoveTreatmentItem(index)}
+  disabled={
+    !dataLoaded ||
+    (
+      treatmentItems.length === 1 &&
+      !treatmentItems[0].drugName &&
+      !treatmentItems[0].drugId &&
+      !treatmentItems[0].dispUnit &&
+      !treatmentItems[0].dosage &&
+      !treatmentItems[0].days &&
+      !treatmentItems[0].total &&
+      !treatmentItems[0].instruction &&
+      !treatmentItems[0].stock &&
+      !treatmentItems[0].itemClassId &&
+      !treatmentItems[0].adispQty
+    )
+  }
+  style={{
+    borderRadius: '4px',
+    width: '35px',
+    height: '35px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: '0 auto'
+  }}
+>
+  −
+</button>
+
                       </td>
                     </tr>
                   ))}

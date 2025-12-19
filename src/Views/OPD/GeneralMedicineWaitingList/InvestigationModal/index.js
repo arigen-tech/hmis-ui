@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Popup from "../../../../Components/popup";
 import LoadingScreen from "../../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../../service/apiService"
@@ -29,6 +29,16 @@ const InvestigationModal = ({
     const [investigationTypes, setInvestigationTypes] = useState([])
     const [selectedTemplateId, setSelectedTemplateId] = useState("")
     const [activeRowIndex, setActiveRowIndex] = useState(null)
+    const [investigationDropdown, setInvestigationDropdown] = useState([]);
+    const [investigationSearch, setInvestigationSearch] = useState([]);
+    const [investigationPage, setInvestigationPage] = useState(0);
+    const [investigationLastPage, setInvestigationLastPage] = useState(true);
+    const [openInvestigationDropdown, setOpenInvestigationDropdown] = useState(null);
+
+    const debounceInvestigationRef = useRef([]);
+    const dropdownInvestigationRef = useRef(null);
+    const [labFlag, setLabFlag] = useState("")
+    const [radioFlag, setRadioFlag] = useState("")
 
     const getToday = () => new Date().toISOString().split("T")[0]
 
@@ -37,7 +47,7 @@ const InvestigationModal = ({
         if (show) {
             resetForm()
             fetchTemplates()
-            fetchAllInvestigations()
+            fetchInvestigations()
 
             if (templateType === "edit" && selectedTemplate) {
                 setSelectedTemplateId(selectedTemplate.templateId)
@@ -53,12 +63,7 @@ const InvestigationModal = ({
         }
     }, [allInvestigations])
 
-    // Set default investigation type when types are loaded
-    useEffect(() => {
-        if (investigationTypes.length > 0 && !investigationType) {
-            setInvestigationType(investigationTypes[0].value)
-        }
-    }, [investigationTypes])
+
 
     // Load template data when template is selected from dropdown
     useEffect(() => {
@@ -113,24 +118,123 @@ const InvestigationModal = ({
         }
     };
 
-    const fetchAllInvestigations = async () => {
+    const fetchInvestigations = async (page, searchText = "") => {
         try {
-            setLoading(true)
-            const response = await getRequest(`${MAS_INVESTIGATION}/getAll/1`)
-            if (response && response.response) {
-                setAllInvestigations(response.response)
-            } else {
-                console.warn("No investigations found in response")
-                setAllInvestigations([])
+            let url = `${MAS_INVESTIGATION}/dynamic/all?flag=1&page=${page}&size=20`;
+
+            if (searchText) {
+                url += `&search=${encodeURIComponent(searchText)}`;
             }
+
+            if (investigationType) {
+                url += `&mainChargeCodeId=${investigationType}`;
+            }
+
+            const data = await getRequest(url);
+
+            if (data.status === 200 && data.response?.content) {
+                return {
+                    list: data.response.content,
+                    last: data.response.last,
+                };
+            }
+
+            return { list: [], last: true };
         } catch (error) {
-            console.error("Error fetching investigations:", error)
-            showPopup("Failed to load investigations", "error")
-            setAllInvestigations([])
-        } finally {
-            setLoading(false)
+            console.error("Error fetching investigations:", error);
+            return { list: [], last: true };
         }
-    }
+    };
+
+    const loadFirstInvestigationPage = async (index) => {
+        const searchText = investigationSearch[index] || "";
+        const result = await fetchInvestigations(0, searchText);
+
+        setInvestigationDropdown(result.list);
+        setInvestigationLastPage(result.last);
+        setInvestigationPage(0);
+    };
+
+
+    const handleInvestigationSearch = (value, index) => {
+        setInvestigationSearch((prev) => {
+            const updated = [...prev];
+            updated[index] = value;
+            return updated;
+        });
+
+        if (debounceInvestigationRef.current[index]) {
+            clearTimeout(debounceInvestigationRef.current[index]);
+        }
+
+        debounceInvestigationRef.current[index] = setTimeout(async () => {
+            if (!value.trim()) {
+                setInvestigationDropdown([]);
+                return;
+            }
+
+            const result = await fetchInvestigations(0, value);
+            setInvestigationDropdown(result.list);
+            setInvestigationLastPage(result.last);
+            setInvestigationPage(0);
+            setOpenInvestigationDropdown(index);
+        }, 700);
+    };
+
+
+    const loadMoreInvestigations = async () => {
+        if (investigationLastPage || openInvestigationDropdown === null) return;
+
+        const nextPage = investigationPage + 1;
+        const result = await fetchInvestigations(
+            nextPage,
+            investigationSearch[openInvestigationDropdown] || ""
+        );
+
+        setInvestigationDropdown((prev) => [...prev, ...result.list]);
+        setInvestigationLastPage(result.last);
+        setInvestigationPage(nextPage);
+    };
+
+
+    const updateInvestigation = (selected, index) => {
+        if (!selected) return;
+
+        setInvestigationItems((prev) => {
+            const updated = [...prev];
+            updated[index] = {
+                ...updated[index],
+                investigationId: selected.investigationId,
+                name: selected.investigationName,
+            };
+            return updated;
+        });
+
+        setInvestigationSearch((prev) => {
+            const updated = [...prev];
+            updated[index] = "";
+            return updated;
+        });
+
+        setOpenInvestigationDropdown(null);
+    };
+
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (
+                dropdownInvestigationRef.current &&
+                !dropdownInvestigationRef.current.contains(e.target)
+            ) {
+                setOpenInvestigationDropdown(null);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+
 
     const filterInvestigations = () => {
         let filtered = allInvestigations
@@ -145,19 +249,15 @@ const InvestigationModal = ({
         setFilteredInvestigations(filtered)
     }
 
-    const filterInvestigationsBySearch = (searchQuery) => {
-        if (!searchQuery.trim()) {
-            return filteredInvestigations.slice(0, 5)
+    const fetchInvestigationTypes = async () => {
+        const res = await getRequest("/DgMasInvestigation/uniqueInvestigation/types")
+        if (res?.response) {
+            setInvestigationTypes(res.response)
         }
-
-        const filtered = filteredInvestigations.filter(inv =>
-            inv.investigationName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            inv.mainChargeCodeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            inv.subChargeCodeName?.toLowerCase().includes(searchQuery.toLowerCase())
-        ).slice(0, 5)
-
-        return filtered
     }
+    useEffect(() => {
+        fetchInvestigationTypes();
+    }, []);
 
     const loadTemplateData = (template) => {
         setTemplateName(template.opdTemplateName || "")
@@ -208,16 +308,40 @@ const InvestigationModal = ({
     }
 
     const handleRemoveInvestigationItem = (index) => {
-        if (investigationItems.length === 1) return
-        const newItems = investigationItems.filter((_, i) => i !== index)
-        setInvestigationItems(newItems)
+        const itemToRemove = investigationItems[index];
+        const onlyOneRow = investigationItems.length === 1;
 
-        if (investigationItems[index].investigationId) {
-            setSelectedInvestigations(prev =>
-                prev.filter(id => id !== investigationItems[index].investigationId)
-            )
+        const isEmptyRow =
+            !itemToRemove.displayValue &&
+            !itemToRemove.investigationId &&
+            !itemToRemove.date;
+
+        // Only one row & empty → do nothing
+        if (onlyOneRow && isEmptyRow) return;
+
+        // Remove from selected investigations if exists
+        if (itemToRemove.investigationId) {
+            setSelectedInvestigations((prev) =>
+                prev.filter((id) => id !== itemToRemove.investigationId)
+            );
         }
-    }
+
+        let newItems = investigationItems.filter((_, i) => i !== index);
+
+        // Only one row existed and had data → reset to empty row
+        if (onlyOneRow) {
+            newItems = [
+                {
+                    displayValue: "",
+                    date: getToday(),
+                    investigationId: null,
+                },
+            ];
+        }
+
+        setInvestigationItems(newItems);
+    };
+
 
     const handleRowChange = (index, field, value) => {
         const newItems = [...investigationItems]
@@ -562,16 +686,34 @@ const InvestigationModal = ({
                                 <div className="d-flex gap-4">
                                     {investigationTypes.length > 0 ? (
                                         investigationTypes.map((type) => (
-                                            <div key={type.value} className="form-check">
+                                            <div key={type.id} className="form-check">
                                                 <input
                                                     className="form-check-input"
                                                     type="radio"
                                                     name="investigationType"
-                                                    id={type.value}
-                                                    checked={investigationType === type.value}
-                                                    onChange={() => setInvestigationType(type.value)}
+                                                    id={`inv-type-${type.id}`}
+                                                    value={type.id}
+                                                    checked={investigationType === type.id}
+                                                    onChange={() => {
+                                                        setInvestigationType(type.id);
+
+                                                        if (type.name === "Laboratory") {
+                                                            setLabFlag("y");
+                                                            setRadioFlag("n");
+                                                        } else if (type.name === "Radiology") {
+                                                            setRadioFlag("y");
+                                                            setLabFlag("n");
+                                                        } else {
+                                                            setLabFlag("n");
+                                                            setRadioFlag("n");
+                                                        }
+                                                    }}
                                                 />
-                                                <label className="form-check-label fw-bold small" htmlFor={type.value}>
+
+                                                <label
+                                                    className="form-check-label fw-bold"
+                                                    htmlFor={`inv-type-${type.id}`}
+                                                >
                                                     {type.name.toUpperCase()}
                                                 </label>
                                             </div>
@@ -600,95 +742,80 @@ const InvestigationModal = ({
                                         <tbody>
                                             {investigationItems.map((item, index) => (
                                                 <tr key={index}>
-                                                    <td style={{ padding: "6px", position: 'relative' }}>
-                                                        <div className="dropdown-search-container position-relative">
+                                                    <td>
+                                                        <div className="position-relative w-100" ref={dropdownInvestigationRef}>
+                                                            {/* INPUT */}
                                                             <input
                                                                 type="text"
-                                                                className="form-control form-control-sm"
-                                                                value={item.displayValue}
+                                                                className="form-control"
+                                                                placeholder="Search Investigation..."
+                                                                value={
+                                                                    investigationItems[index].name ||
+                                                                    investigationSearch[index] ||
+                                                                    ""
+                                                                }
+                                                                onChange={(e) =>
+                                                                    handleInvestigationSearch(e.target.value, index)
+                                                                }
+                                                                onClick={() => {
+                                                                    loadFirstInvestigationPage(index);
+                                                                    setOpenInvestigationDropdown(index);
+                                                                }}
+                                                                onBlur={() => {
+                                                                    setTimeout(() => setOpenInvestigationDropdown(null), 200);
+                                                                }}
                                                                 autoComplete="off"
-                                                                placeholder="Investigation Name"
-                                                                onChange={(e) => {
-                                                                    const newItems = [...investigationItems]
-                                                                    newItems[index] = {
-                                                                        ...newItems[index],
-                                                                        displayValue: e.target.value,
-                                                                        investigationId: null
-                                                                    }
-                                                                    setInvestigationItems(newItems)
-                                                                    if (e.target.value.trim() !== "") {
-                                                                        setActiveRowIndex(index)
-                                                                    } else {
-                                                                        setActiveRowIndex(null)
-                                                                    }
-                                                                }}
-                                                                onFocus={() => {
-                                                                    if (item.displayValue.trim() !== "") {
-                                                                        setActiveRowIndex(index)
-                                                                    }
-                                                                }}
-                                                                onBlur={() => setTimeout(() => setActiveRowIndex(null), 200)}
-                                                                style={{ borderRadius: '4px', border: '1px solid #ced4da' }}
                                                             />
 
-                                                            {/* Search Dropdown */}
-                                                            {activeRowIndex === index && item.displayValue.trim() !== "" && (
-                                                                <ul className="list-group position-absolute w-100 mt-1"
+                                                            {/* DROPDOWN */}
+                                                            {openInvestigationDropdown === index && (
+                                                                <div
+                                                                    className="border rounded mt-1 bg-white position-absolute w-100"
                                                                     style={{
-                                                                        zIndex: 1000,
-                                                                        maxHeight: "200px",
+                                                                        maxHeight: "220px",
+                                                                        zIndex: 9999,
                                                                         overflowY: "auto",
-                                                                        backgroundColor: "#fff",
-                                                                        border: "1px solid #ccc",
-                                                                    }}>
-                                                                    {filterInvestigationsBySearch(item.displayValue).length > 0 ? (
-                                                                        filterInvestigationsBySearch(item.displayValue).map((investigation) => {
-                                                                            // Only show as selected if it's in OTHER rows (not the current one)
-                                                                            const isSelectedInOtherRow = selectedInvestigations.some(
-                                                                                id => id === investigation.investigationId && investigationItems[index]?.investigationId !== investigation.investigationId
-                                                                            )
-                                                                            return (
-                                                                                <li
-                                                                                    key={investigation.investigationId}
-                                                                                    className="list-group-item list-group-item-action"
-                                                                                    style={{
-                                                                                        backgroundColor: isSelectedInOtherRow ? '#ffc107' : "#e3e8e6",
-                                                                                        cursor: isSelectedInOtherRow ? 'not-allowed' : 'pointer'
-                                                                                    }}
-                                                                                    onClick={() => {
-                                                                                        if (!isSelectedInOtherRow) {
-                                                                                            handleInvestigationSelect(index, investigation)
-                                                                                        }
-                                                                                    }}
-                                                                                >
-                                                                                    <div>
-                                                                                        <strong>{investigation.investigationName}</strong>
-                                                                                        <div className="d-flex justify-content-between">
-                                                                                            <span>
-                                                                                                {investigation.mainChargeCodeName} • {investigation.subChargeCodeName}
-                                                                                            </span>
-                                                                                            {isSelectedInOtherRow && (
-                                                                                                <span className="text-success">
-                                                                                                    <i className="fas fa-check-circle me-1"></i> Added
-                                                                                                </span>
-                                                                                            )}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </li>
-                                                                            )
-                                                                        })
+                                                                    }}
+                                                                    onScroll={(e) => {
+                                                                        if (
+                                                                            e.target.scrollHeight - e.target.scrollTop ===
+                                                                            e.target.clientHeight
+                                                                        ) {
+                                                                            loadMoreInvestigations();
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    {investigationDropdown.length > 0 ? (
+                                                                        investigationDropdown.map((inv) => (
+                                                                            <div
+                                                                                key={inv.investigationId}
+                                                                                className="p-2 cursor-pointer hover:bg-light"
+                                                                                onMouseDown={(e) => {
+                                                                                    e.preventDefault(); // prevent blur
+                                                                                    updateInvestigation(inv, index);
+                                                                                }}
+                                                                            >
+                                                                                <strong>{inv.investigationName}</strong>
+                                                                                <div className="text-muted small">
+                                                                                    {inv.mainChargeCodeName} •{" "}
+                                                                                    {inv.subChargeCodeName}
+                                                                                </div>
+                                                                            </div>
+                                                                        ))
                                                                     ) : (
-                                                                        <li className="list-group-item text-muted text-center">
-                                                                            {allInvestigations.length === 0 ?
-                                                                                'No investigations available' :
-                                                                                'No investigations found'
-                                                                            }
-                                                                        </li>
+                                                                        <div className="p-2 text-muted">No results found</div>
                                                                     )}
-                                                                </ul>
+
+                                                                    {!investigationLastPage && (
+                                                                        <div className="text-center p-2 text-primary small">
+                                                                            Loading...
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             )}
                                                         </div>
                                                     </td>
+
                                                     <td style={{ padding: "6px" }}>
                                                         <input
                                                             type="date"
@@ -720,7 +847,11 @@ const InvestigationModal = ({
                                                         <button
                                                             className="btn btn-danger btn-sm"
                                                             onClick={() => handleRemoveInvestigationItem(index)}
-                                                            disabled={investigationItems.length === 1}
+                                                            disabled={
+                                                                investigationItems.length === 1 &&
+                                                                !investigationItems[0].displayValue &&
+                                                                !investigationItems[0].investigationId
+                                                            }
                                                             style={{
                                                                 borderRadius: '4px',
                                                                 width: '30px',
@@ -734,6 +865,7 @@ const InvestigationModal = ({
                                                         >
                                                             −
                                                         </button>
+
                                                     </td>
                                                 </tr>
                                             ))}
