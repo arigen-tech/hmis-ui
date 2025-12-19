@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST ,MAS_STATE,DISTRICTAPI, MAS_DISTRICT} from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
+import { MAS_STATE, MAS_DISTRICT } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
-
 
 const DistrictMaster = () => {
     const [districts, setDistricts] = useState([]);
@@ -21,10 +20,8 @@ const DistrictMaster = () => {
     const [editingDistrict, setEditingDistrict] = useState(null);
     const [popupMessage, setPopupMessage] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageInput, setPageInput] = useState("");
     const [loading, setLoading] = useState(true);
-    const [searchType, setSearchType] = useState("all");
-    const itemsPerPage = 4;
+    const itemsPerPage = 10;
 
     const DISTRICT_NAME_MAX_LENGTH = 50;
 
@@ -66,9 +63,10 @@ const DistrictMaster = () => {
         setCurrentPage(1); 
     };
 
-    const handleSearchTypeChange = (e) => {
-        setSearchType(e.target.value);
+    const handleRefresh = () => {
+        setSearchQuery("");
         setCurrentPage(1);
+        fetchDistricts();
     };
 
     const filteredDistricts = districts.filter((district) => {
@@ -76,22 +74,25 @@ const DistrictMaster = () => {
         
         const query = searchQuery.toLowerCase();
         
-        if (searchType === "name") {
-            return district.districtName.toLowerCase().includes(query);
-        } else {
-            
-            return district.districtName.toLowerCase().includes(query);
-        }
+        // Get state name for the district
+        const stateObj = states.find(s => s.id === district.stateId);
+        const stateName = stateObj ? stateObj.stateName.toLowerCase() : "";
+        
+        // Search in district name and state name
+        return (
+            district.districtName.toLowerCase().includes(query) ||
+            stateName.includes(query)
+        );
     });
 
     const filteredTotalPages = Math.ceil(filteredDistricts.length / itemsPerPage);
-    const currentItems = filteredDistricts.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
+    const totalFilteredItems = filteredDistricts.length;
+
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = filteredDistricts.slice(indexOfFirstItem, indexOfLastItem);
 
     const handleEdit = (district) => {
-        
         const stateObj = states.find(s => s.id === district.stateId);
         const stateName = stateObj ? stateObj.stateName : "";
 
@@ -125,7 +126,6 @@ const DistrictMaster = () => {
             }
 
             if (editingDistrict) {
-                
                 const response = await putRequest(`${MAS_DISTRICT}/updateById/${editingDistrict.id}`, {
                     districtCode: editingDistrict.districtCode, 
                     districtName: formData.districtName,
@@ -138,7 +138,6 @@ const DistrictMaster = () => {
                     showPopup("District updated successfully!", "success");
                 }
             } else {
-                
                 const response = await postRequest(`${MAS_DISTRICT}/create`, {
                     districtCode: Date.now().toString().slice(-8), 
                     districtName: formData.districtName,
@@ -152,7 +151,6 @@ const DistrictMaster = () => {
                 }
             }
 
-           
             setEditingDistrict(null);
             setFormData({ districtName: "", state: "", stateId: "" });
             setShowForm(false);
@@ -207,9 +205,7 @@ const DistrictMaster = () => {
         setFormData((prevData) => {
             const updatedData = { ...prevData, [id]: value };
             
-            
             if (id === "state") {
-                
                 const selectedIndex = e.target.selectedIndex;
                 const selectedOption = e.target.options[selectedIndex];
                 const stateId = parseInt(selectedOption.getAttribute('data-id'), 10);
@@ -227,7 +223,7 @@ const DistrictMaster = () => {
     };
 
     const handlePageNavigation = () => {
-        const pageNumber = parseInt(pageInput, 10);
+        const pageNumber = Number.parseInt(currentPage, 10);
         if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
             setCurrentPage(pageNumber);
         } else {
@@ -277,57 +273,57 @@ const DistrictMaster = () => {
             <div className="row">
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
-                        <div className="card-header">
-                            <h4 className="card-title p-2">District Master</h4>
-                            <div className="d-flex justify-content-between align-items-center mt-3">
-                                {!showForm && (
-                                    <div className="d-flex align-items-center">
-                                        <div className="me-3">
-                                            <label>
-                                                <input type="radio" name="searchType" value="name" onChange={handleSearchTypeChange} checked={searchType === 'name'} />
-                                                <span style={{ marginLeft: '5px' }}>District Name</span>
-                                            </label>
+                        <div className="card-header d-flex justify-content-between align-items-center">
+                            <h4 className="card-title">District Master</h4>
+                            <div className="d-flex justify-content-between align-items-center">
+                                {!showForm ? (
+                                    <form className="d-inline-block searchform me-4" role="search">
+                                        <div className="input-group searchinput">
+                                            <input
+                                                type="search"
+                                                className="form-control"
+                                                placeholder="Search"
+                                                aria-label="Search"
+                                                value={searchQuery}
+                                                onChange={handleSearchChange}
+                                            />
+                                            <span className="input-group-text" id="search-icon">
+                                                <i className="fa fa-search"></i>
+                                            </span>
                                         </div>
-                                        <div className="me-3">
-                                            <label>
-                                                <input type="radio" name="searchType" value="all" onChange={handleSearchTypeChange} checked={searchType === 'all'} />
-                                                <span style={{ marginLeft: '5px' }}>All</span>
-                                            </label>
-                                        </div>
-                                    </div>
+                                    </form>
+                                ) : (
+                                    <></>
                                 )}
-                                <div className="d-flex align-items-center ms-auto">
+
+                                <div className="d-flex align-items-center">
                                     {!showForm ? (
                                         <>
-                                            <form className="d-inline-block searchform me-4" role="search">
-                                                <div className="input-group searchinput">
-                                                    <input
-                                                        type="search"
-                                                        className="form-control"
-                                                        placeholder="Search"
-                                                        aria-label="Search"
-                                                        value={searchQuery}
-                                                        onChange={handleSearchChange}
-                                                    />
-                                                    <span className="input-group-text" id="search-icon">
-                                                        <i className="fa fa-search"></i>
-                                                    </span>
-                                                </div>
-                                            </form>
-                                            <button type="button" className="btn btn-success me-2" onClick={() => {
-                                                setShowForm(true);
-                                                setEditingDistrict(null);
-                                                setFormData({
-                                                    districtName: "",
-                                                    state: "",
-                                                    stateId: ""
-                                                });
-                                                setIsFormValid(false);
-                                            }}>
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2"
+                                                onClick={() => {
+                                                    setEditingDistrict(null);
+                                                    setFormData({
+                                                        districtName: "",
+                                                        state: "",
+                                                        stateId: ""
+                                                    });
+                                                    setIsFormValid(false);
+                                                    setShowForm(true);
+                                                }}
+                                            >
                                                 <i className="mdi mdi-plus"></i> Add
                                             </button>
-                                            <button type="button" className="btn btn-success me-2 flex-shrink-0">
-                                                <i className="mdi mdi-file-export"></i> Generate Report
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2 flex-shrink-0"
+                                                onClick={handleRefresh}
+                                            >
+                                                <i className="mdi mdi-refresh"></i> Show All
+                                            </button>
+                                            <button type="button" className="btn btn-success d-flex align-items-center">
+                                                <i className="mdi mdi-file-export d-sm-inlined-sm-inline ms-1"></i> Generate Report
                                             </button>
                                         </>
                                     ) : (
@@ -355,7 +351,6 @@ const DistrictMaster = () => {
                                         <tbody>
                                             {currentItems.length > 0 ? (
                                                 currentItems.map((district) => {
-                                                    
                                                     const state = states.find(s => s.id === district.stateId);
                                                     const stateName = state ? state.stateName : "N/A";
                                                     
@@ -406,7 +401,7 @@ const DistrictMaster = () => {
                                         <nav className="d-flex justify-content-between align-items-center mt-3">
                                             <div>
                                                 <span>
-                                                    Page {currentPage} of {filteredTotalPages} | Total Records: {filteredDistricts.length}
+                                                    Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredItems}
                                                 </span>
                                             </div>
                                             <ul className="pagination mb-0">
@@ -435,10 +430,11 @@ const DistrictMaster = () => {
                                                     type="number"
                                                     min="1"
                                                     max={filteredTotalPages}
-                                                    value={pageInput}
-                                                    onChange={(e) => setPageInput(e.target.value)}
+                                                    value={currentPage}
+                                                    onChange={(e) => setCurrentPage(e.target.value)}
                                                     placeholder="Go to page"
                                                     className="form-control me-2"
+                                                    style={{ width: '100px' }}
                                                 />
                                                 <button
                                                     className="btn btn-primary"
@@ -452,47 +448,55 @@ const DistrictMaster = () => {
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
-                                    <div className="form-group col-md-6 mt-3">
-                                        <label>District Name <span className="text-danger">*</span></label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            id="districtName"
-                                            placeholder="District Name"
-                                            value={formData.districtName}
-                                            onChange={handleInputChange}
-                                            maxLength={DISTRICT_NAME_MAX_LENGTH}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="form-group col-md-6 mt-3">
-                                        <label>State <span className="text-danger">*</span></label>
-                                        <select
-                                            className="form-control"
-                                            id="state"
-                                            value={formData.state}
-                                            onChange={handleInputChange}
-                                            required
-                                        >
-                                            <option value="" disabled>Select State</option>
-                                            {states && states.length > 0 ? (
-                                                states.map(state => (
-                                                    <option key={state.id} value={state.stateName} data-id={state.id}>
-                                                        {state.stateName}
-                                                    </option>
-                                                ))
-                                            ) : (
-                                                <option value="" disabled>No states available</option>
-                                            )}
-                                        </select>
-                                    </div>
-                                    <div className="form-group col-md-12 d-flex justify-content-end mt-4">
-                                        <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                                            Save
-                                        </button>
-                                        <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
-                                            Cancel
-                                        </button>
+                                    <div className="card-body">
+                                        <div className="row g-3 align-items-center">
+                                            <div className="col-md-6">
+                                                <label htmlFor="districtName" className="form-label">
+                                                    District Name <span className="text-danger">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    id="districtName"
+                                                    placeholder="District Name"
+                                                    value={formData.districtName}
+                                                    onChange={handleInputChange}
+                                                    maxLength={DISTRICT_NAME_MAX_LENGTH}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="col-md-6">
+                                                <label htmlFor="state" className="form-label">
+                                                    State <span className="text-danger">*</span>
+                                                </label>
+                                                <select
+                                                    className="form-control"
+                                                    id="state"
+                                                    value={formData.state}
+                                                    onChange={handleInputChange}
+                                                    required
+                                                >
+                                                    <option value="" disabled>Select State</option>
+                                                    {states && states.length > 0 ? (
+                                                        states.map(state => (
+                                                            <option key={state.id} value={state.stateName} data-id={state.id}>
+                                                                {state.stateName}
+                                                            </option>
+                                                        ))
+                                                    ) : (
+                                                        <option value="" disabled>No states available</option>
+                                                    )}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="d-flex justify-content-end mt-4">
+                                            <button type="button" className="btn btn-secondary me-2" onClick={() => setShowForm(false)}>
+                                                Cancel
+                                            </button>
+                                            <button type="submit" className="btn btn-success" disabled={!isFormValid}>
+                                                {editingDistrict ? "Update" : "Save"}
+                                            </button>
+                                        </div>
                                     </div>
                                 </form>
                             )}
