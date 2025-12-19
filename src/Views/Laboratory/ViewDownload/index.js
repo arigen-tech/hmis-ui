@@ -4,6 +4,7 @@ import { getRequest, postRequest } from "../../../service/apiService";
 import { ALL_REPORTS, PRINT } from "../../../config/apiConfig";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import Popup from "../../../Components/popup";
+import { FETCH_RESULT_DATA_ERR_MSG, INVALID_ORDER_ID_ERR_MSG, LAB_REPORT_GENERATION_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG } from '../../../config/constants';
 
 const ViewDownload = () => {
   const location = useLocation();
@@ -19,7 +20,7 @@ const ViewDownload = () => {
       setResultData(location.state.resultData);
     } else {
       // If no data passed, show error and redirect back
-      showPopup("No result data found. Redirecting back...", "error");
+      showPopup(FETCH_RESULT_DATA_ERR_MSG, "error");
       setTimeout(() => {
         navigate(-1);
       }, 2000);
@@ -38,7 +39,7 @@ const ViewDownload = () => {
 
   const generateLabReport = async () => {
     if (!resultData || !resultData.orderHdId) {
-      showPopup("Order ID not found for generating report", "error");
+      showPopup(`${INVALID_ORDER_ID_ERR_MSG} for generating report`, "error");
       return;
     }
     
@@ -69,7 +70,7 @@ const ViewDownload = () => {
       
     } catch (error) {
       console.error("Error generating PDF", error);
-      showPopup("Error generating lab report. Please try again.", "error");
+      showPopup(LAB_REPORT_GENERATION_ERR_MSG, "error");
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -77,7 +78,7 @@ const ViewDownload = () => {
 
   const handlePrint = async () => {
     if (!resultData || !resultData.orderHdId) {
-      showPopup("Order ID not found for printing", "error");
+      showPopup(`${INVALID_ORDER_ID_ERR_MSG} for printing`, "error");
       return;
     }
     
@@ -90,13 +91,13 @@ const ViewDownload = () => {
       const response = await postRequest(`${PRINT}/lab-investigation?orderhd_id=${orderhd_id}`, {});
       
       if (response.status === 200) {
-        showPopup("Report sent to printer successfully!", "success");
+        console.log("Report sent to printer successfully!", "success");
       } else {
-        showPopup( "Internal Server Error ","error");
+        showPopup( LAB_REPORT_PRINT_ERR_MSG,"error");
       }
     } catch (error) {
       console.error("Error printing report ", "error");
-      showPopup("Error printing report" , "error");
+      showPopup(LAB_REPORT_PRINT_ERR_MSG , "error");
     } finally {
       setIsPrinting(false);
     }
@@ -146,31 +147,35 @@ const ViewDownload = () => {
                     <div className="col-md-4">
                       <p><strong>Patient Name:</strong> {resultData.patient_name}</p>
                     </div>
-                    <div className="col-md-4">
+                    {/* <div className="col-md-4">
                       <p><strong>Diag No:</strong> {resultData.diag_no}</p>
-                    </div>
+                    </div> */}
                     <div className="col-md-4">
                       <p><strong>Mobile No:</strong> {resultData.mobile_no}</p>
                     </div>
+
+                    <div className="col-md-4">
+                      <p><strong>Order No:</strong> {resultData.orderNo}</p>
+                    </div>
                   </div>
-                  <div className="row">
+                  {/* <div className="row">
                     <div className="col-md-4">
                       <p><strong>Department:</strong> {resultData.department}</p>
                     </div>
                     <div className="col-md-4">
                       <p><strong>Doctor:</strong> {resultData.doctor_name}</p>
                     </div>
-                    {/* <div className="col-md-4">
+                    <div className="col-md-4">
                       <p><strong>Result Date:</strong> {resultData.result_date}</p>
-                    </div> */}
-                  </div>
+                    </div>
+                  </div> */}
                 </div>
               )}
 
               {/* Buttons aligned to left top */}
               <div className="d-flex gap-4">
                 <button
-                  className="btn btn-primary btn-sm"
+                  className="btn btn-success btn-sm"
                   onClick={handleView}
                   disabled={isGeneratingPDF}
                 >
@@ -204,7 +209,7 @@ const ViewDownload = () => {
                 </button>
 
                 <button
-                  className="btn btn-outline-secondary btn-sm"
+                  className="btn btn-secondary btn-sm"
                   onClick={handleBackToValidation}
                 >
                   <i className="mdi mdi-format-list-bulleted me-2"></i> 

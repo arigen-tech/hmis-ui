@@ -59,7 +59,7 @@ const Itemclass = () => {
             }
         } catch (error) {
             console.error("Error fetching Item Section data:", error);
-        } 
+        }
         // finally {
         //     setLoading(false);
         // }
@@ -252,37 +252,52 @@ const Itemclass = () => {
             <div className="row">
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
-                        <div className="card-header">
+                        <div className="card-header d-flex justify-content-between align-items-center">
                             <h4 className="card-title p-2">Item Class Master</h4>
+                            <div className="d-flex justify-content-between align-items-center">
                             {loading && <LoadingScreen />}
-                            {!showForm && (
-                                <div className="d-flex justify-content-end align-items-center mt-3">
+                            {!showForm ? (
 
-                                    <div className="d-flex align-items-center">
-                                        <form className="d-inline-block searchform me-4" role="search">
-                                            <div className="input-group searchinput">
-                                                <input
-                                                    type="search"
-                                                    className="form-control"
-                                                    placeholder="Search"
-                                                    aria-label="Search"
-                                                    value={searchQuery}
-                                                    onChange={handleSearchChange}
-                                                />
-                                                <span className="input-group-text" id="search-icon">
-                                                    <i className="fa fa-search"></i>
-                                                </span>
-                                            </div>
-                                        </form>
-                                        <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
-                                            <i className="mdi mdi-plus"></i> Add
-                                        </button>
-                                        {/* <button type="button" className="btn btn-success me-2">
-                                            <i className="mdi mdi-plus"></i> Generate Report
-                                        </button> */}
+                                <form className="d-inline-block searchform me-4" role="search">
+                                    <div className="input-group searchinput">
+                                        <input
+                                            type="search"
+                                            className="form-control"
+                                            placeholder="Search"
+                                            aria-label="Search"
+                                            value={searchQuery}
+                                            onChange={handleSearchChange}
+                                        />
+                                        <span className="input-group-text" id="search-icon">
+                                            <i className="fa fa-search"></i>
+                                        </span>
                                     </div>
-                                </div>
+                                </form>
+                            ) : (
+                                <></>
                             )}
+                            <div className="d-flex align-items-center">
+                                {!showForm ? (
+                                    <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                                        <i className="mdi mdi-plus"></i> Add
+                                    </button>
+                                ) : (
+
+                                        <button type="button" className="btn btn-secondary" onClick={() => {
+                                            setShowForm(false);
+                                            setFormData({
+                                                ClassName: "",
+                                                ClassCode: "",
+                                                Section: "",
+                                            });
+                                            setEditingClass(null);
+                                        }}>
+                                            <i className="mdi mdi-arrow-left"></i> Back
+                                        </button>
+                                )}
+                            </div>
+                            </div>
+
                         </div>
                         <div className="card-body">
                             {!showForm ? (
@@ -375,19 +390,7 @@ const Itemclass = () => {
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
-                                    <div className="d-flex justify-content-end">
-                                        <button type="button" className="btn btn-secondary" onClick={() => {
-                                            setShowForm(false);
-                                            setFormData({
-                                                ClassName: "",
-                                                ClassCode: "",
-                                                Section: "",
-                                            });
-                                            setEditingClass(null);
-                                        }}>
-                                            <i className="mdi mdi-arrow-left"></i> Back
-                                        </button>
-                                    </div>
+
                                     <div className="row">
                                         <div className="form-group col-md-4 mt-3">
                                             <label>
