@@ -5,6 +5,7 @@ import { LAB, ALL_REPORTS } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"
+import {  FETCH_RESULT_ENTRY_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, RESULT_ENTRY_WARN_MSG, RESULT_SELECT_WARN_MSG, RESULT_VALIDATE_ERR_MSG, RESULT_VALIDATE_SUCC_MSG, RESULT_VALIDATE_WARN_MSG } from "../../../config/constants"
 
 const ResultValidation = () => {
   const [resultList, setResultList] = useState([])
@@ -42,11 +43,11 @@ const ResultValidation = () => {
         setResultList(formattedData);
       } else {
         console.error('Error fetching unvalidated results:', data.message);
-        showPopup('Failed to load unvalidated results', 'error')
+        showPopup(FETCH_RESULT_ENTRY_ERR_MSG, 'error')
       }
     } catch (error) {
       console.error('Error fetching unvalidated results:', error);
-      showPopup('Error fetching unvalidated results', 'error')
+      showPopup(FETCH_RESULT_ENTRY_ERR_MSG, 'error')
     } finally {
       setLoading(false);
     }
@@ -73,6 +74,7 @@ const ResultValidation = () => {
       patientId: item.patientId || 0,
       mobile_no: item.patientPhnNum || '',
       orderHdId: item.orderHdId || 0,
+      orderNo: item.orderNo||'',
 
       investigations: item.resultEntryInvestigationResponses ? item.resultEntryInvestigationResponses.map((inv, invIndex) => {
         const hasSubTests = inv.resultEntrySubInvestigationRes && inv.resultEntrySubInvestigationRes.length > 0;
@@ -448,7 +450,7 @@ const ResultValidation = () => {
     );
 
     if (!hasProcessedInvestigation) {
-      showPopup("Please validate or reject at least one investigation before submitting.", "warning");
+      showPopup(RESULT_VALIDATE_WARN_MSG, "warning");
       return;
     }
 
@@ -486,7 +488,7 @@ const ResultValidation = () => {
       });
 
       if (validationList.length === 0) {
-        showPopup("No investigations selected for validation.", "warning");
+        showPopup(RESULT_SELECT_WARN_MSG, "warning");
         setLoading(false);
         return;
       }
@@ -502,7 +504,7 @@ const ResultValidation = () => {
 
       if (response.status === 200) {
         setConfirmationPopup({
-          message: "Validation has been done successfully! Do you want to print the report?",
+          message: RESULT_VALIDATE_SUCC_MSG,
           onConfirm: onConfirmPrint,
           onCancel: () => {
             setConfirmationPopup(null);
@@ -513,11 +515,11 @@ const ResultValidation = () => {
           type: "success"
         });
       } else {
-        showPopup(response.message || "Failed to validate results", "error");
+        showPopup(RESULT_VALIDATE_ERR_MSG, "error");
       }
     } catch (error) {
       console.error("Error submitting validation:", error);
-      showPopup("Error submitting validation: " + (error.message || "Unknown error"), "error");
+      showPopup(RESULT_VALIDATE_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -580,7 +582,7 @@ const ResultValidation = () => {
     if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
       setCurrentPage(pageNumber)
     } else {
-      showPopup("Please enter a valid page number.", "warning")
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "warning")
     }
   }
 
