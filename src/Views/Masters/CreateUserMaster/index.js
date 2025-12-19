@@ -4,8 +4,6 @@ import { getRequest, putRequest, postRequest } from "../../../service/apiService
 import { MAS_USER_TYPE, MAS_ROLES, MAS_DEPARTMENT, API_HOST, MAS_USER_DEPARTMENT } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading/index";
 
-
-
 const Createusermaster = () => {
     const [formData, setFormData] = useState({
         userId: "",
@@ -15,15 +13,13 @@ const Createusermaster = () => {
         status: "y",
         rolesIdForUsers: ""
     })
-    const [pageInput, setPageInput] = useState("");
     const [allUserData, setAllUserData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1)
     const [popupMessage, setPopupMessage] = useState(null);
-    const itemsPerPage = 4
+    const itemsPerPage = 10
     const [showForm, setShowForm] = useState(false)
     const [editMode, setEditMode] = useState(false)
-    const [editId, setEditId] = useState(null)
     const [employeeTypeData, setEmployeeTypeData] = useState([]);
     const [departmentData, setDepartmentData] = useState([]);
     const [allRolesData, setAllRolesData] = useState([]);
@@ -42,12 +38,10 @@ const Createusermaster = () => {
         newStatus: null,
         action: null,
     })
-    const [users, setUsers] = useState([]);
     const [filteredUsers, setFilteredUsers] = useState([]);
     const [originalAssignedRoles, setOriginalAssignedRoles] = useState([]);
     const [originalAssignedDepartments, setOriginalAssignedDepartments] = useState([]);
-
-
+    const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
         fetchUsersData();
@@ -63,7 +57,9 @@ const Createusermaster = () => {
         }
     }, [formData]);
 
-
+    useEffect(() => {
+        setFilteredUsers(allUserData);
+    }, [allUserData]);
 
     const fetchAllRolesData = async () => {
         setLoading(true);
@@ -167,22 +163,35 @@ const Createusermaster = () => {
         }
     };
 
-    const handleEmployeeTypeChange = (empTypeId) => {
-        setFormData((prevState) => ({
-            ...prevState,
-            employeeTypeId: empTypeId,
-        }));
+    const handleSearchChange = (e) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1);
     };
 
-    const [searchFilters, setSearchFilters] = useState({
-        userName: ""
-    })
+    const handleRefresh = () => {
+        setSearchQuery("");
+        setCurrentPage(1);
+        setFilteredUsers(allUserData);
+    };
 
-    const handleSearchChange = (e) => {
-        const { name, value } = e.target
-        setSearchFilters((prev) => ({ ...prev, [name]: value }))
-        setCurrentPage(1)
-    }
+    const handleSearch = () => {
+        if (searchQuery.trim() === "") {
+            setFilteredUsers(allUserData);
+        } else {
+            const filtered = allUserData.filter((user) => {
+                const fullName = [user.firstName, user.middleName, user.lastName].filter(Boolean).join(' ').toLowerCase();
+                const username = user.username?.toLowerCase() || '';
+                const query = searchQuery.toLowerCase();
+
+                return (
+                    fullName.includes(query) ||
+                    username.includes(query) ||
+                    user.dateOfBirth?.includes(query)
+                );
+            });
+            setFilteredUsers(filtered);
+        }
+    };
 
     const handleInputChange = (e) => {
         const { id, value } = e.target
@@ -242,8 +251,6 @@ const Createusermaster = () => {
         setEditMode(false);
     };
 
-
-
     const showPopup = (message, type = "info") => {
         setPopupMessage({
             message,
@@ -253,25 +260,6 @@ const Createusermaster = () => {
             },
         });
     };
-
-    const handleRefresh = () => {
-        setSearchFilters({ userName: "" });
-        setFilteredUsers(allUserData);
-        setCurrentPage(1);
-    };
-
-    const handleSearch = () => {
-        const filtered = allUserData.filter((user) =>
-            user.username.toLowerCase().includes(searchFilters.userName.toLowerCase())
-        );
-        setFilteredUsers(filtered);
-    };
-
-    useEffect(() => {
-        setFilteredUsers(allUserData);
-    }, [allUserData]);
-
-
 
     const handleConfirm = async (confirmed) => {
         if (confirmed && confirmDialog.userId !== null && confirmDialog.action === "status") {
@@ -290,7 +278,7 @@ const Createusermaster = () => {
                 const updateUserStatus = (userId, newStatus) => (user) =>
                     user.userId === userId ? { ...user, status: newStatus } : user;
 
-                setUsers((prevData) => prevData.map(updateUserStatus(confirmDialog.userId, confirmDialog.newStatus)));
+                setAllUserData((prevData) => prevData.map(updateUserStatus(confirmDialog.userId, confirmDialog.newStatus)));
                 setFilteredUsers((prevData) => prevData.map(updateUserStatus(confirmDialog.userId, confirmDialog.newStatus)));
 
                 showPopup(
@@ -321,20 +309,18 @@ const Createusermaster = () => {
 
         setShowForm(true);
         setEditMode(true);
-        setEditId(user.userId);
 
         // Create and store deep copies for comparison later
         setOriginalAssignedRoles(JSON.parse(JSON.stringify(assignedRoles)));
         setOriginalAssignedDepartments(JSON.parse(JSON.stringify(assignedDepartments)));
     };
 
-
     const handlePageNavigation = () => {
-        const pageNumber = parseInt(pageInput, 10);
+        const pageNumber = Number.parseInt(currentPage, 10);
         if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
             setCurrentPage(pageNumber);
         } else {
-            showPopup("Please enter a valid page number.", "error"); // Use the popup for error message
+            showPopup("Please enter a valid page number.", "error");
         }
     };
 
@@ -424,155 +410,185 @@ const Createusermaster = () => {
     };
 
     const currentItems = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    const filteredTotalPages = Math.ceil(filteredUsers.length / itemsPerPage);
 
-    const filteredTotalPages = Math.ceil(filteredUsers.length / itemsPerPage)
     return (
         <div className="content-wrapper">
             <div className="row">
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
-                        <div className="card-header">
-                            <h4 className="card-title p-2">User Management</h4>
-                            {!showForm && (
-                                <div className="d-flex flex-wrap mt-3 mx-0">
-                                    <div className="col-md-7 d-flex">
-                                        <div className="col-md-6 d-flex">
-                                            <label htmlFor="userName" className="flex-shrink-0 mt-1">
-                                                Username
-                                            </label>
+                        <div className="card-header d-flex justify-content-between align-items-center">
+                            <h4 className="card-title">User Management</h4>
+                            <div className="d-flex justify-content-between align-items-center">
+                                {!showForm ? (
+                                    <form className="d-inline-block searchform me-4" role="search">
+                                        <div className="input-group searchinput">
                                             <input
-                                                type="text"
-                                                id="userName"
-                                                name="userName"
-                                                className="form-control ms-2 me-4"
-                                                placeholder="Enter Username"
-                                                value={searchFilters.userName}
+                                                type="search"
+                                                className="form-control"
+                                                placeholder="Search"
+                                                aria-label="Search"
+                                                value={searchQuery}
                                                 onChange={handleSearchChange}
                                             />
-                                        </div>
-
-                                        <div className="col-md-2 d-flex me-2">
-                                            <button type="button" className="btn btn-primary ms-2" onClick={handleSearch}>
-                                                <i className="mdi mdi-magnify"></i> Search
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="col-md-5 text-end">
-                                        <button type="button" className="btn btn-success me-1" onClick={handleRefresh}>
-                                            <i className="mdi mdi-refresh"></i> Show All
-                                        </button>
-
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        <div className="card-body">
-                            {!showForm ? (
-                                <div className="table-responsive packagelist">
-                                    <table className="table table-bordered table-hover align-middle">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th>Username</th>
-                                                <th>Name of User</th>
-                                                <th>Date of Birth</th>
-                                                <th>Edit</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentItems.map((user) => (
-                                                <tr key={user.userId}>
-                                                    <td>{user.username}</td>
-                                                    <td>{[user.firstName, user.middleName, user.lastName].filter(Boolean).join(' ')}</td>
-                                                    <td>{user.dateOfBirth}</td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-success me-2"
-                                                            disabled={user.status !== "y"}
-                                                            onClick={() => handleEditClick(user)}
-                                                        >
-                                                            <i className="fa fa-pencil"></i>
-                                                        </button>
-                                                    </td>
-                                                    <td>
-                                                        <div className="form-check form-switch">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={user.status === "y"}
-                                                                onChange={() => {
-                                                                    const newStatus = user.status === "y" ? "n" : "y"
-                                                                    setConfirmDialog({
-                                                                        isOpen: true,
-                                                                        userId: user.userId,
-                                                                        newStatus: newStatus,
-                                                                        action: "status",
-                                                                    })
-                                                                }}
-                                                                id={`switch-${user.userId}`}
-                                                            />
-                                                            <label className="form-check-label px-0" htmlFor={`switch-${user.userId}`}>
-                                                                {user.status === "y" ? "Active" : "Deactivated"}
-                                                            </label>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-
-                                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                                        <div>
-                                            <span>
-                                                Page {currentPage} of {filteredTotalPages} | Total Records: {filteredUsers.length}
+                                            <span className="input-group-text" id="search-icon">
+                                                <i className="fa fa-search"></i>
                                             </span>
                                         </div>
-                                        <ul className="pagination mb-0">
-                                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                                <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage - 1)}
-                                                    disabled={currentPage === 1}
-                                                >
-                                                    &laquo; Previous
-                                                </button>
-                                            </li>
-                                            {renderPagination()}
-                                            <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                                <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage + 1)}
-                                                    disabled={currentPage === filteredTotalPages}
-                                                >
-                                                    Next &raquo;
-                                                </button>
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex align-items-center">
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max={filteredTotalPages}
-                                                value={pageInput}
-                                                onChange={(e) => setPageInput(e.target.value)}
-                                                placeholder="Go to page"
-                                                className="form-control me-2"
-                                            />
-                                            <button
-                                                className="btn btn-primary"
-                                                onClick={handlePageNavigation}
-                                            >
-                                                Go
-                                            </button>
-                                        </div>
-                                    </nav>
+                                    </form>
+                                ) : (
+                                    <></>
+                                )}
 
+                                <div className="d-flex align-items-center">
+                                    {!showForm ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2"
+                                                onClick={handleSearch}
+                                            >
+                                                <i className="mdi mdi-magnify"></i> Search
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2 flex-shrink-0"
+                                                onClick={handleRefresh}
+                                            >
+                                                <i className="mdi mdi-refresh"></i> Show All
+                                            </button>
+                                            <button type="button" className="btn btn-success d-flex align-items-center">
+                                                <i className="mdi mdi-file-export d-sm-inlined-sm-inline ms-1"></i> Generate Report
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                                            <i className="mdi mdi-arrow-left"></i> Back
+                                        </button>
+                                    )}
                                 </div>
+                            </div>
+                        </div>
+                        <div className="card-body">
+                            {loading ? (
+                                <LoadingScreen />
+                            ) : !showForm ? (
+                                <>
+                                    <div className="table-responsive packagelist">
+                                        <table className="table table-bordered table-hover align-middle">
+                                            <thead className="table-light">
+                                                <tr>
+                                                    <th>Username</th>
+                                                    <th>Name of User</th>
+                                                    <th>Date of Birth</th>
+                                                    <th>Edit</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {currentItems.length > 0 ? (
+                                                    currentItems.map((user) => (
+                                                        <tr key={user.userId}>
+                                                            <td>{user.username}</td>
+                                                            <td>{[user.firstName, user.middleName, user.lastName].filter(Boolean).join(' ')}</td>
+                                                            <td>{user.dateOfBirth}</td>
+                                                            <td>
+                                                                <button
+                                                                    className="btn btn-sm btn-success me-2"
+                                                                    disabled={user.status !== "y"}
+                                                                    onClick={() => handleEditClick(user)}
+                                                                >
+                                                                    <i className="fa fa-pencil"></i>
+                                                                </button>
+                                                            </td>
+                                                            <td>
+                                                                <div className="form-check form-switch">
+                                                                    <input
+                                                                        className="form-check-input"
+                                                                        type="checkbox"
+                                                                        checked={user.status === "y"}
+                                                                        onChange={() => {
+                                                                            const newStatus = user.status === "y" ? "n" : "y"
+                                                                            setConfirmDialog({
+                                                                                isOpen: true,
+                                                                                userId: user.userId,
+                                                                                newStatus: newStatus,
+                                                                                action: "status",
+                                                                            })
+                                                                        }}
+                                                                        id={`switch-${user.userId}`}
+                                                                    />
+                                                                    <label className="form-check-label px-0" htmlFor={`switch-${user.userId}`}>
+                                                                        {user.status === "y" ? "Active" : "Deactivated"}
+                                                                    </label>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan="5" className="text-center">
+                                                            No users found
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {filteredUsers.length > 0 && (
+                                        <nav className="d-flex justify-content-between align-items-center mt-3">
+                                            <div>
+                                                <span>
+                                                    Page {currentPage} of {filteredTotalPages} | Total Records: {filteredUsers.length}
+                                                </span>
+                                            </div>
+                                            <ul className="pagination mb-0">
+                                                <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                                                    <button
+                                                        className="page-link"
+                                                        onClick={() => setCurrentPage(currentPage - 1)}
+                                                        disabled={currentPage === 1}
+                                                    >
+                                                        &laquo; Previous
+                                                    </button>
+                                                </li>
+                                                {renderPagination()}
+                                                <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                                                    <button
+                                                        className="page-link"
+                                                        onClick={() => setCurrentPage(currentPage + 1)}
+                                                        disabled={currentPage === filteredTotalPages}
+                                                    >
+                                                        Next &raquo;
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                            <div className="d-flex align-items-center">
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max={filteredTotalPages}
+                                                    value={currentPage}
+                                                    onChange={(e) => setCurrentPage(e.target.value)}
+                                                    placeholder="Go to page"
+                                                    className="form-control me-2"
+                                                    style={{ width: '100px' }}
+                                                />
+                                                <button
+                                                    className="btn btn-primary"
+                                                    onClick={handlePageNavigation}
+                                                >
+                                                    Go
+                                                </button>
+                                            </div>
+                                        </nav>
+                                    )}
+                                </>
                             ) : (
                                 <form className="forms row">
-                                    <div className="d-flex justify-content-between">
-                                        <h5>{editMode ? "Edit User" : "Add New User"}</h5>
+                                    <div className="card-header d-flex justify-content-between align-items-center mb-3">
+                                        <h5 className="card-title mb-0">{editMode ? "Edit User" : "Add New User"}</h5>
                                         <button
                                             type="button"
                                             className="btn btn-secondary"
@@ -585,169 +601,177 @@ const Createusermaster = () => {
                                             <i className="mdi mdi-arrow-left"></i> Back
                                         </button>
                                     </div>
-                                    <div className="form-group col-md-4">
-                                        <label>
-                                            User Name <span className="text-danger">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            className="form-control mt-1"
-                                            id="userName"
-                                            placeholder="Username"
-                                            value={formData.userName}
-                                            readOnly
-                                        />
-                                    </div>
 
-                                    <div className="form-group col-md-4">
-                                        <label>
-                                            Name <span className="text-danger">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            className="form-control mt-1"
-                                            id="Name"
-                                            placeholder="Name"
-                                            value={formData.Name}
-                                            readOnly
-                                        />
-                                    </div>
-
-                                    <div className="form-group col-md-4 mt-1">
-                                        <label>
-                                            Type of User <span className="text-danger">*</span>
-                                        </label>
-                                        <select
-                                            className="form-select"
-                                            style={{ paddingRight: "40px" }}
-                                            value={formData.userType}
-                                            disabled
-                                        >
-                                            <option value="">Select Employee Type</option>
-                                            {employeeTypeData.map((empType) => (
-                                                <option key={empType.userTypeId} value={empType.userTypeId}>
-                                                    {empType.userTypeName}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-
-                                    <div className="form-group col-12 mt-3">
-                                        <label><b>Role Assigned</b></label>
-                                        <div className="row">
-                                            {/* All Roles */}
-                                            <div className="col-md-5">
-                                                <label className="mb-2"><b>All Roles</b></label>
-                                                <select
-                                                    className="form-control w-100"
-                                                    size="8"
-                                                    multiple
-                                                    onChange={handleSelectAvailableRoles}
-                                                >
-                                                    {availableRoles.map(role => (
-                                                        <option key={role.id} value={role.id}>
-                                                            {role.roleDesc}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                    <div className="card-body">
+                                        <div className="row g-3 align-items-center">
+                                            <div className="col-md-6">
+                                                <label className="form-label">
+                                                    User Name <span className="text-danger">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    id="userName"
+                                                    placeholder="Username"
+                                                    value={formData.userName}
+                                                    readOnly
+                                                />
                                             </div>
 
-                                            {/* Arrows */}
-                                            <div className="col-md-2 d-flex flex-column align-items-center justify-content-center rollarrows">
-                                                <i className="icofont-bubble-right" onClick={handleAssignRoles}></i>
-                                                <i className="icofont-bubble-left" onClick={handleRemoveRoles}></i>
+                                            <div className="col-md-6">
+                                                <label className="form-label">
+                                                    Name <span className="text-danger">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    id="Name"
+                                                    placeholder="Name"
+                                                    value={formData.Name}
+                                                    readOnly
+                                                />
                                             </div>
 
-                                            {/* Assigned Roles */}
-                                            <div className="col-md-5">
-                                                <label className="mb-2"><b>Assigned Roles</b></label>
+                                            <div className="col-md-6">
+                                                <label className="form-label">
+                                                    Type of User <span className="text-danger">*</span>
+                                                </label>
                                                 <select
-                                                    className="form-control w-100"
-                                                    size="8"
-                                                    multiple
-                                                    onChange={handleSelectAssignedRoles}
+                                                    className="form-select"
+                                                    value={formData.userType}
+                                                    disabled
                                                 >
-                                                    {assignedRoles.map(role => (
-                                                        <option key={role.id} value={role.id}>
-                                                            {role.roleDesc}
+                                                    <option value="">Select Employee Type</option>
+                                                    {employeeTypeData.map((empType) => (
+                                                        <option key={empType.userTypeId} value={empType.userTypeId}>
+                                                            {empType.userTypeName}
                                                         </option>
                                                     ))}
                                                 </select>
                                             </div>
                                         </div>
-                                    </div>
 
+                                        <div className="mt-4">
+                                            <label><b>Role Assigned</b></label>
+                                            <div className="row mt-2">
+                                                {/* All Roles */}
+                                                <div className="col-md-5">
+                                                    <label className="mb-2"><b>All Roles</b></label>
+                                                    <select
+                                                        className="form-control w-100"
+                                                        size="8"
+                                                        multiple
+                                                        onChange={handleSelectAvailableRoles}
+                                                    >
+                                                        {availableRoles.map(role => (
+                                                            <option key={role.id} value={role.id}>
+                                                                {role.roleDesc}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
 
-                                    <div className="form-group col-12 mt-3">
-                                        <label><b>Department Assigned</b></label>
-                                        <div className="row">
-                                            {/* Available Departments */}
-                                            <div className="col-md-5">
-                                                <label className="mb-2"><b>All Departments</b></label>
-                                                <select
-                                                    className="form-control w-100"
-                                                    multiple
-                                                    size="8"
-                                                    onChange={(e) =>
-                                                        setSelectedAvailableDepartments(Array.from(e.target.selectedOptions, (opt) => parseInt(opt.value)))
-                                                    }
-                                                >
-                                                    {availableDepartments.map((dept) => (
-                                                        <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
+                                                {/* Arrows */}
+                                                <div className="col-md-2 d-flex flex-column align-items-center justify-content-center rollarrows">
+                                                    <i className="icofont-bubble-right" onClick={handleAssignRoles}></i>
+                                                    <i className="icofont-bubble-left" onClick={handleRemoveRoles}></i>
+                                                </div>
 
-
-                                            {/* Arrows */}
-                                            <div className="col-md-2 d-flex flex-column align-items-center justify-content-center rollarrows">
-                                                <i className="icofont-bubble-right" onClick={handleAssignDepartments}></i>
-                                                <i className="icofont-bubble-left" onClick={handleRemoveDepartments}></i>
-                                            </div>
-
-                                            {/* Assigned Departments */}
-                                            <div className="col-md-5">
-                                                <label className="mb-2"><b>Assigned Departments</b></label>
-                                                <select className="form-control w-100" multiple size="8"
-                                                    onChange={(e) =>
-                                                        setSelectedAssignedDepartments(Array.from(e.target.selectedOptions, (opt) => parseInt(opt.value)))
-                                                    }>
-                                                    {assignedDepartments.map((dept) => (
-                                                        <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
-                                                    ))}
-                                                </select>
+                                                {/* Assigned Roles */}
+                                                <div className="col-md-5">
+                                                    <label className="mb-2"><b>Assigned Roles</b></label>
+                                                    <select
+                                                        className="form-control w-100"
+                                                        size="8"
+                                                        multiple
+                                                        onChange={handleSelectAssignedRoles}
+                                                    >
+                                                        {assignedRoles.map(role => (
+                                                            <option key={role.id} value={role.id}>
+                                                                {role.roleDesc}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
+                                        <div className="mt-4">
+                                            <label><b>Department Assigned</b></label>
+                                            <div className="row mt-2">
+                                                {/* Available Departments */}
+                                                <div className="col-md-5">
+                                                    <label className="mb-2"><b>All Departments</b></label>
+                                                    <select
+                                                        className="form-control w-100"
+                                                        multiple
+                                                        size="8"
+                                                        onChange={(e) =>
+                                                            setSelectedAvailableDepartments(Array.from(e.target.selectedOptions, (opt) => parseInt(opt.value)))
+                                                        }
+                                                    >
+                                                        {availableDepartments.map((dept) => (
+                                                            <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
 
-                                    <div className="form-group col-md-12 d-flex justify-content-end mt-4">
-                                        <button onClick={handleSave} className="btn btn-primary me-2">
-                                            Update
-                                        </button>
+                                                {/* Arrows */}
+                                                <div className="col-md-2 d-flex flex-column align-items-center justify-content-center rollarrows">
+                                                    <i className="icofont-bubble-right" onClick={handleAssignDepartments}></i>
+                                                    <i className="icofont-bubble-left" onClick={handleRemoveDepartments}></i>
+                                                </div>
 
-                                        <button
-                                            type="button"
-                                            className="btn btn-danger"
-                                            onClick={() => {
-                                                setShowForm(false)
-                                                setEditMode(false)
-                                                setFormData({
-                                                    userId: "",
-                                                    Name: "",
-                                                    userName: "",
-                                                    userType: "",
-                                                    status: "y",
-                                                    rolesIdForUsers: ""
-                                                })
-                                            }}
-                                        >
-                                            Cancel
-                                        </button>
+                                                {/* Assigned Departments */}
+                                                <div className="col-md-5">
+                                                    <label className="mb-2"><b>Assigned Departments</b></label>
+                                                    <select className="form-control w-100" multiple size="8"
+                                                        onChange={(e) =>
+                                                            setSelectedAssignedDepartments(Array.from(e.target.selectedOptions, (opt) => parseInt(opt.value)))
+                                                        }>
+                                                        {assignedDepartments.map((dept) => (
+                                                            <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="d-flex justify-content-end mt-4">
+                                            <button onClick={handleSave} className="btn btn-success me-2">
+                                                Update
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-secondary"
+                                                onClick={() => {
+                                                    setShowForm(false)
+                                                    setEditMode(false)
+                                                    setFormData({
+                                                        userId: "",
+                                                        Name: "",
+                                                        userName: "",
+                                                        userType: "",
+                                                        status: "y",
+                                                        rolesIdForUsers: ""
+                                                    })
+                                                }}
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
                                     </div>
                                 </form>
                             )}
+
+                            {popupMessage && (
+                                <Popup
+                                    message={popupMessage.message}
+                                    type={popupMessage.type}
+                                    onClose={popupMessage.onClose}
+                                />
+                            )}
+
                             {confirmDialog.isOpen && (
                                 <div className="modal d-block" tabIndex="-1" role="dialog">
                                     <div className="modal-dialog" role="document">
@@ -767,7 +791,7 @@ const Createusermaster = () => {
                                                             Are you sure you want to{" "}
                                                             <strong>{confirmDialog.newStatus === "y" ? "activate" : "deactivate"}</strong>{" "}
                                                             <strong>
-                                                                {allUserData.find((user) => user.userId === confirmDialog.userId)?.userName}
+                                                                {allUserData.find((user) => user.userId === confirmDialog.userId)?.username}
                                                             </strong>
                                                             ?
                                                         </>
@@ -788,21 +812,7 @@ const Createusermaster = () => {
                                     </div>
                                 </div>
                             )}
-
-                            {popupMessage && (
-                                <Popup
-                                    message={popupMessage.message}
-                                    type={popupMessage.type}
-                                    onClose={popupMessage.onClose}
-                                />
-                            )}
-
-
-
                         </div>
-                        {loading && (
-                            <LoadingScreen />
-                        )}
                     </div>
                 </div>
             </div>
@@ -811,4 +821,3 @@ const Createusermaster = () => {
 }
 
 export default Createusermaster
-
