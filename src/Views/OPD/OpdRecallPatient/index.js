@@ -1337,11 +1337,21 @@ const OpdRRecallPatient = () => {
 
   // Referral handlers
   const handleReferralChange = (field, value) => {
-    setReferralData(prev => ({
-      ...prev,
-      [field]: value
-    }))
-  }
+    if (field === "isReferred" && value === "No") {
+      setReferralData(prev => ({
+        ...prev,
+        isReferred: "No",
+        referralDate: "",
+      }));
+      setReferralNotes("");
+    } else {
+      setReferralData(prev => ({
+        ...prev,
+        [field]: value,
+      }));
+    }
+  };
+
 
   const handleDepartmentChange = (index, field, value) => {
     const newData = [...departmentData]
@@ -1551,6 +1561,35 @@ const OpdRRecallPatient = () => {
     setShowDetailView(true);
   };
 
+  const handleAdmissionAdvisedChange = (e) => {
+    const checked = e.target.checked;
+    setAdmissionAdvised(checked);
+
+    if (!checked) {
+      setAdmissionDate("");
+      setAdditionalAdvice("");
+      setWardCategory("");
+      setAdmissionCareLevelName("");
+      setWardName("");
+      setWardDepartments([]);
+      setAdmissionPriority("");
+      setOccupiedBeds("");
+      setVacantBeds("");
+    }
+  };
+
+
+  const handleFollowUpChange = (e) => {
+    const checked = e.target.checked;
+
+    setFollowUps({
+      followUpFlag: checked,
+      noOfFollowDays: checked ? followUps.noOfFollowDays : "",
+      followUpDate: checked ? followUps.followUpDate : "",
+    });
+  };
+
+
 
   const handleBackToList = () => {
     setShowDetailView(false)
@@ -1737,12 +1776,31 @@ const OpdRRecallPatient = () => {
 
   const handleRemoveInvestigationItem = (index) => {
     const itemToRemove = investigationItems[index];
+    const onlyOneRow = investigationItems.length === 1;
+    const isEmptyRow =
+      !itemToRemove.name &&
+      (!itemToRemove.templateIds || itemToRemove.templateIds.length === 0) &&
+      !itemToRemove.date;
+
+    if (onlyOneRow && isEmptyRow) {
+      // Only one row left and empty -> do nothing
+      return;
+    }
+
     if (itemToRemove.id !== null) {
       setRemovedInvestigationIds(prev => [...prev, itemToRemove.id]);
     }
-    const updatedItems = investigationItems.filter((_, i) => i !== index);
+
+    let updatedItems = investigationItems.filter((_, i) => i !== index);
+
+    if (onlyOneRow) {
+      // Only one row existed and had data -> reset to empty row
+      updatedItems = [{ id: null, templateIds: [], name: "", date: getToday() }];
+    }
+
     setInvestigationItems(updatedItems);
   };
+
 
   const handleInvestigationItemChange = (index, field, value) => {
     const newItems = [...investigationItems]
@@ -1791,12 +1849,39 @@ const OpdRRecallPatient = () => {
 
   const handleRemoveDiagnosisItem = (index) => {
     const itemToRemove = diagnosisItems[index];
+    const onlyOneRow = diagnosisItems.length === 1;
+    const isEmptyRow =
+      !itemToRemove.icdDiagId &&
+      !itemToRemove.icdDiagnosis &&
+      !itemToRemove.communicableDisease &&
+      !itemToRemove.infectiousDisease;
+
+    if (onlyOneRow && isEmptyRow) {
+      return;
+    }
+
     if (itemToRemove?.id != null) {
       setRemoveIcdIds((prev) => [...prev, itemToRemove.id]);
     }
-    const newItems = diagnosisItems.filter((_, i) => i !== index);
+
+    let newItems = diagnosisItems.filter((_, i) => i !== index);
+
+    if (onlyOneRow) {
+      newItems = [
+        {
+          id: null,
+          icdDiagId: "",
+          icdDiagnosis: "",
+          communicableDisease: false,
+          infectiousDisease: false,
+        },
+      ];
+    }
+
     setDiagnosisItems(newItems);
   };
+
+
 
   const handleDiagnosisChange = (index, field, value) => {
     const newItems = [...diagnosisItems];
@@ -1823,14 +1908,50 @@ const OpdRRecallPatient = () => {
   };
 
   const handleRemoveTreatmentItem = (index) => {
-    if (treatmentItems.length === 1) return;
-    const removedItem = treatmentItems[index];
-    if (removedItem.treatmentId) {
-      setRemovedTreatmentIds((prev) => [...prev, removedItem.treatmentId]);
+    const itemToRemove = treatmentItems[index];
+    const isLastRow = index === treatmentItems.length - 1;
+    const onlyOneRow = treatmentItems.length === 1;
+    const isEmptyRow =
+      !itemToRemove.drugName &&
+      !itemToRemove.dispUnit &&
+      !itemToRemove.dosage &&
+      !itemToRemove.frequency &&
+      !itemToRemove.days &&
+      !itemToRemove.total &&
+      !itemToRemove.instruction &&
+      itemToRemove.stock === "0" &&
+      !itemToRemove.treatmentId;
+
+    if (onlyOneRow && isEmptyRow) {
+      return;
     }
-    const newItems = treatmentItems.filter((_, i) => i !== index);
+
+    if (itemToRemove.treatmentId) {
+      setRemovedTreatmentIds((prev) => [...prev, itemToRemove.treatmentId]);
+    }
+
+    let newItems = treatmentItems.filter((_, i) => i !== index);
+
+    if (onlyOneRow) {
+      newItems = [
+        {
+          drugName: "",
+          dispUnit: "",
+          dosage: "",
+          frequency: "",
+          days: "",
+          total: "",
+          instruction: "",
+          stock: "0",
+          treatmentId: "",
+        },
+      ];
+    }
+
     setTreatmentItems(newItems);
   };
+
+
 
   const getDrugDetails = (itemId) => {
     return drugCodeOptions.find(d => d.itemId === itemId);
@@ -2015,18 +2136,44 @@ const OpdRRecallPatient = () => {
 
 
   const handleRemoveProcedureCareItem = (index) => {
-    if (procedureCareItems.length === 1) return;
-
     const itemToDelete = procedureCareItems[index];
+    const onlyOneRow = procedureCareItems.length === 1;
 
-    // collect id if exists (backend record)
+    const isEmptyRow =
+      !itemToDelete.procedureId &&
+      !itemToDelete.procedureName &&
+      !itemToDelete.frequencyId &&
+      !itemToDelete.noOfDays &&
+      !itemToDelete.remarks;
+
+    // Don't delete if it's the only row and it's empty
+    if (onlyOneRow && isEmptyRow) return;
+
+    // Track deleted items if they have an ID
     if (itemToDelete.id !== null) {
       setDeletedProcedureCareIds((prev) => [...prev, itemToDelete.id]);
     }
 
-    const newItems = procedureCareItems.filter((_, i) => i !== index);
+    // Remove the selected item
+    let newItems = procedureCareItems.filter((_, i) => i !== index);
+
+    // If it was the only row, reset to a blank row
+    if (onlyOneRow) {
+      newItems = [
+        {
+          id: null,
+          procedureId: null,
+          procedureName: "",
+          frequencyId: null,
+          noOfDays: "",
+          remarks: "",
+        },
+      ];
+    }
+
     setProcedureCareItems(newItems);
   };
+
 
   const handleProcedureCareChange = (index, field, value) => {
     setProcedureCareItems((prev) => {
@@ -2053,10 +2200,34 @@ const OpdRRecallPatient = () => {
   }
 
   const handleRemovePhysiotherapyItem = (index) => {
-    if (physiotherapyItems.length === 1) return
-    const newItems = physiotherapyItems.filter((_, i) => i !== index)
-    setPhysiotherapyItems(newItems)
-  }
+    const itemToRemove = physiotherapyItems[index];
+    const onlyOneRow = physiotherapyItems.length === 1;
+    const isEmptyRow =
+      !itemToRemove.name &&
+      !itemToRemove.frequency &&
+      !itemToRemove.days &&
+      !itemToRemove.remarks;
+
+    if (onlyOneRow && isEmptyRow) {
+      return;
+    }
+
+    let newItems = physiotherapyItems.filter((_, i) => i !== index);
+
+    if (onlyOneRow) {
+      newItems = [
+        {
+          name: "",
+          frequency: "",
+          days: "",
+          remarks: "",
+        },
+      ];
+    }
+
+    setPhysiotherapyItems(newItems);
+  };
+
 
   const handlePhysiotherapyChange = (index, field, value) => {
     const newItems = [...physiotherapyItems]
@@ -2712,10 +2883,18 @@ const OpdRRecallPatient = () => {
                                   <button
                                     className="btn btn-sm btn-danger"
                                     onClick={() => handleRemoveDiagnosisItem(index)}
-                                    disabled={diagnosisItems.length === 1}
+                                    disabled={
+                                      diagnosisItems.length === 1 &&
+                                      !diagnosisItems[0].icdDiagId &&
+                                      !diagnosisItems[0].icdDiagnosis &&
+                                      !diagnosisItems[0].communicableDisease &&
+                                      !diagnosisItems[0].infectiousDisease
+                                    }
                                   >
                                     −
                                   </button>
+
+
                                 </td>
                               </tr>
                             ))}
@@ -2967,10 +3146,16 @@ const OpdRRecallPatient = () => {
                                   <button
                                     className="btn btn-sm btn-danger"
                                     onClick={() => handleRemoveInvestigationItem(index)}
-                                    disabled={investigationItems.length === 1}
+                                    disabled={
+                                      investigationItems.length === 1 &&
+                                      !investigationItems[0].name &&
+                                      (!investigationItems[0].templateIds || investigationItems[0].templateIds.length === 0)
+                                    }
                                   >
                                     −
                                   </button>
+
+
                                 </td>
                               </tr>
                             ))}
@@ -3287,10 +3472,21 @@ const OpdRRecallPatient = () => {
                                   <button
                                     className="btn btn-sm btn-danger"
                                     onClick={() => handleRemoveTreatmentItem(index)}
-                                    disabled={treatmentItems.length === 1}
+                                    disabled={treatmentItems.length === 1 &&
+                                      !treatmentItems[0].drugName &&
+                                      !treatmentItems[0].dispUnit &&
+                                      !treatmentItems[0].dosage &&
+                                      !treatmentItems[0].frequency &&
+                                      !treatmentItems[0].days &&
+                                      !treatmentItems[0].total &&
+                                      !treatmentItems[0].instruction &&
+                                      treatmentItems[0].stock === "0" &&
+                                      !treatmentItems[0].treatmentId}
                                   >
                                     −
                                   </button>
+
+
                                 </td>
                               </tr>
                             ))}
@@ -3300,41 +3496,31 @@ const OpdRRecallPatient = () => {
 
                       {/* Treatment Advice Subsection */}
                       <div className="card mt-3">
-                        <div
-                          className="card-header py-2   border-bottom-1 d-flex justify-content-between align-items-center"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => toggleSection("treatmentAdvice")}
-                        >
-                          <h6 className="mb-0 fw-bold ">Treatment Advice</h6>
-                        </div>
-                          <div className="card-body">
-                            <div className="row align-items-end">
-                              <div className="col-md-11">
-                                <textarea
-  className="form-control"
-  rows={3}
-  value={generalTreatmentAdvice}
-  placeholder="Treatment advice will be populated here"
-  onChange={(e) => setGeneralTreatmentAdvice(e.target.value)}
-></textarea>
+                        <h6 className="mb-0 fw-bold p-3">Treatment Advice</h6>
 
-                              </div>
-                              <div className="col-md-1 text-center">
-                                <button
-                                  className="btn btn-sm btn-outline-success p-1 px-2"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openPopup("treatmentAdvice");
-                                  }}
-                                >
-                                  +
-                                </button>
-                              </div>
+                        <div className="card-body pt-0">
+                          <div className="d-flex align-items-end">
+                            <textarea
+                              className="form-control me-2"
+                              rows={3}
+                              value={generalTreatmentAdvice}
+                              placeholder="Treatment advice will be populated here"
+                              onChange={(e) => setGeneralTreatmentAdvice(e.target.value)}
+                            />
 
-
-                            </div>
+                            <button
+                              className="btn btn-sm btn-outline-success p-1 px-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openPopup("treatmentAdvice");
+                              }}
+                            >
+                              +
+                            </button>
                           </div>
+                        </div>
                       </div>
+
                     </div>
                   )}
                 </div>
@@ -3525,7 +3711,7 @@ const OpdRRecallPatient = () => {
                                       onChange={(e) =>
                                         handleProcedureCareChange(index, "noOfDays", e.target.value)
                                       }
-                                      placeholder="0"
+                                      placeholder="num"
                                       min={0}
                                     />
                                   </td>
@@ -3552,10 +3738,19 @@ const OpdRRecallPatient = () => {
                                     <button
                                       className="btn btn-sm btn-danger"
                                       onClick={() => handleRemoveProcedureCareItem(index)}
-                                      disabled={procedureCareItems.length === 1}
+                                      disabled={
+                                        procedureCareItems.length === 1 &&
+                                        !procedureCareItems[0].procedureId &&
+                                        !procedureCareItems[0].procedureName &&
+                                        !procedureCareItems[0].frequencyId &&
+                                        (procedureCareItems[0].noOfDays === "" || procedureCareItems[0].noOfDays === 0) &&
+                                        !procedureCareItems[0].remarks
+                                      }
+
                                     >
                                       −
                                     </button>
+
                                   </td>
                                 </tr>
                               ))}
@@ -3644,10 +3839,17 @@ const OpdRRecallPatient = () => {
                                     <button
                                       className="btn btn-sm btn-danger"
                                       onClick={() => handleRemovePhysiotherapyItem(index)}
-                                      disabled={physiotherapyItems.length === 1}
+                                      disabled={
+                                        physiotherapyItems.length === 1 &&
+                                        !physiotherapyItems[0].name &&
+                                        !physiotherapyItems[0].frequency &&
+                                        physiotherapyItems[0].days === "0" &&
+                                        !physiotherapyItems[0].remarks
+                                      }
                                     >
                                       −
                                     </button>
+
                                   </td>
                                 </tr>
                               ))}
@@ -3820,8 +4022,9 @@ const OpdRRecallPatient = () => {
                                   type="checkbox"
                                   id="admissionAdvised"
                                   checked={admissionAdvised}
-                                  onChange={(e) => setAdmissionAdvised(e.target.checked)}
+                                  onChange={handleAdmissionAdvisedChange}
                                 />
+
                                 <label className="form-check-label fw-bold" htmlFor="admissionAdvised">
                                   Admission Advised
                                 </label>
@@ -3972,9 +4175,6 @@ const OpdRRecallPatient = () => {
                                 checked={referralData.isReferred === "No"}
                                 onChange={(e) => handleReferralChange("isReferred", e.target.value)}
                               />
-                              <label className="form-check-label" htmlFor="referralNo">
-                                No
-                              </label>
                             </div>
                             <div className="form-check">
                               <input
@@ -4316,16 +4516,9 @@ const OpdRRecallPatient = () => {
                             type="checkbox"
                             className="form-check-input m-0"
                             checked={followUps.followUpFlag}
-                            onChange={(e) =>
-                              setFollowUps({
-                                ...followUps,
-                                followUpFlag: e.target.checked,
-                                // reset when unchecked
-                                noOfFollowDays: e.target.checked ? followUps.noOfFollowDays : "",
-                                followUpDate: e.target.checked ? followUps.followUpDate : "",
-                              })
-                            }
+                            onChange={handleFollowUpChange}
                           />
+
 
                           <h6 className="fw-bold mb-0">Follow Up</h6>
                         </div>
@@ -4345,7 +4538,7 @@ const OpdRRecallPatient = () => {
                                 setFollowUps({
                                   ...followUps,
                                   noOfFollowDays: days,
-                                  FolloUpDate: calculateFollowUpDate(days),
+                                  followUpDate: calculateFollowUpDate(days),
                                 });
                               }}
                               style={{ width: "120px" }}
@@ -4361,9 +4554,10 @@ const OpdRRecallPatient = () => {
                               type="date"
                               className="form-control"
                               style={{ width: "170px" }}
-                              value={followUps.FolloUpDate}
+                              value={followUps.followUpDate}
                               readOnly
                             />
+
 
                           </div>
 
