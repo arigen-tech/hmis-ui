@@ -55,6 +55,8 @@ export const DG_MAS_COLLECTION = `${MASTERS}/DgMasCollection`;
 export const DG_MAS_INVESTIGATION_CATEGORY=`${MASTERS}/masInvestigationCategory`;
 export const DG_MAS_INVESTIGATION_METHODOLOGY=`${MASTERS}/masInvestigationMethodology`;
 export const MAS_DESIGNATION = `${MASTERS}/masDesignation`;
+export const MAS_SPECIALITY_CENTER = `${MASTERS}/masSpecialty`;
+export const MAS_EMPLOYEE_TYPE = `${MASTERS}/employeeType`;
 
 
 export const DG_UOM = `${MASTERS}/dgUom`;

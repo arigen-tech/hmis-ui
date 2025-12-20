@@ -1,5 +1,6 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle';
+import './styles/theme.css';
 import React, { Suspense } from 'react';
 import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { MenuProvider } from './context/MenuContext';
