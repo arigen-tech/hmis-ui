@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup"
 import { MAS_SUB_CHARGE_CODE, MAS_MAIN_CHARGE_CODE } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import { ADD_SUB_CHARGE_CODE_SUCC_MSG, DUPLICATE_SUB_CHARGE_CODE_ERR_MSG, FAIL_TO_SAVE_CHANGES, FETCH_MAIN_CHARGE_CODE_ERR_MSG, FETCH_SUB_CHARGE_CODES_ERR_MSG, MIS_MATCH_ERR_MSG, UPDATE_STATUS_MAIN_CHARGE_CODE_ERR_MSG, UPDATE_SUB_CHARGE_CODE_SUCC_MSG } from "../../../config/constants"
 
 const SubChargeCode = () => {
   const [subChargeCodes, setSubChargeCodes] = useState([])
@@ -69,15 +70,15 @@ const SubChargeCode = () => {
           setSubChargeCodes(mappedData)
         } else {
           console.error("Unexpected response structure:", responseData)
-          showPopup("Failed to parse response data", "error")
+          showPopup(MIS_MATCH_ERR_MSG, "error")
         }
       } else {
         console.error("Invalid response:", response)
-        showPopup("Failed to load sub-charge codes", "error")
+        showPopup(FETCH_SUB_CHARGE_CODES_ERR_MSG, "error")
       }
     } catch (err) {
       console.error("Error fetching sub-charge codes:", err)
-      showPopup(`Failed to load sub-charge codes: ${err.message}`, "error")
+      showPopup(FETCH_SUB_CHARGE_CODES_ERR_MSG, "error")
     } finally {
       setLoading(false)
     }
@@ -94,7 +95,7 @@ const SubChargeCode = () => {
       }
     } catch (err) {
       console.error("Error fetching main charge codes:", err)
-      showPopup("Failed to load main charge codes", "error")
+      showPopup(FETCH_MAIN_CHARGE_CODE_ERR_MSG, "error")
     } finally {
       setLoading(false)
     }
@@ -137,7 +138,7 @@ const SubChargeCode = () => {
       )
 
       if (isDuplicate) {
-        showPopup("A sub charge code with this code already exists!", "error")
+        showPopup(DUPLICATE_SUB_CHARGE_CODE_ERR_MSG, "error")
         setLoading(false)
         return
       }
@@ -151,7 +152,7 @@ const SubChargeCode = () => {
 
         if (response && response.status === 200) {
           fetchSubChargeCodes()
-          showPopup("Sub charge code updated successfully!", "success")
+          showPopup(UPDATE_SUB_CHARGE_CODE_SUCC_MSG, "success")
         }
       } else {
         const response = await postRequest(`${MAS_SUB_CHARGE_CODE}/create`, {
@@ -162,7 +163,7 @@ const SubChargeCode = () => {
 
         if (response && response.status === 200) {
           fetchSubChargeCodes()
-          showPopup("New sub charge code added successfully!", "success")
+          showPopup(ADD_SUB_CHARGE_CODE_SUCC_MSG, "success")
         }
       }
 
@@ -171,7 +172,7 @@ const SubChargeCode = () => {
       setShowForm(false)
     } catch (err) {
       console.error("Error saving sub-charge code:", err)
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error")
+      showPopup(`${FAIL_TO_SAVE_CHANGES} ${err.response?.data?.message || err.message}`, "error")
     } finally {
       setLoading(false)
     }
@@ -215,7 +216,7 @@ const SubChargeCode = () => {
         }
       } catch (err) {
         console.error("Error updating sub-charge code status:", err)
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error")
+        showPopup(UPDATE_STATUS_MAIN_CHARGE_CODE_ERR_MSG, "error")
       } finally {
         setLoading(false)
       }

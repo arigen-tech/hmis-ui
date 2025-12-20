@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import { DG_UOM } from "../../../config/apiConfig"
+import { ADD_UOM_SUCC_MSG, DUPLICATE_UOM_ERR_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_UOM_ERR_MSG, UPDATE_UOM_SUCC_MSG } from "../../../config/constants"
 
 const UOMMaster = () => {
   const [uomList, setUomList] = useState([])
@@ -35,7 +36,7 @@ const UOMMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching UOM data:", err)
-      showPopup("Failed to load UOM data", "error")
+      showPopup(FETCH_UOM_ERR_MSG, "error")
     } finally {
       setLoading(false)
     }
@@ -81,7 +82,7 @@ const UOMMaster = () => {
       )
 
       if (isDuplicate && !editingUOM) {
-        showPopup("UOM with the same code already exists!", "error")
+        showPopup(DUPLICATE_UOM_ERR_MSG, "error")
         setLoading(false)
         return
       }
@@ -96,7 +97,7 @@ const UOMMaster = () => {
 
         if (response && response.status === 200) {
           fetchUOMData()
-          showPopup("UOM updated successfully!", "success")
+          showPopup(UPDATE_UOM_SUCC_MSG, "success")
         }
       } else {
         // Add new UOM
@@ -108,7 +109,7 @@ const UOMMaster = () => {
 
         if (response && response.status === 200) {
           fetchUOMData()
-          showPopup("New UOM added successfully!", "success")
+          showPopup(ADD_UOM_SUCC_MSG, "success")
         }
       }
 
@@ -118,7 +119,7 @@ const UOMMaster = () => {
       setShowForm(false)
     } catch (err) {
       console.error("Error saving UOM:", err)
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error")
+      showPopup(`${FAIL_TO_SAVE_CHANGES} ${err.response?.data?.message || err.message}`, "error")
     } finally {
       setLoading(false)
     }
@@ -160,7 +161,7 @@ const UOMMaster = () => {
         }
       } catch (err) {
         console.error("Error updating UOM status:", err)
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error")
+        showPopup(FAIL_TO_UPDATE_STS, "error")
       } finally {
         setLoading(false)
       }

@@ -6,6 +6,7 @@ import Swal from "sweetalert2"
 import LoadingScreen from "../../../Components/Loading"
 import { MAS_SERVICE_CATEGORY } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
+import { ERROR, INVALID_INVESTIGATION_ERROR, INVALID_INVESTIGATION_ID, INVALID_PATIENT_ID, PAYMENT_ERROR, REGISTRATION, REGISTRATION_ERR_MSG, REGISTRATION_SUCCESS_MSG, SELECT_INVESTIGATIONS_ERROR_MSG, UNEXPECTED_ERROR } from "../../../config/constants"
 
 const LabBillingDetails = () => {
   const navigate = useNavigate()
@@ -332,7 +333,7 @@ const LabBillingDetails = () => {
 
     const hasCheckedItems = formData.rows.some((row, index) => checkedRows[index])
     if (!hasCheckedItems) {
-      Swal.fire("Error!", "Please select at least one investigation or package.", "error")
+      Swal.fire(ERROR, SELECT_INVESTIGATIONS_ERROR_MSG, "error")
       setIsLoading(false)
       return
     }
@@ -340,8 +341,8 @@ const LabBillingDetails = () => {
     const invalidRow = formData.rows.find((row, index) => checkedRows[index] && !row.itemId)
     if (invalidRow) {
       Swal.fire(
-        "Error!",
-        "One or more selected rows have no valid investigation/package. Please select from dropdown.",
+        ERROR,
+        INVALID_INVESTIGATION_ERROR,
         "error",
       )
       setIsLoading(false)
@@ -361,8 +362,8 @@ const LabBillingDetails = () => {
 
     if (!patientId) {
       Swal.fire({
-        title: "Error!",
-        text: "Patient ID not found. Please go back and try again.",
+        title: ERROR,
+        text:INVALID_PATIENT_ID,
         icon: "error",
         confirmButtonText: "Go Back",
       })
@@ -381,8 +382,8 @@ const LabBillingDetails = () => {
 
       if (itemsWithValidIds.length === 0) {
         Swal.fire({
-          title: "Error!",
-          text: "No valid items found for registration. Please check the investigation data.",
+          title: ERROR,
+          text: INVALID_INVESTIGATION_ID,
           icon: "error",
           confirmButtonText: "OK",
         })
@@ -448,15 +449,15 @@ const LabBillingDetails = () => {
         console.log("✓ NEW Registration successful. Billing Header ID:", billingHeaderId)
 
         await Swal.fire({
-          title: "Registered!",
-          text: `New billing header created Successfully. Billing ID: ${billingHeaderId}`,
+          title: REGISTRATION,
+          text: `${REGISTRATION_SUCCESS_MSG} ${billingHeaderId}`,
           icon: "success",
           confirmButtonText: "Continue to Payment",
         })
 
       } catch (registrationError) {
         console.error("❌ Registration error:", registrationError)
-        Swal.fire("Registration Error!", registrationError.message, "error")
+        Swal.fire(REGISTRATION_ERR_MSG, registrationError.message, "error")
         setIsLoading(false)
         return
       }
@@ -482,7 +483,7 @@ const LabBillingDetails = () => {
     console.log("Total selected items:", selectedItemsForPayment.length)
 
     if (selectedItemsForPayment.length === 0) {
-      Swal.fire("Error!", "Please select at least one investigation or package for payment.", "error")
+      Swal.fire(ERROR, PAYMENT_ERROR, "error")
       setIsLoading(false)
       return
     }
@@ -550,7 +551,7 @@ const LabBillingDetails = () => {
     })
   } catch (error) {
     console.error("❌ Error:", error)
-    Swal.fire("Error!", error.message || "Something went wrong", "error")
+    Swal.fire("Error!", error.message || UNEXPECTED_ERROR, "error")
   } finally {
     setIsLoading(false)
   }

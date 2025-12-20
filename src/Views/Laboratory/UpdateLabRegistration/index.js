@@ -18,6 +18,30 @@ import {
   MAS_PACKAGE_INVESTIGATION,
 } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
+import {IMAGE_TITLE,
+  IMAGE_TEXT,
+  SUCCESS,
+  IMAGE_UPLOAD_SUCC_MSG,
+  ERROR,
+  IMAGE_UPLOAD_FAIL_MSG,
+  UNEXPECTED_ERROR,
+  MISSING_FIELD,
+  MISSING_MANDOTORY_FIELD,
+  MISSING_MANDOTORY_FIELD_MSG,
+  INFO,
+  PATIENT_NOT_FOUND_WARN_MSG,
+  DUPLICATE_FOUND,
+  DUPLICATE_PATIENT,
+  LAB_BOOKING_SUCC_MSG,
+  LAB_REG_SUCC_MSG,
+  LAB_REG_FAIL_MSG,
+  INVALID_PAGE_NO_WARN_MSG,
+  INVALID_PAGE,
+  INV_PRICE_WARNING_MSG,
+  WARNING,
+  LAB_REGISTER_SUCC_MSG,
+
+} from "../../../config/constants"
 
 const UpdateLabRegistration = () => {
   useEffect(() => {
@@ -198,8 +222,8 @@ const UpdateLabRegistration = () => {
 
   const confirmUpload = (imageData) => {
     Swal.fire({
-      title: "Confirm Upload",
-      text: "Do you want to upload this photo?",
+      title: IMAGE_TITLE,
+      text: IMAGE_TEXT,
       imageUrl: imageData,
       imageWidth: 200,
       imageHeight: 150,
@@ -227,13 +251,13 @@ const UpdateLabRegistration = () => {
       if (response.status === 200 && data.response) {
         const extractedPath = data.response
         setImageURL(extractedPath)
-        Swal.fire("Success!", "Image uploaded successfully!", "success")
+        Swal.fire(SUCCESS, IMAGE_UPLOAD_SUCC_MSG, "success")
       } else {
-        Swal.fire("Error!", "Failed to upload image!", "error")
+        Swal.fire(ERROR, IMAGE_UPLOAD_FAIL_MSG, "error")
       }
     } catch (error) {
       console.error("Upload error:", error)
-      Swal.fire("Error!", "Something went wrong!", "error")
+      Swal.fire(ERROR, UNEXPECTED_ERROR, "error")
     } finally {
       setLoading(false)
     }
@@ -391,7 +415,7 @@ const UpdateLabRegistration = () => {
     e.preventDefault()
     const lastRow = formData.rows[formData.rows.length - 1]
     if (!lastRow.name || !lastRow.date) {
-      Swal.fire("Missing Fields", "Please fill all required fields.", "warning")
+      Swal.fire(MISSING_FIELD,MISSING_MANDOTORY_FIELD_MSG , "warning")
       return
     }
     setFormData((prev) => ({
@@ -654,11 +678,11 @@ const UpdateLabRegistration = () => {
         setPatients(data.response);
       } else {
         setPatients([]);
-        Swal.fire("Info", "No patients found matching your criteria", "info");
+        Swal.fire(INFO, PATIENT_NOT_FOUND_WARN_MSG, "info");
       }
     } catch (error) {
       console.error("Search error:", error);
-      Swal.fire("Error", "Failed to search patients", "error");
+      Swal.fire(ERROR, PATIENT_NOT_FOUND_WARN_MSG, "error");
     } finally {
       setLoading(false);
       setCurrentPage(1); // Reset to first page after search
@@ -833,8 +857,8 @@ const UpdateLabRegistration = () => {
     const isFormValid = shouldNavigateToPayment ? true : validateForm()
     if (isDuplicatePatient) {
       Swal.fire(
-        "Duplicate Found!",
-        "A patient with these details already exists. Please check your details.",
+        DUPLICATE_FOUND,
+        DUPLICATE_PATIENT,
         "warning",
       )
       return
@@ -880,8 +904,8 @@ const UpdateLabRegistration = () => {
 
         if (shouldNavigateToPayment) {
           Swal.fire({
-            title: "Success!",
-            text: "Lab booking registered successfully! Redirecting to payment.",
+            title: SUCCESS,
+            text: LAB_BOOKING_SUCC_MSG,
             icon: "success",
             confirmButtonText: "OK, Proceed",
           }).then(() => {
@@ -899,13 +923,13 @@ const UpdateLabRegistration = () => {
             })
           })
         } else {
-          Swal.fire("Success!", "Lab booking registered successfully!", "success").then(() => {
+          Swal.fire(SUCCESS, LAB_REGISTER_SUCC_MSG, "success").then(() => {
             handleBackToList()
           })
         }
       } catch (error) {
         console.error("Registration error:", error)
-        Swal.fire("Error!", error.message || "Registration failed", "error")
+        Swal.fire(ERROR,  LAB_REG_FAIL_MSG, "error")
       } finally {
         setLoading(false)
       }
@@ -1060,7 +1084,7 @@ const UpdateLabRegistration = () => {
     if (pageNumber > 0 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     } else {
-      Swal.fire("Invalid Page", "Please enter a valid page number.", "warning");
+      Swal.fire(INVALID_PAGE, INVALID_PAGE_NO_WARN_MSG, "warning");
     }
   };
 
@@ -1788,8 +1812,8 @@ const UpdateLabRegistration = () => {
                                               onClick={() => {
                                                 if (item.price === null || item.price === 0 || item.price === "0") {
                                                   Swal.fire(
-                                                    "Warning",
-                                                    "Price has not been configured for this Investigation",
+                                                    WARNING,
+                                                    INV_PRICE_WARNING_MSG,
                                                     "warning",
                                                   )
                                                 } else {
@@ -1839,8 +1863,8 @@ const UpdateLabRegistration = () => {
                                               const priceDetails = await fetchPackagePrice(item.packName)
                                               if (!priceDetails || !priceDetails.actualCost) {
                                                 Swal.fire(
-                                                  "Warning",
-                                                  "Price has not been configured for this Package",
+                                                  WARNING,
+                                                  INV_PRICE_WARNING_MSG,
                                                   "warning",
                                                 )
                                               } else {
@@ -2097,8 +2121,8 @@ const UpdateLabRegistration = () => {
                           if (loading) return
                           if (missingFields.length > 0) {
                             Swal.fire(
-                              "Missing Mandatory Fields",
-                              "Please fill all mandatory fields before proceeding.",
+                              MISSING_MANDOTORY_FIELD,
+                              MISSING_MANDOTORY_FIELD_MSG,
                               "warning"
                             )
                             return

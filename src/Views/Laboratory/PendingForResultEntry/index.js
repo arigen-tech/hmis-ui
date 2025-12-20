@@ -3,6 +3,7 @@ import { getRequest, postRequest } from "../../../service/apiService"
 import { LAB } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
+import { FETCH_AUTO_FILL_ERR_MSG, FETCH_RESULT_VALIDATE_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, RESULT_ENTRY_WARN_MSG, RESULT_SUBMIT_ERR_MSG, RESULT_SUBMIT_SUCC_MSG } from "../../../config/constants"
 
 const PendingForResultEntry = () => {
   const [resultList, setResultList] = useState([])
@@ -40,11 +41,11 @@ useEffect(() => {
         setResultList(formattedData);
       } else {
         console.error('Error fetching pending result entries:', data.message);
-        showPopup('Failed to load pending result entries', 'error')
+        showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, 'error')
       }
     } catch (error) {
       console.error('Error fetching pending result entries:', error);
-      showPopup('Error fetching pending result entries', 'error')
+      showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, 'error')
     } finally {
       setLoading(false);
     }
@@ -450,14 +451,14 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
 
       // Check if there are any investigations with results to submit
       if (requestPayload.investigationList.length === 0) {
-        showPopup("Please enter at least one result before submitting", "warning");
+        showPopup(RESULT_ENTRY_WARN_MSG, "warning");
         setLoading(false);
         return;
       }
 
       // Validate required fields
       if (!requestPayload.relationId || !requestPayload.mainChargeCodeId || !requestPayload.subChargeCodeId || !requestPayload.sampleCollectionHeaderId || !requestPayload.patientId) {
-        showPopup("Missing required data. Please contact administrator.", "error");
+        showPopup(FETCH_AUTO_FILL_ERR_MSG, "error");
         setLoading(false);
         return;
       }
@@ -468,7 +469,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
       const response = await postRequest(`${LAB}/saveResultEntry`, requestPayload);
 
       if (response.status === 200) {
-        showPopup("Results submitted successfully!", "success");
+        showPopup(RESULT_SUBMIT_SUCC_MSG, "success");
         setShowDetailView(false);
         setSelectedResult(null);
       } else {
@@ -476,7 +477,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
       }
     } catch (error) {
       console.error('Error submitting results:', error);
-      showPopup(error.message || "Error submitting results", "error");
+      showPopup(error.message || RESULT_SUBMIT_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -527,7 +528,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
     if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
       setCurrentPage(pageNumber)
     } else {
-      showPopup("Please enter a valid page number.", "warning")
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "warning")
     }
   }
 

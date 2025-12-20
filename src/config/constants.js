@@ -1,3 +1,5 @@
+import { COUNTRYAPI } from "./apiConfig";
+
 export const DEPARTMENT_CODE_OPD=5;
 
 
@@ -10,7 +12,7 @@ export const DEPARTMENT_CODE_OPD=5;
 
 //LabBillingDetails
 export const ERROR="Error!";
-export const UNEXPECTED_ERROR="Something went wrong"
+export const UNEXPECTED_ERROR="Something went wrong ,  Please try again"
 export const SELECT_INVESTIGATIONS_ERROR_MSG="Please select at least one investigation or package.";
 export const INVALID_INVESTIGATION_ERROR="One or more selected rows have no valid investigation/package. Please select from dropdown.";
 export const INVALID_PATIENT_ID= "Patient ID not found. Please go back and try again.";
@@ -91,9 +93,63 @@ export const LAB_REPORT_PRINT_ERR_MSG="Error generating lab report. Please try a
 
 //Sample Collection Master
 
-export const FETCH_SAMPLE_COLLECTORS_ERR_MSG="";
+export const FETCH_SAMPLE_COLLECTION_ERR_MSG="Failed to load sample collection data";
+export const DUPLICATE_SAMPLE_COLLECTION_ERR_MSG="Sample collection with the same code already exists!";
+export const UPDATE_SAMPLE_COLLECTION_ERR_MSG="Failed to save changes:";
+export const UPDATE_STATUS_SAMPLE_COLLECTION_ERR_MSG="Failed to update status:";
+export const UPDATE_SAMPLE_COLLECTION_SUCC_MSG="Sample collection updated successfully!";
+export const ADD_SAMPLE_COLLECTION_SUCC_MSG="New sample collection added successfully!";
+
+
+//SasmpleValidation
+
+
+export const FETCH_SAMPLE_VALIDATIONS_ERR_MSG="Failed to load pending validation samples";
+export const VALIDATION_WARN_MSG="Please make a decision for ALL investigations. Each row must be either Accepted or Rejected.";
+export const REJECT_REASON_WARN_MSG="Please provide a reason for all rejected investigations.";
+export const VALIDATION_SUCC_MSG="Investigations validated successfully!";
+
+
+//SubchargeCode
+
+export const MIS_MATCH_ERR_MSG="Failed to parse response data";
+export const FETCH_SUB_CHARGE_CODES_ERR_MSG="Failed to load sub-charge codes";
+export const DUPLICATE_SUB_CHARGE_CODE_ERR_MSG="A sub charge code with this code already exists!";
+export const UPDATE_SUB_CHARGE_CODE_SUCC_MSG="Sub charge code updated successfully!";
+export const ADD_SUB_CHARGE_CODE_SUCC_MSG="New sub charge code added successfully!";
+export const FAIL_TO_SAVE_CHANGES="Fail to save changes:";
+export const UPDATE_STATUS_MAIN_CHARGE_CODE_ERR_MSG="Failed to update status";
+
+//UOMMaster
+
+export const FETCH_UOM_ERR_MSG="Failed to load UOM data";
+export const DUPLICATE_UOM_ERR_MSG="UOM with the same code already exists!";
+export const UPDATE_UOM_SUCC_MSG="UOM updated successfully!";
+export const ADD_UOM_SUCC_MSG="New UOM added successfully!";
+export const FAIL_TO_UPDATE_STS="Failed to update status"
 
 
 
+//UpdateLabRegistration
+
+export const INFO="Info !";
+export const PATIENT_NOT_FOUND_WARN_MSG="No patients found matching your criteria";
+export const DUPLICATE_FOUND="Duplicate Found!";
+export const LAB_BOOKING_SUCC_MSG="Lab booking registered successfully! Redirecting to payment.";
+export const LAB_REGISTER_SUCC_MSG="Lab booking registered successfully!";
+export const LAB_REG_FAIL_MSG="Registration failed";
+export const INVALID_PAGE="Invalid page !";
+
+
+//UpdateResultValidation
+
+export const FETCH_RESULT_UPDATE_DATA_ERR_MSG="Failed to load update results";
+export const RESULT_UPDATE_SUCC_MSG="All results updated successfully!";
+export const RESULT_UPDATE_ERR_MSG="Results failed to update";
+
+
+//OPDBillingDetails
+
+export const APPOINTMENT_NOT_FOUND_ERR_MSG= "No appointment data found";
 
 

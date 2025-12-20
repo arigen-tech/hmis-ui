@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import { DG_MAS_COLLECTION } from "../../../config/apiConfig"
+import { ADD_SAMPLE_COLLECTION_SUCC_MSG, DUPLICATE_SAMPLE_COLLECTION_ERR_MSG, FETCH_SAMPLE_COLLECTION_ERR_MSG, UPDATE_SAMPLE_COLLECTION_ERR_MSG, UPDATE_SAMPLE_COLLECTION_SUCC_MSG, UPDATE_STATUS_SAMPLE_COLLECTION_ERR_MSG } from "../../../config/constants"
 
 const SampleCollectionMaster = () => {
   const [sampleCollections, setSampleCollections] = useState([])
@@ -35,7 +36,7 @@ const SampleCollectionMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching sample collection data:", err)
-      showPopup("Failed to load sample collection data", "error")
+      showPopup(FETCH_SAMPLE_COLLECTION_ERR_MSG, "error")
     } finally {
       setLoading(false)
     }
@@ -81,7 +82,7 @@ const SampleCollectionMaster = () => {
       )
 
       if (isDuplicate && !editingCollection) {
-        showPopup("Sample collection with the same code already exists!", "error")
+        showPopup(DUPLICATE_SAMPLE_COLLECTION_ERR_MSG, "error")
         setLoading(false)
         return
       }
@@ -96,7 +97,7 @@ const SampleCollectionMaster = () => {
 
         if (response && response.status === 200) {
           fetchSampleCollectionData()
-          showPopup("Sample collection updated successfully!", "success")
+          showPopup(UPDATE_SAMPLE_COLLECTION_SUCC_MSG, "success")
         }
       } else {
         // Add new sample collection
@@ -108,7 +109,7 @@ const SampleCollectionMaster = () => {
 
         if (response && response.status === 200) {
           fetchSampleCollectionData()
-          showPopup("New sample collection added successfully!", "success")
+          showPopup(ADD_SAMPLE_COLLECTION_SUCC_MSG, "success")
         }
       }
 
@@ -118,7 +119,7 @@ const SampleCollectionMaster = () => {
       setShowForm(false)
     } catch (err) {
       console.error("Error saving sample collection:", err)
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error")
+      showPopup(`${UPDATE_SAMPLE_COLLECTION_ERR_MSG} ${err.response?.data?.message || err.message}`, "error")
     } finally {
       setLoading(false)
     }
@@ -160,7 +161,7 @@ const SampleCollectionMaster = () => {
         }
       } catch (err) {
         console.error("Error updating sample collection status:", err)
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error")
+        showPopup(`${UPDATE_STATUS_SAMPLE_COLLECTION_ERR_MSG} ${err.response?.data?.message || err.message}`, "error")
       } finally {
         setLoading(false)
       }

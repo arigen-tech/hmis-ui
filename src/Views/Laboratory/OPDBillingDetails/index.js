@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { MAS_SERVICE_CATEGORY } from "../../../config/apiConfig";
 import { getRequest } from "../../../service/apiService";
+import {APPOINTMENT_NOT_FOUND_ERR_MSG, ERROR, MISSING_MANDOTORY_FIELD, MISSING_MANDOTORY_FIELD_MSG} from "../../../config/constants"
 
 const OPDBillingDetails = () => {
   const navigate = useNavigate();
@@ -105,7 +106,7 @@ const OPDBillingDetails = () => {
     const details = Array.isArray(data.details) ? data.details : [];
 
     if (incomingAppointments.length === 0) {
-      Swal.fire("Error", "No appointment data found", "error");
+      Swal.fire(ERROR,APPOINTMENT_NOT_FOUND_ERR_MSG, "error");
       navigate("/PendingForBilling");
       return;
     }
@@ -228,7 +229,7 @@ const OPDBillingDetails = () => {
     e.preventDefault();
 
     if (!isFormValid) {
-      Swal.fire("Missing Information", "Please ensure all required fields are filled", "warning");
+      Swal.fire(MISSING_MANDOTORY_FIELD, MISSING_MANDOTORY_FIELD_MSG, "warning");
       return;
     }
 
