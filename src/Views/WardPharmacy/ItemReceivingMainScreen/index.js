@@ -1,116 +1,83 @@
-"use client"
-
 import { useEffect, useState } from "react"
 import LoadingScreen from "../../../Components/Loading"
+import { Store_Internal_Indent } from "../../../config/apiConfig"
+import { getRequest, postRequest } from "../../../service/apiService"
 
 const ItemReceivingMainScreen = () => {
-  // Mock list data (frontend only)
   const [indentData, setIndentData] = useState([])
   const [filteredIndentData, setFilteredIndentData] = useState([])
   const [currentView, setCurrentView] = useState("list")
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [receivingItems, setReceivingItems] = useState([])
   const [loading, setLoading] = useState(false)
+  const [popupMessage, setPopupMessage] = useState(null)
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
   const itemsPerPage = 10
 
-  // Date filters (kept for UI completeness; no backend)
+  // Date filters
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
 
-  // Seed mock data
+  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId")
+  const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId")
+
+  // Fetch indents for receiving
+  const fetchReceivingIndents = async () => {
+    try {
+      setLoading(true);
+
+      const fromDeptId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
+
+      if (!fromDeptId) {
+        showPopup("Department ID not found. Please login again.", "error");
+        return;
+      }
+
+      let url = `${Store_Internal_Indent}/receiving/list`;
+      const params = new URLSearchParams();
+
+      params.append("fromDeptId", fromDeptId);
+      if (fromDate) params.append("fromDate", fromDate);
+      if (toDate) params.append("toDate", toDate);
+
+      url += `?${params.toString()}`;
+
+      console.log("Fetching receiving indents from URL:", url);
+
+      const response = await getRequest(url);
+      console.log("Receiving Indents API Full Response:", response);
+
+      let data = [];
+      if (response && response.response && Array.isArray(response.response)) {
+        data = response.response;
+      } else if (response && Array.isArray(response)) {
+        data = response;
+      } else {
+        console.warn("Unexpected response structure, using empty array:", response);
+        data = [];
+      }
+
+      console.log("Processed receiving indents data:", data);
+      setIndentData(data);
+      setFilteredIndentData(data);
+
+    } catch (err) {
+      console.error("Error fetching receiving indents:", err);
+      showPopup("Error fetching indents. Please try again.", "error");
+      setIndentData([]);
+      setFilteredIndentData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch indents on component mount
   useEffect(() => {
-    const mock = [
-      {
-        indentMId: 1,
-        indentNo: "IND-001",
-        indentDate: "2025-12-05T05:48:00",
-        issueNo: "ISS-001",
-        issueDate: "2025-12-10T17:19:00",
-        items: [
-          {
-            id: 1,
-            drugCode: "DRG-001",
-            drugName: "Paracetamol 500mg",
-            apu: "TAB",
-            batchNo: "BAT-2025-001",
-            dom: "2025-01-15",
-            doe: "2027-01-15",
-            qtyDemanded: 100,
-            qtyIssued: 0, // Changed to 0 to show yellow row
-            qtyReceived: 0,
-            previousReceivedQty: 0,
-          },
-          {
-            id: 2,
-            drugCode: "DRG-002",
-            drugName: "Amoxicillin 250mg",
-            apu: "CAP",
-            batchNo: "BAT-2025-002",
-            dom: "2025-02-20",
-            doe: "2027-02-20",
-            qtyDemanded: 50,
-            qtyIssued: 50,
-            qtyReceived: 0,
-            previousReceivedQty: 0,
-          },
-          {
-            id: 3,
-            drugCode: "DRG-003",
-            drugName: "Ibuprofen 400mg",
-            apu: "TAB",
-            batchNo: "BAT-2025-003",
-            dom: "2025-03-10",
-            doe: "2027-03-10",
-            qtyDemanded: 75,
-            qtyIssued: 0, // Changed to 0 to show yellow row
-            qtyReceived: 0,
-            previousReceivedQty: 0,
-          },
-        ],
-      },
-      {
-        indentMId: 2,
-        indentNo: "IND-002",
-        indentDate: "2025-12-06T10:30:00",
-        issueNo: "ISS-002",
-        issueDate: "2025-12-11T14:45:00",
-        items: [
-          {
-            id: 4,
-            drugCode: "DRG-004",
-            drugName: "Aspirin 300mg",
-            apu: "TAB",
-            batchNo: "BAT-2025-004",
-            dom: "2025-03-10",
-            doe: "2027-03-10",
-            qtyDemanded: 200,
-            qtyIssued: 150,
-            qtyReceived: 0,
-            previousReceivedQty: 50,
-          },
-          {
-            id: 5,
-            drugCode: "DRG-005",
-            drugName: "Cetirizine 10mg",
-            apu: "TAB",
-            batchNo: "BAT-2025-005",
-            dom: "2025-04-01",
-            doe: "2027-04-01",
-            qtyDemanded: 60,
-            qtyIssued: 0, // Changed to 0 to show yellow row
-            qtyReceived: 0,
-            previousReceivedQty: 0,
-          },
-        ],
-      },
-    ]
-    setIndentData(mock)
-    setFilteredIndentData(mock)
-  }, [])
+    fetchReceivingIndents();
+  }, []);
 
   const formatDate = (value) => {
     if (!value) return ""
@@ -160,13 +127,75 @@ const ItemReceivingMainScreen = () => {
     if (pageNumber > 0 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber)
     } else {
-      alert("Please enter a valid page number.")
+      showPopup("Please enter a valid page number.", "warning")
     }
   }
 
   const handleRowClick = (record) => {
+    console.log("Selecting record for receiving:", record);
     setSelectedRecord(record)
-    setReceivingItems(record.items || [])
+
+    // Transform API response items to match frontend structure
+    const transformedItems = [];
+
+    (record.items || []).forEach((item) => {
+      const batches = item.batches || [];
+      const totalRequestedQty = item.requestedQty || 0;
+      const totalIssuedQty = item.issuedQty || 0;
+      const previousReceivedQty = item.receivedQty || 0;
+
+      if (batches.length === 0) {
+        // If no batches, create one row with total values
+        transformedItems.push({
+          id: `${item.indentTId}-no-batch`,
+          indentTId: item.indentTId,
+          itemId: item.itemId,
+          drugCode: item.pvmsNo,
+          drugName: item.itemName,
+          apu: item.unitAuName,
+          batchNo: "N/A",
+          dom: "",
+          doe: "",
+          qtyDemanded: totalRequestedQty,
+          qtyIssued: totalIssuedQty,
+          qtyReceived: totalIssuedQty,
+          qtyReject: 0,
+          previousReceivedQty: previousReceivedQty,
+          batchstock: 0,
+          manufacturerName: "",
+          brandName: ""
+        });
+      } else {
+        // Create separate row for each batch
+        batches.forEach((batch, batchIndex) => {
+          const batchIssuedQty = batch.batchIssuedQty || 0;
+
+          transformedItems.push({
+            id: `${item.indentTId}-batch-${batchIndex}`,
+            indentTId: item.indentTId,
+            itemId: item.itemId,
+            drugCode: item.pvmsNo,
+            drugName: item.itemName,
+            apu: item.unitAuName,
+            batchNo: batch.batchNo || "N/A",
+            dom: batch.manufactureDate || "",
+            doe: batch.expiryDate || "",
+            qtyDemanded: totalRequestedQty, // Same for all batches of this item
+            qtyIssued: batchIssuedQty, // Batch-specific issued quantity
+            qtyReceived: batchIssuedQty, // AUTO-FILL with batch issued quantity
+            qtyReject: 0, // DEFAULT 0
+            previousReceivedQty: previousReceivedQty,
+            batchstock: batch.batchstock || 0,
+            manufacturerName: batch.manufacturerName || "",
+            brandName: batch.brandName || ""
+          });
+        });
+      }
+    });
+
+    console.log("Transformed receiving items:", transformedItems);
+
+    setReceivingItems(transformedItems)
     setCurrentView("detail")
   }
 
@@ -178,12 +207,140 @@ const ItemReceivingMainScreen = () => {
 
   const handleQtyReceivedChange = (index, value) => {
     const updated = [...receivingItems]
+    const qtyReceived = value === "" ? 0 : Number(value);
+    const qtyIssued = updated[index].qtyIssued || 0;
+    const qtyReject = updated[index].qtyReject || 0;
+
+    // Validate received quantity
+    if (qtyReceived < 0) {
+      showPopup("Received quantity cannot be negative", "error");
+      return;
+    }
+
+    // Validate received + reject doesn't exceed issued
+    if (qtyReceived + qtyReject > qtyIssued) {
+      showPopup(`Received + Rejected (${qtyReceived + qtyReject}) cannot exceed issued quantity (${qtyIssued})`, "error");
+      return;
+    }
+
     updated[index] = {
       ...updated[index],
-      qtyReceived: value === "" ? "" : Number(value),
+      qtyReceived: qtyReceived,
     }
     setReceivingItems(updated)
   }
+
+  const handleQtyRejectChange = (index, value) => {
+    const updated = [...receivingItems]
+    const qtyReject = value === "" ? 0 : Number(value);
+    const qtyIssued = updated[index].qtyIssued || 0;
+    const qtyReceived = updated[index].qtyReceived || 0;
+
+    // Validate reject quantity
+    if (qtyReject < 0) {
+      showPopup("Reject quantity cannot be negative", "error");
+      return;
+    }
+
+    // Validate reject + received doesn't exceed issued
+    if (qtyReject + qtyReceived > qtyIssued) {
+      showPopup(`Reject + Received (${qtyReject + qtyReceived}) cannot exceed issued quantity (${qtyIssued})`, "error");
+      return;
+    }
+
+    updated[index] = {
+      ...updated[index],
+      qtyReject: qtyReject,
+    }
+    setReceivingItems(updated)
+  }
+
+  // Show popup
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+      },
+    });
+  }
+
+  // Handle save receiving
+  const handleSaveReceiving = async () => {
+    try {
+      setLoading(true);
+
+      let validationError = null;
+      receivingItems.forEach((item) => {
+        const qtyIssued = item.qtyIssued || 0;
+        const qtyReceived = item.qtyReceived || 0;
+        const qtyReject = item.qtyReject || 0;
+        const total = qtyReceived + qtyReject;
+
+        if (total > qtyIssued) {
+          validationError = `Total received + rejected (${total}) cannot exceed issued quantity (${qtyIssued}) for ${item.drugName} - Batch: ${item.batchNo}`;
+        }
+      });
+
+      if (validationError) {
+        showPopup(validationError, "error");
+        setLoading(false);
+        return;
+      }
+
+      // Prepare payload
+      const payload = {
+        indentMId: selectedRecord?.indentMId,
+        issueNo: selectedRecord?.issueNo,
+        receivingDate: new Date().toISOString(),
+        remarks: selectedRecord?.remark || "",
+        items: receivingItems.map(item => ({
+          indentTId: item.indentTId,
+          itemId: item.itemId,
+          batchNo: item.batchNo,
+          qtyIssued: item.qtyIssued || 0,
+          qtyReceived: item.qtyReceived || 0,
+          qtyRejected: item.qtyReject || 0,
+          previousReceivedQty: item.previousReceivedQty || 0,
+        }))
+      };
+
+      console.log("Saving receiving payload:", payload);
+
+      // Update the API endpoint
+      const response = await postRequest(`${Store_Internal_Indent}/receive/save`, payload);
+
+      console.log("Save response:", response);
+
+      // Check if the request was successful
+      if (response && response.status === 200) {
+        const responseData = response.response || {};
+        let message = responseData.message || "Receiving saved successfully!";
+
+        // Check if return was created
+        if (responseData.returnCreated) {
+          message += " " + (responseData.returnMessage || "Return created for rejected items.");
+        }
+
+        showPopup(message, "success");
+
+        // Refresh the list
+        setTimeout(() => {
+          handleBack();
+          fetchReceivingIndents();
+        }, 1500);
+      } else {
+        showPopup(response?.message || "Failed to save receiving", "error");
+      }
+
+    } catch (error) {
+      console.error("Error saving receiving:", error);
+      showPopup("Error saving receiving. Please try again.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Pagination slice
   const totalPages = Math.ceil(filteredIndentData.length / itemsPerPage) || 1
@@ -253,15 +410,11 @@ const ItemReceivingMainScreen = () => {
                   </div>
                   <div className="col-md-4">
                     <label className="form-label fw-bold">Issue Date</label>
-                    <input type="text" className="form-control" value={formatDateTime(selectedRecord?.issueDate)} readOnly style={{ backgroundColor: "#e9ecef" }} />
+                    <input type="text" className="form-control" value={formatDateTime(selectedRecord?.issuedDate)} readOnly style={{ backgroundColor: "#e9ecef" }} />
                   </div>
                   <div className="col-md-4 mt-2">
                     <label className="form-label fw-bold">Issue No.</label>
                     <input type="text" className="form-control" value={selectedRecord?.issueNo || ""} readOnly style={{ backgroundColor: "#e9ecef" }} />
-                  </div>
-                  <div className="col-md-4 mt-2">
-                    <label className="form-label fw-bold">Receiving Date</label>
-                    <input type="text" className="form-control" value={formatDateTime(new Date().toISOString())} readOnly style={{ backgroundColor: "#e9ecef" }} />
                   </div>
                 </div>
 
@@ -280,57 +433,85 @@ const ItemReceivingMainScreen = () => {
                         <th style={{ width: "120px" }}>Qty Demanded</th>
                         <th style={{ width: "120px" }}>Qty Issued</th>
                         <th style={{ width: "140px" }}>Qty Received</th>
+                        <th style={{ width: "140px" }}>Qty Reject</th>
                         <th style={{ width: "160px" }}>Previous Received Qty</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {receivingItems.map((item, idx) => (
-                        <tr 
-                          key={item.id || idx}
-                          className={item.qtyIssued === 0 ? "table-warning" : ""}
-                        
-                        >
-                          <td className="fw-bold">{idx + 1}</td>
-                          <td>{item.drugCode}</td>
-                          <td className="text-start">{item.drugName}</td>
-                          <td>{item.apu}</td>
-                          <td>{item.batchNo}</td>
-                          <td>{formatDate(item.dom)}</td>
-                          <td>{formatDate(item.doe)}</td>
-                          <td>{item.qtyDemanded}</td>
-                          <td>{item.qtyIssued}</td>
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control form-control-sm text-center"
-                              value={item.qtyReceived}
-                              onChange={(e) => handleQtyReceivedChange(idx, e.target.value)}
-                              min="0"
-                              max={item.qtyIssued}
-                            />
-                          </td>
-                          <td>
-                            <span
-                              className="badge"
-                              style={{
-                                backgroundColor: item.previousReceivedQty > 0 ? "#d1ecf1" : "#f8f9fa",
-                                color: item.previousReceivedQty > 0 ? "#0c5460" : "#6c757d",
-                                padding: "6px 12px",
-                                borderRadius: "4px",
-                              }}
-                            >
-                              {item.previousReceivedQty}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {receivingItems.map((item, idx) => {
+                        const qtyIssued = item.qtyIssued || 0;
+                        const qtyReceived = item.qtyReceived || 0;
+                        const qtyReject = item.qtyReject || 0;
+
+                        return (
+                          <tr
+                            key={item.id || idx}
+                            className={item.qtyIssued === 0 ? "table-warning" : ""}
+                          >
+                            <td className="fw-bold">{idx + 1}</td>
+                            <td>{item.drugCode}</td>
+                            <td className="text-start">
+                              {item.drugName}
+                              <br />
+                              <small className="text-muted">
+                                Mfg: {item.manufacturerName} | Brand: {item.brandName}
+                              </small>
+                            </td>
+                            <td>{item.apu}</td>
+                            <td>{item.batchNo}</td>
+                            <td>{formatDate(item.dom)}</td>
+                            <td>{formatDate(item.doe)}</td>
+                            <td>{item.qtyDemanded}</td>
+                            <td>{qtyIssued}</td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm text-center"
+                                value={qtyReceived}
+                                onChange={(e) => handleQtyReceivedChange(idx, e.target.value)}
+                                min="0"
+                                max={qtyIssued}
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm text-center"
+                                style={{ width: "50px" }}
+                                value={qtyReject}
+                                onChange={(e) => handleQtyRejectChange(idx, e.target.value)}
+                                min="0"
+                                max={qtyIssued}
+                              />
+                            </td>
+                            <td>
+                              <span
+                                className="badge"
+                                style={{
+                                  backgroundColor: item.previousReceivedQty > 0 ? "#d1ecf1" : "#f8f9fa",
+                                  color: item.previousReceivedQty > 0 ? "#0c5460" : "#6c757d",
+                                  padding: "6px 12px",
+                                  borderRadius: "4px",
+                                }}
+                              >
+                                {item.previousReceivedQty}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
 
                 <div className="d-flex justify-content-end gap-2 mt-4">
-                  <button type="button" className="btn btn-primary">
-                    Save Receiving
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleSaveReceiving}
+                    disabled={loading}
+                  >
+                    {loading ? "Saving..." : "Save Receiving"}
                   </button>
                   <button type="button" className="btn btn-secondary" onClick={handleBack}>
                     Back
@@ -394,7 +575,7 @@ const ItemReceivingMainScreen = () => {
                     <tr>
                       <th>Indent No.</th>
                       <th>Indent Date</th>
-                      <th>Indent Number</th>
+                      <th>issueNo</th>
                       <th>Issue Date</th>
                     </tr>
                   </thead>
@@ -402,7 +583,7 @@ const ItemReceivingMainScreen = () => {
                     {currentItems.length === 0 ? (
                       <tr>
                         <td colSpan={4} className="text-center">
-                          {loading ? "Loading..." : "No records found."}
+                          {loading ? <LoadingScreen /> : "No records found."}
                         </td>
                       </tr>
                     ) : (
@@ -410,8 +591,8 @@ const ItemReceivingMainScreen = () => {
                         <tr key={item.indentMId} onClick={() => handleRowClick(item)} style={{ cursor: "pointer" }}>
                           <td>{item.indentNo}</td>
                           <td>{formatDate(item.indentDate)}</td>
-                          <td>{item.indentNo}</td>
-                          <td>{formatDate(item.issueDate)}</td>
+                          <td>{item.issueNo}</td>
+                          <td>{formatDate(item.issuedDate)}</td>
                         </tr>
                       ))
                     )}
@@ -447,6 +628,30 @@ const ItemReceivingMainScreen = () => {
           </div>
         </div>
       </div>
+
+      {popupMessage && (
+        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog">
+            <div className={`modal-content ${popupMessage.type === 'error' ? 'border-danger' : popupMessage.type === 'success' ? 'border-success' : 'border-info'}`}>
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  {popupMessage.type === 'error' ? 'Error' :
+                    popupMessage.type === 'success' ? 'Success' : 'Information'}
+                </h5>
+                <button type="button" className="btn-close" onClick={popupMessage.onClose}></button>
+              </div>
+              <div className="modal-body">
+                {popupMessage.message}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-primary" onClick={popupMessage.onClose}>
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
