@@ -277,6 +277,96 @@ export const UPDATE_SUB_INV_SUCC_MSG="Sub-investigations updated successfully!";
 
 
 
+//MealTypeMaster
+
+export const FETCH_MEAL_TYPE_ERR_MSG="Failed to load  meal types";
+export const DUPLICATE_MEAL_TYPE="Meal type with the same name already exists!";
+export const UPDATE_MEAL_TYPE_SUCC_MSG="Meal type updated successfully!";
+export const ADD_MEAL_TYPE_SUCC_MSG="New meal type added successfully!";
+
+
+//OutputTypeMaster
+
+
+export const FETCH_OUTPUT_TYPE_ERR_MSG="Failed to load output types";
+export const DUPLICATE_OUTPUT_TYPE="Output type with the same name already exists!";
+export const UPDATE_OUTPUT_TYPE_SUCC_MSG="Output type updated successfully!";
+export const ADD_OUTPUT_TYPE_SUCC_MSG="New output type added successfully!";
+
+
+//PatientAcuityMaster
+
+
+export const FETCH_PATIENT_ACUITY_ERR_MSG="Failed to load patient acuties";
+export const DUPLICATE_PATIENT_ACUITY="Patient acuity with the same name already exists!";
+export const UPDATE_PATIENT_ACUITY_SUCC_MSG="Patient acuity updated successfully!";
+export const ADD_PATIENT_ACUITY_SUCC_MSG="New patient acuity added successfully!";
+
+
+//ProcedureTypeMaster
+
+export const FETCH_PROCEDURE_TYPE_ERR_MSG="Failed to load procedure types";
+export const DUPLICATE_PROCEDURE_TYPE="Procedure type with the same name already exists!";
+export const UPDATE_PROCEDURE_TYPE_SUCC_MSG="Procedure type updated successfully!";
+export const ADD_PROCEDURE_TYPE_SUCC_MSG="New procedure type added successfully!";
+export const ACTIVATE_PROCEDURE_TYPE_SUCC_MSG="Procedure type activated successfully!";
+export const ACTIVATE_PROCEDURE_TYPE_ERR_MSG="Fail to activate procedure type";
+
+
+//ProcedureMaster
+
+export const FETCH_PROCEDURE_ERR_MSG="Failed to load procedures";
+export const DUPLICATE_PROCEDURE="Procedure with the same name already exists!";
+export const UPDATE_PROCEDURE_SUCC_MSG="Procedure updated successfully!";
+export const ADD_PROCEDURE_SUCC_MSG="New procedure added successfully!";
+export const ACTIVATE_PROCEDURE_SUCC_MSG="Procedure activated successfully!";
+export const ACTIVATE_PROCEDURE_ERR_MSG="Fail to activate procedure";
+
+
+
+//RoomCategoryMaster
+
+
+export const FETCH_ROOM_CAT_ERR_MSG="Failed to load room categories";
+export const DUPLICATE_ROOM_CAT="Room category with the same name already exists!";
+export const UPDATE_ROOM_CAT_SUCC_MSG="Room category updated successfully!";
+export const ADD_ROOM_CAT_SUCC_MSG="New room category added successfully!";
+
+//RoomMasterScreen
+
+export const FETCH_ROOM_ERR_MSG="Failed to load rooms";
+export const DUPLICATE_ROOM="Room with the same name already exists!";
+export const UPDATE_ROOM_SUCC_MSG="Room updated successfully!";
+export const ADD_ROOM_SUCC_MSG="New room added successfully!";
+
+
+//SampleMaster
+
+export const FETCH_SAMPLE_ERR_MSG="Failed to load samples";
+export const DUPLICATE_SAMPLE="Sample with same code or description already exists!";
+export const UPDATE_SAMPLE_SUCC_MSG="Sample updated successfully!";
+export const UPDATE_SAMPLE_ERR_MSG="Failed to update sample";
+export const ADD_SAMPLE_SUCC_MSG="New sample added successfully!";
+export const ADD_SAMPLE_ERR_MSG="Failed to add sample";
+
+//TreatmentAdvice
+
+
+export const FETCH_TREAT_ADV_ERR_MSG="Failed to load treatment advices";
+export const DUPLICATE_TREAT_ADV="Treatment advice already exists for this department!";
+export const UPDATE_TREAT_ADV_SUCC_MSG="Treatment advice updated successfully!";
+export const ADD_TREAT_ADV_SUCC_MSG="New treatment advice added successfully!";
+
+
+//wardCategoryMaster
+
+export const DUPLICATE_WARD_CATEGORY="Ward Category with the same name already exists!";
+export const UPDATE_WARD_CATEGORY_SUCC_MSG="Ward category updated successfully!";
+export const ADD_WARD_CATEGORY_SUCC_MSG="New ward category added successfully!";
+
+
+
+
 
 
 

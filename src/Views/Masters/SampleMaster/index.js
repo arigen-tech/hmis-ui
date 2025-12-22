@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_DG_SAMPLE } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { ADD_SAMPLE_ERR_MSG, ADD_SAMPLE_SUCC_MSG, DUPLICATE_SAMPLE, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_SAMPLE_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_SAMPLE_ERR_MSG, UPDATE_SAMPLE_SUCC_MSG } from "../../../config/constants";
 
 const SampleMaster = () => {
   const [sampleData, setSampleData] = useState([]);
@@ -47,7 +48,7 @@ const SampleMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching sample data:", err);
-      showPopup("Failed to load sample data", "error");
+      showPopup(FETCH_SAMPLE_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -128,7 +129,7 @@ const SampleMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Sample with same code or description already exists!", "error");
+        showPopup(DUPLICATE_SAMPLE, "error");
         setLoading(false);
         return;
       }
@@ -150,9 +151,9 @@ const SampleMaster = () => {
               sample.id === editingSample.id ? response.response : sample
             )
           );
-          showPopup("Sample updated successfully!", "success");
+          showPopup(UPDATE_SAMPLE_SUCC_MSG, "success");
         } else {
-          showPopup("Failed to update sample", "error");
+          showPopup(UPDATE_SAMPLE_ERR_MSG, "error");
         }
       } else {
         // Add new sample
@@ -161,9 +162,9 @@ const SampleMaster = () => {
         if (response && response.status === 200 && response.response) {
           // Add new sample to state - will appear at the top after refresh
           setSampleData((prevData) => [...prevData, response.response]);
-          showPopup("New sample added successfully!", "success");
+          showPopup(ADD_SAMPLE_SUCC_MSG, "success");
         } else {
-          showPopup("Failed to add sample", "error");
+          showPopup(ADD_SAMPLE_ERR_MSG, "error");
         }
       }
 
@@ -175,7 +176,7 @@ const SampleMaster = () => {
       fetchSampleData(0);
     } catch (err) {
       console.error("Error saving sample data:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setLoading(false);
     }
@@ -211,7 +212,7 @@ const SampleMaster = () => {
         }
       } catch (err) {
         console.error("Error updating sample status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }
@@ -236,7 +237,7 @@ const SampleMaster = () => {
     if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     } else {
-      showPopup(`Please enter a valid page number between 1 and ${totalPages}`, "error");
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
       setPageInput(currentPage.toString());
     }
   };

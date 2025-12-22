@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_PATIENT_ACUITY } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { ADD_PATIENT_ACUITY_SUCC_MSG, DUPLICATE_PATIENT_ACUITY, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_PATIENT_ACUITY_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_PATIENT_ACUITY_SUCC_MSG } from "../../../config/constants";
 
 const PatientacuityMaster = () => {
   const [data, setData] = useState([]);
@@ -77,7 +78,7 @@ const PatientacuityMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching patient acuity data:", err);
-      showPopup("Failed to load patient acuity data", "error");
+      showPopup(FETCH_PATIENT_ACUITY_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -137,7 +138,7 @@ const PatientacuityMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Acuity code already exists!", "error");
+        showPopup(DUPLICATE_PATIENT_ACUITY, "error");
         setLoading(false);
         return;
       }
@@ -155,7 +156,7 @@ const PatientacuityMaster = () => {
 
         if (response && response.status === 200) {
           fetchData();
-          showPopup("Patient acuity updated successfully!", "success");
+          showPopup(UPDATE_PATIENT_ACUITY_SUCC_MSG ,"success");
         }
       } else {
         // Add new acuity
@@ -163,7 +164,7 @@ const PatientacuityMaster = () => {
 
         if (response && (response.status === 200 || response.status === 201)) {
           fetchData();
-          showPopup("New patient acuity added successfully!", "success");
+          showPopup(ADD_PATIENT_ACUITY_SUCC_MSG, "success");
         }
       }
 
@@ -172,7 +173,7 @@ const PatientacuityMaster = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving patient acuity:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setLoading(false);
     }
@@ -230,7 +231,7 @@ const PatientacuityMaster = () => {
         }
       } catch (err) {
         console.error("Error updating patient acuity status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }
@@ -263,7 +264,7 @@ const PatientacuityMaster = () => {
       setCurrentPage(pageNumber);
       setPageInput("");
     } else {
-      showPopup(`Please enter a valid page number`, "error");
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
     }
   };
 

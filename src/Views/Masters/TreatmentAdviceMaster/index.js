@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_TREATMENT_ADVISE, MAS_DEPARTMENT } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { ADD_TREAT_ADV_SUCC_MSG, DUPLICATE_TREAT_ADV, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DEPARTMENT_ERR_MSG, FETCH_TREAT_ADV_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_TREAT_ADV_SUCC_MSG } from "../../../config/constants";
 
 const TreatmentAdviceMaster = () => {
   const [treatmentData, setTreatmentData] = useState([]);
@@ -70,7 +71,7 @@ const TreatmentAdviceMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching dropdown data:", err);
-      showPopup("Failed to load department data", "error");
+      showPopup(FETCH_DEPARTMENT_ERR_MSG, "error");
     }
   };
 
@@ -94,7 +95,7 @@ const TreatmentAdviceMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching treatment advice data:", err);
-      showPopup("Failed to load treatment advice data", "error");
+      showPopup(FETCH_TREAT_ADV_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -171,7 +172,7 @@ const TreatmentAdviceMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Treatment advice already exists for this department!", "error");
+        showPopup(DUPLICATE_TREAT_ADV, "error");
         setLoading(false);
         return;
       }
@@ -188,7 +189,7 @@ const TreatmentAdviceMaster = () => {
 
         if (response && response.status === 200) {
           fetchTreatmentData();
-          showPopup("Treatment advice updated successfully!", "success");
+          showPopup(UPDATE_TREAT_ADV_SUCC_MSG, "success");
         }
       } else {
         // Add new treatment advice
@@ -196,7 +197,7 @@ const TreatmentAdviceMaster = () => {
 
         if (response && (response.status === 200 || response.status === 201)) {
           fetchTreatmentData();
-          showPopup("New treatment advice added successfully!", "success");
+          showPopup(ADD_TREAT_ADV_SUCC_MSG, "success");
         }
       }
 
@@ -205,7 +206,7 @@ const TreatmentAdviceMaster = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving treatment advice data:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setLoading(false);
     }
@@ -251,7 +252,7 @@ const TreatmentAdviceMaster = () => {
         }
       } catch (err) {
         console.error("Error updating treatment advice status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }
@@ -282,7 +283,7 @@ const TreatmentAdviceMaster = () => {
     if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     } else {
-      showPopup(`Please enter a valid page number between 1 and ${totalPages}`, "error");
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
       setPageInput(currentPage.toString());
     }
   };

@@ -4,6 +4,7 @@ import axios from "axios";
 import { API_HOST, MAS_ROOM_CATEGORY } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import { ADD_ROOM_CAT_SUCC_MSG, DUPLICATE_ROOM_CAT, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_ROOM_CAT_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_ROOM_CAT_SUCC_MSG } from "../../../config/constants";
 
 
 const RoomCategoryMaster = () => {
@@ -68,7 +69,7 @@ const RoomCategoryMaster = () => {
             }
         } catch (err) {
             console.error("Error fetching category data:", err);
-            showPopup("Failed to load category data", "error");
+            showPopup(FETCH_ROOM_CAT_ERR_MSG, "error");
         } finally {
             setLoading(false);
         }
@@ -107,7 +108,7 @@ const RoomCategoryMaster = () => {
         if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= filteredTotalPages) {
             setCurrentPage(pageNumber);
         } else {
-            showPopup(`Please enter a valid page number between 1 and ${filteredTotalPages}`, "error");
+            showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
             setPageInput(currentPage.toString());
         }
     };
@@ -145,7 +146,7 @@ const RoomCategoryMaster = () => {
             );
     
             if (isDuplicate && !editingCategory) {
-                showPopup("Room Category with the same name already exists!", "error");
+                showPopup(DUPLICATE_ROOM_CAT, "error");
                 setLoading(false);
                 return;
             }
@@ -159,7 +160,7 @@ const RoomCategoryMaster = () => {
                 if (response && response.status === 200) {
                    
                     fetchCategoryData();
-                    showPopup("Room Category updated successfully!", "success");
+                    showPopup(UPDATE_ROOM_CAT_SUCC_MSG, "success");
                 }
             } else {
                 
@@ -170,7 +171,7 @@ const RoomCategoryMaster = () => {
                 if (response && response.status === 200) {
                     
                     fetchCategoryData();
-                    showPopup("New room category added successfully!", "success");
+                    showPopup(ADD_ROOM_CAT_SUCC_MSG, "success");
                 }
             }
     
@@ -180,7 +181,7 @@ const RoomCategoryMaster = () => {
             setShowForm(false);
         } catch (err) {
             console.error("Error saving room category:", err);
-            showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+            showPopup(FAIL_TO_SAVE_CHANGES, "error");
         } finally {
             setLoading(false);
         }
@@ -222,7 +223,7 @@ const RoomCategoryMaster = () => {
                 }
             } catch (err) {
                 console.error("Error updating room category status:", err);
-                showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+                showPopup(FAIL_TO_UPDATE_STS, "error");
             } finally {
                 setLoading(false);
             }
