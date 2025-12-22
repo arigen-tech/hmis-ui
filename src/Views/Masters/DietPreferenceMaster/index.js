@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_DIET_PREFERENCE } from "../../../config/apiConfig"; 
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { ADD_DIET_PREFERENCE_SUCC_MSG, DUPLICATE_DIET_PREFERENCE, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DIET_PREFERNCE_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_DIET_PREFERENCE_SUCC_MSG } from "../../../config/constants";
 
 const DietPreferenceMaster = () => {
   const [data, setData] = useState([]);
@@ -70,7 +71,7 @@ const DietPreferenceMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching diet preference data:", err);
-      showPopup("Failed to load diet preference data", "error");
+      showPopup(FETCH_DIET_PREFERNCE_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -142,7 +143,7 @@ const DietPreferenceMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Preference name already exists!", "error");
+        showPopup(DUPLICATE_DIET_PREFERENCE, "error");
         setLoading(false);
         return;
       }
@@ -159,7 +160,7 @@ const DietPreferenceMaster = () => {
 
         if (response && response.status === 200) {
           fetchData();
-          showPopup("Diet preference updated successfully!", "success");
+          showPopup(UPDATE_DIET_PREFERENCE_SUCC_MSG, "success");
         }
       } else {
         // Add new preference
@@ -167,7 +168,7 @@ const DietPreferenceMaster = () => {
 
         if (response && response.status === 200) {
           fetchData();
-          showPopup("New diet preference added successfully!", "success");
+          showPopup(ADD_DIET_PREFERENCE_SUCC_MSG, "success");
         }
       }
 
@@ -176,7 +177,7 @@ const DietPreferenceMaster = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving diet preference data:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(`${FAIL_TO_SAVE_CHANGES} ${err.response?.data?.message || err.message}`, "error");
     } finally {
       setLoading(false);
     }
@@ -222,7 +223,7 @@ const DietPreferenceMaster = () => {
         }
       } catch (err) {
         console.error("Error updating diet preference status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }
@@ -247,7 +248,7 @@ const DietPreferenceMaster = () => {
     if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     } else {
-      showPopup(`Please enter a valid page number between 1 and ${totalPages}`, "error");
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
       setPageInput(currentPage.toString());
     }
   };

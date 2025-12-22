@@ -4,6 +4,7 @@ import axios from "axios";
 import { API_HOST, DG_MAS_INVESTIGATION_METHODOLOGY } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { ADD_INV_METHODOLOGY_SUCC_MSG, DUPLICATE_INV_METHODOLOGY, FAIL_TO_SAVE_CHANGES, FETCH_INV_METHODOLOGY_ERR_MSG, UPDATE_INV_METHODOLOGY_SUCC_MSG } from "../../../config/constants";
 
 const InvestigationMethodologyMaster = () => {
     const [methodologies, setMethodologies] = useState([]);
@@ -39,7 +40,7 @@ const InvestigationMethodologyMaster = () => {
             }
         } catch (err) {
             console.error("Error fetching methodologies:", err);
-            showPopup("Failed to load methodologies", "error");
+            showPopup(FETCH_INV_METHODOLOGY_ERR_MSG, "error");
         } finally {
             setIsLoading(false);
         }
@@ -87,7 +88,7 @@ const InvestigationMethodologyMaster = () => {
             );
     
             if (isDuplicate) {
-                showPopup("Investigation Methodology with the same name or note already exists!", "error");
+                showPopup(DUPLICATE_INV_METHODOLOGY, "error");
                 setIsLoading(false);
                 return;
             }
@@ -101,7 +102,7 @@ const InvestigationMethodologyMaster = () => {
     
                 if (response && response.status === 200) {
                     fetchMethodologies(); 
-                    showPopup("Investigation Methodology updated successfully!", "success");
+                    showPopup(UPDATE_INV_METHODOLOGY_SUCC_MSG, "success");
                 }
             } else {
                 // Add new methodology
@@ -112,7 +113,7 @@ const InvestigationMethodologyMaster = () => {
     
                 if (response && response.status === 200) {
                     fetchMethodologies(); 
-                    showPopup("New methodology added successfully!", "success");
+                    showPopup(ADD_INV_METHODOLOGY_SUCC_MSG, "success");
                 }
             }
     
@@ -122,7 +123,7 @@ const InvestigationMethodologyMaster = () => {
             setShowForm(false);
         } catch (err) {
             console.error("Error saving Investigation methodology:", err);
-            showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+            showPopup(FAIL_TO_SAVE_CHANGES, "error");
             setIsLoading(false);
         }
     };
@@ -168,9 +169,9 @@ const InvestigationMethodologyMaster = () => {
             <div className="row">
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
-                        <div className="card-header">
+                        <div className="card-header d-flex justify-content-between align-items-center">
                             <h4 className="card-title p-2">Investigation Methodology Master</h4>
-                            <div className="d-flex justify-content-between align-items-center mt-3">
+                            <div className="d-flex justify-content-between align-items-center">
                                 {!showForm && (
                                     <form className="d-inline-block searchform me-4" role="search">
                                         <div className="input-group searchinput">

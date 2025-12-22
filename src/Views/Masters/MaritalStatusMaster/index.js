@@ -20,7 +20,7 @@ const MaritalStatusMaster = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filteredTotalPages, setFilteredTotalPages] = useState(1);
   const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(5);
   const Status_NAME_MAX_LENGTH = 30;
   const [pageInput, setPageInput] = useState(1);
 

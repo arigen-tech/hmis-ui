@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_ROOM, MAS_DEPARTMENT, MAS_ROOM_CATEGORY,WARD_ID } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { ADD_ROOM_SUCC_MSG, DUPLICATE_ROOM, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_ROOM_CAT_ERR_MSG, FETCH_ROOM_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_ROOM_SUCC_MSG } from "../../../config/constants";
 
 const RoomMasterScreen = () => {
   const [roomData, setRoomData] = useState([]);
@@ -87,7 +88,7 @@ const RoomMasterScreen = () => {
       }
     } catch (err) {
       console.error("Error fetching dropdown data:", err);
-      showPopup("Failed to load dropdown data", "error");
+      showPopup(FETCH_ROOM_CAT_ERR_MSG, "error");
     }
   };
 
@@ -112,7 +113,7 @@ const RoomMasterScreen = () => {
       }
     } catch (err) {
       console.error("Error fetching room data:", err);
-      showPopup("Failed to load room data", "error");
+      showPopup(FETCH_ROOM_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -185,7 +186,7 @@ const RoomMasterScreen = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Room already exists!", "error");
+        showPopup(DUPLICATE_ROOM, "error");
         setLoading(false);
         return;
       }
@@ -204,7 +205,7 @@ const RoomMasterScreen = () => {
 
         if (response && response.status === 200) {
           fetchRoomData();
-          showPopup("Room updated successfully!", "success");
+          showPopup(UPDATE_ROOM_SUCC_MSG, "success");
         }
       } else {
         // Add new room
@@ -212,7 +213,7 @@ const RoomMasterScreen = () => {
 
         if (response && response.status === 200) {
           fetchRoomData();
-          showPopup("New room added successfully!", "success");
+          showPopup(ADD_ROOM_SUCC_MSG, "success");
         }
       }
 
@@ -221,7 +222,7 @@ const RoomMasterScreen = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving room:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setLoading(false);
     }
@@ -274,7 +275,7 @@ const RoomMasterScreen = () => {
         }
       } catch (err) {
         console.error("Error updating room status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }
@@ -305,7 +306,7 @@ const RoomMasterScreen = () => {
     if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     } else {
-      showPopup(`Please enter a valid page number between 1 and ${totalPages}`, "error");
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
       setPageInput(currentPage.toString());
     }
   };

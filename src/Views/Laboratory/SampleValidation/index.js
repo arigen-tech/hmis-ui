@@ -3,6 +3,7 @@ import { getRequest, postRequest } from "../../../service/apiService"
 import { LAB } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
+import { FETCH_SAMPLE_VALIDATIONS_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, REJECT_REASON_WARN_MSG, UNEXPECTED_ERROR, VALIDATION_SUCC_MSG, VALIDATION_WARN_MSG } from "../../../config/constants"
 
 const SampleValidation = () => {
   const [sampleList, setSampleList] = useState([])
@@ -37,11 +38,11 @@ const SampleValidation = () => {
         setSampleList(formattedData);
       } else {
         console.error('Error fetching pending validation samples:', data.message);
-        showPopup('Failed to load pending validation samples', 'error')
+        showPopup(FETCH_SAMPLE_VALIDATIONS_ERR_MSG, 'error')
       }
     } catch (error) {
       console.error('Error fetching pending validation samples:', error);
-      showPopup('Error fetching pending validation samples', 'error')
+      showPopup(FETCH_SAMPLE_VALIDATIONS_ERR_MSG, 'error')
     } finally {
       setLoading(false);
     }
@@ -186,7 +187,7 @@ const SampleValidation = () => {
 
         // UPDATED VALIDATION: Check if all investigations have a decision
         if (!areAllInvestigationsDecided()) {
-          showPopup("Please make a decision for ALL investigations. Each row must be either Accepted or Rejected.", "warning")
+          showPopup(VALIDATION_WARN_MSG, "warning")
           setLoading(false)
           return
         }
@@ -197,7 +198,7 @@ const SampleValidation = () => {
         )
 
         if (rejectedWithoutReason.length > 0) {
-          showPopup("Please provide a reason for all rejected investigations.", "warning")
+          showPopup(REJECT_REASON_WARN_MSG, "warning")
           setLoading(false)
           return
         }
@@ -218,13 +219,13 @@ const SampleValidation = () => {
         // Handle both JSON and plain text responses
         if (response.status === 200 || response.ok) {
           // MODIFIED: Show success message with refresh flag - data will refresh ONLY when popup closes
-          showPopup("Investigations validated successfully!", "success", true)
+          showPopup(VALIDATION_SUCC_MSG, "success", true)
           
           // MODIFIED: Removed immediate refresh - only close the detail view
           setShowDetailView(false)
           setSelectedSample(null)
         } else {
-          throw new Error(response.message || "Failed to validate investigations")
+          throw new Error("Failed to validate investigations")
         }
       } catch (error) {
         console.error('Error validating investigations:', error)
@@ -233,11 +234,11 @@ const SampleValidation = () => {
           // This means the API returned plain text instead of JSON
           // But since we got 200 status, we consider it success
           // MODIFIED: Show success message with refresh flag
-          showPopup("Investigations validated successfully!", "success", true)
+          showPopup(VALIDATION_SUCC_MSG, "success", true)
           setShowDetailView(false)
           setSelectedSample(null)
         } else {
-          showPopup(error.message || "Error validating investigations", "error")
+          showPopup(UNEXPECTED_ERROR, "error")
         }
       } finally {
         setLoading(false)
@@ -324,7 +325,7 @@ const SampleValidation = () => {
     if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
       setCurrentPage(pageNumber)
     } else {
-      showPopup("Please enter a valid page number.", "warning")
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "warning")
     }
   }
 

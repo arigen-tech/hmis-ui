@@ -152,7 +152,7 @@ const OpeningBalanceApproval = () => {
   const [pageInput, setPageInput] = useState("")
   const [detailEntries, setDetailEntries] = useState([])
   const statusOrder = { s: 1, p: 3, r: 2, a: 4 };
-  const itemsPerPage = 10
+  const itemsPerPage = 5
   // Helper to format date to yyyy-mm-dd
   const formatDate = (date) => {
     if (!date) return "";

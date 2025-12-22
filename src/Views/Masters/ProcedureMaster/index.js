@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_PROCEDURE, MAS_DEPARTMENT, MAS_PROCEDURE_TYPE } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { ACTIVATE_PROCEDURE_ERR_MSG, ACTIVATE_PROCEDURE_SUCC_MSG, ADD_PROCEDURE_SUCC_MSG, DUPLICATE_PROCEDURE, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_PROCEDURE_ERR_MSG, FETCH_PROCEDURE_TYPE_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_PROCEDURE_SUCC_MSG } from "../../../config/constants";
 
 const ProcedureMaster = () => {
   const [procedureData, setProcedureData] = useState([]);
@@ -86,7 +87,7 @@ const ProcedureMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching dropdown data:", err);
-      showPopup("Failed to load dropdown data", "error");
+      showPopup(FETCH_PROCEDURE_TYPE_ERR_MSG, "error");
     }
   };
 
@@ -111,7 +112,7 @@ const ProcedureMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching procedure data:", err);
-      showPopup("Failed to load procedure data", "error");
+      showPopup(FETCH_PROCEDURE_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -192,7 +193,7 @@ const ProcedureMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Procedure code already exists!", "error");
+        showPopup(DUPLICATE_PROCEDURE, "error");
         setLoading(false);
         return;
       }
@@ -211,7 +212,7 @@ const ProcedureMaster = () => {
 
         if (response && response.status === 200) {
           fetchProcedureData();
-          showPopup("Procedure updated successfully!", "success");
+          showPopup(UPDATE_PROCEDURE_SUCC_MSG, "success");
         }
       } else {
         // Add new procedure
@@ -219,7 +220,7 @@ const ProcedureMaster = () => {
 
         if (response && (response.status === 200 || response.status === 201)) {
           fetchProcedureData();
-          showPopup("New procedure added successfully!", "success");
+          showPopup(ADD_PROCEDURE_SUCC_MSG, "success");
         }
       }
 
@@ -228,7 +229,7 @@ const ProcedureMaster = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving procedure data:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setLoading(false);
     }
@@ -274,7 +275,7 @@ const ProcedureMaster = () => {
         }
       } catch (err) {
         console.error("Error updating procedure status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }
@@ -305,7 +306,7 @@ const ProcedureMaster = () => {
     if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     } else {
-      showPopup(`Please enter a valid page number between 1 and ${totalPages}`, "error");
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
       setPageInput(currentPage.toString());
     }
   };
@@ -388,14 +389,14 @@ const ProcedureMaster = () => {
 
         if (response && response.response) {
           fetchProcedureData();
-          showPopup("Procedure activated successfully!", "success");
+          showPopup(ACTIVATE_PROCEDURE_SUCC_MSG, "success");
           setEditingProcedure(null);
           setFormData({ procedureCode: "", procedureName: "", departmentId: "", procedureTypeId: "" });
           setShowForm(false);
         }
       } catch (err) {
         console.error("Error activating procedure:", err);
-        showPopup(`Failed to activate: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(ACTIVATE_PROCEDURE_ERR_MSG, "error");
       } finally {
         setLoading(false);
       }

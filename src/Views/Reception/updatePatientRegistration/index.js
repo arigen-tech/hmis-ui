@@ -123,7 +123,7 @@ const UpdatePatientRegistration = () => {
   let stream = null;
   const [patients, setPatients] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(5);
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileQuery, setMobileQuery] = useState("");
   const [pageInput, setPageInput] = useState("");

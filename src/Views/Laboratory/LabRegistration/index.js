@@ -17,6 +17,7 @@ import {
   MAS_PACKAGE_INVESTIGATION
 } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
+import { ADD_ROW_WARNING, DUPLICATE, DUPLICATE_PATIENT, ERROR, IMAGE_TEXT, IMAGE_TITLE, INVALID_DATE_TEXT, INVALID_DATE_TITLE, LAB_REG_SUCC_MSG, MISSING_FIELD, INV_PRICE_WARNING_MSG, REGISTRATION_ERR_MSG, SUCCESS, WARNING, PACKAGE_PRICE_WARNING_MSG, MISSING_MANDOTORY_FIELD_MSG, MISSING_MANDOTORY_FIELD, IMAGE_UPLOAD_SUCC_MSG, IMAGE_UPLOAD_FAIL_MSG, UNEXPECTED_ERROR } from "../../../config/constants"
 
 
 const LabRegistration = () => {
@@ -238,8 +239,8 @@ const LabRegistration = () => {
 
   const confirmUpload = (imageData) => {
     Swal.fire({
-      title: "Confirm Upload",
-      text: "Do you want to upload this photo?",
+      title: IMAGE_TITLE,
+      text: IMAGE_TEXT,
       imageUrl: imageData,
       imageWidth: 200,
       imageHeight: 150,
@@ -270,13 +271,13 @@ const LabRegistration = () => {
         const extractedPath = data.response
         setImageURL(extractedPath)
         console.log("Uploaded Image URL:", extractedPath)
-        Swal.fire("Success!", "Image uploaded successfully!", "success")
+        Swal.fire(SUCCESS,IMAGE_UPLOAD_SUCC_MSG, "success")
       } else {
-        Swal.fire("Error!", "Failed to upload image!", "error")
+        Swal.fire(ERROR, IMAGE_UPLOAD_FAIL_MSG, "error")
       }
     } catch (error) {
       console.error("Upload error:", error)
-      Swal.fire("Error!", "Something went wrong!", "error")
+      Swal.fire(ERROR,UNEXPECTED_ERROR, "error")
     } finally {
       setLoading(false);
     }
@@ -415,8 +416,8 @@ const LabRegistration = () => {
     // Validate that date is not in the past
     if (selectedDate < today) {
       Swal.fire({
-        title: 'Invalid Date',
-        text: 'Cannot select past dates. Please select today or a future date.',
+        title: INVALID_DATE_TITLE,
+        text: INVALID_DATE_TEXT,
         icon: 'warning',
         confirmButtonText: 'OK'
       });
@@ -459,7 +460,7 @@ const LabRegistration = () => {
     
     // Check if previous row has name
     if (!lastRow.name) {
-      Swal.fire("Missing Fields", "Please fill investigation/package name before adding new row.", "warning");
+      Swal.fire(MISSING_FIELD,ADD_ROW_WARNING, "warning");
       return;
     }
     
@@ -743,7 +744,7 @@ const LabRegistration = () => {
         try {
           const isDuplicate = await checkDuplicatePatient(firstName, dob, gender, mobileNo, relation);
           if (isDuplicate) {
-            Swal.fire("Duplicate Found!", "A patient with these details already exists.", "warning");
+            Swal.fire(DUPLICATE, DUPLICATE_PATIENT, "warning");
             setIsDuplicatePatient(true);
           } else {
             setIsDuplicatePatient(false);
@@ -835,7 +836,7 @@ const LabRegistration = () => {
     console.log("Form validation result:", isFormValid);
 
     if (isDuplicatePatient) {
-      Swal.fire("Duplicate Found!", "A patient with these details already exists. Please check your details.", "warning");
+      Swal.fire(DUPLICATE, DUPLICATE_PATIENT, "warning");
       return;
     }
 
@@ -934,8 +935,8 @@ const LabRegistration = () => {
 
         if (shouldNavigateToPayment) {
           Swal.fire({
-            title: "Success!",
-            text: "Patient and Lab registered successfully! Redirecting to payment.",
+            title: SUCCESS,
+            text: LAB_REG_SUCC_MSG,
             icon: "success",
             confirmButtonText: "OK, Proceed",
           }).then(() => {
@@ -954,11 +955,11 @@ const LabRegistration = () => {
             });
           });
         } else {
-          Swal.fire("Success!", "Patient and Lab registered successfully!", "success").then(() => handleReset());
+          Swal.fire(SUCCESS, LAB_REG_SUCC_MSG, "success").then(() => handleReset());
         }
       } catch (error) {
         console.error("Registration error:", error);
-        Swal.fire("Error!", error.message || "Registration failed", "error");
+        Swal.fire(ERROR, error.message || REGISTRATION_ERR_MSG, "error");
       } finally {
         setLoading(false);
       }
@@ -1753,8 +1754,8 @@ const LabRegistration = () => {
                                             onClick={() => {
                                               if (item.price === null || item.price === 0 || item.price === "0") {
                                                 Swal.fire(
-                                                  "Warning",
-                                                  "Price has not been configured for this Investigation",
+                                                  WARNING,
+                                                  INV_PRICE_WARNING_MSG,
                                                   "warning"
                                                 );
                                               } else {
@@ -1802,8 +1803,8 @@ const LabRegistration = () => {
                                             const priceDetails = await fetchPackagePrice(item.packName);
                                             if (!priceDetails || !priceDetails.actualCost) {
                                               Swal.fire(
-                                                "Warning",
-                                                "Price has not been configured for this Package",
+                                                WARNING,
+                                                PACKAGE_PRICE_WARNING_MSG,
                                                 "warning"
                                               );
                                             } else {
@@ -2074,8 +2075,8 @@ const LabRegistration = () => {
                         if (loading) return
                         if (missingFields.length > 0) {
                           Swal.fire(
-                            "Missing Mandatory Fields",
-                            "Please fill all mandatory fields before proceeding.",
+                           MISSING_MANDOTORY_FIELD,
+                           MISSING_MANDOTORY_FIELD_MSG,
                             "warning"
                           )
                           return

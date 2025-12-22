@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_MEAL_TYPE } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { ADD_MEAL_TYPE_SUCC_MSG, DUPLICATE_MEAL_TYPE, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_MEAL_TYPE_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_MEAL_TYPE_SUCC_MSG } from "../../../config/constants";
 
 const MealTypeMaster = () => {
   const [mealTypeData, setMealTypeData] = useState([]);
@@ -69,7 +70,7 @@ const MealTypeMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching meal type data:", err);
-      showPopup("Failed to load meal type data", "error");
+      showPopup(FETCH_MEAL_TYPE_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -152,7 +153,7 @@ const MealTypeMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Meal type already exists!", "error");
+        showPopup(DUPLICATE_MEAL_TYPE, "error");
         setLoading(false);
         return;
       }
@@ -169,7 +170,7 @@ const MealTypeMaster = () => {
 
         if (response && response.status === 200) {
           fetchMealTypeData();
-          showPopup("Meal type updated successfully!", "success");
+          showPopup(UPDATE_MEAL_TYPE_SUCC_MSG, "success");
         }
       } else {
         // Add new meal type
@@ -177,7 +178,7 @@ const MealTypeMaster = () => {
 
         if (response && response.status === 200) {
           fetchMealTypeData();
-          showPopup("New meal type added successfully!", "success");
+          showPopup(ADD_MEAL_TYPE_SUCC_MSG, "success");
         }
       }
 
@@ -186,7 +187,7 @@ const MealTypeMaster = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving meal type data:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setLoading(false);
     }
@@ -232,7 +233,7 @@ const MealTypeMaster = () => {
         }
       } catch (err) {
         console.error("Error updating meal type status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }
@@ -257,7 +258,7 @@ const MealTypeMaster = () => {
     if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     } else {
-      showPopup(`Please enter a valid page number between 1 and ${totalPages}`, "error");
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
       setPageInput(currentPage.toString());
     }
   };

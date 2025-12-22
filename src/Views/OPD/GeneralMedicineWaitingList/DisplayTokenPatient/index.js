@@ -136,7 +136,7 @@ const PatientWaitingList = () => {
 
 
   return (
-    <div className="container mt-4">
+    <div className="container-fluid">
       <h3 className="fw-bold mb-4">TOKEN DISPLAY WAITING LIST</h3>
 
       {loadingData && <LoadingScreen />}

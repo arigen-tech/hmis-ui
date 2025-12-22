@@ -17,7 +17,7 @@ const Createusermaster = () => {
     const [loading, setLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1)
     const [popupMessage, setPopupMessage] = useState(null);
-    const itemsPerPage = 10
+    const itemsPerPage = 5
     const [showForm, setShowForm] = useState(false)
     const [editMode, setEditMode] = useState(false)
     const [employeeTypeData, setEmployeeTypeData] = useState([]);

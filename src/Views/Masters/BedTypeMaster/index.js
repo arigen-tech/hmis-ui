@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_BED_TYPE } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { ADD_BED_TYPE_SUCC_MSG, DUPLICATE_BED_TYPE, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_BED_TYPE_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_BED_TYPE_SUCC_MSG } from "../../../config/constants";
 
 const BedTypeMaster = () => {
   const [bedTypeData, setBedTypeData] = useState([]);
@@ -72,7 +73,7 @@ const BedTypeMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching bed type data:", err);
-      showPopup("Failed to load bed type data", "error");
+      showPopup(FETCH_BED_TYPE_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -145,7 +146,7 @@ const BedTypeMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Bed Type with the same name already exists!", "error");
+        showPopup(DUPLICATE_BED_TYPE, "error");
         setLoading(false);
         return;
       }
@@ -159,7 +160,7 @@ const BedTypeMaster = () => {
 
         if (response && response.status === 200) {
           fetchBedTypeData();
-          showPopup("Bed type updated successfully!", "success");
+          showPopup(UPDATE_BED_TYPE_SUCC_MSG, "success");
         }
       } else {
         // Add new bed type
@@ -170,7 +171,7 @@ const BedTypeMaster = () => {
 
         if (response && response.status === 200) {
           fetchBedTypeData();
-          showPopup("New bed type added successfully!", "success");
+          showPopup(ADD_BED_TYPE_SUCC_MSG, "success");
         }
       }
 
@@ -179,7 +180,7 @@ const BedTypeMaster = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving bed type data:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(`${FAIL_TO_SAVE_CHANGES} ${err.response?.data?.message || err.message}`, "error");
     } finally {
       setLoading(false);
     }
@@ -225,7 +226,7 @@ const BedTypeMaster = () => {
         }
       } catch (err) {
         console.error("Error updating bed type status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }
@@ -250,7 +251,7 @@ const BedTypeMaster = () => {
     if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     } else {
-      showPopup(`Please enter a valid page number between 1 and ${totalPages}`, "error");
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
       setPageInput(currentPage.toString());
     }
   };

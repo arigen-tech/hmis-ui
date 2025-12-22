@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_DIET_TYPE } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { ADD_DIET_TYPE_SUCC_MSG, DUPLICATE_DIET_TYPE, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DIET_TYPE_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_DIET_TYPE_SUCC_MSG } from "../../../config/constants";
 
 const DietTypeMaster = () => {
   const [dietTypeData, setDietTypeData] = useState([]);
@@ -70,7 +71,7 @@ const DietTypeMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching diet type data:", err);
-      showPopup("Failed to load diet type data", "error");
+      showPopup(FETCH_DIET_TYPE_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -142,7 +143,7 @@ const DietTypeMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Diet type already exists!", "error");
+        showPopup(DUPLICATE_DIET_TYPE, "error");
         setLoading(false);
         return;
       }
@@ -159,7 +160,7 @@ const DietTypeMaster = () => {
 
         if (response && response.status === 200) {
           fetchDietTypeData();
-          showPopup("Diet type updated successfully!", "success");
+          showPopup(UPDATE_DIET_TYPE_SUCC_MSG, "success");
         }
       } else {
         // Add new diet type
@@ -167,7 +168,7 @@ const DietTypeMaster = () => {
 
         if (response && response.status === 200) {
           fetchDietTypeData();
-          showPopup("New diet type added successfully!", "success");
+          showPopup(ADD_DIET_TYPE_SUCC_MSG, "success");
         }
       }
 
@@ -176,7 +177,7 @@ const DietTypeMaster = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving diet type data:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setLoading(false);
     }
@@ -222,7 +223,7 @@ const DietTypeMaster = () => {
         }
       } catch (err) {
         console.error("Error updating diet type status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }
@@ -247,7 +248,7 @@ const DietTypeMaster = () => {
     if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     } else {
-      showPopup(`Please enter a valid page number between 1 and ${totalPages}`, "error");
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
       setPageInput(currentPage.toString());
     }
   };

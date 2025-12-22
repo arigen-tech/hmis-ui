@@ -21,7 +21,7 @@ const Identificationmaster = () => {
 
   const IDENTIFICATION_NAME_MAX_LENGTH = 30;
   const IDENTIFICATION_CODE_MAX_LENGTH = 8;
-  const itemsPerPage = 10;
+  const itemsPerPage = 5;
 
   useEffect(() => {
     fetchIdentificationTypes(0);

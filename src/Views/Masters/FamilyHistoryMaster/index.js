@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_MEDICAL_HISTORY } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { ADD_FAMILY_HISTORY_SUCC_MSG, DUPLICATE_FAMILY_HISTORY, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_FAMILY_HISTROY_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_FAMILY_HISTORY_SUCC_MSG } from "../../../config/constants";
 
 const FamilyHistoryMaster = () => {
   const [familyHistoryData, setFamilyHistoryData] = useState([]);
@@ -68,7 +69,7 @@ const FamilyHistoryMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching family history data:", err);
-      showPopup("Failed to load family history data", "error");
+      showPopup(FETCH_FAMILY_HISTROY_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -138,7 +139,7 @@ const FamilyHistoryMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Family history name already exists!", "error");
+        showPopup(DUPLICATE_FAMILY_HISTORY, "error");
         setLoading(false);
         return;
       }
@@ -154,7 +155,7 @@ const FamilyHistoryMaster = () => {
 
         if (response && response.status === 200) {
           fetchFamilyHistoryData();
-          showPopup("Family history updated successfully!", "success");
+          showPopup(UPDATE_FAMILY_HISTORY_SUCC_MSG, "success");
         }
       } else {
         // Add new family history
@@ -162,7 +163,7 @@ const FamilyHistoryMaster = () => {
 
         if (response && (response.status === 200 || response.status === 201)) {
           fetchFamilyHistoryData();
-          showPopup("New family history added successfully!", "success");
+          showPopup(ADD_FAMILY_HISTORY_SUCC_MSG, "success");
         }
       }
 
@@ -171,7 +172,7 @@ const FamilyHistoryMaster = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving family history data:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setLoading(false);
     }
@@ -217,7 +218,7 @@ const FamilyHistoryMaster = () => {
         }
       } catch (err) {
         console.error("Error updating family history status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }
@@ -242,7 +243,7 @@ const FamilyHistoryMaster = () => {
     if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     } else {
-      showPopup(`Please enter a valid page number between 1 and ${totalPages}`, "error");
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
       setPageInput(currentPage.toString());
     }
   };

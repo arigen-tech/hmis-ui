@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import { MAS_MAIN_CHARGE_CODE } from "../../../config/apiConfig"
+import {  ADD_MAIN_CHARGE_CODE_SUCC_MSG, DUPLICATE_MAIN_CHARGE_CODE_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_MAIN_CHARGE_CODE_ERR_MSG, UPDATE_MAIN_CHARGE_CODE_SUCC_MSG } from "../../../config/constants"
 
 
 
@@ -40,7 +41,7 @@ const MainChargeCode = () => {
       }
     } catch (err) {
       console.error("Error fetching main charge code data:", err)
-      showPopup("Failed to load main charge code data", "error")
+      showPopup(FETCH_MAIN_CHARGE_CODE_ERR_MSG, "error")
     } finally {
       setLoading(false)
     }
@@ -86,7 +87,7 @@ const MainChargeCode = () => {
       )
 
       if (isDuplicate && !editingMainCharge) {
-        showPopup("Main charge code with the same code already exists!", "error")
+        showPopup(DUPLICATE_MAIN_CHARGE_CODE_MSG, "error")
         setLoading(false)
         return
       }
@@ -101,7 +102,7 @@ const MainChargeCode = () => {
 
         if (response && response.status === 200) {
           fetchMainChargeCodeData()
-          showPopup("Main charge code updated successfully!", "success")
+          showPopup(UPDATE_MAIN_CHARGE_CODE_SUCC_MSG, "success")
         }
       } else {
         // Add new main charge code
@@ -113,7 +114,7 @@ const MainChargeCode = () => {
 
         if (response && response.status === 200) {
           fetchMainChargeCodeData()
-          showPopup("New main charge code added successfully!", "success")
+          showPopup(ADD_MAIN_CHARGE_CODE_SUCC_MSG, "success")
         }
       }
 
@@ -123,7 +124,7 @@ const MainChargeCode = () => {
       setShowForm(false)
     } catch (err) {
       console.error("Error saving main charge code:", err)
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error")
+      showPopup(FAIL_TO_SAVE_CHANGES, "error")
     } finally {
       setLoading(false)
     }
@@ -165,7 +166,7 @@ const MainChargeCode = () => {
         }
       } catch (err) {
         console.error("Error updating main charge code status:", err)
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error")
+        showPopup(FAIL_TO_UPDATE_STS, "error")
       } finally {
         setLoading(false)
       }

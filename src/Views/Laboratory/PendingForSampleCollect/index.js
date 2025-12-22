@@ -3,6 +3,7 @@ import { getRequest, postRequest } from "../../../service/apiService"
 import { LAB, DG_MAS_COLLECTION } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
+import { FETCH_CONTAINER_ERR_MSG, FETCH_PENDING_SAMPLE_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, SAMPLE_COLLECTION_ERR_MSG, SAMPLE_COLLECTION_SUCC_MSG } from "../../../config/constants"
 
 const PendingForSampleCollection = () => {
   const [samples, setSamples] = useState([])
@@ -51,11 +52,11 @@ const PendingForSampleCollection = () => {
         setSamples(groupedData);
       } else {
         console.error('Error fetching pending samples:', data.message);
-        showPopup('Failed to load pending samples', 'error')
+        showPopup(FETCH_PENDING_SAMPLE_ERR_MSG, 'error')
       }
     } catch (error) {
       console.error('Error fetching pending samples:', error);
-      showPopup('Error fetching pending samples', 'error')
+      showPopup(FETCH_PENDING_SAMPLE_ERR_MSG, 'error')
     } finally {
       setLoading(false);
     }
@@ -69,11 +70,11 @@ const PendingForSampleCollection = () => {
         setContainerOptions(data.response);
       } else {
         console.error('Error fetching container options:', data.message);
-        showPopup('Failed to load container options', 'error')
+        showPopup(FETCH_CONTAINER_ERR_MSG, 'error')
       }
     } catch (error) {
       console.error('Error fetching container options:', error);
-      showPopup('Error fetching container options', 'error')
+      showPopup(FETCH_CONTAINER_ERR_MSG, 'error')
     }
   };
 
@@ -186,7 +187,7 @@ const PendingForSampleCollection = () => {
         const response = await postRequest(`${LAB}/savesamplecollection`, requestPayload)
 
         if (response.status === 200) {
-          showPopup("Sample collection data saved successfully!", "success", true)
+          showPopup(SAMPLE_COLLECTION_SUCC_MSG, "success", true)
           setShowDetailView(false)
           setSelectedSample(null)
         } else {
@@ -194,7 +195,7 @@ const PendingForSampleCollection = () => {
         }
       } catch (error) {
         console.error('Error saving sample collection:', error)
-        showPopup(error.message || "Error saving sample collection data", "error")
+        showPopup(SAMPLE_COLLECTION_ERR_MSG, "error")
       } finally {
         setLoading(false)
       }
@@ -228,7 +229,7 @@ const PendingForSampleCollection = () => {
     if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
       setCurrentPage(pageNumber)
     } else {
-      showPopup("Please enter a valid page number.", "warning")
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "warning")
     }
   }
 

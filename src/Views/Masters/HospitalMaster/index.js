@@ -47,7 +47,7 @@ const HospitalMaster = () => {
   const PINCODE_MAX_LENGTH = 10
   const CONTACT_NUMBER_MAX_LENGTH = 10
   const EMAIL_MAX_LENGTH = 50
-  const itemsPerPage = 10
+  const itemsPerPage = 5
 
   useEffect(() => {
     fetchHospitals(0)

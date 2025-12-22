@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_PROCEDURE_TYPE } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { ACTIVATE_PROCEDURE_TYPE_ERR_MSG, ACTIVATE_PROCEDURE_TYPE_SUCC_MSG, ADD_PROCEDURE_TYPE_SUCC_MSG, DUPLICATE_PROCEDURE_TYPE, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_PROCEDURE_TYPE_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_PROCEDURE_TYPE_SUCC_MSG } from "../../../config/constants";
 
 const ProcedureTypeMaster = () => {
   const [procedureTypeData, setProcedureTypeData] = useState([]);
@@ -71,7 +72,7 @@ const ProcedureTypeMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching procedure type data:", err);
-      showPopup("Failed to load procedure type data", "error");
+      showPopup(FETCH_PROCEDURE_TYPE_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -146,7 +147,7 @@ const ProcedureTypeMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Procedure type name already exists!", "error");
+        showPopup(DUPLICATE_PROCEDURE_TYPE, "error");
         setLoading(false);
         return;
       }
@@ -163,7 +164,7 @@ const ProcedureTypeMaster = () => {
 
         if (response && response.status === 200) {
           fetchProcedureTypeData();
-          showPopup("Procedure type updated successfully!", "success");
+          showPopup(UPDATE_PROCEDURE_TYPE_SUCC_MSG, "success");
         }
       } else {
         // Add new procedure type
@@ -171,7 +172,7 @@ const ProcedureTypeMaster = () => {
 
         if ((response && response.status === 200) || (response && response.status === 201)) {
           fetchProcedureTypeData();
-          showPopup("New procedure type added successfully!", "success");
+          showPopup(ADD_PROCEDURE_TYPE_SUCC_MSG, "success");
         }
       }
 
@@ -180,7 +181,7 @@ const ProcedureTypeMaster = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving procedure type data:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setLoading(false);
     }
@@ -226,7 +227,7 @@ const ProcedureTypeMaster = () => {
         }
       } catch (err) {
         console.error("Error updating procedure type status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }
@@ -251,7 +252,7 @@ const ProcedureTypeMaster = () => {
     if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     } else {
-      showPopup(`Please enter a valid page number between 1 and ${totalPages}`, "error");
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
       setPageInput(currentPage.toString());
     }
   };
@@ -334,14 +335,14 @@ const ProcedureTypeMaster = () => {
 
         if (response && response.response) {
           fetchProcedureTypeData();
-          showPopup("Procedure type activated successfully!", "success");
+          showPopup(ACTIVATE_PROCEDURE_TYPE_SUCC_MSG, "success");
           setEditingProcedureType(null);
           setFormData({ procedureTypeName: "", description: "" });
           setShowForm(false);
         }
       } catch (err) {
         console.error("Error activating procedure type:", err);
-        showPopup(`Failed to activate: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(ACTIVATE_PROCEDURE_TYPE_ERR_MSG, "error");
       } finally {
         setLoading(false);
       }

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import DecoupledEditor from '@ckeditor/ckeditor5-build-decoupled-document';
 import placeholderImage from "../../../../assets/images/placeholder.jpg";
-import { MAS_COUNTRY, MAS_DISTRICT, MAS_STATE, MAS_DEPARTMENT, MAS_GENDER, MAS_ROLES, MAS_IDENTIFICATION_TYPE, API_HOST, MAS_EMPLOYMENT_TYPE, MAS_USER_TYPE, EMPLOYEE_REGISTRATION,MAS_DESIGNATION } from "../../../../config/apiConfig";
+import { MAS_COUNTRY, MAS_DISTRICT, MAS_STATE, MAS_DEPARTMENT, MAS_GENDER, MAS_ROLES, MAS_IDENTIFICATION_TYPE, API_HOST, MAS_EMPLOYMENT_TYPE, MAS_USER_TYPE, EMPLOYEE_REGISTRATION, MAS_DESIGNATION, MAS_SPECIALITY_CENTER } from "../../../../config/apiConfig";
 import { getRequest, putRequest, postRequestWithFormData } from "../../../../service/apiService";
 import Popup from "../../../../Components/popup";
 
@@ -29,14 +29,15 @@ const EmployeeRegistration = () => {
         employeeTypeId: "",
         roleId: "",
         fromDate: "",
-        deprtId: "",
-        designation: "",
+        departmentId: "",
+        designationId: "",
+        totalExperience: "",
 
         qualification: [{ employeeQualificationId: 1, institutionName: "", completionYear: "", qualificationName: "", filePath: null }],
         document: [{ employeeDocumentId: 1, documentName: "", filePath: null }],
         // New sections
         specialtyCenter: [{ specialtyCenterId: 1, specialtyCenterName: "", centerId: "" }],
-        workExperience: [{ experienceId: 1, organizationName: "" }],
+        workExperiences: [{ experienceId: 1, organizationName: "" }],
         memberships: [{ membershipsId: 1, levelName: "" }],
         specialtyInterest: [{ interestId: 1, specialtyInterestName: "" }],
         awardsDistinction: [{ awardId: 1, awardName: "" }],
@@ -67,10 +68,10 @@ const EmployeeRegistration = () => {
     const [employmentTypeData, setEmploymentTypeData] = useState([]);
     const [specialtyCenterData, setSpecialtyCenterData] = useState([]);
     const [specialtySearch, setSpecialtySearch] = useState("");
-    const [MAS_SPECIALITY_CENTER, setMAS_SPECIALITY_CENTER] = useState("masSpecialityCenter");
     const [selectedDesignationId, setSelectedDesignationId] = useState("");
     const [designationData, setDesignationData] = useState([]);
     const [designationLoading, setDesignationLoading] = useState(false);
+
 
     const [countryIds, setCountryIds] = useState("");
     const [stateIds, setStateIds] = useState("");
@@ -117,6 +118,7 @@ const EmployeeRegistration = () => {
             setLoading(false);
         }
     };
+
 
     const fetchDepartmentData = async () => {
         setLoading(true);
@@ -222,32 +224,32 @@ const EmployeeRegistration = () => {
         }
     };
 
-const fetchDesignationByEmpTypeData = async (employeeTypeId) => {
-    if (!employeeTypeId) {
-        setDesignationData([]);
-        setSelectedDesignationId("");
-        return;
-    }
+    const fetchDesignationByEmpTypeData = async (employeeTypeId) => {
+        if (!employeeTypeId) {
+            setDesignationData([]);
+            setSelectedDesignationId("");
+            return;
+        }
 
-    setDesignationLoading(true);
-    try {
-        const data = await getRequest(`${MAS_DESIGNATION}/getById/${employeeTypeId}`);
-        
-        if (data && data.status === 200 && Array.isArray(data.response)) {
-            setDesignationData(data.response);
-        } else {
-            console.error("Unexpected API response format:", data);
+        setDesignationLoading(true);
+        try {
+            const data = await getRequest(`${MAS_DESIGNATION}/getById/${employeeTypeId}`);
+
+            if (data && data.status === 200 && Array.isArray(data.response)) {
+                setDesignationData(data.response);
+            } else {
+                console.error("Unexpected API response format:", data);
+                setDesignationData([]);
+                showPopup("Failed to fetch designations. Please try again.", "error");
+            }
+        } catch (error) {
+            console.error("Error fetching Designation data:", error);
             setDesignationData([]);
             showPopup("Failed to fetch designations. Please try again.", "error");
+        } finally {
+            setDesignationLoading(false);
         }
-    } catch (error) {
-        console.error("Error fetching Designation data:", error);
-        setDesignationData([]);
-        showPopup("Failed to fetch designations. Please try again.", "error");
-    } finally {
-        setDesignationLoading(false);
-    }
-};
+    };
 
     const fetchEmploymentTypeData = async () => {
         setLoading(true);
@@ -287,24 +289,35 @@ const fetchDesignationByEmpTypeData = async (employeeTypeId) => {
         setLoading(true);
         try {
             const data = await getRequest(`${MAS_SPECIALITY_CENTER}/getAll/1`);
-            if (data.status === 200 && Array.isArray(data.response)) {
+
+            console.log("Specialty Center Data:", data);
+
+            if (data && data.status === 200 && Array.isArray(data.response)) {
                 setSpecialtyCenterData(data.response);
+                console.log("Specialty centers loaded:", data.response.length);
             } else {
                 console.error("Unexpected API response format:", data);
                 setSpecialtyCenterData([]);
             }
         } catch (error) {
-            console.error("Error fetching Specialty Center data:", error);
+            console.error("Error fetching specialty centers:", error);
+            showPopup("Failed to load specialty centers", "error");
         } finally {
             setLoading(false);
         }
     };
 
     // Filtered specialty centers based on search
-    const filteredSpecialtyCenters = specialtyCenterData.filter(center =>
-        center.centerName.toLowerCase().includes(specialtySearch.toLowerCase()) ||
-        center.centerCode.toLowerCase().includes(specialtySearch.toLowerCase())
-    );
+    // Filtered specialty centers based on search
+    const filteredSpecialtyCenters = specialtySearch ?
+        specialtyCenterData.filter(center => {
+            const centerName = (center.centerName || center.specialtyCenterName || "").toLowerCase();
+            const centerCode = (center.centerCode || "").toLowerCase();
+            const searchTerm = specialtySearch.toLowerCase();
+
+            return centerName.includes(searchTerm) ||
+                centerCode.includes(searchTerm);
+        }) : [];
 
     // Handler Functions
     const handleCountryChange = (countryCode, id) => {
@@ -340,10 +353,10 @@ const fetchDesignationByEmpTypeData = async (employeeTypeId) => {
         }));
     };
 
-    const handleDepartmentChange = (deprtId) => {
+    const handleDepartmentChange = (departmentId) => {
         setFormData((prevState) => ({
             ...prevState,
-            deprtId: deprtId,
+            departmentId: departmentId,
         }));
     };
 
@@ -354,28 +367,35 @@ const fetchDesignationByEmpTypeData = async (employeeTypeId) => {
         }));
     };
 
-const handleEmployeeTypeChange = (empTypeId) => {
-    setFormData((prevState) => ({
-        ...prevState,
-        employeeTypeId: empTypeId,
-        designation: "", 
-    }));
+    const handleEmployeeTypeChange = (empTypeId) => {
+        setFormData((prevState) => ({
+            ...prevState,
+            employeeTypeId: empTypeId,
+            designationId: "", // ✅ reset correct field
+        }));
 
-    setDesignationData([]);
-    setSelectedDesignationId("");
-    
-    if (empTypeId) {
-        fetchDesignationByEmpTypeData(empTypeId);
-    }
-};
+        setDesignationData([]);
+        setSelectedDesignationId("");
 
-const handleDesignationChange = (designationId) => {
-    setSelectedDesignationId(designationId);
-    setFormData((prevState) => ({
-        ...prevState,
-        designation: designationId,
-    }));
-};
+        if (empTypeId) {
+            fetchDesignationByEmpTypeData(empTypeId);
+        }
+    };
+
+
+    const handleDesignationChange = (designationId) => {
+        console.log("Designation Changed to:", designationId);
+
+        setSelectedDesignationId(designationId);
+        setFormData((prevState) => {
+            console.log("Previous designationId:", prevState.designationId);
+            console.log("New designationId being set:", designationId);
+            return {
+                ...prevState,
+                designationId: designationId,
+            };
+        });
+    };
 
     const handleRoleChange = (role) => {
         setFormData((prevState) => ({
@@ -419,13 +439,20 @@ const handleDesignationChange = (designationId) => {
     };
 
     // Education Section
+    // Corrected:
     const addEducationRow = (e) => {
         e.preventDefault();
         setFormData((prev) => ({
             ...prev,
             qualification: [
                 ...prev.qualification,
-                { id: prev.qualification.length + 1, institutionName: "", completionYear: "", qualificationName: "", filePath: null },
+                {
+                    employeeQualificationId: prev.qualification.length + 1,
+                    institutionName: "",
+                    completionYear: "",
+                    qualificationName: "",
+                    filePath: null
+                },
             ],
         }));
     };
@@ -433,7 +460,12 @@ const handleDesignationChange = (designationId) => {
     const removeEducationRow = (index) => {
         setFormData((prev) => ({
             ...prev,
-            qualification: prev.qualification.filter((_, i) => i !== index),
+            qualification: prev.qualification
+                .filter((_, i) => i !== index)
+                .map((item, newIndex) => ({
+                    ...item,
+                    employeeQualificationId: newIndex + 1
+                }))
         }));
     };
 
@@ -443,7 +475,7 @@ const handleDesignationChange = (designationId) => {
             ...prev,
             document: [
                 ...prev.document,
-                { id: prev.document.length + 1, documentName: "", filePath: null },
+                { employeeDocumentId: prev.document.length + 1, documentName: "", filePath: null },
             ],
         }));
     };
@@ -461,9 +493,14 @@ const handleDesignationChange = (designationId) => {
             ...prev,
             specialtyCenter: [
                 ...prev.specialtyCenter,
-                { id: prev.specialtyCenter.length + 1, specialtyCenterName: "", centerId: "" },
+                {
+                    specialtyCenterId: prev.specialtyCenter.length + 1,
+                    specialtyCenterName: "",
+                    centerId: ""
+                },
             ],
         }));
+        setSpecialtySearch(""); // Reset search when adding new row
     };
 
     const removeSpecialtyCenterRow = (index) => {
@@ -477,9 +514,9 @@ const handleDesignationChange = (designationId) => {
     const addWorkExperienceRow = () => {
         setFormData((prev) => ({
             ...prev,
-            workExperience: [
-                ...prev.workExperience,
-                { experienceId: prev.workExperience.length + 1, organizationName: "" },
+            workExperiences: [
+                ...prev.workExperiences,
+                { experienceId: prev.workExperiences.length + 1, organizationName: "" },
             ],
         }));
     };
@@ -487,7 +524,7 @@ const handleDesignationChange = (designationId) => {
     const removeWorkExperienceRow = (index) => {
         setFormData((prev) => ({
             ...prev,
-            workExperience: prev.workExperience.filter((_, i) => i !== index),
+            workExperiences: prev.workExperiences.filter((_, i) => i !== index),
         }));
     };
 
@@ -586,7 +623,7 @@ const handleDesignationChange = (designationId) => {
     const handleWorkExperienceChange = (index, field, value) => {
         setFormData(prev => ({
             ...prev,
-            workExperience: prev.workExperience.map((item, i) =>
+            workExperiences: prev.workExperiences.map((item, i) =>
                 i === index ? { ...item, [field]: value } : item
             )
         }));
@@ -654,90 +691,119 @@ const handleDesignationChange = (designationId) => {
 
         const formDataToSend = new FormData();
 
-        // Basic Information
+        // 1. Basic Information - Ensure correct data types
         formDataToSend.append('firstName', formData.firstName);
         formDataToSend.append('lastName', formData.lastName);
-        if (formData.middleName) formDataToSend.append('middleName', formData.middleName);
+        formDataToSend.append('middleName', formData.middleName || '');
         formDataToSend.append('dob', new Date(formData.dob).toISOString().split('T')[0]);
-        formDataToSend.append('genderId', formData.genderId);
+        formDataToSend.append('genderId', formData.genderId.toString());
         formDataToSend.append('address1', formData.address1);
-        formDataToSend.append('countryId', formData.countryId);
-        formDataToSend.append('stateId', formData.stateId);
-        formDataToSend.append('districtId', formData.districtId);
-        formDataToSend.append('city', formData.city);
+        formDataToSend.append('countryId', formData.countryId.toString());
+        formDataToSend.append('stateId', formData.stateId.toString());
+        formDataToSend.append('districtId', formData.districtId.toString());
+        formDataToSend.append('city', formData.city || '')
         formDataToSend.append('pincode', formData.pincode);
         formDataToSend.append('mobileNo', formData.mobileNo);
         formDataToSend.append('registrationNo', formData.registrationNo);
-        // Profile description (rich text)
-        formDataToSend.append('profileDescription', formData.profileDescription || '');
-        formDataToSend.append('identificationType', formData.identificationType);
-        formDataToSend.append('employeeTypeId', formData.employeeTypeId);
-        formDataToSend.append('employmentTypeId', formData.employmentTypeId);
-        formDataToSend.append('roleId', formData.roleId);
+        formDataToSend.append('identificationType', formData.identificationType.toString());
+        formDataToSend.append('employeeTypeId', formData.employeeTypeId.toString());
+        formDataToSend.append('employmentTypeId', formData.employmentTypeId.toString());
+        formDataToSend.append('roleId', formData.roleId.toString());
         formDataToSend.append('fromDate', new Date(formData.fromDate).toISOString());
+        formDataToSend.append('profileDescription', formData.profileDescription || '');
 
-        if (formData.deprtId) {
-            formDataToSend.append('departmentId', formData.deprtId);
+        // Convert to number
+        const yearExp = formData.totalExperience ? parseInt(formData.totalExperience, 10) : 0;
+        formDataToSend.append('yearOfExperience', yearExp.toString());
+
+        formDataToSend.append('masDesignationId', formData.designationId.toString());
+
+        // ADD DEPARTMENT
+        if (formData.departmentId) {
+            formDataToSend.append('departmentId', formData.departmentId.toString());
         }
 
-        // Files Handling
-        if (formData.profilePicName) {
+        // 2. Files
+        if (formData.profilePicName && formData.profilePicName instanceof File) {
             formDataToSend.append('profilePicName', formData.profilePicName);
         }
-        if (formData.idDocumentName) {
+
+        if (formData.idDocumentName && formData.idDocumentName instanceof File) {
             formDataToSend.append('idDocumentName', formData.idDocumentName);
         }
 
-        // Qualification
+        // 3. Qualification Array - FIXED
         formData.qualification.forEach((qual, index) => {
-            formDataToSend.append(`qualification[${index}].employeeQualificationId`, qual.employeeQualificationId || '');
-            formDataToSend.append(`qualification[${index}].institutionName`, qual.institutionName);
-            formDataToSend.append(`qualification[${index}].completionYear`, qual.completionYear);
-            formDataToSend.append(`qualification[${index}].qualificationName`, qual.qualificationName);
-            if (qual.filePath) {
+            formDataToSend.append(`qualification[${index}].employeeQualificationId`,
+                (qual.employeeQualificationId || (index + 1)).toString());
+
+            formDataToSend.append(`qualification[${index}].institutionName`,
+                qual.institutionName || '');
+
+            // FIX: Send number or 0, not empty string
+            const year = qual.completionYear ? parseInt(qual.completionYear, 10) : 0;
+            formDataToSend.append(`qualification[${index}].completionYear`, year.toString());
+
+            formDataToSend.append(`qualification[${index}].qualificationName`,
+                qual.qualificationName || '');
+
+            // Only send file if it exists
+            if (qual.filePath && qual.filePath instanceof File) {
                 formDataToSend.append(`qualification[${index}].filePath`, qual.filePath);
             }
+            // Don't send empty filePath
         });
 
-        // Documents
+        // 4. Document Array - Add ID field
         formData.document.forEach((doc, index) => {
-            formDataToSend.append(`document[${index}].employeeDocumentId`, doc.employeeDocumentId || '');
-            formDataToSend.append(`document[${index}].documentName`, doc.documentName);
-            if (doc.filePath) {
+            formDataToSend.append(`document[${index}].employeeDocumentId`,
+                (doc.employeeDocumentId || (index + 1)).toString());
+            formDataToSend.append(`document[${index}].documentName`, doc.documentName || '');
+            if (doc.filePath && doc.filePath instanceof File) {
                 formDataToSend.append(`document[${index}].filePath`, doc.filePath);
             }
         });
 
-        // Specialty Center
+        // 5. Specialty Center Array - Add ID field
         formData.specialtyCenter.forEach((center, index) => {
-            formDataToSend.append(`specialtyCenter[${index}].specialtyCenterId`, center.specialtyCenterId || '');
-            formDataToSend.append(`specialtyCenter[${index}].specialtyCenterName`, center.specialtyCenterName);
-            formDataToSend.append(`specialtyCenter[${index}].centerId`, center.centerId);
+            formDataToSend.append(`specialtyCenter[${index}].specialtyCenterName`, center.specialtyCenterName || '');
+            formDataToSend.append(`specialtyCenter[${index}].centerId`, center.centerId || '');
+            formDataToSend.append(`specialtyCenter[${index}].isPrimary`, (index === 0).toString());
         });
 
-        // Work Experience (simplified)
-        formData.workExperience.forEach((exp, index) => {
-            formDataToSend.append(`workExperience[${index}].experienceId`, exp.experienceId || '');
-            formDataToSend.append(`workExperience[${index}].organizationName`, exp.organizationName);
+        // 6. Work Experience - Add ID field
+        formData.workExperiences.forEach((exp, index) => {
+            formDataToSend.append(`workExperiences[${index}].experienceSummary`,
+                exp.organizationName || '');
         });
 
-        // Designation Level (simplified)
+        // 7. Memberships - Add ID field
         formData.memberships.forEach((level, index) => {
-            formDataToSend.append(`memberships[${index}].membershipsId`, level.membershipsId || '');
-            formDataToSend.append(`memberships[${index}].levelName`, level.levelName);
+            formDataToSend.append(`employeeMemberships[${index}].membershipSummary`,
+                level.levelName || '');
         });
 
-        // Specialty Interest (simplified)
+        // 8. Specialty Interest - Add ID field
         formData.specialtyInterest.forEach((interest, index) => {
-            formDataToSend.append(`specialtyInterest[${index}].interestId`, interest.interestId || '');
-            formDataToSend.append(`specialtyInterest[${index}].specialtyInterestName`, interest.specialtyInterestName);
+            formDataToSend.append(`employeeSpecialtyInterests[${index}].interestSummary`,
+                interest.specialtyInterestName || '');
         });
 
-        // Awards & Distinctions (simplified)
+        // 9. Awards & Distinctions - Add ID field
         formData.awardsDistinction.forEach((award, index) => {
-            formDataToSend.append(`awardsDistinction[${index}].awardId`, award.awardId || '');
-            formDataToSend.append(`awardsDistinction[${index}].awardName`, award.awardName);
+            formDataToSend.append(`employeeAwards[${index}].awardSummary`,
+                award.awardName || '');
         });
+
+        // Debug: FormData content print करें
+        console.log("=== Sending FormData ===");
+        for (let pair of formDataToSend.entries()) {
+            if (pair[1] instanceof File) {
+                console.log(pair[0], '[File]', pair[1].name, pair[1].type, pair[1].size + ' bytes');
+            } else {
+                console.log(pair[0], pair[1]);
+            }
+        }
 
         return formDataToSend;
     };
@@ -782,7 +848,7 @@ const handleDesignationChange = (designationId) => {
                 specialtyCenterName: "",
                 centerId: ""
             }],
-            workExperience: [{ experienceId: 1, organizationName: "" }],
+            workExperiences: [{ experienceId: 1, organizationName: "" }],
             memberships: [{ membershipsId: 1, levelName: "" }],
             specialtyInterest: [{ interestId: 1, specialtyInterestName: "" }],
             awardsDistinction: [{ awardId: 1, awardName: "" }]
@@ -807,19 +873,32 @@ const handleDesignationChange = (designationId) => {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
                 },
                 body: formDataToSend
             });
 
-            const data = await response.json();
-
-            if (!response.ok || data.status === 500) {
-                throw new Error(data.message || "Failed to create employee");
+            if (!response.ok) {
+                let errorMessage = `HTTP error! status: ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.message || errorData.detail || errorMessage;
+                    console.error("Backend Error Details:", errorData);
+                } catch (e) {
+                    const text = await response.text();
+                    console.error("Response Text:", text);
+                }
+                throw new Error(errorMessage);
             }
 
-            showPopup("Employee created successfully", "success");
-            handleReset();
+            const data = await response.json();
+            console.log("Success Response:", data);
+
+            if (data.status === 200 || data.status === 201) {
+                showPopup("Employee created successfully", "success");
+                handleReset();
+            } else {
+                throw new Error(data.message || "Unknown error occurred");
+            }
 
         } catch (error) {
             console.error("Error creating employee:", error);
@@ -833,7 +912,7 @@ const handleDesignationChange = (designationId) => {
         const formDataToSend = prepareFormData();
         if (!formDataToSend) return;
 
-        if (!formData.deprtId) {
+        if (!formData.departmentId) {
             setviewDept(true);
             showPopup("Department is required for approval. Please select a department.", "error");
             return;
@@ -899,7 +978,7 @@ const handleDesignationChange = (designationId) => {
                                             <div className="col-md-9">
                                                 <div className="g-3 row">
                                                     <div className="col-md-4">
-                                                        <label className="form-label">First Name *</label>
+                                                        <label className="form-label">First Name <span className="text-danger">*</span></label>
                                                         <input
                                                             type="text"
                                                             required
@@ -924,7 +1003,7 @@ const handleDesignationChange = (designationId) => {
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Last Name *</label>
+                                                        <label className="form-label">Last Name <span className="text-danger">*</span></label>
                                                         <input
                                                             type="text"
                                                             required
@@ -937,7 +1016,7 @@ const handleDesignationChange = (designationId) => {
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Date of Birth *</label>
+                                                        <label className="form-label">Date of Birth <span className="text-danger">*</span></label>
                                                         <input
                                                             type="date"
                                                             required
@@ -948,7 +1027,7 @@ const handleDesignationChange = (designationId) => {
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Gender *</label>
+                                                        <label className="form-label">Gender <span className="text-danger">*</span></label>
                                                         <select
                                                             className="form-select"
                                                             style={{ paddingRight: "40px" }}
@@ -967,7 +1046,7 @@ const handleDesignationChange = (designationId) => {
                                                         </select>
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Address *</label>
+                                                        <label className="form-label">Address <span className="text-danger">*</span></label>
                                                         <textarea
                                                             required
                                                             id="address1"
@@ -978,7 +1057,7 @@ const handleDesignationChange = (designationId) => {
                                                         ></textarea>
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Country *</label>
+                                                        <label className="form-label">Country <span className="text-danger">*</span></label>
                                                         <select
                                                             className="form-select"
                                                             value={formData.countryId}
@@ -1001,7 +1080,7 @@ const handleDesignationChange = (designationId) => {
                                                         </select>
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">State *</label>
+                                                        <label className="form-label">State <span className="text-danger">*</span></label>
                                                         <select
                                                             className="form-select"
                                                             value={formData.stateId}
@@ -1024,7 +1103,7 @@ const handleDesignationChange = (designationId) => {
                                                         </select>
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">District *</label>
+                                                        <label className="form-label">District <span className="text-danger">*</span></label>
                                                         <select
                                                             className="form-select"
                                                             value={formData.districtId}
@@ -1040,7 +1119,7 @@ const handleDesignationChange = (designationId) => {
                                                         </select>
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">City *</label>
+                                                        <label className="form-label">City <span className="text-danger">*</span></label>
                                                         <input
                                                             type="text"
                                                             required
@@ -1053,7 +1132,7 @@ const handleDesignationChange = (designationId) => {
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Pincode *</label>
+                                                        <label className="form-label">Pincode <span className="text-danger">*</span></label>
                                                         <input
                                                             type="text"
                                                             required
@@ -1069,7 +1148,7 @@ const handleDesignationChange = (designationId) => {
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Mobile No. *</label>
+                                                        <label className="form-label">Mobile No. <span className="text-danger">*</span></label>
                                                         <input
                                                             type="text"
                                                             required
@@ -1106,7 +1185,7 @@ const handleDesignationChange = (designationId) => {
                                                         </select>
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">ID Number *</label>
+                                                        <label className="form-label">ID Number <span className="text-danger">*</span></label>
                                                         <input
                                                             type="text"
                                                             required
@@ -1119,30 +1198,38 @@ const handleDesignationChange = (designationId) => {
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">ID Upload (JPEG/PDF) *</label>
+                                                        <label className="form-label">ID Upload (JPEG/PDF) <span className="text-danger">*</span></label>
                                                         <input
                                                             type="file"
                                                             id="idDocumentName"
-                                                            className="form-control mt-2"
+                                                            className="form-control"
                                                             accept=".jpg,.jpeg,.png,.pdf"
                                                             onChange={(e) => setFormData({ ...formData, idDocumentName: e.target.files[0] })}
                                                         />
                                                     </div>
 
                                                     <div className="col-md-4">
-                                                        <label className="form-label">No. of experience</label>
+                                                        <label className="form-label">
+                                                            Total Experience (Years) <span className="text-danger">*</span>
+                                                        </label>
                                                         <input
-                                                            type="text"
+                                                            type="number"
                                                             className="form-control"
-                                                            placeholder="No of experience"
-                                                            maxLength={mlenght}
+                                                            id="totalExperience"
+                                                            value={formData.totalExperience}
+                                                            placeholder="Enter total experience in years"
+                                                            min="0"
+                                                            max="60"
+                                                            onChange={handleInputChange}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'e' || e.key === '-' || e.key === '+') {
+                                                                    e.preventDefault();
+                                                                }
+                                                            }}
                                                         />
                                                     </div>
-
-
-
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Registration Number</label>
+                                                        <label className="form-label">Registration Number <span className="text-danger">*</span></label>
                                                         <input
                                                             type="text"
                                                             className="form-control"
@@ -1150,16 +1237,13 @@ const handleDesignationChange = (designationId) => {
                                                             maxLength={mlenght}
                                                         />
                                                     </div>
-
-
-
                                                     {viewDept && (
                                                         <div className="col-md-4">
-                                                            <label className="form-label">Department Name *</label>
+                                                            <label className="form-label">Department Name <span className="text-danger">*</span></label>
                                                             <select
                                                                 className="form-select"
                                                                 style={{ paddingRight: "40px" }}
-                                                                value={formData.deprtId}
+                                                                value={formData.departmentId}
                                                                 onChange={(e) =>
                                                                     handleDepartmentChange(parseInt(e.target.value, 10))
                                                                 }
@@ -1174,9 +1258,9 @@ const handleDesignationChange = (designationId) => {
                                                             </select>
                                                         </div>
                                                     )}
-
+                                                                                                   
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Employee Type *</label>
+                                                        <label className="form-label">Employee Type <span className="text-danger">*</span></label>
                                                         <select
                                                             className="form-select"
                                                             style={{ paddingRight: "40px" }}
@@ -1196,7 +1280,7 @@ const handleDesignationChange = (designationId) => {
                                                     </div>
 
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Designation *</label>
+                                                        <label className="form-label">Designation <span className="text-danger">*</span></label>
                                                         <select
                                                             className="form-select"
                                                             style={{ paddingRight: "40px" }}
@@ -1206,7 +1290,7 @@ const handleDesignationChange = (designationId) => {
                                                         >
                                                             <option value="">Select Designation</option>
                                                             {designationData.map((designation) => (
-                                                                <option key={designation.id} value={designation.id}>
+                                                                <option key={designation.designationId} value={designation.designationId}>
                                                                     {designation.designationName} {/* Adjust field name based on your API response */}
                                                                 </option>
                                                             ))}
@@ -1214,7 +1298,7 @@ const handleDesignationChange = (designationId) => {
                                                     </div>
 
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Employment Type *</label>
+                                                        <label className="form-label">Employment Type <span className="text-danger">*</span></label>
                                                         <select
                                                             className="form-select"
                                                             style={{ paddingRight: "40px" }}
@@ -1234,7 +1318,7 @@ const handleDesignationChange = (designationId) => {
                                                     </div>
 
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Role *</label>
+                                                        <label className="form-label">Role <span className="text-danger">*</span></label>
                                                         <select
                                                             className="form-select"
                                                             style={{ paddingRight: "40px" }}
@@ -1267,7 +1351,7 @@ const handleDesignationChange = (designationId) => {
                                                 </div>
                                             </div>
                                             <div className="col-md-3 d-flex flex-column">
-                                                <label className="form-label">Profile Image *</label>
+                                                <label className="form-label">Profile Image <span className="text-danger">*</span></label>
                                                 <div className="d-flex flex-column align-items-center border p-2">
                                                     <img
                                                         src={formData.profilePicPreview || placeholderImage}
@@ -1303,7 +1387,7 @@ const handleDesignationChange = (designationId) => {
                                                             onReady={(editor) => {
                                                                 profileEditorRef.current = editor;
                                                                 if (profileInclusionRef.current) {
-                                                                    profileInclusionRef.current.inngerHTML = '';
+                                                                    profileInclusionRef.current.innerHTML = '';
                                                                     profileInclusionRef.current.appendChild(editor.ui.view.toolbar.element);
                                                                 }
                                                             }}
@@ -1495,7 +1579,7 @@ const handleDesignationChange = (designationId) => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {formData.workExperience.map((row, index) => (
+                                            {formData.workExperiences.map((row, index) => (
                                                 <tr key={index}>
                                                     <td>{index + 1}</td>
                                                     <td>

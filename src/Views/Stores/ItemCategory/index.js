@@ -277,13 +277,12 @@ const ItemCategory = () => {
             <div className="row">
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
-                        <div className="card-header">
+                        <div className="card-header d-flex justify-content-between align-items-center">
                             <h4 className="card-title p-2">Item Category</h4>
                             {loading && <LoadingScreen />}
                             {!showForm && (
-                                <div className="d-flex justify-content-between align-items-spacearound mt-3">
+                                <div className="d-flex justify-content-between align-items-center ">
 
-                                    <div className="d-flex align-items-center">
                                         <form className="d-inline-block searchform me-4" role="search">
                                             <div className="input-group searchinput">
                                                 <input
@@ -305,7 +304,6 @@ const ItemCategory = () => {
                                         {/* <button type="button" className="btn btn-success me-2">
                                             <i className="mdi mdi-plus"></i> Generate Report
                                         </button> */}
-                                    </div>
                                 </div>
                             )}
                         </div>

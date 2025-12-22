@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_INTAKE_ITEM, MAS_INTAKE_TYPE } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { ADD_INTAKE_ITEM_SUCC_MSG, DUPLICATE_INTAKE_ITEM, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_INTAKE_ITEM_ERR_MSG, FETCH_INTAKE_TYPE_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_INTAKE_ITEM_SUCC_MSG } from "../../../config/constants";
 
 const IntakeItemMaster = () => {
   const [data, setData] = useState([]);
@@ -71,7 +72,7 @@ const IntakeItemMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching intake type data:", err);
-      showPopup("Failed to load intake types", "error");
+      showPopup(FETCH_INTAKE_TYPE_ERR_MSG, "error");
     }
   };
 
@@ -93,7 +94,7 @@ const IntakeItemMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching intake item data:", err);
-      showPopup("Failed to load intake items", "error");
+      showPopup(FETCH_INTAKE_ITEM_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -163,7 +164,7 @@ const IntakeItemMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Intake item already exists!", "error");
+        showPopup(DUPLICATE_INTAKE_ITEM, "error");
         setLoading(false);
         return;
       }
@@ -180,7 +181,7 @@ const IntakeItemMaster = () => {
 
         if (response && response.status === 200) {
           fetchData();
-          showPopup("Intake item updated successfully!", "success");
+          showPopup(UPDATE_INTAKE_ITEM_SUCC_MSG, "success");
         }
       } else {
         // Add new intake item
@@ -188,7 +189,7 @@ const IntakeItemMaster = () => {
 
         if (response && response.status === 200 || response.status === 201) {
           fetchData();
-          showPopup("New intake item added successfully!", "success");
+          showPopup(ADD_INTAKE_ITEM_SUCC_MSG, "success");
         }
       }
 
@@ -197,7 +198,7 @@ const IntakeItemMaster = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving intake item:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setLoading(false);
     }
@@ -253,7 +254,7 @@ const IntakeItemMaster = () => {
         }
       } catch (err) {
         console.error("Error updating intake item status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }
@@ -285,7 +286,7 @@ const IntakeItemMaster = () => {
     if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     } else {
-      showPopup(`Please enter a valid page number between 1 and ${totalPages}`, "error");
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
       setPageInput(currentPage.toString());
     }
   };

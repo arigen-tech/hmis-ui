@@ -10,7 +10,7 @@ const Departmenttype = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageInput, setPageInput] = useState("");
-    const itemsPerPage = 4;
+    const itemsPerPage = 5;
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, categoryId: null, newStatus: false });
     const [popupMessage, setPopupMessage] = useState(null);
     const [showForm, setShowForm] = useState(false);

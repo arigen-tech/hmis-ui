@@ -21,7 +21,7 @@ const DistrictMaster = () => {
     const [popupMessage, setPopupMessage] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [loading, setLoading] = useState(true);
-    const itemsPerPage = 10;
+    const itemsPerPage = 5;
 
     const DISTRICT_NAME_MAX_LENGTH = 50;
 

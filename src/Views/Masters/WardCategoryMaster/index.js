@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_WARD_CATEGORY, MAS_CARE_LEVEL } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { ADD_WARD_CATEGORY_SUCC_MSG, DUPLICATE_WARD_CATEGORY, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_CARE_LEVEL_ERR_MSG, FETCH_WARD_CATEGORY_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_WARD_CATEGORY_SUCC_MSG } from "../../../config/constants";
 
 const WardCategoryMaster = () => {
   const [wardCategoryData, setWardCategoryData] = useState([]);
@@ -70,7 +71,7 @@ const WardCategoryMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching care level data:", err);
-      showPopup("Failed to load care level data", "error");
+      showPopup(FETCH_CARE_LEVEL_ERR_MSG, "error");
     }
   };
 
@@ -95,7 +96,7 @@ const WardCategoryMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching ward category data:", err);
-      showPopup("Failed to load ward category data", "error");
+      showPopup(FETCH_WARD_CATEGORY_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -172,7 +173,7 @@ const WardCategoryMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Ward Category with the same name already exists!", "error");
+        showPopup(DUPLICATE_WARD_CATEGORY, "error");
         setLoading(false);
         return;
       }
@@ -187,7 +188,7 @@ const WardCategoryMaster = () => {
 
         if (response && response.status === 200) {
           fetchWardCategoryData();
-          showPopup("Ward category updated successfully!", "success");
+          showPopup(UPDATE_WARD_CATEGORY_SUCC_MSG, "success");
         }
       } else {
         // Add new ward category
@@ -199,7 +200,7 @@ const WardCategoryMaster = () => {
 
         if (response && response.status === 200) {
           fetchWardCategoryData();
-          showPopup("New ward category added successfully!", "success");
+          showPopup(ADD_WARD_CATEGORY_SUCC_MSG, "success");
         }
       }
 
@@ -208,7 +209,7 @@ const WardCategoryMaster = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving ward category data:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setLoading(false);
     }
@@ -254,7 +255,7 @@ const WardCategoryMaster = () => {
         }
       } catch (err) {
         console.error("Error updating ward category status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }
@@ -284,7 +285,7 @@ const WardCategoryMaster = () => {
     if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     } else {
-      showPopup(`Please enter a valid page number between 1 and ${totalPages}`, "error");
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
       setPageInput(currentPage.toString());
     }
   };

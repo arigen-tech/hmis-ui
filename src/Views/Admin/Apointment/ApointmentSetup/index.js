@@ -311,7 +311,7 @@ const AppointmentSetup = () => {
   return (
     <>
       <div className="body d-flex py-3">
-        <div className="container-xxl">
+        <div className="container-fluid">
           {popupMessage && (
             <Popup
               message={popupMessage.message}

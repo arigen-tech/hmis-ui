@@ -3,6 +3,7 @@ import { getRequest, putRequest } from "../../../service/apiService"
 import { LAB } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
+import {FETCH_RESULT_UPDATE_DATA_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, RESULT_UPDATE_ERR_MSG, RESULT_UPDATE_SUCC_MSG, UNEXPECTED_ERROR} from "../../../config/constants"
 
 const UpdateResultValidation = () => {
   const [resultList, setResultList] = useState([])
@@ -33,11 +34,11 @@ const UpdateResultValidation = () => {
         setResultList(formattedData);
       } else {
         console.error('Error fetching update results:', data.message);
-        showPopup('Failed to load update results', 'error')
+        showPopup(FETCH_RESULT_UPDATE_DATA_ERR_MSG, 'error')
       }
     } catch (error) {
       console.error('Error fetching update results:', error);
-      showPopup('Error fetching update results', 'error')
+      showPopup(FETCH_RESULT_UPDATE_DATA_ERR_MSG, 'error')
     } finally {
       setLoading(false);
     }
@@ -519,7 +520,7 @@ const UpdateResultValidation = () => {
       const allSuccess = responses.every(response => response.status === 200);
 
       if (allSuccess) {
-        showPopup("All results updated successfully!", "success");
+        showPopup(RESULT_UPDATE_SUCC_MSG, "success");
         await fetchUpdateResults();
         setShowDetailView(false);
         setSelectedResult(null);
@@ -528,11 +529,11 @@ const UpdateResultValidation = () => {
           .filter(response => response.status !== 200)
           .map(response => response.message)
           .join(', ');
-        showPopup(`Some results failed to update: ${errorMessages}`, "error");
+        showPopup(RESULT_UPDATE_ERR_MSG, "error");
       }
     } catch (error) {
       console.error("Error submitting update:", error);
-      showPopup("Error submitting update: " + (error.message || "Unknown error"), "error");
+      showPopup(UNEXPECTED_ERROR, "error");
     } finally {
       setLoading(false);
     }
@@ -569,7 +570,7 @@ const UpdateResultValidation = () => {
     if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
       setCurrentPage(pageNumber)
     } else {
-      showPopup("Please enter a valid page number.", "warning")
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "warning")
     }
   }
 
