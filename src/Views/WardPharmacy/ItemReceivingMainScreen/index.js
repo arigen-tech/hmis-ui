@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import LoadingScreen from "../../../Components/Loading"
 import { Store_Internal_Indent } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
+import Popup from "../../../Components/popup"
 
 const ItemReceivingMainScreen = () => {
   const [indentData, setIndentData] = useState([])
@@ -11,6 +12,7 @@ const ItemReceivingMainScreen = () => {
   const [receivingItems, setReceivingItems] = useState([])
   const [loading, setLoading] = useState(false)
   const [popupMessage, setPopupMessage] = useState(null)
+  const [isSaving, setIsSaving] = useState(false)
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -98,6 +100,15 @@ const ItemReceivingMainScreen = () => {
     })
   }
 
+  // Show popup function using your Popup component
+  const showPopup = (message, type = "default") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => setPopupMessage(null)
+    });
+  };
+
   const handleSearch = () => {
     if (!fromDate || !toDate) {
       setFilteredIndentData(indentData)
@@ -180,11 +191,11 @@ const ItemReceivingMainScreen = () => {
             batchNo: batch.batchNo || "N/A",
             dom: batch.manufactureDate || "",
             doe: batch.expiryDate || "",
-            qtyDemanded: totalRequestedQty, // Same for all batches of this item
-            qtyIssued: batchIssuedQty, // Batch-specific issued quantity
-            qtyReceived: batchIssuedQty, // AUTO-FILL with batch issued quantity
-            qtyReject: 0, // DEFAULT 0
-            previousReceivedQty: previousReceivedQty,
+            qtyDemanded: totalRequestedQty,
+            qtyIssued: batchIssuedQty,
+            qtyReceived: batchIssuedQty,
+            qtyReject: 0,
+            previousReceivedQty: batch.batchReceivedQty || 0, // Use batchReceivedQty from API
             batchstock: batch.batchstock || 0,
             manufacturerName: batch.manufacturerName || "",
             brandName: batch.brandName || ""
@@ -211,18 +222,13 @@ const ItemReceivingMainScreen = () => {
     const qtyIssued = updated[index].qtyIssued || 0;
     const qtyReject = updated[index].qtyReject || 0;
 
-    // Validate received quantity
+    // Validate received quantity - NO POPUP HERE
     if (qtyReceived < 0) {
-      showPopup("Received quantity cannot be negative", "error");
+      // Don't update if negative
       return;
     }
 
-    // Validate received + reject doesn't exceed issued
-    if (qtyReceived + qtyReject > qtyIssued) {
-      showPopup(`Received + Rejected (${qtyReceived + qtyReject}) cannot exceed issued quantity (${qtyIssued})`, "error");
-      return;
-    }
-
+    // Remove the validation popup check
     updated[index] = {
       ...updated[index],
       qtyReceived: qtyReceived,
@@ -236,18 +242,13 @@ const ItemReceivingMainScreen = () => {
     const qtyIssued = updated[index].qtyIssued || 0;
     const qtyReceived = updated[index].qtyReceived || 0;
 
-    // Validate reject quantity
+    // Validate reject quantity - NO POPUP HERE
     if (qtyReject < 0) {
-      showPopup("Reject quantity cannot be negative", "error");
+      // Don't update if negative
       return;
     }
 
-    // Validate reject + received doesn't exceed issued
-    if (qtyReject + qtyReceived > qtyIssued) {
-      showPopup(`Reject + Received (${qtyReject + qtyReceived}) cannot exceed issued quantity (${qtyIssued})`, "error");
-      return;
-    }
-
+    // Remove the validation popup check
     updated[index] = {
       ...updated[index],
       qtyReject: qtyReject,
@@ -255,40 +256,42 @@ const ItemReceivingMainScreen = () => {
     setReceivingItems(updated)
   }
 
-  // Show popup
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => {
-        setPopupMessage(null);
-      },
-    });
-  }
-
-  // Handle save receiving
+  // Handle save receiving - FIXED VERSION
   const handleSaveReceiving = async () => {
-    try {
-      setLoading(true);
+    // Prevent multiple clicks
+    if (isSaving) return;
 
-      let validationError = null;
-      receivingItems.forEach((item) => {
-        const qtyIssued = item.qtyIssued || 0;
-        const qtyReceived = item.qtyReceived || 0;
-        const qtyReject = item.qtyReject || 0;
-        const total = qtyReceived + qtyReject;
+    // Validate all items first
+    let validationErrors = [];
 
-        if (total > qtyIssued) {
-          validationError = `Total received + rejected (${total}) cannot exceed issued quantity (${qtyIssued}) for ${item.drugName} - Batch: ${item.batchNo}`;
-        }
-      });
+    receivingItems.forEach((item) => {
+      const qtyIssued = item.qtyIssued || 0;
+      const qtyReceived = item.qtyReceived || 0;
+      const qtyReject = item.qtyReject || 0;
+      const total = qtyReceived + qtyReject;
 
-      if (validationError) {
-        showPopup(validationError, "error");
-        setLoading(false);
-        return;
+      if (total !== qtyIssued) {
+        validationErrors.push(
+          `${item.drugName} - Batch ${item.batchNo}: Received + Rejected quantity must equal the issued quantity (${qtyIssued}).`
+        );
       }
+    });
 
+    // Show error popup immediately if validation fails
+    if (validationErrors.length > 0) {
+      showPopup(
+        `Please fix the following items:\n\n${validationErrors.join("\n\n")}`,
+        "error"
+      );
+      // Stop execution here
+      return;
+    }
+
+    // Only proceed if validation passed
+    setIsSaving(true);
+    setLoading(true);
+
+    try {
       // Prepare payload
       const payload = {
         indentMId: selectedRecord?.indentMId,
@@ -308,7 +311,6 @@ const ItemReceivingMainScreen = () => {
 
       console.log("Saving receiving payload:", payload);
 
-      // Update the API endpoint
       const response = await postRequest(`${Store_Internal_Indent}/receive/save`, payload);
 
       console.log("Save response:", response);
@@ -332,11 +334,13 @@ const ItemReceivingMainScreen = () => {
         }, 1500);
       } else {
         showPopup(response?.message || "Failed to save receiving", "error");
+        setIsSaving(false);
       }
 
     } catch (error) {
       console.error("Error saving receiving:", error);
       showPopup("Error saving receiving. Please try again.", "error");
+      setIsSaving(false);
     } finally {
       setLoading(false);
     }
@@ -442,6 +446,7 @@ const ItemReceivingMainScreen = () => {
                         const qtyIssued = item.qtyIssued || 0;
                         const qtyReceived = item.qtyReceived || 0;
                         const qtyReject = item.qtyReject || 0;
+                        const isValid = (qtyReceived + qtyReject) === qtyIssued;
 
                         return (
                           <tr
@@ -509,11 +514,16 @@ const ItemReceivingMainScreen = () => {
                     type="button"
                     className="btn btn-primary"
                     onClick={handleSaveReceiving}
-                    disabled={loading}
+                    disabled={loading || isSaving}
                   >
-                    {loading ? "Saving..." : "Save Receiving"}
+                    {isSaving ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Saving...
+                      </>
+                    ) : "Save Receiving"}
                   </button>
-                  <button type="button" className="btn btn-secondary" onClick={handleBack}>
+                  <button type="button" className="btn btn-secondary" onClick={handleBack} disabled={isSaving}>
                     Back
                   </button>
                 </div>
@@ -521,6 +531,15 @@ const ItemReceivingMainScreen = () => {
             </div>
           </div>
         </div>
+
+        {/* Popup Component */}
+        {popupMessage && (
+          <Popup
+            message={popupMessage.message}
+            type={popupMessage.type}
+            onClose={popupMessage.onClose}
+          />
+        )}
       </div>
     )
   }
@@ -629,28 +648,13 @@ const ItemReceivingMainScreen = () => {
         </div>
       </div>
 
+      {/* Popup Component for list view */}
       {popupMessage && (
-        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
-            <div className={`modal-content ${popupMessage.type === 'error' ? 'border-danger' : popupMessage.type === 'success' ? 'border-success' : 'border-info'}`}>
-              <div className="modal-header">
-                <h5 className="modal-title">
-                  {popupMessage.type === 'error' ? 'Error' :
-                    popupMessage.type === 'success' ? 'Success' : 'Information'}
-                </h5>
-                <button type="button" className="btn-close" onClick={popupMessage.onClose}></button>
-              </div>
-              <div className="modal-body">
-                {popupMessage.message}
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-primary" onClick={popupMessage.onClose}>
-                  OK
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
       )}
     </div>
   )
