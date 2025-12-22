@@ -15,7 +15,7 @@ const ItemReceivingMainScreen = () => {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
-  const itemsPerPage = 10
+  const itemsPerPage = 5
 
   // Date filters
   const [fromDate, setFromDate] = useState("")

@@ -92,7 +92,7 @@ const UpdateUnitRate = () => {
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
-  const itemsPerPage = 10
+  const itemsPerPage = 5
 
   const [searchParams, setSearchParams] = useState({
     drugName: "",

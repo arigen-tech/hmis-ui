@@ -881,7 +881,7 @@ const GeneralMedicineWaitingList = () => {
 
   const [selectedBloodTestTemplate, setSelectedBloodTestTemplate] = useState("Select..")
 
-  const itemsPerPage = 10
+  const itemsPerPage = 5
 
   // NEW: Track selected templates to prevent duplicates
   const [selectedTemplateIds, setSelectedTemplateIds] = useState(new Set())

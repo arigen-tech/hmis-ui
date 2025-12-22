@@ -35,7 +35,7 @@ const OpdPreconsultation = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
-  const itemsPerPage = 3
+  const itemsPerPage = 5
   const [selectedPatient, setSelectedPatient] = useState(null)
   const [vitalFormData, setVitalFormData] = useState({
     height: "",

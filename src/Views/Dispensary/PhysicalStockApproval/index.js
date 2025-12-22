@@ -25,7 +25,7 @@ const PhysicalStockAdjustmentApproval = () => {
   const [selectedAction, setSelectedAction] = useState("")
   const [remark, setRemark] = useState("")
 
-  const itemsPerPage = 10
+  const itemsPerPage = 5
   const totalPages = Math.ceil(physicalStockData.length / itemsPerPage)
   const currentItems = physicalStockData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 

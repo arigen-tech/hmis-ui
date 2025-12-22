@@ -66,7 +66,7 @@ const InvestigationMaster = () => {
   })
   const [popupMessage, setPopupMessage] = useState(null)
 
-  const itemsPerPage = 10
+  const itemsPerPage = 5
 
   const navigate = useNavigate()
 

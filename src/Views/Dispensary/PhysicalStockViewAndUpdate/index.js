@@ -408,7 +408,7 @@ const PhysicalStockAdjustmentViewUpdate = () => {
     }
   };
 
-  const itemsPerPage = 10;
+  const itemsPerPage = 5;
   const currentItems = filteredPhysicalStockData.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage

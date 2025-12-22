@@ -640,7 +640,7 @@ const IndentIssue = () => {
     })
   }
 
-  const itemsPerPage = 10
+  const itemsPerPage = 5
   const currentItems = filteredIndentData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
   const totalPages = Math.ceil(filteredIndentData.length / itemsPerPage)
 

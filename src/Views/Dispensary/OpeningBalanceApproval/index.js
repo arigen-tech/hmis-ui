@@ -70,7 +70,7 @@ const OpeningBalanceApproval = () => {
     return itemDate >= from && itemDate <= to;
   });
 
-  const itemsPerPage = 10;
+  const itemsPerPage = 5;
   const totalPages = Math.ceil(filteredApprovalData.length / itemsPerPage);
   const currentItems = filteredApprovalData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 

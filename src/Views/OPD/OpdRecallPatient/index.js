@@ -1058,7 +1058,7 @@ const updateDrug = (selectedDrug, index) => {
 
   const [selectedBloodTestTemplate, setSelectedBloodTestTemplate] = useState("");
 
-  const itemsPerPage = 10
+  const itemsPerPage = 5
 
   // Track selected templates to prevent duplicates
   const [selectedTemplateIds, setSelectedTemplateIds] = useState(new Set())
