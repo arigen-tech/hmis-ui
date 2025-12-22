@@ -18,7 +18,8 @@ import {
   MAS_PACKAGE_INVESTIGATION,
 } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
-import {IMAGE_TITLE,
+import {
+  IMAGE_TITLE,
   IMAGE_TEXT,
   SUCCESS,
   IMAGE_UPLOAD_SUCC_MSG,
@@ -33,25 +34,19 @@ import {IMAGE_TITLE,
   DUPLICATE_FOUND,
   DUPLICATE_PATIENT,
   LAB_BOOKING_SUCC_MSG,
-  LAB_REG_SUCC_MSG,
   LAB_REG_FAIL_MSG,
   INVALID_PAGE_NO_WARN_MSG,
   INVALID_PAGE,
   INV_PRICE_WARNING_MSG,
   WARNING,
   LAB_REGISTER_SUCC_MSG,
-
+  ADD_ROW_WARNING,
+  INVALID_DATE_TITLE,
+  INVALID_DATE_TEXT,
+  PACKAGE_PRICE_WARNING_MSG,
 } from "../../../config/constants"
 
 const UpdateLabRegistration = () => {
-  useEffect(() => {
-    // Fetching initial data
-    fetchGenderData()
-    fetchRelationData()
-    fetchCountryData()
-    fetchGstConfiguration()
-  }, [])
-
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [genderData, setGenderData] = useState([])
@@ -128,7 +123,7 @@ const UpdateLabRegistration = () => {
       {
         id: 1,
         name: "",
-        date: "",
+        date: new Date().toISOString().split('T')[0], // Initialize with today's date
         originalAmount: 0,
         discountAmount: 0,
         netAmount: 0,
@@ -145,6 +140,40 @@ const UpdateLabRegistration = () => {
   let stream = null
   const [checkedRows, setCheckedRows] = useState([true])
   const [patients, setPatients] = useState([])
+
+  // Add this useEffect to synchronize dates when new rows are added
+  useEffect(() => {
+    // If there's at least one row with a date, ensure all rows have the same date
+    const rowsWithDates = formData.rows.filter(row => row.date);
+    if (rowsWithDates.length > 0) {
+      const firstDate = rowsWithDates[0].date;
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Ensure the date is not in the past
+      const validDate = firstDate >= today ? firstDate : today;
+      
+      // Check if any row has a different date
+      const hasDifferentDate = formData.rows.some(row => row.date && row.date !== validDate);
+      
+      if (hasDifferentDate) {
+        setFormData(prev => ({
+          ...prev,
+          rows: prev.rows.map(row => ({
+            ...row,
+            date: validDate
+          }))
+        }));
+      }
+    }
+  }, [formData.rows]); // Changed from [formData.rows.length] to [formData.rows]
+
+  // Fetching initial data
+  useEffect(() => {
+    fetchGenderData()
+    fetchRelationData()
+    fetchCountryData()
+    fetchGstConfiguration()
+  }, [])
 
   const calculatePaymentBreakdown = () => {
     const checkedItems = formData.rows.filter((_, index) => checkedRows[index])
@@ -287,6 +316,31 @@ const UpdateLabRegistration = () => {
     return `${years}Y ${months}M ${days}D`
   }
 
+  // Function to handle date changes with validation
+  const handleDateChange = (index, selectedDate) => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Validate that date is not in the past
+    if (selectedDate < today) {
+      Swal.fire({
+        title: INVALID_DATE_TITLE,
+        text: INVALID_DATE_TEXT,
+        icon: 'warning',
+        confirmButtonText: 'OK'
+      });
+      return;
+    }
+    
+    // Update all rows with the selected date
+    setFormData(prev => ({
+      ...prev,
+      rows: prev.rows.map((row, i) => ({
+        ...row,
+        date: selectedDate
+      }))
+    }));
+  }
+
   const handleSearchChange = (e) => {
     const { name, value } = e.target
     setSearchFormData({
@@ -412,12 +466,20 @@ const UpdateLabRegistration = () => {
   }
 
   const addRow = (e, type) => {
-    e.preventDefault()
-    const lastRow = formData.rows[formData.rows.length - 1]
-    if (!lastRow.name || !lastRow.date) {
-      Swal.fire(MISSING_FIELD,MISSING_MANDOTORY_FIELD_MSG , "warning")
-      return
+    e.preventDefault();
+    const lastRow = formData.rows[formData.rows.length - 1];
+    
+    // Check if previous row has name
+    if (!lastRow.name) {
+      Swal.fire(MISSING_FIELD, ADD_ROW_WARNING, "warning");
+      return;
     }
+    
+    // Get the current synchronized date from existing rows
+    const currentDate = formData.rows[0]?.date || new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    const defaultDate = currentDate >= today ? currentDate : today;
+    
     setFormData((prev) => ({
       ...prev,
       rows: [
@@ -425,16 +487,16 @@ const UpdateLabRegistration = () => {
         {
           id: Date.now(),
           name: "",
-          date: "",
+          date: defaultDate, // Use the synchronized date
           originalAmount: 0,
           discountAmount: 0,
           netAmount: 0,
-          type: type,
-        },
-      ],
-    }))
-    setCheckedRows((prev) => [...prev, true])
-  }
+          type: type
+        }
+      ]
+    }));
+    setCheckedRows((prev) => [...prev, true]);
+  };
 
   const removeRow = (index) => {
     setFormData((prev) => ({
@@ -444,14 +506,15 @@ const UpdateLabRegistration = () => {
     setCheckedRows((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const calculateTotalAmount = () => {
-    return formData.rows
-      .filter((_, index) => checkedRows[index])
-      .reduce((total, item) => {
-        return total + (Number.parseFloat(item.netAmount) || 0)
-      }, 0)
-      .toFixed(2)
-  }
+  // Comment out or remove this unused function
+  // const calculateTotalAmount = () => {
+  //   return formData.rows
+  //     .filter((_, index) => checkedRows[index])
+  //     .reduce((total, item) => {
+  //       return total + (Number.parseFloat(item.netAmount) || 0)
+  //     }, 0)
+  //     .toFixed(2)
+  // }
 
   async function fetchGenderData() {
     setLoading(true)
@@ -729,7 +792,7 @@ const UpdateLabRegistration = () => {
         {
           id: 1,
           name: "",
-          date: "",
+          date: new Date().toISOString().split('T')[0], // Set to today's date
           originalAmount: 0,
           discountAmount: 0,
           netAmount: 0,
@@ -807,7 +870,7 @@ const UpdateLabRegistration = () => {
         {
           id: 1,
           name: "",
-          date: "",
+          date: new Date().toISOString().split('T')[0], // Reset to today's date
           originalAmount: 0,
           discountAmount: 0,
           netAmount: 0,
@@ -818,6 +881,22 @@ const UpdateLabRegistration = () => {
     })
     setCheckedRows([true])
   }
+
+  // Add this function to validate all dates when form is submitted
+  const validateDates = () => {
+    const today = new Date().toISOString().split('T')[0];
+    let allDatesValid = true;
+    let invalidRows = [];
+    
+    formData.rows.forEach((row, index) => {
+      if (row.date && row.date < today) {
+        allDatesValid = false;
+        invalidRows.push(index + 1);
+      }
+    });
+    
+    return { allDatesValid, invalidRows };
+  };
 
   const validateForm = () => {
     const requiredFields = ["firstName", "gender", "relation", "dob", "email", "mobileNo"]
@@ -849,20 +928,51 @@ const UpdateLabRegistration = () => {
       newErrors.rows = `At least one ${formData.type} is required.`
       valid = false
     }
+    
+    // Check if all rows have names and dates
+    formData.rows.forEach((row, index) => {
+      if (!row.name || row.name.trim() === "") {
+        newErrors[`row_${index}_name`] = `Row ${index + 1}: Investigation/Package name is required.`
+        valid = false
+      }
+      if (!row.date || row.date.trim() === "") {
+        newErrors[`row_${index}_date`] = `Row ${index + 1}: Date is required.`
+        valid = false
+      }
+    });
+    
     setErrors(newErrors)
     return valid
   }
 
   const handleSubmit = async (shouldNavigateToPayment = false) => {
-    const isFormValid = shouldNavigateToPayment ? true : validateForm()
+    console.log("handleSubmit called with shouldNavigateToPayment:", shouldNavigateToPayment);
+    
+    // Validate dates first
+    const dateValidation = validateDates();
+    if (!dateValidation.allDatesValid) {
+      Swal.fire({
+        title: INVALID_DATE_TITLE,
+        text: `Rows ${dateValidation.invalidRows.join(', ')} have past dates. Please select valid dates.`,
+        icon: 'warning',
+        confirmButtonText: 'OK'
+      });
+      return;
+    }
+    
+    // Rest of your existing handleSubmit code...
+    const isFormValid = shouldNavigateToPayment ? true : validateForm();
+    console.log("Form validation result:", isFormValid);
+    
     if (isDuplicatePatient) {
       Swal.fire(
         DUPLICATE_FOUND,
         DUPLICATE_PATIENT,
         "warning",
       )
-      return
+      return;
     }
+    
     if (isFormValid) {
       try {
         setLoading(true)
@@ -929,14 +1039,15 @@ const UpdateLabRegistration = () => {
         }
       } catch (error) {
         console.error("Registration error:", error)
-        Swal.fire(ERROR,  LAB_REG_FAIL_MSG, "error")
+        Swal.fire(ERROR, LAB_REG_FAIL_MSG, "error")
       } finally {
         setLoading(false)
       }
     }
   }
 
-  const isMobileNoMissing = !formData.mobileNo || formData.mobileNo.trim() === ""
+  // Comment out or remove this unused variable
+  // const isMobileNoMissing = !formData.mobileNo || formData.mobileNo.trim() === ""
 
   const handleReset = () => {
     setSearchFormData({
@@ -989,7 +1100,7 @@ const UpdateLabRegistration = () => {
         {
           id: 1,
           name: "",
-          date: "",
+          date: new Date().toISOString().split('T')[0], // Reset to today's date
           originalAmount: 0,
           discountAmount: 0,
           netAmount: 0,
@@ -1004,9 +1115,10 @@ const UpdateLabRegistration = () => {
     setCheckedRows([true])
   }
 
-  const isAnyDateOrNameMissing = formData.rows.some(
-    (row) => !row.date || row.date.trim() === "" || !row.name || row.name.trim() === "",
-  )
+  // Comment out or remove this unused variable
+  // const isAnyDateOrNameMissing = formData.rows.some(
+  //   (row) => !row.date || row.date.trim() === "" || !row.name || row.name.trim() === "",
+  // )
 
   const paymentBreakdown = calculatePaymentBreakdown()
 
@@ -1864,7 +1976,7 @@ const UpdateLabRegistration = () => {
                                               if (!priceDetails || !priceDetails.actualCost) {
                                                 Swal.fire(
                                                   WARNING,
-                                                  INV_PRICE_WARNING_MSG,
+                                                  PACKAGE_PRICE_WARNING_MSG,
                                                   "warning",
                                                 )
                                               } else {
@@ -1899,8 +2011,9 @@ const UpdateLabRegistration = () => {
                             <input
                               type="date"
                               className="form-control"
-                              value={row.date}
-                              onChange={(e) => handleRowChange(index, "date", e.target.value)}
+                              value={row.date || ""}
+                              onChange={(e) => handleDateChange(index, e.target.value)}
+                              min={new Date().toISOString().split('T')[0]}
                             />
                           </td>
                           <td>
@@ -2160,7 +2273,7 @@ const UpdateLabRegistration = () => {
             </div>
           </div>
         </div>
-      </div >
+      </div>
     )
   }
 
