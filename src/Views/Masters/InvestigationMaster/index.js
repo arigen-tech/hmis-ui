@@ -13,6 +13,7 @@ import {
   DG_MAS_INVESTIGATION_CATEGORY,
   DG_MAS_INVESTIGATION_METHODOLOGY,
 } from "../../../config/apiConfig"
+import { ADD_INV_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DROP_DOWN_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, MISSING_MANDOTORY_FIELD, MISSING_MANDOTORY_FIELD_MSG, SELECT_INV_ERR_MSG, SELECT_INVESTIGATIONS_ERROR_MSG, UPDATE_INV_SUCC_MSG } from "../../../config/constants"
 
 const InvestigationMaster = () => {
   const [investigations, setInvestigations] = useState([])
@@ -72,9 +73,9 @@ const InvestigationMaster = () => {
   // Gender mapping functions
   const mapGenderToDisplay = (genderCode) => {
     const genderMap = {
-      'm': 'Male',
+      'c': 'Common',
       'f': 'Female', 
-      'c': 'Common'
+      'm': 'Male',
     }
     return genderMap[genderCode?.toLowerCase()] || "Select"
   }
@@ -156,7 +157,7 @@ const InvestigationMaster = () => {
         })
       } catch (error) {
         console.error("Error fetching data:", error)
-        showPopup("Failed to load initial data", "error")
+        showPopup(FETCH_DROP_DOWN_ERR_MSG, "error")
       } finally {
         setLoading(false)
       }
@@ -308,7 +309,7 @@ const InvestigationMaster = () => {
         }
       } catch (error) {
         console.error("Error updating status:", error)
-        showPopup("Failed to update investigation status", "error")
+        showPopup(FAIL_TO_UPDATE_STS, "error")
       } finally {
         setLoading(false)
       }
@@ -319,10 +320,9 @@ const InvestigationMaster = () => {
   const handleRowClick = (investigation) => {
     const mapInvestigationTypeToResultType = (investigationType) => {
       const typeMap = {
-        s: "Single",
-        r: "Range",
         m: "Multiple",
-        v: "Single" // Assuming 'v' is for Single value
+        r: "Range",
+        s: "Single",
       }
       return typeMap[investigationType?.toLowerCase()] || "Select"
     }
@@ -426,9 +426,9 @@ const InvestigationMaster = () => {
       }
 
       if (selectedInvestigation) {
-        showPopup("Investigation updated successfully!", "success")
+        showPopup(UPDATE_INV_SUCC_MSG, "success")
       } else {
-        showPopup("Investigation created successfully!", "success")
+        showPopup(ADD_INV_SUCC_MSG, "success")
         handleReset() // Reset form after successful creation
       }
     } else {
@@ -436,7 +436,7 @@ const InvestigationMaster = () => {
     }
   } catch (error) {
     console.error("Error saving investigation:", error)
-    showPopup(`Failed to ${selectedInvestigation ? "update" : "create"} investigation`, "error")
+    showPopup(FAIL_TO_SAVE_CHANGES, "error")
   } finally {
     setLoading(false)
   }
@@ -444,48 +444,48 @@ const InvestigationMaster = () => {
 
   const validateForm = () => {
   if (!formData.investigationName.trim()) {
-    showPopup("Investigation Name is required", "error")
+    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
     return false
   }
   if (!formData.departmentId) {
-    showPopup("Department is required", "error")
+    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
     return false
   }
   if (!formData.modalityId) {
-    showPopup("Modality is required", "error")
+    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
     return false
   }
   if (!formData.sampleId) {
-    showPopup("Sample is required", "error")
+    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
     return false
   }
   if (!formData.containerId) {
-    showPopup("Container is required", "error")
+    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
     return false
   }
   // Make UOM required only for Single and Range result types, optional for Multiple
   if (formData.resultType !== "Multiple" && !formData.uomId) {
-    showPopup("UOM is required for Single and Range result types", "error")
+    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
     return false
   }
   if (formData.resultType === "Select") {
-    showPopup("Result Type is required", "error")
+    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
     return false
   }
   if (formData.genderApplicable === "Select") {
-    showPopup("Gender Applicable is required", "error")
+    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
     return false
   }
   if (!formData.methodId) {
-    showPopup("Investigation Methodology is required", "error")
+    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
     return false
   }
   if (!formData.categoryId) {
-    showPopup("Investigation Category is required", "error")
+    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
     return false
   }
   if (!formData.containerId) {
-    showPopup("Container is required", "error")
+    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
     return false
   }
   return true
@@ -493,7 +493,7 @@ const InvestigationMaster = () => {
 
   const handleNavigateToSubInvestigations = () => {
     if (!selectedInvestigation) {
-      showPopup("Please select an investigation first", "error")
+      showPopup(SELECT_INV_ERR_MSG, "error")
       return
     }
 
@@ -535,7 +535,7 @@ const InvestigationMaster = () => {
     if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
       setCurrentPage(pageNumber);
     } else {
-      showPopup("Please enter a valid page number", "warning")
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "warning")
     }
   }
 
@@ -958,8 +958,8 @@ const InvestigationMaster = () => {
                               onChange={handleInputChange}
                             >
                               <option value="Select">Select</option>
-                              <option value="Normal">Internal</option>
                               <option value="Critical">External</option>
+                               <option value="Normal">Internal</option>
                             </select>
                           </div>
                         </div>

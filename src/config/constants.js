@@ -153,3 +153,133 @@ export const RESULT_UPDATE_ERR_MSG="Results failed to update";
 export const APPOINTMENT_NOT_FOUND_ERR_MSG= "No appointment data found";
 
 
+//BedManagementMaster
+
+export const FETCH_DROP_DOWN_ERR_MSG="Some options could not be loaded. Please try again later";
+export const FETCH_BED_DATA_ERR_MSG="Failed to load bed data";
+export const DUPLICATE_BED_DATA="Bed number already exists!";
+export const UPDATE_BED_SUCC_MSG="Bed updated successfully!";
+export const ADD_BED_SUCC_MSG="New bed added successfully!";
+
+
+//BedStatusMaster
+
+export const FETCH_BED_STATUS_ERR_MSG="Failed to load bed status data";
+export const DUPLICATE_BED_STATUS="Bed Status with the same name already exists!";
+export const UPDATE_BED_STATUS_SUCC_MSG="Bed status updated successfully!";
+export const ADD_BED_STATUS_SUCC_MSG="New bed status added successfully!";
+
+
+//BedTypeMaster
+
+export const FETCH_BED_TYPE_ERR_MSG="Failed to load bed type data";
+export const DUPLICATE_BED_TYPE="Bed type with the same name already exists!";
+export const UPDATE_BED_TYPE_SUCC_MSG="Bed type updated successfully!";
+export const ADD_BED_TYPE_SUCC_MSG="New bed type added successfully!";
+
+
+//CareLevelMaster
+
+export const FETCH_CARE_LEVEL_ERR_MSG="Failed to load care level data";
+export const DUPLICATE_CARE_LEVEL="Care level with the same name already exists!";
+export const UPDATE_CARE_LEVEL_SUCC_MSG="Care level updated successfully!";
+export const ADD_CARE_LEVEL_SUCC_MSG="New Care level added successfully!";
+
+
+//DepartmentMaster
+
+export const FETCH_DEPARTMENT_ERR_MSG="Failed to load depatments data";
+export const DUPLICATE_DEPARTMENT="Department with the same code, name, or number already exists!"
+export const UPDATE_DEPARTMENT_SUCC_MSG="Department updated successfully!";
+export const ADD_DEPARTMENT_SUCC_MSG="New department added successfully!";
+export const FETCH_DEPARTMENT_TYPE_ERR_MSG="Failed to load department types";
+export const FETCH_WARD_CATEGORY_ERR_MSG="Failed to load ward categories";
+
+
+//DietPrefernceMaster
+
+export const FETCH_DIET_PREFERNCE_ERR_MSG="Failed to load diet preferences";
+export const DUPLICATE_DIET_PREFERENCE="Diet preference with same name already exists!"
+export const UPDATE_DIET_PREFERENCE_SUCC_MSG="Diet preference updated successfully!";
+export const ADD_DIET_PREFERENCE_SUCC_MSG="New diet preference added successfully!";
+
+
+//DietScheduleMaster
+
+export const FETCH_DIET_SCHEDULE_ERR_MSG="Failed to load diet schedules";
+export const DUPLICATE_DIET_SCHEDULE="Diet schedule with same status name already exists!"
+export const UPDATE_DIET_SCHEDULE_SUCC_MSG="Diet schedule updated successfully!";
+export const ADD_DIET_SCHEDULE_SUCC_MSG="New diet schedule added successfully!";
+
+
+//DietTypeMaster
+
+
+export const FETCH_DIET_TYPE_ERR_MSG="Failed to load diet types";
+export const DUPLICATE_DIET_TYPE="Diet type already exists!"
+export const UPDATE_DIET_TYPE_SUCC_MSG="Diet type updated successfully!";
+export const ADD_DIET_TYPE_SUCC_MSG="New diet type added successfully!";
+
+
+//FamilyHistoryMaster
+
+
+export const FETCH_FAMILY_HISTROY_ERR_MSG="Failed to load family history data";
+export const DUPLICATE_FAMILY_HISTORY="Family history name already exists!";
+export const UPDATE_FAMILY_HISTORY_SUCC_MSG="Family history updated successfully!";
+export const ADD_FAMILY_HISTORY_SUCC_MSG="New family history added successfully!";
+
+
+//IntakeItemMaster
+
+
+export const FETCH_INTAKE_ITEM_ERR_MSG="Failed to load  intake items";
+export const FETCH_INTAKE_TYPE_ERR_MSG="Failed to load  intake item types";
+export const DUPLICATE_INTAKE_ITEM="Intake item name already exists!";
+export const UPDATE_INTAKE_ITEM_SUCC_MSG="Intake item updated successfully!";
+export const ADD_INTAKE_ITEM_SUCC_MSG="New intake item added successfully!";
+
+//IntakeItemTypeMaster
+
+export const DUPLICATE_INTAKE_TYPE="Intake item type already exists!";
+export const UPDATE_INTAKE_TYPE_SUCC_MSG="Intake item type updated successfully!";
+export const ADD_INTAKE_TYPE_SUCC_MSG="New intake item type added successfully!";
+
+
+//InvestigationCategoryMaster
+
+export const FETCH_INV_CATEGORY_ERR_MSG="Failed to load  investigation categories";
+export const DUPLICATE_INV_CATEGORY="Investigation category with the same name already exists!";
+export const UPDATE_INV_CATEGORY_SUCC_MSG="Investigation category updated successfully!";
+export const ADD_INV_CATEGORY_SUCC_MSG="New investigation category added successfully!";
+
+//InvestigationMethodologyMaster
+
+
+export const FETCH_INV_METHODOLOGY_ERR_MSG="Failed to load  investigation methodologies";
+export const DUPLICATE_INV_METHODOLOGY="Investigation methodology with the same name already exists!";
+export const UPDATE_INV_METHODOLOGY_SUCC_MSG="Investigation methodology updated successfully!";
+export const ADD_INV_METHODOLOGY_SUCC_MSG="New investigation methodology added successfully!";
+
+//InvestigationMaster
+
+
+export const UPDATE_INV_SUCC_MSG="Investigation updated successfully!";
+export const ADD_INV_SUCC_MSG="Investigation created successfully!";
+export const SELECT_INV_ERR_MSG="Please select an investigation first";
+
+
+//InvestigationMasterResult
+
+export const UPDATE_TWICE_SUB_INV_ERR_MSG= "You’ve already made this update. To make another change please start new session";
+export const UPDATE_SUB_INV_ERR_MSG= "Failed to update sub-investigations";
+export const UPDATE_SUB_INV_SUCC_MSG="Sub-investigations updated successfully!";
+
+
+
+
+
+
+
+
+

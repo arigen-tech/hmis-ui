@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import { DG_MAS_INVESTIGATION_CATEGORY } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { ADD_INV_CATEGORY_SUCC_MSG, DUPLICATE_INV_CATEGORY, FAIL_TO_SAVE_CHANGES, FETCH_INV_CATEGORY_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_INV_CATEGORY_SUCC_MSG } from "../../../config/constants";
 
 const InvestigationCategory = () => {
   const [categories, setCategories] = useState([]);
@@ -34,7 +35,7 @@ const InvestigationCategory = () => {
       }
     } catch (err) {
       console.error("Error fetching categories:", err);
-      showPopup("Failed to load categories", "error");
+      showPopup( FETCH_INV_CATEGORY_ERR_MSG, "error");
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +80,7 @@ const InvestigationCategory = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Category with the same name already exists!", "error");
+        showPopup(DUPLICATE_INV_CATEGORY, "error");
         setIsLoading(false);
         return;
       }
@@ -92,7 +93,7 @@ const InvestigationCategory = () => {
 
         if (response && response.status === 200) {
           fetchCategories();
-          showPopup("Category updated successfully!", "success");
+          showPopup(UPDATE_INV_CATEGORY_SUCC_MSG, "success");
         }
       } else {
         // Create new category
@@ -102,7 +103,7 @@ const InvestigationCategory = () => {
 
         if (response && response.status === 200) {
           fetchCategories();
-          showPopup("New category added successfully!", "success");
+          showPopup(ADD_INV_CATEGORY_SUCC_MSG, "success");
         }
       }
 
@@ -112,7 +113,7 @@ const InvestigationCategory = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving category:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
       setIsLoading(false);
     }
   };
@@ -151,7 +152,7 @@ const InvestigationCategory = () => {
       setCurrentPage(pageNumber);
       setPageInput("");
     } else {
-      showPopup("Please enter a valid page number.", "error");
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
     }
   };
 

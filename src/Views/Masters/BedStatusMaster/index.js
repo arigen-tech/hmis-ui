@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_BED_STATUS } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { ADD_BED_STATUS_SUCC_MSG, DUPLICATE_BED_STATUS, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_BED_STATUS_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_BED_STATUS_SUCC_MSG } from "../../../config/constants";
 
 const BedStatusMaster = () => {
   const [bedStatusData, setBedStatusData] = useState([]);
@@ -67,7 +68,7 @@ const BedStatusMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching bed status data:", err);
-      showPopup("Failed to load bed status data", "error");
+      showPopup(FETCH_BED_STATUS_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -134,7 +135,7 @@ const BedStatusMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Bed Status with the same name already exists!", "error");
+        showPopup(DUPLICATE_BED_STATUS, "error");
         setLoading(false);
         return;
       }
@@ -147,7 +148,7 @@ const BedStatusMaster = () => {
 
         if (response && response.status === 200) {
           fetchBedStatusData();
-          showPopup("Bed status updated successfully!", "success");
+          showPopup(UPDATE_BED_STATUS_SUCC_MSG, "success");
         }
       } else {
         // Add new status
@@ -157,7 +158,7 @@ const BedStatusMaster = () => {
 
         if (response && response.status === 200) {
           fetchBedStatusData();
-          showPopup("New bed status added successfully!", "success");
+          showPopup(ADD_BED_STATUS_SUCC_MSG, "success");
         }
       }
 
@@ -166,7 +167,7 @@ const BedStatusMaster = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving bed status data:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(`${FAIL_TO_SAVE_CHANGES} ${err.response?.data?.message || err.message}`, "error");
     } finally {
       setLoading(false);
     }
@@ -212,7 +213,7 @@ const BedStatusMaster = () => {
         }
       } catch (err) {
         console.error("Error updating bed status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }
@@ -237,7 +238,7 @@ const BedStatusMaster = () => {
     if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     } else {
-      showPopup(`Please enter a valid page number between 1 and ${totalPages}`, "error");
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
       setPageInput(currentPage.toString());
     }
   };

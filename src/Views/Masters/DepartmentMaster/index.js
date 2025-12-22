@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import { API_HOST, MAS_DEPARTMENT, MAS_DEPARTMENT_TYPE, MAS_WARD_CATEGORY,WARD_ID } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import { ADD_DEPARTMENT_SUCC_MSG, DUPLICATE_DEPARTMENT, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DEPARTMENT_ERR_MSG, FETCH_DEPARTMENT_TYPE_ERR_MSG, FETCH_WARD_CATEGORY_ERR_MSG, UPDATE_DEPARTMENT_SUCC_MSG } from "../../../config/constants";
 
 const DepartmentMaster = () => {
     const [departments, setDepartments] = useState([]);
@@ -48,7 +49,7 @@ const DepartmentMaster = () => {
             }
         } catch (err) {
             console.error("Error fetching departments:", err);
-            showPopup("Failed to load departments", "error");
+            showPopup(FETCH_DEPARTMENT_ERR_MSG, "error");
         } finally {
             setLoading(false);
         }
@@ -62,7 +63,7 @@ const DepartmentMaster = () => {
             }
         } catch (err) {
             console.error("Error fetching department types:", err);
-            showPopup("Failed to load department types", "error");
+            showPopup(FETCH_DEPARTMENT_TYPE_ERR_MSG, "error");
         }
     };
 
@@ -74,7 +75,7 @@ const DepartmentMaster = () => {
             }
         } catch (err) {
             console.error("Error fetching ward categories:", err);
-            showPopup("Failed to load ward categories", "error");
+            showPopup(FETCH_WARD_CATEGORY_ERR_MSG, "error");
         }
     };
 
@@ -215,7 +216,7 @@ const DepartmentMaster = () => {
             );
 
             if (isDuplicate) {
-                showPopup("Department with the same code, name, or number already exists!", "error");
+                showPopup(DUPLICATE_DEPARTMENT, "error");
                 setLoading(false);
                 return;
             }
@@ -247,7 +248,7 @@ const DepartmentMaster = () => {
                             dept.id === editingDepartment.id ? response.response : dept
                         )
                     );
-                    showPopup("Department updated successfully!", "success");
+                    showPopup(UPDATE_DEPARTMENT_SUCC_MSG, "success");
                 }
             } else {
                 // Add new department
@@ -255,7 +256,7 @@ const DepartmentMaster = () => {
 
                 if (response && response.response) {
                     setDepartments([...departments, response.response]);
-                    showPopup("New department added successfully!", "success");
+                    showPopup(ADD_DEPARTMENT_SUCC_MSG, "success");
                 }
             }
 
@@ -272,7 +273,7 @@ const DepartmentMaster = () => {
             fetchDepartments();
         } catch (err) {
             console.error("Error saving department:", err);
-            showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+            showPopup(`${FAIL_TO_SAVE_CHANGES} ${err.response?.data?.message || err.message}`, "error");
         } finally {
             setLoading(false);
         }
@@ -316,7 +317,7 @@ const DepartmentMaster = () => {
                 }
             } catch (err) {
                 console.error("Error updating department status:", err);
-                showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+                showPopup(FAIL_TO_UPDATE_STS, "error");
             } finally {
                 setLoading(false);
             }

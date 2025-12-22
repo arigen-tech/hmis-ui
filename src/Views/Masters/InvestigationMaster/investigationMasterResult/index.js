@@ -6,6 +6,7 @@ import { getRequest, putRequest } from "../../../../service/apiService"
 import { MAS_INVESTIGATION, DG_UOM } from "../../../../config/apiConfig"
 import Popup from "../../../../Components/popup"
 import LoadingScreen from "../../../../Components/Loading"
+import { UPDATE_SUB_INV_ERR_MSG, UPDATE_SUB_INV_SUCC_MSG, UPDATE_TWICE_SUB_INV_ERR_MSG } from "../../../../config/constants"
 
 const InvestigationMasterResult = () => {
   const location = useLocation()
@@ -208,7 +209,7 @@ const InvestigationMasterResult = () => {
   const handleUpdate = async () => {
     // Prevent multiple updates in current session
     if (hasUpdated) {
-      showPopup("Update can only be performed once in this session!", "error")
+      showPopup(UPDATE_TWICE_SUB_INV_ERR_MSG, "error")
       return
     }
 
@@ -279,13 +280,13 @@ const InvestigationMasterResult = () => {
       if (response && response.status === 200) {
         // Set the flag to true after successful update (current session only)
         setHasUpdated(true)
-        showPopup("Sub-investigations updated successfully!", "success")
+        showPopup(UPDATE_SUB_INV_SUCC_MSG, "success")
       } else {
         throw new Error(response?.message || "Failed to update sub-investigations")
       }
     } catch (error) {
       console.error("Error updating sub-investigations:", error)
-      showPopup("Failed to update sub-investigations", "error")
+      showPopup(UPDATE_SUB_INV_ERR_MSG, "error")
     } finally {
       setLoading(false)
     }

@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_CARE_LEVEL } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { ADD_CARE_LEVEL_SUCC_MSG, DUPLICATE_CARE_LEVEL, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_CARE_LEVEL_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_CARE_LEVEL_SUCC_MSG } from "../../../config/constants";
 
 const CareLevelMaster = () => {
   const [careLevelData, setCareLevelData] = useState([]);
@@ -70,7 +71,7 @@ const CareLevelMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching care level data:", err);
-      showPopup("Failed to load care level data", "error");
+      showPopup(FETCH_CARE_LEVEL_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -143,7 +144,7 @@ const CareLevelMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Care Level with the same name already exists!", "error");
+        showPopup(DUPLICATE_CARE_LEVEL, "error");
         setLoading(false);
         return;
       }
@@ -157,7 +158,7 @@ const CareLevelMaster = () => {
 
         if (response && response.status === 200) {
           fetchCareLevelData();
-          showPopup("Care level updated successfully!", "success");
+          showPopup(UPDATE_CARE_LEVEL_SUCC_MSG, "success");
         }
       } else {
         // Add new care level
@@ -168,7 +169,7 @@ const CareLevelMaster = () => {
 
         if (response && response.status === 200) {
           fetchCareLevelData();
-          showPopup("New care level added successfully!", "success");
+          showPopup(ADD_CARE_LEVEL_SUCC_MSG, "success");
         }
       }
 
@@ -177,7 +178,7 @@ const CareLevelMaster = () => {
       setShowForm(false);
     } catch (err) {
       console.error("Error saving care level data:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(`${FAIL_TO_SAVE_CHANGES} ${err.response?.data?.message || err.message}`, "error");
     } finally {
       setLoading(false);
     }
@@ -223,7 +224,7 @@ const CareLevelMaster = () => {
         }
       } catch (err) {
         console.error("Error updating care level status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }
@@ -248,7 +249,7 @@ const CareLevelMaster = () => {
     if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     } else {
-      showPopup(`Please enter a valid page number between 1 and ${totalPages}`, "error");
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
       setPageInput(currentPage.toString());
     }
   };
