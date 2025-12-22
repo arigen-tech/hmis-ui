@@ -978,7 +978,7 @@ const EmployeeRegistration = () => {
                                             <div className="col-md-9">
                                                 <div className="g-3 row">
                                                     <div className="col-md-4">
-                                                        <label className="form-label">First Name *</label>
+                                                        <label className="form-label">First Name <span className="text-danger">*</span></label>
                                                         <input
                                                             type="text"
                                                             required
@@ -1003,7 +1003,7 @@ const EmployeeRegistration = () => {
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Last Name *</label>
+                                                        <label className="form-label">Last Name <span className="text-danger">*</span></label>
                                                         <input
                                                             type="text"
                                                             required
@@ -1016,7 +1016,7 @@ const EmployeeRegistration = () => {
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Date of Birth *</label>
+                                                        <label className="form-label">Date of Birth <span className="text-danger">*</span></label>
                                                         <input
                                                             type="date"
                                                             required
@@ -1027,7 +1027,7 @@ const EmployeeRegistration = () => {
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Gender *</label>
+                                                        <label className="form-label">Gender <span className="text-danger">*</span></label>
                                                         <select
                                                             className="form-select"
                                                             style={{ paddingRight: "40px" }}
@@ -1046,7 +1046,7 @@ const EmployeeRegistration = () => {
                                                         </select>
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Address *</label>
+                                                        <label className="form-label">Address <span className="text-danger">*</span></label>
                                                         <textarea
                                                             required
                                                             id="address1"
@@ -1057,7 +1057,7 @@ const EmployeeRegistration = () => {
                                                         ></textarea>
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Country *</label>
+                                                        <label className="form-label">Country <span className="text-danger">*</span></label>
                                                         <select
                                                             className="form-select"
                                                             value={formData.countryId}
@@ -1080,7 +1080,7 @@ const EmployeeRegistration = () => {
                                                         </select>
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">State *</label>
+                                                        <label className="form-label">State <span className="text-danger">*</span></label>
                                                         <select
                                                             className="form-select"
                                                             value={formData.stateId}
@@ -1103,7 +1103,7 @@ const EmployeeRegistration = () => {
                                                         </select>
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">District *</label>
+                                                        <label className="form-label">District <span className="text-danger">*</span></label>
                                                         <select
                                                             className="form-select"
                                                             value={formData.districtId}
@@ -1119,7 +1119,7 @@ const EmployeeRegistration = () => {
                                                         </select>
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">City *</label>
+                                                        <label className="form-label">City <span className="text-danger">*</span></label>
                                                         <input
                                                             type="text"
                                                             required
@@ -1132,7 +1132,7 @@ const EmployeeRegistration = () => {
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Pincode *</label>
+                                                        <label className="form-label">Pincode <span className="text-danger">*</span></label>
                                                         <input
                                                             type="text"
                                                             required
@@ -1148,7 +1148,7 @@ const EmployeeRegistration = () => {
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Mobile No. *</label>
+                                                        <label className="form-label">Mobile No. <span className="text-danger">*</span></label>
                                                         <input
                                                             type="text"
                                                             required
@@ -1185,7 +1185,7 @@ const EmployeeRegistration = () => {
                                                         </select>
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">ID Number *</label>
+                                                        <label className="form-label">ID Number <span className="text-danger">*</span></label>
                                                         <input
                                                             type="text"
                                                             required
@@ -1198,11 +1198,11 @@ const EmployeeRegistration = () => {
                                                         />
                                                     </div>
                                                     <div className="col-md-4">
-                                                        <label className="form-label">ID Upload (JPEG/PDF) *</label>
+                                                        <label className="form-label">ID Upload (JPEG/PDF) <span className="text-danger">*</span></label>
                                                         <input
                                                             type="file"
                                                             id="idDocumentName"
-                                                            className="form-control mt-2"
+                                                            className="form-control"
                                                             accept=".jpg,.jpeg,.png,.pdf"
                                                             onChange={(e) => setFormData({ ...formData, idDocumentName: e.target.files[0] })}
                                                         />
@@ -1228,12 +1228,8 @@ const EmployeeRegistration = () => {
                                                             }}
                                                         />
                                                     </div>
-
-
-
-
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Registration Number</label>
+                                                        <label className="form-label">Registration Number <span className="text-danger">*</span></label>
                                                         <input
                                                             type="text"
                                                             className="form-control"
@@ -1241,12 +1237,9 @@ const EmployeeRegistration = () => {
                                                             maxLength={mlenght}
                                                         />
                                                     </div>
-
-
-
                                                     {viewDept && (
                                                         <div className="col-md-4">
-                                                            <label className="form-label">Department Name *</label>
+                                                            <label className="form-label">Department Name <span className="text-danger">*</span></label>
                                                             <select
                                                                 className="form-select"
                                                                 style={{ paddingRight: "40px" }}
@@ -1265,9 +1258,9 @@ const EmployeeRegistration = () => {
                                                             </select>
                                                         </div>
                                                     )}
-
+                                                                                                   
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Employee Type *</label>
+                                                        <label className="form-label">Employee Type <span className="text-danger">*</span></label>
                                                         <select
                                                             className="form-select"
                                                             style={{ paddingRight: "40px" }}
@@ -1287,7 +1280,7 @@ const EmployeeRegistration = () => {
                                                     </div>
 
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Designation *</label>
+                                                        <label className="form-label">Designation <span className="text-danger">*</span></label>
                                                         <select
                                                             className="form-select"
                                                             style={{ paddingRight: "40px" }}
@@ -1305,7 +1298,7 @@ const EmployeeRegistration = () => {
                                                     </div>
 
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Employment Type *</label>
+                                                        <label className="form-label">Employment Type <span className="text-danger">*</span></label>
                                                         <select
                                                             className="form-select"
                                                             style={{ paddingRight: "40px" }}
@@ -1325,7 +1318,7 @@ const EmployeeRegistration = () => {
                                                     </div>
 
                                                     <div className="col-md-4">
-                                                        <label className="form-label">Role *</label>
+                                                        <label className="form-label">Role <span className="text-danger">*</span></label>
                                                         <select
                                                             className="form-select"
                                                             style={{ paddingRight: "40px" }}
@@ -1358,7 +1351,7 @@ const EmployeeRegistration = () => {
                                                 </div>
                                             </div>
                                             <div className="col-md-3 d-flex flex-column">
-                                                <label className="form-label">Profile Image *</label>
+                                                <label className="form-label">Profile Image <span className="text-danger">*</span></label>
                                                 <div className="d-flex flex-column align-items-center border p-2">
                                                     <img
                                                         src={formData.profilePicPreview || placeholderImage}

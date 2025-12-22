@@ -35,7 +35,10 @@ const OpdPreconsultation = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
-  const itemsPerPage = 5
+  const itemsPerPage = 5;
+
+  const filteredVisits = visits;
+
   const [selectedPatient, setSelectedPatient] = useState(null)
   const [vitalFormData, setVitalFormData] = useState({
     height: "",
@@ -67,9 +70,9 @@ const OpdPreconsultation = () => {
 
 
 
-  const filteredTotalPages = Math.ceil(visits.length / itemsPerPage)
+  const filteredTotalPages = Math.ceil(filteredVisits.length / itemsPerPage)
 
-  const currentItems = visits.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const currentItems = filteredVisits.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const handleRowClick = (patient) => {
     if (selectedPatient && selectedPatient.id === patient.id) {
@@ -266,8 +269,8 @@ const OpdPreconsultation = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {visits && visits.length > 0 ? (
-                      visits.map((item) => (
+                    {currentItems && currentItems.length > 0 ? (
+                      currentItems.map((item) => (
                         <tr
                           key={item.id}
                           onClick={() => handleRowClick(item)}
