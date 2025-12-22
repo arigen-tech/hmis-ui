@@ -5,14 +5,14 @@ import { API_HOST, MAS_ROOM_CATEGORY } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import { ADD_ROOM_CAT_SUCC_MSG, DUPLICATE_ROOM_CAT, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_ROOM_CAT_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_ROOM_CAT_SUCC_MSG } from "../../../config/constants";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 
 const RoomCategoryMaster = () => {
     const [categoryData, setCategoryData] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageInput, setPageInput] = useState("1");
-    const itemsPerPage = 5;
+
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, categoryId: null, newStatus: false });
     const [popupMessage, setPopupMessage] = useState(null);
     const [showForm, setShowForm] = useState(false);
@@ -26,7 +26,7 @@ const RoomCategoryMaster = () => {
 
     const CATEGORY_NAME_MAX_LENGTH = 50;
 
-    
+
     useEffect(() => {
         fetchCategoryData(0);
     }, []);
@@ -34,19 +34,19 @@ const RoomCategoryMaster = () => {
     // Function to format date as dd-MM-YYYY
     const formatDate = (dateString) => {
         if (!dateString) return "N/A";
-        
+
         try {
             const date = new Date(dateString);
-            
+
             // Check if date is valid
             if (isNaN(date.getTime())) {
                 return "N/A";
             }
-            
+
             const day = String(date.getDate()).padStart(2, '0');
             const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
             const year = date.getFullYear();
-            
+
             return `${day}/${month}/${year}`;
         } catch (error) {
             console.error("Error formatting date:", error);
@@ -58,7 +58,7 @@ const RoomCategoryMaster = () => {
             setLoading(true);
             const response = await getRequest(`${MAS_ROOM_CATEGORY}/getAll/${flag}`);
             if (response && response.response) {
-                
+
                 const mappedData = response.response.map(item => ({
                     id: item.roomCategoryId,
                     categoryName: item.roomCategoryName,
@@ -83,45 +83,16 @@ const RoomCategoryMaster = () => {
         (category) =>
             category?.categoryName?.toLowerCase().includes(searchQuery?.toLowerCase() || "")
     );
-    
-    // Reset to page 1 when search changes
+
     useEffect(() => {
         setCurrentPage(1);
-        setPageInput("1");
     }, [searchQuery]);
 
-    // Update page input when current page changes
-    useEffect(() => {
-        setPageInput(currentPage.toString());
-    }, [currentPage]);
+    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+    const currentItems = filteredCategories.slice(indexOfFirst, indexOfLast);
 
-    const currentItems = filteredCategories.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
 
-    const filteredTotalPages = Math.ceil(filteredCategories.length / itemsPerPage);
-
-    // Go to page functionality
-    const handlePageNavigation = () => {
-        const pageNumber = parseInt(pageInput);
-        if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= filteredTotalPages) {
-            setCurrentPage(pageNumber);
-        } else {
-            showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
-            setPageInput(currentPage.toString());
-        }
-    };
-
-    const handlePageInputChange = (e) => {
-        setPageInput(e.target.value);
-    };
-
-    const handleKeyPress = (e) => {
-        if (e.key === 'Enter') {
-            handlePageNavigation();
-        }
-    };
 
     const handleEdit = (category) => {
         setEditingCategory(category);
@@ -135,47 +106,47 @@ const RoomCategoryMaster = () => {
     const handleSave = async (e) => {
         e.preventDefault();
         if (!isFormValid) return;
-    
+
         try {
             setLoading(true);
-    
-           
+
+
             const isDuplicate = categoryData.some(
                 (category) =>
                     category.categoryName === formData.categoryName
             );
-    
+
             if (isDuplicate && !editingCategory) {
                 showPopup(DUPLICATE_ROOM_CAT, "error");
                 setLoading(false);
                 return;
             }
-    
+
             if (editingCategory) {
-                
+
                 const response = await putRequest(`${MAS_ROOM_CATEGORY}/update/${editingCategory.id}`, {
                     roomCategoryName: formData.categoryName,
                 });
-    
+
                 if (response && response.status === 200) {
-                   
+
                     fetchCategoryData();
                     showPopup(UPDATE_ROOM_CAT_SUCC_MSG, "success");
                 }
             } else {
-                
+
                 const response = await postRequest(`${MAS_ROOM_CATEGORY}/create`, {
                     roomCategoryName: formData.categoryName,
                 });
-    
+
                 if (response && response.status === 200) {
-                    
+
                     fetchCategoryData();
                     showPopup(ADD_ROOM_CAT_SUCC_MSG, "success");
                 }
             }
-    
-           
+
+
             setEditingCategory(null);
             setFormData({ categoryName: "" });
             setShowForm(false);
@@ -240,66 +211,11 @@ const RoomCategoryMaster = () => {
     const handleRefresh = () => {
         setSearchQuery("");
         setCurrentPage(1);
-        setPageInput("1");
+        
         fetchCategoryData();
     };
 
-    // Render page numbers with ellipsis
-    const renderPageNumbers = () => {
-        const pageNumbers = [];
-        const maxVisiblePages = 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-        let endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
 
-        if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
-        }
-
-        // First page and ellipsis
-        if (startPage > 1) {
-            pageNumbers.push(1);
-            if (startPage > 2) {
-                pageNumbers.push("ellipsis-left");
-            }
-        }
-
-        // Visible pages
-        for (let i = startPage; i <= endPage; i++) {
-            pageNumbers.push(i);
-        }
-
-        // Last page and ellipsis
-        if (endPage < filteredTotalPages) {
-            if (endPage < filteredTotalPages - 1) {
-                pageNumbers.push("ellipsis-right");
-            }
-            pageNumbers.push(filteredTotalPages);
-        }
-
-        return pageNumbers.map((number, index) => {
-            if (number === "ellipsis-left" || number === "ellipsis-right") {
-                return (
-                    <li key={index} className="page-item disabled">
-                        <span className="page-link">...</span>
-                    </li>
-                );
-            }
-
-            return (
-                <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-                    <button
-                        className="page-link"
-                        onClick={() => {
-                            setCurrentPage(number);
-                            setPageInput(number.toString());
-                        }}
-                    >
-                        {number}
-                    </button>
-                </li>
-            );
-        });
-    };
 
     return (
         <div className="content-wrapper">
@@ -354,101 +270,64 @@ const RoomCategoryMaster = () => {
                             {loading ? (
                                 <LoadingScreen />
                             ) : !showForm ? (
-                                <div className="table-responsive packagelist">
-                                    <table className="table table-bordered table-hover align-middle">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th>Room Category Name</th>
-                                                <th>Status</th>
-                                                <th>Last Updated</th>
-                                                <th>Edit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentItems.map((category) => (
-                                                <tr key={category.id}>
-                                                    <td>{category.categoryName}</td>
-                                                    <td>
-                                                        <div className="form-check form-switch">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={category.status === "y"}
-                                                                onChange={() => handleSwitchChange(category.id, category.status === "y" ? "n" : "y")}
-                                                                id={`switch-${category.id}`}
-                                                            />
-                                                            <label
-                                                                className="form-check-label px-0"
-                                                                htmlFor={`switch-${category.id}`}
-                                                            >
-                                                                {category.status === "y" ? "Active" : "Deactivated"}
-                                                            </label>
-                                                        </div>
-                                                    </td>
-                                                    <td>{category.lastUpdated || "N/A"}</td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-success me-2"
-                                                            onClick={() => handleEdit(category)}
-                                                            disabled={category.status !== "y"}
-                                                        >
-                                                            <i className="fa fa-pencil"></i>
-                                                        </button>
-                                                    </td>
+                                <>
+                                    <div className="table-responsive packagelist">
+                                        <table className="table table-bordered table-hover align-middle">
+                                            <thead className="table-light">
+                                                <tr>
+                                                    <th>Room Category Name</th>
+                                                    <th>Status</th>
+                                                    <th>Last Updated</th>
+                                                    <th>Edit</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                                        <div>
-                                            <span className="text-muted">
-                                                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredCategories.length)} of {filteredCategories.length} entries
-                                            </span>
-                                        </div>
-                                        <ul className="pagination mb-0">
-                                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                                <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage - 1)}
-                                                    disabled={currentPage === 1}
-                                                >
-                                                    &laquo; Previous
-                                                </button>
-                                            </li>
-                                            
-                                            {renderPageNumbers()}
-                                            
-                                            <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                                <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage + 1)}
-                                                    disabled={currentPage === filteredTotalPages}
-                                                >
-                                                    Next &raquo;
-                                                </button>
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex align-items-center">
-                                            <span className="me-2">Go to:</span>
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max={filteredTotalPages}
-                                                value={pageInput}
-                                                onChange={handlePageInputChange}
-                                                onKeyPress={handleKeyPress}
-                                                className="form-control me-2"
-                                                style={{ width: "80px" }}
-                                            />
-                                            <button
-                                                className="btn btn-primary"
-                                                onClick={handlePageNavigation}
-                                            >
-                                                Go
-                                            </button>
-                                        </div>
-                                    </nav>
-                                </div>
+                                            </thead>
+                                            <tbody>
+                                                {currentItems.map((category) => (
+                                                    <tr key={category.id}>
+                                                        <td>{category.categoryName}</td>
+                                                        <td>
+                                                            <div className="form-check form-switch">
+                                                                <input
+                                                                    className="form-check-input"
+                                                                    type="checkbox"
+                                                                    checked={category.status === "y"}
+                                                                    onChange={() => handleSwitchChange(category.id, category.status === "y" ? "n" : "y")}
+                                                                    id={`switch-${category.id}`}
+                                                                />
+                                                                <label
+                                                                    className="form-check-label px-0"
+                                                                    htmlFor={`switch-${category.id}`}
+                                                                >
+                                                                    {category.status === "y" ? "Active" : "Deactivated"}
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                        <td>{category.lastUpdated || "N/A"}</td>
+                                                        <td>
+                                                            <button
+                                                                className="btn btn-sm btn-success me-2"
+                                                                onClick={() => handleEdit(category)}
+                                                                disabled={category.status !== "y"}
+                                                            >
+                                                                <i className="fa fa-pencil"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+
+                                    </div>
+                                    {/* PAGINATION USING REUSABLE COMPONENT */}
+                                    {filteredCategories.length > 0 && (
+                                        <Pagination
+                                            totalItems={filteredCategories.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
+                                    )}
+                                </>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
                                     <div className="form-group col-md-4">
