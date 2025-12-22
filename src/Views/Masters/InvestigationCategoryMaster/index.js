@@ -165,9 +165,9 @@ const InvestigationCategory = () => {
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            <div className="card-header">
+            <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">Investigation Category Master</h4>
-              <div className="d-flex justify-content-between align-items-center mt-3">
+              <div className="d-flex justify-content-between align-items-center ">
                 {!showForm && (
                   <form className="d-inline-block searchform me-4" role="search">
                     <div className="input-group searchinput">
