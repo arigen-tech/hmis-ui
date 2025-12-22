@@ -50,8 +50,6 @@ export const FETCH_MAIN_CHARGE_CODE_ERR_MSG="Failed to load main charge code dat
 export const DUPLICATE_MAIN_CHARGE_CODE_MSG="Main charge code with the same code already exists!";
 export const UPDATE_MAIN_CHARGE_CODE_SUCC_MSG="Main charge code updated successfully!";
 export const ADD_MAIN_CHARGE_CODE_SUCC_MSG="New main charge code added successfully!";
-export const ADD_MAIN_CHARGE_CODE_ERR_MSG="Failed to save changes: ";
-export const UPDATE_MAIN_CHARGE_CODE_ERR_MSG="Failed to update status: ";
 
 
 //PendingForResultEntry
@@ -95,8 +93,6 @@ export const LAB_REPORT_PRINT_ERR_MSG="Error generating lab report. Please try a
 
 export const FETCH_SAMPLE_COLLECTION_ERR_MSG="Failed to load sample collection data";
 export const DUPLICATE_SAMPLE_COLLECTION_ERR_MSG="Sample collection with the same code already exists!";
-export const UPDATE_SAMPLE_COLLECTION_ERR_MSG="Failed to save changes:";
-export const UPDATE_STATUS_SAMPLE_COLLECTION_ERR_MSG="Failed to update status:";
 export const UPDATE_SAMPLE_COLLECTION_SUCC_MSG="Sample collection updated successfully!";
 export const ADD_SAMPLE_COLLECTION_SUCC_MSG="New sample collection added successfully!";
 
@@ -112,13 +108,12 @@ export const VALIDATION_SUCC_MSG="Investigations validated successfully!";
 
 //SubchargeCode
 
-export const MIS_MATCH_ERR_MSG="Failed to parse response data";
+export const MIS_MATCH_ERR_MSG="Unable to read server response. Please try again.";
 export const FETCH_SUB_CHARGE_CODES_ERR_MSG="Failed to load sub-charge codes";
 export const DUPLICATE_SUB_CHARGE_CODE_ERR_MSG="A sub charge code with this code already exists!";
 export const UPDATE_SUB_CHARGE_CODE_SUCC_MSG="Sub charge code updated successfully!";
 export const ADD_SUB_CHARGE_CODE_SUCC_MSG="New sub charge code added successfully!";
-export const FAIL_TO_SAVE_CHANGES="Fail to save changes:";
-export const UPDATE_STATUS_MAIN_CHARGE_CODE_ERR_MSG="Failed to update status";
+export const FAIL_TO_SAVE_CHANGES="Failed to save changes";
 
 //UOMMaster
 
@@ -188,7 +183,7 @@ export const ADD_CARE_LEVEL_SUCC_MSG="New Care level added successfully!";
 
 //DepartmentMaster
 
-export const FETCH_DEPARTMENT_ERR_MSG="Failed to load depatments data";
+export const FETCH_DEPARTMENT_ERR_MSG="Failed to load depatment data";
 export const DUPLICATE_DEPARTMENT="Department with the same code, name, or number already exists!"
 export const UPDATE_DEPARTMENT_SUCC_MSG="Department updated successfully!";
 export const ADD_DEPARTMENT_SUCC_MSG="New department added successfully!";

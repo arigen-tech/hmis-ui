@@ -3,7 +3,7 @@ import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import { MAS_MAIN_CHARGE_CODE } from "../../../config/apiConfig"
-import { ADD_MAIN_CHARGE_CODE_ERR_MSG, ADD_MAIN_CHARGE_CODE_SUCC_MSG, DUPLICATE_MAIN_CHARGE_CODE_MSG, FETCH_MAIN_CHARGE_CODE_ERR_MSG, UPDATE_MAIN_CHARGE_CODE_ERR_MSG, UPDATE_MAIN_CHARGE_CODE_SUCC_MSG } from "../../../config/constants"
+import {  ADD_MAIN_CHARGE_CODE_SUCC_MSG, DUPLICATE_MAIN_CHARGE_CODE_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_MAIN_CHARGE_CODE_ERR_MSG, UPDATE_MAIN_CHARGE_CODE_SUCC_MSG } from "../../../config/constants"
 
 
 
@@ -124,7 +124,7 @@ const MainChargeCode = () => {
       setShowForm(false)
     } catch (err) {
       console.error("Error saving main charge code:", err)
-      showPopup(`${ADD_MAIN_CHARGE_CODE_ERR_MSG} ${err.response?.data?.message || err.message}`, "error")
+      showPopup(FAIL_TO_SAVE_CHANGES, "error")
     } finally {
       setLoading(false)
     }
@@ -166,7 +166,7 @@ const MainChargeCode = () => {
         }
       } catch (err) {
         console.error("Error updating main charge code status:", err)
-        showPopup(`${UPDATE_MAIN_CHARGE_CODE_ERR_MSG}${err.response?.data?.message || err.message}`, "error")
+        showPopup(FAIL_TO_UPDATE_STS, "error")
       } finally {
         setLoading(false)
       }

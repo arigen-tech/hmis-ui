@@ -3,7 +3,7 @@ import Popup from "../../../Components/popup"
 import { MAS_SUB_CHARGE_CODE, MAS_MAIN_CHARGE_CODE } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
-import { ADD_SUB_CHARGE_CODE_SUCC_MSG, DUPLICATE_SUB_CHARGE_CODE_ERR_MSG, FAIL_TO_SAVE_CHANGES, FETCH_MAIN_CHARGE_CODE_ERR_MSG, FETCH_SUB_CHARGE_CODES_ERR_MSG, MIS_MATCH_ERR_MSG, UPDATE_STATUS_MAIN_CHARGE_CODE_ERR_MSG, UPDATE_SUB_CHARGE_CODE_SUCC_MSG } from "../../../config/constants"
+import { ADD_SUB_CHARGE_CODE_SUCC_MSG, DUPLICATE_SUB_CHARGE_CODE_ERR_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_MAIN_CHARGE_CODE_ERR_MSG, FETCH_SUB_CHARGE_CODES_ERR_MSG, MIS_MATCH_ERR_MSG, UPDATE_SUB_CHARGE_CODE_SUCC_MSG } from "../../../config/constants"
 
 const SubChargeCode = () => {
   const [subChargeCodes, setSubChargeCodes] = useState([])
@@ -216,7 +216,7 @@ const SubChargeCode = () => {
         }
       } catch (err) {
         console.error("Error updating sub-charge code status:", err)
-        showPopup(UPDATE_STATUS_MAIN_CHARGE_CODE_ERR_MSG, "error")
+        showPopup(FAIL_TO_UPDATE_STS, "error")
       } finally {
         setLoading(false)
       }

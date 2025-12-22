@@ -3,7 +3,7 @@ import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import { DG_MAS_COLLECTION } from "../../../config/apiConfig"
-import { ADD_SAMPLE_COLLECTION_SUCC_MSG, DUPLICATE_SAMPLE_COLLECTION_ERR_MSG, FETCH_SAMPLE_COLLECTION_ERR_MSG, UPDATE_SAMPLE_COLLECTION_ERR_MSG, UPDATE_SAMPLE_COLLECTION_SUCC_MSG, UPDATE_STATUS_SAMPLE_COLLECTION_ERR_MSG } from "../../../config/constants"
+import { ADD_SAMPLE_COLLECTION_SUCC_MSG, DUPLICATE_SAMPLE_COLLECTION_ERR_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_SAMPLE_COLLECTION_ERR_MSG, UPDATE_SAMPLE_COLLECTION_SUCC_MSG } from "../../../config/constants"
 
 const SampleCollectionMaster = () => {
   const [sampleCollections, setSampleCollections] = useState([])
@@ -119,7 +119,7 @@ const SampleCollectionMaster = () => {
       setShowForm(false)
     } catch (err) {
       console.error("Error saving sample collection:", err)
-      showPopup(`${UPDATE_SAMPLE_COLLECTION_ERR_MSG} ${err.response?.data?.message || err.message}`, "error")
+      showPopup(FAIL_TO_SAVE_CHANGES, "error")
     } finally {
       setLoading(false)
     }
@@ -161,7 +161,7 @@ const SampleCollectionMaster = () => {
         }
       } catch (err) {
         console.error("Error updating sample collection status:", err)
-        showPopup(`${UPDATE_STATUS_SAMPLE_COLLECTION_ERR_MSG} ${err.response?.data?.message || err.message}`, "error")
+        showPopup(FAIL_TO_UPDATE_STS, "error")
       } finally {
         setLoading(false)
       }
