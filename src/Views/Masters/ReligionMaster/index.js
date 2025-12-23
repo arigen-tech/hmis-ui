@@ -1,17 +1,17 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
-import axios from "axios";
 import { API_HOST, MAS_RELIGION } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+
 
 
 const Religionmaster = () => {
     const [religionData, setReligionData] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageInput, setPageInput] = useState("");
-    const itemsPerPage = 5;
+    // FIXED: Removed unused pageInput state (handled by Pagination component)
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, religionId: null, newStatus: false });
     const [popupMessage, setPopupMessage] = useState(null);
     const [showForm, setShowForm] = useState(false);
@@ -23,12 +23,17 @@ const Religionmaster = () => {
     });
     const [loading, setLoading] = useState(true);
 
-    const Religion_NAME_MAX_LENGTH = 30;
+    const RELIGION_NAME_MAX_LENGTH = 30;
 
     
     useEffect(() => {
         fetchReligionData(0);
     }, []);
+
+    // FIXED: Added useEffect to reset page when search changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
 
     const fetchReligionData = async (flag = 0) => {
         try {
@@ -55,7 +60,7 @@ const Religionmaster = () => {
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
-        setCurrentPage(1);
+        // FIXED: Page reset is now handled by useEffect
     };
 
     const filteredReligions = (religionData || []).filter(
@@ -64,21 +69,13 @@ const Religionmaster = () => {
     );
     
 
-    const currentItems = filteredReligions.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
+    // FIXED: Added check for empty filteredReligions
+    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+    const currentItems = filteredReligions.length > 0 ? 
+        filteredReligions.slice(indexOfFirst, indexOfLast) : [];
 
-    const filteredTotalPages = Math.ceil(filteredReligions.length / itemsPerPage);
-
-    const handlePageNavigation = () => {
-        const pageNumber = parseInt(pageInput, 10);
-        if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-            setCurrentPage(pageNumber);
-        } else {
-            alert("Please enter a valid page number.");
-        }
-    };
+    // FIXED: Removed handlePageNavigation function (handled by Pagination component)
 
     const handleEdit = (religion) => {
         setEditingReligion(religion);
@@ -96,10 +93,11 @@ const Religionmaster = () => {
         try {
             setLoading(true);
     
-           
+            // FIXED: Check duplicate including editing case
             const isDuplicate = religionData.some(
                 (religion) =>
-                    religion.religionName === formData.religionName
+                    religion.id !== (editingReligion ? editingReligion.id : null) &&
+                    religion.religionName.toLowerCase() === formData.religionName.toLowerCase()
             );
     
             if (isDuplicate && !editingReligion) {
@@ -192,13 +190,15 @@ const Religionmaster = () => {
 
     const handleInputChange = (e) => {
         const { id, value } = e.target;
-        setFormData((prevData) => ({ ...prevData, [id]: value }));
-        setIsFormValid(formData.religionName.trim() !== "");
+        const updatedFormData = { ...formData, [id]: value };
+        setFormData(updatedFormData);
+        // FIXED: Use updatedFormData for validation
+        setIsFormValid(updatedFormData.religionName.trim() !== "");
     };
 
     const handleRefresh = () => {
         setSearchQuery("");
-        setCurrentPage(1);
+        // FIXED: Page reset is now handled by useEffect
         fetchReligionData();
     };
 
@@ -233,15 +233,21 @@ const Religionmaster = () => {
                                 <div className="d-flex align-items-center">
                                     {!showForm ? (
                                         <>
-                                            <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                                            <button 
+                                                type="button" 
+                                                className="btn btn-success me-2" 
+                                                onClick={() => {
+                                                    setShowForm(true);
+                                                    setEditingReligion(null);
+                                                    setFormData({ religionName: "" });
+                                                    setIsFormValid(false);
+                                                }}
+                                            >
                                                 <i className="mdi mdi-plus"></i> Add
                                             </button>
                                             <button type="button" className="btn btn-success me-2 flex-shrink-0" onClick={handleRefresh}>
                                                 <i className="mdi mdi-refresh"></i> Show All
                                             </button>
-                                            {/* <button type="button" className="btn btn-success me-2" onClick={() => setShowModal(true)}>
-                                                <i className="mdi mdi-plus"></i> Reports
-                                            </button> */}
                                         </>
                                     ) : (
                                         <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
@@ -255,104 +261,69 @@ const Religionmaster = () => {
                             {loading ? (
                                 <LoadingScreen />
                             ) : !showForm ? (
-                                <div className="table-responsive packagelist">
-                                    <table className="table table-bordered table-hover align-middle">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th>Religion Name</th>
-                                                <th>Status</th>
-                                                <th>Edit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentItems.map((religion) => (
-                                                <tr key={religion.id}>
-                                                    <td>{religion.religionName}</td>
-                                                    <td>
-                                                        <div className="form-check form-switch">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={religion.status === "y"}
-                                                                onChange={() => handleSwitchChange(religion.id, religion.status === "y" ? "n" : "y")}
-                                                                id={`switch-${religion.id}`}
-                                                            />
-                                                            <label
-                                                                className="form-check-label px-0"
-                                                                htmlFor={`switch-${religion.id}`}
-                                                            >
-                                                                {religion.status === "y" ? "Active" : "Deactivated"}
-                                                            </label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-success me-2"
-                                                            onClick={() => handleEdit(religion)}
-                                                            disabled={religion.status !== "y"}
-                                                        >
-                                                            <i className="fa fa-pencil"></i>
-                                                        </button>
-                                                    </td>
+                                <>
+                                    <div className="table-responsive packagelist">
+                                        <table className="table table-bordered table-hover align-middle">
+                                            <thead className="table-light">
+                                                <tr>
+                                                    <th>Religion Name</th>
+                                                    <th>Status</th>
+                                                    <th>Edit</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                                        <div>
-                                            <span>
-                                                Page {currentPage} of {filteredTotalPages} | Total Records: {filteredReligions.length}
-                                            </span>
-                                        </div>
-                                        <ul className="pagination mb-0">
-                                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                                <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage - 1)}
-                                                    disabled={currentPage === 1}
-                                                >
-                                                    &laquo; Previous
-                                                </button>
-                                            </li>
-                                            {[...Array(filteredTotalPages)].map((_, index) => (
-                                                <li
-                                                    className={`page-item ${currentPage === index + 1 ? "active" : ""}`}
-                                                    key={index}
-                                                >
-                                                    <button className="page-link" onClick={() => setCurrentPage(index + 1)}>
-                                                        {index + 1}
-                                                    </button>
-                                                </li>
-                                            ))}
-                                            <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                                <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage + 1)}
-                                                    disabled={currentPage === filteredTotalPages}
-                                                >
-                                                    Next &raquo;
-                                                </button>
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex align-items-center">
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max={filteredTotalPages}
-                                                value={pageInput}
-                                                onChange={(e) => setPageInput(e.target.value)}
-                                                placeholder="Go to page"
-                                                className="form-control me-2"
-                                            />
-                                            <button
-                                                className="btn btn-primary"
-                                                onClick={handlePageNavigation}
-                                            >
-                                                Go
-                                            </button>
-                                        </div>
-                                    </nav>
-                                </div>
+                                            </thead>
+                                            <tbody>
+                                                {currentItems.length > 0 ? (
+                                                    currentItems.map((religion) => (
+                                                        <tr key={religion.id}>
+                                                            <td>{religion.religionName}</td>
+                                                            <td>
+                                                                <div className="form-check form-switch">
+                                                                    <input
+                                                                        className="form-check-input"
+                                                                        type="checkbox"
+                                                                        checked={religion.status === "y"}
+                                                                        onChange={() => handleSwitchChange(religion.id, religion.status === "y" ? "n" : "y")}
+                                                                        id={`switch-${religion.id}`}
+                                                                    />
+                                                                    <label
+                                                                        className="form-check-label px-0"
+                                                                        htmlFor={`switch-${religion.id}`}
+                                                                    >
+                                                                        {religion.status === "y" ? "Active" : "Deactivated"}
+                                                                    </label>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <button
+                                                                    className="btn btn-sm btn-success me-2"
+                                                                    onClick={() => handleEdit(religion)}
+                                                                    disabled={religion.status !== "y"}
+                                                                >
+                                                                    <i className="fa fa-pencil"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan={3} className="text-center">
+                                                            No religions found
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {/* FIXED: Only show pagination when there are multiple pages */}
+                                    {filteredReligions.length > DEFAULT_ITEMS_PER_PAGE && (
+                                        <Pagination
+                                            totalItems={filteredReligions.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
+                                    )}
+                                </>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
                                     <div className="form-group col-md-4">
@@ -364,7 +335,7 @@ const Religionmaster = () => {
                                             placeholder="Religion Name"
                                             value={formData.religionName}
                                             onChange={handleInputChange}
-                                            maxLength={Religion_NAME_MAX_LENGTH}
+                                            maxLength={RELIGION_NAME_MAX_LENGTH}
                                             required
                                         />
                                     </div>
