@@ -127,6 +127,7 @@ const validRoutes = [
   "/OptionValueMaster",
   "/QuestionHeadingMaster",
   "/ToothConditionMaster",
+  "/SpectacleUseMaster",
 
 
   
