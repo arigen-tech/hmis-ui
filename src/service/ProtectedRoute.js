@@ -124,6 +124,7 @@ const validRoutes = [
   "/BillingPolicyMaster",
   "/DesignationMaster",
   "/OPDQuestionnaireMaster",
+  "/OptionValueMaster",
 
 
   

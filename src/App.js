@@ -120,6 +120,7 @@ import ItemIssueRegister from './Views/WardPharmacy/IndentIssueReport';
 import BillingPolicyMaster from './Views/Masters/BillingPolicyMaster';
 import DesignationMaster from './Views/Masters/DesignationMaster';
 import OPDQuestionnaireMaster from './Views/Masters/OPDQuestionnaireMaster';
+import OptionValueMaster from './Views/Masters/OptionValueMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -273,6 +274,7 @@ function App() {
                 <Route path="/BillingPolicyMaster" element={<BillingPolicyMaster/>} />
                 <Route path="/DesignationMaster" element={<DesignationMaster/>} />
                 <Route path="/OPDQuestionnaireMaster" element={<OPDQuestionnaireMaster/>} />
+                <Route path="/OptionValueMaster" element={<OptionValueMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
