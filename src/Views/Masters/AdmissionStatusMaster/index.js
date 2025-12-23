@@ -277,7 +277,9 @@ const AdmissionStatusMaster = () => {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {currentItems.map((status) => (
+                                                {currentItems.length > 0 ?
+                                                (
+                                                currentItems.map((status) => (
                                                     <tr key={status.id}>
                                                         <td>{status.statusCode}</td>
                                                         <td>{status.lastUpdated}</td>
@@ -308,7 +310,14 @@ const AdmissionStatusMaster = () => {
                                                             </button>
                                                         </td>
                                                     </tr>
-                                                ))}
+                                                ))
+                                            ): (
+                                                    <tr>
+                                                        <td colSpan={4} className="text-center">
+                                                            No admission status found
+                                                        </td>
+                                                    </tr>
+                                                )}
                                             </tbody>
                                         </table>
                                     </div>

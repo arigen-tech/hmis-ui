@@ -283,7 +283,8 @@ const SpecialityMaster = () => {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {currentItems.map((specialty) => (
+                                                {currentItems.length>0?
+                                                (currentItems.map((specialty) => (
                                                     <tr key={specialty.id}>
                                                         <td>{specialty.centerName}</td>
                                                         <td>{specialty.description}</td>
@@ -315,7 +316,15 @@ const SpecialityMaster = () => {
                                                             </button>
                                                         </td>
                                                     </tr>
-                                                ))}
+                                                ))
+                                                ): (
+                                                    <tr>
+                                                        <td colSpan={6} className="text-center">
+                                                            No specialty data found
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            }
                                             </tbody>
                                         </table>
                                     </div>

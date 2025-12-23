@@ -374,6 +374,14 @@ export const UPDATE_SPECIALTY_SUCC_MSG = "Specialty Center updated successfully!
 export const DUPLICATE_SPECIALTY = "Specialty Center already exists!";
 export const FETCH_SPECIALTY_ERR_MSG = "Failed to fetch specialty center data";
 
+//BillingPolicyMaster
+
+
+export const ADD_BILLING_POLICY_SUCC_MSG = "Billing Policy added successfully!";
+export const UPDATE_BILLING_POLICY_SUCC_MSG = "Billing Policy updated successfully!";
+export const DUPLICATE_BILLING_POLICY = "Billing Policy already exists!";
+export const FETCH_BILLING_POLICY_ERR_MSG = "Failed to load billing policy data";
+
 
 
 
