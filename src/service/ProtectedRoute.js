@@ -126,6 +126,7 @@ const validRoutes = [
   "/OPDQuestionnaireMaster",
   "/OptionValueMaster",
   "/QuestionHeadingMaster",
+  "/ToothConditionMaster",
 
 
   
