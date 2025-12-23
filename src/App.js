@@ -124,6 +124,7 @@ import OptionValueMaster from './Views/Masters/OptionValueMaster';
 import QuestionHeadingMaster from './Views/Masters/QuestionHeadingMaster';
 import ToothConditionMaster from './Views/Masters/ToothConditionMaster';
 import SpectacleUseMaster from './Views/Masters/SpectacleUseMaster';
+import EyeWearUseMaster from './Views/Masters/EyeWearUseMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -281,6 +282,7 @@ function App() {
                 <Route path="/QuestionHeadingMaster" element={<QuestionHeadingMaster/>} />
                 <Route path="/ToothConditionMaster" element={<ToothConditionMaster/>} />
                 <Route path="/SpectacleUseMaster" element={<SpectacleUseMaster/>} />
+                <Route path="/EyeWearUseMaster" element={<EyeWearUseMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
