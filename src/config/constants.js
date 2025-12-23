@@ -360,6 +360,20 @@ export const UPDATE_WARD_CATEGORY_SUCC_MSG="Ward category updated successfully!"
 export const ADD_WARD_CATEGORY_SUCC_MSG="New ward category added successfully!";
 
 
+//AdmissionStatusMaster
+
+export const FETCH_ADMISSION_STATUS_ERR_MSG = "Failed to load admission status data";
+export const DUPLICATE_ADMISSION_STATUS = "Admission Status Code already exists";
+export const ADD_ADMISSION_STATUS_SUCC_MSG = "Admission Status added successfully!";
+export const UPDATE_ADMISSION_STATUS_SUCC_MSG = "Admission Status updated successfully!";
+
+//SpecialityMaster
+
+export const ADD_SPECIALTY_SUCC_MSG = "Specialty Center added successfully!";
+export const UPDATE_SPECIALTY_SUCC_MSG = "Specialty Center updated successfully!";
+export const DUPLICATE_SPECIALTY = "Specialty Center already exists!";
+export const FETCH_SPECIALTY_ERR_MSG = "Failed to fetch specialty center data";
+
 
 
 

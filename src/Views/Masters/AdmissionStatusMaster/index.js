@@ -1,280 +1,409 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
-import LoadingScreen from "../../../Components/Loading";
+import axios from "axios";
+import {  MAS_ADMISSION_STATUS } from "../../../config/apiConfig";
+import LoadingScreen from "../../../Components/Loading"
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import { 
+  ADD_ADMISSION_STATUS_SUCC_MSG, 
+  DUPLICATE_ADMISSION_STATUS, 
+  FAIL_TO_SAVE_CHANGES, 
+  FAIL_TO_UPDATE_STS, 
+  FETCH_ADMISSION_STATUS_ERR_MSG, 
+  UPDATE_ADMISSION_STATUS_SUCC_MSG 
+} from "../../../config/constants";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const AdmissionStatusMaster = () => {
-  const [data, setData] = useState([]);
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, id: null, newStatus: "" });
-  const [loading] = useState(false);
-  const [formData, setFormData] = useState({ status_code: "", created_by: "", last_updated_by: "" });
-  const [showForm, setShowForm] = useState(false);
-  const [editingRecord, setEditingRecord] = useState(null);
-  const [isFormValid, setIsFormValid] = useState(false);
-  const [popupMessage, setPopupMessage] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+    const [admissionStatusData, setAdmissionStatusData] = useState([]);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
 
-  // ================= SAMPLE DATA =================
-  useEffect(() => {
-    const sample = [
-      { id: 1, status_code: "ACTIVE", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-01-10" },
-      { id: 2, status_code: "DISCHARGED_HOME", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-01-09" },
-      { id: 3, status_code: "DISCHARGED_OTHER", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-01-08" },
-      { id: 4, status_code: "DECEASED", status: "N", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-01-07" },
-      { id: 5, status_code: "CANCELLED", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-01-06" },
-      { id: 6, status_code: "REFERRED", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-01-05" },
-      { id: 7, status_code: "TRANSFERRED", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-01-04" },
-      { id: 8, status_code: "WAITING", status: "N", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-01-03" },
-      { id: 9, status_code: "UNDER_OBSERVATION", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-01-02" },
-      { id: 10, status_code: "RE_ADMITTED", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-01-01" },
-    ];
-    setData(sample);
-  }, []);
+    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, admissionStatusId: null, newStatus: false });
+    const [popupMessage, setPopupMessage] = useState(null);
+    const [showForm, setShowForm] = useState(false);
+    const [editingRecord, setEditingRecord] = useState(null);
+    const [isFormValid, setIsFormValid] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [formData, setFormData] = useState({
+        statusCode: "",
+    });
+    const [loading, setLoading] = useState(true);
 
-  // ================= SEARCH =================
-  const filteredData = data.filter((rec) =>
-    rec.status_code.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    const STATUS_CODE_MAX_LENGTH = 50;
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const currentItems = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+    useEffect(() => {
+        fetchAdmissionStatusData(0);
+    }, []);
 
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-    setCurrentPage(1);
-  };
+    // Function to format date as dd-MM-YYYY
+    const formatDate = (dateString) => {
+        if (!dateString) return "N/A";
 
-  // ================= SAVE / UPDATE =================
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
+        try {
+            const date = new Date(dateString);
 
-    const duplicate = data.some(
-      (rec) =>
-        rec.status_code.toLowerCase() === formData.status_code.toLowerCase() &&
-        (!editingRecord || editingRecord.id !== rec.id)
+            // Check if date is valid
+            if (isNaN(date.getTime())) {
+                return "N/A";
+            }
+
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+            const year = date.getFullYear();
+
+            return `${day}/${month}/${year}`;
+        } catch (error) {
+            console.error("Error formatting date:", error);
+            return "N/A";
+        }
+    };
+
+    const fetchAdmissionStatusData = async (flag = 0) => {
+        try {
+            setLoading(true);
+            const response = await getRequest(`${MAS_ADMISSION_STATUS}/getAll/${flag}`);
+            if (response && response.response) {
+                const mappedData = response.response.map(item => ({
+                    id: item.admissionStatusId,
+                    statusCode: item.statusCode,
+                    status: item.status,
+                    lastUpdated: formatDate(item.lastUpdateDate)
+                }));
+                setAdmissionStatusData(mappedData);
+            }
+        } catch (err) {
+            console.error("Error fetching admission status data:", err);
+            showPopup(FETCH_ADMISSION_STATUS_ERR_MSG, "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSearchChange = (e) => {
+        setSearchQuery(e.target.value);
+    };
+
+    const filteredAdmissionStatus = (admissionStatusData || []).filter(
+        (status) =>
+            status?.statusCode?.toLowerCase().includes(searchQuery?.toLowerCase() || "")
     );
 
-    if (duplicate) {
-      showPopup("Status Code already exists!", "error");
-      return;
-    }
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
 
-    const now = new Date().toLocaleString();
+    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+    const currentItems = filteredAdmissionStatus.slice(indexOfFirst, indexOfLast);
 
-    if (editingRecord) {
-      const updated = data.map((rec) =>
-        rec.id === editingRecord.id ? { ...rec, ...formData, last_update_date: now } : rec
-      );
-      setData(updated);
-      showPopup("Record updated successfully!", "success");
-    } else {
-      const newRecord = { id: Date.now(), ...formData, status: "Y", last_update_date: now };
-      setData([...data, newRecord]);
-      showPopup("Record added successfully!", "success");
-    }
+    const handleEdit = (record) => {
+        setEditingRecord(record);
+        setFormData({
+            statusCode: record.statusCode,
+        });
+        setIsFormValid(true);
+        setShowForm(true);
+    };
 
-    setShowForm(false);
-    setEditingRecord(null);
-    resetForm();
-  };
+    const handleSave = async (e) => {
+        e.preventDefault();
+        if (!isFormValid) return;
 
-  const resetForm = () => {
-    setFormData({ status_code: "", created_by: "", last_updated_by: "" });
-    setIsFormValid(false);
-  };
+        try {
+            setLoading(true);
 
-  // ================= EDIT =================
-  const handleEdit = (rec) => {
-    setEditingRecord(rec);
-    setFormData({ status_code: rec.status_code, created_by: rec.created_by, last_updated_by: rec.last_updated_by });
-    setShowForm(true);
-    setIsFormValid(true);
-  };
+            const isDuplicate = admissionStatusData.some(
+                (status) =>
+                    status.statusCode.toLowerCase() === formData.statusCode.toLowerCase() &&
+                    (!editingRecord || editingRecord.id !== status.id)
+            );
 
-  // ================= INPUT CHANGE =================
-  const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    const updated = { ...formData, [id]: value };
-    setFormData(updated);
-    setIsFormValid(updated.status_code.trim() !== "");
-  };
+            if (isDuplicate && !editingRecord) {
+                showPopup(DUPLICATE_ADMISSION_STATUS, "error");
+                setLoading(false);
+                return;
+            }
 
-  // ================= STATUS CHANGE =================
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, id, newStatus });
-  };
+            if (editingRecord) {
+                const response = await putRequest(`${MAS_ADMISSION_STATUS}/update/${editingRecord.id}`, {
+                    statusCode: formData.statusCode,
+                });
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed) {
-      const updated = data.map((rec) =>
-        rec.id === confirmDialog.id ? { ...rec, status: confirmDialog.newStatus } : rec
-      );
-      setData(updated);
-      showPopup("Status updated!", "success");
-    }
-    setConfirmDialog({ isOpen: false, id: null, newStatus: "" });
-  };
+                if (response && response.status === 200) {
+                    fetchAdmissionStatusData();
+                    showPopup(UPDATE_ADMISSION_STATUS_SUCC_MSG, "success");
+                }
+            } else {
+                const response = await postRequest(`${MAS_ADMISSION_STATUS}/create`, {
+                    statusCode: formData.statusCode,
+                });
 
-  // ================= POPUP =================
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
-  };
+                if (response && response.status === 200) {
+                    fetchAdmissionStatusData();
+                    showPopup(ADD_ADMISSION_STATUS_SUCC_MSG, "success");
+                }
+            }
 
-  const handleRefresh = () => {
-    setSearchQuery("");
-    setCurrentPage(1);
-  };
+            setEditingRecord(null);
+            setFormData({ statusCode: "" });
+            setShowForm(false);
+        } catch (err) {
+            console.error("Error saving admission status:", err);
+            showPopup(FAIL_TO_SAVE_CHANGES, "error");
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  // ================= PAGINATION =================
-  const Pagination = () => (
-    <nav>
-      <ul className="pagination">
-        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-          <button className="page-link" onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}>Prev</button>
-        </li>
+    const showPopup = (message, type = "info") => {
+        setPopupMessage({
+            message,
+            type,
+            onClose: () => {
+                setPopupMessage(null);
+            },
+        });
+    };
 
-        {[...Array(totalPages).keys()].map((num) => (
-          <li key={num} className={`page-item ${currentPage === num + 1 ? "active" : ""}`}>
-            <button className="page-link" onClick={() => setCurrentPage(num + 1)}>{num + 1}</button>
-          </li>
-        ))}
+    const handleSwitchChange = (id, newStatus) => {
+        setConfirmDialog({ isOpen: true, admissionStatusId: id, newStatus });
+    };
 
-        <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-          <button className="page-link" onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}>Next</button>
-        </li>
-      </ul>
-    </nav>
-  );
+    const handleConfirm = async (confirmed) => {
+        if (confirmed && confirmDialog.admissionStatusId !== null) {
+            try {
+                setLoading(true);
+                const response = await putRequest(
+                    `${MAS_ADMISSION_STATUS}/status/${confirmDialog.admissionStatusId}?status=${confirmDialog.newStatus}`
+                );
+                if (response && response.response) {
+                    setAdmissionStatusData((prevData) =>
+                        prevData.map((status) =>
+                            status.id === confirmDialog.admissionStatusId
+                                ? { ...status, status: confirmDialog.newStatus }
+                                : status
+                        )
+                    );
+                    showPopup(
+                        `Admission Status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                        "success"
+                    );
+                }
+            } catch (err) {
+                console.error("Error updating admission status:", err);
+                showPopup(FAIL_TO_UPDATE_STS, "error");
+            } finally {
+                setLoading(false);
+            }
+        }
+        setConfirmDialog({ isOpen: false, admissionStatusId: null, newStatus: null });
+    };
 
-  // ================= UI =================
-  return (
-    <div className="content-wrapper">
-      <div className="card form-card">
-        <div className="card-header d-flex justify-content-between align-items-center">
-          <h4>Admission Status Master</h4>
+    const handleInputChange = (e) => {
+        const { id, value } = e.target;
+        setFormData((prevData) => ({ ...prevData, [id]: value }));
+        setIsFormValid(formData.statusCode.trim() !== "");
+    };
 
-          <div className="d-flex">
-            {!showForm && (
-              <input
-                type="text"
-                className="form-control me-2"
-                style={{ width: "220px" }}
-                placeholder="Search"
-                value={searchQuery}
-                onChange={handleSearchChange}
-              />
-            )}
+    const handleRefresh = () => {
+        setSearchQuery("");
+        setCurrentPage(1);
+        fetchAdmissionStatusData();
+    };
 
-            {!showForm ? (
-              <>
-                <button className="btn btn-success me-2" onClick={() => { resetForm(); setShowForm(true); setEditingRecord(null); }}>Add</button>
-                <button className="btn btn-success" onClick={handleRefresh}>Show All</button>
-              </>
-            ) : (
-              <button className="btn btn-secondary" onClick={() => setShowForm(false)}>Back</button>
-            )}
-          </div>
-        </div>
+    return (
+        <div className="content-wrapper">
+            <div className="row">
+                <div className="col-12 grid-margin stretch-card">
+                    <div className="card form-card">
+                        <div className="card-header d-flex justify-content-between align-items-center">
+                            <h4 className="card-title">Admission Status Master</h4>
+                            <div className="d-flex justify-content-between align-items-center">
+                                {!showForm ? (
+                                    <form className="d-inline-block searchform me-4" role="search">
+                                        <div className="input-group searchinput">
+                                            <input
+                                                type="search"
+                                                className="form-control"
+                                                placeholder="Search Admission Status"
+                                                aria-label="Search"
+                                                value={searchQuery}
+                                                onChange={handleSearchChange}
+                                            />
+                                            <span className="input-group-text" id="search-icon">
+                                                <i className="fa fa-search"></i>
+                                            </span>
+                                        </div>
+                                    </form>
+                                ) : (
+                                    <></>
+                                )}
 
-        <div className="card-body">
-          {loading ? <LoadingScreen /> : !showForm ? (
-            <>
-              <div className="table-responsive">
-                <table className="table table-bordered table-hover">
-                  <thead className="table-light">
-                    <tr>
-                      <th>ID</th>
-                      <th>Status Code</th>
-                      <th>Created By</th>
-                      <th>Last Updated By</th>
-                      <th>Last Update Date</th>
-                      <th>Status</th>
-                      <th>Edit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentItems.map((rec) => (
-                      <tr key={rec.id}>
-                        <td>{rec.id}</td>
-                        <td>{rec.status_code}</td>
-                        <td>{rec.created_by}</td>
-                        <td>{rec.last_updated_by}</td>
-                        <td>{rec.last_update_date}</td>
-                        <td>
-                          <div className="form-check form-switch">
-                            <input className="form-check-input" type="checkbox" checked={rec.status === "Y"} onChange={() => handleSwitchChange(rec.id, rec.status === "Y" ? "N" : "Y")} />
-                            <label className="form-check-label">{rec.status === "Y" ? "Active" : "Inactive"}</label>
-                          </div>
-                        </td>
-                        <td>
-                          <button className="btn btn-success btn-sm" onClick={() => handleEdit(rec)} disabled={rec.status !== "Y"}>
-                             <i className="fa fa-pencil"></i>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="d-flex justify-content-center mt-3">
-                <Pagination />
-              </div>
-            </>
-          ) : (
-            <form className="row" onSubmit={handleSave}>
-              <div className="form-group col-md-6">
-                <label>Status Code *</label>
-                <input type="text" id="status_code" className="form-control mt-1" placeholder="Enter Status Code" value={formData.status_code} onChange={handleInputChange} required />
-              </div>
-
-              <div className="form-group col-md-6 mt-3">
-                <label>Created By</label>
-                <input type="text" id="created_by" className="form-control mt-1" value={formData.created_by} onChange={handleInputChange} />
-              </div>
-
-              <div className="form-group col-md-6 mt-3">
-                <label>Last Updated By</label>
-                <input type="text" id="last_updated_by" className="form-control mt-1" value={formData.last_updated_by} onChange={handleInputChange} />
-              </div>
-
-              <div className="form-group col-md-12 mt-4 d-flex justify-content-end">
-                <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>Save</button>
-                <button className="btn btn-danger" type="button" onClick={() => setShowForm(false)}>Cancel</button>
-              </div>
-            </form>
-          )}
-
-          {popupMessage && <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />}
-
-          {confirmDialog.isOpen && (
-            <div className="modal d-block">
-              <div className="modal-dialog">
-                <div className="modal-content">
-                  <div className="modal-header">
-                    <h5>Confirm Status Change</h5>
-                    <button className="btn-close" onClick={() => handleConfirm(false)}></button>
-                  </div>
-                  <div className="modal-body">
-                    Are you sure you want to <strong>{confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}</strong> this item?
-                  </div>
-                  <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
-                  </div>
+                                <div className="d-flex align-items-center">
+                                    {!showForm ? (
+                                        <>
+                                            <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                                                <i className="mdi mdi-plus"></i> Add
+                                            </button>
+                                            <button type="button" className="btn btn-success me-2 flex-shrink-0" onClick={handleRefresh}>
+                                                <i className="mdi mdi-refresh"></i> Show All
+                                            </button>
+                                            <button type="button" className="btn btn-success me-2" onClick={() => setShowModal(true)}>
+                                                <i className="mdi mdi-plus"></i> Reports
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                                            <i className="mdi mdi-arrow-left"></i> Back
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="card-body">
+                            {loading ? (
+                                <LoadingScreen />
+                            ) : !showForm ? (
+                                <>
+                                    <div className="table-responsive packagelist">
+                                        <table className="table table-bordered table-hover align-middle">
+                                            <thead className="table-light">
+                                                <tr>
+                                                    <th>Admission Status Name</th>
+                                                    <th>Last Updated</th>
+                                                    <th>Status</th>
+                                                    <th>Edit</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {currentItems.map((status) => (
+                                                    <tr key={status.id}>
+                                                        <td>{status.statusCode}</td>
+                                                        <td>{status.lastUpdated}</td>
+                                                        <td>
+                                                            <div className="form-check form-switch">
+                                                                <input
+                                                                    className="form-check-input"
+                                                                    type="checkbox"
+                                                                    checked={status.status === "y"}
+                                                                    onChange={() => handleSwitchChange(status.id, status.status === "y" ? "n" : "y")}
+                                                                    id={`switch-${status.id}`}
+                                                                />
+                                                                <label
+                                                                    className="form-check-label px-0"
+                                                                    htmlFor={`switch-${status.id}`}
+                                                                >
+                                                                    {status.status === "y" ? "Active" : "Deactivated"}
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <button
+                                                                className="btn btn-sm btn-success me-2"
+                                                                onClick={() => handleEdit(status)}
+                                                                disabled={status.status !== "y"}
+                                                            >
+                                                                <i className="fa fa-pencil"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {/* PAGINATION USING REUSABLE COMPONENT */}
+                                    {filteredAdmissionStatus.length > 0 && (
+                                        <Pagination
+                                            totalItems={filteredAdmissionStatus.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
+                                    )}
+                                </>
+                            ) : (
+                                <form className="forms row" onSubmit={handleSave}>
+                                    <div className="form-group col-md-4">
+                                        <label>Admission Status Name<span className="text-danger">*</span></label>
+                                        <input
+                                            type="text"
+                                            className="form-control mt-1"
+                                            id="statusCode"
+                                            placeholder="Enter aadmission status name"
+                                            value={formData.statusCode}
+                                            onChange={handleInputChange}
+                                            maxLength={STATUS_CODE_MAX_LENGTH}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="form-group col-md-12 d-flex justify-content-end mt-4">
+                                        <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
+                                            Save
+                                        </button>
+                                        <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+                            {showModal && (
+                                <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+                                    <div className="modal-dialog">
+                                        <div className="modal-content">
+                                            <div className="modal-header">
+                                                <h1 className="modal-title fs-5" id="staticBackdropLabel">Reports</h1>
+                                                <button type="button" className="btn-close" onClick={() => setShowModal(false)} aria-label="Close"></button>
+                                            </div>
+                                            <div className="modal-body">
+                                                {/* Your modal content goes here */}
+                                                ...
+                                            </div>
+                                            <div className="modal-footer">
+                                                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
+                                                <button type="button" className="btn btn-primary">Understood</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            {popupMessage && (
+                                <Popup
+                                    message={popupMessage.message}
+                                    type={popupMessage.type}
+                                    onClose={popupMessage.onClose}
+                                />
+                            )}
+                            {confirmDialog.isOpen && (
+                                <div className="modal d-block" tabIndex="-1" role="dialog">
+                                    <div className="modal-dialog" role="document">
+                                        <div className="modal-content">
+                                            <div className="modal-header">
+                                                <h5 className="modal-title">Confirm Status Change</h5>
+                                                <button type="button" className="close" onClick={() => handleConfirm(false)}>
+                                                    <span>&times;</span>
+                                                </button>
+                                            </div>
+                                            <div className="modal-body">
+                                                <p>
+                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                    <strong>{admissionStatusData.find((status) => status.id === confirmDialog.admissionStatusId)?.statusCode}</strong>?
+                                                </p>
+                                            </div>
+                                            <div className="modal-footer">
+                                                <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
+                                                <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
-              </div>
             </div>
-          )}
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default AdmissionStatusMaster;

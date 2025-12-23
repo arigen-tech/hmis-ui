@@ -1,361 +1,429 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
-import LoadingScreen from "../../../Components/Loading";
+import { MAS_SPECIALTY } from "../../../config/apiConfig";
+import LoadingScreen from "../../../Components/Loading"
+import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import { 
+  ADD_SPECIALTY_SUCC_MSG, 
+  DUPLICATE_SPECIALTY, 
+  FAIL_TO_SAVE_CHANGES, 
+  FAIL_TO_UPDATE_STS, 
+  FETCH_SPECIALTY_ERR_MSG, 
+  UPDATE_SPECIALTY_SUCC_MSG 
+} from "../../../config/constants";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const SpecialityMaster = () => {
-  const [data, setData] = useState([]);
-  const [confirmDialog, setConfirmDialog] = useState({
-    isOpen: false,
-    id: null,
-    newStatus: "",
-    specialityName: ""
-  });
+    const [specialtyData, setSpecialtyData] = useState([]);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
 
-  const [loading] = useState(false);
-
-  const [formData, setFormData] = useState({
-    speciality_code: "",
-    speciality_name: "",
-    description: "",
-  });
-
-  const [showForm, setShowForm] = useState(false);
-  const [editingRecord, setEditingRecord] = useState(null);
-  const [isFormValid, setIsFormValid] = useState(false);
-  const [popupMessage, setPopupMessage] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // ================= PAGINATION =================
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageInput, setPageInput] = useState("");
-  const itemsPerPage = 5;
-
-  // ================= SAMPLE DATA =================
-  useEffect(() => {
-    const sample = [
-      { speciality_id: 1, speciality_code: "SP001", speciality_name: "Cardiology", description: "Heart related treatments", status: "Y" },
-      { speciality_id: 2, speciality_code: "SP002", speciality_name: "Neurology", description: "Brain and nerve system", status: "Y" },
-      { speciality_id: 3, speciality_code: "SP003", speciality_name: "Orthopedics", description: "Bone related treatments", status: "N" },
-      { speciality_id: 4, speciality_code: "SP004", speciality_name: "Dermatology", description: "Skin treatments", status: "Y" },
-      { speciality_id: 5, speciality_code: "SP005", speciality_name: "ENT", description: "Ear Nose Throat", status: "Y" },
-      { speciality_id: 6, speciality_code: "SP006", speciality_name: "Pediatrics", description: "Child care", status: "Y" },
-      { speciality_id: 7, speciality_code: "SP007", speciality_name: "Gynecology", description: "Women health", status: "Y" },
-      { speciality_id: 8, speciality_code: "SP008", speciality_name: "Urology", description: "Urinary system", status: "N" },
-      { speciality_id: 9, speciality_code: "SP009", speciality_name: "Psychiatry", description: "Mental health", status: "Y" },
-      { speciality_id: 10, speciality_code: "SP010", speciality_name: "Oncology", description: "Cancer treatment", status: "Y" },
-    ];
-    setData(sample);
-  }, []);
-
-  // ================= SEARCH =================
-  const filteredData = data.filter((rec) =>
-    rec.speciality_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-
-  const currentItems = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-    setCurrentPage(1);
-  };
-
-  // ================= FORM =================
-  const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    const updated = { ...formData, [id]: value };
-    setFormData(updated);
-    setIsFormValid(
-      updated.speciality_code.trim() !== "" &&
-      updated.speciality_name.trim() !== ""
-    );
-  };
-
-  const resetForm = () => {
-    setFormData({
-      speciality_code: "",
-      speciality_name: "",
-      description: "",
+    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, centerId: null, newStatus: false, centerName: "" });
+    const [popupMessage, setPopupMessage] = useState(null);
+    const [showForm, setShowForm] = useState(false);
+    const [editingRecord, setEditingRecord] = useState(null);
+    const [isFormValid, setIsFormValid] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [formData, setFormData] = useState({
+        centerName: "",
+        description: "",
     });
-    setIsFormValid(false);
-  };
+    const [loading, setLoading] = useState(true);
 
-  // ================= SAVE =================
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
+    const CENTER_NAME_MAX_LENGTH = 150;
+    const DESCRIPTION_MAX_LENGTH = 300;
 
-    if (editingRecord) {
-      setData(
-        data.map((rec) =>
-          rec.speciality_id === editingRecord.speciality_id
-            ? { ...rec, ...formData }
-            : rec
-        )
-      );
-      showPopup("Record updated successfully", "success");
-    } else {
-      setData([
-        ...data,
-        {
-          speciality_id: Date.now(),
-          ...formData,
-          status: "Y",
-        },
-      ]);
-      showPopup("Record added successfully", "success");
-    }
+    useEffect(() => {
+        fetchSpecialtyData(0);
+    }, []);
 
-    resetForm();
-    setEditingRecord(null);
-    setShowForm(false);
-  };
+    // Function to format date as dd-MM-YYYY
+    const formatDate = (dateString) => {
+        if (!dateString) return "N/A";
 
-  // ================= EDIT =================
-  const handleEdit = (rec) => {
-    setEditingRecord(rec);
-    setFormData(rec);
-    setShowForm(true);
-    setIsFormValid(true);
-  };
+        try {
+            const date = new Date(dateString);
 
-  // ================= STATUS =================
-  const handleSwitchChange = (id, newStatus, specialityName) => {
-    setConfirmDialog({ isOpen: true, id, newStatus, specialityName });
-  };
+            // Check if date is valid
+            if (isNaN(date.getTime())) {
+                return "N/A";
+            }
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed) {
-      setData(
-        data.map((rec) =>
-          rec.speciality_id === confirmDialog.id
-            ? { ...rec, status: confirmDialog.newStatus }
-            : rec
-        )
-      );
-      showPopup("Status updated successfully", "success");
-    }
-    setConfirmDialog({ isOpen: false, id: null, newStatus: "", specialityName: "" });
-  };
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+            const year = date.getFullYear();
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
-  };
+            return `${day}/${month}/${year}`;
+        } catch (error) {
+            console.error("Error formatting date:", error);
+            return "N/A";
+        }
+    };
 
-  // ================= GO TO PAGE =================
-  const handlePageNavigation = () => {
-    const page = Number(pageInput);
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-    setPageInput("");
-  };
+    const fetchSpecialtyData = async (flag = 0) => {
+        try {
+            setLoading(true);
+            const response = await getRequest(`${MAS_SPECIALTY}/getAll/${flag}`);
+            if (response && response.response) {
+                const mappedData = response.response.map(item => ({
+                    id: item.centerId,
+                    centerName: item.centerName,
+                    description: item.description || "",
+                    status: item.status,
+                    lastUpdated: formatDate(item.lastUpdateDate)
+                }));
+                setSpecialtyData(mappedData);
+            }
+        } catch (err) {
+            console.error("Error fetching specialty data:", err);
+            showPopup(FETCH_SPECIALTY_ERR_MSG, "error");
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  const handleRefresh = () => {
-    setSearchQuery("");
-    setCurrentPage(1);
-  };
+    const handleSearchChange = (e) => {
+        setSearchQuery(e.target.value);
+    };
 
-  const handlePrev = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
-  };
+    const filteredSpecialty = (specialtyData || []).filter(
+        (specialty) =>
+            specialty?.centerName?.toLowerCase().includes(searchQuery?.toLowerCase() || "")
+    );
 
-  const handleNext = () => {
-    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-  };
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
 
-  // ================= UI =================
-  return (
-    <div className="content-wrapper">
-      <div className="card form-card">
+    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+    const currentItems = filteredSpecialty.slice(indexOfFirst, indexOfLast);
 
-        {/* HEADER */}
-        <div className="card-header d-flex justify-content-between align-items-center">
-          <h4>Speciality Master</h4>
-          <div className="d-flex">
-            {!showForm && (
-              <input
-                className="form-control me-2"
-                style={{ width: "220px" }}
-                placeholder="Search"
-                value={searchQuery}
-                onChange={handleSearchChange}
-              />
-            )}
+    const handleEdit = (record) => {
+        setEditingRecord(record);
+        setFormData({
+            centerName: record.centerName,
+            description: record.description,
+        });
+        setIsFormValid(true);
+        setShowForm(true);
+    };
 
-            {!showForm ? (
-              <>
-                <button
-                  className="btn btn-success me-2"
-                  onClick={() => { resetForm(); setShowForm(true); setEditingRecord(null); }}
-                >
-                  Add
-                </button>
-                <button className="btn btn-success" onClick={handleRefresh}>
-                  Show All
-                </button>
-              </>
-            ) : (
-              <button className="btn btn-secondary" onClick={() => setShowForm(false)}>
-                Back
-              </button>
-            )}
-          </div>
-        </div>
+    const handleSave = async (e) => {
+        e.preventDefault();
+        if (!isFormValid) return;
 
-        {/* BODY */}
-        <div className="card-body">
-          {loading ? (
-            <LoadingScreen />
-          ) : !showForm ? (
-            <>
-              <div className="table-responsive">
-                <table className="table table-bordered table-hover">
-                  <thead className="table-light">
-                    <tr>
-                      <th>Code</th>
-                      <th>Name</th>
-                      <th>Description</th>
-                      <th>Status</th>
-                      <th>Edit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentItems.map((rec) => (
-                      <tr key={rec.speciality_id}>
-                        <td>{rec.speciality_code}</td>
-                        <td>{rec.speciality_name}</td>
-                        <td>{rec.description}</td>
-                        <td>
-                          <div className="form-check form-switch">
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              checked={rec.status === "Y"}
-                              onChange={() =>
-                                handleSwitchChange(
-                                  rec.speciality_id,
-                                  rec.status === "Y" ? "N" : "Y",
-                                  rec.speciality_name
-                                )
-                              }
-                            />
-                            <label className="form-check-label">
-                              {rec.status === "Y" ? "Active" : "Inactive"}
-                            </label>
-                          </div>
-                        </td>
-                        <td>
-                          <button
-                            className="btn btn-success btn-sm"
-                            onClick={() => handleEdit(rec)}
-                            disabled={rec.status !== "Y"}
-                          >
-                            <i className="fa fa-pencil"></i>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+        try {
+            setLoading(true);
 
-              {/* PAGINATION */}
-              <div className="d-flex justify-content-between align-items-center mt-3 flex-wrap">
-                {/* Total Records / Total Pages */}
-                <div>
-                  Total Records: {filteredData.length} | Page {currentPage} of {totalPages}
+            const isDuplicate = specialtyData.some(
+                (specialty) =>
+                    specialty.centerName.toLowerCase() === formData.centerName.toLowerCase() &&
+                    (!editingRecord || editingRecord.id !== specialty.id)
+            );
+
+            if (isDuplicate && !editingRecord) {
+                showPopup(DUPLICATE_SPECIALTY, "error");
+                setLoading(false);
+                return;
+            }
+
+            if (editingRecord) {
+                const response = await putRequest(`${MAS_SPECIALTY}/update/${editingRecord.id}`, {
+                    centerName: formData.centerName,
+                    description: formData.description,
+                });
+
+                if (response && response.status === 200) {
+                    fetchSpecialtyData();
+                    showPopup(UPDATE_SPECIALTY_SUCC_MSG, "success");
+                }
+            } else {
+                const response = await postRequest(`${MAS_SPECIALTY}/create`, {
+                    centerName: formData.centerName,
+                    description: formData.description,
+                });
+
+                if (response && response.status === 200) {
+                    fetchSpecialtyData();
+                    showPopup(ADD_SPECIALTY_SUCC_MSG, "success");
+                }
+            }
+
+            setEditingRecord(null);
+            setFormData({ centerName: "", description: "" });
+            setShowForm(false);
+        } catch (err) {
+            console.error("Error saving specialty:", err);
+            showPopup(FAIL_TO_SAVE_CHANGES, "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const showPopup = (message, type = "info") => {
+        setPopupMessage({
+            message,
+            type,
+            onClose: () => {
+                setPopupMessage(null);
+            },
+        });
+    };
+
+    const handleSwitchChange = (id, newStatus, centerName) => {
+        setConfirmDialog({ isOpen: true, centerId: id, newStatus, centerName });
+    };
+
+    const handleConfirm = async (confirmed) => {
+        if (confirmed && confirmDialog.centerId !== null) {
+            try {
+                setLoading(true);
+                const response = await putRequest(
+                    `${MAS_SPECIALTY}/status/${confirmDialog.centerId}?status=${confirmDialog.newStatus}`
+                );
+                if (response && response.response) {
+                    setSpecialtyData((prevData) =>
+                        prevData.map((specialty) =>
+                            specialty.id === confirmDialog.centerId
+                                ? { ...specialty, status: confirmDialog.newStatus }
+                                : specialty
+                        )
+                    );
+                    showPopup(
+                        `Specialty Center ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                        "success"
+                    );
+                }
+            } catch (err) {
+                console.error("Error updating specialty status:", err);
+                showPopup(FAIL_TO_UPDATE_STS, "error");
+            } finally {
+                setLoading(false);
+            }
+        }
+        setConfirmDialog({ isOpen: false, centerId: null, newStatus: null, centerName: "" });
+    };
+
+    const handleInputChange = (e) => {
+        const { id, value } = e.target;
+        setFormData((prevData) => ({ ...prevData, [id]: value }));
+        setIsFormValid(formData.centerName.trim() !== "");
+    };
+
+    const handleRefresh = () => {
+        setSearchQuery("");
+        setCurrentPage(1);
+        fetchSpecialtyData();
+    };
+
+    return (
+        <div className="content-wrapper">
+            <div className="row">
+                <div className="col-12 grid-margin stretch-card">
+                    <div className="card form-card">
+                        <div className="card-header d-flex justify-content-between align-items-center">
+                            <h4 className="card-title">Specialty Center Master</h4>
+                            <div className="d-flex justify-content-between align-items-center">
+                                {!showForm ? (
+                                    <form className="d-inline-block searchform me-4" role="search">
+                                        <div className="input-group searchinput">
+                                            <input
+                                                type="search"
+                                                className="form-control"
+                                                placeholder="Search Specialty Center"
+                                                aria-label="Search"
+                                                value={searchQuery}
+                                                onChange={handleSearchChange}
+                                            />
+                                            <span className="input-group-text" id="search-icon">
+                                                <i className="fa fa-search"></i>
+                                            </span>
+                                        </div>
+                                    </form>
+                                ) : (
+                                    <></>
+                                )}
+
+                                <div className="d-flex align-items-center">
+                                    {!showForm ? (
+                                        <>
+                                            <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                                                <i className="mdi mdi-plus"></i> Add
+                                            </button>
+                                            <button type="button" className="btn btn-success me-2 flex-shrink-0" onClick={handleRefresh}>
+                                                <i className="mdi mdi-refresh"></i> Show All
+                                            </button>
+                                            <button type="button" className="btn btn-success me-2" onClick={() => setShowModal(true)}>
+                                                <i className="mdi mdi-plus"></i> Reports
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                                            <i className="mdi mdi-arrow-left"></i> Back
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="card-body">
+                            {loading ? (
+                                <LoadingScreen />
+                            ) : !showForm ? (
+                                <>
+                                    <div className="table-responsive packagelist">
+                                        <table className="table table-bordered table-hover align-middle">
+                                            <thead className="table-light">
+                                                <tr>
+                                                    <th>Center Name</th>
+                                                    <th>Description</th>
+                                                    <th>Last Updated</th>
+                                                    <th>Status</th>
+                                                    <th>Edit</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {currentItems.map((specialty) => (
+                                                    <tr key={specialty.id}>
+                                                        <td>{specialty.centerName}</td>
+                                                        <td>{specialty.description}</td>
+                                                        <td>{specialty.lastUpdated}</td>
+                                                        <td>
+                                                            <div className="form-check form-switch">
+                                                                <input
+                                                                    className="form-check-input"
+                                                                    type="checkbox"
+                                                                    checked={specialty.status === "y"}
+                                                                    onChange={() => handleSwitchChange(specialty.id, specialty.status === "y" ? "n" : "y", specialty.centerName)}
+                                                                    id={`switch-${specialty.id}`}
+                                                                />
+                                                                <label
+                                                                    className="form-check-label px-0"
+                                                                    htmlFor={`switch-${specialty.id}`}
+                                                                >
+                                                                    {specialty.status === "y" ? "Active" : "Deactivated"}
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <button
+                                                                className="btn btn-sm btn-success me-2"
+                                                                onClick={() => handleEdit(specialty)}
+                                                                disabled={specialty.status !== "y"}
+                                                            >
+                                                                <i className="fa fa-pencil"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {/* PAGINATION USING REUSABLE COMPONENT */}
+                                    {filteredSpecialty.length > 0 && (
+                                        <Pagination
+                                            totalItems={filteredSpecialty.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
+                                    )}
+                                </>
+                            ) : (
+                                <form className="forms row" onSubmit={handleSave}>
+                                    <div className="form-group col-md-4">
+                                        <label>Center Name <span className="text-danger">*</span></label>
+                                        <input
+                                            type="text"
+                                            className="form-control  mt-1"
+                                            id="centerName"
+                                            placeholder="Enter Center Name"
+                                            value={formData.centerName}
+                                            onChange={handleInputChange}
+                                            maxLength={CENTER_NAME_MAX_LENGTH}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="form-group col-md-8">
+                                        <label>Description <span className="text-danger">*</span></label>
+                                        <textarea
+                                            type="text"
+                                            className="form-control  mt-1"
+                                            id="description"
+                                            placeholder="Enter Description"
+                                            rows='4'
+                                            value={formData.description}
+                                            onChange={handleInputChange}
+                                            maxLength={DESCRIPTION_MAX_LENGTH}
+                                        />
+                                    </div>
+                                    <div className="form-group col-md-12 d-flex justify-content-end mt-4">
+                                        <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
+                                            Save
+                                        </button>
+                                        <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+                            {showModal && (
+                                <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+                                    <div className="modal-dialog">
+                                        <div className="modal-content">
+                                            <div className="modal-header">
+                                                <h1 className="modal-title fs-5" id="staticBackdropLabel">Reports</h1>
+                                                <button type="button" className="btn-close" onClick={() => setShowModal(false)} aria-label="Close"></button>
+                                            </div>
+                                            <div className="modal-body">
+                                                {/* Your modal content goes here */}
+                                                ...
+                                            </div>
+                                            <div className="modal-footer">
+                                                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
+                                                <button type="button" className="btn btn-primary">Understood</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            {popupMessage && (
+                                <Popup
+                                    message={popupMessage.message}
+                                    type={popupMessage.type}
+                                    onClose={popupMessage.onClose}
+                                />
+                            )}
+                            {confirmDialog.isOpen && (
+                                <div className="modal d-block" tabIndex="-1" role="dialog">
+                                    <div className="modal-dialog" role="document">
+                                        <div className="modal-content">
+                                            <div className="modal-header">
+                                                <h5 className="modal-title">Confirm Status Change</h5>
+                                                <button type="button" className="close" onClick={() => handleConfirm(false)}>
+                                                    <span>&times;</span>
+                                                </button>
+                                            </div>
+                                            <div className="modal-body">
+                                                <p>
+                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                    <strong>{confirmDialog.centerName}</strong>?
+                                                </p>
+                                            </div>
+                                            <div className="modal-footer">
+                                                <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
+                                                <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
-
-        
-    <nav>
-      <ul className="pagination mb-0">
-        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-          <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)}>Prev</button>
-        </li>
-        {[...Array(totalPages).keys()].map((num) => (
-          <li key={num} className={`page-item ${currentPage === num + 1 ? "active" : ""}`}>
-            <button className="page-link" onClick={() => setCurrentPage(num + 1)}>{num + 1}</button>
-          </li>
-        ))}
-        <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-          <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)}>Next</button>
-        </li>
-      </ul>
-    </nav>
-  
-                {/* Go to Page */}
-                <div className="d-flex align-items-center">
-                  <input
-                    type="number"
-                    min="1"
-                    max={totalPages}
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                    className="form-control form-control-sm me-2"
-                    style={{ width: "70px" }}
-                    placeholder="Go To Page"
-                  />
-                  <button className="btn btn-sm btn-primary" onClick={handlePageNavigation}>Go</button>
-                </div>
-              </div>
-            </>
-          ) : (
-            // FORM
-            <form className="row" onSubmit={handleSave}>
-              <div className="form-group col-md-4">
-                <label>Speciality Code <span className="text-danger">*</span></label>
-                <input id="speciality_code" className="form-control" value={formData.speciality_code} onChange={handleInputChange} />
-              </div>
-
-              <div className="form-group col-md-4">
-                <label>Speciality Name <span className="text-danger">*</span></label>
-                <input id="speciality_name" className="form-control" value={formData.speciality_name} onChange={handleInputChange} />
-              </div>
-
-              <div className="form-group col-md-4">
-                <label>Description</label>
-                <input id="description" className="form-control" value={formData.description} onChange={handleInputChange} />
-              </div>
-
-              <div className="form-group col-md-12 mt-4 d-flex justify-content-end">
-                <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                  Save
-                </button>
-                <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
-
-          {popupMessage && <Popup {...popupMessage} />}
-
-          {confirmDialog.isOpen && (
-            <div className="modal d-block">
-              <div className="modal-dialog">
-                <div className="modal-content">
-                  <div className="modal-body">
-                    Are you sure you want to {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}{" "}
-                    <strong>{confirmDialog.specialityName}</strong>?
-                  </div>
-                  <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
-                  </div>
-                </div>
-              </div>
             </div>
-          )}
-
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default SpecialityMaster;
