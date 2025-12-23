@@ -125,6 +125,7 @@ const validRoutes = [
   "/DesignationMaster",
   "/OPDQuestionnaireMaster",
   "/OptionValueMaster",
+  "/QuestionHeadingMaster",
 
 
   
