@@ -132,6 +132,7 @@ const validRoutes = [
   "/BookedStatusMaster",
   "/OpthColorVisionMaster",
   "/OpthDistanceVisionMaster",
+  "/OpthNearVisionMaster",
 
 
   
