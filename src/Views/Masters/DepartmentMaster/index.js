@@ -25,8 +25,6 @@ const DepartmentMaster = () => {
     const [editingDepartment, setEditingDepartment] = useState(null);
     const [popupMessage, setPopupMessage] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const [searchType, setSearchType] = useState("code");
-    // FIXED: Removed unused pageInput state
     const [loading, setLoading] = useState(true);
 
     const DEPARTMENT_CODE_MAX_LENGTH = 8;
@@ -39,10 +37,9 @@ const DepartmentMaster = () => {
         fetchWardCategories(1);
     }, []);
 
-    // FIXED: Added useEffect to reset page when search changes
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchQuery, searchType]);
+    }, [searchQuery]);
 
     const fetchDepartments = async (flag = 0) => {
         try {
@@ -88,33 +85,23 @@ const DepartmentMaster = () => {
 
         const query = searchQuery.toLowerCase().trim();
         return departments.filter((dept) => {
-            if (searchType === "code") {
-                return dept.departmentCode?.toLowerCase().includes(query);
-            } else if (searchType === "description") {
-                return dept.departmentName?.toLowerCase().includes(query);
-            } else if (searchType === "type") {
-                return dept.departmentTypeName?.toLowerCase().includes(query);
-            }
-            return true;
+            return (
+                dept.departmentCode?.toLowerCase().includes(query) ||
+                dept.departmentName?.toLowerCase().includes(query) ||
+                dept.departmentTypeName?.toLowerCase().includes(query)
+            );
         });
     };
 
     const filteredDepartments = getFilteredDepartments();
 
-    // FIXED: Added check for empty filteredDepartments
     const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
     const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
     const currentItems = filteredDepartments.length > 0 ? 
         filteredDepartments.slice(indexOfFirst, indexOfLast) : [];
 
-    const handleSearchChange = (value) => {
-        setSearchQuery(value);
-        // FIXED: Page reset is now handled by useEffect
-    };
-
-    const handleSearchTypeChange = (value) => {
-        setSearchType(value);
-        // FIXED: Page reset is now handled by useEffect
+    const handleSearchChange = (e) => {
+        setSearchQuery(e.target.value);
     };
 
     const handleInputChange = (e) => {
@@ -272,7 +259,6 @@ const DepartmentMaster = () => {
         setConfirmDialog({ isOpen: false, categoryId: null, newStatus: null });
     };
 
-    // FIXED: Added refresh function like in RoomCategoryMaster
     const handleRefresh = () => {
         setSearchQuery("");
         setCurrentPage(1);
@@ -284,89 +270,65 @@ const DepartmentMaster = () => {
             <div className="row">
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
-                        <div className="card-header">
-                            <h4 className="card-title p-2">Department Master</h4>
-                            <div className="d-flex justify-content-between align-items-spacearound mt-3">
-                                {!showForm && (
-                                    <div className="d-flex align-items-center flex-wrap">
-                                        <div className="me-3">
-                                            <label>
-                                                <input
-                                                    type="radio"
-                                                    name="searchType"
-                                                    value="code"
-                                                    checked={searchType === "code"}
-                                                    onChange={() => handleSearchTypeChange("code")}
-                                                />
-                                                <span style={{ marginLeft: "5px" }}>Department Code</span>
-                                            </label>
-                                        </div>
-                                        <div className="me-3">
-                                            <label>
-                                                <input
-                                                    type="radio"
-                                                    name="searchType"
-                                                    value="description"
-                                                    checked={searchType === "description"}
-                                                    onChange={() => handleSearchTypeChange("description")}
-                                                />
-                                                <span style={{ marginLeft: "5px" }}>Department Name</span>
-                                            </label>
-                                        </div>
-                                        <div className="me-3">
-                                            <label>
-                                                <input
-                                                    type="radio"
-                                                    name="searchType"
-                                                    value="type"
-                                                    checked={searchType === "type"}
-                                                    onChange={() => handleSearchTypeChange("type")}
-                                                />
-                                                <span style={{ marginLeft: "5px" }}>Department Type</span>
-                                            </label>
-                                        </div>
-
-                                        <div className="d-flex align-items-center me-3">
+                        <div className="card-header d-flex justify-content-between align-items-center">
+                            <h4 className="card-title">Department Master</h4>
+                            <div className="d-flex justify-content-between align-items-center">
+                                {!showForm ? (
+                                    <form className="d-inline-block searchform me-4" role="search">
+                                        <div className="input-group searchinput">
                                             <input
-                                                type="text"
+                                                type="search"
                                                 className="form-control"
                                                 placeholder="Search..."
+                                                aria-label="Search"
                                                 value={searchQuery}
-                                                onChange={(e) => handleSearchChange(e.target.value)}
+                                                onChange={handleSearchChange}
                                             />
+                                            <span className="input-group-text" id="search-icon">
+                                                <i className="fa fa-search"></i>
+                                            </span>
                                         </div>
-                                    </div>
+                                    </form>
+                                ) : (
+                                    <></>
                                 )}
-                                {!showForm && (
-                                    <div className="d-flex flex-wrap align-items-center gap-2">
-                                        <button
-                                            type="button"
-                                            className="btn btn-success me-2"
-                                            onClick={handleRefresh} // FIXED: Use handleRefresh function
-                                        >
-                                            <i className="mdi mdi-refresh"></i> Show All
+
+                                <div className="d-flex align-items-center">
+                                    {!showForm ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2"
+                                                onClick={() => {
+                                                    setShowForm(true);
+                                                    setEditingDepartment(null);
+                                                    setFormData({
+                                                        departmentCode: "",
+                                                        departmentName: "",
+                                                        departmentType: "",
+                                                        departmentTypeId: "",
+                                                        departmentNo: "",
+                                                        wardCategoryId: ""
+                                                    });
+                                                    setIsFormValid(false);
+                                                }}
+                                            >
+                                                <i className="mdi mdi-plus"></i> Add
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2 flex-shrink-0"
+                                                onClick={handleRefresh}
+                                            >
+                                                <i className="mdi mdi-refresh"></i> Show All
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                                            <i className="mdi mdi-arrow-left"></i> Back
                                         </button>
-                                        <button
-                                            type="button"
-                                            className="btn btn-success me-2"
-                                            onClick={() => {
-                                                setShowForm(true);
-                                                setEditingDepartment(null);
-                                                setFormData({
-                                                    departmentCode: "",
-                                                    departmentName: "",
-                                                    departmentType: "",
-                                                    departmentTypeId: "",
-                                                    departmentNo: "",
-                                                    wardCategoryId: ""
-                                                });
-                                                setIsFormValid(false);
-                                            }}
-                                        >
-                                            <i className="mdi mdi-plus"></i> Add
-                                        </button>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         </div>
                         <div className="card-body">
@@ -430,7 +392,6 @@ const DepartmentMaster = () => {
                                         </table>
                                     </div>
                                     
-                                    {/* FIXED: Only show pagination when there are filtered results */}
                                     {filteredDepartments.length > DEFAULT_ITEMS_PER_PAGE && (
                                         <Pagination
                                             totalItems={filteredDepartments.length}
