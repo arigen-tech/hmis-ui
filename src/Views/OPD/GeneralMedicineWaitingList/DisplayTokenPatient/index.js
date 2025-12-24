@@ -54,7 +54,6 @@ const PatientWaitingList = () => {
 
   // -------------------- Fetch Patient Waiting List -----------
   const handleSearch = async () => {
-
     if (!filters.doctorId) {
       setList([]);
       return;
@@ -86,7 +85,6 @@ const PatientWaitingList = () => {
       setLoadingData(false);
     }
   };
-
 
   // -------------------- Reset Filters ------------------------
   const handleReset = () => {
@@ -133,159 +131,159 @@ const PatientWaitingList = () => {
     return () => clearInterval(interval);
   }, []);
 
-
-
   return (
-    <div className="container-fluid">
-      <h3 className="fw-bold mb-4">TOKEN DISPLAY WAITING LIST</h3>
+    <div className="content-wrapper">
+      <div className="row">
+        <div className="col-12">
+          <div className="card form-card">
+            <div className="card-header d-flex justify-content-between align-items-center">
+              <h4 className="card-title m-0">Token Display Waiting List</h4>
+            </div>
+            
+            <div className="card-body">
+              {loadingData && <LoadingScreen />}
+              
+              {/* -------------------- SEARCH BOX -------------------- */}
+              <div className="card p-4 mb-4">
+                <div className="row g-3">
+                  {/* Department */}
+                  <div className="col-md-3">
+                    <label className="form-label fw-bold">
+                      Departments <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      className="form-select"
+                      value={filters.departmentId}
+                      onChange={(e) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          departmentId: e.target.value,
+                          doctorId: "",
+                        }))
+                      }
+                    >
+                      <option value="">Select Department</option>
+                      {departmentData.map((dept) => (
+                        <option key={dept.id} value={dept.id}>
+                          {dept.departmentName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-      {loadingData && <LoadingScreen />}
+                  {/* Doctor */}
+                  <div className="col-md-3">
+                    <label className="form-label fw-bold">
+                      Doctors <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      className="form-select"
+                      value={filters.doctorId}
+                      onChange={(e) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          doctorId: e.target.value,
+                        }))
+                      }
+                      disabled={!filters.departmentId}
+                    >
+                      <option value="">Select Doctor</option>
+                      {doctorData.map((doc) => (
+                        <option key={doc.userId} value={doc.userId}>
+                          {doc.firstName} {doc.middleName} {doc.lastName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-      {/* -------------------- SEARCH BOX -------------------- */}
-      <div className="card p-3 mb-4">
-        <div className="row g-3">
+                  {/* Date */}
+                  <div className="col-md-3">
+                    <label className="form-label fw-bold">Date</label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={filters.date}
+                      min={new Date().toISOString().split("T")[0]}
+                      onChange={(e) =>
+                        setFilters((prev) => ({ ...prev, date: e.target.value }))
+                      }
+                    />
+                  </div>
 
-          {/* Department */}
-          <div className="col-md-3">
-            <label className="form-label fw-bold">
-              Departments <span className="text-danger">*</span>
-            </label>
-            <select
-              className="form-select"
-              value={filters.departmentId}
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  departmentId: e.target.value,
-                  doctorId: "",
-                }))
-              }
-            >
-              <option value="">Select</option>
-              {departmentData.map((dept) => (
-                <option key={dept.id} value={dept.id}>
-                  {dept.departmentName}
-                </option>
-              ))}
-            </select>
-          </div>
+                  {/* SEARCH + RESET Buttons */}
+                  <div className="col-md-3 d-flex align-items-end">
+                    <div className="d-flex w-100 gap-2">
+                      <button className="btn btn-success flex-grow-1" onClick={handleSearch}>
+                        <i className="mdi mdi-magnify me-2"></i> Search
+                      </button>
+                      <button className="btn btn-secondary flex-grow-1" onClick={handleReset}>
+                        <i className="mdi mdi-refresh me-2"></i> Reset
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-          {/* Doctor */}
-          <div className="col-md-3">
-            <label className="form-label fw-bold">
-              Doctors <span className="text-danger">*</span>
-            </label>
-            <select
-              className="form-select"
-              value={filters.doctorId}
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  doctorId: e.target.value,
-                }))
-              }
-              disabled={!filters.departmentId}
-            >
-              <option value="">All Doctors</option>
-              {doctorData.map((doc) => (
-                <option key={doc.userId} value={doc.userId}>
-                  {doc.firstName} {doc.middleName} {doc.lastName}
-                </option>
-              ))}
-            </select>
-          </div>
+              {/* ------------------ TABLE ---------------------- */}
+              <div className="table-responsive packagelist">
+                <table className="table table-bordered table-hover align-middle">
+                  <thead className="table-light">
+                    <tr>
+                      <th className="text-center">S.N.</th>
+                      <th className="text-center">TOKEN NO.</th>
+                      <th className="text-center">EMPLOYEE NO.</th>
+                      <th className="text-center">PATIENT NAME</th>
+                      <th className="text-center">RELATION</th>
+                      <th className="text-center">AGE</th>
+                      <th className="text-center">GENDER</th>
+                      <th className="text-center">Status</th>
+                    </tr>
+                  </thead>
 
-          {/* Date */}
-          <div className="col-md-3">
-            <label className="form-label fw-bold">Date</label>
-            <input
-              type="date"
-              className="form-control"
-              value={filters.date}
-              min={new Date().toISOString().split("T")[0]}
-              onChange={(e) =>
-                setFilters((prev) => ({ ...prev, date: e.target.value }))
-              }
-            />
-          </div>
-
-
-
-          {/* SEARCH + RESET */}
-          <div className="col-md-3 d-flex align-items-end gap-2">
-            <button className="btn btn-success w-100" onClick={handleSearch}>
-              SEARCH
-            </button>
-            <button className="btn btn-secondary w-100" onClick={handleReset}>
-              RESET
-            </button>
+                  <tbody>
+                    {list?.length === 0 ? (
+                      <tr>
+                        <td colSpan="8" className="text-center text-muted py-4">
+                          No records found
+                        </td>
+                      </tr>
+                    ) : (
+                      list.map((item, index) => (
+                        <tr key={item.id}>
+                          <td className="text-center">{index + 1}</td>
+                          <td className="text-center">
+                            <span className="badge bg-primary">{item.tokenNo}</span>
+                          </td>
+                          <td className="text-center">{item.employeeNo}</td>
+                          <td>{item.patientName}</td>
+                          <td className="text-center">{item.relation}</td>
+                          <td className="text-center">{item.age}</td>
+                          <td className="text-center">{item.gender}</td>
+                          <td className="text-center">
+                            <span className={`badge ${item.displayPatientStatus === "cp" ? "bg-warning" : 
+                                              item.displayPatientStatus === "rp" ? "bg-success" : 
+                                              item.displayPatientStatus === "wp" ? "bg-info" : "bg-secondary"}`}>
+                              {item.displayPatientStatus === "cp"
+                                ? "Patient in consultation"
+                                : item.displayPatientStatus === "rp"
+                                  ? "Ready for consultation"
+                                  : item.displayPatientStatus === "wp"
+                                    ? "Waiting For consultation"
+                                    : item.displayPatientStatus}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* ------------------ TABLE ---------------------- */}
-      <div className="table-responsive">
-        <table className="table table-bordered text-center">
-          <thead>
-            <tr>
-              <th>S.N.</th>
-              <th>TOKEN NO.</th>
-              <th>EMPLOYEE NO.</th>
-              <th>PATIENT NAME</th>
-              <th>RELATION</th>
-              <th>AGE</th>
-              <th>GENDER</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {list?.length === 0 ? (
-              <tr>
-                <td colSpan="7" className="text-center text-muted">
-                  No records found
-                </td>
-              </tr>
-            ) : (
-              list.map((item, index) => (
-                <tr key={item.id}>
-                  <td>{index + 1}</td>
-                  <td><span className="badge bg-secondary">{item.tokenNo}</span></td>
-                  <td>{item.employeeNo}</td>
-                  <td>{item.patientName}</td>
-                  <td>{item.relation}</td>
-                  <td>{item.age}</td>
-                  <td>{item.gender}</td>
-                  <td>
-                    {item.displayPatientStatus === "cp"
-                      ? "Patient in consultation"
-                      : item.displayPatientStatus === "rp"
-                        ? "Ready for consultation"
-                        : item.displayPatientStatus === "wp"
-                          ? "Waiting For consultation"
-                          : ""}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
       </div>
     </div>
   );
 };
 
 export default PatientWaitingList;
-
-
-
-
-
-
-
-
-
-
-
-
-
