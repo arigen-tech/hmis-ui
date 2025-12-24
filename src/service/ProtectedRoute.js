@@ -131,6 +131,7 @@ const validRoutes = [
   "/EyeWearUseMaster",
   "/BookedStatusMaster",
   "/OpthColorVisionMaster",
+  "/OpthDistanceVisionMaster",
 
 
   

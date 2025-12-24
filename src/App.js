@@ -126,7 +126,8 @@ import ToothConditionMaster from './Views/Masters/ToothConditionMaster';
 import SpectacleUseMaster from './Views/Masters/SpectacleUseMaster';
 import EyeWearUseMaster from './Views/Masters/EyeWearUseMaster';
 import BookedStatusMaster from './Views/Masters/BookedStatusMaster';
-import OpthColorVisionMaster from './Views/Masters/OpthColorVisionMaster';  
+import OpthColorVisionMaster from './Views/Masters/OpthColorVisionMaster'; 
+import OpthDistanceVisionMaster from './Views/Masters/OpthDistanceVisionMaster'; 
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -287,6 +288,7 @@ function App() {
                 <Route path="/EyeWearUseMaster" element={<EyeWearUseMaster/>} />
                 <Route path="/BookedStatusMaster" element={<BookedStatusMaster/>} />
                 <Route path="/OpthColorVisionMaster" element={<OpthColorVisionMaster/>} />
+                <Route path="/OpthDistanceVisionMaster" element={<OpthDistanceVisionMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
