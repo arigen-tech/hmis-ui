@@ -172,7 +172,7 @@ const PatientwiseBilldatails = () => {
                 <button type="button" className="btn btn-success me-2">
                   <i className="mdi mdi-plus"></i> Generate Report
                 </button>
-                <button type="button" className="btn btn-primary me-2" onClick={handleRefresh} title="Refresh Data">
+                <button type="button" className="btn btn-success me-2" onClick={handleRefresh} title="Refresh Data">
                   <i className="mdi mdi-refresh"></i> Refresh
                 </button>
               </div>
@@ -226,26 +226,9 @@ const PatientwiseBilldatails = () => {
                             <button
                               className="btn btn-primary btn-sm"
                               onClick={() => handleBillingDetailClick(item)}
-                              style={{
-                                cursor: "pointer",
-                                padding: "0.375rem 0.75rem",
-                                fontSize: "0.875rem",
-                                borderRadius: "0.25rem",
-                                border: "1px solid #007bff",
-                                backgroundColor: "#007bff",
-                                color: "white",
-                                transition: "all 0.2s ease-in-out"
-                              }}
-                              onMouseOver={(e) => {
-                                e.target.style.backgroundColor = "#0056b3";
-                                e.target.style.borderColor = "#0056b3";
-                              }}
-                              onMouseOut={(e) => {
-                                e.target.style.backgroundColor = "#007bff";
-                                e.target.style.borderColor = "#007bff";
-                              }}
+                              
                             >
-                              Billing Detail
+                              View
                             </button>
                           </td>
                         </tr>

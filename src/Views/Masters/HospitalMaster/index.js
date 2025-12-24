@@ -1,10 +1,9 @@
-"use client"
-
 import { useEffect, useState } from "react"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
 import { MAS_COUNTRY, MAS_DISTRICT, MAS_HOSPITAL, MAS_STATE } from "../../../config/apiConfig"
 import { getRequest, postRequest, putRequest } from "../../../service/apiService"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
 const HospitalMaster = () => {
   const [hospitals, setHospitals] = useState([])
@@ -47,7 +46,6 @@ const HospitalMaster = () => {
   const PINCODE_MAX_LENGTH = 10
   const CONTACT_NUMBER_MAX_LENGTH = 10
   const EMAIL_MAX_LENGTH = 50
-  const itemsPerPage = 5
 
   useEffect(() => {
     fetchHospitals(0)
@@ -121,8 +119,11 @@ const HospitalMaster = () => {
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
-    setCurrentPage(1)
   }
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
 
   const handleRefresh = () => {
     setSearchQuery("")
@@ -137,12 +138,9 @@ const HospitalMaster = () => {
     hospital.stateName.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const filteredTotalPages = Math.ceil(filteredHospitals.length / itemsPerPage)
-  const totalFilteredItems = filteredHospitals.length
-
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = filteredHospitals.slice(indexOfFirstItem, indexOfLastItem)
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
+  const currentItems = filteredHospitals.slice(indexOfFirst, indexOfLast)
 
   const handleCountryChange = (e) => {
     const selectedIndex = e.target.selectedIndex
@@ -217,43 +215,6 @@ const HospitalMaster = () => {
       setIsFormValid(isValid)
       return updatedFormData
     })
-  }
-
-  const renderPagination = () => {
-    const pageNumbers = []
-    const maxVisiblePages = 5
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1)
-
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1)
-    }
-
-    if (startPage > 1) {
-      pageNumbers.push(1)
-      if (startPage > 2) pageNumbers.push("...")
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i)
-    }
-
-    if (endPage < filteredTotalPages) {
-      if (endPage < filteredTotalPages - 1) pageNumbers.push("...")
-      pageNumbers.push(filteredTotalPages)
-    }
-
-    return pageNumbers.map((number, index) => (
-      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-        {typeof number === "number" ? (
-          <button className="page-link" onClick={() => setCurrentPage(number)}>
-            {number}
-          </button>
-        ) : (
-          <span className="page-link disabled">{number}</span>
-        )}
-      </li>
-    ))
   }
 
   const handleEdit = (hospital) => {
@@ -441,15 +402,6 @@ const HospitalMaster = () => {
     setConfirmDialog({ isOpen: false, hospitalId: null, newStatus: null })
   }
 
-  const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(currentPage, 10)
-    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-      setCurrentPage(pageNumber)
-    } else {
-      alert("Please enter a valid page number.")
-    }
-  }
-
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -534,112 +486,78 @@ const HospitalMaster = () => {
               {loading ? (
                 <LoadingScreen />
               ) : !showForm ? (
-                <div className="table-responsive packagelist">
-                  <table className="table table-bordered table-hover align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Hospital Code</th>
-                        <th>Hospital Name</th>
-                        <th>State</th>
-                        <th>City</th>
-                        <th>Registration Cost</th>
-                        <th>Appointment Cost</th>
-                        <th>Pre Consultation</th>
-                        <th>Status</th>
-                        <th>Edit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentItems.length > 0 ? (
-                        currentItems.map((hospital) => (
-                          <tr key={hospital.id}>
-                            <td>{hospital.hospitalCode}</td>
-                            <td>{hospital.hospitalName}</td>
-                            <td>{hospital.stateName}</td>
-                            <td>{hospital.city}</td>
-                            <td>{hospital.regCostApplicable === "y" ? "Yes" : "No"}</td>
-                            <td>{hospital.appCostApplicable === "y" ? "Yes" : "No"}</td>
-                            <td>{hospital.preConsultationAvailable === "y" ? "Yes" : "No"}</td>
-                            <td>
-                              <div className="form-check form-switch">
-                                <input
-                                  className="form-check-input"
-                                  type="checkbox"
-                                  checked={hospital.status === "y"}
-                                  onChange={() => handleSwitchChange(hospital.id, hospital.status === "y" ? "n" : "y")}
-                                  id={`switch-${hospital.id}`}
-                                />
-                                <label className="form-check-label px-0" htmlFor={`switch-${hospital.id}`}>
-                                  {hospital.status === "y" ? "Active" : "Deactivated"}
-                                </label>
-                              </div>
-                            </td>
-                            <td>
-                              <button
-                                className="btn btn-sm btn-success me-2"
-                                onClick={() => handleEdit(hospital)}
-                                disabled={hospital.status !== "y"}
-                              >
-                                <i className="fa fa-pencil"></i>
-                              </button>
+                <>
+                  <div className="table-responsive packagelist">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Hospital Code</th>
+                          <th>Hospital Name</th>
+                          <th>State</th>
+                          <th>City</th>
+                          <th>Registration Cost</th>
+                          <th>Appointment Cost</th>
+                          <th>Pre Consultation</th>
+                          <th>Status</th>
+                          <th>Edit</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((hospital) => (
+                            <tr key={hospital.id}>
+                              <td>{hospital.hospitalCode}</td>
+                              <td>{hospital.hospitalName}</td>
+                              <td>{hospital.stateName}</td>
+                              <td>{hospital.city}</td>
+                              <td>{hospital.regCostApplicable === "y" ? "Yes" : "No"}</td>
+                              <td>{hospital.appCostApplicable === "y" ? "Yes" : "No"}</td>
+                              <td>{hospital.preConsultationAvailable === "y" ? "Yes" : "No"}</td>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={hospital.status === "y"}
+                                    onChange={() => handleSwitchChange(hospital.id, hospital.status === "y" ? "n" : "y")}
+                                    id={`switch-${hospital.id}`}
+                                  />
+                                  <label className="form-check-label px-0" htmlFor={`switch-${hospital.id}`}>
+                                    {hospital.status === "y" ? "Active" : "Deactivated"}
+                                  </label>
+                                </div>
+                              </td>
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-success me-2"
+                                  onClick={() => handleEdit(hospital)}
+                                  disabled={hospital.status !== "y"}
+                                >
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={9} className="text-center">
+                              No hospitals found
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={9} className="text-center">
-                            No hospitals found
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* PAGINATION USING REUSABLE COMPONENT */}
                   {filteredHospitals.length > 0 && (
-                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                      <div>
-                        <span>
-                          Page {currentPage} of {filteredTotalPages} | Total Records: {filteredHospitals.length}
-                        </span>
-                      </div>
-                      <ul className="pagination mb-0">
-                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                          <button
-                            className="page-link"
-                            onClick={() => setCurrentPage(currentPage - 1)}
-                            disabled={currentPage === 1}
-                          >
-                            &laquo; Previous
-                          </button>
-                        </li>
-                        {renderPagination()}
-                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                          <button
-                            className="page-link"
-                            onClick={() => setCurrentPage(currentPage + 1)}
-                            disabled={currentPage === filteredTotalPages}
-                          >
-                            Next &raquo;
-                          </button>
-                        </li>
-                      </ul>
-                      <div className="d-flex align-items-center">
-                        <input
-                          type="number"
-                          min="1"
-                          max={filteredTotalPages}
-                          value={currentPage}
-                          onChange={(e) => setCurrentPage(e.target.value)}
-                          placeholder="Go to page"
-                          className="form-control me-2"
-                          style={{ width: '100px' }}
-                        />
-                        <button className="btn btn-primary" onClick={handlePageNavigation}>
-                          Go
-                        </button>
-                      </div>
-                    </nav>
+                    <Pagination
+                      totalItems={filteredHospitals.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
                   )}
-                </div>
+                </>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="card-body">

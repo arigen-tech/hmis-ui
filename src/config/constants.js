@@ -360,8 +360,52 @@ export const UPDATE_WARD_CATEGORY_SUCC_MSG="Ward category updated successfully!"
 export const ADD_WARD_CATEGORY_SUCC_MSG="New ward category added successfully!";
 
 
+//AdmissionStatusMaster
+
+export const FETCH_ADMISSION_STATUS_ERR_MSG = "Failed to load admission status data";
+export const DUPLICATE_ADMISSION_STATUS = "Admission Status Code already exists";
+export const ADD_ADMISSION_STATUS_SUCC_MSG = "Admission Status added successfully!";
+export const UPDATE_ADMISSION_STATUS_SUCC_MSG = "Admission Status updated successfully!";
+
+//SpecialityMaster
+
+export const ADD_SPECIALTY_SUCC_MSG = "Specialty Center added successfully!";
+export const UPDATE_SPECIALTY_SUCC_MSG = "Specialty Center updated successfully!";
+export const DUPLICATE_SPECIALTY = "Specialty Center already exists!";
+export const FETCH_SPECIALTY_ERR_MSG = "Failed to fetch specialty center data";
+
+//BillingPolicyMaster
 
 
+export const ADD_BILLING_POLICY_SUCC_MSG = "Billing Policy added successfully!";
+export const UPDATE_BILLING_POLICY_SUCC_MSG = "Billing Policy updated successfully!";
+export const DUPLICATE_BILLING_POLICY = "Billing Policy already exists!";
+export const FETCH_BILLING_POLICY_ERR_MSG = "Failed to load billing policy data";
+
+
+
+
+// IndentCreation Messages
+export const SELECT_DRUG_ERROR = "Please select a drug from the dropdown";
+export const DUPLICATE_DRUG_WARNING = "This drug is already added in another row. Please select a different drug.";
+export const MINIMUM_ROWS_WARNING = "At least one row is required";
+export const EMPTY_DRUG_NAME_WARNING = "Please fill drug name before adding new row";
+export const INVALID_DEPARTMENT_ERROR = "Please select a department";
+export const INVALID_DATE_ERROR = "Indent date is required";
+export const INVALID_QUANTITY_ERROR = "Required quantity must be greater than 0";
+export const EXCEED_STOCK_ERROR = "Required quantity cannot exceed available stock";
+export const MANDATORY_FIELD_WARNING = "Please fill the Mandatory field before ";
+export const DUPLICATE_DRUGS_WARNING = "Duplicate drugs found. Please remove duplicate entries before ";
+export const NO_VALID_DRUGS_WARNING = "Please select valid drugs before ";
+export const INDENT_SAVE_SUCCESS = "Indent saved successfully!";
+export const INDENT_SUBMIT_SUCCESS = "Indent submitted successfully!";
+export const INDENT_SAVE_ERROR = "Error saving indent";
+export const INDENT_SUBMIT_ERROR = "Error submitting indent";
+export const NO_ROL_ITEMS_WARNING = "Please select at least one item to import";
+export const ROL_IMPORT_SUCCESS = "items imported successfully from ROL";
+export const ROL_LOAD_ERROR = "Error fetching ROL items from server";
+export const NO_ROL_DATA = "No items found below reorder level. All items have sufficient stock.";
+export const IMPORT_FROM_PREVIOUS = "Import from Previous Indent feature coming soon";
 
 
 

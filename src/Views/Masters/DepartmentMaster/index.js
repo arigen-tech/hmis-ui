@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
-import { API_HOST, MAS_DEPARTMENT, MAS_DEPARTMENT_TYPE, MAS_WARD_CATEGORY,WARD_ID } from "../../../config/apiConfig";
+import { API_HOST, MAS_DEPARTMENT, MAS_DEPARTMENT_TYPE, MAS_WARD_CATEGORY, WARD_ID } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import { ADD_DEPARTMENT_SUCC_MSG, DUPLICATE_DEPARTMENT, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DEPARTMENT_ERR_MSG, FETCH_DEPARTMENT_TYPE_ERR_MSG, FETCH_WARD_CATEGORY_ERR_MSG, UPDATE_DEPARTMENT_SUCC_MSG } from "../../../config/constants";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const DepartmentMaster = () => {
     const [departments, setDepartments] = useState([]);
@@ -25,20 +26,23 @@ const DepartmentMaster = () => {
     const [popupMessage, setPopupMessage] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [searchType, setSearchType] = useState("code");
-    const [pageInput, setPageInput] = useState("");
+    // FIXED: Removed unused pageInput state
     const [loading, setLoading] = useState(true);
-    const itemsPerPage = 5;
 
     const DEPARTMENT_CODE_MAX_LENGTH = 8;
     const DEPARTMENT_NAME_MAX_LENGTH = 30;
     const DEPARTMENT_NUMBER_MAX_LENGTH = 8;
-    // const WARD_ID = 10; // Constant for Ward department type ID
 
     useEffect(() => {
         fetchDepartments(0);
         fetchDepartmentTypes(1);
         fetchWardCategories(1);
     }, []);
+
+    // FIXED: Added useEffect to reset page when search changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, searchType]);
 
     const fetchDepartments = async (flag = 0) => {
         try {
@@ -80,55 +84,37 @@ const DepartmentMaster = () => {
     };
 
     const getFilteredDepartments = () => {
-        if (!searchQuery) return departments;
+        if (!searchQuery.trim()) return departments;
 
+        const query = searchQuery.toLowerCase().trim();
         return departments.filter((dept) => {
             if (searchType === "code") {
-                return dept.departmentCode.toLowerCase().includes(searchQuery.toLowerCase());
+                return dept.departmentCode?.toLowerCase().includes(query);
             } else if (searchType === "description") {
-                return dept.departmentName.toLowerCase().includes(searchQuery.toLowerCase());
+                return dept.departmentName?.toLowerCase().includes(query);
             } else if (searchType === "type") {
-                return dept.departmentTypeName.toLowerCase().includes(searchQuery.toLowerCase());
+                return dept.departmentTypeName?.toLowerCase().includes(query);
             }
             return true;
         });
     };
 
     const filteredDepartments = getFilteredDepartments();
-    const filteredTotalPages = Math.ceil(filteredDepartments.length / itemsPerPage);
-    const totalFilteredItems = filteredDepartments.length;
 
-    const getCurrentItems = () => {
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        return filteredDepartments.slice(startIndex, endIndex);
-    };
-
-    const currentItems = getCurrentItems();
-
-    useEffect(() => {
-        if (currentPage > filteredTotalPages && filteredTotalPages > 0) {
-            setCurrentPage(1);
-        }
-    }, [filteredDepartments, currentPage, filteredTotalPages]);
+    // FIXED: Added check for empty filteredDepartments
+    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+    const currentItems = filteredDepartments.length > 0 ? 
+        filteredDepartments.slice(indexOfFirst, indexOfLast) : [];
 
     const handleSearchChange = (value) => {
         setSearchQuery(value);
-        setCurrentPage(1);
+        // FIXED: Page reset is now handled by useEffect
     };
 
     const handleSearchTypeChange = (value) => {
         setSearchType(value);
-        setCurrentPage(1);
-    };
-
-    const handlePageNavigation = () => {
-        const pageNumber = Number.parseInt(pageInput, 10);
-        if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-            setCurrentPage(pageNumber);
-        } else {
-            alert("Please enter a valid page number.");
-        }
+        // FIXED: Page reset is now handled by useEffect
     };
 
     const handleInputChange = (e) => {
@@ -144,46 +130,8 @@ const DepartmentMaster = () => {
             (updatedFormData.departmentCode || "").trim() !== "" &&
             (updatedFormData.departmentName || "").trim() !== "" &&
             (updatedFormData.departmentType || "").trim() !== "";
-            // Note: departmentNo is optional, so we don't validate it
 
         setIsFormValid(isValid);
-    };
-
-    const renderPagination = () => {
-        const pageNumbers = [];
-        const maxVisiblePages = 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-        const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
-
-        if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
-        }
-
-        if (startPage > 1) {
-            pageNumbers.push(1);
-            if (startPage > 2) pageNumbers.push("...");
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            pageNumbers.push(i);
-        }
-
-        if (endPage < filteredTotalPages) {
-            if (endPage < filteredTotalPages - 1) pageNumbers.push("...");
-            pageNumbers.push(filteredTotalPages);
-        }
-
-        return pageNumbers.map((number, index) => (
-            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-                {typeof number === "number" ? (
-                    <button className="page-link" onClick={() => setCurrentPage(number)}>
-                        {number}
-                    </button>
-                ) : (
-                    <span className="page-link disabled">{number}</span>
-                )}
-            </li>
-        ));
     };
 
     const handleEdit = (dept) => {
@@ -194,7 +142,7 @@ const DepartmentMaster = () => {
             departmentType: dept.departmentTypeName,
             departmentTypeId: dept.departmentTypeId,
             departmentNo: dept.departmentNo || "",
-            wardCategoryId: dept.wardCategoryId || null
+            wardCategoryId: dept.wardCategoryId || ""
         });
         setIsFormValid(true);
         setShowForm(true);
@@ -228,14 +176,13 @@ const DepartmentMaster = () => {
                 departmentTypeId: formData.departmentTypeId,
                 departmentNo: formData.departmentNo || null,
                 status: editingDepartment ? editingDepartment.status : "y",
-                // wardCategoryId : formData.wardCategoryId
             };
 
             // Add wardCategoryId only if department type ID is WARD_ID (10)
             if (parseInt(formData.departmentTypeId) === WARD_ID && formData.wardCategoryId) {
                 departmentData.wardCategoryId = formData.wardCategoryId;
-            }else{
-                departmentData.wardCategoryId=null;
+            } else {
+                departmentData.wardCategoryId = null;
             }
 
             if (editingDepartment) {
@@ -325,6 +272,13 @@ const DepartmentMaster = () => {
         setConfirmDialog({ isOpen: false, categoryId: null, newStatus: null });
     };
 
+    // FIXED: Added refresh function like in RoomCategoryMaster
+    const handleRefresh = () => {
+        setSearchQuery("");
+        setCurrentPage(1);
+        fetchDepartments();
+    };
+
     return (
         <div className="content-wrapper">
             <div className="row">
@@ -334,7 +288,7 @@ const DepartmentMaster = () => {
                             <h4 className="card-title p-2">Department Master</h4>
                             <div className="d-flex justify-content-between align-items-spacearound mt-3">
                                 {!showForm && (
-                                    <div className="d-flex align-items-center">
+                                    <div className="d-flex align-items-center flex-wrap">
                                         <div className="me-3">
                                             <label>
                                                 <input
@@ -388,9 +342,9 @@ const DepartmentMaster = () => {
                                         <button
                                             type="button"
                                             className="btn btn-success me-2"
-                                            onClick={() => handleSearchChange(searchQuery)}
+                                            onClick={handleRefresh} // FIXED: Use handleRefresh function
                                         >
-                                            <i className="mdi mdi-magnify"></i> Show All
+                                            <i className="mdi mdi-refresh"></i> Show All
                                         </button>
                                         <button
                                             type="button"
@@ -411,13 +365,6 @@ const DepartmentMaster = () => {
                                         >
                                             <i className="mdi mdi-plus"></i> Add
                                         </button>
-                                        {/* <button
-                                            type="button"
-                                            className="btn btn-success d-flex align-items-center"
-                                        >
-                                            <i className="mdi mdi-file-export d-sm-inlined-sm-inline ms-1" ></i>
-                                            Generate Report
-                                        </button> */}
                                     </div>
                                 )}
                             </div>
@@ -426,64 +373,76 @@ const DepartmentMaster = () => {
                             {loading ? (
                                 <LoadingScreen />
                             ) : !showForm ? (
-                                <div className="table-responsive packagelist">
-                                    <table className="table table-bordered table-hover align-middle">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th>Department Code</th>
-                                                <th>Department</th>
-                                                <th>Department Type</th>
-                                                <th>Department Number</th>
-                                                <th>Status</th>
-                                                <th>Edit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentItems.length > 0 ? (
-                                                currentItems.map((dept) => (
-                                                    <tr key={dept.id}>
-                                                        <td>{dept.departmentCode}</td>
-                                                        <td>{dept.departmentName}</td>
-                                                        <td>{dept.departmentTypeName}</td>
-                                                        <td>{dept.departmentNo || "-"}</td>
-                                                        <td>
-                                                            <div className="form-check form-switch">
-                                                                <input
-                                                                    className="form-check-input"
-                                                                    type="checkbox"
-                                                                    checked={dept.status === "y"}
-                                                                    onChange={() => handleSwitchChange(dept.id, dept.status === "y" ? "n" : "y")}
-                                                                    id={`switch-${dept.id}`}
-                                                                />
-                                                                <label className="form-check-label px-0" htmlFor={`switch-${dept.id}`}>
-                                                                    {dept.status === "y" ? "Active" : "Deactivated"}
-                                                                </label>
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            <button
-                                                                className="btn btn-sm btn-success me-2"
-                                                                onClick={() => handleEdit(dept)}
-                                                                disabled={dept.status !== "y"}
-                                                            >
-                                                                <i className="fa fa-pencil"></i>
-                                                            </button>
+                                <>
+                                    <div className="table-responsive packagelist">
+                                        <table className="table table-bordered table-hover align-middle">
+                                            <thead className="table-light">
+                                                <tr>
+                                                    <th>Department Code</th>
+                                                    <th>Department</th>
+                                                    <th>Department Type</th>
+                                                    <th>Department Number</th>
+                                                    <th>Status</th>
+                                                    <th>Edit</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {currentItems.length > 0 ? (
+                                                    currentItems.map((dept) => (
+                                                        <tr key={dept.id}>
+                                                            <td>{dept.departmentCode}</td>
+                                                            <td>{dept.departmentName}</td>
+                                                            <td>{dept.departmentTypeName}</td>
+                                                            <td>{dept.departmentNo || "-"}</td>
+                                                            <td>
+                                                                <div className="form-check form-switch">
+                                                                    <input
+                                                                        className="form-check-input"
+                                                                        type="checkbox"
+                                                                        checked={dept.status === "y"}
+                                                                        onChange={() => handleSwitchChange(dept.id, dept.status === "y" ? "n" : "y")}
+                                                                        id={`switch-${dept.id}`}
+                                                                    />
+                                                                    <label className="form-check-label px-0" htmlFor={`switch-${dept.id}`}>
+                                                                        {dept.status === "y" ? "Active" : "Deactivated"}
+                                                                    </label>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <button
+                                                                    className="btn btn-sm btn-success me-2"
+                                                                    onClick={() => handleEdit(dept)}
+                                                                    disabled={dept.status !== "y"}
+                                                                >
+                                                                    <i className="fa fa-pencil"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan={6} className="text-center">
+                                                            No departments found
                                                         </td>
                                                     </tr>
-                                                ))
-                                            ) : (
-                                                <tr>
-                                                    <td colSpan={6} className="text-center">
-                                                        No departments found
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    
+                                    {/* FIXED: Only show pagination when there are filtered results */}
+                                    {filteredDepartments.length > DEFAULT_ITEMS_PER_PAGE && (
+                                        <Pagination
+                                            totalItems={filteredDepartments.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
+                                    )}
+                                </>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
-                                    <div className="d-flex justify-content-end">
+                                    <div className="d-flex justify-content-end mb-3">
                                         <button
                                             type="button"
                                             className="btn btn-secondary"
@@ -529,7 +488,6 @@ const DepartmentMaster = () => {
                                                     ...prev,
                                                     departmentType: typeName,
                                                     departmentTypeId: isNaN(typeId) ? null : typeId,
-                                                    // Clear ward category if not selecting Ward (ID = 10)
                                                     wardCategoryId: typeId === WARD_ID ? prev.wardCategoryId : ""
                                                 }));
                                             }}
@@ -599,7 +557,7 @@ const DepartmentMaster = () => {
                                         </div>
                                     )}
 
-                                    <div className="form-group col-md-12 d-flex justify-content-end mt-2">
+                                    <div className="form-group col-md-12 d-flex justify-content-end mt-4">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                                             Save
                                         </button>
@@ -642,51 +600,6 @@ const DepartmentMaster = () => {
                                         </div>
                                     </div>
                                 </div>
-                            )}
-
-                            {!showForm && filteredDepartments.length > 0 && (
-                                <nav className="d-flex justify-content-between align-items-center mt-3">
-                                    <div>
-                                        <span>
-                                            Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredItems}
-                                        </span>
-                                    </div>
-                                    <ul className="pagination mb-0">
-                                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                            <button
-                                                className="page-link"
-                                                onClick={() => setCurrentPage(currentPage - 1)}
-                                                disabled={currentPage === 1}
-                                            >
-                                                &laquo; Previous
-                                            </button>
-                                        </li>
-                                        {renderPagination()}
-                                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                            <button
-                                                className="page-link"
-                                                onClick={() => setCurrentPage(currentPage + 1)}
-                                                disabled={currentPage === filteredTotalPages}
-                                            >
-                                                Next &raquo;
-                                            </button>
-                                        </li>
-                                    </ul>
-                                    <div className="d-flex align-items-center">
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            max={filteredTotalPages}
-                                            value={pageInput}
-                                            onChange={(e) => setPageInput(e.target.value)}
-                                            placeholder="Go to page"
-                                            className="form-control me-2"
-                                        />
-                                        <button className="btn btn-primary" onClick={handlePageNavigation}>
-                                            Go
-                                        </button>
-                                    </div>
-                                </nav>
                             )}
                         </div>
                     </div>

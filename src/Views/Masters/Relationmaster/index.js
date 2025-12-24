@@ -4,6 +4,7 @@ import axios from "axios";
 import { API_HOST, MAS_RELATION } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const Relationmaster = () => {
   const [relationData, setRelationData] = useState([]);
@@ -22,12 +23,6 @@ const Relationmaster = () => {
   const [editingRelation, setEditingRelation] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [filteredTotalPages, setFilteredTotalPages] = useState(1);
-  const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
-  const [itemsPerPage] = useState(5);
-  const [pageInput, setPageInput] = useState("");
-
-
 
   const RELATION_NAME_MAX_LENGTH = 30;
   const RELATION_CODE_MAX_LENGTH = 30;
@@ -52,8 +47,6 @@ const Relationmaster = () => {
         }));
 
         setRelationData(transformedData);
-        setTotalFilteredProducts(transformedData.length);
-        setFilteredTotalPages(Math.ceil(transformedData.length / itemsPerPage));
       }
     } catch (err) {
       console.error("Error fetching relation data:", err);
@@ -65,18 +58,20 @@ const Relationmaster = () => {
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
-    setCurrentPage(1); // Reset to first page when searching
   };
 
   const filteredRelationData = relationData.filter(
     (relation) =>
-      relation.relationName.includes(searchQuery) ||
-      relation.code.includes(searchQuery)
+      relation.relationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      relation.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Get current page items
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredRelationData.slice(indexOfFirstItem, indexOfLastItem);
 
   const handleEdit = (relation) => {
@@ -230,46 +225,6 @@ const Relationmaster = () => {
     fetchRelationData();
   };
 
-  const handlePageNavigation = () => {
-    const pageNumber = Number(pageInput);
-    if (pageNumber >= 1 && pageNumber <= filteredTotalPages) {
-      setCurrentPage(pageNumber);
-    }
-  };
-
-  const renderPagination = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-    if (startPage > 1) {
-      pageNumbers.push(1);
-      if (startPage > 2) pageNumbers.push("...");
-    }
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i);
-    }
-    if (endPage < filteredTotalPages) {
-      if (endPage < filteredTotalPages - 1) pageNumbers.push("...");
-      pageNumbers.push(filteredTotalPages);
-    }
-    return pageNumbers.map((number, index) => (
-      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-        {typeof number === "number" ? (
-          <button className="page-link" onClick={() => setCurrentPage(number)}>
-            {number}
-          </button>
-        ) : (
-          <span className="page-link disabled">{number}</span>
-        )}
-      </li>
-    ));
-  };
-
-
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -332,105 +287,69 @@ const Relationmaster = () => {
               {loading ? (
                 <LoadingScreen />
               ) : !showForm ? (
-                <div className="table-responsive packagelist">
-                  <table className="table table-bordered table-hover align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        <th> Relation Code</th>
-                        <th>Relation Name</th>
-                        <th>Status</th>
-                        <th>Edit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentItems.length > 0 ? (
-                        currentItems.map((relation) => (
-                          <tr key={relation.id}>
-                            <td>{relation.code}</td>
-                            <td>{relation.relationName}</td>
-                            <td>
-                              <div className="form-check form-switch">
-                                <input
-                                  className="form-check-input"
-                                  type="checkbox"
-                                  checked={relation.status === "y"}
-                                  onChange={() => handleSwitchChange(relation.id, relation.status === "y" ? "n" : "y")}
-                                  id={`switch-${relation.id}`}
-                                />
-                                <label
-                                  className="form-check-label px-0"
-                                  htmlFor={`switch-${relation.id}`}
-                                >
-                                  {relation.status === "y" ? "Active" : "Deactivated"}
-                                </label>
-                              </div>
-                            </td>
-                            <td>
-                              <button
-                                className="btn btn-sm btn-success me-2"
-                                onClick={() => handleEdit(relation)}
-                                disabled={relation.status !== "y"}
-                              >
-                                <i className="fa fa-pencil"></i>
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
+                <>
+                  <div className="table-responsive packagelist">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
                         <tr>
-                          <td colSpan="4" className="text-center">No relation data found</td>
+                          <th> Relation Code</th>
+                          <th>Relation Name</th>
+                          <th>Status</th>
+                          <th>Edit</th>
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((relation) => (
+                            <tr key={relation.id}>
+                              <td>{relation.code}</td>
+                              <td>{relation.relationName}</td>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={relation.status === "y"}
+                                    onChange={() => handleSwitchChange(relation.id, relation.status === "y" ? "n" : "y")}
+                                    id={`switch-${relation.id}`}
+                                  />
+                                  <label
+                                    className="form-check-label px-0"
+                                    htmlFor={`switch-${relation.id}`}
+                                  >
+                                    {relation.status === "y" ? "Active" : "Deactivated"}
+                                  </label>
+                                </div>
+                              </td>
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-success me-2"
+                                  onClick={() => handleEdit(relation)}
+                                  disabled={relation.status !== "y"}
+                                >
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="4" className="text-center">No relation data found</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* PAGINATION USING REUSABLE COMPONENT */}
                   {filteredRelationData.length > 0 && (
-                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                      <div>
-                        <span>
-                          Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredProducts}
-                        </span>
-                      </div>
-                      <ul className="pagination mb-0">
-                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                          <button
-                            className="page-link"
-                            onClick={() => setCurrentPage(currentPage - 1)}
-                            disabled={currentPage === 1}
-                          >
-                            &laquo; Previous
-                          </button>
-                        </li>
-                        {renderPagination()}
-                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                          <button
-                            className="page-link"
-                            onClick={() => setCurrentPage(currentPage + 1)}
-                            disabled={currentPage === filteredTotalPages}
-                          >
-                            Next &raquo;
-                          </button>
-                        </li>
-                      </ul>
-                      <div className="d-flex align-items-center">
-                        <input
-                          type="number"
-                          min="1"
-                          max={filteredTotalPages}
-                          value={pageInput}
-                          onChange={(e) => setPageInput(e.target.value)}
-                          placeholder="Go to page"
-                          className="form-control me-2"
-                        />
-                        <button
-                          className="btn btn-primary"
-                          onClick={handlePageNavigation}
-                        >
-                          Go
-                        </button>
-                      </div>
-                    </nav>
+                    <Pagination
+                      totalItems={filteredRelationData.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
                   )}
-                </div>
+                </>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="form-group col-md-4">

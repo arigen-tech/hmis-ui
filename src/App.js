@@ -117,6 +117,18 @@ import InpatientMaster from  './Views/Masters/InpatientMaster';
 import SpecialityMaster from './Views/Masters/SpecialityMaster';
 import ViewDownwload from './Views/Laboratory/ViewDownload';
 import ItemIssueRegister from './Views/WardPharmacy/IndentIssueReport';
+import BillingPolicyMaster from './Views/Masters/BillingPolicyMaster';
+import DesignationMaster from './Views/Masters/DesignationMaster';
+import OPDQuestionnaireMaster from './Views/Masters/OPDQuestionnaireMaster';
+import OptionValueMaster from './Views/Masters/OptionValueMaster';
+import QuestionHeadingMaster from './Views/Masters/QuestionHeadingMaster';
+import ToothConditionMaster from './Views/Masters/ToothConditionMaster';
+import SpectacleUseMaster from './Views/Masters/SpectacleUseMaster';
+import EyeWearUseMaster from './Views/Masters/EyeWearUseMaster';
+import BookedStatusMaster from './Views/Masters/BookedStatusMaster';
+import OpthColorVisionMaster from './Views/Masters/OpthColorVisionMaster'; 
+import OpthDistanceVisionMaster from './Views/Masters/OpthDistanceVisionMaster';
+import OpthNearVisionMaster from './Views/Masters/OpthNearVisionMaster'; 
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -267,6 +279,18 @@ function App() {
                 <Route path="/IntakeTypeMaster" element={<IntakeTypeMaster/>} />
                 <Route path="/InpatientMaster" element={<InpatientMaster/>} />
                 <Route path="/SpecialityMaster" element={<SpecialityMaster/>} />
+                <Route path="/BillingPolicyMaster" element={<BillingPolicyMaster/>} />
+                <Route path="/DesignationMaster" element={<DesignationMaster/>} />
+                <Route path="/OPDQuestionnaireMaster" element={<OPDQuestionnaireMaster/>} />
+                <Route path="/OptionValueMaster" element={<OptionValueMaster/>} />
+                <Route path="/QuestionHeadingMaster" element={<QuestionHeadingMaster/>} />
+                <Route path="/ToothConditionMaster" element={<ToothConditionMaster/>} />
+                <Route path="/SpectacleUseMaster" element={<SpectacleUseMaster/>} />
+                <Route path="/EyeWearUseMaster" element={<EyeWearUseMaster/>} />
+                <Route path="/BookedStatusMaster" element={<BookedStatusMaster/>} />
+                <Route path="/OpthColorVisionMaster" element={<OpthColorVisionMaster/>} />
+                <Route path="/OpthDistanceVisionMaster" element={<OpthDistanceVisionMaster/>} />
+                <Route path="/OpthNearVisionMaster" element={<OpthNearVisionMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>

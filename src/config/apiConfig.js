@@ -214,4 +214,7 @@ export const MAS_INTAKE_TYPE = `${MASTERS}/masIntakeType`;
 export const MAS_PATIENT_ACUITY = `${MASTERS}/masPatientAcuity`;
 export const MAS_OUTPUT_TYPE = `${MASTERS}/masOutputType`;
 export const PRINT = `/print`;
+export const MAS_ADMISSION_STATUS = `${MASTERS}/masAdmissionStatus`;
+export const MAS_SPECIALTY = `${MASTERS}/masSpecialty`;
+export const MAS_BILLING_POLICY = `${MASTERS}/billingPolicy`;
 

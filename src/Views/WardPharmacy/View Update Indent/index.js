@@ -4,6 +4,8 @@ import Popup from "../../../Components/popup"
 import { Store_Internal_Indent, MAS_DRUG_MAS } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
+import DatePicker from "../../../Components/DatePicker";
+
 
 const IndentViewUpdate = () => {
   const [currentView, setCurrentView] = useState("list")
@@ -72,7 +74,7 @@ const IndentViewUpdate = () => {
     try {
       setLoading(true)
       let url = `${Store_Internal_Indent}/getallindent`
-     
+
 
       console.log("Fetching indents from URL:", url)
 
@@ -232,12 +234,12 @@ const IndentViewUpdate = () => {
     if (field === "itemName") {
       const displayValue = value;
       const drugName = extractDrugName(displayValue);
-      
-      const selectedItem = itemOptions.find((opt) => 
+
+      const selectedItem = itemOptions.find((opt) =>
         opt.name.toLowerCase().includes(drugName.toLowerCase()) ||
         opt.code.toLowerCase().includes(drugName.toLowerCase())
       );
-      
+
       updatedEntries[index] = {
         ...updatedEntries[index],
         itemId: selectedItem ? selectedItem.id : "",
@@ -510,7 +512,7 @@ const IndentViewUpdate = () => {
 
     return (
       <div className="content-wrapper">
-        {loading && <LoadingScreen/>}
+        {loading && <LoadingScreen />}
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
@@ -570,55 +572,55 @@ const IndentViewUpdate = () => {
                 <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
                   <table className="table table-bordered table-hover align-middle" >
                     <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
-            <tr>
-  <th
-    className="text-center"
-    style={{ width: "20px" }}
-  >
-    S.No.
-  </th>
+                      <tr>
+                        <th
+                          className="text-center"
+                          style={{ width: "20px" }}
+                        >
+                          S.No.
+                        </th>
 
-  <th style={{ width: "350px" }}>
-    Item Name/Code
-  </th>
+                        <th style={{ width: "350px" }}>
+                          Item Name/Code
+                        </th>
 
-  <th style={{ width: "35px" }}>
-    A/U
-  </th>
+                        <th style={{ width: "35px" }}>
+                          A/U
+                        </th>
 
-  <th
-    style={{
-      width: "35px",
-      whiteSpace: "normal",
-      lineHeight: "1.1",
-      textAlign: "center"
-    }}
-  >
-    Req <br /> Qty
-  </th>
+                        <th
+                          style={{
+                            width: "35px",
+                            whiteSpace: "normal",
+                            lineHeight: "1.1",
+                            textAlign: "center"
+                          }}
+                        >
+                          Req <br /> Qty
+                        </th>
 
-  <th
-    style={{
-      width: "20px",            // reduced from 25px → 20px
-      whiteSpace: "normal",
-      lineHeight: "1.1",
-      textAlign: "center"
-    }}
-  >
-    Avl <br /> Stk
-  </th>
+                        <th
+                          style={{
+                            width: "20px",            // reduced from 25px → 20px
+                            whiteSpace: "normal",
+                            lineHeight: "1.1",
+                            textAlign: "center"
+                          }}
+                        >
+                          Avl <br /> Stk
+                        </th>
 
-  <th style={{ width: "100px" }}>   {/* increased from 70px → 100px */}
-    Reason for Indent
-  </th>
+                        <th style={{ width: "100px" }}>   {/* increased from 70px → 100px */}
+                          Reason for Indent
+                        </th>
 
-  {isRecordEditable && (
-    <>
-      <th style={{ width: "60px" }}>Add</th>
-      <th style={{ width: "70px" }}>Delete</th>
-    </>
-  )}
-</tr>
+                        {isRecordEditable && (
+                          <>
+                            <th style={{ width: "60px" }}>Add</th>
+                            <th style={{ width: "70px" }}>Delete</th>
+                          </>
+                        )}
+                      </tr>
 
 
 
@@ -662,79 +664,79 @@ const IndentViewUpdate = () => {
                                   readOnly={!isRecordEditable}
                                 />
                                 {/* Search Dropdown */}
-                                {activeItemDropdown === index && 
-                                 extractDrugName(getDrugDisplayValue(entry.itemName, entry.itemCode)).trim() !== "" && 
-                                 isRecordEditable && (
-                                  <ul
-                                    className="list-group position-fixed dropdown-list"
-                                    style={{
-                                      top: `${dropdownPosition.y}px`,
-                                      left: `${dropdownPosition.x}px`,
-                                      width: `${dropdownPosition.width}px`,
-                                      zIndex: 99999,
-                                      backgroundColor: "#fff",
-                                      border: "1px solid #ccc",
-                                      borderRadius: "4px",
-                                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                                      maxHeight: "250px",
-                                      overflowY: "auto",
-                                    }}
-                                  >
-                                    {filterDrugsBySearch(extractDrugName(getDrugDisplayValue(entry.itemName, entry.itemCode))).length > 0 ? (
-                                      filterDrugsBySearch(extractDrugName(getDrugDisplayValue(entry.itemName, entry.itemCode))).map((drug) => {
-                                        const isSelectedInOtherRow = selectedDrugs.some(
-                                          (id) => id === drug.id && indentEntries[index]?.itemId !== drug.id
-                                        );
-                                        return (
-                                          <li
-                                            key={drug.id}
-                                            className="list-group-item list-group-item-action"
-                                            style={{
-                                              backgroundColor: isSelectedInOtherRow ? "#ffc107" : "#f8f9fa",
-                                              cursor: isSelectedInOtherRow ? "not-allowed" : "pointer",
-                                              padding: "8px 12px",
-                                            }}
-                                            onClick={() => {
-                                              if (!isSelectedInOtherRow) handleDrugSelect(index, drug);
-                                            }}
-                                          >
-                                            <div>
-                                              <strong>{drug.name}</strong>
-                                              <div
-                                                style={{
-                                                  color: "#6c757d",
-                                                  fontSize: "0.8rem",
-                                                  marginTop: "2px",
-                                                  display: "flex",
-                                                  justifyContent: "space-between",
-                                                  alignItems: "center"
-                                                }}
-                                              >
-                                                <div>
-                                                  <span className="badge bg-info me-1" style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>
-                                                    <i className="fas fa-hashtag me-1"></i>{drug.code}
-                                                  </span>
-                                                  <span className="badge bg-secondary" style={{ fontSize: "0.75rem" }}>
-                                                    ID: {drug.id}
-                                                  </span>
+                                {activeItemDropdown === index &&
+                                  extractDrugName(getDrugDisplayValue(entry.itemName, entry.itemCode)).trim() !== "" &&
+                                  isRecordEditable && (
+                                    <ul
+                                      className="list-group position-fixed dropdown-list"
+                                      style={{
+                                        top: `${dropdownPosition.y}px`,
+                                        left: `${dropdownPosition.x}px`,
+                                        width: `${dropdownPosition.width}px`,
+                                        zIndex: 99999,
+                                        backgroundColor: "#fff",
+                                        border: "1px solid #ccc",
+                                        borderRadius: "4px",
+                                        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                                        maxHeight: "250px",
+                                        overflowY: "auto",
+                                      }}
+                                    >
+                                      {filterDrugsBySearch(extractDrugName(getDrugDisplayValue(entry.itemName, entry.itemCode))).length > 0 ? (
+                                        filterDrugsBySearch(extractDrugName(getDrugDisplayValue(entry.itemName, entry.itemCode))).map((drug) => {
+                                          const isSelectedInOtherRow = selectedDrugs.some(
+                                            (id) => id === drug.id && indentEntries[index]?.itemId !== drug.id
+                                          );
+                                          return (
+                                            <li
+                                              key={drug.id}
+                                              className="list-group-item list-group-item-action"
+                                              style={{
+                                                backgroundColor: isSelectedInOtherRow ? "#ffc107" : "#f8f9fa",
+                                                cursor: isSelectedInOtherRow ? "not-allowed" : "pointer",
+                                                padding: "8px 12px",
+                                              }}
+                                              onClick={() => {
+                                                if (!isSelectedInOtherRow) handleDrugSelect(index, drug);
+                                              }}
+                                            >
+                                              <div>
+                                                <strong>{drug.name}</strong>
+                                                <div
+                                                  style={{
+                                                    color: "#6c757d",
+                                                    fontSize: "0.8rem",
+                                                    marginTop: "2px",
+                                                    display: "flex",
+                                                    justifyContent: "space-between",
+                                                    alignItems: "center"
+                                                  }}
+                                                >
+                                                  <div>
+                                                    <span className="badge bg-info me-1" style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>
+                                                      <i className="fas fa-hashtag me-1"></i>{drug.code}
+                                                    </span>
+                                                    <span className="badge bg-secondary" style={{ fontSize: "0.75rem" }}>
+                                                      ID: {drug.id}
+                                                    </span>
+                                                  </div>
+                                                  {isSelectedInOtherRow && (
+                                                    <span className="text-success">
+                                                      <i className="fas fa-check-circle me-1"></i> Added
+                                                    </span>
+                                                  )}
                                                 </div>
-                                                {isSelectedInOtherRow && (
-                                                  <span className="text-success">
-                                                    <i className="fas fa-check-circle me-1"></i> Added
-                                                  </span>
-                                                )}
                                               </div>
-                                            </div>
-                                          </li>
-                                        );
-                                      })
-                                    ) : (
-                                      <li className="list-group-item text-muted text-center">
-                                        {itemOptions.length === 0 ? "No drugs available" : "No drugs found"}
-                                      </li>
-                                    )}
-                                  </ul>
-                                )}
+                                            </li>
+                                          );
+                                        })
+                                      ) : (
+                                        <li className="list-group-item text-muted text-center">
+                                          {itemOptions.length === 0 ? "No drugs available" : "No drugs found"}
+                                        </li>
+                                      )}
+                                    </ul>
+                                  )}
                               </div>
                             </td>
 
@@ -769,7 +771,7 @@ const IndentViewUpdate = () => {
                                 placeholder="0"
                                 min="0"
                                 step="1"
-                                style={{  backgroundColor: "#f5f5f5" }}
+                                style={{ backgroundColor: "#f5f5f5" }}
                                 readOnly
                               />
                             </td>
@@ -884,21 +886,21 @@ const IndentViewUpdate = () => {
             <div className="card-body">
               <div className="row mb-4">
                 <div className="col-md-2">
-                  <label className="form-label fw-bold">From Date</label>
-                  <input
-                    type="date"
-                    className="form-control"
+                  <DatePicker
+                    label="From Date"
                     value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
+                    onChange={setFromDate}  
+                    compact={true}
+                    placeholder="MM/DD/YYYY"
                   />
                 </div>
                 <div className="col-md-2">
-                  <label className="form-label fw-bold">To Date</label>
-                  <input
-                    type="date"
-                    className="form-control"
+                  <DatePicker
+                    label="To Date"
                     value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
+                    onChange={setToDate}
+                    compact={true}
+                    placeholder="MM/DD/YYYY"
                   />
                 </div>
                 <div className="col-md-2">

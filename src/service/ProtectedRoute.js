@@ -121,6 +121,19 @@ const validRoutes = [
   "/IntakeTypeMaster",
   "/InpatientMaster",
   "/SpecialityMaster",
+  "/BillingPolicyMaster",
+  "/DesignationMaster",
+  "/OPDQuestionnaireMaster",
+  "/OptionValueMaster",
+  "/QuestionHeadingMaster",
+  "/ToothConditionMaster",
+  "/SpectacleUseMaster",
+  "/EyeWearUseMaster",
+  "/BookedStatusMaster",
+  "/OpthColorVisionMaster",
+  "/OpthDistanceVisionMaster",
+  "/OpthNearVisionMaster",
+
 
   
 ];
