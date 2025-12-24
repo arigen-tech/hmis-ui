@@ -130,6 +130,7 @@ const validRoutes = [
   "/SpectacleUseMaster",
   "/EyeWearUseMaster",
   "/BookedStatusMaster",
+  "/OpthColorVisionMaster",
 
 
   
