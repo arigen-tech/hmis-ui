@@ -10,21 +10,25 @@ const EmployeeRegistration = () => {
     const initialFormData = {
         profilePicName: null,
         idDocumentName: null,
+        idDocumentName: null,
 
         firstName: "",
         middleName: "",
         lastName: "",
         dob: "",
         genderId: "",
+
         address1: "",
         countryId: "",
         stateId: "",
         districtId: "",
         city: "",
         pincode: "",
+
         mobileNo: "",
         identificationType: "",
         registrationNo: "",
+
         employmentTypeId: "",
         employeeTypeId: "",
         roleId: "",
@@ -618,6 +622,11 @@ const EmployeeRegistration = () => {
                 i === index ? { ...item, [field]: value } : item
             )
         }));
+
+        // Only set specialtySearch for the current row
+        if (field === "specialtyCenterName") {
+            setSpecialtySearch(value);
+        }
     };
 
     const handleWorkExperienceChange = (index, field, value) => {
@@ -658,31 +667,55 @@ const EmployeeRegistration = () => {
 
     // Form Validation
     const validateForm = () => {
+        // Add departmentId to required fields
         const requiredFields = [
             'firstName', 'lastName', 'dob', 'genderId', 'address1',
             'countryId', 'stateId', 'districtId', 'city', 'pincode',
-            'mobileNo', 'identificationType', 'registrationNo'
+            'mobileNo', 'identificationType', 'registrationNo',
+            'departmentId', // Add this
+            'employeeTypeId', 'designationId', 'employmentTypeId', 'roleId' // Add other required fields
         ];
 
-        for (const field of requiredFields) {
-            if (!formData[field]) {
-                showPopup(`Please fill in the required field: ${field.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase())}`, "error");
-                return false;
-            }
-        }
-
-        if (!formData.profilePicName) {
-            showPopup("Profile picture is required", "error");
+        // Check for empty arrays
+        if (formData.qualification.length === 0) {
+            showPopup("At least one educational qualification is required", "error");
             return false;
         }
 
-        if (!formData.idDocumentName) {
-            showPopup("ID document is required", "error");
+        // Validate phone number format
+        if (formData.mobileNo.length !== 10) {
+            showPopup("Mobile number must be 10 digits", "error");
+            return false;
+        }
+
+        // Validate pincode
+        if (formData.pincode.length !== 6) {
+            showPopup("Pincode must be 6 digits", "error");
             return false;
         }
 
         return true;
     };
+
+    const isFormValid = () => {
+        const required = [
+            'firstName', 'lastName', 'dob', 'genderId', 'address1',
+            'countryId', 'stateId', 'districtId', 'city', 'pincode',
+            'mobileNo', 'identificationType', 'registrationNo',
+            'employeeTypeId', 'designationId',
+            'employmentTypeId', 'roleId'
+        ];
+        if (viewDept) {
+            required.push('departmentId');
+        }
+
+        return (
+            required.every(field => formData[field]) &&
+            !!formData.profilePicName &&
+            !!formData.idDocumentName
+        );
+    };
+
 
     const prepareFormData = () => {
         if (!validateForm()) {
@@ -1204,8 +1237,16 @@ const EmployeeRegistration = () => {
                                                             id="idDocumentName"
                                                             className="form-control"
                                                             accept=".jpg,.jpeg,.png,.pdf"
-                                                            onChange={(e) => setFormData({ ...formData, idDocumentName: e.target.files[0] })}
-                                                        />
+                                                            onChange={(e) => {
+                                                                const file = e.target.files[0];
+                                                                if (file) {
+                                                                    setFormData(prev => ({
+                                                                        ...prev,
+                                                                        idDocumentName: file,
+                                                                        idDocumentPreview: URL.createObjectURL(file) // Add preview if needed
+                                                                    }));
+                                                                }
+                                                            }} />
                                                     </div>
 
                                                     <div className="col-md-4">
@@ -1258,7 +1299,7 @@ const EmployeeRegistration = () => {
                                                             </select>
                                                         </div>
                                                     )}
-                                                                                                   
+
                                                     <div className="col-md-4">
                                                         <label className="form-label">Employee Type <span className="text-danger">*</span></label>
                                                         <select
@@ -1574,7 +1615,7 @@ const EmployeeRegistration = () => {
                                         <thead>
                                             <tr>
                                                 <th>S.No</th>
-                                                <th>Organization Name</th>
+                                                <th>Work Experience</th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
@@ -1621,7 +1662,7 @@ const EmployeeRegistration = () => {
                                         <thead>
                                             <tr>
                                                 <th>S.No</th>
-                                                <th>Level Name</th>
+                                                <th>Membership Details</th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
@@ -1812,7 +1853,7 @@ const EmployeeRegistration = () => {
                             onClick={handleCreate}
                             type="button"
                             className="btn btn-primary me-2"
-                            disabled={loading}
+                            disabled={loading || !isFormValid()}
                         >
                             {loading ? "Submitting..." : "Submit"}
                         </button>
