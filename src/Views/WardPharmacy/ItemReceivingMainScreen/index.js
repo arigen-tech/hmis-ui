@@ -281,7 +281,7 @@ const ItemReceivingMainScreen = () => {
     if (validationErrors.length > 0) {
       showPopup(
         `Please fix the following items:\n\n${validationErrors.join("\n\n")}`,
-        "error"
+        "warning"
       );
       // Stop execution here
       return;

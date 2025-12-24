@@ -385,6 +385,28 @@ export const FETCH_BILLING_POLICY_ERR_MSG = "Failed to load billing policy data"
 
 
 
+// IndentCreation Messages
+export const SELECT_DRUG_ERROR = "Please select a drug from the dropdown";
+export const DUPLICATE_DRUG_WARNING = "This drug is already added in another row. Please select a different drug.";
+export const MINIMUM_ROWS_WARNING = "At least one row is required";
+export const EMPTY_DRUG_NAME_WARNING = "Please fill drug name before adding new row";
+export const INVALID_DEPARTMENT_ERROR = "Please select a department";
+export const INVALID_DATE_ERROR = "Indent date is required";
+export const INVALID_QUANTITY_ERROR = "Required quantity must be greater than 0";
+export const EXCEED_STOCK_ERROR = "Required quantity cannot exceed available stock";
+export const MANDATORY_FIELD_WARNING = "Please fill the Mandatory field before ";
+export const DUPLICATE_DRUGS_WARNING = "Duplicate drugs found. Please remove duplicate entries before ";
+export const NO_VALID_DRUGS_WARNING = "Please select valid drugs before ";
+export const INDENT_SAVE_SUCCESS = "Indent saved successfully!";
+export const INDENT_SUBMIT_SUCCESS = "Indent submitted successfully!";
+export const INDENT_SAVE_ERROR = "Error saving indent";
+export const INDENT_SUBMIT_ERROR = "Error submitting indent";
+export const NO_ROL_ITEMS_WARNING = "Please select at least one item to import";
+export const ROL_IMPORT_SUCCESS = "items imported successfully from ROL";
+export const ROL_LOAD_ERROR = "Error fetching ROL items from server";
+export const NO_ROL_DATA = "No items found below reorder level. All items have sufficient stock.";
+export const IMPORT_FROM_PREVIOUS = "Import from Previous Indent feature coming soon";
+
 
 
 
