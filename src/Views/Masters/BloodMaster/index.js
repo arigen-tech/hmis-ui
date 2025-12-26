@@ -5,6 +5,9 @@ import { API_HOST, MAS_BLOODGROUP } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { FETCH_BLOOD_GROUP_ERR_MSG,DUPLICATE_BLOOD_GROUP,UPDATE_BLOOD_GROUP_SUCC_MSG,ADD_BLOOD_GROUP_SUCC_MSG,FAIL_TO_SAVE_CHANGES
+  ,FAIL_TO_UPDATE_STS
+ } from "../../../config/constants";
 
 const BloodGroupMaster = () => {
   const [bloodGroups, setBloodGroups] = useState([]);
@@ -40,7 +43,7 @@ const BloodGroupMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching blood groups data:", err);
-      showPopup("Failed to load blood groups data", "error");
+      showPopup(FETCH_BLOOD_GROUP_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -88,7 +91,7 @@ const BloodGroupMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Blood group with the same code or name already exists!", "error");
+        showPopup(DUPLICATE_BLOOD_GROUP, "error");
         setLoading(false);
         return;
       }
@@ -106,7 +109,7 @@ const BloodGroupMaster = () => {
               group.bloodGroupId === editingBloodGroup.bloodGroupId ? response.response : group
             )
           );
-          showPopup("Blood group updated successfully!", "success");
+          showPopup(UPDATE_BLOOD_GROUP_SUCC_MSG, "success");
         }
       } else {
         const response = await postRequest(`${MAS_BLOODGROUP}/create`, {
@@ -117,7 +120,7 @@ const BloodGroupMaster = () => {
 
         if (response && response.response) {
           setBloodGroups([...bloodGroups, response.response]);
-          showPopup("New blood group added successfully!", "success");
+          showPopup(ADD_BLOOD_GROUP_SUCC_MSG, "success");
         }
       }
 
@@ -127,7 +130,7 @@ const BloodGroupMaster = () => {
       fetchBloodGroups();
     } catch (err) {
       console.error("Error saving blood group:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setLoading(false);
     }
@@ -190,7 +193,7 @@ const BloodGroupMaster = () => {
         }
       } catch (err) {
         console.error("Error updating blood group status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }

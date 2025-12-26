@@ -4,6 +4,11 @@ export const DEPARTMENT_CODE_OPD=5;
 
 
 
+//Common
+
+export const FAIL_TO_SAVE_CHANGES="Failed to save changes";
+export const FAIL_TO_UPDATE_STS="Failed to update status";
+export const INVALID_PAGE_NO_WARN_MSG="Please enter a valid page number.";
 
 
 
@@ -59,7 +64,6 @@ export const RESULT_ENTRY_WARN_MSG="Please enter at least one result before subm
 export const FETCH_AUTO_FILL_ERR_MSG="Missing required data. Please contact administrator.";
 export const RESULT_SUBMIT_SUCC_MSG="Results submitted successfully!";
 export const RESULT_SUBMIT_ERR_MSG="Error submitting results";
-export const INVALID_PAGE_NO_WARN_MSG="Please enter a valid page number.";
 
 
 //PendingForSampleCollection
@@ -113,7 +117,7 @@ export const FETCH_SUB_CHARGE_CODES_ERR_MSG="Failed to load sub-charge codes";
 export const DUPLICATE_SUB_CHARGE_CODE_ERR_MSG="A sub charge code with this code already exists!";
 export const UPDATE_SUB_CHARGE_CODE_SUCC_MSG="Sub charge code updated successfully!";
 export const ADD_SUB_CHARGE_CODE_SUCC_MSG="New sub charge code added successfully!";
-export const FAIL_TO_SAVE_CHANGES="Failed to save changes";
+
 
 //UOMMaster
 
@@ -121,7 +125,7 @@ export const FETCH_UOM_ERR_MSG="Failed to load UOM data";
 export const DUPLICATE_UOM_ERR_MSG="UOM with the same code already exists!";
 export const UPDATE_UOM_SUCC_MSG="UOM updated successfully!";
 export const ADD_UOM_SUCC_MSG="New UOM added successfully!";
-export const FAIL_TO_UPDATE_STS="Failed to update status"
+
 
 
 
@@ -407,6 +411,13 @@ export const ROL_LOAD_ERROR = "Error fetching ROL items from server";
 export const NO_ROL_DATA = "No items found below reorder level. All items have sufficient stock.";
 export const IMPORT_FROM_PREVIOUS = "Import from Previous Indent feature coming soon";
 
+//Blood GAROUP Master
+
+
+export const FETCH_BLOOD_GROUP_ERR_MSG="Failed to load blood group data";
+export const DUPLICATE_BLOOD_GROUP="Blood group with the same name already exists!";
+export const UPDATE_BLOOD_GROUP_SUCC_MSG="Blood group updated successfully!";
+export const ADD_BLOOD_GROUP_SUCC_MSG="New blood group added successfully!";
 
 
 
