@@ -4,6 +4,9 @@ import axios from "axios";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_STATE, MAS_DISTRICT } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import {FETCH_DISTRICT_ERR_MSG,DUPLICATE_DISTRICT,UPDATE_DISTRICT_SUCC_MSG,ADD_DISTRICT_SUCC_MSG,
+FAIL_TO_SAVE_CHANGES,FAIL_TO_UPDATE_STS
+} from "../../../config/constants";
 
 const DistrictMaster = () => {
     const [districts, setDistricts] = useState([]);
@@ -40,7 +43,7 @@ const DistrictMaster = () => {
             }
         } catch (err) {
             console.error("Error fetching districts:", err);
-            showPopup("Failed to load districts", "error");
+            showPopup(FETCH_DISTRICT_ERR_MSG, "error");
         } finally {
             setLoading(false);
         }
@@ -54,7 +57,7 @@ const DistrictMaster = () => {
             }
         } catch (err) {
             console.error("Error fetching states:", err);
-            showPopup("Failed to load states", "error");
+            showPopup(FETCH_DISTRICT_ERR_MSG, "error");
         }
     };
 
@@ -120,7 +123,7 @@ const DistrictMaster = () => {
             );
 
             if (isDuplicate) {
-                showPopup("District with the same name already exists!", "error");
+                showPopup(DUPLICATE_DISTRICT, "error");
                 setLoading(false);
                 return;
             }
@@ -135,7 +138,7 @@ const DistrictMaster = () => {
 
                 if (response && response.status === 200) {
                     fetchDistricts(); 
-                    showPopup("District updated successfully!", "success");
+                    showPopup(UPDATE_DISTRICT_SUCC_MSG, "success");
                 }
             } else {
                 const response = await postRequest(`${MAS_DISTRICT}/create`, {
@@ -147,7 +150,7 @@ const DistrictMaster = () => {
 
                 if (response && response.status === 200) {
                     fetchDistricts(); 
-                    showPopup("New district added successfully!", "success");
+                    showPopup(ADD_DISTRICT_SUCC_MSG, "success");
                 }
             }
 
@@ -156,7 +159,7 @@ const DistrictMaster = () => {
             setShowForm(false);
         } catch (err) {
             console.error("Error saving district:", err);
-            showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+            showPopup(FAIL_TO_SAVE_CHANGES, "error");
         } finally {
             setLoading(false);
         }
@@ -192,7 +195,7 @@ const DistrictMaster = () => {
                 }
             } catch (err) {
                 console.error("Error updating district status:", err);
-                showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+                showPopup(FAIL_TO_UPDATE_STS, "error");
             } finally {
                 setLoading(false);
             }

@@ -433,6 +433,12 @@ export const DUPLICATE_DEPARTMENT_TYPE="Department type with the same name alrea
 export const UPDATE_DEPARTMENT_TYPE_SUCC_MSG="Department type updated successfully!";
 export const ADD_DEPARTMENT_TYPE_SUCC_MSG="New department type added successfully!";
 
+//District Master
+export const FETCH_DISTRICT_ERR_MSG="Failed to load district data";
+export const DUPLICATE_DISTRICT="District with the same name already exists!";
+export const UPDATE_DISTRICT_SUCC_MSG="District updated successfully!";
+export const ADD_DISTRICT_SUCC_MSG="New district added successfully!";
+
 
 
 
