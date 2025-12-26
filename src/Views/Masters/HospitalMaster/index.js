@@ -4,6 +4,15 @@ import Popup from "../../../Components/popup"
 import { MAS_COUNTRY, MAS_DISTRICT, MAS_HOSPITAL, MAS_STATE } from "../../../config/apiConfig"
 import { getRequest, postRequest, putRequest } from "../../../service/apiService"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+import {
+  FETCH_HOSPITAL_ERR_MSG,
+  DUPLICATE_HOSPITAL,
+  UPDATE_HOSPITAL_SUCC_MSG,
+  ADD_HOSPITAL_SUCC_MSG,
+  FAIL_TO_SAVE_CHANGES,
+  FAIL_TO_UPDATE_STS,
+  FAILED_TO_LOAD_SELECTED_COUNTRY
+} from "../../../config/constants"
 
 const HospitalMaster = () => {
   const [hospitals, setHospitals] = useState([])
@@ -61,7 +70,7 @@ const HospitalMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching hospitals:", err)
-      showPopup("Failed to load hospitals", "error")
+      showPopup(FETCH_HOSPITAL_ERR_MSG, "error")
     } finally {
       setLoading(false)
     }
@@ -75,7 +84,7 @@ const HospitalMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching countries:", err)
-      showPopup("Failed to load countries", "error")
+      showPopup(FETCH_HOSPITAL_ERR_MSG, "error")
     }
   }
 
@@ -91,7 +100,7 @@ const HospitalMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching states by country:", err)
-      showPopup("Failed to load states for selected country", "error")
+      showPopup(FAILED_TO_LOAD_SELECTED_COUNTRY, "error")
       setFilteredStates([])
     } finally {
       setLoading(false)
@@ -271,7 +280,7 @@ const HospitalMaster = () => {
       )
 
       if (isDuplicate) {
-        showPopup("Hospital with the same code or name already exists!", "error")
+        showPopup(DUPLICATE_HOSPITAL, "error")
         setLoading(false)
         return
       }
@@ -303,7 +312,7 @@ const HospitalMaster = () => {
           setHospitals((prevData) =>
             prevData.map((hospital) => (hospital.id === editingHospital.id ? response.response : hospital)),
           )
-          showPopup("Hospital updated successfully!", "success")
+          showPopup(UPDATE_HOSPITAL_SUCC_MSG, "success")
         }
       } else {
         const response = await postRequest(`${MAS_HOSPITAL}/create`, {
@@ -326,7 +335,7 @@ const HospitalMaster = () => {
 
         if (response && response.response) {
           setHospitals([...hospitals, response.response])
-          showPopup("New hospital added successfully!", "success")
+          showPopup(ADD_HOSPITAL_SUCC_MSG, "success")
         }
       }
 
@@ -354,7 +363,7 @@ const HospitalMaster = () => {
       fetchHospitals()
     } catch (err) {
       console.error("Error saving hospital:", err)
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error")
+      showPopup(FAIL_TO_SAVE_CHANGES, "error")
     } finally {
       setLoading(false)
     }
@@ -394,7 +403,7 @@ const HospitalMaster = () => {
         }
       } catch (err) {
         console.error("Error updating hospital status:", err)
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error")
+        showPopup(FAIL_TO_UPDATE_STS, "error")
       } finally {
         setLoading(false)
       }

@@ -452,3 +452,10 @@ export const FETCH_GENDER_ERR_MSG="Failed to load gender data";
 export const DUPLICATE_GENDER="Gender with the same name already exists!";
 export const UPDATE_GENDER_SUCC_MSG="Gender updated successfully!";
 export const ADD_GENDER_SUCC_MSG="New gender added successfully!";
+
+//Hospital Master
+export const FETCH_HOSPITAL_ERR_MSG="Failed to load hospital data";
+export const DUPLICATE_HOSPITAL="Hospital with the same name already exists!";
+export const UPDATE_HOSPITAL_SUCC_MSG="Hospital updated successfully!";
+export const ADD_HOSPITAL_SUCC_MSG="New hospital added successfully!";
+export const FAILED_TO_LOAD_SELECTED_COUNTRY="Failed to load states for selected country";
