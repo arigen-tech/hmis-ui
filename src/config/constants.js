@@ -474,3 +474,13 @@ export const FETCH_IDENTIFICATION_ERR_MSG="Failed to load identification data";
 export const DUPLICATE_IDENTIFICATION="Identification with the same name already exists!";
 export const UPDATE_IDENTIFICATION_SUCC_MSG="Identification updated successfully!";
 export const ADD_IDENTIFICATION_SUCC_MSG="New identification added successfully!";
+
+
+//Investigation Pricing Master
+export const FETCH_INV_PRICING_ERR_MSG="Failed to load investigation pricing data";
+export const UPDATE_INV_PRICING_SUCC_MSG="Investigation pricing updated successfully!";
+export const ADD_INV_PRICING_SUCC_MSG="New investigation pricing added successfully!";
+export const FAIL_TO_LOAD_INV_OPTION="Failed to load investigation options";
+export const FILL_ALL_REQUIRED_FIELDS="Please fill in all required fields";
+export const TO_DATE_AFTER_FROM_DATE="To Date must be after From Date";
+

@@ -4,6 +4,9 @@ import axios from "axios"
 import { API_HOST, INVESTIGATION_PRICE_DETAILS, ALL_INVESTIGATION, ALL_INVESTIGATION_PRICE_DETAILS } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import { FETCH_INV_PRICING_ERR_MSG, FAIL_TO_LOAD_INV_OPTION,FILL_ALL_REQUIRED_FIELDS,TO_DATE_AFTER_FROM_DATE,
+    UPDATE_INV_PRICING_SUCC_MSG,ADD_INV_PRICING_SUCC_MSG,FAIL_TO_UPDATE_STS,FAIL_TO_SAVE_CHANGES
+ } from "../../../config/constants"
 
 const Investigationpricing = () => {
     const [investigationList, setInvestigationList] = useState([])
@@ -42,7 +45,7 @@ const Investigationpricing = () => {
             }
         } catch (err) {
             console.error("Error fetching investigation price details:", err)
-            showPopup("Failed to load investigation price details", "error")
+            showPopup(FETCH_INV_PRICING_ERR_MSG, "error")
         } finally {
             setLoading(false)
         }
@@ -57,7 +60,7 @@ const Investigationpricing = () => {
             }
         } catch (err) {
             console.error("Error fetching investigation options:", err)
-            showPopup("Failed to load investigation options", "error")
+            showPopup(FAIL_TO_LOAD_INV_OPTION, "error")
         }
     }
 
@@ -105,13 +108,13 @@ const Investigationpricing = () => {
     
     // Check form validation again just to be safe
     if (!formData.investigationId || !formData.fromDate || !formData.toDate || !formData.price) {
-        showPopup("Please fill in all required fields", "error")
+        showPopup(FILL_ALL_REQUIRED_FIELDS, "error")
         return
     }
     
     // Check date validation
     if (new Date(formData.toDate) < new Date(formData.fromDate)) {
-        showPopup("To Date must be after From Date", "error")
+        showPopup(TO_DATE_AFTER_FROM_DATE, "error")
         return
     }
 
@@ -130,11 +133,11 @@ const Investigationpricing = () => {
             putRequest(`${INVESTIGATION_PRICE_DETAILS}/update/${editingInvestigation.id}`, requestData)
                 .then(response => {
                     if (response && response.status === 200) {
-                        showPopup("Investigation pricing updated successfully!", "success")
+                        showPopup(UPDATE_INV_PRICING_SUCC_MSG, "success")
                         fetchInvestigationPriceDetails() // Refresh the list
                         resetForm()
                     } else {
-                        showPopup(response.message || "Error updating pricing", "error")
+                        showPopup(FAIL_TO_SAVE_CHANGES, "error")
                     }
                 })
                 .catch(error => {
@@ -152,11 +155,11 @@ const Investigationpricing = () => {
             postRequest(`${INVESTIGATION_PRICE_DETAILS}/add`, requestData)
                 .then(response => {
                     if (response && response.status === 200) {
-                        showPopup("New investigation pricing added successfully!", "success")
+                        showPopup(ADD_INV_PRICING_SUCC_MSG, "success")
                         fetchInvestigationPriceDetails() // Refresh the list
                         resetForm()
                     } else {
-                        showPopup(response.message || "Error adding pricing", "error")
+                        showPopup(FAIL_TO_SAVE_CHANGES, "error")
                     }
                 })
                 .catch(error => {
@@ -172,7 +175,7 @@ const Investigationpricing = () => {
         }
     } catch (err) {
         console.error("Error in save operation:", err)
-        showPopup(`Failed to process request: ${err.message}`, "error")
+        showPopup(FAIL_TO_SAVE_CHANGES, "error")
         setLoading(false)
     }
 }
@@ -221,7 +224,7 @@ const resetForm = () => {
                 }
             } catch (err) {
                 console.error("Error updating investigation price details status:", err)
-                showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error")
+                showPopup(FAIL_TO_UPDATE_STS, "error")
             } finally {
                 setLoading(false)
             }
