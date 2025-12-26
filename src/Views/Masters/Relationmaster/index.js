@@ -5,6 +5,14 @@ import { API_HOST, MAS_RELATION } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {
+  FETCH_RELATIONSHIP_ERR_MSG,
+  UPDATE_RELATIONSHIP_SUCC_MSG,
+  ADD_RELATIONSHIP_SUCC_MSG,
+  DUPLICATE_RELATIONSHIP,
+  FAIL_TO_SAVE_CHANGES,
+  FAIL_TO_UPDATE_STS
+} from "../../../config/constants";
 
 const Relationmaster = () => {
   const [relationData, setRelationData] = useState([]);
@@ -50,7 +58,7 @@ const Relationmaster = () => {
       }
     } catch (err) {
       console.error("Error fetching relation data:", err);
-      showPopup("Failed to load relation data", "error");
+      showPopup(FETCH_RELATIONSHIP_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -99,7 +107,7 @@ const Relationmaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Relation already exists!", "error");
+        showPopup(DUPLICATE_RELATIONSHIP, "error");
         setLoading(false);
         return;
       }
@@ -120,7 +128,7 @@ const Relationmaster = () => {
               relation.id === editingRelation.id ? response.response : relation
             )
           );
-          showPopup("Relation updated successfully!", "success");
+          showPopup(UPDATE_RELATIONSHIP_SUCC_MSG, "success");
         }
       } else {
 
@@ -132,7 +140,7 @@ const Relationmaster = () => {
 
         if (response && response.response) {
           setRelationData((prevData) => [...prevData, response.response]);
-          showPopup("New relation added successfully!", "success");
+          showPopup(ADD_RELATIONSHIP_SUCC_MSG, "success");
         }
 
       }
@@ -144,7 +152,7 @@ const Relationmaster = () => {
     } catch (err) {
       console.error("Error saving relation data:", err);
       showPopup(
-        `Failed to save changes: ${err.response?.data?.message || err.message}`,
+        FAIL_TO_SAVE_CHANGES,
         "error"
       );
     } finally {
@@ -192,7 +200,7 @@ const Relationmaster = () => {
         }
       } catch (err) {
         console.error("Error updating relation status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup( FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }

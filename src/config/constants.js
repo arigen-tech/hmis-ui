@@ -523,3 +523,9 @@ export const DISCOUNT_CANOT_NAGATIVE="Flat discount cannot be negative.";
 export const DISCOUNT_PERCENTAGE="Discount percentage must be between 0 and 100.";
 
 
+//Relationship Master
+export const FETCH_RELATIONSHIP_ERR_MSG="Failed to load relationship data";
+export const DUPLICATE_RELATIONSHIP="Relationship with the same name already exists!";
+export const UPDATE_RELATIONSHIP_SUCC_MSG="Relationship updated successfully!";
+export const ADD_RELATIONSHIP_SUCC_MSG="New relationship added successfully!";
+
