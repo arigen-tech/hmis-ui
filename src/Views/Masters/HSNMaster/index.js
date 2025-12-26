@@ -3,6 +3,13 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import { API_HOST, MAS_HSN } from "../../../config/apiConfig";
+import {
+  FETCH_HSN_ERR_MSG,
+  DUPLICATE_HSN,
+  UPDATE_HSN_SUCC_MSG,
+  ADD_HSN_SUCC_MSG,
+  VALID_GST_RATE
+} from "../../../config/constants";
 
 const HSNMaster = () => {
   const [hsnData, setHsnData] = useState([]);
@@ -46,7 +53,7 @@ const HSNMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching HSN data:", err);
-      showPopup("Failed to load HSN data", "error");
+      showPopup(FETCH_HSN_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -104,7 +111,7 @@ const HSNMaster = () => {
       gstRateValue < 0 ||
       gstRateValue > 100
     ) {
-      showPopup("Please enter a valid GST Rate between 0 and 100.", "error");
+      showPopup(VALID_GST_RATE, "error");
       return;
     }
 
@@ -137,14 +144,14 @@ const HSNMaster = () => {
               hsn.hsnCode === editingHsn.hsnCode ? response.response : hsn
             )
           );
-          showPopup("HSN updated successfully!", "success");
+          showPopup(UPDATE_HSN_SUCC_MSG, "success");
         }
       } else {
         response = await postRequest(`${MAS_HSN}/create`, payload);
 
         if (response && response.response) {
           setHsnData((prevData) => [...prevData, response.response]);
-          showPopup("New HSN added successfully!", "success");
+          showPopup(ADD_HSN_SUCC_MSG, "success");
         }
       }
 

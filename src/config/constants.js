@@ -459,3 +459,11 @@ export const DUPLICATE_HOSPITAL="Hospital with the same name already exists!";
 export const UPDATE_HOSPITAL_SUCC_MSG="Hospital updated successfully!";
 export const ADD_HOSPITAL_SUCC_MSG="New hospital added successfully!";
 export const FAILED_TO_LOAD_SELECTED_COUNTRY="Failed to load states for selected country";
+
+
+//HSN Master
+export const FETCH_HSN_ERR_MSG="Failed to load HSN data";
+export const DUPLICATE_HSN="HSN with the same code already exists!";
+export const UPDATE_HSN_SUCC_MSG="HSN updated successfully!";
+export const ADD_HSN_SUCC_MSG="New HSN added successfully!";
+export const VALID_GST_RATE="Please enter a valid GST Rate between 0 and 100.";
