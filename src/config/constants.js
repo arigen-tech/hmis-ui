@@ -541,3 +541,10 @@ export const ADD_RELIGION_SUCC_MSG="New religion added successfully!";
 export const UPDATE_SERVICE_CATEGORY_SUCC_MSG="Service category updated successfully!";
 export const ADD_SERVICE_CATEGORY_SUCC_MSG="New service category added successfully!";
 
+
+//state master
+export const FETCH_STATE_ERR_MSG="Failed to load state data";
+export const DUPLICATE_STATE="State with the same name already exists!";
+export const UPDATE_STATE_SUCC_MSG="State updated successfully!";
+export const ADD_STATE_SUCC_MSG="New state added successfully!";
+

@@ -4,6 +4,15 @@ import axios from "axios";
 import { API_HOST,MAS_STATE,MAS_COUNTRY } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import {
+    FETCH_STATE_ERR_MSG,
+    FETCH_COUNTRY_ERR_MSG,
+    DUPLICATE_STATE,
+    UPDATE_STATE_SUCC_MSG,
+    ADD_STATE_SUCC_MSG,
+    FAIL_TO_SAVE_CHANGES,
+    FAIL_TO_UPDATE_STS
+} from "../../../config/constants";
 
 const StateMaster = () => {
     const [states, setStates] = useState([]);
@@ -43,7 +52,7 @@ const StateMaster = () => {
             }
         } catch (err) {
             console.error("Error fetching states:", err);
-            showPopup("Failed to load states", "error");
+            showPopup(FETCH_STATE_ERR_MSG, "error");
         } finally {
             setLoading(false);
         }
@@ -57,7 +66,7 @@ const StateMaster = () => {
             }
         } catch (err) {
             console.error("Error fetching countries:", err);
-            showPopup("Failed to load countries", "error");
+            showPopup(FETCH_COUNTRY_ERR_MSG, "error");
         }
     };
 
@@ -109,7 +118,7 @@ const StateMaster = () => {
             );
 
             if (isDuplicate) {
-                showPopup("State with the same code or name already exists!", "error");
+                showPopup(DUPLICATE_STATE, "error");
                 setLoading(false);
                 return;
             }
@@ -125,7 +134,7 @@ const StateMaster = () => {
 
                 if (response && response.status === 200) {
                     fetchStates(); 
-                    showPopup("State updated successfully!", "success");
+                    showPopup(UPDATE_STATE_SUCC_MSG, "success");
                 }
             } else {
                 
@@ -138,7 +147,7 @@ const StateMaster = () => {
 
                 if (response && response.status === 200) {
                     fetchStates(); 
-                    showPopup("New state added successfully!", "success");
+                    showPopup(ADD_STATE_SUCC_MSG, "success");
                 }
             }
 
@@ -148,7 +157,7 @@ const StateMaster = () => {
             setShowForm(false);
         } catch (err) {
             console.error("Error saving state:", err);
-            showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+            showPopup(FAIL_TO_SAVE_CHANGES, "error");
         } finally {
             setLoading(false);
         }
@@ -184,7 +193,7 @@ const StateMaster = () => {
                 }
             } catch (err) {
                 console.error("Error updating state status:", err);
-                showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+                showPopup(FAIL_TO_UPDATE_STS, "error");
             } finally {
                 setLoading(false);
             }
