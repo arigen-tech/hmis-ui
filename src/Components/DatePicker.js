@@ -10,7 +10,7 @@ const DatePicker = ({
   required = false,
   readOnly = false,
   disabled = false,
-  placeholder = "MM/DD/YYYY",
+  placeholder = "DD/MM/YYYY",
   id = `datepicker-${Math.random().toString(36).substr(2, 9)}`,
   compact = true
 }) => {
@@ -25,7 +25,7 @@ const DatePicker = ({
     if (!dateString) return "";
     try {
       const [year, month, day] = dateString.split('-');
-      return `${month}/${day}/${year}`;
+      return `${day}/${month}/${year}`;
     } catch (error) {
       return dateString;
     }

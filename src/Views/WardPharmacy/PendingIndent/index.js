@@ -4,6 +4,7 @@ import Popup from "../../../Components/popup"
 import { Store_Internal_Indent, MAS_DRUG_MAS } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
+import DatePicker from "../../../Components/DatePicker"
 
 const PendingIndentApproval = () => {
   const [currentView, setCurrentView] = useState("list")
@@ -109,7 +110,7 @@ const PendingIndentApproval = () => {
       }
     } catch (err) {
       console.error("Error fetching drugs:", err)
-    }finally{
+    } finally {
       setLoading(false)
     }
   }
@@ -126,10 +127,10 @@ const PendingIndentApproval = () => {
     }
   }
 
- useEffect(() => {
-  fetchPendingIndents(departmentId)
-  fetchAllDrugs()
-}, [departmentId])
+  useEffect(() => {
+    fetchPendingIndents(departmentId)
+    fetchAllDrugs()
+  }, [departmentId])
 
 
   // Filter drugs based on search input
@@ -186,19 +187,19 @@ const PendingIndentApproval = () => {
 
     if (record.items && Array.isArray(record.items) && record.items.length > 0) {
       console.log("Items found:", record.items)
-      
+
       // Create entries with current stock data
       entries = await Promise.all(
         record.items.map(async (item) => {
           // Try to get current stock from drug list first
           const drugInfo = itemOptions.find(drug => drug.id === item.itemId)
           let currentStock = drugInfo?.availableStock || 0
-          
+
           // If not found in drug list, use the availableStock from backend
           if (!currentStock && item.availableStock) {
             currentStock = item.availableStock
           }
-          
+
           return {
             id: item.indentTId || null,
             itemId: item.itemId || "",
@@ -233,7 +234,7 @@ const PendingIndentApproval = () => {
     setRemarks("")
   }
 
-   // Add new row
+  // Add new row
   const addNewRow = () => {
     const newEntry = {
       id: null,
@@ -340,11 +341,11 @@ const PendingIndentApproval = () => {
       const response = await postRequest(`${Store_Internal_Indent}/approve`, payload)
 
       showPopup(`Indent ${action} successfully!`, "success")
-      
+
       // Refresh the list and go back
       handleBackToList()
       fetchPendingIndents(departmentId)
-      
+
     } catch (error) {
       console.error("Error processing indent:", error)
       showPopup(`Error processing indent. Please try again.`, "error")
@@ -436,7 +437,7 @@ const PendingIndentApproval = () => {
 
     return (
       <div className="content-wrapper">
-        {loading && <LoadingScreen/>}
+        {loading && <LoadingScreen />}
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
@@ -493,55 +494,55 @@ const PendingIndentApproval = () => {
                 <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
                   <table className="table table-bordered table-hover align-middle" >
                     <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
-                    <tr>
-  <th className="text-center" style={{ width: "50px", minWidth: "50px" }}>
-    S.No.
-  </th>
+                      <tr>
+                        <th className="text-center" style={{ width: "50px", minWidth: "50px" }}>
+                          S.No.
+                        </th>
 
-  <th style={{ width: "350px", minWidth: "300px" }}>
-    Item Name/Code
-  </th>
+                        <th style={{ width: "350px", minWidth: "300px" }}>
+                          Item Name/Code
+                        </th>
 
-  <th style={{ width: "80px", minWidth: "80px", textAlign: "center" }}>
-    A/U
-  </th>
+                        <th style={{ width: "80px", minWidth: "80px", textAlign: "center" }}>
+                          A/U
+                        </th>
 
-  <th
-    style={{
-      width: "60px",
-      minWidth: "60px",
-      whiteSpace: "normal",
-      lineHeight: "1.1",
-      textAlign: "center"
-    }}
-  >
-    Req<br/>Qty
-  </th>
+                        <th
+                          style={{
+                            width: "60px",
+                            minWidth: "60px",
+                            whiteSpace: "normal",
+                            lineHeight: "1.1",
+                            textAlign: "center"
+                          }}
+                        >
+                          Req<br />Qty
+                        </th>
 
-  <th
-    style={{
-      width: "70px",
-      minWidth: "70px",
-      whiteSpace: "normal",
-      lineHeight: "1.1",
-      textAlign: "center"
-    }}
-  >
-    Avl<br/>Stk
-  </th>
+                        <th
+                          style={{
+                            width: "70px",
+                            minWidth: "70px",
+                            whiteSpace: "normal",
+                            lineHeight: "1.1",
+                            textAlign: "center"
+                          }}
+                        >
+                          Avl<br />Stk
+                        </th>
 
-  <th style={{ width: "200px", minWidth: "180px" }}>
-    Reason for Indent
-  </th>
+                        <th style={{ width: "200px", minWidth: "180px" }}>
+                          Reason for Indent
+                        </th>
 
-  <th style={{ width: "50px", textAlign: "center" }}>
-    Add
-  </th>
-  
-  <th style={{ width: "50px", textAlign: "center" }}>
-    Remove
-  </th>
-</tr>
+                        <th style={{ width: "50px", textAlign: "center" }}>
+                          Add
+                        </th>
+
+                        <th style={{ width: "50px", textAlign: "center" }}>
+                          Remove
+                        </th>
+                      </tr>
 
                     </thead>
                     <tbody>
@@ -566,7 +567,7 @@ const PendingIndentApproval = () => {
                                 type="text"
                                 className="form-control form-control-sm"
                                 value={entry.apu}
-                                style={{  backgroundColor: "#f5f5f5" }}
+                                style={{ backgroundColor: "#f5f5f5" }}
                                 readOnly
                               />
                             </td>
@@ -584,13 +585,13 @@ const PendingIndentApproval = () => {
                                 type="number"
                                 className="form-control form-control-sm"
                                 value={entry.availableStock || 0}
-                                style={{ 
+                                style={{
                                   backgroundColor: entry.availableStock > 0 ? "#f5f5f5" : "#ffe6e6",
                                   color: entry.availableStock === 0 ? "#dc3545" : "inherit"
                                 }}
                                 readOnly
                               />
-                              
+
                             </td>
                             <td>
                               <textarea
@@ -618,7 +619,7 @@ const PendingIndentApproval = () => {
                             <td className="text-center">
                               <button
                                 type="button"
-                                onClick={()=> removeRow(index)}
+                                onClick={() => removeRow(index)}
                                 className="btn btn-danger btn-sm"
                                 style={{
                                   height: "35px",
@@ -640,9 +641,9 @@ const PendingIndentApproval = () => {
                     <label className="form-label fw-bold">
                       Action<span className="text-danger">*</span>
                     </label>
-                    <select 
-                      className="form-select" 
-                      value={action} 
+                    <select
+                      className="form-select"
+                      value={action}
                       onChange={(e) => setAction(e.target.value)}
                     >
                       <option value="">Select</option>
@@ -665,10 +666,10 @@ const PendingIndentApproval = () => {
                 </div>
 
                 <div className="d-flex justify-content-end gap-2 mt-4">
-                  <button 
-                    type="button" 
-                    className="btn btn-primary" 
-                    onClick={handleSubmit} 
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleSubmit}
                     disabled={processing || !action || !remarks.trim()}
                   >
                     {processing ? "Processing..." : "Submit"}
@@ -705,21 +706,22 @@ const PendingIndentApproval = () => {
             <div className="card-body">
               <div className="row mb-4">
                 <div className="col-md-2">
-                  <label className="form-label fw-bold">From Date</label>
-                  <input
-                    type="date"
-                    className="form-control"
+
+                  <DatePicker
+                    label="From Date"
                     value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
+                    onChange={setFromDate}
+                    compact={true}
+
                   />
                 </div>
                 <div className="col-md-2">
-                  <label className="form-label fw-bold">To Date</label>
-                  <input
-                    type="date"
-                    className="form-control"
+                  <DatePicker
+                    label="To Date"
                     value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
+                    onChange={setToDate}
+                    compact={true}
+
                   />
                 </div>
                 <div className="col-md-2 d-flex align-items-end">
