@@ -447,5 +447,8 @@ export const UPDATE_FREQUENCY_SUCC_MSG="Frequency updated successfully!";
 export const ADD_FREQUENCY_SUCC_MSG="New frequency added successfully!";
 
 
-
-
+//Gender Master
+export const FETCH_GENDER_ERR_MSG="Failed to load gender data";
+export const DUPLICATE_GENDER="Gender with the same name already exists!";
+export const UPDATE_GENDER_SUCC_MSG="Gender updated successfully!";
+export const ADD_GENDER_SUCC_MSG="New gender added successfully!";
