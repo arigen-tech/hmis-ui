@@ -6,7 +6,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { FETCH_BLOOD_GROUP_ERR_MSG,DUPLICATE_BLOOD_GROUP,UPDATE_BLOOD_GROUP_SUCC_MSG,ADD_BLOOD_GROUP_SUCC_MSG,FAIL_TO_SAVE_CHANGES
-  ,FAIL_TO_UPDATE_STS
+  ,FAIL_TO_UPDATE_STS,INVALID_BLOOD_GROUP_ID
  } from "../../../config/constants";
 
 const BloodGroupMaster = () => {
@@ -150,7 +150,7 @@ const BloodGroupMaster = () => {
     console.log("Switch change - ID:", bloodGroupId, "New status:", newStatus);
     if (bloodGroupId === undefined || bloodGroupId === null) {
       console.error("Invalid ID received in handleSwitchChange");
-      showPopup("Error: Invalid blood group ID", "error");
+      showPopup(INVALID_BLOOD_GROUP_ID, "error");
       return;
     }
 

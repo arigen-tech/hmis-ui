@@ -418,7 +418,14 @@ export const FETCH_BLOOD_GROUP_ERR_MSG="Failed to load blood group data";
 export const DUPLICATE_BLOOD_GROUP="Blood group with the same name already exists!";
 export const UPDATE_BLOOD_GROUP_SUCC_MSG="Blood group updated successfully!";
 export const ADD_BLOOD_GROUP_SUCC_MSG="New blood group added successfully!";
+export const INVALID_BLOOD_GROUP_ID="Error: Invalid blood group ID";
 
+
+//Country Master
+export const FETCH_COUNTRY_ERR_MSG="Failed to load country data";
+export const DUPLICATE_COUNTRY="Country with the same name already exists!";
+export const UPDATE_COUNTRY_SUCC_MSG="Country updated successfully!";
+export const ADD_COUNTRY_SUCC_MSG="New country added successfully!";
 
 
 
