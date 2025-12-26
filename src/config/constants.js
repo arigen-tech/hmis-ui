@@ -504,3 +504,13 @@ export const END_TIME_AFTER_START_TIME="End Time must be after Start Time";
 export const UPDATE_OPD_SERVICE_SUCC_MSG="OPD service updated successfully!";
 export const ADD_OPD_SERVICE_SUCC_MSG="New OPD service added successfully!";
 
+
+//Package Investigation Master
+export const FETCH_PACKAGE_INV_ERR_MSG="Failed to load package investigation data";
+export const UPDATE_PACKAGE_INV_SUCC_MSG="Package investigation updated successfully!";
+export const ADD_PACKAGE_INV_SUCC_MSG="New package investigation added successfully!";
+export const SOME_INVESTIGATIONS_INVALID="Some investigation IDs were invalid";
+export const SELECT_A_PACKAGE_AT_LEAST_ONE_INVESTIGATION="Please select a package and at least one investigation";
+export const DUPLICATE_INV="Duplicate investigation ! Investigation already exists in that package";
+
+
