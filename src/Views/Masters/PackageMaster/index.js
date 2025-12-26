@@ -1,11 +1,15 @@
-
-
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 
 import { INVESTIGATION_PACKAGE_API } from "../../../config/apiConfig";
+import {
+  FETCH_PACKAGE_ERR_MSG,
+  UPDATE_PACKAGE_SUCC_MSG,
+  ADD_PACKAGE_SUCC_MSG,
+  VALID_BASE_COST,DISCOUNT_CANOT_NAGATIVE,DISCOUNT_PERCENTAGE
+} from "../../../config/constants"
 
 const PackageMaster = () => {
   const [packageData, setPackageData] = useState([])
@@ -49,7 +53,7 @@ const PackageMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching Package data:", err)
-      showPopup("Failed to load Package data", "error")
+      showPopup(FETCH_PACKAGE_ERR_MSG, "error")
     } finally {
       setLoading(false)
     }
@@ -120,17 +124,17 @@ const PackageMaster = () => {
     const discPerValue = Number.parseFloat(formData.discPer) || 0
 
     if (isNaN(baseCostValue) || baseCostValue < 0) {
-      showPopup("Please enter a valid Base Cost.", "error")
+      showPopup(VALID_BASE_COST, "error")
       return
     }
 
     if (discValue < 0) {
-      showPopup("Flat discount cannot be negative.", "error")
+      showPopup(DISCOUNT_CANOT_NAGATIVE, "error")
       return
     }
 
     if (discPerValue < 0 || discPerValue > 100) {
-      showPopup("Discount percentage must be between 0 and 100.", "error")
+      showPopup(DISCOUNT_PERCENTAGE, "error")
       return
     }
 
@@ -160,13 +164,13 @@ const PackageMaster = () => {
           setPackageData((prevData) =>
             prevData.map((pkg) => (pkg.packId === editingPackage.packId ? response.response : pkg)),
           )
-          showPopup("Package updated successfully!", "success")
+          showPopup(UPDATE_PACKAGE_SUCC_MSG, "success")
         }
       } else {
         response = await postRequest(`${INVESTIGATION_PACKAGE_API}/add`, payload)
         if (response && response.response) {
           setPackageData((prevData) => [...prevData, response.response])
-          showPopup("New Package added successfully!", "success")
+          showPopup(ADD_PACKAGE_SUCC_MSG, "success")
         }
       }
 

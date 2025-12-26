@@ -514,3 +514,12 @@ export const SELECT_A_PACKAGE_AT_LEAST_ONE_INVESTIGATION="Please select a packag
 export const DUPLICATE_INV="Duplicate investigation ! Investigation already exists in that package";
 
 
+//Package Master
+export const FETCH_PACKAGE_ERR_MSG="Failed to load package data";
+export const UPDATE_PACKAGE_SUCC_MSG="Package updated successfully!";
+export const ADD_PACKAGE_SUCC_MSG="New package added successfully!";
+export const VALID_BASE_COST="Please enter a valid Base Cost.";
+export const DISCOUNT_CANOT_NAGATIVE="Flat discount cannot be negative.";
+export const DISCOUNT_PERCENTAGE="Discount percentage must be between 0 and 100.";
+
+
