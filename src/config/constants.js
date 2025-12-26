@@ -386,6 +386,30 @@ export const UPDATE_BILLING_POLICY_SUCC_MSG = "Billing Policy updated successful
 export const DUPLICATE_BILLING_POLICY = "Billing Policy already exists!";
 export const FETCH_BILLING_POLICY_ERR_MSG = "Failed to load billing policy data";
 
+//SpectacleUseMaster
+
+
+export const ADD_SPECTACLE_USE_SUCC_MSG = "Spectacle Use added successfully!";
+export const UPDATE_SPECTACLE_USE_SUCC_MSG = "Spectacle Use updated successfully!";
+export const FETCH_SPECTACLE_USE_ERR_MSG = "Failed to load spectacle use data!";
+export const DUPLICATE_SPECTACLE_USE = "Spectacle Use already exists!";
+
+//BookedStatusMaster
+
+
+export const ADD_BOOKED_STATUS_SUCC_MSG = "Booked Status added successfully!";
+export const UPDATE_BOOKED_STATUS_SUCC_MSG = "Booked Status updated successfully!";
+export const FETCH_BOOKED_STATUS_ERR_MSG = "Failed to fetch booked status data!";
+export const DUPLICATE_BOOKED_STATUS = "Booked Status already exists!";
+
+//ToothConditionMaster
+
+
+export const ADD_TOOTH_CONDITION_SUCC_MSG = "Tooth Condition added successfully!";
+export const UPDATE_TOOTH_CONDITION_SUCC_MSG = "Tooth Condition updated successfully!";
+export const FETCH_TOOTH_CONDITION_ERR_MSG = "Failed to fetch tooth condition data!";
+export const DUPLICATE_TOOTH_CONDITION = "Tooth Condition already exists!";
+
 
 
 
