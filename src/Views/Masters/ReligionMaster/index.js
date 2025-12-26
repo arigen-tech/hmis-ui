@@ -4,6 +4,14 @@ import { API_HOST, MAS_RELIGION } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+import {
+    FETCH_RELIGION_ERR_MSG,
+    UPDATE_RELIGION_SUCC_MSG,
+    ADD_RELIGION_SUCC_MSG,
+    DUPLICATE_RELIGION,
+    FAIL_TO_SAVE_CHANGES,
+    FAIL_TO_UPDATE_STS
+} from "../../../config/constants";
 
 
 
@@ -52,7 +60,7 @@ const Religionmaster = () => {
             }
         } catch (err) {
             console.error("Error fetching religion data:", err);
-            showPopup("Failed to load religion data", "error");
+            showPopup(FETCH_RELIGION_ERR_MSG, "error");
         } finally {
             setLoading(false);
         }
@@ -101,7 +109,7 @@ const Religionmaster = () => {
             );
     
             if (isDuplicate && !editingReligion) {
-                showPopup("Religion with the same name already exists!", "error");
+                showPopup(DUPLICATE_RELIGION, "error");
                 setLoading(false);
                 return;
             }
@@ -116,7 +124,7 @@ const Religionmaster = () => {
                 if (response && response.status === 200) {
                    
                     fetchReligionData();
-                    showPopup("Religion updated successfully!", "success");
+                    showPopup(UPDATE_RELIGION_SUCC_MSG, "success");
                 }
             } else {
                 
@@ -128,7 +136,7 @@ const Religionmaster = () => {
                 if (response && response.status === 200) {
                     
                     fetchReligionData();
-                    showPopup("New religion added successfully!", "success");
+                    showPopup(ADD_RELIGION_SUCC_MSG, "success");
                 }
             }
     
@@ -138,7 +146,7 @@ const Religionmaster = () => {
             setShowForm(false);
         } catch (err) {
             console.error("Error saving religion:", err);
-            showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+            showPopup(FAIL_TO_SAVE_CHANGES, "error");
         } finally {
             setLoading(false);
         }
@@ -180,7 +188,7 @@ const Religionmaster = () => {
                 }
             } catch (err) {
                 console.error("Error updating religion status:", err);
-                showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+                showPopup(FAIL_TO_UPDATE_STS, "error");
             } finally {
                 setLoading(false);
             }

@@ -529,3 +529,10 @@ export const DUPLICATE_RELATIONSHIP="Relationship with the same name already exi
 export const UPDATE_RELATIONSHIP_SUCC_MSG="Relationship updated successfully!";
 export const ADD_RELATIONSHIP_SUCC_MSG="New relationship added successfully!";
 
+
+//Religion Master
+export const FETCH_RELIGION_ERR_MSG="Failed to load religion data";
+export const DUPLICATE_RELIGION="Religion with the same name already exists!";
+export const UPDATE_RELIGION_SUCC_MSG="Religion updated successfully!";
+export const ADD_RELIGION_SUCC_MSG="New religion added successfully!";
+
