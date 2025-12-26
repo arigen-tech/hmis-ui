@@ -536,3 +536,8 @@ export const DUPLICATE_RELIGION="Religion with the same name already exists!";
 export const UPDATE_RELIGION_SUCC_MSG="Religion updated successfully!";
 export const ADD_RELIGION_SUCC_MSG="New religion added successfully!";
 
+
+//Service Category
+export const UPDATE_SERVICE_CATEGORY_SUCC_MSG="Service category updated successfully!";
+export const ADD_SERVICE_CATEGORY_SUCC_MSG="New service category added successfully!";
+
