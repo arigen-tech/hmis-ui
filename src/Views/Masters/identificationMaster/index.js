@@ -3,6 +3,14 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_IDENTIFICATION_TYPE } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import {
+  FETCH_IDENTIFICATION_ERR_MSG,
+  DUPLICATE_IDENTIFICATION,
+  UPDATE_IDENTIFICATION_SUCC_MSG,
+  ADD_IDENTIFICATION_SUCC_MSG,
+  FAIL_TO_SAVE_CHANGES,
+  FAIL_TO_UPDATE_STS
+} from "../../../config/constants";
 
 const Identificationmaster = () => {
   const [identificationTypes, setIdentificationTypes] = useState([]);
@@ -36,7 +44,7 @@ const Identificationmaster = () => {
       }
     } catch (err) {
       console.error("Error fetching identification types:", err);
-      showPopup("Failed to load identification types", "error");
+      showPopup(FETCH_IDENTIFICATION_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -98,7 +106,7 @@ const Identificationmaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Identification type with the same code or name already exists!", "error");
+        showPopup(DUPLICATE_IDENTIFICATION, "error");
         setLoading(false);
         return;
       }
@@ -118,7 +126,7 @@ const Identificationmaster = () => {
                 : type
             )
           );
-          showPopup("Identification type updated successfully!", "success");
+          showPopup(UPDATE_IDENTIFICATION_SUCC_MSG, "success");
         }
       } else {
         const response = await postRequest(`${MAS_IDENTIFICATION_TYPE}/create`, {
@@ -129,7 +137,7 @@ const Identificationmaster = () => {
 
         if (response && response.response) {
           setIdentificationTypes([...identificationTypes, response.response]);
-          showPopup("New identification type added successfully!", "success");
+          showPopup(ADD_IDENTIFICATION_SUCC_MSG, "success");
         }
       }
 
@@ -139,7 +147,7 @@ const Identificationmaster = () => {
       fetchIdentificationTypes();
     } catch (err) {
       console.error("Error saving identification type:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setLoading(false);
     }
@@ -183,7 +191,7 @@ const Identificationmaster = () => {
         }
       } catch (err) {
         console.error("Error updating identification type status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }

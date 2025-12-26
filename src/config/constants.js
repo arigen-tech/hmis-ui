@@ -467,3 +467,10 @@ export const DUPLICATE_HSN="HSN with the same code already exists!";
 export const UPDATE_HSN_SUCC_MSG="HSN updated successfully!";
 export const ADD_HSN_SUCC_MSG="New HSN added successfully!";
 export const VALID_GST_RATE="Please enter a valid GST Rate between 0 and 100.";
+
+
+//Identification Master
+export const FETCH_IDENTIFICATION_ERR_MSG="Failed to load identification data";
+export const DUPLICATE_IDENTIFICATION="Identification with the same name already exists!";
+export const UPDATE_IDENTIFICATION_SUCC_MSG="Identification updated successfully!";
+export const ADD_IDENTIFICATION_SUCC_MSG="New identification added successfully!";
