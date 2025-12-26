@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import { MAS_OPD_SERVICE, MAS_SERVICE_CATEGORY, MAS_DEPARTMENT, FILTER_OPD_DEPT, DOCTOR } from "../../../config/apiConfig";
+import {ADD_OPD_SERVICE_SUCC_MSG,UPDATE_OPD_SERVICE_SUCC_MSG,FAIL_TO_SAVE_CHANGES,FAIL_TO_UPDATE_STS} from "../../../config/constants"
 
 const OPDServiceMaster = () => {
   const [formData, setFormData] = useState({
@@ -180,10 +181,10 @@ const OPDServiceMaster = () => {
           `${MAS_OPD_SERVICE}/update/${editingService.id}`,
           payload
         );
-        showPopup("OPD Service updated successfully!", "success");
+        showPopup(UPDATE_OPD_SERVICE_SUCC_MSG, "success");
       } else {
         response = await postRequest(`${MAS_OPD_SERVICE}/save`, payload);
-        showPopup("New OPD Service added successfully!", "success");
+        showPopup(ADD_OPD_SERVICE_SUCC_MSG, "success");
       }
 
       // Refresh or update local state if needed here
@@ -203,7 +204,7 @@ const OPDServiceMaster = () => {
       });
     } catch (error) {
       console.error("Error saving OPD Service:", error);
-      showPopup(error.message || "Failed to save OPD Service", "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setProcess(false);
     }
@@ -244,7 +245,7 @@ const OPDServiceMaster = () => {
           }
         } catch (error) {
           console.error("Error updating status:", error);
-          showPopup(error.message || "Error updating status. Please try again.", "error");
+          showPopup(FAIL_TO_UPDATE_STS, "error");
         } finally {
           setProcess(false);
         }

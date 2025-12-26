@@ -499,3 +499,8 @@ export const UPDATE_OPD_SUCC_MSG="OPD updated successfully!";
 export const ADD_OPD_SUCC_MSG="New OPD added successfully!";
 export const END_TIME_AFTER_START_TIME="End Time must be after Start Time";
 
+
+//OPD service master
+export const UPDATE_OPD_SERVICE_SUCC_MSG="OPD service updated successfully!";
+export const ADD_OPD_SERVICE_SUCC_MSG="New OPD service added successfully!";
+
