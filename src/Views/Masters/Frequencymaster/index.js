@@ -5,6 +5,10 @@ import Popup from "../../../Components/popup"
 import {MAS_FREQUENCY } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import {
+FETCH_FREQUENCY_ERR_MSG,DUPLICATE_FREQUENCY,UPDATE_FREQUENCY_SUCC_MSG,ADD_FREQUENCY_SUCC_MSG,
+FAIL_TO_SAVE_CHANGES,FAIL_TO_UPDATE_STS
+} from "../../../config/constants";
 
 const FrequencyMaster = () => {
   const [frequencyData, setFrequencyData] = useState([])
@@ -51,7 +55,7 @@ const FrequencyMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching frequency data:", err)
-      showPopup("Failed to load frequency data", "error")
+      showPopup(FETCH_FREQUENCY_ERR_MSG, "error")
     } finally {
       setLoading(false)
     }
@@ -107,7 +111,7 @@ const FrequencyMaster = () => {
       )
 
       if (isDuplicate && !editingFrequency) {
-        showPopup("Frequency with the same name already exists!", "error")
+        showPopup(DUPLICATE_FREQUENCY, "error")
         setLoading(false)
         return
       }
@@ -123,7 +127,7 @@ const FrequencyMaster = () => {
 
         if (response && response.status === 200) {
           fetchFrequencyData()
-          showPopup("Frequency updated successfully!", "success")
+          showPopup(UPDATE_FREQUENCY_SUCC_MSG, "success")
         }
       } else {
         // Add new frequency
@@ -136,7 +140,7 @@ const FrequencyMaster = () => {
 
         if (response && response.status === 200) {
           fetchFrequencyData()
-          showPopup("New frequency added successfully!", "success")
+          showPopup(ADD_FREQUENCY_SUCC_MSG, "success")
         }
       }
 
@@ -146,7 +150,7 @@ const FrequencyMaster = () => {
       setShowForm(false)
     } catch (err) {
       console.error("Error saving frequency:", err)
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error")
+      showPopup(FAIL_TO_SAVE_CHANGES, "error")
     } finally {
       setLoading(false)
     }
@@ -188,7 +192,7 @@ const FrequencyMaster = () => {
         }
       } catch (err) {
         console.error("Error updating frequency status:", err)
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error")
+        showPopup(FAIL_TO_UPDATE_STS, "error")
       } finally {
         setLoading(false)
       }

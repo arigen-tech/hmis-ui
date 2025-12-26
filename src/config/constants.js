@@ -440,5 +440,12 @@ export const UPDATE_DISTRICT_SUCC_MSG="District updated successfully!";
 export const ADD_DISTRICT_SUCC_MSG="New district added successfully!";
 
 
+//Frequency Master
+export const FETCH_FREQUENCY_ERR_MSG="Failed to load frequency data";
+export const DUPLICATE_FREQUENCY="Frequency with the same name already exists!";
+export const UPDATE_FREQUENCY_SUCC_MSG="Frequency updated successfully!";
+export const ADD_FREQUENCY_SUCC_MSG="New frequency added successfully!";
+
+
 
 
