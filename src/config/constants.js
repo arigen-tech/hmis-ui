@@ -484,3 +484,10 @@ export const FAIL_TO_LOAD_INV_OPTION="Failed to load investigation options";
 export const FILL_ALL_REQUIRED_FIELDS="Please fill in all required fields";
 export const TO_DATE_AFTER_FROM_DATE="To Date must be after From Date";
 
+
+//Marital Status Master
+export const FETCH_MARITAL_STATUS_ERR_MSG="Failed to load marital status data";
+export const DUPLICATE_MARITAL_STATUS="Marital status with the same name already exists!";
+export const UPDATE_MARITAL_STATUS_SUCC_MSG="Marital status updated successfully!";
+export const ADD_MARITAL_STATUS_SUCC_MSG="New marital status added successfully!";
+
