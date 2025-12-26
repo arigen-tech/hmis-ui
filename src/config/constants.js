@@ -491,3 +491,11 @@ export const DUPLICATE_MARITAL_STATUS="Marital status with the same name already
 export const UPDATE_MARITAL_STATUS_SUCC_MSG="Marital status updated successfully!";
 export const ADD_MARITAL_STATUS_SUCC_MSG="New marital status added successfully!";
 
+
+//OPD Master
+export const FETCH_OPD_ERR_MSG="Failed to load OPD data";
+export const DUPLICATE_OPD="OPD with the same name already exists!";
+export const UPDATE_OPD_SUCC_MSG="OPD updated successfully!";
+export const ADD_OPD_SUCC_MSG="New OPD added successfully!";
+export const END_TIME_AFTER_START_TIME="End Time must be after Start Time";
+

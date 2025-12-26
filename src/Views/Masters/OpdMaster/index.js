@@ -4,6 +4,12 @@ import Popup from "../../../Components/popup"
 import { MAS_OPD_SESSION } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import { FETCH_OPD_ERR_MSG,
+  FAIL_TO_SAVE_CHANGES,
+  ADD_OPD_SUCC_MSG,END_TIME_AFTER_START_TIME,FAIL_TO_UPDATE_STS,
+  UPDATE_OPD_SUCC_MSG,
+  DUPLICATE_OPD
+} from "../../../config/constants"
 
 const OpdSessionMaster = () => {
   const [opdSessionData, setOpdSessionData] = useState([])
@@ -39,7 +45,7 @@ const OpdSessionMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching OPD session data:", err)
-      showPopup("Failed to load OPD session data", "error")
+      showPopup(FETCH_OPD_ERR_MSG, "error")
     } finally {
       setLoading(false)
     }
@@ -93,14 +99,14 @@ const OpdSessionMaster = () => {
       )
 
       if (isDuplicate && !editingSession) {
-        showPopup("OPD Session with the same name already exists!", "error")
+        showPopup(DUPLICATE_OPD, "error")
         setLoading(false)
         return
       }
 
       // Validate time range
       if (formData.fromTime >= formData.endTime) {
-        showPopup("End time must be after start time", "error")
+        showPopup(END_TIME_AFTER_START_TIME, "error")
         setLoading(false)
         return
       }
@@ -116,7 +122,7 @@ const OpdSessionMaster = () => {
 
         if (response && response.status === 200) {
           fetchOpdSessionData()
-          showPopup("OPD Session updated successfully!", "success")
+          showPopup(UPDATE_OPD_SUCC_MSG, "success")
         }
       } else {
         // Add new OPD session
@@ -129,7 +135,7 @@ const OpdSessionMaster = () => {
 
         if (response && response.status === 200) {
           fetchOpdSessionData()
-          showPopup("New OPD Session added successfully!", "success")
+          showPopup(ADD_OPD_SUCC_MSG, "success")
         }
       }
 
@@ -139,7 +145,7 @@ const OpdSessionMaster = () => {
       setShowForm(false)
     } catch (err) {
       console.error("Error saving OPD session:", err)
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error")
+      showPopup(FAIL_TO_SAVE_CHANGES, "error")
     } finally {
       setLoading(false)
     }
@@ -179,7 +185,7 @@ const OpdSessionMaster = () => {
         }
       } catch (err) {
         console.error("Error updating OPD session status:", err)
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error")
+        showPopup(FAIL_TO_UPDATE_STS, "error")
       } finally {
         setLoading(false)
       }
