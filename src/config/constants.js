@@ -428,5 +428,11 @@ export const UPDATE_COUNTRY_SUCC_MSG="Country updated successfully!";
 export const ADD_COUNTRY_SUCC_MSG="New country added successfully!";
 
 
+//Department Type Master
+export const DUPLICATE_DEPARTMENT_TYPE="Department type with the same name already exists!";
+export const UPDATE_DEPARTMENT_TYPE_SUCC_MSG="Department type updated successfully!";
+export const ADD_DEPARTMENT_TYPE_SUCC_MSG="New department type added successfully!";
+
+
 
 

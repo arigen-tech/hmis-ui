@@ -5,6 +5,9 @@ import { API_HOST, MAS_DEPARTMENT_TYPE } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {FETCH_DEPARTMENT_TYPE_ERR_MSG,UPDATE_DEPARTMENT_TYPE_SUCC_MSG,DUPLICATE_DEPARTMENT_TYPE,ADD_DEPARTMENT_TYPE_SUCC_MSG,
+FAIL_TO_SAVE_CHANGES,FAIL_TO_UPDATE_STS
+} from "../../../config/constants";
 
 const Departmenttype = () => {
     const [departmentTypes, setDepartmentTypes] = useState([]);
@@ -37,7 +40,7 @@ const Departmenttype = () => {
             }
         } catch (err) {
             console.error("Error fetching department types:", err);
-            showPopup("Failed to load department types", "error");
+            showPopup(FETCH_DEPARTMENT_TYPE_ERR_MSG, "error");
         } finally {
             setLoading(false);
         }
@@ -99,11 +102,11 @@ const Departmenttype = () => {
                             type.id === editingType.id ? response.response : type
                         )
                     );
-                    showPopup("Department type updated successfully!", "success");
+                    showPopup(UPDATE_DEPARTMENT_TYPE_SUCC_MSG, "success");
                 }
             } else {
                 if (isDuplicate) {
-                    showPopup("Department type with the same code or name already exists!", "error");
+                    showPopup(DUPLICATE_DEPARTMENT_TYPE, "error");
                     setLoading(false);
                     return;
                 }
@@ -116,7 +119,7 @@ const Departmenttype = () => {
 
                 if (response && response.response) {
                     setDepartmentTypes([...departmentTypes, response.response]);
-                    showPopup("New department type added successfully!", "success");
+                    showPopup(ADD_DEPARTMENT_TYPE_SUCC_MSG, "success");
                 }
             }
 
@@ -126,7 +129,7 @@ const Departmenttype = () => {
             fetchDepartmentTypes();
         } catch (err) {
             console.error("Error saving department type:", err);
-            showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+            showPopup(FAIL_TO_SAVE_CHANGES, "error");
         } finally {
             setLoading(false);
         }
@@ -168,7 +171,7 @@ const Departmenttype = () => {
                 }
             } catch (err) {
                 console.error("Error updating department type status:", err);
-                showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+                showPopup(FAIL_TO_UPDATE_STS, "error");
             } finally {
                 setLoading(false);
             }
