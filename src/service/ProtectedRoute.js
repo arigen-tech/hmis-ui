@@ -133,6 +133,7 @@ const validRoutes = [
   "/OpthColorVisionMaster",
   "/OpthDistanceVisionMaster",
   "/OpthNearVisionMaster",
+  "/PatientPreparationMaster",
 
 
   
