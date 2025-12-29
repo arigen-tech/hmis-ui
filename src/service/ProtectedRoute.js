@@ -139,6 +139,7 @@ const validRoutes = [
   "/PresentationMaster",
   "/TrimesterMaster",
   "/CervixPosition",
+  "/PelvisType",
 
 
   
