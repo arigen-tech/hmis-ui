@@ -1,11 +1,16 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
-import axios from "axios";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_STATE, MAS_DISTRICT } from "../../../config/apiConfig";
-import { postRequest, putRequest, getRequest } from "../../../service/apiService"
-import {FETCH_DISTRICT_ERR_MSG,DUPLICATE_DISTRICT,UPDATE_DISTRICT_SUCC_MSG,ADD_DISTRICT_SUCC_MSG,
-FAIL_TO_SAVE_CHANGES,FAIL_TO_UPDATE_STS
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {
+    FETCH_DISTRICT_ERR_MSG,
+    DUPLICATE_DISTRICT,
+    UPDATE_DISTRICT_SUCC_MSG,
+    ADD_DISTRICT_SUCC_MSG,
+    FAIL_TO_SAVE_CHANGES,
+    FAIL_TO_UPDATE_STS
 } from "../../../config/constants";
 
 const DistrictMaster = () => {
@@ -14,8 +19,8 @@ const DistrictMaster = () => {
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, districtId: null, newStatus: false });
     const [formData, setFormData] = useState({
         districtName: "",
-        state: "", 
-        stateId: "", 
+        state: "",
+        stateId: "",
     });
     const [searchQuery, setSearchQuery] = useState("");
     const [showForm, setShowForm] = useState(false);
@@ -24,11 +29,9 @@ const DistrictMaster = () => {
     const [popupMessage, setPopupMessage] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [loading, setLoading] = useState(true);
-    const itemsPerPage = 5;
 
     const DISTRICT_NAME_MAX_LENGTH = 50;
 
-   
     useEffect(() => {
         fetchDistricts(0);
         fetchStates(1);
@@ -63,8 +66,11 @@ const DistrictMaster = () => {
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
-        setCurrentPage(1); 
     };
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
 
     const handleRefresh = () => {
         setSearchQuery("");
@@ -77,23 +83,18 @@ const DistrictMaster = () => {
         
         const query = searchQuery.toLowerCase();
         
-        // Get state name for the district
         const stateObj = states.find(s => s.id === district.stateId);
         const stateName = stateObj ? stateObj.stateName.toLowerCase() : "";
         
-        // Search in district name and state name
         return (
             district.districtName.toLowerCase().includes(query) ||
             stateName.includes(query)
         );
     });
 
-    const filteredTotalPages = Math.ceil(filteredDistricts.length / itemsPerPage);
-    const totalFilteredItems = filteredDistricts.length;
-
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentItems = filteredDistricts.slice(indexOfFirstItem, indexOfLastItem);
+    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+    const currentItems = filteredDistricts.slice(indexOfFirst, indexOfLast);
 
     const handleEdit = (district) => {
         const stateObj = states.find(s => s.id === district.stateId);
@@ -130,26 +131,26 @@ const DistrictMaster = () => {
 
             if (editingDistrict) {
                 const response = await putRequest(`${MAS_DISTRICT}/updateById/${editingDistrict.id}`, {
-                    districtCode: editingDistrict.districtCode, 
+                    districtCode: editingDistrict.districtCode,
                     districtName: formData.districtName,
-                    stateId: formData.stateId, 
+                    stateId: formData.stateId,
                     status: editingDistrict.status,
                 });
 
                 if (response && response.status === 200) {
-                    fetchDistricts(); 
+                    fetchDistricts();
                     showPopup(UPDATE_DISTRICT_SUCC_MSG, "success");
                 }
             } else {
                 const response = await postRequest(`${MAS_DISTRICT}/create`, {
-                    districtCode: Date.now().toString().slice(-8), 
+                    districtCode: Date.now().toString().slice(-8),
                     districtName: formData.districtName,
-                    stateId: formData.stateId, 
+                    stateId: formData.stateId,
                     status: "y",
                 });
 
                 if (response && response.status === 200) {
-                    fetchDistricts(); 
+                    fetchDistricts();
                     showPopup(ADD_DISTRICT_SUCC_MSG, "success");
                 }
             }
@@ -218,57 +219,11 @@ const DistrictMaster = () => {
             
             setIsFormValid(
                 updatedData.districtName.trim() !== "" &&
-                updatedData.stateId 
+                updatedData.stateId
             );
             
             return updatedData;
         });
-    };
-
-    const handlePageNavigation = () => {
-        const pageNumber = Number.parseInt(currentPage, 10);
-        if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-            setCurrentPage(pageNumber);
-        } else {
-            alert("Please enter a valid page number.");
-        }
-    };
-
-    const renderPagination = () => {
-        const pageNumbers = [];
-        const maxVisiblePages = 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-        const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
-
-        if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
-        }
-
-        if (startPage > 1) {
-            pageNumbers.push(1);
-            if (startPage > 2) pageNumbers.push("...");
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            pageNumbers.push(i);
-        }
-
-        if (endPage < filteredTotalPages) {
-            if (endPage < filteredTotalPages - 1) pageNumbers.push("...");
-            pageNumbers.push(filteredTotalPages);
-        }
-
-        return pageNumbers.map((number, index) => (
-            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-                {typeof number === "number" ? (
-                    <button className="page-link" onClick={() => setCurrentPage(number)}>
-                        {number}
-                    </button>
-                ) : (
-                    <span className="page-link disabled">{number}</span>
-                )}
-            </li>
-        ));
     };
 
     return (
@@ -341,114 +296,75 @@ const DistrictMaster = () => {
                             {loading ? (
                                 <LoadingScreen />
                             ) : !showForm ? (
-                                <div className="table-responsive packagelist">
-                                    <table className="table table-bordered table-hover align-middle">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th>District Name</th>
-                                                <th>State</th>
-                                                <th>Status</th>
-                                                <th>Edit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentItems.length > 0 ? (
-                                                currentItems.map((district) => {
-                                                    const state = states.find(s => s.id === district.stateId);
-                                                    const stateName = state ? state.stateName : "N/A";
-                                                    
-                                                    return (
-                                                        <tr key={district.id}>
-                                                            <td>{district.districtName}</td>
-                                                            <td>{stateName}</td>
-                                                            <td>
-                                                                <div className="form-check form-switch">
-                                                                    <input
-                                                                        className="form-check-input"
-                                                                        type="checkbox"
-                                                                        checked={district.status === "y"}
-                                                                        onChange={() => handleSwitchChange(district.id, district.status === "y" ? "n" : "y")}
-                                                                        id={`switch-${district.id}`}
-                                                                    />
-                                                                    <label
-                                                                        className="form-check-label px-0"
-                                                                        htmlFor={`switch-${district.id}`}
-                                                                    >
-                                                                        {district.status === "y" ? "Active" : "Deactivated"}
-                                                                    </label>
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <button
-                                                                    className="btn btn-sm btn-success me-2"
-                                                                    onClick={() => handleEdit(district)}
-                                                                    disabled={district.status !== "y"}
-                                                                >
-                                                                    <i className="fa fa-pencil"></i>
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })
-                                            ) : (
+                                <>
+                                    <div className="table-responsive packagelist">
+                                        <table className="table table-bordered table-hover align-middle">
+                                            <thead className="table-light">
                                                 <tr>
-                                                    <td colSpan={4} className="text-center">
-                                                        No districts found
-                                                    </td>
+                                                    <th>District Name</th>
+                                                    <th>State</th>
+                                                    <th>Status</th>
+                                                    <th>Edit</th>
                                                 </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                    
+                                            </thead>
+                                            <tbody>
+                                                {currentItems.length > 0 ? (
+                                                    currentItems.map((district) => {
+                                                        const state = states.find(s => s.id === district.stateId);
+                                                        const stateName = state ? state.stateName : "N/A";
+                                                        
+                                                        return (
+                                                            <tr key={district.id}>
+                                                                <td>{district.districtName}</td>
+                                                                <td>{stateName}</td>
+                                                                <td>
+                                                                    <div className="form-check form-switch">
+                                                                        <input
+                                                                            className="form-check-input"
+                                                                            type="checkbox"
+                                                                            checked={district.status === "y"}
+                                                                            onChange={() => handleSwitchChange(district.id, district.status === "y" ? "n" : "y")}
+                                                                            id={`switch-${district.id}`}
+                                                                        />
+                                                                        <label
+                                                                            className="form-check-label px-0"
+                                                                            htmlFor={`switch-${district.id}`}
+                                                                        >
+                                                                            {district.status === "y" ? "Active" : "Deactivated"}
+                                                                        </label>
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <button
+                                                                        className="btn btn-sm btn-success me-2"
+                                                                        onClick={() => handleEdit(district)}
+                                                                        disabled={district.status !== "y"}
+                                                                    >
+                                                                        <i className="fa fa-pencil"></i>
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan={4} className="text-center">
+                                                            No districts found
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                     {filteredDistricts.length > 0 && (
-                                        <nav className="d-flex justify-content-between align-items-center mt-3">
-                                            <div>
-                                                <span>
-                                                    Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredItems}
-                                                </span>
-                                            </div>
-                                            <ul className="pagination mb-0">
-                                                <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                                    <button
-                                                        className="page-link"
-                                                        onClick={() => setCurrentPage(currentPage - 1)}
-                                                        disabled={currentPage === 1}
-                                                    >
-                                                        &laquo; Previous
-                                                    </button>
-                                                </li>
-                                                {renderPagination()}
-                                                <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                                    <button
-                                                        className="page-link"
-                                                        onClick={() => setCurrentPage(currentPage + 1)}
-                                                        disabled={currentPage === filteredTotalPages}
-                                                    >
-                                                        Next &raquo;
-                                                    </button>
-                                                </li>
-                                            </ul>
-                                            <div className="d-flex align-items-center">
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    max={filteredTotalPages}
-                                                    value={currentPage}
-                                                    onChange={(e) => setCurrentPage(e.target.value)}
-                                                    placeholder="Go to page"
-                                                    className="form-control me-2"
-                                                    style={{ width: '100px' }}
-                                                />
-                                                <button
-                                                    className="btn btn-primary"
-                                                    onClick={handlePageNavigation}
-                                                >
-                                                    Go
-                                                </button>
-                                            </div>
-                                        </nav>
+                                        <Pagination
+                                            totalItems={filteredDistricts.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
                                     )}
-                                </div>
+                                </>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
                                     <div className="card-body">
