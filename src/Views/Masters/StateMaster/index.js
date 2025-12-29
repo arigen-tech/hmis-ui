@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST,MAS_STATE,MAS_COUNTRY } from "../../../config/apiConfig";
-import LoadingScreen from "../../../Components/Loading"
-import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import { API_HOST, MAS_STATE, MAS_COUNTRY } from "../../../config/apiConfig";
+import LoadingScreen from "../../../Components/Loading";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import {
     FETCH_STATE_ERR_MSG,
     FETCH_COUNTRY_ERR_MSG,
@@ -21,8 +22,8 @@ const StateMaster = () => {
     const [formData, setFormData] = useState({
         stateCode: "",
         stateName: "",
-        country: "", 
-        countryId: "", 
+        country: "",
+        countryId: "",
     });
     const [searchQuery, setSearchQuery] = useState("");
     const [showForm, setShowForm] = useState(false);
@@ -30,14 +31,11 @@ const StateMaster = () => {
     const [editingState, setEditingState] = useState(null);
     const [popupMessage, setPopupMessage] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageInput, setPageInput] = useState("");
     const [loading, setLoading] = useState(true);
-    const itemsPerPage = 5;
 
     const STATE_CODE_MAX_LENGTH = 8;
     const STATE_NAME_MAX_LENGTH = 30;
 
-    
     useEffect(() => {
         fetchStates(0);
         fetchCountries(1);
@@ -72,8 +70,11 @@ const StateMaster = () => {
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
-        setCurrentPage(1); 
     };
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
 
     const filteredStates = states.filter(
         (state) =>
@@ -81,14 +82,11 @@ const StateMaster = () => {
             state.stateCode.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const filteredTotalPages = Math.ceil(filteredStates.length / itemsPerPage);
-    const currentItems = filteredStates.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
+    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+    const currentItems = filteredStates.slice(indexOfFirst, indexOfLast);
 
     const handleEdit = (state) => {
-        
         const countryObj = countries.find(c => c.id === state.countryId);
         const countryName = countryObj ? countryObj.countryName : "";
 
@@ -124,34 +122,31 @@ const StateMaster = () => {
             }
 
             if (editingState) {
-                
                 const response = await putRequest(`${MAS_STATE}/updateById/${editingState.id}`, {
                     stateCode: formData.stateCode,
                     stateName: formData.stateName,
-                    countryId: formData.countryId, 
+                    countryId: formData.countryId,
                     status: editingState.status,
                 });
 
                 if (response && response.status === 200) {
-                    fetchStates(); 
+                    fetchStates();
                     showPopup(UPDATE_STATE_SUCC_MSG, "success");
                 }
             } else {
-                
                 const response = await postRequest(`${MAS_STATE}/create`, {
                     stateCode: formData.stateCode,
                     stateName: formData.stateName,
-                    countryId: formData.countryId, 
+                    countryId: formData.countryId,
                     status: "y",
                 });
 
                 if (response && response.status === 200) {
-                    fetchStates(); 
+                    fetchStates();
                     showPopup(ADD_STATE_SUCC_MSG, "success");
                 }
             }
 
-            
             setEditingState(null);
             setFormData({ stateCode: "", stateName: "", country: "", countryId: "" });
             setShowForm(false);
@@ -185,7 +180,7 @@ const StateMaster = () => {
                     `${MAS_STATE}/status/${confirmDialog.stateId}?status=${confirmDialog.newStatus}`
                 );
                 if (response && response.status === 200) {
-                    fetchStates(); 
+                    fetchStates();
                     showPopup(
                         `State ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
                         "success"
@@ -206,9 +201,7 @@ const StateMaster = () => {
         setFormData((prevData) => {
             const updatedData = { ...prevData, [id]: value };
             
-            
             if (id === "country") {
-                
                 const selectedIndex = e.target.selectedIndex;
                 const selectedOption = e.target.options[selectedIndex];
                 const countryId = parseInt(selectedOption.getAttribute('data-id'), 10);
@@ -219,57 +212,17 @@ const StateMaster = () => {
             setIsFormValid(
                 updatedData.stateCode.trim() !== "" &&
                 updatedData.stateName.trim() !== "" &&
-                updatedData.countryId 
+                updatedData.countryId
             );
             
             return updatedData;
         });
     };
 
-    const handlePageNavigation = () => {
-        const pageNumber = parseInt(pageInput, 10);
-        if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-            setCurrentPage(pageNumber);
-        } else {
-            alert("Please enter a valid page number.");
-        }
-    };
-
-    const renderPagination = () => {
-        const pageNumbers = [];
-        const maxVisiblePages = 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-        const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
-
-        if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
-        }
-
-        if (startPage > 1) {
-            pageNumbers.push(1);
-            if (startPage > 2) pageNumbers.push("...");
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            pageNumbers.push(i);
-        }
-
-        if (endPage < filteredTotalPages) {
-            if (endPage < filteredTotalPages - 1) pageNumbers.push("...");
-            pageNumbers.push(filteredTotalPages);
-        }
-
-        return pageNumbers.map((number, index) => (
-            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-                {typeof number === "number" ? (
-                    <button className="page-link" onClick={() => setCurrentPage(number)}>
-                        {number}
-                    </button>
-                ) : (
-                    <span className="page-link disabled">{number}</span>
-                )}
-            </li>
-        ));
+    const handleRefresh = () => {
+        setSearchQuery("");
+        setCurrentPage(1);
+        fetchStates();
     };
 
     return (
@@ -277,9 +230,9 @@ const StateMaster = () => {
             <div className="row">
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
-                        <div className="card-header  d-flex justify-content-between align-items-center">
+                        <div className="card-header d-flex justify-content-between align-items-center">
                             <h4 className="card-title">State Master</h4>
-                            <div className=" d-flex justify-content-between align-items-center ">
+                            <div className="d-flex justify-content-between align-items-center">
                                 {!showForm && (
                                     <form className="d-inline-block searchform me-4" role="search">
                                         <div className="input-group searchinput">
@@ -313,9 +266,13 @@ const StateMaster = () => {
                                             }}>
                                                 <i className="mdi mdi-plus"></i> ADD
                                             </button>
-                                            {/* <button type="button" className="btn btn-success me-2 flex-shrink-0">
-                                                <i className="mdi mdi-file-export"></i> Generate Report
-                                            </button> */}
+                                            <button 
+                                                type="button" 
+                                                className="btn btn-success me-2 flex-shrink-0" 
+                                                onClick={handleRefresh}
+                                            >
+                                                <i className="mdi mdi-refresh"></i> Show All
+                                            </button>
                                         </>
                                     ) : (
                                         <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
@@ -329,116 +286,77 @@ const StateMaster = () => {
                             {loading ? (
                                 <LoadingScreen />
                             ) : !showForm ? (
-                                <div className="table-responsive packagelist">
-                                    <table className="table table-bordered table-hover align-middle">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th>State Code</th>
-                                                <th>State Name</th>
-                                                <th>Country</th>
-                                                <th>Status</th>
-                                                <th>Edit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentItems.length > 0 ? (
-                                                currentItems.map((state) => {
-                                                    // Find the matching country for this state
-                                                    const country = countries.find(c => c.id === state.countryId);
-                                                    const countryName = country ? country.countryName : "N/A";
-                                                    
-                                                    return (
-                                                        <tr key={state.id}>
-                                                            <td>{state.stateCode}</td>
-                                                            <td>{state.stateName}</td>
-                                                            <td>{countryName}</td>
-                                                            <td>
-                                                                <div className="form-check form-switch">
-                                                                    <input
-                                                                        className="form-check-input"
-                                                                        type="checkbox"
-                                                                        checked={state.status === "y"}
-                                                                        onChange={() => handleSwitchChange(state.id, state.status === "y" ? "n" : "y")}
-                                                                        id={`switch-${state.id}`}
-                                                                    />
-                                                                    <label
-                                                                        className="form-check-label px-0"
-                                                                        htmlFor={`switch-${state.id}`}
-                                                                    >
-                                                                        {state.status === "y" ? "Active" : "Deactivated"}
-                                                                    </label>
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <button
-                                                                    className="btn btn-sm btn-success me-2"
-                                                                    onClick={() => handleEdit(state)}
-                                                                    disabled={state.status !== "y"}
-                                                                >
-                                                                    <i className="fa fa-pencil"></i>
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })
-                                            ) : (
+                                <>
+                                    <div className="table-responsive packagelist">
+                                        <table className="table table-bordered table-hover align-middle">
+                                            <thead className="table-light">
                                                 <tr>
-                                                    <td colSpan={5} className="text-center">
-                                                        No states found
-                                                    </td>
+                                                    <th>State Code</th>
+                                                    <th>State Name</th>
+                                                    <th>Country</th>
+                                                    <th>Status</th>
+                                                    <th>Edit</th>
                                                 </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                    
+                                            </thead>
+                                            <tbody>
+                                                {currentItems.length > 0 ? (
+                                                    currentItems.map((state) => {
+                                                        const country = countries.find(c => c.id === state.countryId);
+                                                        const countryName = country ? country.countryName : "N/A";
+                                                        
+                                                        return (
+                                                            <tr key={state.id}>
+                                                                <td>{state.stateCode}</td>
+                                                                <td>{state.stateName}</td>
+                                                                <td>{countryName}</td>
+                                                                <td>
+                                                                    <div className="form-check form-switch">
+                                                                        <input
+                                                                            className="form-check-input"
+                                                                            type="checkbox"
+                                                                            checked={state.status === "y"}
+                                                                            onChange={() => handleSwitchChange(state.id, state.status === "y" ? "n" : "y")}
+                                                                            id={`switch-${state.id}`}
+                                                                        />
+                                                                        <label
+                                                                            className="form-check-label px-0"
+                                                                            htmlFor={`switch-${state.id}`}
+                                                                        >
+                                                                            {state.status === "y" ? "Active" : "Deactivated"}
+                                                                        </label>
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <button
+                                                                        className="btn btn-sm btn-success me-2"
+                                                                        onClick={() => handleEdit(state)}
+                                                                        disabled={state.status !== "y"}
+                                                                    >
+                                                                        <i className="fa fa-pencil"></i>
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan={5} className="text-center">
+                                                            No states found
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                     {filteredStates.length > 0 && (
-                                        <nav className="d-flex justify-content-between align-items-center mt-3">
-                                            <div>
-                                                <span>
-                                                    Page {currentPage} of {filteredTotalPages} | Total Records: {filteredStates.length}
-                                                </span>
-                                            </div>
-                                            <ul className="pagination mb-0">
-                                                <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                                    <button
-                                                        className="page-link"
-                                                        onClick={() => setCurrentPage(currentPage - 1)}
-                                                        disabled={currentPage === 1}
-                                                    >
-                                                        &laquo; Previous
-                                                    </button>
-                                                </li>
-                                                {renderPagination()}
-                                                <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                                    <button
-                                                        className="page-link"
-                                                        onClick={() => setCurrentPage(currentPage + 1)}
-                                                        disabled={currentPage === filteredTotalPages}
-                                                    >
-                                                        Next &raquo;
-                                                    </button>
-                                                </li>
-                                            </ul>
-                                            <div className="d-flex align-items-center">
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    max={filteredTotalPages}
-                                                    value={pageInput}
-                                                    onChange={(e) => setPageInput(e.target.value)}
-                                                    placeholder="Go to page"
-                                                    className="form-control me-2"
-                                                />
-                                                <button
-                                                    className="btn btn-primary"
-                                                    onClick={handlePageNavigation}
-                                                >
-                                                    Go
-                                                </button>
-                                            </div>
-                                        </nav>
+                                        <Pagination
+                                            totalItems={filteredStates.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
                                     )}
-                                </div>
+                                </>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
                                     <div className="form-group col-md-4 mt-3">
