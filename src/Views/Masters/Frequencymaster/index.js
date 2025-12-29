@@ -1,10 +1,9 @@
-
-
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import {MAS_FREQUENCY } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 import {
 FETCH_FREQUENCY_ERR_MSG,DUPLICATE_FREQUENCY,UPDATE_FREQUENCY_SUCC_MSG,ADD_FREQUENCY_SUCC_MSG,
 FAIL_TO_SAVE_CHANGES,FAIL_TO_UPDATE_STS
@@ -14,8 +13,6 @@ const FrequencyMaster = () => {
   const [frequencyData, setFrequencyData] = useState([])
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
-  const itemsPerPage = 5
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, frequencyId: null, newStatus: false })
   const [popupMessage, setPopupMessage] = useState(null)
   const [showForm, setShowForm] = useState(false)
@@ -30,8 +27,6 @@ const FrequencyMaster = () => {
   const [loading, setLoading] = useState(true)
 
   const FREQUENCY_NAME_MAX_LENGTH = 30
-  // const FREQUENCY_MAX_LENGTH = 10
-  // const ORDER_NO_MAX_LENGTH = 5
 
   useEffect(() => {
     fetchFrequencyData(0)
@@ -63,8 +58,11 @@ const FrequencyMaster = () => {
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
-    setCurrentPage(1)
   }
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
 
   const filteredFrequencies = (frequencyData || []).filter(
     (frequency) =>
@@ -72,18 +70,9 @@ const FrequencyMaster = () => {
       frequency?.frequency?.toLowerCase().includes(searchQuery?.toLowerCase() || ""),
   )
 
-  const currentItems = filteredFrequencies.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-
-  const filteredTotalPages = Math.ceil(filteredFrequencies.length / itemsPerPage)
-
-  const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10)
-    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-      setCurrentPage(pageNumber)
-    } else {
-      alert("Please enter a valid page number.")
-    }
-  }
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
+  const currentItems = filteredFrequencies.slice(indexOfFirst, indexOfLast)
 
   const handleEdit = (frequency) => {
     setEditingFrequency(frequency)
@@ -103,7 +92,6 @@ const FrequencyMaster = () => {
     try {
       setLoading(true)
 
-      // Check for duplicate frequency name
       const isDuplicate = frequencyData.some(
         (frequency) =>
           frequency.frequencyName === formData.frequencyName &&
@@ -117,7 +105,6 @@ const FrequencyMaster = () => {
       }
 
       if (editingFrequency) {
-        // Update existing frequency
         const response = await putRequest(`${MAS_FREQUENCY}/updateById/${editingFrequency.frequencyId}`, {
           feq: Number.parseFloat(formData.frequency),
           frequencyName: formData.frequencyName,
@@ -130,7 +117,6 @@ const FrequencyMaster = () => {
           showPopup(UPDATE_FREQUENCY_SUCC_MSG, "success")
         }
       } else {
-        // Add new frequency
         const response = await postRequest(`${MAS_FREQUENCY}/create`, {
           feq: Number.parseFloat(formData.frequency),
           frequencyName: formData.frequencyName,
@@ -144,7 +130,6 @@ const FrequencyMaster = () => {
         }
       }
 
-      // Reset form and state
       setEditingFrequency(null)
       setFormData({ frequency: "", frequencyName: "", orderNo: "" })
       setShowForm(false)
@@ -204,7 +189,6 @@ const FrequencyMaster = () => {
     const { id, value } = e.target
     setFormData((prevData) => ({ ...prevData, [id]: value }))
 
-    // Validate form
     const updatedFormData = { ...formData, [id]: value }
     setIsFormValid(
       updatedFormData.frequency.trim() !== "" &&
@@ -272,101 +256,63 @@ const FrequencyMaster = () => {
               {loading ? (
                 <LoadingScreen />
               ) : !showForm ? (
-                <div className="table-responsive packagelist">
-                  <table className="table table-bordered table-hover align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Frequency</th>
-                        <th>Frequency Name</th>
-                        <th>Order No</th>
-                        <th>Status</th>
-                        <th>Edit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentItems.map((frequency) => (
-                        <tr key={frequency.frequencyId}>
-                          <td>{frequency.frequency}</td>
-                          <td>{frequency.frequencyName}</td>
-                          <td>{frequency.orderNo}</td>
-                          <td>
-                            <div className="form-check form-switch">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                checked={frequency.status === "y"}
-                                onChange={() =>
-                                  handleSwitchChange(frequency.frequencyId, frequency.status === "y" ? "n" : "y")
-                                }
-                                id={`switch-${frequency.frequencyId}`}
-                              />
-                              <label className="form-check-label px-0" htmlFor={`switch-${frequency.frequencyId}`}>
-                                {frequency.status === "y" ? "Active" : "Deactivated"}
-                              </label>
-                            </div>
-                          </td>
-                          <td>
-                            <button
-                              className="btn btn-sm btn-success me-2"
-                              onClick={() => handleEdit(frequency)}
-                              disabled={frequency.status !== "y"}
-                            >
-                              <i className="fa fa-pencil"></i>
-                            </button>
-                          </td>
+                <>
+                  <div className="table-responsive packagelist">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Frequency</th>
+                          <th>Frequency Name</th>
+                          <th>Order No</th>
+                          <th>Status</th>
+                          <th>Edit</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <nav className="d-flex justify-content-between align-items-center mt-3">
-                    <div>
-                      <span>
-                        Page {currentPage} of {filteredTotalPages} | Total Records: {filteredFrequencies.length}
-                      </span>
-                    </div>
-                    <ul className="pagination mb-0">
-                      <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                        <button
-                          className="page-link"
-                          onClick={() => setCurrentPage(currentPage - 1)}
-                          disabled={currentPage === 1}
-                        >
-                          &laquo; Previous
-                        </button>
-                      </li>
-                      {[...Array(filteredTotalPages)].map((_, index) => (
-                        <li className={`page-item ${currentPage === index + 1 ? "active" : ""}`} key={index}>
-                          <button className="page-link" onClick={() => setCurrentPage(index + 1)}>
-                            {index + 1}
-                          </button>
-                        </li>
-                      ))}
-                      <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                        <button
-                          className="page-link"
-                          onClick={() => setCurrentPage(currentPage + 1)}
-                          disabled={currentPage === filteredTotalPages}
-                        >
-                          Next &raquo;
-                        </button>
-                      </li>
-                    </ul>
-                    <div className="d-flex align-items-center">
-                      <input
-                        type="number"
-                        min="1"
-                        max={filteredTotalPages}
-                        value={pageInput}
-                        onChange={(e) => setPageInput(e.target.value)}
-                        placeholder="Go to page"
-                        className="form-control me-2"
-                      />
-                      <button className="btn btn-primary" onClick={handlePageNavigation}>
-                        Go
-                      </button>
-                    </div>
-                  </nav>
-                </div>
+                      </thead>
+                      <tbody>
+                        {currentItems.map((frequency) => (
+                          <tr key={frequency.frequencyId}>
+                            <td>{frequency.frequency}</td>
+                            <td>{frequency.frequencyName}</td>
+                            <td>{frequency.orderNo}</td>
+                            <td>
+                              <div className="form-check form-switch">
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  checked={frequency.status === "y"}
+                                  onChange={() =>
+                                    handleSwitchChange(frequency.frequencyId, frequency.status === "y" ? "n" : "y")
+                                  }
+                                  id={`switch-${frequency.frequencyId}`}
+                                />
+                                <label className="form-check-label px-0" htmlFor={`switch-${frequency.frequencyId}`}>
+                                  {frequency.status === "y" ? "Active" : "Deactivated"}
+                                </label>
+                              </div>
+                            </td>
+                            <td>
+                              <button
+                                className="btn btn-sm btn-success me-2"
+                                onClick={() => handleEdit(frequency)}
+                                disabled={frequency.status !== "y"}
+                              >
+                                <i className="fa fa-pencil"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {filteredFrequencies.length > 0 && (
+                    <Pagination
+                      totalItems={filteredFrequencies.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  )}
+                </>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="form-group col-md-4">
@@ -381,7 +327,6 @@ const FrequencyMaster = () => {
                       placeholder="Frequency"
                       value={formData.frequency}
                       onChange={handleInputChange}
-                      // maxLength={FREQUENCY_MAX_LENGTH}
                       required
                     />
                   </div>
@@ -411,7 +356,6 @@ const FrequencyMaster = () => {
                       placeholder="Order No"
                       value={formData.orderNo}
                       onChange={handleInputChange}
-                      // maxLength={ORDER_NO_MAX_LENGTH}
                       required
                     />
                   </div>
@@ -447,7 +391,6 @@ const FrequencyMaster = () => {
                         ></button>
                       </div>
                       <div className="modal-body">
-                        {/* Report content would go here */}
                         <p>Report options will be displayed here.</p>
                       </div>
                       <div className="modal-footer">
