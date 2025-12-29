@@ -130,6 +130,7 @@ import OpthColorVisionMaster from './Views/Masters/OpthColorVisionMaster';
 import OpthDistanceVisionMaster from './Views/Masters/OpthDistanceVisionMaster';
 import OpthNearVisionMaster from './Views/Masters/OpthNearVisionMaster'; 
 import PatientPreparationMaster from './Views/Masters/PatientPreparationMaster';
+import ObConceptionMaster from './Views/Masters/ObConceptionMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -293,6 +294,7 @@ function App() {
                 <Route path="/OpthDistanceVisionMaster" element={<OpthDistanceVisionMaster/>} />
                 <Route path="/OpthNearVisionMaster" element={<OpthNearVisionMaster/>} />
                 <Route path="/PatientPreparationMaster" element={<PatientPreparationMaster/>} />
+                <Route path="/ObConceptionMaster" element={<ObConceptionMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
