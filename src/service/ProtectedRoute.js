@@ -142,6 +142,7 @@ const validRoutes = [
   "/PelvisType",
   "/StationPresentingMaster",
   "/SterilisationMaster",
+  "/SmearResultMaster",
 
 
   
