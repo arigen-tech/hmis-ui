@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+
 
 const RCMC = () => {
     const [formData, setFormData] = useState({
@@ -14,7 +16,6 @@ const RCMC = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [pageInput, setPageInput] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
 
     const [complaintData, setComplaintData] = useState([
         { id: 1, complaintName: "Fever", status: "y", type: "PC" },
@@ -26,7 +27,7 @@ const RCMC = () => {
     ]);
 
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, complaintId: null, newStatus: false });
-    const [totalFilteredProducts, setTotalFilteredProducts] = useState(0);
+
 
     const filteredComplaints = complaintData.filter(complaint =>
         complaint.complaintName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -41,6 +42,11 @@ const RCMC = () => {
         setEditingComplaint(complaint);
         setShowForm(true);
     };
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
+
 
     const handleSave = (e) => {
         e.preventDefault();
@@ -117,58 +123,13 @@ const RCMC = () => {
         setConfirmDialog({ isOpen: false, complaintId: null, newStatus: null });
     };
 
-    const filteredTotalPages = Math.ceil(filteredComplaints.length / itemsPerPage);
 
-    const currentItems = filteredComplaints.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
 
-    const handlePageNavigation = () => {
-        const pageNumber = parseInt(pageInput, 10);
-        if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-            setCurrentPage(pageNumber);
-        } else {
-            alert("Please enter a valid page number.");
-        }
-    };
+    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+    const currentItems = filteredComplaints.slice(indexOfFirst, indexOfLast);
 
-    const renderPagination = () => {
-        const pageNumbers = [];
-        const maxVisiblePages = 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-        const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
-
-        if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
-        }
-
-        if (startPage > 1) {
-            pageNumbers.push(1);
-            if (startPage > 2) pageNumbers.push("...");
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            pageNumbers.push(i);
-        }
-
-        if (endPage < filteredTotalPages) {
-            if (endPage < filteredTotalPages - 1) pageNumbers.push("...");
-            pageNumbers.push(filteredTotalPages);
-        }
-
-        return pageNumbers.map((number, index) => (
-            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-                {typeof number === "number" ? (
-                    <button className="page-link" onClick={() => setCurrentPage(number)}>
-                        {number}
-                    </button>
-                ) : (
-                    <span className="page-link disabled">{number}</span>
-                )}
-            </li>
-        ));
-    };
+    
 
     return (
         <div className="content-wrapper">
@@ -270,51 +231,16 @@ const RCMC = () => {
                                             ))}
                                         </tbody>
                                     </table>
-                                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                                        <div>
-                                            <span>
-                                                Page {currentPage} of {filteredTotalPages} | Total Records: {filteredComplaints.length}
-                                            </span>
-                                        </div>
-                                        <ul className="pagination mb-0">
-                                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                                <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage - 1)}
-                                                    disabled={currentPage === 1}
-                                                >
-                                                    &laquo; Previous
-                                                </button>
-                                            </li>
-                                            {renderPagination()}
-                                            <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                                <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage + 1)}
-                                                    disabled={currentPage === filteredTotalPages}
-                                                >
-                                                    Next &raquo;
-                                                </button>
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex align-items-center">
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max={filteredTotalPages}
-                                                value={pageInput}
-                                                onChange={(e) => setPageInput(e.target.value)}
-                                                placeholder="Go to page"
-                                                className="form-control me-2"
-                                            />
-                                            <button
-                                                className="btn btn-primary"
-                                                onClick={handlePageNavigation}
-                                            >
-                                                Go
-                                            </button>
-                                        </div>
-                                    </nav>
+
+                                    {filteredComplaints.length > 0 && (
+                                        <Pagination
+                                            totalItems={filteredComplaints.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
+                                    )}
+                                 
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
