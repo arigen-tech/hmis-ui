@@ -137,6 +137,7 @@ const validRoutes = [
   "/ObConceptionMaster",
   "/ObConsanguinityMaster",
   "/PresentationMaster",
+  "/TrimesterMaster",
 
 
   
