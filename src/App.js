@@ -132,6 +132,7 @@ import OpthNearVisionMaster from './Views/Masters/OpthNearVisionMaster';
 import PatientPreparationMaster from './Views/Masters/PatientPreparationMaster';
 import ObConceptionMaster from './Views/Masters/ObConceptionMaster';
 import ObConsanguinityMaster from './Views/Masters/ObConsanguinityMaster';
+import PresentationMaster from './Views/Masters/PresentationMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -297,6 +298,7 @@ function App() {
                 <Route path="/PatientPreparationMaster" element={<PatientPreparationMaster/>} />
                 <Route path="/ObConceptionMaster" element={<ObConceptionMaster/>} />
                 <Route path="/ObConsanguinityMaster" element={<ObConsanguinityMaster/>} />
+                <Route path="/PresentationMaster" element={<PresentationMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
