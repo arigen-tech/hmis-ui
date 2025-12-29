@@ -138,6 +138,7 @@ const validRoutes = [
   "/ObConsanguinityMaster",
   "/PresentationMaster",
   "/TrimesterMaster",
+  "/CervixPosition",
 
 
   
