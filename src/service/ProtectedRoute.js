@@ -141,6 +141,7 @@ const validRoutes = [
   "/CervixPosition",
   "/PelvisType",
   "/StationPresentingMaster",
+  "/SterilisationMaster",
 
 
   
