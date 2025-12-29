@@ -136,6 +136,7 @@ import PresentationMaster from './Views/Masters/PresentationMaster';
 import TrimesterMaster from './Views/Masters/TrimesterMaster';
 import CervixPosition from './Views/Masters/CervixPosition';
 import PelvisType from './Views/Masters/PelvisType';
+import StationPresentingMaster from './Views/Masters/StationPresentingMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -305,6 +306,7 @@ function App() {
                 <Route path="/TrimesterMaster" element={<TrimesterMaster/>} />
                 <Route path="/CervixPosition" element={<CervixPosition/>} />
                 <Route path="/PelvisType" element={<PelvisType/>} />
+                <Route path="/StationPresentingMaster" element={<StationPresentingMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
