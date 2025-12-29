@@ -4,6 +4,8 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_TREATMENT_ADVISE, MAS_DEPARTMENT } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import { ADD_TREAT_ADV_SUCC_MSG, DUPLICATE_TREAT_ADV, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DEPARTMENT_ERR_MSG, FETCH_TREAT_ADV_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_TREAT_ADV_SUCC_MSG } from "../../../config/constants";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+
 
 const TreatmentAdviceMaster = () => {
   const [treatmentData, setTreatmentData] = useState([]);
@@ -25,7 +27,6 @@ const TreatmentAdviceMaster = () => {
   const [editingTreatment, setEditingTreatment] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
   const [pageInput, setPageInput] = useState("1");
 
   // Dropdown options
@@ -114,11 +115,7 @@ const TreatmentAdviceMaster = () => {
 
   );
 
-  // Calculate pagination values
-  const totalPages = Math.ceil(filteredTreatmentData.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredTreatmentData.slice(indexOfFirstItem, indexOfLastItem);
+
 
   // Reset to page 1 when search changes
   useEffect(() => {
@@ -155,6 +152,10 @@ const TreatmentAdviceMaster = () => {
     });
     setShowForm(true);
   };
+
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
+  const currentItems = filteredTreatmentData.slice(indexOfFirst, indexOfLast)
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -278,82 +279,10 @@ const TreatmentAdviceMaster = () => {
     fetchDropdownData(); // Refresh dropdowns
   };
 
-  const handlePageNavigation = () => {
-    const pageNumber = parseInt(pageInput);
-    if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
-    } else {
-      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
-      setPageInput(currentPage.toString());
-    }
-  };
+ 
 
-  const handlePageInputChange = (e) => {
-    setPageInput(e.target.value);
-  };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handlePageNavigation();
-    }
-  };
-
-  const renderPagination = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-
-    // Add first page and ellipsis if needed
-    if (startPage > 1) {
-      pageNumbers.push(1);
-      if (startPage > 2) {
-        pageNumbers.push("ellipsis-left");
-      }
-    }
-
-    // Add page numbers
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i);
-    }
-
-    // Add last page and ellipsis if needed
-    if (endPage < totalPages) {
-      if (endPage < totalPages - 1) {
-        pageNumbers.push("ellipsis-right");
-      }
-      pageNumbers.push(totalPages);
-    }
-
-    return pageNumbers.map((number, index) => {
-      if (number === "ellipsis-left" || number === "ellipsis-right") {
-        return (
-          <li key={index} className="page-item disabled">
-            <span className="page-link">...</span>
-          </li>
-        );
-      }
-
-      return (
-        <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-          <button
-            className="page-link"
-            onClick={() => {
-              setCurrentPage(number);
-              setPageInput(number.toString());
-            }}
-          >
-            {number}
-          </button>
-        </li>
-      );
-    });
-  };
-
+ 
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -472,69 +401,17 @@ const TreatmentAdviceMaster = () => {
                         )}
                       </tbody>
                     </table>
+                    {filteredTreatmentData.length > 0 && (
+                    <Pagination
+                      totalItems={filteredTreatmentData.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  )}
                   </div>
 
-                  {filteredTreatmentData.length > 0 && (
-                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                      <div>
-                        <span className="text-muted">
-                          Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredTreatmentData.length)} of {filteredTreatmentData.length} entries
-                        </span>
-                      </div>
-
-                      <ul className="pagination mb-0">
-                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                          <button
-                            className="page-link"
-                            onClick={() => {
-                              if (currentPage > 1) {
-                                setCurrentPage(currentPage - 1);
-                              }
-                            }}
-                            disabled={currentPage === 1}
-                          >
-                            &laquo; Previous
-                          </button>
-                        </li>
-
-                        {renderPagination()}
-
-                        <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                          <button
-                            className="page-link"
-                            onClick={() => {
-                              if (currentPage < totalPages) {
-                                setCurrentPage(currentPage + 1);
-                              }
-                            }}
-                            disabled={currentPage === totalPages}
-                          >
-                            Next &raquo;
-                          </button>
-                        </li>
-                      </ul>
-
-                      <div className="d-flex align-items-center">
-                        <span className="me-2">Go to:</span>
-                        <input
-                          type="number"
-                          min="1"
-                          max={totalPages}
-                          value={pageInput}
-                          onChange={handlePageInputChange}
-                          onKeyPress={handleKeyPress}
-                          className="form-control me-2"
-                          style={{ width: "80px" }}
-                        />
-                        <button
-                          className="btn btn-primary"
-                          onClick={handlePageNavigation}
-                        >
-                          Go
-                        </button>
-                      </div>
-                    </nav>
-                  )}
+                
                 </>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
