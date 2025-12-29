@@ -73,6 +73,8 @@ const SampleValidation = () => {
         sr_no: invIndex + 1,
         diag_no: item.orderNo || '',
         test_code: inv.testCode || '',
+        container_name:inv.containerName||'',
+        container_id:inv.containerId||'',
         test_name: inv.testName || '',
         sample: inv.sampleName || '', // Now available in API as sampleName
         quantity: inv.quantity ||'',
@@ -504,7 +506,8 @@ const SampleValidation = () => {
                     <thead className="table-light">
                       <tr>
                         <th>S.No.</th>
-                        <th>Code</th>
+                        <th>Sample Id</th>
+                        <th>Container Name</th>
                         <th>Investigation Name</th>
                         <th>Sample</th>
                         <th>Qty</th>
@@ -557,6 +560,15 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.test_code}
+                                  style={{ width: "160px" }}
+                              readOnly
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={investigation.container_name}
                               readOnly
                             />
                           </td>
@@ -581,6 +593,7 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.quantity}
+                                  style={{ width: "40px" }}
                               readOnly
                             />
                           </td>
@@ -589,6 +602,8 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.empanelled_lab}
+                                  style={{ width: "60px" }}
+
                               readOnly
                             />
                           </td>
