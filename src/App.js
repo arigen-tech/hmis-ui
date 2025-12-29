@@ -140,6 +140,7 @@ import StationPresentingMaster from './Views/Masters/StationPresentingMaster';
 import SterilisationMaster from './Views/Masters/SterilisationMaster';
 import SmearResultMaster from './Views/Masters/SmearResultMaster';
 import MenstrualFlowMaster from './Views/Masters/MenstrualFlowMaster';
+import MenstrualPatternMaster from './Views/Masters/MenstrualPatternMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -313,6 +314,7 @@ function App() {
                 <Route path="/SterilisationMaster" element={<SterilisationMaster/>} />
                 <Route path="/SmearResultMaster" element={<SmearResultMaster/>} />
                 <Route path="/MenstrualFlowMaster" element={<MenstrualFlowMaster/>} />
+                <Route path="/MenstrualPatternMaster" element={<MenstrualPatternMaster/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
