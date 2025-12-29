@@ -71,18 +71,29 @@ const EmployeeRegistration = () => {
     const [employeeTypeData, setEmployeeTypeData] = useState([]);
     const [employmentTypeData, setEmploymentTypeData] = useState([]);
     const [specialtyCenterData, setSpecialtyCenterData] = useState([]);
-    const [specialtySearch, setSpecialtySearch] = useState("");
+    const [specialtySearch, setSpecialtySearch] = useState(null);
     const [selectedDesignationId, setSelectedDesignationId] = useState("");
     const [designationData, setDesignationData] = useState([]);
     const [designationLoading, setDesignationLoading] = useState(false);
+    const [errors, setErrors] = useState({});
 
 
     const [countryIds, setCountryIds] = useState("");
     const [stateIds, setStateIds] = useState("");
     const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const [previewModal, setPreviewModal] = useState({
+        show: false,
+        type: '', // 'image' or 'pdf'
+        url: '',
+        fileName: '',
+        section: '' // 'profile', 'id', 'qualification', 'document'
+    });
 
     const mlenght = 15;
     const today = new Date().toISOString().split("T")[0];
+    const maxDate = new Date();
+    maxDate.setFullYear(maxDate.getFullYear() + 2);
+    const maxDateStr = maxDate.toISOString().split("T")[0];
 
     useEffect(() => {
         fetchCountryData();
@@ -312,18 +323,96 @@ const EmployeeRegistration = () => {
     };
 
     // Filtered specialty centers based on search
-    // Filtered specialty centers based on search
-    const filteredSpecialtyCenters = specialtySearch ?
+    const filteredSpecialtyCenters = specialtySearch && specialtySearch.value ?
         specialtyCenterData.filter(center => {
             const centerName = (center.centerName || center.specialtyCenterName || "").toLowerCase();
             const centerCode = (center.centerCode || "").toLowerCase();
-            const searchTerm = specialtySearch.toLowerCase();
+            const searchTerm = specialtySearch.value.toLowerCase();
 
             return centerName.includes(searchTerm) ||
                 centerCode.includes(searchTerm);
         }) : [];
 
     // Handler Functions
+
+    // Update handleImageChange to include preview
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData((prevFormData) => ({
+                    ...prevFormData,
+                    profilePicName: file,
+                    profilePicPreview: reader.result,
+                    profilePicType: file.type
+                }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    // Add ID document handler with preview
+    const handleIDDocumentChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData((prevFormData) => ({
+                    ...prevFormData,
+                    idDocumentName: file,
+                    idDocumentPreview: reader.result,
+                    idDocumentType: file.type
+                }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    // Update qualification file handler
+    const handleQualificationFileChange = (index, file) => {
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData(prev => ({
+                    ...prev,
+                    qualification: prev.qualification.map((item, i) =>
+                        i === index ? {
+                            ...item,
+                            filePath: file,
+                            filePreview: reader.result,
+                            fileName: file.name,
+                            fileType: file.type
+                        } : item
+                    )
+                }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    // Update document file handler
+    const handleDocumentFileChange = (index, file) => {
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData(prev => ({
+                    ...prev,
+                    document: prev.document.map((item, i) =>
+                        i === index ? {
+                            ...item,
+                            filePath: file,
+                            filePreview: reader.result,
+                            fileName: file.name,
+                            fileType: file.type
+                        } : item
+                    )
+                }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleCountryChange = (countryCode, id) => {
         setFormData((prevState) => ({
             ...prevState,
@@ -415,21 +504,21 @@ const EmployeeRegistration = () => {
         }));
     };
 
-    const handleImageChange = (e) => {
-        const file = e.target.files[0];
+    // const handleImageChange = (e) => {
+    //     const file = e.target.files[0];
 
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData((prevFormData) => ({
-                    ...prevFormData,
-                    profilePicName: file,
-                    profilePicPreview: reader.result,
-                }));
-            };
-            reader.readAsDataURL(file);
-        }
-    };
+    //     if (file) {
+    //         const reader = new FileReader();
+    //         reader.onloadend = () => {
+    //             setFormData((prevFormData) => ({
+    //                 ...prevFormData,
+    //                 profilePicName: file,
+    //                 profilePicPreview: reader.result,
+    //             }));
+    //         };
+    //         reader.readAsDataURL(file);
+    //     }
+    // };
 
     const handleInputMobileChange = (e) => {
         const { id, value } = e.target;
@@ -441,6 +530,107 @@ const EmployeeRegistration = () => {
         const { id, value } = e.target;
         setFormData((prevData) => ({ ...prevData, [id]: value }));
     };
+
+
+    const openPreview = (url, type, fileName, section) => {
+        setPreviewModal({
+            show: true,
+            type,
+            url,
+            fileName,
+            section
+        });
+    };
+
+    // Function to close preview
+    const closePreview = () => {
+        setPreviewModal({
+            show: false,
+            type: '',
+            url: '',
+            fileName: '',
+            section: ''
+        });
+    };
+
+    // Function to handle file input change with preview
+    const handleFileWithPreview = (e, section, index = null) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Validate file size
+        if (file.size > 5 * 1024 * 1024) {
+            showPopup("File size must be less than 5MB", "error");
+            e.target.value = '';
+            return;
+        }
+
+        // Validate file type
+        const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+        if (!validTypes.includes(file.type)) {
+            showPopup("Only PDF, JPG, JPEG, PNG files are allowed", "error");
+            e.target.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            switch (section) {
+                case 'profile':
+                    setFormData(prev => ({
+                        ...prev,
+                        profilePicName: file,
+                        profilePicPreview: reader.result,
+                        profilePicType: file.type
+                    }));
+                    break;
+
+                case 'idDocument':
+                    setFormData(prev => ({
+                        ...prev,
+                        idDocumentName: file,
+                        idDocumentPreview: reader.result,
+                        idDocumentType: file.type
+                    }));
+                    break;
+
+                case 'qualification':
+                    setFormData(prev => ({
+                        ...prev,
+                        qualification: prev.qualification.map((item, i) =>
+                            i === index ? {
+                                ...item,
+                                filePath: file,
+                                filePreview: reader.result,
+                                fileName: file.name,
+                                fileType: file.type
+                            } : item
+                        )
+                    }));
+                    break;
+
+                case 'document':
+                    setFormData(prev => ({
+                        ...prev,
+                        document: prev.document.map((item, i) =>
+                            i === index ? {
+                                ...item,
+                                filePath: file,
+                                filePreview: reader.result,
+                                fileName: file.name,
+                                fileType: file.type
+                            } : item
+                        )
+                    }));
+                    break;
+
+                default:
+                    break;
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
 
     // Education Section
     // Corrected:
@@ -504,7 +694,7 @@ const EmployeeRegistration = () => {
                 },
             ],
         }));
-        setSpecialtySearch(""); // Reset search when adding new row
+        setSpecialtySearch(null); // Reset search when adding new row
     };
 
     const removeSpecialtyCenterRow = (index) => {
@@ -667,18 +857,204 @@ const EmployeeRegistration = () => {
 
     // Form Validation
     const validateForm = () => {
+        const newErrors = {};
         // Add departmentId to required fields
-        const requiredFields = [
-            'firstName', 'lastName', 'dob', 'genderId', 'address1',
-            'countryId', 'stateId', 'districtId', 'city', 'pincode',
-            'mobileNo', 'identificationType', 'registrationNo',
-            'departmentId', // Add this
-            'employeeTypeId', 'designationId', 'employmentTypeId', 'roleId' // Add other required fields
+        const basicFields = [
+            { field: 'firstName', message: 'First Name is required' },
+            { field: 'lastName', message: 'Last Name is required' },
+            { field: 'dob', message: 'Date of Birth is required' },
+            { field: 'genderId', message: 'Gender is required' },
+            { field: 'address1', message: 'Address is required' },
+            { field: 'countryId', message: 'Country is required' },
+            { field: 'stateId', message: 'State is required' },
+            { field: 'districtId', message: 'District is required' },
+            { field: 'city', message: 'City is required' },
+            { field: 'pincode', message: 'Pincode is required' },
+            { field: 'mobileNo', message: 'Mobile Number is required' },
+            { field: 'identificationType', message: 'ID Type is required' },
+            { field: 'registrationNo', message: 'ID Number is required' },
+            { field: 'employmentTypeId', message: 'Employment Type is required' },
+            { field: 'employeeTypeId', message: 'Employee Type is required' },
+            { field: 'roleId', message: 'Role is required' },
+            { field: 'designationId', message: 'Designation is required' },
+            { field: 'totalExperience', message: 'Total Experience is required' },
         ];
 
-        // Check for empty arrays
-        if (formData.qualification.length === 0) {
-            showPopup("At least one educational qualification is required", "error");
+        basicFields.forEach(({ field, message }) => {
+            if (!formData[field] || formData[field].toString().trim() === '') {
+                newErrors[field] = message;
+            }
+        });
+
+        if (viewDept && (!formData.departmentId || formData.departmentId.toString().trim() === '')) {
+            newErrors.departmentId = 'Department is required';
+        }
+        if (!formData.profilePicName) {
+            newErrors.profilePicName = 'Profile Image is required';
+        }
+        if (!formData.idDocumentName) {
+            newErrors.idDocumentName = 'ID Document is required';
+        }
+
+        // Phone number format validation
+        if (formData.mobileNo && formData.mobileNo.length !== 10) {
+            newErrors.mobileNo = 'Mobile number must be 10 digits';
+        }
+
+        // Pincode validation
+        if (formData.pincode && formData.pincode.length !== 6) {
+            newErrors.pincode = 'Pincode must be 6 digits';
+        }
+
+        const qualificationErrors = [];
+        formData.qualification.forEach((qual, index) => {
+            const qualErrors = {};
+            if (!qual.qualificationName || qual.qualificationName.trim() === '') {
+                qualErrors.qualificationName = 'Degree is required';
+            }
+            if (!qual.institutionName || qual.institutionName.trim() === '') {
+                qualErrors.institutionName = 'Institution Name is required';
+            }
+            if (!qual.completionYear || qual.completionYear.trim() === '' || qual.completionYear.length !== 4) {
+                qualErrors.completionYear = 'Valid Year of Completion is required (YYYY)';
+            }
+            if (!qual.filePath) {
+                qualErrors.filePath = 'Qualification file is required';
+            }
+            if (Object.keys(qualErrors).length > 0) {
+                qualificationErrors[index] = qualErrors;
+            }
+        });
+        if (qualificationErrors.length > 0) {
+            newErrors.qualification = qualificationErrors;
+        }
+
+        // Specialty Center Validation
+        // Specialty Center Validation
+        const specialtyCenterErrors = [];
+        formData.specialtyCenter.forEach((center, index) => {
+            const centerErrors = {};
+
+            // Check specialtyCenterName
+            if (!center.specialtyCenterName || center.specialtyCenterName.toString().trim() === '') {
+                centerErrors.specialtyCenterName = 'Specialty Center Name is required';
+            }
+
+            // Check centerId - convert to string first
+            if (!center.centerId || center.centerId.toString().trim() === '') {
+                centerErrors.centerId = 'Center ID is required';
+            }
+
+            if (Object.keys(centerErrors).length > 0) {
+                specialtyCenterErrors[index] = centerErrors;
+            }
+        });
+        if (specialtyCenterErrors.length > 0) {
+            newErrors.specialtyCenter = specialtyCenterErrors;
+        }
+
+        if (specialtyCenterErrors.length > 0) {
+            newErrors.specialtyCenter = specialtyCenterErrors;
+        }
+        // Work Experience Validation
+        const workExperienceErrors = [];
+        formData.workExperiences.forEach((exp, index) => {
+            const expErrors = {};
+            if (!exp.organizationName || exp.organizationName.trim() === '') {
+                expErrors.organizationName = 'Work Experience details are required';
+            }
+            if (Object.keys(expErrors).length > 0) {
+                workExperienceErrors[index] = expErrors;
+            }
+        });
+        if (workExperienceErrors.length > 0) {
+            newErrors.workExperiences = workExperienceErrors;
+        }
+
+        // Memberships Validation
+        const membershipErrors = [];
+        formData.memberships.forEach((member, index) => {
+            const memberErrors = {};
+            if (!member.levelName || member.levelName.trim() === '') {
+                memberErrors.levelName = 'Membership details are required';
+            }
+            if (Object.keys(memberErrors).length > 0) {
+                membershipErrors[index] = memberErrors;
+            }
+        });
+        if (membershipErrors.length > 0) {
+            newErrors.memberships = membershipErrors;
+        }
+
+        // Specialty Interest Validation
+        const specialtyInterestErrors = [];
+        formData.specialtyInterest.forEach((interest, index) => {
+            const interestErrors = {};
+            if (!interest.specialtyInterestName || interest.specialtyInterestName.trim() === '') {
+                interestErrors.specialtyInterestName = 'Specialty Interest is required';
+            }
+            if (Object.keys(interestErrors).length > 0) {
+                specialtyInterestErrors[index] = interestErrors;
+            }
+        });
+        if (specialtyInterestErrors.length > 0) {
+            newErrors.specialtyInterest = specialtyInterestErrors;
+        }
+
+        // Awards & Distinctions Validation
+        const awardsErrors = [];
+        formData.awardsDistinction.forEach((award, index) => {
+            const awardErrors = {};
+            if (!award.awardName || award.awardName.trim() === '') {
+                awardErrors.awardName = 'Award Name is required';
+            }
+            if (Object.keys(awardErrors).length > 0) {
+                awardsErrors[index] = awardErrors;
+            }
+        });
+        if (awardsErrors.length > 0) {
+            newErrors.awardsDistinction = awardsErrors;
+        }
+
+        // Required Documents Validation
+        const documentErrors = [];
+        formData.document.forEach((doc, index) => {
+            const docErrors = {};
+            if (!doc.documentName || doc.documentName.trim() === '') {
+                docErrors.documentName = 'Document Name is required';
+            }
+            if (!doc.filePath) {
+                docErrors.filePath = 'Document file is required';
+            }
+            if (Object.keys(docErrors).length > 0) {
+                documentErrors[index] = docErrors;
+            }
+        });
+        if (documentErrors.length > 0) {
+            newErrors.document = documentErrors;
+        }
+
+        // Set errors and return validation result
+        setErrors(newErrors);
+
+        if (Object.keys(newErrors).length > 0) {
+            // Show first error in popup
+            const firstError = Object.values(newErrors)[0];
+            const errorMessage = typeof firstError === 'object'
+                ? Object.values(firstError)[0]
+                : firstError;
+
+            showPopup(errorMessage || "Please fill all required fields", "error");
+
+            // Scroll to the first error
+            setTimeout(() => {
+                const firstErrorField = document.querySelector('.is-invalid');
+                if (firstErrorField) {
+                    firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    firstErrorField.focus();
+                }
+            }, 100);
+
             return false;
         }
 
@@ -697,23 +1073,88 @@ const EmployeeRegistration = () => {
         return true;
     };
 
+    // Helper function to check if a field has error
+    const hasError = (section, index, field) => {
+        if (!errors[section]) return false;
+        if (Array.isArray(errors[section])) {
+            return errors[section][index] && errors[section][index][field];
+        }
+        return errors[section][field];
+    };
+
+    // Helper function to get error message
+    const getErrorMessage = (section, index, field) => {
+        if (!errors[section]) return '';
+        if (Array.isArray(errors[section])) {
+            return errors[section][index] && errors[section][index][field];
+        }
+        return errors[section][field];
+    };
+
+    // Update isFormValid function to check all sections
     const isFormValid = () => {
-        const required = [
+        // Check basic fields
+        const requiredFields = [
             'firstName', 'lastName', 'dob', 'genderId', 'address1',
             'countryId', 'stateId', 'districtId', 'city', 'pincode',
             'mobileNo', 'identificationType', 'registrationNo',
             'employeeTypeId', 'designationId',
-            'employmentTypeId', 'roleId'
+            'employmentTypeId', 'roleId', 'totalExperience'
         ];
+
         if (viewDept) {
-            required.push('departmentId');
+            requiredFields.push('departmentId');
         }
 
-        return (
-            required.every(field => formData[field]) &&
-            !!formData.profilePicName &&
-            !!formData.idDocumentName
+        const basicFieldsValid = requiredFields.every(field =>
+            formData[field] && formData[field].toString().trim() !== ''
         );
+
+        // Check files
+        const filesValid = !!formData.profilePicName && !!formData.idDocumentName;
+
+        // Check arrays - ensure they're not empty and all required fields are filled
+        const qualificationValid = formData.qualification.length > 0 &&
+            formData.qualification.every(qual =>
+                qual.qualificationName && qual.institutionName &&
+                qual.completionYear && qual.filePath
+            );
+
+        const specialtyCenterValid = formData.specialtyCenter.length > 0 &&
+            formData.specialtyCenter.every(center =>
+                center.specialtyCenterName && center.centerId
+            );
+
+        const workExperienceValid = formData.workExperiences.length > 0 &&
+            formData.workExperiences.every(exp =>
+                exp.organizationName
+            );
+
+        const membershipValid = formData.memberships.length > 0 &&
+            formData.memberships.every(member =>
+                member.levelName
+            );
+
+        const specialtyInterestValid = formData.specialtyInterest.length > 0 &&
+            formData.specialtyInterest.every(interest =>
+                interest.specialtyInterestName
+            );
+
+        const awardsValid = formData.awardsDistinction.length > 0 &&
+            formData.awardsDistinction.every(award =>
+                award.awardName
+            );
+
+        const documentsValid = formData.document.length > 0 &&
+            formData.document.every(doc =>
+                doc.documentName && doc.filePath
+            );
+
+        return basicFieldsValid && filesValid &&
+            qualificationValid && specialtyCenterValid &&
+            workExperienceValid && membershipValid &&
+            specialtyInterestValid && awardsValid &&
+            documentsValid;
     };
 
 
@@ -751,10 +1192,10 @@ const EmployeeRegistration = () => {
 
         formDataToSend.append('masDesignationId', formData.designationId.toString());
 
-        // ADD DEPARTMENT
-        if (formData.departmentId) {
-            formDataToSend.append('departmentId', formData.departmentId.toString());
-        }
+        // // ADD DEPARTMENT
+        // if (formData.departmentId) {
+        //     formDataToSend.append('departmentId', formData.departmentId.toString());
+        // }
 
         // 2. Files
         if (formData.profilePicName && formData.profilePicName instanceof File) {
@@ -843,60 +1284,35 @@ const EmployeeRegistration = () => {
 
     const handleReset = () => {
         setFormData(initialFormData);
+        setErrors({});
+        const fileInputs = [
+            'profilePicName',
+            'idDocumentName',
+            ...formData.qualification.map((_, index) => `qualification_${index}`),
+            ...formData.document.map((_, index) => `document_${index}`)
+        ];
 
-        // Reset profile image preview
-        const profileImageInput = document.getElementById('profilePicName');
-        if (profileImageInput) profileImageInput.value = '';
-
-        // Reset ID document
-        const idDocumentInput = document.getElementById('idDocumentName');
-        if (idDocumentInput) idDocumentInput.value = '';
-
-        // Reset all file inputs by their class name
-        const fileInputs = document.querySelectorAll('input[type="file"]');
-        fileInputs.forEach(input => {
-            input.value = '';
+        fileInputs.forEach(id => {
+            const input = document.getElementById(id);
+            if (input) input.value = '';
         });
-
-        // Reset form data with initial values
-        setFormData({
-            ...initialFormData,
-            profilePicPreview: null,
-            profilePicName: null,
-            idDocumentName: null,
-            qualification: [{
-                employeeQualificationId: 1,
-                institutionName: "",
-                completionYear: "",
-                qualificationName: "",
-                filePath: null
-            }],
-            document: [{
-                employeeDocumentId: 1,
-                documentName: "",
-                filePath: null
-            }],
-            specialtyCenter: [{
-                specialtyCenterId: 1,
-                specialtyCenterName: "",
-                centerId: ""
-            }],
-            workExperiences: [{ experienceId: 1, organizationName: "" }],
-            memberships: [{ membershipsId: 1, levelName: "" }],
-            specialtyInterest: [{ interestId: 1, specialtyInterestName: "" }],
-            awardsDistinction: [{ awardId: 1, awardName: "" }]
+        setPreviewModal({
+            show: false,
+            type: '',
+            url: '',
+            fileName: '',
+            section: ''
         });
-
-        // Reset file related states
-        setProfileImage(null);
-
-        // Clear CKEditor content if initialized
-        if (profileEditorRef.current) {
-            profileEditorRef.current.setData('');
-        }
+        setSpecialtySearch(null);
+        setSelectedDesignationId("");
+        setDesignationData([]);
     };
 
     const handleCreate = async () => {
+        if (!validateForm()) {
+            return;
+        }
+
         const formDataToSend = prepareFormData();
         if (!formDataToSend) return;
 
@@ -910,27 +1326,43 @@ const EmployeeRegistration = () => {
                 body: formDataToSend
             });
 
+            const responseData = await response.json();
+
             if (!response.ok) {
+                // Handle 409 Conflict (duplicate mobile number)
+                if (response.status === 409) {
+                    showPopup(responseData.message || "Mobile number already registered", "error");
+                    // Highlight the mobile number field
+                    setErrors(prev => ({
+                        ...prev,
+                        mobileNo: responseData.message || "This mobile number is already registered"
+                    }));
+                    // Scroll to mobile number field
+                    setTimeout(() => {
+                        const mobileField = document.getElementById('mobileNo');
+                        if (mobileField) {
+                            mobileField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            mobileField.focus();
+                        }
+                    }, 100);
+                    return;
+                }
+
+                // Handle other errors
                 let errorMessage = `HTTP error! status: ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.message || errorData.detail || errorMessage;
-                    console.error("Backend Error Details:", errorData);
-                } catch (e) {
-                    const text = await response.text();
-                    console.error("Response Text:", text);
+                if (responseData.message) {
+                    errorMessage = responseData.message;
                 }
                 throw new Error(errorMessage);
             }
 
-            const data = await response.json();
-            console.log("Success Response:", data);
+            console.log("Success Response:", responseData);
 
-            if (data.status === 200 || data.status === 201) {
+            if (responseData.status === 200 || responseData.status === 201) {
                 showPopup("Employee created successfully", "success");
                 handleReset();
             } else {
-                throw new Error(data.message || "Unknown error occurred");
+                throw new Error(responseData.message || "Unknown error occurred");
             }
 
         } catch (error) {
@@ -945,12 +1377,6 @@ const EmployeeRegistration = () => {
         const formDataToSend = prepareFormData();
         if (!formDataToSend) return;
 
-        if (!formData.departmentId) {
-            setviewDept(true);
-            showPopup("Department is required for approval. Please select a department.", "error");
-            return;
-        }
-
         setLoading(true);
         try {
             const response = await fetch(`${API_HOST}/${EMPLOYEE_REGISTRATION}/create-and-approve`, {
@@ -963,7 +1389,24 @@ const EmployeeRegistration = () => {
 
             const data = await response.json();
 
-            if (!response.ok || data.status === 500) {
+            if (!response.ok) {
+                // Handle 409 Conflict (duplicate mobile number)
+                if (response.status === 409) {
+                    showPopup(data.message || "Mobile number already registered", "error");
+                    setErrors(prev => ({
+                        ...prev,
+                        mobileNo: data.message || "This mobile number is already registered"
+                    }));
+                    setTimeout(() => {
+                        const mobileField = document.getElementById('mobileNo');
+                        if (mobileField) {
+                            mobileField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            mobileField.focus();
+                        }
+                    }, 100);
+                    return;
+                }
+
                 throw new Error(data.message || `Failed with status: ${response.status}`);
             }
 
@@ -1056,6 +1499,7 @@ const EmployeeRegistration = () => {
                                                             id="dob"
                                                             value={formData.dob}
                                                             className="form-control"
+                                                            max={new Date().toISOString().split("T")[0]}
                                                             onChange={handleInputChange}
                                                         />
                                                     </div>
@@ -1237,16 +1681,86 @@ const EmployeeRegistration = () => {
                                                             id="idDocumentName"
                                                             className="form-control"
                                                             accept=".jpg,.jpeg,.png,.pdf"
-                                                            onChange={(e) => {
-                                                                const file = e.target.files[0];
-                                                                if (file) {
-                                                                    setFormData(prev => ({
-                                                                        ...prev,
-                                                                        idDocumentName: file,
-                                                                        idDocumentPreview: URL.createObjectURL(file) // Add preview if needed
-                                                                    }));
-                                                                }
-                                                            }} />
+                                                            onChange={(e) => handleFileWithPreview(e, 'idDocument')}
+                                                            style={{ fontSize: '12px', padding: '4px 8px' }}
+                                                        />
+                                                        {formData.idDocumentPreview && (
+                                                            <div className="mt-1 d-flex align-items-center gap-1">
+                                                                <small className="text-success" style={{ fontSize: '11px' }}>
+                                                                    <i className="icofont-check-circled me-1"></i>
+                                                                    {(formData.idDocumentName?.name || 'ID Document').substring(0, 10)}
+                                                                    {(formData.idDocumentName?.name || 'ID Document').length > 10 ? '...' : ''}
+                                                                </small>
+                                                                <div className="d-flex gap-1 ms-auto">
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn btn-link p-0"
+                                                                        onClick={() => {
+                                                                            openPreview(
+                                                                                formData.idDocumentPreview,
+                                                                                formData.idDocumentType === 'application/pdf' ? 'pdf' : 'image',
+                                                                                formData.idDocumentName?.name || 'ID Document',
+                                                                                'idDocument'
+                                                                            );
+                                                                        }}
+                                                                        title="Preview"
+                                                                        style={{
+                                                                            fontSize: '12px',
+                                                                            color: '#0d6efd',
+                                                                            width: '20px',
+                                                                            height: '20px',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center'
+                                                                        }}
+                                                                    >
+                                                                        <i className="icofont-eye"></i>
+                                                                    </button>
+                                                                    <a
+                                                                        href={formData.idDocumentPreview}
+                                                                        download={formData.idDocumentName?.name}
+                                                                        className="btn btn-link p-0"
+                                                                        title="Download"
+                                                                        style={{
+                                                                            fontSize: '12px',
+                                                                            color: '#198754',
+                                                                            width: '20px',
+                                                                            height: '20px',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center'
+                                                                        }}
+                                                                    >
+                                                                        <i className="icofont-download"></i>
+                                                                    </a>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn btn-link p-0"
+                                                                        onClick={() => {
+                                                                            setFormData(prev => ({
+                                                                                ...prev,
+                                                                                idDocumentName: null,
+                                                                                idDocumentPreview: null,
+                                                                                idDocumentType: null
+                                                                            }));
+                                                                            document.getElementById('idDocumentName').value = '';
+                                                                        }}
+                                                                        title="Remove"
+                                                                        style={{
+                                                                            fontSize: '12px',
+                                                                            color: '#dc3545',
+                                                                            width: '20px',
+                                                                            height: '20px',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center'
+                                                                        }}
+                                                                    >
+                                                                        <i className="icofont-close"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
 
                                                     <div className="col-md-4">
@@ -1386,7 +1900,9 @@ const EmployeeRegistration = () => {
                                                             value={formData.fromDate}
                                                             className="form-control"
                                                             onChange={handleInputChange}
-                                                            min={today}
+                                                            min={new Date().toISOString().split("T")[0]}
+                                                            max={maxDateStr}
+
                                                         />
                                                     </div>
                                                 </div>
@@ -1394,19 +1910,90 @@ const EmployeeRegistration = () => {
                                             <div className="col-md-3 d-flex flex-column">
                                                 <label className="form-label">Profile Image <span className="text-danger">*</span></label>
                                                 <div className="d-flex flex-column align-items-center border p-2">
-                                                    <img
-                                                        src={formData.profilePicPreview || placeholderImage}
-                                                        alt="Profile"
-                                                        className="img-fluid"
-                                                        style={{ objectFit: "cover", maxWidth: "100%", height: "150px" }}
-                                                    />
+                                                    <div
+                                                        style={{
+                                                            width: '100%',
+                                                            height: '150px',
+                                                            overflow: 'hidden',
+                                                            display: 'flex',
+                                                            justifyContent: 'center',
+                                                            alignItems: 'center',
+                                                            backgroundColor: '#f8f9fa',
+                                                            cursor: formData.profilePicPreview ? 'pointer' : 'default'
+                                                        }}
+                                                        onClick={() => {
+                                                            if (formData.profilePicPreview) {
+                                                                openPreview(
+                                                                    formData.profilePicPreview,
+                                                                    formData.profilePicType?.startsWith('image/') ? 'image' : 'pdf',
+                                                                    formData.profilePicName?.name || 'Profile Image',
+                                                                    'profile'
+                                                                );
+                                                            }
+                                                        }}
+                                                    >
+                                                        <img
+                                                            src={formData.profilePicPreview || placeholderImage}
+                                                            alt="Profile"
+                                                            style={{
+                                                                objectFit: "cover",
+                                                                maxWidth: "100%",
+                                                                maxHeight: "100%",
+                                                                borderRadius: '4px'
+                                                            }}
+                                                        />
+                                                    </div>
                                                     <input
                                                         type="file"
                                                         id="profilePicName"
                                                         className="form-control mt-2"
                                                         accept="image/*"
-                                                        onChange={handleImageChange}
+                                                        onChange={(e) => handleFileWithPreview(e, 'profile')}
+                                                        style={{ fontSize: '12px', padding: '4px 8px' }}
                                                     />
+                                                    {formData.profilePicPreview && (
+                                                        <div className="d-flex gap-1 mt-1" style={{ width: '100%' }}>
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-info"
+                                                                onClick={() => {
+                                                                    openPreview(
+                                                                        formData.profilePicPreview,
+                                                                        'image',
+                                                                        formData.profilePicName?.name || 'Profile Image',
+                                                                        'profile'
+                                                                    );
+                                                                }}
+                                                                style={{
+                                                                    fontSize: '11px',
+                                                                    padding: '2px 6px',
+                                                                    flex: 1
+                                                                }}
+                                                            >
+                                                                <i className="icofont-eye me-1"></i> Preview
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-outline-danger"
+                                                                onClick={() => {
+                                                                    setFormData(prev => ({
+                                                                        ...prev,
+                                                                        profilePicName: null,
+                                                                        profilePicPreview: null,
+                                                                        profilePicType: null
+                                                                    }));
+                                                                    document.getElementById('profilePicName').value = '';
+                                                                }}
+                                                                style={{
+                                                                    fontSize: '11px',
+                                                                    padding: '2px 6px',
+                                                                    flex: 1
+                                                                }}
+                                                            >
+                                                                <i className="icofont-close me-1"></i> Remove
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
 
@@ -1444,22 +2031,29 @@ const EmployeeRegistration = () => {
                         </div>
                     </div>
 
-                    {/* Educational Qualification */}
+                    {/* Educational Qualification Section with Error Handling */}
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header   border-bottom-1 py-3">
-                                    <h6 className="fw-bold mb-0">Educational Qualification</h6>
+                                <div className="card-header border-bottom-1 py-3">
+                                    <h6 className="fw-bold mb-0">
+                                        Educational Qualification <span className="text-danger">*</span>
+                                    </h6>
+                                    {errors.qualification && (
+                                        <small className="text-danger">
+                                            Please fill all qualification fields
+                                        </small>
+                                    )}
                                 </div>
                                 <div className="card-body">
                                     <table className="table table-bordered">
                                         <thead>
                                             <tr>
                                                 <th>S.No</th>
-                                                <th>Degree</th>
-                                                <th>Name of Institution</th>
-                                                <th>Year of Completion</th>
-                                                <th>File Upload</th>
+                                                <th>Degree <span className="text-danger">*</span></th>
+                                                <th>Name of Institution <span className="text-danger">*</span></th>
+                                                <th>Year of Completion <span className="text-danger">*</span></th>
+                                                <th>File Upload <span className="text-danger">*</span></th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
@@ -1470,27 +2064,37 @@ const EmployeeRegistration = () => {
                                                     <td>
                                                         <input
                                                             type="text"
-                                                            className="form-control"
+                                                            className={`form-control ${hasError('qualification', index, 'qualificationName') ? 'is-invalid' : ''}`}
                                                             value={row.qualificationName}
                                                             placeholder="Degree"
                                                             onChange={(e) => handleQualificationChange(index, "qualificationName", e.target.value)}
                                                             maxLength={mlenght}
                                                         />
+                                                        {hasError('qualification', index, 'qualificationName') && (
+                                                            <div className="invalid-feedback">
+                                                                {getErrorMessage('qualification', index, 'qualificationName')}
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td>
                                                         <input
                                                             type="text"
-                                                            className="form-control"
+                                                            className={`form-control ${hasError('qualification', index, 'institutionName') ? 'is-invalid' : ''}`}
                                                             value={row.institutionName}
                                                             placeholder="Institution Name"
                                                             onChange={(e) => handleQualificationChange(index, "institutionName", e.target.value)}
                                                             maxLength={mlenght}
                                                         />
+                                                        {hasError('qualification', index, 'institutionName') && (
+                                                            <div className="invalid-feedback">
+                                                                {getErrorMessage('qualification', index, 'institutionName')}
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td>
                                                         <input
                                                             type="text"
-                                                            className="form-control"
+                                                            className={`form-control ${hasError('qualification', index, 'completionYear') ? 'is-invalid' : ''}`}
                                                             placeholder="YYYY"
                                                             value={row.completionYear}
                                                             onChange={(e) => handleQualificationYearChange(index, "completionYear", e.target.value)}
@@ -1499,20 +2103,118 @@ const EmployeeRegistration = () => {
                                                             inputMode="numeric"
                                                             pattern="\d{4}"
                                                         />
+                                                        {hasError('qualification', index, 'completionYear') && (
+                                                            <div className="invalid-feedback">
+                                                                {getErrorMessage('qualification', index, 'completionYear')}
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td>
-                                                        <input
-                                                            type="file"
-                                                            className="form-control"
-                                                            data-index={index}
-                                                            onChange={(e) => handleQualificationChange(index, "filePath", e.target.files[0])}
-                                                            accept=".pdf,.jpg,.jpeg,.png"
-                                                        />
+                                                        <div>
+                                                            <input
+                                                                type="file"
+                                                                className={`form-control ${hasError('qualification', index, 'filePath') ? 'is-invalid' : ''}`}
+                                                                onChange={(e) => handleFileWithPreview(e, 'qualification', index)}
+                                                                accept=".pdf,.jpg,.jpeg,.png"
+                                                                style={{ fontSize: '12px', padding: '4px 8px' }}
+                                                            />
+                                                            {hasError('qualification', index, 'filePath') && (
+                                                                <div className="invalid-feedback" style={{ fontSize: '11px' }}>
+                                                                    {getErrorMessage('qualification', index, 'filePath')}
+                                                                </div>
+                                                            )}
+                                                            {row.filePath && (
+                                                                <div className="mt-1">
+                                                                    <div className="d-flex align-items-center">
+                                                                        <small className="text-success" style={{ fontSize: '10px' }}>
+                                                                            <i className="icofont-check-circled me-1"></i>
+                                                                            {(row.fileName || row.filePath.name).substring(0, 10)}
+                                                                            {(row.fileName || row.filePath.name).length > 10 ? '...' : ''}
+                                                                        </small>
+                                                                        <div className="d-flex gap-1 ms-auto">
+                                                                            <button
+                                                                                type="button"
+                                                                                className="btn btn-link p-0"
+                                                                                onClick={() => {
+                                                                                    openPreview(
+                                                                                        row.filePreview,
+                                                                                        row.fileType === 'application/pdf' ? 'pdf' : 'image',
+                                                                                        row.fileName || row.filePath.name,
+                                                                                        'qualification'
+                                                                                    );
+                                                                                }}
+                                                                                title="Preview file"
+                                                                                style={{
+                                                                                    fontSize: '11px',
+                                                                                    color: '#0d6efd',
+                                                                                    width: '18px',
+                                                                                    height: '18px',
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    justifyContent: 'center'
+                                                                                }}
+                                                                            >
+                                                                                <i className="icofont-eye"></i>
+                                                                            </button>
+                                                                            <a
+                                                                                href={row.filePreview}
+                                                                                download={row.fileName || row.filePath.name}
+                                                                                className="btn btn-link p-0"
+                                                                                title="Download file"
+                                                                                style={{
+                                                                                    fontSize: '11px',
+                                                                                    color: '#198754',
+                                                                                    width: '18px',
+                                                                                    height: '18px',
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    justifyContent: 'center'
+                                                                                }}
+                                                                            >
+                                                                                <i className="icofont-download"></i>
+                                                                            </a>
+                                                                            <button
+                                                                                type="button"
+                                                                                className="btn btn-link p-0"
+                                                                                onClick={() => {
+                                                                                    setFormData(prev => ({
+                                                                                        ...prev,
+                                                                                        qualification: prev.qualification.map((item, i) =>
+                                                                                            i === index ? {
+                                                                                                ...item,
+                                                                                                filePath: null,
+                                                                                                filePreview: null,
+                                                                                                fileName: '',
+                                                                                                fileType: ''
+                                                                                            } : item
+                                                                                        )
+                                                                                    }));
+                                                                                }}
+                                                                                title="Remove file"
+                                                                                style={{
+                                                                                    fontSize: '11px',
+                                                                                    color: '#dc3545',
+                                                                                    width: '18px',
+                                                                                    height: '18px',
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    justifyContent: 'center'
+                                                                                }}
+                                                                            >
+                                                                                <i className="icofont-close"></i>
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                     <td>
-                                                        <button type="button" className="btn btn-danger" onClick={() => removeEducationRow(index)}>
-                                                            <i className="icofont-close"></i>
-                                                        </button>
+                                                        {formData.qualification.length > 1 && (
+                                                            <button type="button" className="btn btn-danger" onClick={() => removeEducationRow(index)}>
+                                                                <i className="icofont-close"></i>
+                                                            </button>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}
@@ -1530,15 +2232,22 @@ const EmployeeRegistration = () => {
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header   border-bottom-1 py-3">
-                                    <h6 className="fw-bold mb-0">Specialty Center Name</h6>
+                                <div className="card-header border-bottom-1 py-3">
+                                    <h6 className="fw-bold mb-0">
+                                        Specialty Center Name <span className="text-danger">*</span>
+                                    </h6>
+                                    {errors.specialtyCenter && (
+                                        <small className="text-danger">
+                                            Please fill all specialty center fields
+                                        </small>
+                                    )}
                                 </div>
                                 <div className="card-body">
                                     <table className="table table-bordered">
                                         <thead>
                                             <tr>
                                                 <th>S.No</th>
-                                                <th>Specialty Center Name</th>
+                                                <th>Specialty Center Name <span className="text-danger">*</span></th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
@@ -1550,54 +2259,114 @@ const EmployeeRegistration = () => {
                                                         <div className="position-relative">
                                                             <input
                                                                 type="text"
-                                                                className="form-control"
+                                                                className={`form-control ${hasError('specialtyCenter', index, 'specialtyCenterName') ? 'is-invalid' : ''}`}
                                                                 value={row.specialtyCenterName}
                                                                 placeholder="Enter speciality details"
                                                                 onChange={(e) => {
                                                                     handleSpecialtyCenterChange(index, "specialtyCenterName", e.target.value);
-                                                                    setSpecialtySearch(e.target.value);
+                                                                    // Use row-specific search state
+                                                                    const searchValue = e.target.value;
+                                                                    if (searchValue.length >= 1) {
+                                                                        setSpecialtySearch({ index, value: searchValue });
+                                                                    } else {
+                                                                        setSpecialtySearch(null);
+                                                                    }
+                                                                }}
+                                                                onBlur={() => {
+                                                                    // Clear search after a delay when input loses focus
+                                                                    setTimeout(() => setSpecialtySearch(null), 200);
                                                                 }}
                                                                 maxLength={mlenght}
                                                             />
-                                                            {specialtySearch && (
-                                                                <div className="dropdown-menu show w-100" style={{
-                                                                    position: 'absolute',
-                                                                    top: '100%',
-                                                                    left: 0,
-                                                                    zIndex: 1000,
-                                                                    maxHeight: '200px',
-                                                                    overflowY: 'auto'
-                                                                }}>
+                                                            {hasError('specialtyCenter', index, 'specialtyCenterName') && (
+                                                                <div className="invalid-feedback">
+                                                                    {getErrorMessage('specialtyCenter', index, 'specialtyCenterName')}
+                                                                </div>
+                                                            )}
+
+                                                            {/* Dropdown only shows for the current row being edited */}
+                                                            {specialtySearch && specialtySearch.index === index && filteredSpecialtyCenters.length > 0 && (
+                                                                <div
+                                                                    className="dropdown-menu show w-100"
+                                                                    style={{
+                                                                        position: 'absolute',
+                                                                        top: '100%',
+                                                                        left: 0,
+                                                                        zIndex: 1050,
+                                                                        maxHeight: '200px',
+                                                                        overflowY: 'auto',
+                                                                        display: 'block'
+                                                                    }}
+                                                                >
                                                                     {filteredSpecialtyCenters.map(center => (
                                                                         <button
                                                                             key={center.centerId}
                                                                             type="button"
                                                                             className="dropdown-item"
                                                                             onClick={() => {
-                                                                                handleSpecialtyCenterChange(index, "specialtyCenterName", center.centerName);
-                                                                                handleSpecialtyCenterChange(index, "centerId", center.centerId);
-                                                                                setSpecialtySearch("");
+                                                                                handleSpecialtyCenterChange(index, "specialtyCenterName", center.centerName || center.specialtyCenterName || "");
+                                                                                handleSpecialtyCenterChange(index, "centerId", center.centerId || "");
+                                                                                setSpecialtySearch(null);
                                                                             }}
+                                                                            style={{ cursor: 'pointer' }}
                                                                         >
-                                                                            {center.centerName}
+                                                                            {center.centerName || center.specialtyCenterName || ""}
+                                                                            {center.centerCode && ` (${center.centerCode})`}
                                                                         </button>
                                                                     ))}
                                                                 </div>
                                                             )}
                                                         </div>
+                                                        {/* Hidden input for centerId */}
+                                                        <input
+                                                            type="hidden"
+                                                            value={row.centerId || ""}
+                                                            onChange={(e) => handleSpecialtyCenterChange(index, "centerId", e.target.value)}
+                                                        />
+                                                        {hasError('specialtyCenter', index, 'centerId') && (
+                                                            <div className="invalid-feedback d-block">
+                                                                {getErrorMessage('specialtyCenter', index, 'centerId')}
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td>
-                                                        <button type="button" className="btn btn-danger" onClick={() => removeSpecialtyCenterRow(index)}>
-                                                            <i className="icofont-close"></i>
-                                                        </button>
+                                                        {formData.specialtyCenter.length > 1 ? (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-danger"
+                                                                onClick={() => removeSpecialtyCenterRow(index)}
+                                                                title="Remove row"
+                                                            >
+                                                                <i className="icofont-close"></i>
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-secondary"
+                                                                disabled
+                                                                title="At least one specialty center is required"
+                                                            >
+                                                                <i className="icofont-close"></i>
+                                                            </button>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
-                                    <button type="button" className="btn btn-success" onClick={addSpecialtyCenterRow}>
+                                    <button
+                                        type="button"
+                                        className="btn btn-success"
+                                        onClick={addSpecialtyCenterRow}
+                                    >
                                         Add Row +
                                     </button>
+                                    <div className="mt-2">
+                                        <small className="text-muted">
+                                            <i className="icofont-info-circle me-1"></i>
+                                            Start typing to search for specialty centers. Select from the dropdown list.
+                                        </small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1607,15 +2376,22 @@ const EmployeeRegistration = () => {
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header   border-bottom-1 py-3">
-                                    <h6 className="fw-bold mb-0">Work Experience</h6>
+                                <div className="card-header border-bottom-1 py-3">
+                                    <h6 className="fw-bold mb-0">
+                                        Work Experience <span className="text-danger">*</span>
+                                    </h6>
+                                    {errors.workExperiences && (
+                                        <small className="text-danger">
+                                            Please fill all work experience fields
+                                        </small>
+                                    )}
                                 </div>
                                 <div className="card-body">
                                     <table className="table table-bordered">
                                         <thead>
                                             <tr>
                                                 <th>S.No</th>
-                                                <th>Work Experience</th>
+                                                <th>Work Experience <span className="text-danger">*</span></th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
@@ -1626,25 +2402,67 @@ const EmployeeRegistration = () => {
                                                     <td>
                                                         <input
                                                             type="text"
-                                                            className="form-control"
+                                                            className={`form-control ${hasError('workExperiences', index, 'organizationName') ? 'is-invalid' : ''}`}
                                                             value={row.organizationName}
-                                                            placeholder="Enter organization details"
+                                                            placeholder="Enter organization details (e.g., Company Name, Position, Duration)"
                                                             onChange={(e) => handleWorkExperienceChange(index, "organizationName", e.target.value)}
+                                                            onBlur={(e) => {
+                                                                // Update experienceSummary for backend
+                                                                if (e.target.value.trim()) {
+                                                                    handleWorkExperienceChange(index, "experienceSummary", e.target.value);
+                                                                }
+                                                            }}
                                                             maxLength={mlenght}
                                                         />
+                                                        {hasError('workExperiences', index, 'organizationName') && (
+                                                            <div className="invalid-feedback">
+                                                                {getErrorMessage('workExperiences', index, 'organizationName')}
+                                                            </div>
+                                                        )}
+                                                        <small className="text-muted">
+                                                            Example: "Senior Developer at XYZ Corp (2020-2023)"
+                                                        </small>
                                                     </td>
                                                     <td>
-                                                        <button type="button" className="btn btn-danger" onClick={() => removeWorkExperienceRow(index)}>
-                                                            <i className="icofont-close"></i>
-                                                        </button>
+                                                        {formData.workExperiences.length > 1 ? (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-danger"
+                                                                onClick={() => removeWorkExperienceRow(index)}
+                                                                title="Remove work experience"
+                                                            >
+                                                                <i className="icofont-close"></i>
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-secondary"
+                                                                disabled
+                                                                title="At least one work experience is required"
+                                                            >
+                                                                <i className="icofont-close"></i>
+                                                            </button>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
-                                    <button type="button" className="btn btn-success" onClick={addWorkExperienceRow}>
-                                        Add Row +
-                                    </button>
+                                    <div className="d-flex justify-content-between align-items-center">
+                                        <button
+                                            type="button"
+                                            className="btn btn-success"
+                                            onClick={addWorkExperienceRow}
+                                        >
+                                            <i className="icofont-plus me-1"></i> Add Work Experience
+                                        </button>
+                                        <div className="text-muted">
+                                            <small>
+                                                <i className="icofont-info-circle me-1"></i>
+                                                Include company names, positions, and duration
+                                            </small>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1654,15 +2472,22 @@ const EmployeeRegistration = () => {
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header   border-bottom-1 py-3">
-                                    <h6 className="fw-bold mb-0">Memberships</h6>
+                                <div className="card-header border-bottom-1 py-3">
+                                    <h6 className="fw-bold mb-0">
+                                        Memberships <span className="text-danger">*</span>
+                                    </h6>
+                                    {errors.memberships && (
+                                        <small className="text-danger">
+                                            Please fill all membership fields
+                                        </small>
+                                    )}
                                 </div>
                                 <div className="card-body">
                                     <table className="table table-bordered">
                                         <thead>
                                             <tr>
                                                 <th>S.No</th>
-                                                <th>Membership Details</th>
+                                                <th>Membership Details <span className="text-danger">*</span></th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
@@ -1673,25 +2498,78 @@ const EmployeeRegistration = () => {
                                                     <td>
                                                         <input
                                                             type="text"
-                                                            className="form-control"
+                                                            className={`form-control ${hasError('memberships', index, 'levelName') ? 'is-invalid' : ''}`}
                                                             value={row.levelName}
-                                                            placeholder="Enter membership details"
-                                                            onChange={(e) => handlemembershipsChange(index, "levelName", e.target.value)}
+                                                            placeholder="Enter membership details (e.g., Professional Association, Member ID)"
+                                                            onChange={(e) => {
+                                                                handlemembershipsChange(index, "levelName", e.target.value);
+                                                                // Auto-update membershipSummary for backend
+                                                                if (e.target.value.trim()) {
+                                                                    handlemembershipsChange(index, "membershipSummary", e.target.value);
+                                                                }
+                                                            }}
+                                                            onBlur={(e) => {
+                                                                // Ensure membershipSummary is updated
+                                                                if (e.target.value.trim() && !row.membershipSummary) {
+                                                                    handlemembershipsChange(index, "membershipSummary", e.target.value);
+                                                                }
+                                                            }}
                                                             maxLength={mlenght}
                                                         />
+                                                        {hasError('memberships', index, 'levelName') && (
+                                                            <div className="invalid-feedback">
+                                                                {getErrorMessage('memberships', index, 'levelName')}
+                                                            </div>
+                                                        )}
+                                                        <div className="d-flex justify-content-between mt-1">
+                                                            <small className="text-muted">
+                                                                Example: "Member of American Medical Association (ID: AMA12345)"
+                                                            </small>
+                                                            <small className={`${row.levelName.length > mlenght - 10 ? 'text-warning' : 'text-muted'}`}>
+                                                                {row.levelName.length}/{mlenght}
+                                                            </small>
+                                                        </div>
                                                     </td>
                                                     <td>
-                                                        <button type="button" className="btn btn-danger" onClick={() => removemembershipsRow(index)}>
-                                                            <i className="icofont-close"></i>
-                                                        </button>
+                                                        {formData.memberships.length > 1 ? (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-danger"
+                                                                onClick={() => removemembershipsRow(index)}
+                                                                title="Remove membership"
+                                                            >
+                                                                <i className="icofont-close"></i>
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-secondary"
+                                                                disabled
+                                                                title="At least one membership is required"
+                                                            >
+                                                                <i className="icofont-close"></i>
+                                                            </button>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
-                                    <button type="button" className="btn btn-success" onClick={addmembershipsRow}>
-                                        Add Row +
-                                    </button>
+                                    <div className="d-flex justify-content-between align-items-center">
+                                        <button
+                                            type="button"
+                                            className="btn btn-success"
+                                            onClick={addmembershipsRow}
+                                        >
+                                            <i className="icofont-plus me-1"></i> Add Membership
+                                        </button>
+                                        <div className="text-muted">
+                                            <small>
+                                                <i className="icofont-info-circle me-1"></i>
+                                                Include association names and membership IDs if available
+                                            </small>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1701,15 +2579,22 @@ const EmployeeRegistration = () => {
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header   border-bottom-1 py-3">
-                                    <h6 className="fw-bold mb-0">Specialty Interest</h6>
+                                <div className="card-header border-bottom-1 py-3">
+                                    <h6 className="fw-bold mb-0">
+                                        Specialty Interest <span className="text-danger">*</span>
+                                    </h6>
+                                    {errors.specialtyInterest && (
+                                        <small className="text-danger">
+                                            Please fill all specialty interest fields
+                                        </small>
+                                    )}
                                 </div>
                                 <div className="card-body">
                                     <table className="table table-bordered">
                                         <thead>
                                             <tr>
                                                 <th>S.No</th>
-                                                <th>Specialty Interest Name</th>
+                                                <th>Specialty Interest Name <span className="text-danger">*</span></th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
@@ -1720,25 +2605,78 @@ const EmployeeRegistration = () => {
                                                     <td>
                                                         <input
                                                             type="text"
-                                                            className="form-control"
+                                                            className={`form-control ${hasError('specialtyInterest', index, 'specialtyInterestName') ? 'is-invalid' : ''}`}
                                                             value={row.specialtyInterestName}
-                                                            placeholder="Enter specialty details"
-                                                            onChange={(e) => handleSpecialtyInterestChange(index, "specialtyInterestName", e.target.value)}
+                                                            placeholder="Enter specialty interest (e.g., Cardiology, Neurology, Pediatrics)"
+                                                            onChange={(e) => {
+                                                                handleSpecialtyInterestChange(index, "specialtyInterestName", e.target.value);
+                                                                // Auto-update interestSummary for backend
+                                                                if (e.target.value.trim()) {
+                                                                    handleSpecialtyInterestChange(index, "interestSummary", e.target.value);
+                                                                }
+                                                            }}
+                                                            onBlur={(e) => {
+                                                                // Ensure interestSummary is updated
+                                                                if (e.target.value.trim() && !row.interestSummary) {
+                                                                    handleSpecialtyInterestChange(index, "interestSummary", e.target.value);
+                                                                }
+                                                            }}
                                                             maxLength={mlenght}
                                                         />
+                                                        {hasError('specialtyInterest', index, 'specialtyInterestName') && (
+                                                            <div className="invalid-feedback">
+                                                                {getErrorMessage('specialtyInterest', index, 'specialtyInterestName')}
+                                                            </div>
+                                                        )}
+                                                        <div className="d-flex justify-content-between mt-1">
+                                                            <small className="text-muted">
+                                                                Example: "Cardiac Surgery", "Neuro Rehabilitation"
+                                                            </small>
+                                                            <small className={`${row.specialtyInterestName.length > mlenght - 10 ? 'text-warning' : 'text-muted'}`}>
+                                                                {row.specialtyInterestName.length}/{mlenght}
+                                                            </small>
+                                                        </div>
                                                     </td>
                                                     <td>
-                                                        <button type="button" className="btn btn-danger" onClick={() => removeSpecialtyInterestRow(index)}>
-                                                            <i className="icofont-close"></i>
-                                                        </button>
+                                                        {formData.specialtyInterest.length > 1 ? (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-danger"
+                                                                onClick={() => removeSpecialtyInterestRow(index)}
+                                                                title="Remove specialty interest"
+                                                            >
+                                                                <i className="icofont-close"></i>
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-secondary"
+                                                                disabled
+                                                                title="At least one specialty interest is required"
+                                                            >
+                                                                <i className="icofont-close"></i>
+                                                            </button>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
-                                    <button type="button" className="btn btn-success" onClick={addSpecialtyInterestRow}>
-                                        Add Row +
-                                    </button>
+                                    <div className="d-flex justify-content-between align-items-center">
+                                        <button
+                                            type="button"
+                                            className="btn btn-success"
+                                            onClick={addSpecialtyInterestRow}
+                                        >
+                                            <i className="icofont-plus me-1"></i> Add Specialty Interest
+                                        </button>
+                                        <div className="text-muted">
+                                            <small>
+                                                <i className="icofont-info-circle me-1"></i>
+                                                List medical or professional specialty areas of interest
+                                            </small>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1748,15 +2686,22 @@ const EmployeeRegistration = () => {
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header   border-bottom-1 py-3">
-                                    <h6 className="fw-bold mb-0">Awards & Distinctions</h6>
+                                <div className="card-header border-bottom-1 py-3">
+                                    <h6 className="fw-bold mb-0">
+                                        Awards & Distinctions <span className="text-danger">*</span>
+                                    </h6>
+                                    {errors.awardsDistinction && (
+                                        <small className="text-danger">
+                                            Please fill all award fields
+                                        </small>
+                                    )}
                                 </div>
                                 <div className="card-body">
                                     <table className="table table-bordered">
                                         <thead>
                                             <tr>
                                                 <th>S.No</th>
-                                                <th>Award Name</th>
+                                                <th>Award Name <span className="text-danger">*</span></th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
@@ -1767,25 +2712,78 @@ const EmployeeRegistration = () => {
                                                     <td>
                                                         <input
                                                             type="text"
-                                                            className="form-control"
+                                                            className={`form-control ${hasError('awardsDistinction', index, 'awardName') ? 'is-invalid' : ''}`}
                                                             value={row.awardName}
-                                                            placeholder="Enter award details"
-                                                            onChange={(e) => handleAwardsDistinctionChange(index, "awardName", e.target.value)}
+                                                            placeholder="Enter award details (e.g., Best Employee 2023, Research Excellence Award)"
+                                                            onChange={(e) => {
+                                                                handleAwardsDistinctionChange(index, "awardName", e.target.value);
+                                                                // Auto-update awardSummary for backend
+                                                                if (e.target.value.trim()) {
+                                                                    handleAwardsDistinctionChange(index, "awardSummary", e.target.value);
+                                                                }
+                                                            }}
+                                                            onBlur={(e) => {
+                                                                // Ensure awardSummary is updated
+                                                                if (e.target.value.trim() && !row.awardSummary) {
+                                                                    handleAwardsDistinctionChange(index, "awardSummary", e.target.value);
+                                                                }
+                                                            }}
                                                             maxLength={mlenght}
                                                         />
+                                                        {hasError('awardsDistinction', index, 'awardName') && (
+                                                            <div className="invalid-feedback">
+                                                                {getErrorMessage('awardsDistinction', index, 'awardName')}
+                                                            </div>
+                                                        )}
+                                                        <div className="d-flex justify-content-between mt-1">
+                                                            <small className="text-muted">
+                                                                Example: "Employee of the Year 2022", "Research Paper Award"
+                                                            </small>
+                                                            <small className={`${row.awardName.length > mlenght - 10 ? 'text-warning' : 'text-muted'}`}>
+                                                                {row.awardName.length}/{mlenght}
+                                                            </small>
+                                                        </div>
                                                     </td>
                                                     <td>
-                                                        <button type="button" className="btn btn-danger" onClick={() => removeAwardsDistinctionRow(index)}>
-                                                            <i className="icofont-close"></i>
-                                                        </button>
+                                                        {formData.awardsDistinction.length > 1 ? (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-danger"
+                                                                onClick={() => removeAwardsDistinctionRow(index)}
+                                                                title="Remove award"
+                                                            >
+                                                                <i className="icofont-close"></i>
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-secondary"
+                                                                disabled
+                                                                title="At least one award is required"
+                                                            >
+                                                                <i className="icofont-close"></i>
+                                                            </button>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
-                                    <button type="button" className="btn btn-success" onClick={addAwardsDistinctionRow}>
-                                        Add Row +
-                                    </button>
+                                    <div className="d-flex justify-content-between align-items-center">
+                                        <button
+                                            type="button"
+                                            className="btn btn-success"
+                                            onClick={addAwardsDistinctionRow}
+                                        >
+                                            <i className="icofont-plus me-1"></i> Add Award
+                                        </button>
+                                        <div className="text-muted">
+                                            <small>
+                                                <i className="icofont-info-circle me-1"></i>
+                                                Include professional, academic, or recognition awards
+                                            </small>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1795,16 +2793,23 @@ const EmployeeRegistration = () => {
                     <div className="row mb-3">
                         <div className="col-sm-12">
                             <div className="card shadow mb-3">
-                                <div className="card-header   border-bottom-1 py-3">
-                                    <h6 className="fw-bold mb-0">Required Documents</h6>
+                                <div className="card-header border-bottom-1 py-3">
+                                    <h6 className="fw-bold mb-0">
+                                        Required Documents <span className="text-danger">*</span>
+                                    </h6>
+                                    {errors.document && (
+                                        <small className="text-danger">
+                                            Please fill all document fields and upload files
+                                        </small>
+                                    )}
                                 </div>
                                 <div className="card-body">
                                     <table className="table table-bordered">
                                         <thead>
                                             <tr>
                                                 <th>S.No</th>
-                                                <th>Document Name</th>
-                                                <th>File Upload</th>
+                                                <th>Document Name <span className="text-danger">*</span></th>
+                                                <th>File Upload <span className="text-danger">*</span></th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
@@ -1815,34 +2820,158 @@ const EmployeeRegistration = () => {
                                                     <td>
                                                         <input
                                                             type="text"
-                                                            className="form-control"
+                                                            className={`form-control ${hasError('document', index, 'documentName') ? 'is-invalid' : ''}`}
                                                             value={row.documentName}
                                                             onChange={(e) => handleDocumentChange(index, "documentName", e.target.value)}
-                                                            placeholder="Document Name"
+                                                            placeholder="Document Name (e.g., Passport, Degree Certificate)"
                                                             maxLength={mlenght}
                                                         />
+                                                        {hasError('document', index, 'documentName') && (
+                                                            <div className="invalid-feedback">
+                                                                {getErrorMessage('document', index, 'documentName')}
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td>
-                                                        <input
-                                                            type="file"
-                                                            className="form-control"
-                                                            data-index={index}
-                                                            onChange={(e) => handleDocumentChange(index, "filePath", e.target.files[0])}
-                                                            accept=".pdf,.jpg,.jpeg,.png"
-                                                        />
+                                                        <div>
+                                                            <input
+                                                                type="file"
+                                                                className={`form-control ${hasError('document', index, 'filePath') ? 'is-invalid' : ''}`}
+                                                                onChange={(e) => handleFileWithPreview(e, 'document', index)}
+                                                                accept=".pdf,.jpg,.jpeg,.png"
+                                                                style={{ fontSize: '12px', padding: '4px 8px' }}
+                                                            />
+                                                            {hasError('document', index, 'filePath') && (
+                                                                <div className="invalid-feedback" style={{ fontSize: '11px' }}>
+                                                                    {getErrorMessage('document', index, 'filePath')}
+                                                                </div>
+                                                            )}
+                                                            {row.filePath && (
+                                                                <div className="mt-1">
+                                                                    <div className="d-flex align-items-center">
+                                                                        <small className="text-success" style={{ fontSize: '10px' }}>
+                                                                            <i className="icofont-check-circled me-1"></i>
+                                                                            {(row.fileName || row.filePath.name).substring(0, 10)}
+                                                                            {(row.fileName || row.filePath.name).length > 10 ? '...' : ''}
+                                                                        </small>
+                                                                        <div className="d-flex gap-1 ms-auto">
+                                                                            <button
+                                                                                type="button"
+                                                                                className="btn btn-link p-0"
+                                                                                onClick={() => {
+                                                                                    openPreview(
+                                                                                        row.filePreview,
+                                                                                        row.fileType === 'application/pdf' ? 'pdf' : 'image',
+                                                                                        row.fileName || row.filePath.name,
+                                                                                        'qualification'
+                                                                                    );
+                                                                                }}
+                                                                                title="Preview file"
+                                                                                style={{
+                                                                                    fontSize: '11px',
+                                                                                    color: '#0d6efd',
+                                                                                    width: '18px',
+                                                                                    height: '18px',
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    justifyContent: 'center'
+                                                                                }}
+                                                                            >
+                                                                                <i className="icofont-eye"></i>
+                                                                            </button>
+                                                                            <a
+                                                                                href={row.filePreview}
+                                                                                download={row.fileName || row.filePath.name}
+                                                                                className="btn btn-link p-0"
+                                                                                title="Download file"
+                                                                                style={{
+                                                                                    fontSize: '11px',
+                                                                                    color: '#198754',
+                                                                                    width: '18px',
+                                                                                    height: '18px',
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    justifyContent: 'center'
+                                                                                }}
+                                                                            >
+                                                                                <i className="icofont-download"></i>
+                                                                            </a>
+                                                                            <button
+                                                                                type="button"
+                                                                                className="btn btn-link p-0"
+                                                                                onClick={() => {
+                                                                                    setFormData(prev => ({
+                                                                                        ...prev,
+                                                                                        qualification: prev.qualification.map((item, i) =>
+                                                                                            i === index ? {
+                                                                                                ...item,
+                                                                                                filePath: null,
+                                                                                                filePreview: null,
+                                                                                                fileName: '',
+                                                                                                fileType: ''
+                                                                                            } : item
+                                                                                        )
+                                                                                    }));
+                                                                                }}
+                                                                                title="Remove file"
+                                                                                style={{
+                                                                                    fontSize: '11px',
+                                                                                    color: '#dc3545',
+                                                                                    width: '18px',
+                                                                                    height: '18px',
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    justifyContent: 'center'
+                                                                                }}
+                                                                            >
+                                                                                <i className="icofont-close"></i>
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                     <td>
-                                                        <button type="button" className="btn btn-danger" onClick={() => removeDocumentRow(index)}>
-                                                            <i className="icofont-close"></i>
-                                                        </button>
+                                                        {formData.document.length > 1 ? (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-danger"
+                                                                onClick={() => removeDocumentRow(index)}
+                                                                title="Remove document"
+                                                            >
+                                                                <i className="icofont-close"></i>
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-secondary"
+                                                                disabled
+                                                                title="At least one document is required"
+                                                            >
+                                                                <i className="icofont-close"></i>
+                                                            </button>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
-                                    <button type="button" className="btn btn-success" onClick={addDocumentRow}>
-                                        Add Row +
-                                    </button>
+                                    <div className="d-flex justify-content-between align-items-center">
+                                        <button
+                                            type="button"
+                                            className="btn btn-success"
+                                            onClick={addDocumentRow}
+                                        >
+                                            <i className="icofont-plus me-1"></i> Add Document
+                                        </button>
+                                        <div className="text-muted">
+                                            <small>
+                                                <i className="icofont-info-circle me-1"></i>
+                                                Add all required supporting documents
+                                            </small>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1854,20 +2983,168 @@ const EmployeeRegistration = () => {
                             type="button"
                             className="btn btn-primary me-2"
                             disabled={loading || !isFormValid()}
+                            style={{ minWidth: '120px' }}
                         >
-                            {loading ? "Submitting..." : "Submit"}
+                            {loading ? (
+                                <>
+                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    Submitting...
+                                </>
+                            ) : (
+                                "Submit"
+                            )}
                         </button>
                         <button
                             onClick={handleCreateWithApprove}
                             type="button"
-                            className="btn btn-primary"
-                            disabled={loading}
+                            className="btn btn-success"
+                            disabled={loading || !isFormValid()}
+                            style={{ minWidth: '150px' }}
                         >
-                            {loading ? "Processing..." : "Submit & Approve"}
+                            {loading ? (
+                                <>
+                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    Processing...
+                                </>
+                            ) : (
+                                "Submit & Approve"
+                            )}
                         </button>
                     </div>
                 </div>
             </div>
+            {/* Preview Modal */}
+            {previewModal.show && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                    zIndex: 9999,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                }}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        borderRadius: '8px',
+                        width: '90%',
+                        height: '90%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        position: 'relative'
+                    }}>
+                        {/* Modal Header */}
+                        <div style={{
+                            padding: '15px 20px',
+                            borderBottom: '1px solid #dee2e6',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
+                            <h6 style={{ margin: 0 }}>
+                                <i className="icofont-file-alt me-2"></i>
+                                {previewModal.fileName}
+                            </h6>
+                            <div>
+                                <a
+                                    href={previewModal.url}
+                                    download={previewModal.fileName}
+                                    className="btn btn-sm btn-success me-2"
+                                    style={{ fontSize: '12px' }}
+                                >
+                                    <i className="icofont-download me-1"></i> Download
+                                </a>
+                                <button
+                                    onClick={closePreview}
+                                    className="btn btn-sm btn-danger"
+                                    style={{ fontSize: '12px' }}
+                                >
+                                    <i className="icofont-close me-1"></i> Close
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div style={{
+                            flex: 1,
+                            padding: '20px',
+                            overflow: 'auto',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center'
+                        }}>
+                            {previewModal.type === 'image' ? (
+                                <img
+                                    src={previewModal.url}
+                                    alt={previewModal.fileName}
+                                    style={{
+                                        maxWidth: '100%',
+                                        maxHeight: '100%',
+                                        objectFit: 'contain'
+                                    }}
+                                />
+                            ) : previewModal.type === 'pdf' ? (
+                                <iframe
+                                    src={previewModal.url}
+                                    title={previewModal.fileName}
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        border: 'none'
+                                    }}
+                                />
+                            ) : (
+                                <div style={{
+                                    textAlign: 'center',
+                                    color: '#6c757d'
+                                }}>
+                                    <i className="icofont-file-alt" style={{ fontSize: '48px' }}></i>
+                                    <p className="mt-3">File preview not available for this file type</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div style={{
+                            padding: '10px 20px',
+                            borderTop: '1px solid #dee2e6',
+                            textAlign: 'center',
+                            fontSize: '12px',
+                            color: '#6c757d'
+                        }}>
+                            <div>
+                                <i className="icofont-info-circle me-1"></i>
+                                Use mouse wheel to zoom, click and drag to pan
+                            </div>
+                        </div>
+
+                        {/* Close button (alternative) */}
+                        <button
+                            onClick={closePreview}
+                            style={{
+                                position: 'absolute',
+                                top: '10px',
+                                right: '10px',
+                                background: 'none',
+                                border: 'none',
+                                fontSize: '24px',
+                                color: '#dc3545',
+                                cursor: 'pointer',
+                                width: '30px',
+                                height: '30px',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center'
+                            }}
+                        >
+
+                        </button>
+                    </div>
+                </div>
+            )}
         </>
     );
 };
