@@ -11,12 +11,16 @@ import { FETCH_OPD_ERR_MSG,
   DUPLICATE_OPD
 } from "../../../config/constants"
 
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+
+
 const OpdSessionMaster = () => {
   const [opdSessionData, setOpdSessionData] = useState([])
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
-  const itemsPerPage = 5
+
+  
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, sessionId: null, newStatus: false })
   const [popupMessage, setPopupMessage] = useState(null)
   const [showForm, setShowForm] = useState(false)
@@ -60,18 +64,11 @@ const OpdSessionMaster = () => {
     session?.sessionName?.toLowerCase().includes(searchQuery?.toLowerCase() || ""),
   )
 
-  const currentItems = filteredSessions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
-  const filteredTotalPages = Math.ceil(filteredSessions.length / itemsPerPage)
 
-  const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10)
-    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-      setCurrentPage(pageNumber)
-    } else {
-      alert("Please enter a valid page number.")
-    }
-  }
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
+  const currentItems = filteredSessions.slice(indexOfFirst, indexOfLast)
 
   const handleEdit = (session) => {
     setEditingSession(session)
@@ -324,54 +321,18 @@ const OpdSessionMaster = () => {
                       ))}
                     </tbody>
                   </table>
-                  <nav className="d-flex justify-content-between align-items-center mt-3">
-                    <div>
-                      <span>
-                        Page {currentPage} of {filteredTotalPages} | Total Records: {filteredSessions.length}
-                      </span>
-                    </div>
-                    <ul className="pagination mb-0">
-                      <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                        <button
-                          className="page-link"
-                          onClick={() => setCurrentPage(currentPage - 1)}
-                          disabled={currentPage === 1}
-                        >
-                          &laquo; Previous
-                        </button>
-                      </li>
-                      {[...Array(filteredTotalPages)].map((_, index) => (
-                        <li className={`page-item ${currentPage === index + 1 ? "active" : ""}`} key={index}>
-                          <button className="page-link" onClick={() => setCurrentPage(index + 1)}>
-                            {index + 1}
-                          </button>
-                        </li>
-                      ))}
-                      <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                        <button
-                          className="page-link"
-                          onClick={() => setCurrentPage(currentPage + 1)}
-                          disabled={currentPage === filteredTotalPages}
-                        >
-                          Next &raquo;
-                        </button>
-                      </li>
-                    </ul>
-                    <div className="d-flex align-items-center">
-                      <input
-                        type="number"
-                        min="1"
-                        max={filteredTotalPages}
-                        value={pageInput}
-                        onChange={(e) => setPageInput(e.target.value)}
-                        placeholder="Go to page"
-                        className="form-control me-2"
-                      />
-                      <button className="btn btn-primary" onClick={handlePageNavigation}>
-                        Go
-                      </button>
-                    </div>
-                  </nav>
+                  <div>
+
+                    {filteredSessions.length > 0 && (
+                    <Pagination
+                      totalItems={filteredSessions.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  )}
+                  </div>
+
                 </div>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
