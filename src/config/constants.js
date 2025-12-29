@@ -548,3 +548,12 @@ export const DUPLICATE_STATE="State with the same name already exists!";
 export const UPDATE_STATE_SUCC_MSG="State updated successfully!";
 export const ADD_STATE_SUCC_MSG="New state added successfully!";
 
+
+//user department master
+export const FETCH_USER_DEPARTMENT_ERR_MSG="Failed to load user department data";
+export const DUPLICATE_USER_DEPARTMENT="User department with the same name already exists!";
+export const UPDATE_USER_DEPARTMENT_SUCC_MSG="User department updated successfully!";
+export const ADD_USER_DEPARTMENT_SUCC_MSG="New user department added successfully!";
+export const FAIL_TO_LOAD_USERS="Failed to load users";
+export const FAIL_TO_LOAD_DEPARTMENTS="Failed to load departments";
+
