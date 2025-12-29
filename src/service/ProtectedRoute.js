@@ -135,6 +135,7 @@ const validRoutes = [
   "/OpthNearVisionMaster",
   "/PatientPreparationMaster",
   "/ObConceptionMaster",
+  "/ObConsanguinityMaster",
 
 
   
