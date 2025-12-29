@@ -146,6 +146,7 @@ const validRoutes = [
   "/MenstrualFlowMaster",
   "/MenstrualPatternMaster",
   "/MenarcheMaster",
+  "/LabResultAmendment",
 
 
   

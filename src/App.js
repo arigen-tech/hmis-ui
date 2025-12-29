@@ -130,6 +130,7 @@ import OpthColorVisionMaster from './Views/Masters/OpthColorVisionMaster';
 import OpthDistanceVisionMaster from './Views/Masters/OpthDistanceVisionMaster';
 import OpthNearVisionMaster from './Views/Masters/OpthNearVisionMaster'; 
 import PatientPreparationMaster from './Views/Masters/PatientPreparationMaster';
+import LabResultAmendment from './Views/Masters/LabResultAmendment';
 import ObConceptionMaster from './Views/Masters/ObConceptionMaster';
 import ObConsanguinityMaster from './Views/Masters/ObConsanguinityMaster';
 import PresentationMaster from './Views/Masters/PresentationMaster';
@@ -317,6 +318,7 @@ function App() {
                 <Route path="/MenstrualFlowMaster" element={<MenstrualFlowMaster/>} />
                 <Route path="/MenstrualPatternMaster" element={<MenstrualPatternMaster/>} />
                 <Route path="/MenarcheMaster" element={<MenarcheMaster/>} />
+                <Route path="/LabResultAmendment" element={<LabResultAmendment/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
