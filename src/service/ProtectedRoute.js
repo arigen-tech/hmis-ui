@@ -143,6 +143,7 @@ const validRoutes = [
   "/StationPresentingMaster",
   "/SterilisationMaster",
   "/SmearResultMaster",
+  "/MenstrualFlowMaster",
 
 
   
