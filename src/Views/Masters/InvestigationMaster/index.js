@@ -15,12 +15,17 @@ import {
 } from "../../../config/apiConfig"
 import { ADD_INV_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DROP_DOWN_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, MISSING_MANDOTORY_FIELD, MISSING_MANDOTORY_FIELD_MSG, SELECT_INV_ERR_MSG, SELECT_INVESTIGATIONS_ERROR_MSG, UPDATE_INV_SUCC_MSG } from "../../../config/constants"
 
+// Import the Preparation Modal component
+import MasPreparationModel from "./Masprep/masprep"
+
 const InvestigationMaster = () => {
   const [investigations, setInvestigations] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedInvestigation, setSelectedInvestigation] = useState(null)
+  const [showPreparationModal, setShowPreparationModal] = useState(false)
+  
   const [formData, setFormData] = useState({
     investigationName: "",
     departmentId: "",
@@ -48,6 +53,9 @@ const InvestigationMaster = () => {
     pandemicCases: "",
     status: "n",
     interpretation:"",
+    preparationRequired: "",
+    turnaroundTime: "",
+    estimatedDays: "",
   })
   const [subInvestigations, setSubInvestigations] = useState([])
   const [confirmDialog, setConfirmDialog] = useState({
@@ -197,7 +205,7 @@ const InvestigationMaster = () => {
       container: dropdownOptions.containers,
       uom: dropdownOptions.uoms,
       methodology: dropdownOptions.methodologies,
-      category:dropdownOptions.categories,
+      category: dropdownOptions.categories,
     }
 
     const options = optionsMap[prefix] || []
@@ -246,9 +254,9 @@ const InvestigationMaster = () => {
       containerId: "",
       containerName: "",
       categoryId:"",
-    categoryName:"",
-    methodId:"",
-    methodName:"",
+      categoryName:"",
+      methodId:"",
+      methodName:"",
       uomId: "",
       uomName: "",
       resultType: "Select",
@@ -262,6 +270,9 @@ const InvestigationMaster = () => {
       pandemicCases: "",
       status: "n",
       interpretation:"",
+      preparationRequired: "",
+      turnaroundTime: "",
+      estimatedDays: "",
     })
     setSelectedInvestigation(null)
     setSubInvestigations([])
@@ -327,6 +338,9 @@ const InvestigationMaster = () => {
       return typeMap[investigationType?.toLowerCase()] || "Select"
     }
 
+    // Extract preparation details from the investigation
+    const prepText = investigation.preparationRequired || ""
+
     setSelectedInvestigation(investigation)
     setFormData({
       investigationName: investigation.investigationName || "",
@@ -338,158 +352,186 @@ const InvestigationMaster = () => {
       sampleName: investigation.sampleName || "",
       containerId: investigation.collectionId || "",
       containerName: investigation.collectionName || "",
-      methodId:investigation.methodId||'',
-      methodName:investigation.methodName||'',
-      categoryId:investigation.categoryId||'',
-      categoryName:investigation.categoryName||'',
+      methodId: investigation.methodId || '',
+      methodName: investigation.methodName || '',
+      categoryId: investigation.categoryId || '',
+      categoryName: investigation.categoryName || '',
       uomId: investigation.uomId || "",
       uomName: investigation.uomName || "",
       resultType: mapInvestigationTypeToResultType(investigation.investigationType) || "Select",
       minimumValue: investigation.minNormalValue || "",
       maximumValue: investigation.maxNormalValue || "",
       genderApplicable: mapGenderToDisplay(investigation.genderApplicable) || "Select",
-      loincCode: investigation.hicCode || "", // Fixed: using hicCode from API
+      loincCode: investigation.hicCode || "",
       flag: "Select",
       confidential: investigation.confidential === "y" || false,
       pandemic: false,
       pandemicCases: "",
       status: investigation.status || "n",
-      interpretation:investigation.interpretation,
+      interpretation: investigation.interpretation,
+      preparationRequired: prepText,
+      turnaroundTime: investigation.turnaroundTime || "",
+      estimatedDays: investigation.estimatedDays || "",
     })
 
     // Store sub-investigation data
     setSubInvestigations(investigation.subInvestigationResponseList || [])
   }
 
-  const handleSubmit = async () => {
-  if (!validateForm()) {
-    return
+  // Open preparation modal
+  const handleOpenPreparationModal = () => {
+    setShowPreparationModal(true)
   }
 
-  try {
-    setLoading(true)
+  // Handle preparation modal close
+  const handleClosePreparationModal = () => {
+    setShowPreparationModal(false)
+  }
 
-    // Map gender to code before sending to API
-    const genderCode = mapGenderToCode(formData.genderApplicable)
+  // Handle preparation modal OK button
+  const handlePreparationOk = (data) => {
+    // data is an array of selected items
+    if (data && Array.isArray(data)) {
+      // Concatenate all selected preparation texts with line breaks
+      const concatenatedText = data.map(item => item.preparationText).join('\n')
+      
+      setFormData(prev => ({
+        ...prev,
+        preparationRequired: concatenatedText,
+      }))
+    }
+    
+    setShowPreparationModal(false)
+  }
 
-    // Prepare the common request payload with correct API field names
-    const commonPayload = {
-      investigationName: formData.investigationName,
-      mainChargeCodeId: Number.parseInt(formData.departmentId) || 0,
-      subChargeCodeId: Number.parseInt(formData.modalityId) || 0,
-      sampleId: Number.parseInt(formData.sampleId) || 0,
-      collectionId: Number.parseInt(formData.containerId) || 0,
-      methodId:Number.parseInt(formData.methodId)||0,
-      categoryId:Number.parseInt(formData.categoryId)||0,
-      // For Multiple result type, UOM can be null, for others it's required
-      uomId: formData.resultType === "Multiple" ? 
-        (formData.uomId ? Number.parseInt(formData.uomId) : null) : 
-        Number.parseInt(formData.uomId) || 0,
-      investigationType: formData.resultType.toLowerCase().charAt(0),
-      maxNormalValue: formData.maximumValue || null,
-      minNormalValue: formData.minimumValue || null,
-      multipleResults: formData.resultType === "Multiple" ? "y" : "n",
-      hicCode: formData.loincCode,
-      confidential: formData.confidential ? "y" : "n",
-      status: formData.status,
-      genderApplicable: genderCode,
-      interpretation:formData.interpretation,
-      // Include additional fields that might be required
-      appearInDischargeSummary: selectedInvestigation?.appearInDischargeSummary || null,
-      testOrderNo: selectedInvestigation?.testOrderNo || null,
-      numericOrString: selectedInvestigation?.numericOrString || null,
+  const handleSubmit = async () => {
+    if (!validateForm()) {
+      return
     }
 
-    let response
+    try {
+      setLoading(true)
 
-    if (selectedInvestigation) {
-      // Update existing investigation
-      response = await putRequest(
-        `${MAS_INVESTIGATION}/update-single-investigation/${selectedInvestigation.investigationId}`,
-        commonPayload
-      )
-    } else {
-      // Create new investigation
-      response = await postRequest(`${MAS_INVESTIGATION}/create-investigation`, commonPayload)
-    }
+      // Map gender to code before sending to API
+      const genderCode = mapGenderToCode(formData.genderApplicable)
 
-    if (response && response.status === 200) {
-      // Refresh the investigations list
-      const investigationsRes = await getRequest(`${MAS_INVESTIGATION}/getAll/0`)
-      if (investigationsRes && investigationsRes.response) {
-        setInvestigations(
-          investigationsRes.response.map((item) => ({
-            ...item,
-            id: item.investigationId,
-          })),
-        )
+      // Prepare the common request payload with correct API field names
+      const commonPayload = {
+        investigationName: formData.investigationName,
+        mainChargeCodeId: Number.parseInt(formData.departmentId) || 0,
+        subChargeCodeId: Number.parseInt(formData.modalityId) || 0,
+        sampleId: Number.parseInt(formData.sampleId) || 0,
+        collectionId: Number.parseInt(formData.containerId) || 0,
+        methodId: Number.parseInt(formData.methodId) || 0,
+        categoryId: Number.parseInt(formData.categoryId) || 0,
+        // For Multiple result type, UOM can be null, for others it's required
+        uomId: formData.resultType === "Multiple" ? 
+          (formData.uomId ? Number.parseInt(formData.uomId) : null) : 
+          Number.parseInt(formData.uomId) || 0,
+        investigationType: formData.resultType.toLowerCase().charAt(0),
+        maxNormalValue: formData.maximumValue || null,
+        minNormalValue: formData.minimumValue || null,
+        multipleResults: formData.resultType === "Multiple" ? "y" : "n",
+        hicCode: formData.loincCode,
+        confidential: formData.confidential ? "y" : "n",
+        status: formData.status,
+        genderApplicable: genderCode,
+        interpretation: formData.interpretation,
+        preparationRequired: formData.preparationRequired || null,
+        estimatedDays: formData.estimatedDays || null,
+        turnaroundTime: formData.turnaroundTime || null,
+        // Include additional fields that might be required
+        appearInDischargeSummary: selectedInvestigation?.appearInDischargeSummary || null,
+        testOrderNo: selectedInvestigation?.testOrderNo || null,
+        numericOrString: selectedInvestigation?.numericOrString || null,
       }
+
+      let response
 
       if (selectedInvestigation) {
-        showPopup(UPDATE_INV_SUCC_MSG, "success")
+        // Update existing investigation
+        response = await putRequest(
+          `${MAS_INVESTIGATION}/update-single-investigation/${selectedInvestigation.investigationId}`,
+          commonPayload
+        )
       } else {
-        showPopup(ADD_INV_SUCC_MSG, "success")
-        handleReset() // Reset form after successful creation
+        // Create new investigation
+        response = await postRequest(`${MAS_INVESTIGATION}/create-investigation`, commonPayload)
       }
-    } else {
-      throw new Error(response?.message || `Failed to ${selectedInvestigation ? "update" : "create"} investigation`)
+
+      if (response && response.status === 200) {
+        // Refresh the investigations list
+        const investigationsRes = await getRequest(`${MAS_INVESTIGATION}/getAll/0`)
+        if (investigationsRes && investigationsRes.response) {
+          setInvestigations(
+            investigationsRes.response.map((item) => ({
+              ...item,
+              id: item.investigationId,
+            })),
+          )
+        }
+
+        if (selectedInvestigation) {
+          showPopup(UPDATE_INV_SUCC_MSG, "success")
+        } else {
+          showPopup(ADD_INV_SUCC_MSG, "success")
+          handleReset() // Reset form after successful creation
+        }
+      } else {
+        throw new Error(response?.message || `Failed to ${selectedInvestigation ? "update" : "create"} investigation`)
+      }
+    } catch (error) {
+      console.error("Error saving investigation:", error)
+      showPopup(FAIL_TO_SAVE_CHANGES, "error")
+    } finally {
+      setLoading(false)
     }
-  } catch (error) {
-    console.error("Error saving investigation:", error)
-    showPopup(FAIL_TO_SAVE_CHANGES, "error")
-  } finally {
-    setLoading(false)
   }
-}
 
   const validateForm = () => {
-  if (!formData.investigationName.trim()) {
-    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
-    return false
+    if (!formData.investigationName.trim()) {
+      showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
+      return false
+    }
+    if (!formData.departmentId) {
+      showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
+      return false
+    }
+    if (!formData.modalityId) {
+      showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
+      return false
+    }
+    if (!formData.sampleId) {
+      showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
+      return false
+    }
+    if (!formData.containerId) {
+      showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
+      return false
+    }
+    // Make UOM required only for Single and Range result types, optional for Multiple
+    if (formData.resultType !== "Multiple" && !formData.uomId) {
+      showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
+      return false
+    }
+    if (formData.resultType === "Select") {
+      showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
+      return false
+    }
+    if (formData.genderApplicable === "Select") {
+      showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
+      return false
+    }
+    if (!formData.methodId) {
+      showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
+      return false
+    }
+    if (!formData.categoryId) {
+      showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
+      return false
+    }
+    return true
   }
-  if (!formData.departmentId) {
-    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
-    return false
-  }
-  if (!formData.modalityId) {
-    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
-    return false
-  }
-  if (!formData.sampleId) {
-    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
-    return false
-  }
-  if (!formData.containerId) {
-    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
-    return false
-  }
-  // Make UOM required only for Single and Range result types, optional for Multiple
-  if (formData.resultType !== "Multiple" && !formData.uomId) {
-    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
-    return false
-  }
-  if (formData.resultType === "Select") {
-    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
-    return false
-  }
-  if (formData.genderApplicable === "Select") {
-    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
-    return false
-  }
-  if (!formData.methodId) {
-    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
-    return false
-  }
-  if (!formData.categoryId) {
-    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
-    return false
-  }
-  if (!formData.containerId) {
-    showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
-    return false
-  }
-  return true
-}
 
   const handleNavigateToSubInvestigations = () => {
     if (!selectedInvestigation) {
@@ -507,10 +549,13 @@ const InvestigationMaster = () => {
         sampleId: formData.sampleId,
         uomId: formData.uomId,
         collectionId: formData.containerId,
-        methodId:formData.methodId,
-        categoryId:formData.categoryId,
+        methodId: formData.methodId,
+        categoryId: formData.categoryId,
         genderApplicable: formData.genderApplicable,
-        interpretation:formData.interpretation,
+        interpretation: formData.interpretation,
+        preparationRequired: formData.preparationRequired,
+        estimatedDays: formData.estimatedDays,
+        turnaroundTime: formData.turnaroundTime,
       }
     })
   }
@@ -858,9 +903,6 @@ const InvestigationMaster = () => {
                           </div>
                         </div>
 
-
-
-
                         <div className="col-md-4">
                           <div className="mb-2">
                             <label className="form-label fw-bold mb-1">
@@ -890,6 +932,8 @@ const InvestigationMaster = () => {
                             </div>
                           </div>
                         </div>
+
+
                         <div className="col-md-4">
                           <div className="mb-2">
                             <label className="form-label mb-1">Minimum Value</label>
@@ -932,6 +976,70 @@ const InvestigationMaster = () => {
                               <option value="Female">Female</option>
                               <option value="Common">Common</option>
                             </select>
+                          </div>
+                        </div>
+
+
+                       
+
+                        {/* Preparation Required Section - After Gender Applicable */}
+                        <div className="col-md-4">
+                          <div className="mb-2">
+                            <label className="form-label fw-bold mb-1">
+                              Preparation Required
+                            </label>
+                            <div className="d-flex align-items-center gap-2">
+                              <textarea
+                                className="form-control"
+                                name="preparationRequired"
+                                value={formData.preparationRequired}
+                                onChange={handleInputChange}
+                                placeholder="Select from preparation list"
+                                rows="2"
+                              />
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-primary"
+                                onClick={handleOpenPreparationModal}
+                                title="Select Preparation"
+                              >
+                                <i className="icofont-search"></i>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="col-md-4">
+                          <div className="mb-2">
+                            <label className="form-label fw-bold mb-1">
+                              Turnaround Time (hours)
+                            </label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              name="turnaroundTime"
+                              value={formData.turnaroundTime}
+                              onChange={handleInputChange}
+                              placeholder="Enter hours"
+                              min="0"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="col-md-4">
+                          <div className="mb-2">
+                            <label className="form-label fw-bold mb-1">
+                              Estimated Days (days)
+                            </label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              name="estimatedDays"
+                              value={formData.estimatedDays}
+                              onChange={handleInputChange}
+                              placeholder="Enter days"
+                              min="0"
+                            />
                           </div>
                         </div>
 
@@ -1010,12 +1118,13 @@ const InvestigationMaster = () => {
                             />
                           </div>
                         </div>
+
                         <div className="col-md-8 mt-4">
                           <label className="form-label mb-2 fw-bold">
                             Interpretation
                           </label>
                           <textarea
-                          type="text"
+                            type="text"
                             name="interpretation"
                             className="form-control"
                             placeholder="Enter Interpretation"
@@ -1024,7 +1133,6 @@ const InvestigationMaster = () => {
                             onChange={handleInputChange}
                           />
                         </div>
-                          
                                                 
 
                         <div className="col-12 text-end mt-2 mb-3">
@@ -1130,6 +1238,14 @@ const InvestigationMaster = () => {
           </div>
         </div>
       </div>
+
+      {/* Preparation Required Modal */}
+      <MasPreparationModel
+        show={showPreparationModal}
+        onClose={handleClosePreparationModal}
+        onOk={handlePreparationOk}
+        selectedItems={[]}
+      />
     </div>
   )
 }
