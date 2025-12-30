@@ -147,7 +147,7 @@ const validRoutes = [
   "/MenstrualPatternMaster",
   "/MenarcheMaster",
   "/LabResultAmendment",
-
+  "/ItemFacility",
 
   
 ];
