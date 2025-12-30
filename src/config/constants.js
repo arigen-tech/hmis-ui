@@ -581,3 +581,12 @@ export const ADD_USER_DEPARTMENT_SUCC_MSG="New user department added successfull
 export const FAIL_TO_LOAD_USERS="Failed to load users";
 export const FAIL_TO_LOAD_DEPARTMENTS="Failed to load departments";
 
+
+//Lab Amendment Type Master 
+
+export const ADD_LAB_AMENDMENT_TYPE_SUCC_MSG = "Amendment type added successfully!";
+export const UPDATE_LAB_AMENDMENT_TYPE_SUCC_MSG = "Amendment type updated successfully!";
+export const DUPLICATE_LAB_AMENDMENT_TYPE = "Amendment type code is already exists!";
+export const FETCH_LAB_AMENDMENT_TYPE_ERR_MSG = "Failed to fetch amendment types";
+
+
