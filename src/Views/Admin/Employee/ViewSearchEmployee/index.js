@@ -2205,7 +2205,12 @@ const ViewSearchEmployee = () => {
                                   ...prev,
                                   idDocumentName: null,
                                 }));
+                                setExistingFiles(prev => ({
+                                  ...prev,
+                                  idDocument: null,
+                                }));
                                 document.getElementById('idDocumentName').value = '';
+                                setErrors(prev => ({ ...prev, idDocumentName: '' }));
                               }}
                               title="Remove"
                               style={{
@@ -2240,7 +2245,6 @@ const ViewSearchEmployee = () => {
                     />
                   </div>
 
-                  {/* Designation Field - Add after Employee Type */}
                   <div className="col-md-4">
                     <label className="form-label">Designation *</label>
                     <select
@@ -2339,7 +2343,6 @@ const ViewSearchEmployee = () => {
                     )}
                   </div>
                 </div>
-                {/* Profile Description - Add after the main form fields */}
                 <div className="col-md-12 mt-3">
                   <label className="form-label">Profile Description</label>
                   <div className="form-group col-md-12">
@@ -2367,7 +2370,6 @@ const ViewSearchEmployee = () => {
                   </div>
                 </div>
               </div>
-              {/* Profile Image */}
               {/* Profile Image */}
               <div className="col-md-3 d-flex flex-column">
                 <label className="form-label">Profile Image *</label>
@@ -2482,7 +2484,9 @@ const ViewSearchEmployee = () => {
                               profilePicName: null,
                               profilePicPreview: null,
                             }));
+                            setExistingFiles(prev => ({ ...prev, profilePic: null }));
                             document.getElementById('profilePicName').value = '';
+                            setErrors(prev => ({ ...prev, profilePicName: '' }));
                           }}
                           title="Remove"
                           style={{
@@ -2653,6 +2657,13 @@ const ViewSearchEmployee = () => {
                                             const newQualifications = [...prev.qualifications];
                                             newQualifications[index] = null;
                                             return { ...prev, qualifications: newQualifications };
+                                          });
+                                          setErrors(prev => {
+                                            const newErrors = { ...prev };
+                                            if (newErrors.qualification && newErrors.qualification[index]) {
+                                              delete newErrors.qualification[index].filePath;
+                                            }
+                                            return newErrors;
                                           });
                                         }}
                                         title="Remove"
@@ -3115,10 +3126,19 @@ const ViewSearchEmployee = () => {
                                               } : item
                                             )
                                           }));
+                                          // Clear existing file reference
                                           setExistingFiles(prev => {
                                             const newDocuments = [...prev.documents];
                                             newDocuments[index] = null;
                                             return { ...prev, documents: newDocuments };
+                                          });
+                                          // Clear validation error
+                                          setErrors(prev => {
+                                            const newErrors = { ...prev };
+                                            if (newErrors.document && newErrors.document[index]) {
+                                              delete newErrors.document[index].filePath;
+                                            }
+                                            return newErrors;
                                           });
                                         }}
                                         title="Remove"
@@ -3290,30 +3310,6 @@ const ViewSearchEmployee = () => {
                 </div>
               )}
             </div>
-
-            {/* Close button (alternative) */}
-            <button
-              onClick={closePreview}
-              style={{
-                position: 'absolute',
-                top: '10px',
-                right: '10px',
-                background: '#dc3545',
-                color: 'white',
-                border: 'none',
-                borderRadius: '50%',
-                width: '30px',
-                height: '30px',
-                fontSize: '20px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 1000000
-              }}
-            >
-              ×
-            </button>
           </div>
         </div>
       )}
