@@ -148,7 +148,8 @@ const validRoutes = [
   "/MenarcheMaster",
   "/LabResultAmendment",
   "/ItemFacility",
-
+  "/LabReports",
+  "/InvestigationRegister",
   
 ];
 
