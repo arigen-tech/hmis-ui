@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react"
 import { getRequest, putRequest } from "../../../service/apiService"
-import { LAB } from "../../../config/apiConfig"
+import { LAB, LAB_AMENDMENT_TYPE_API } from "../../../config/apiConfig" // Added MASTER import
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
-import {FETCH_RESULT_UPDATE_DATA_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, RESULT_UPDATE_ERR_MSG, RESULT_UPDATE_SUCC_MSG, UNEXPECTED_ERROR} from "../../../config/constants"
+import {FETCH_RESULT_UPDATE_DATA_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, RESULT_UPDATE_ERR_MSG, RESULT_UPDATE_SUCC_MSG, UNEXPECTED_ERROR, SELECT_ROW_TO_EDIT_WARN_MSG} from "../../../config/constants"
 
 const UpdateResultValidation = () => {
   const [resultList, setResultList] = useState([])
@@ -17,11 +17,14 @@ const UpdateResultValidation = () => {
   const [pageInput, setPageInput] = useState("")
   const [selectedResult, setSelectedResult] = useState(null)
   const [showDetailView, setShowDetailView] = useState(false)
+  const [editableRows, setEditableRows] = useState([]) // Array to track which rows are editable
+  const [amendmentTypes, setAmendmentTypes] = useState([]) // Array to store amendment types
   const itemsPerPage = 5
 
-  // Fetch update results data
+  // Fetch update results data and amendment types
   useEffect(() => {
     fetchUpdateResults()
+    fetchAmendmentTypes()
   }, [])
 
   const fetchUpdateResults = async () => {
@@ -41,6 +44,22 @@ const UpdateResultValidation = () => {
       showPopup(FETCH_RESULT_UPDATE_DATA_ERR_MSG, 'error')
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAmendmentTypes = async () => {
+    try {
+      const data = await getRequest(`${LAB_AMENDMENT_TYPE_API}/all?flag=1`);
+      
+      if (data.status === 200 && data.response) {
+        setAmendmentTypes(data.response);
+      } else {
+        console.error('Error fetching amendment types:', data.message);
+        // Don't show popup for this - just log error
+      }
+    } catch (error) {
+      console.error('Error fetching amendment types:', error);
+      // Don't show popup for this - just log error
     }
   };
 
@@ -113,9 +132,11 @@ const UpdateResultValidation = () => {
                         investigation: subTest.subInvestigationName || '',
                         sample: subTest.sampleName || '',
                         result: subTest.result || "",
+                        oldResult: subTest.result || "", // Store original result for amendment audit
                         units: subTest.unit || '',
                         normal_range: subTest.normalValue || '',
                         remarks: subTest.remarks || "",
+                        amendmentTypeId: null, // Initialize amendment type
                         inRange: subTest.inRange !== undefined ? subTest.inRange : null,
                         comparisonType: subTest.comparisonType || "",
                         fixedId: subTest.fixedId || null,
@@ -131,9 +152,11 @@ const UpdateResultValidation = () => {
                       investigation: inv.investigationName || '',
                       sample: inv.sampleName || '',
                       result: inv.result || "",
+                      oldResult: inv.result || "", // Store original result for amendment audit
                       units: inv.unit || '',
                       normal_range: inv.normalValue || '',
                       remarks: inv.remarks || "",
+                      amendmentTypeId: null, // Initialize amendment type
                       inRange: inv.inRange !== undefined ? inv.inRange : null,
                       comparisonType: inv.comparisonType || "",
                       fixedId: inv.fixedId || null,
@@ -151,9 +174,11 @@ const UpdateResultValidation = () => {
                       investigation: inv.investigationName || '',
                       sample: inv.sampleName || '',
                       result: inv.result || "",
+                      oldResult: inv.result || "", // Store original result for amendment audit
                       units: inv.unit || '',
                       normal_range: inv.normalValue || '',
                       remarks: inv.remarks || "",
+                      amendmentTypeId: null, // Initialize amendment type
                       inRange: inv.inRange !== undefined ? inv.inRange : null,
                       comparisonType: inv.comparisonType || "",
                       fixedId: inv.fixedId || null,
@@ -217,7 +242,7 @@ const UpdateResultValidation = () => {
         mainCounter++;
       } else if (investigation.subTests && investigation.subTests.length > 0) {
         // Investigation with sub-tests
-        // Add main investigation row
+        // Add main investigation header row
         processedInvestigations.push({
           ...investigation,
           si_no: mainCounter.toString(),
@@ -307,7 +332,7 @@ const UpdateResultValidation = () => {
     return {}; // Default style for null or undefined
   }
 
-  // FIXED: Handle result change for main investigations
+  // Handle result change for main investigations
   const handleResultChange = (investigationId, value, selectedFixedId = null) => {
     if (selectedResult) {
       const updatedInvestigations = selectedResult.investigations.map((inv) => {
@@ -324,7 +349,7 @@ const UpdateResultValidation = () => {
     }
   }
 
-  // FIXED: Handle result change for sub-tests
+  // Handle result change for sub-tests
   const handleSubTestResultChange = (subTestId, value, selectedFixedId = null) => {
     if (selectedResult) {
       const updatedInvestigations = selectedResult.investigations.map((inv) => {
@@ -341,7 +366,7 @@ const UpdateResultValidation = () => {
     }
   }
 
-  // FIXED: Handle remarks change for main investigations
+  // Handle remarks change for main investigations
   const handleRemarksChange = (investigationId, value) => {
     if (selectedResult) {
       const updatedInvestigations = selectedResult.investigations.map((inv) => {
@@ -357,7 +382,7 @@ const UpdateResultValidation = () => {
     }
   }
 
-  // FIXED: Handle remarks change for sub-tests
+  // Handle remarks change for sub-tests
   const handleSubTestRemarksChange = (subTestId, value) => {
     if (selectedResult) {
       const updatedInvestigations = selectedResult.investigations.map((inv) => {
@@ -373,9 +398,115 @@ const UpdateResultValidation = () => {
     }
   }
 
-  // Render result input field with proper fixedId handling and inRange styling
+  // Handle amendment type change for main investigations
+  const handleAmendmentTypeChange = (investigationId, value) => {
+    if (selectedResult) {
+      const updatedInvestigations = selectedResult.investigations.map((inv) => {
+        if (inv.id === investigationId) {
+          return {
+            ...inv,
+            amendmentTypeId: value ? parseInt(value) : null
+          }
+        }
+        return inv
+      })
+      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
+    }
+  }
+
+  // Handle amendment type change for sub-tests
+  const handleSubTestAmendmentTypeChange = (subTestId, value) => {
+    if (selectedResult) {
+      const updatedInvestigations = selectedResult.investigations.map((inv) => {
+        if (inv.displayType === 'subtest' && inv.id === subTestId) {
+          return {
+            ...inv,
+            amendmentTypeId: value ? parseInt(value) : null
+          }
+        }
+        return inv
+      })
+      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
+    }
+  }
+
+  // Toggle edit mode for a specific row
+  const toggleEditRow = (investigationId, isChecked) => {
+    if (isChecked) {
+      // Add to editable rows
+      setEditableRows(prev => [...prev, investigationId]);
+    } else {
+      // Remove from editable rows
+      setEditableRows(prev => prev.filter(id => id !== investigationId));
+    }
+  }
+
+  // Check if a row is editable
+  const isRowEditable = (investigationId) => {
+    return editableRows.includes(investigationId);
+  }
+
+  // Render edit checkbox for a row
+  const renderEditCheckbox = (test) => {
+    // Don't show checkbox for main investigation headers (they're just headers)
+    if (test.displayType === 'main') {
+      return null;
+    }
+    
+    const isChecked = isRowEditable(test.id);
+    
+    return (
+      <div className="form-check d-flex justify-content-center">
+        <input
+          type="checkbox"
+          className="form-check-input"
+          id={`edit-${test.id}`}
+          checked={isChecked}
+          onChange={(e) => toggleEditRow(test.id, e.target.checked)}
+          style={{ transform: "scale(1.2)", cursor: "pointer" }}
+        />
+        <label className="form-check-label ms-1" htmlFor={`edit-${test.id}`} style={{ cursor: "pointer" }}>
+  
+        </label>
+      </div>
+    );
+  }
+
+  // Render amendment type dropdown
+  const renderAmendmentTypeDropdown = (test) => {
+    const isEditable = isRowEditable(test.id);
+    const selectedValue = test.amendmentTypeId || "";
+    
+    return (
+      <select
+        className="form-select"
+        value={selectedValue}
+        onChange={(e) => {
+          if (!isEditable) return;
+          const value = e.target.value;
+          if (test.displayType === 'subtest') {
+            handleSubTestAmendmentTypeChange(test.id, value);
+          } else {
+            handleAmendmentTypeChange(test.id, value);
+          }
+        }}
+        disabled={!isEditable}
+        style={{ padding: "4px" }}
+      >
+        <option value="">-- Select --</option>
+        {amendmentTypes.map((type) => (
+          <option key={type.amendmentTypeId} value={type.amendmentTypeId}>
+            {type.amendmentTypeName}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  // Render result input field with proper fixedId handling, inRange styling, and edit check
   const renderResultInput = (test) => {
     const resultStyle = getResultTextStyle(test.inRange);
+    const isEditable = isRowEditable(test.id);
 
     if (test.comparisonType === 'f' && test.fixedDropdownValues && test.fixedDropdownValues.length > 0) {
       return (
@@ -384,6 +515,7 @@ const UpdateResultValidation = () => {
             className="form-select"
             value={test.fixedId || ""}
             onChange={(e) => {
+              if (!isEditable) return;
               const selectedFixedId = e.target.value ? parseInt(e.target.value) : null;
               const selectedOption = test.fixedDropdownValues.find(opt => opt.fixedId === selectedFixedId);
               const resultValue = selectedOption ? selectedOption.fixedValue : "";
@@ -395,6 +527,7 @@ const UpdateResultValidation = () => {
               }
             }}
             style={resultStyle}
+            disabled={!isEditable}
           >
             <option value="">Select Result</option>
             {test.fixedDropdownValues.map((option) => (
@@ -415,6 +548,7 @@ const UpdateResultValidation = () => {
           className="form-control"
           value={test.result}
           onChange={(e) => {
+            if (!isEditable) return;
             if (test.displayType === 'subtest') {
               handleSubTestResultChange(test.id, e.target.value, null);
             } else {
@@ -423,19 +557,23 @@ const UpdateResultValidation = () => {
           }}
           placeholder="Enter result"
           style={resultStyle}
+          readOnly={!isEditable}
         />
       )
     }
   }
 
-  // Render remarks input field
+  // Render remarks input field with edit check
   const renderRemarksInput = (test) => {
+    const isEditable = isRowEditable(test.id);
+    
     return (
       <input
         type="text"
         className="form-control"
         value={test.remarks}
         onChange={(e) => {
+          if (!isEditable) return;
           if (test.displayType === 'subtest') {
             handleSubTestRemarksChange(test.id, e.target.value);
           } else {
@@ -444,6 +582,7 @@ const UpdateResultValidation = () => {
         }}
         placeholder="Enter remarks"
         style={{ padding: "4px"}}
+        readOnly={!isEditable}
       />
     )
   }
@@ -455,6 +594,9 @@ const UpdateResultValidation = () => {
   }
 
   const handleRowClick = (result) => {
+    // Reset editable rows when opening a new detail view
+    setEditableRows([]);
+    
     // When clicking a row, combine all investigations from all headers
     const allInvestigations = result.headers.flatMap(header => header.investigations);
     
@@ -471,16 +613,35 @@ const UpdateResultValidation = () => {
   const handleBackToList = () => {
     setShowDetailView(false)
     setSelectedResult(null)
+    setEditableRows([]);
   }
 
-  // UPDATED: Handle Update based on your service implementation
+  // UPDATED: Handle Update based on your service implementation - Only update rows that are marked as editable
   const handleUpdate = async () => {
     if (!selectedResult) return;
+
+    // Check if any row is selected for editing
+    if (editableRows.length === 0) {
+      showPopup(SELECT_ROW_TO_EDIT_WARN_MSG, "warning");
+      return;
+    }
+
+    // Validate that all editable rows have amendment type selected
+    const rowsWithoutAmendmentType = selectedResult.investigations.filter(inv => 
+      isRowEditable(inv.id) && 
+      inv.displayType !== 'main' && 
+      !inv.amendmentTypeId
+    );
+
+    if (rowsWithoutAmendmentType.length > 0) {
+      showPopup("Please select Amendment Type for all editable rows", "warning");
+      return;
+    }
 
     setLoading(true);
 
     try {
-      // Prepare update payload for all headers
+      // Prepare update payload for all headers, but only include editable rows
       const updatePromises = selectedResult.headers.map(header => {
         const headerInvestigations = selectedResult.investigations.filter(inv => 
           inv.headerId === header.resultEntryHeaderId && inv.displayType !== 'main'
@@ -489,16 +650,23 @@ const UpdateResultValidation = () => {
         const resultUpdateDetailRequests = [];
 
         headerInvestigations.forEach(inv => {
-          if (inv.displayType === 'subtest' || inv.displayType === 'single') {
+          if ((inv.displayType === 'subtest' || inv.displayType === 'single') && isRowEditable(inv.id)) {
             resultUpdateDetailRequests.push({
               resultEntryDetailsId: inv.resultEntryDetailsId,
               result: inv.result || "",
+              oldResult: inv.oldResult || "", // Send original result for audit
+              amendmentTypeId: inv.amendmentTypeId || null, // Send amendment type
               remarks: inv.remarks || "",
               fixedId: inv.fixedId || null,
               comparisonType: inv.comparisonType || ""
             });
           }
         });
+
+        // If no editable rows in this header, skip it
+        if (resultUpdateDetailRequests.length === 0) {
+          return null;
+        }
 
         // Sort detail requests by resultEntryDetailsId to maintain order
         const sortedDetailRequests = resultUpdateDetailRequests.sort((a, b) => 
@@ -518,7 +686,16 @@ const UpdateResultValidation = () => {
         return putRequest(`${LAB}/update`, requestPayload);
       });
 
-      const responses = await Promise.all(updatePromises);
+      // Filter out null promises (headers with no editable rows)
+      const validPromises = updatePromises.filter(promise => promise !== null);
+      
+      if (validPromises.length === 0) {
+        showPopup(SELECT_ROW_TO_EDIT_WARN_MSG, "warning");
+        setLoading(false);
+        return;
+      }
+
+      const responses = await Promise.all(validPromises);
       const allSuccess = responses.every(response => response.status === 200);
 
       if (allSuccess) {
@@ -526,6 +703,7 @@ const UpdateResultValidation = () => {
         await fetchUpdateResults();
         setShowDetailView(false);
         setSelectedResult(null);
+        setEditableRows([]);
       } else {
         const errorMessages = responses
           .filter(response => response.status !== 200)
@@ -551,6 +729,8 @@ const UpdateResultValidation = () => {
           ...originalResult,
           investigations: investigationsWithSequentialNumbers
         });
+        // Clear editable rows on reset
+        setEditableRows([]);
       }
     }
   }
@@ -613,7 +793,7 @@ const UpdateResultValidation = () => {
     ))
   }
 
-  // Detail View
+  // Detail View with Edit Checkbox Column
   if (showDetailView && selectedResult) {
     return (
       <div className="content-wrapper">
@@ -627,9 +807,14 @@ const UpdateResultValidation = () => {
               <div className="card-header">
                 <div className="d-flex justify-content-between align-items-center">
                   <h4 className="card-title p-2">UPDATE RESULT ENTRY</h4>
-                  <button className="btn btn-secondary" onClick={handleBackToList}>
-                    <i className="mdi mdi-arrow-left"></i> Back to List
-                  </button>
+                  <div className="d-flex align-items-center">
+                    {/* <span className="badge bg-info me-3">
+                      Editable Rows: {editableRows.length}
+                    </span> */}
+                    <button className="btn btn-secondary" onClick={handleBackToList}>
+                      <i className="mdi mdi-arrow-left"></i> Back to List
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -702,7 +887,18 @@ const UpdateResultValidation = () => {
                   </div>
                 </div>
 
-                {/* Investigations Table */}
+                {/* Instructions */}
+                {/* <div className="alert alert-info mb-4">
+                  <i className="mdi mdi-information-outline me-2"></i>
+                  <strong>Instructions:</strong> 
+                  <ol className="mb-0 mt-1">
+                    <li>Check the "Edit" box for each row you want to update.</li>
+                    <li>Only checked rows will be editable and updated when you click the UPDATE button.</li>
+                    <li>For each editable row, <strong>Amendment Type is mandatory</strong> before updating.</li>
+                  </ol>
+                </div> */}
+
+                {/* Investigations Table with Edit Checkbox Column */}
                 <div className="table-responsive" style={{ overflowX: "auto" }}>
                   <table 
                     className="table table-bordered table-hover" 
@@ -710,19 +906,21 @@ const UpdateResultValidation = () => {
                       marginBottom: "0",
                       tableLayout: "fixed",
                       width: "100%",
-                      minWidth: "800px"
+                      minWidth: "1000px" // Increased width for the new column
                     }}
                   >
                     <thead className="table-light">
                       <tr>
                         <th style={{ width: "60px" }}>SL No.</th>
-                        <th style={{ width: "150px", textAlign: "center" }}>Sample Id</th>
-                        <th style={{ width: "120px" , textAlign: "center"}}>Investigation</th>
-                        <th style={{ width: "120px" , textAlign: "center"}}>Sample</th>
-                        <th style={{ width: "80px" , textAlign: "center" }}>Result</th>
+                        <th style={{ width: "150px"}}>Sample Id</th>
+                        <th style={{ width: "120px" }}>Investigation</th>
+                        <th style={{ width: "120px" }}>Sample</th>
+                        <th style={{ width: "80px" }}>Result</th>
                         <th style={{ width: "60px" }}>Units</th>
-                        <th style={{ width: "120px", textAlign: "center" }}>Normal Range</th>
-                        <th style={{ width: "140px" , textAlign: "center"}}>Remarks</th>
+                        <th style={{ width: "120px"}}>Normal Range</th>
+                        <th style={{ width: "120px" }}>Amendment Type</th>
+                        <th style={{ width: "140px"}}>Remarks</th>
+                        <th style={{ width: "50px" }}>Edit</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -734,19 +932,17 @@ const UpdateResultValidation = () => {
                               <td style={{ padding: "4px", textAlign: "center", width: "60px" }}>
                                 {investigation.si_no}
                               </td>
-                              <td style={{ padding: "4px", textAlign: "center", width: "150px" }}>
-                                {investigation.generatedSampleId}
-                              </td>
-                              <td colSpan="6" style={{ padding: "4px" }}>
+                              <td colSpan="9" style={{ padding: "4px" }}> {/* Span across all columns except SL No */}
                                 <strong>{investigation.investigation}</strong>
                               </td>
                             </tr>
                           ) : investigation.displayType === 'subtest' ? (
                             // Sub-test row
-                            <tr>
+                            <tr className={isRowEditable(investigation.id) ? "table-warning" : ""}>
                               <td style={{ padding: "4px", textAlign: "center", width: "60px" }}>
                                 {investigation.si_no}
                               </td>
+                              
                               <td style={{ padding: "4px", textAlign: "center", width: "150px" }}>
                                 <input
                                     type="text"
@@ -761,7 +957,6 @@ const UpdateResultValidation = () => {
                                   className="form-control"
                                   value={investigation.investigation}
                                   readOnly
-                                  
                                 />
                               </td>
                               <td style={{ padding: "4px", width: "120px" }}>
@@ -789,26 +984,26 @@ const UpdateResultValidation = () => {
                                   rows="2"
                                   value={investigation.normal_range}
                                   readOnly
-                                  // style={{ 
-                                  //   border: "none", 
-                                  //   backgroundColor: "transparent", 
-                                  //   padding: "2px 4px",
-                                  //   resize: "none",
-                                  //   height: "auto",
-                                  //   minHeight: "34px"
-                                  // }}
                                 ></textarea>
+                              </td>
+                              <td style={{ padding: "4px", width: "180px" }}>
+                                {renderAmendmentTypeDropdown(investigation)}
                               </td>
                               <td style={{ padding: "4px", width: "140px" }}>
                                 {renderRemarksInput(investigation)}
+                              </td>
+                              
+                              <td style={{ padding: "4px", textAlign: "center", width: "50px" }}>
+                                {renderEditCheckbox(investigation)}
                               </td>
                             </tr>
                           ) : (
                             // Single investigation without sub-tests
-                            <tr>
+                            <tr className={isRowEditable(investigation.id) ? "table-warning" : ""}>
                               <td style={{ padding: "4px", textAlign: "center", width: "60px" }}>
                                 {investigation.si_no}
                               </td>
+                              
                               <td style={{ padding: "4px", textAlign: "center", width: "150px" }}>
                                 <input
                                     type="text"
@@ -831,7 +1026,6 @@ const UpdateResultValidation = () => {
                                   className="form-control"
                                   value={investigation.sample}
                                   readOnly
-                                 
                                 />
                               </td>
                               <td style={{ padding: "4px", width: "80px" }}>
@@ -843,7 +1037,6 @@ const UpdateResultValidation = () => {
                                   className="form-control"
                                   value={investigation.units}
                                   readOnly
-                                  
                                 />
                               </td>
                               <td style={{ padding: "4px", width: "120px" }}>
@@ -852,11 +1045,17 @@ const UpdateResultValidation = () => {
                                   rows="2"
                                   value={investigation.normal_range}
                                   readOnly
-                                  
                                 ></textarea>
+                              </td>
+                              <td style={{ padding: "4px", width: "180px" }}>
+                                {renderAmendmentTypeDropdown(investigation)}
                               </td>
                               <td style={{ padding: "4px", width: "140px" }}>
                                 {renderRemarksInput(investigation)}
+                              </td>
+                              
+                              <td style={{ padding: "4px", textAlign: "center", width: "50px" }}>
+                                {renderEditCheckbox(investigation)}
                               </td>
                             </tr>
                           )}
@@ -868,8 +1067,12 @@ const UpdateResultValidation = () => {
 
                 {/* Action Buttons */}
                 <div className="text-end mt-4">
-                  <button className="btn btn-success me-3" onClick={handleUpdate} disabled={loading}>
-                    <i className="mdi mdi-check-all"></i> UPDATE
+                  <button 
+                    className="btn btn-success me-3" 
+                    onClick={handleUpdate} 
+                    disabled={loading || editableRows.length === 0}
+                  >
+                    <i className="mdi mdi-check-all"></i> UPDATE 
                   </button>
                   <button className="btn btn-secondary me-3" onClick={handleReset} disabled={loading}>
                     <i className="mdi mdi-refresh"></i> RESET
@@ -886,7 +1089,7 @@ const UpdateResultValidation = () => {
     )
   }
 
-  // List View (same as before)
+  // List View
   return (
     <div className="content-wrapper">
       {popupMessage && <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />}

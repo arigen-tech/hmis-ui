@@ -145,6 +145,7 @@ export const INVALID_PAGE="Invalid page !";
 export const FETCH_RESULT_UPDATE_DATA_ERR_MSG="Failed to load update results";
 export const RESULT_UPDATE_SUCC_MSG="All results updated successfully!";
 export const RESULT_UPDATE_ERR_MSG="Results failed to update";
+export const SELECT_ROW_TO_EDIT_WARN_MSG= "Please select at least one row to edit before updating.";
 
 
 //OPDBillingDetails
