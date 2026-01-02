@@ -519,6 +519,13 @@ const DepartmentMaster = () => {
     </label>
     <input
       type="checkbox"
+        style={{
+                                                                        width: "15px",
+                                                                        height: '15px',
+                                                                        border: '2px solid black',
+                                                                        boxShadow: 'none',
+                                                                        outline: 'none'
+                                                                    }}
       id="isIndentApplicable"
       className="form-check-input m-0"
     />
