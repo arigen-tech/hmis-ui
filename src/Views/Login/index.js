@@ -173,7 +173,7 @@ const Login = () => {
                           className="btn btn-light btn-sm p-0 border-0"
                           data-bs-toggle="tooltip"
                           data-bs-placement="right"
-                          title="Now Release Version 2.31 — Under Testing"
+                          title="Now Release Version 2.32 — Under Testing"
                         >
                           <i className="bi bi-info-circle text-primary fs-4"></i>
                         </button>
