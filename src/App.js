@@ -146,6 +146,7 @@ import MenarcheMaster from './Views/Masters/MenarcheMaster';
 import ItemFacility from './Views/Masters/ItemFacility';
 import LabReports from './Views/Laboratory/LabReports/LabReportMain';
 import InvestigationRegister from './Views/Laboratory/LabReports/InvestigationRegister';
+import TATReport from './Views/Laboratory/LabReports/TatReport';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -325,6 +326,7 @@ function App() {
                 <Route path="/ItemFacility" element={<ItemFacility/>} />
                 <Route path="/LabReports" element={<LabReports/>} />
                 <Route path="/InvestigationRegister" element={<InvestigationRegister/>} />
+                <Route path="/TATReport" element={<TATReport/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
