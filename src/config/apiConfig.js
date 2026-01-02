@@ -217,4 +217,9 @@ export const PRINT = `/print`;
 export const MAS_ADMISSION_STATUS = `${MASTERS}/masAdmissionStatus`;
 export const MAS_SPECIALTY = `${MASTERS}/masSpecialty`;
 export const MAS_BILLING_POLICY = `${MASTERS}/billingPolicy`;
+export const OPTH_SPECTACLE_USE = `${MASTERS}/opthMasSpectacleUse`;
+export const OB_BOOKED_STATUS = `${MASTERS}/obMasBookedStatus`;
+export const MAS_TOOTH_CONDITION = `${MASTERS}/masToothCondition`;
+export const LAB_AMENDMENT_TYPE_API = `${MASTERS}/lab-amendment-type`;
+export const MAS_PATIENT_PREPARATION = `${MASTERS}/patient-preparation`;
 

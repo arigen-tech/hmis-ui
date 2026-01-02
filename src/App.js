@@ -129,6 +129,24 @@ import BookedStatusMaster from './Views/Masters/BookedStatusMaster';
 import OpthColorVisionMaster from './Views/Masters/OpthColorVisionMaster'; 
 import OpthDistanceVisionMaster from './Views/Masters/OpthDistanceVisionMaster';
 import OpthNearVisionMaster from './Views/Masters/OpthNearVisionMaster'; 
+import PatientPreparationMaster from './Views/Masters/PatientPreparationMaster';
+import LabResultAmendment from './Views/Masters/LabResultAmendment';
+import ObConceptionMaster from './Views/Masters/ObConceptionMaster';
+import ObConsanguinityMaster from './Views/Masters/ObConsanguinityMaster';
+import PresentationMaster from './Views/Masters/PresentationMaster';
+import TrimesterMaster from './Views/Masters/TrimesterMaster';
+import CervixPosition from './Views/Masters/CervixPosition';
+import PelvisType from './Views/Masters/PelvisType';
+import StationPresentingMaster from './Views/Masters/StationPresentingMaster';
+import SterilisationMaster from './Views/Masters/SterilisationMaster';
+import SmearResultMaster from './Views/Masters/SmearResultMaster';
+import MenstrualFlowMaster from './Views/Masters/MenstrualFlowMaster';
+import MenstrualPatternMaster from './Views/Masters/MenstrualPatternMaster';
+import MenarcheMaster from './Views/Masters/MenarcheMaster';
+import ItemFacility from './Views/Masters/ItemFacility';
+import LabReports from './Views/Laboratory/LabReports/LabReportMain';
+import InvestigationRegister from './Views/Laboratory/LabReports/InvestigationRegister';
+import TATReport from './Views/Laboratory/LabReports/TatReport';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -291,6 +309,24 @@ function App() {
                 <Route path="/OpthColorVisionMaster" element={<OpthColorVisionMaster/>} />
                 <Route path="/OpthDistanceVisionMaster" element={<OpthDistanceVisionMaster/>} />
                 <Route path="/OpthNearVisionMaster" element={<OpthNearVisionMaster/>} />
+                <Route path="/PatientPreparationMaster" element={<PatientPreparationMaster/>} />
+                <Route path="/ObConceptionMaster" element={<ObConceptionMaster/>} />
+                <Route path="/ObConsanguinityMaster" element={<ObConsanguinityMaster/>} />
+                <Route path="/PresentationMaster" element={<PresentationMaster/>} />
+                <Route path="/TrimesterMaster" element={<TrimesterMaster/>} />
+                <Route path="/CervixPosition" element={<CervixPosition/>} />
+                <Route path="/PelvisType" element={<PelvisType/>} />
+                <Route path="/StationPresentingMaster" element={<StationPresentingMaster/>} />
+                <Route path="/SterilisationMaster" element={<SterilisationMaster/>} />
+                <Route path="/SmearResultMaster" element={<SmearResultMaster/>} />
+                <Route path="/MenstrualFlowMaster" element={<MenstrualFlowMaster/>} />
+                <Route path="/MenstrualPatternMaster" element={<MenstrualPatternMaster/>} />
+                <Route path="/MenarcheMaster" element={<MenarcheMaster/>} />
+                <Route path="/LabResultAmendment" element={<LabResultAmendment/>} />
+                <Route path="/ItemFacility" element={<ItemFacility/>} />
+                <Route path="/LabReports" element={<LabReports/>} />
+                <Route path="/InvestigationRegister" element={<InvestigationRegister/>} />
+                <Route path="/TATReport" element={<TATReport/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>

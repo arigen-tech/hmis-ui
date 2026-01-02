@@ -4,7 +4,6 @@ import { getRequest, putRequest } from "../../../service/apiService"
 import { LAB, ALL_REPORTS } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
-import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"
 import {  FETCH_RESULT_ENTRY_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, RESULT_ENTRY_WARN_MSG, RESULT_SELECT_WARN_MSG, RESULT_VALIDATE_ERR_MSG, RESULT_VALIDATE_SUCC_MSG, RESULT_VALIDATE_WARN_MSG } from "../../../config/constants"
 
 const ResultValidation = () => {
@@ -101,7 +100,8 @@ const ResultValidation = () => {
               id: `${invIndex + 1}.${subIndex + 1}`,
               si_no: getSubTestNumber(invIndex + 1, subIndex, inv.resultEntrySubInvestigationRes.length),
               resultEntryDetailsId: subTest.resultEntryDetailsId || subTest.id,
-              diag_no: "---",
+              diag_no: "",
+              generatedSampleId:subTest.generatedSampleId||'',
               investigation: subTest.subInvestigationName || '',
               sample: subTest.sampleName || '',
               result: subTest.result || "",
@@ -122,6 +122,7 @@ const ResultValidation = () => {
             si_no: invIndex + 1,
             resultEntryDetailsId: inv.resultEntryDetailsId || inv.id,
             diag_no: inv.diagNo || '',
+            generatedSampleId:inv.generatedSampleId||'',
             investigation: inv.investigationName || '',
             sample: inv.sampleName || '',
             result: inv.result || "",
@@ -809,7 +810,7 @@ const ResultValidation = () => {
                     <thead className="table-light">
                       <tr>
                         <th>SI No.</th>
-                        <th>Diag No.</th>
+                        <th>Sample Id</th>
                         <th>Investigation</th>
                         <th>Sample</th>
                         <th>Result</th>
@@ -852,11 +853,19 @@ const ResultValidation = () => {
                           {investigation.subTests.length === 0 ? (
                             <tr key={investigation.id}>
                               <td>{investigation.si_no}</td>
-                              <td>{investigation.diag_no}</td>
+                              <td>
+                                <input
+                                      type="text"
+                                      className="form-control"
+                                      value={investigation.generatedSampleId}
+                                      style={{ width: "150px" }}
+                                      readOnly
+                                    />
+                              </td>
                               <td>
                                 <input
                                   type="text"
-                                  className="form-control bg-transparent"
+                                  className="form-control"
                                   value={investigation.investigation}
                                   readOnly
                                 />
@@ -864,7 +873,7 @@ const ResultValidation = () => {
                               <td>
                                 <input
                                   type="text"
-                                  className="form-control border-0 bg-transparent"
+                                  className="form-control"
                                   value={investigation.sample}
                                   readOnly
                                 />
@@ -875,15 +884,16 @@ const ResultValidation = () => {
                               <td>
                                 <input
                                   type="text"
-                                  className="form-control border-0 bg-transparent"
+                                  className="form-control"
                                   value={investigation.units}
+                                  style={{ width: "60px" }}
                                   readOnly
                                 />
                               </td>
                               <td>
                                 <textarea
-                                  className="form-control border-0 bg-transparent"
-                                  rows="1"
+                                  className="form-control"
+                                  rows="3"
                                   value={investigation.normal_range}
                                   readOnly
                                 ></textarea>
@@ -891,7 +901,7 @@ const ResultValidation = () => {
                               <td>
                                 <input
                                   type="text"
-                                  className="form-control"
+                                  className="form-control bg-transparent"
                                   value={investigation.remarks}
                                   onChange={(e) =>
                                     handleValidationChange(investigation.id, "remarks", e.target.value)
@@ -934,11 +944,19 @@ const ResultValidation = () => {
                               {investigation.subTests.map((subTest) => (
                                 <tr key={subTest.id}>
                                   <td>{subTest.si_no}</td>
-                                  <td>{subTest.diag_no}</td>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      value={subTest.generatedSampleId}
+                                      style={{ width: "150px" }}
+                                      readOnly
+                                    />
+                                  </td>
                                   <td className="ps-4">
                                     <input
                                       type="text"
-                                      className="form-control bg-transparent"
+                                      className="form-control"
                                       value={subTest.investigation}
                                       readOnly
                                     />
@@ -946,7 +964,7 @@ const ResultValidation = () => {
                                   <td>
                                     <input
                                       type="text"
-                                      className="form-control border-0 bg-transparent"
+                                      className="form-control"
                                       value={subTest.sample}
                                       readOnly
                                     />
@@ -957,14 +975,15 @@ const ResultValidation = () => {
                                   <td>
                                     <input
                                       type="text"
-                                      className="form-control border-0 bg-transparent"
+                                      className="form-control"
                                       value={subTest.units}
+                                      style={{ width: "60px" }}
                                       readOnly
                                     />
                                   </td>
                                   <td>
                                     <textarea
-                                      className="form-control border-0 bg-transparent"
+                                      className="form-control"
                                       rows="1"
                                       value={subTest.normal_range}
                                       readOnly
@@ -1133,10 +1152,10 @@ const ResultValidation = () => {
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
-                          <th>Diag No.</th>
+                          {/* <th>Diag No.</th> */}
                           <th>Result Date/Time</th>
                           <th>Patient Name</th>
-                          <th>Relation</th>
+                          <th>Age/Gender</th>
                           <th>Mobile No</th>
                           <th>Department Name</th>
                           <th>Doctor Name</th>
@@ -1153,10 +1172,10 @@ const ResultValidation = () => {
                               style={{ cursor: "pointer" }}
                               className="table-row-hover"
                             >
-                              <td>{item.diag_no}</td>
+                              {/* <td>{item.diag_no}</td> */}
                               <td>{`${item.result_date} - ${item.result_time}`}</td>
                               <td>{item.patient_name}</td>
-                              <td>{item.relation}</td>
+                              <td>{`${item.age} / ${item.gender}`}</td>
                               <td>{item.mobile_no}</td>
                               <td>{item.department}</td>
                               <td>{item.doctor_name}</td>

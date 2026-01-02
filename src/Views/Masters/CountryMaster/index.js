@@ -5,6 +5,7 @@ import { API_HOST, MAS_COUNTRY} from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {FETCH_COUNTRY_ERR_MSG,DUPLICATE_COUNTRY,UPDATE_COUNTRY_SUCC_MSG,ADD_COUNTRY_SUCC_MSG,FAIL_TO_SAVE_CHANGES} from "../../../config/constants";
 
 const CountryMaster = () => {
     const [countries, setCountries] = useState([]);
@@ -39,7 +40,7 @@ const CountryMaster = () => {
             }
         } catch (err) {
             console.error("Error fetching countries:", err);
-            showPopup("Failed to load countries", "error");
+            showPopup(FETCH_COUNTRY_ERR_MSG, "error");
         } finally {
             setIsLoading(false);
         }
@@ -89,7 +90,7 @@ const CountryMaster = () => {
             );
     
             if (isDuplicate) {
-                showPopup("Country with the same code or name already exists!", "error");
+                showPopup(DUPLICATE_COUNTRY, "error");
                 setIsLoading(false);
                 return;
             }
@@ -104,7 +105,7 @@ const CountryMaster = () => {
     
                 if (response && response.status === 200) {
                     fetchCountries(); 
-                    showPopup("Country updated successfully!", "success");
+                    showPopup(UPDATE_COUNTRY_SUCC_MSG, "success");
                 }
             } else {
                 // Add new country
@@ -116,7 +117,7 @@ const CountryMaster = () => {
     
                 if (response && response.status === 200) {
                     fetchCountries(); 
-                    showPopup("New country added successfully!", "success");
+                    showPopup(ADD_COUNTRY_SUCC_MSG, "success");
                 }
             }
     
@@ -126,7 +127,7 @@ const CountryMaster = () => {
             setShowForm(false);
         } catch (err) {
             console.error("Error saving country:", err);
-            showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+            showPopup(FAIL_TO_SAVE_CHANGES, "error");
             setIsLoading(false);
         }
     };

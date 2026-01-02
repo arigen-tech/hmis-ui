@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getRequest, postRequest } from "../../../service/apiService";
+import { getRequest } from "../../../service/apiService";
 import { ALL_REPORTS, PRINT } from "../../../config/apiConfig";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import Popup from "../../../Components/popup";
@@ -47,11 +47,11 @@ const ViewDownload = () => {
     setPdfUrl(null);
     
     try {
-      const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
-      const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
+      // const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
+      // const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
       const orderhd_id = resultData.orderHdId;
       
-      const url = `${ALL_REPORTS}/labInvestigationReport?orderhd_id=${orderhd_id}&hospitalId=${hospitalId}&departmentId=${departmentId}`;
+      const url = `${ALL_REPORTS}/labInvestigationReport?orderhd_id=${orderhd_id}&flag=d`;
       
       const response = await fetch(url, {
         method: "GET",
@@ -60,6 +60,7 @@ const ViewDownload = () => {
         },
       });
 
+      // const response= await getRequest(`report/labInvestigationReport?orderhd_id=${orderhd_id}&flag=d`);
       if (!response.ok) {
         throw new Error("Failed to generate PDF");
       }
@@ -87,8 +88,16 @@ const ViewDownload = () => {
     try {
       const orderhd_id = resultData.orderHdId;
       
-      // Call the backend print API
-      const response = await postRequest(`${PRINT}/lab-investigation?orderhd_id=${orderhd_id}`, {});
+      const url = `${ALL_REPORTS}/labInvestigationReport?orderhd_id=${orderhd_id}&flag=p`;
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
+
+      // const response = await getRequest(`${ALL_REPORTS}/labInvestigationReport?orderhd_id=${orderhd_id}&flag=p`);
       
       if (response.status === 200) {
         console.log("Report sent to printer successfully!", "success");

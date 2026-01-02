@@ -5,6 +5,12 @@ import axios from "axios";
 import { MAS_MARITAL_STATUS } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { FETCH_MARITAL_STATUS_ERR_MSG,
+  FAIL_TO_SAVE_CHANGES,
+  ADD_MARITAL_STATUS_SUCC_MSG,FAIL_TO_UPDATE_STS,
+  UPDATE_MARITAL_STATUS_SUCC_MSG,
+  DUPLICATE_MARITAL_STATUS
+} from "../../../config/constants";
 
 const MaritalStatusMaster = () => {
   const [maritalStatusData, setMaritalStatusData] = useState([]);
@@ -38,7 +44,7 @@ const MaritalStatusMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching marital status data:", err);
-      showPopup("Failed to load marital status data", "error");
+      showPopup(FETCH_MARITAL_STATUS_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -86,7 +92,7 @@ const MaritalStatusMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup("Marital status already exists!", "error");
+        showPopup(DUPLICATE_MARITAL_STATUS, "error");
         setLoading(false);
         return;
       }
@@ -105,7 +111,7 @@ const MaritalStatusMaster = () => {
               status.id === editingStatus.id ? response.response : status
             )
           );
-          showPopup("Marital status updated successfully!", "success");
+          showPopup(UPDATE_MARITAL_STATUS_SUCC_MSG, "success");
         }
       } else {
         // Add new marital status
@@ -116,7 +122,7 @@ const MaritalStatusMaster = () => {
 
         if (response && response.response) {
           setMaritalStatusData((prevData) => [...prevData, response.response]);
-          showPopup("New marital status added successfully!", "success");
+          showPopup(ADD_MARITAL_STATUS_SUCC_MSG, "success");
         }
       }
 
@@ -126,7 +132,7 @@ const MaritalStatusMaster = () => {
       fetchMaritalStatusData();
     } catch (err) {
       console.error("Error saving marital status data:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setLoading(false);
     }
@@ -169,7 +175,7 @@ const MaritalStatusMaster = () => {
         }
       } catch (err) {
         console.error("Error updating marital status status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }

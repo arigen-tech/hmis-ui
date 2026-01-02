@@ -133,8 +133,24 @@ const validRoutes = [
   "/OpthColorVisionMaster",
   "/OpthDistanceVisionMaster",
   "/OpthNearVisionMaster",
-
-
+  "/PatientPreparationMaster",
+  "/ObConceptionMaster",
+  "/ObConsanguinityMaster",
+  "/PresentationMaster",
+  "/TrimesterMaster",
+  "/CervixPosition",
+  "/PelvisType",
+  "/StationPresentingMaster",
+  "/SterilisationMaster",
+  "/SmearResultMaster",
+  "/MenstrualFlowMaster",
+  "/MenstrualPatternMaster",
+  "/MenarcheMaster",
+  "/LabResultAmendment",
+  "/ItemFacility",
+  "/LabReports",
+  "/InvestigationRegister",
+  "/TATReport",
   
 ];
 

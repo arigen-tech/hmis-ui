@@ -1,14 +1,11 @@
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
 import LoadingScreen from "../../../Components/Loading"
 import { getRequest } from "../../../service/apiService"
 import { LAB } from "../../../config/apiConfig"
 
 const PatientwiseBilldatails = () => {
-  const navigate = useNavigate()
   const [patientList, setPatientList] = useState([])
-  const [nameSearch, setNameSearch] = useState("")
-  const [contactSearch, setContactSearch] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
   const [isLoading, setIsLoading] = useState(true)
@@ -24,8 +21,8 @@ const PatientwiseBilldatails = () => {
 
       if (response && response.response) {
         const mappedData = response.response.map((item) => ({
-          id: item.billinghdid, // Use billinghdid as the unique identifier
-          patientId: item.patientid, // Store patientid separately
+          id: item.billinghdid,
+          patientId: item.patientid,
           patientName: item.patientName || "N/A",
           mobileNo: item.mobileNo || "N/A",
           age: item.age || "N/A",
@@ -36,7 +33,7 @@ const PatientwiseBilldatails = () => {
           department: item.department || "N/A",
           amount: item.amount || 0,
           billingStatus: item.billingStatus === "p" ? "Pending" : "Pending",
-          fullData: item, // Store the complete record including details array
+          fullData: item,
         }))
 
         setPatientList(mappedData)
@@ -53,29 +50,26 @@ const PatientwiseBilldatails = () => {
     fetchPendingBilling()
   }, [])
 
-  const handleNameSearchChange = (e) => {
-    setNameSearch(e.target.value)
+  useEffect(() => {
     setCurrentPage(1)
-  }
+  }, [searchQuery])
 
-  const handleContactSearchChange = (e) => {
-    setContactSearch(e.target.value)
-    setCurrentPage(1)
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value)
   }
 
   const filteredPatientList = patientList.filter(
     (item) =>
-      item.patientName.toLowerCase().includes(nameSearch.toLowerCase()) &&
-      item.mobileNo.includes(contactSearch)
+      item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.mobileNo.includes(searchQuery)
   )
 
   const filteredTotalPages = Math.ceil(filteredPatientList.length / itemsPerPage)
   const currentItems = filteredPatientList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
-  const handleBillingDetailClick = (patientData) => {
-    // Removed navigation to keep the user on the same page
-    console.log("Billing detail clicked for:", patientData)
-    // You can add modal or other functionality here instead of navigation
+  const handleViewClick = (patientData) => {
+    console.log("View clicked for:", patientData)
+    // Add view functionality here
   }
 
   const handlePageNavigation = () => {
@@ -88,8 +82,9 @@ const PatientwiseBilldatails = () => {
     }
   }
 
-  const handleRefresh = () => {
-    fetchPendingBilling()
+  const handlePrintClick = (patientData) => {
+    console.log("Print clicked for:", patientData)
+    // Add print functionality here
   }
 
   const renderPagination = () => {
@@ -139,49 +134,32 @@ const PatientwiseBilldatails = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title p-2">Patient wise Bill Details</h4>
+              <h4 className="card-title m-0">Patient wise Bill Details</h4>
               <div className="d-flex justify-content-between align-items-center">
-                <div className="d-flex me-4">
-                  <div className="input-group me-2">
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Search by Name"
-                      aria-label="Search by Name"
-                      value={nameSearch}
-                      onChange={handleNameSearchChange}
-                    />
-                    <span className="input-group-text">
-                      <i className="fa fa-user"></i>
-                    </span>
-                  </div>
-                  <div className="input-group">
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Search by Contact"
-                      aria-label="Search by Contact"
-                      value={contactSearch}
-                      onChange={handleContactSearchChange}
-                    />
-                    <span className="input-group-text">
-                      <i className="fa fa-phone"></i>
-                    </span>
-                  </div>
-                </div>
-                <button type="button" className="btn btn-success me-2">
-                  <i className="mdi mdi-plus"></i> Generate Report
-                </button>
-                <button type="button" className="btn btn-success me-2" onClick={handleRefresh} title="Refresh Data">
-                  <i className="mdi mdi-refresh"></i> Refresh
-                </button>
+                {!isLoading && (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search by name or mobile"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                )}
               </div>
             </div>
             <div className="card-body">
               {error && (
                 <div className="alert alert-danger" role="alert">
                   <strong>Error:</strong> {error}
-                  <button type="button" className="btn btn-sm btn-outline-danger ms-2" onClick={handleRefresh}>
+                  <button type="button" className="btn btn-sm btn-outline-danger ms-2" onClick={fetchPendingBilling}>
                     Retry
                   </button>
                 </div>
@@ -203,10 +181,10 @@ const PatientwiseBilldatails = () => {
                         <th>Age</th>
                         <th>Sex</th>
                         <th>Relation</th>
-                        <th>Billing Type</th>
                         <th>Department</th>
                         <th>Amount</th>
-                        <th>Action</th>
+                        <th>Billing Type</th>
+                        <th>Invoice</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -217,19 +195,28 @@ const PatientwiseBilldatails = () => {
                           <td>{item.age}</td>
                           <td>{item.sex}</td>
                           <td>{item.relation}</td>
-                          <td>
-                            <span className="badge bg-info">{item.billingType}</span>
-                          </td>
                           <td>{item.department}</td>
                           <td>₹{typeof item.amount === "number" ? item.amount.toFixed(2) : item.amount}</td>
                           <td>
-                            <button
-                              className="btn btn-primary btn-sm"
-                              onClick={() => handleBillingDetailClick(item)}
-                              
-                            >
-                              View
-                            </button>
+                            <span className="badge bg-info">{item.billingType}</span>
+                          </td>
+                          <td>
+                            <div className="d-flex gap-2">
+                              <button
+                                className="btn btn-success btn-sm"
+                                onClick={() => handleViewClick(item)}
+                                title="View Details"
+                              >
+                                <i className="mdi mdi-eye me-1"></i> View
+                              </button>
+                              <button
+                                className="btn btn-success btn-sm"
+                                onClick={() => handlePrintClick(item)}
+                                title="Print Invoice"
+                              >
+                                <i className="mdi mdi-printer me-1"></i> Print
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}

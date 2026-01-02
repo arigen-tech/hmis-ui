@@ -267,32 +267,32 @@ const ItemTypeManagement = () => {
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            <div className="card-header">
+            <div className="card-header  d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">Item Type Master</h4>
+              <div className="d-flex justify-content-between align-items-center">
 
-              {!showForm && (
-                <div className="d-flex justify-content-between mt-3">
-                  <div className="d-flex align-items-center">
-                    <form className="searchform me-4" role="search">
-                      <div className="input-group searchinput">
-                        <input
-                          type="search"
-                          className="form-control"
-                          placeholder="Search"
-                          value={searchQuery}
-                          onChange={handleSearchChange}
-                        />
-                        <span className="input-group-text">
-                          <i className="fa fa-search"></i>
-                        </span>
-                      </div>
-                    </form>
-                    <button className="btn btn-success me-1" onClick={() => setShowForm(true)}>
-                      <i className="mdi mdi-plus"></i> ADD
-                    </button>
-                  </div>
-                </div>
-              )}
+                {!showForm && (
+                  <>
+                      <form className="d-inline-block searchform me-4" role="search">
+                        <div className="input-group searchinput">
+                          <input
+                            type="search"
+                            className="form-control"
+                            placeholder="Search"
+                            value={searchQuery}
+                            onChange={handleSearchChange}
+                          />
+                          <span className="input-group-text">
+                            <i className="fa fa-search"></i>
+                          </span>
+                        </div>
+                      </form>
+                      <button className="btn btn-success me-1" onClick={() => setShowForm(true)}>
+                        <i className="mdi mdi-plus"></i> ADD
+                      </button>
+                      </>
+                )}
+              </div>
             </div>
 
             <div className="card-body">

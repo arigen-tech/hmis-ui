@@ -5,6 +5,14 @@ import axios from "axios";
 import { API_HOST, MAS_GENDER } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {
+  FETCH_GENDER_ERR_MSG,
+  DUPLICATE_GENDER,
+  UPDATE_GENDER_SUCC_MSG,
+  ADD_GENDER_SUCC_MSG,
+  FAIL_TO_SAVE_CHANGES,
+  FAIL_TO_UPDATE_STS
+} from "../../../config/constants";
 
 
 const Gendermaster = () => {
@@ -52,7 +60,7 @@ const Gendermaster = () => {
       }
     } catch (err) {
       console.error("Error fetching gender data:", err);
-      showPopup("Failed to load gender data", "error");
+      showPopup(FETCH_GENDER_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -108,7 +116,7 @@ const Gendermaster = () => {
           setGenderData(genderData.map(gender =>
             gender.id === editingGender.id ? response.response : gender
           ));
-          showPopup("Gender updated successfully!", "success");
+          showPopup(UPDATE_GENDER_SUCC_MSG, "success");
         }
       } else {
 
@@ -126,7 +134,7 @@ const Gendermaster = () => {
         );
 
         if (isDuplicate) {
-          showPopup("Gender already exists!", "error");
+          showPopup(DUPLICATE_GENDER, "error");
           setLoading(false);
           return;
         }
@@ -134,7 +142,7 @@ const Gendermaster = () => {
         if (response && response.response) {
 
           setGenderData([...genderData, response.response]);
-          showPopup("New gender added successfully!", "success");
+          showPopup(ADD_GENDER_SUCC_MSG, "success");
         }
       }
 
@@ -144,7 +152,7 @@ const Gendermaster = () => {
       fetchGenderData();
     } catch (err) {
       console.error("Error saving gender data:", err);
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setLoading(false);
     }
@@ -186,7 +194,7 @@ const Gendermaster = () => {
         }
       } catch (err) {
         console.error("Error updating gender status:", err);
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setTimeout(() => {
           setLoading(false);

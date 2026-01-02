@@ -73,22 +73,22 @@ const ItemSection = () => {
   }
 
 
- const search = searchQuery.trim().toLowerCase();
+  const search = searchQuery.trim().toLowerCase();
 
-const filteredSections = itemSectionData.filter((section) => {
-  const code = section?.sectionCode?.toLowerCase() || "";
-  const name = section?.sectionName?.toLowerCase() || "";
-  const typeName = section?.masItemTypeName?.toLowerCase() || "";
+  const filteredSections = itemSectionData.filter((section) => {
+    const code = section?.sectionCode?.toLowerCase() || "";
+    const name = section?.sectionName?.toLowerCase() || "";
+    const typeName = section?.masItemTypeName?.toLowerCase() || "";
 
-  const status = section?.status === "y" ? "active" : "deactivated";
+    const status = section?.status === "y" ? "active" : "deactivated";
 
-  return (
-    code.includes(search) ||
-    name.includes(search) ||
-    typeName.includes(search) ||
-    status.includes(search)
-  );
-});
+    return (
+      code.includes(search) ||
+      name.includes(search) ||
+      typeName.includes(search) ||
+      status.includes(search)
+    );
+  });
 
 
   const filteredTotalPages = Math.ceil(filteredSections.length / itemsPerPage)
@@ -271,253 +271,252 @@ const filteredSections = itemSectionData.filter((section) => {
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            <div className="card-header">
+            <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">Item Section Master</h4>
+              <div className="d-flex justify-content-between align-items-center">
               {!showForm && (
-                <div className="d-flex justify-content-end align-items-spacearound mt-3">
-
-                  <div className="d-flex align-items-center">
-                    <form className="d-inline-block searchform me-4" role="search">
-                      <div className="input-group searchinput">
-                        <input
-                          type="search"
-                          className="form-control"
-                          placeholder="Search"
-                          aria-label="Search"
-                          value={searchQuery}
-                          onChange={handleSearchChange}
-                        />
-                        <span className="input-group-text" id="search-icon">
-                          <i className="fa fa-search"></i>
-                        </span>
-                      </div>
-                    </form>
-                    <button type="button" className="btn btn-success me-2" onClick={() => {
-                      setShowForm(true);
-                      setEditingSection(null);  // Reset editing state
-                      setFormData({            // Reset form data
-                        sectionCode: "",
-                        sectionName: "",
-                        itemType: ""
-                      });
-                      setIsFormValid(false);   // Reset validation
-                    }}>
-                      <i className="mdi mdi-plus"></i> Add
-                    </button>
-                    {/* <button type="button" className="btn btn-success me-2">
+                <>
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                  <button type="button" className="btn btn-success me-2" onClick={() => {
+                    setShowForm(true);
+                    setEditingSection(null);  // Reset editing state
+                    setFormData({            // Reset form data
+                      sectionCode: "",
+                      sectionName: "",
+                      itemType: ""
+                    });
+                    setIsFormValid(false);   // Reset validation
+                  }}>
+                    <i className="mdi mdi-plus"></i> Add
+                  </button>
+                  {/* <button type="button" className="btn btn-success me-2">
                       <i className="mdi mdi-plus"></i> Generate Report
                     </button> */}
-                  </div>
-                </div>
+                </>
               )}
             </div>
-            <div className="card-body">
-              {!showForm ? (
-                <div className="table-responsive packagelist">
-                  <table className="table table-bordered table-hover align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Section Code</th>
-                        <th>Section Name</th>
-                        <th>Item Type</th>
-                        <th>Status</th>
-                        <th>Edit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentItems.map((section) => (
-                        <tr key={section.sectionId}>
-                          <td>{section.sectionCode}</td>
-                          <td>{section.sectionName}</td>
-                          <td>{section.masItemTypeName}</td>
-                          <td>
-                            <div className="form-check form-switch">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                checked={section.status === "y"}
-                                onChange={() => handleSwitchChange(section.sectionId, section.sectionName, section.status === "y" ? "n" : "y")}
-                                id={`switch-${section.sectionId}`}
-                              />
-                              <label
-                                className="form-check-label px-0"
-                                htmlFor={`switch-${section.sectionId}`}
-                                onClick={() => handleSwitchChange(section.sectionId, section.status === "y" ? "n" : "y")}
-                              >
-                                {section.status === "y" ? "Active" : "Deactivated"}
-                              </label>
-                            </div>
-                          </td>
-                          <td>
-                            <button
-                              className="btn btn-sm btn-success me-2"
-                              onClick={() => handleEdit(section)}
-                              disabled={section.status !== "y"}
-                            >
-                              <i className="fa fa-pencil"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <form className="forms row" onSubmit={handleSave}>
-                  <div className="d-flex justify-content-end">
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
-                      <i className="mdi mdi-arrow-left"></i> Back
-                    </button>
-                  </div>
-                  <div className="row">
-                    <div className="form-group col-md-4 mt-3">
-                      <label>
-                        Section Code <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        id="sectioncode"
-                        placeholder="Section Code"
-                        onChange={handleInputChange}
-                        value={formData.sectionCode}
-                        required
-                      />
-                    </div>
-                    <div className="form-group col-md-4 mt-3">
-                      <label>
-                        Section Name <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        id="sectionname"
-                        placeholder="Section Name"
-                        onChange={handleInputChange}
-                        value={formData.sectionName}
-                        required
-                      />
-                    </div>
-                    <div className="form-group col-md-4 mt-3">
-                      <label>
-                        Item Type <span className="text-danger">*</span>
-                      </label>
-                      <div className="col-md-12">
-                        <select
-                          className="form-select"
-                          id="itemType"
-                          onChange={handleInputChange}
-                          value={formData.itemType}
-                          required
+        </div>
+        <div className="card-body">
+          {!showForm ? (
+            <div className="table-responsive packagelist">
+              <table className="table table-bordered table-hover align-middle">
+                <thead className="table-light">
+                  <tr>
+                    <th>Section Code</th>
+                    <th>Section Name</th>
+                    <th>Item Type</th>
+                    <th>Status</th>
+                    <th>Edit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentItems.map((section) => (
+                    <tr key={section.sectionId}>
+                      <td>{section.sectionCode}</td>
+                      <td>{section.sectionName}</td>
+                      <td>{section.masItemTypeName}</td>
+                      <td>
+                        <div className="form-check form-switch">
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            checked={section.status === "y"}
+                            onChange={() => handleSwitchChange(section.sectionId, section.sectionName, section.status === "y" ? "n" : "y")}
+                            id={`switch-${section.sectionId}`}
+                          />
+                          <label
+                            className="form-check-label px-0"
+                            htmlFor={`switch-${section.sectionId}`}
+                            onClick={() => handleSwitchChange(section.sectionId, section.status === "y" ? "n" : "y")}
+                          >
+                            {section.status === "y" ? "Active" : "Deactivated"}
+                          </label>
+                        </div>
+                      </td>
+                      <td>
+                        <button
+                          className="btn btn-sm btn-success me-2"
+                          onClick={() => handleEdit(section)}
+                          disabled={section.status !== "y"}
                         >
-                          <option value="" disabled>
-                            Select Item Type
-                          </option>
-                          {itemTypeData.map((type) => (
-                            <option key={type.id} value={type.id}>
-                              {type.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="form-group col-md-12 d-flex justify-content-end mt-4">
-                    <button type="submit" className="btn btn-primary me-2">
-                      {editingSection ? "Update" : "Add"}
-                    </button>
-                    <button className="btn btn-danger me-2" onClick={() => setShowForm(false)}>
-                      Cancel
-                    </button>
-
-                  </div>
-
-                </form>
-              )}
-              {popupMessage && (
-                <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
-              )}
-              {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog">
-                  <div className="modal-dialog" role="document">
-                    <div className="modal-content">
-                      <div className="modal-header">
-                        <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="close" onClick={() => handleConfirm(false)}>
-                          <span>&times;</span>
+                          <i className="fa fa-pencil"></i>
                         </button>
-                      </div>
-                      <div className="modal-body">
-                        <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                          <strong>
-                            {currentItem}
-                          </strong>
-                          ?
-                        </p>
-                      </div>
-                      <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
-                          No
-                        </button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
-                          Yes
-                        </button>
-                      </div>
-                    </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <form className="forms row" onSubmit={handleSave}>
+              <div className="d-flex justify-content-end">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                  <i className="mdi mdi-arrow-left"></i> Back
+                </button>
+              </div>
+              <div className="row">
+                <div className="form-group col-md-4 mt-3">
+                  <label>
+                    Section Code <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    id="sectioncode"
+                    placeholder="Section Code"
+                    onChange={handleInputChange}
+                    value={formData.sectionCode}
+                    required
+                  />
+                </div>
+                <div className="form-group col-md-4 mt-3">
+                  <label>
+                    Section Name <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    id="sectionname"
+                    placeholder="Section Name"
+                    onChange={handleInputChange}
+                    value={formData.sectionName}
+                    required
+                  />
+                </div>
+                <div className="form-group col-md-4 mt-3">
+                  <label>
+                    Item Type <span className="text-danger">*</span>
+                  </label>
+                  <div className="col-md-12">
+                    <select
+                      className="form-select"
+                      id="itemType"
+                      onChange={handleInputChange}
+                      value={formData.itemType}
+                      required
+                    >
+                      <option value="" disabled>
+                        Select Item Type
+                      </option>
+                      {itemTypeData.map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-              )}
+              </div>
+              <div className="form-group col-md-12 d-flex justify-content-end mt-4">
+                <button type="submit" className="btn btn-primary me-2">
+                  {editingSection ? "Update" : "Add"}
+                </button>
+                <button className="btn btn-danger me-2" onClick={() => setShowForm(false)}>
+                  Cancel
+                </button>
 
-              {!showForm && (
-                <nav className="d-flex justify-content-between align-items-center mt-3">
-                  <div>
-                    <span>
-                      Page {currentPage} of {filteredTotalPages} | Total Records: {filteredSections.length}
-                    </span>
-                  </div>
-                  <ul className="pagination mb-0">
-                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                      <button
-                        className="page-link"
-                        onClick={() => setCurrentPage(currentPage - 1)}
-                        disabled={currentPage === 1}
-                      >
-                        &laquo; Previous
-                      </button>
-                    </li>
-                    {renderPagination()}
-                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                      <button
-                        className="page-link"
-                        onClick={() => setCurrentPage(currentPage + 1)}
-                        disabled={currentPage === filteredTotalPages}
-                      >
-                        Next &raquo;
-                      </button>
-                    </li>
-                  </ul>
-                  <div className="d-flex align-items-center">
-                    <input
-                      type="number"
-                      min="1"
-                      max={filteredTotalPages}
-                      value={pageInput}
-                      onChange={(e) => setPageInput(e.target.value)}
-                      placeholder="Go to page"
-                      className="form-control me-2"
-                    />
-                    <button className="btn btn-primary" onClick={handlePageNavigation}>
-                      Go
+              </div>
+
+            </form>
+          )}
+          {popupMessage && (
+            <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
+          )}
+          {confirmDialog.isOpen && (
+            <div className="modal d-block" tabIndex="-1" role="dialog">
+              <div className="modal-dialog" role="document">
+                <div className="modal-content">
+                  <div className="modal-header">
+                    <h5 className="modal-title">Confirm Status Change</h5>
+                    <button type="button" className="close" onClick={() => handleConfirm(false)}>
+                      <span>&times;</span>
                     </button>
                   </div>
-                </nav>
-              )}
+                  <div className="modal-body">
+                    <p>
+                      Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                      <strong>
+                        {currentItem}
+                      </strong>
+                      ?
+                    </p>
+                  </div>
+                  <div className="modal-footer">
+                    <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                      No
+                    </button>
+                    <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                      Yes
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {!showForm && (
+            <nav className="d-flex justify-content-between align-items-center mt-3">
+              <div>
+                <span>
+                  Page {currentPage} of {filteredTotalPages} | Total Records: {filteredSections.length}
+                </span>
+              </div>
+              <ul className="pagination mb-0">
+                <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                  <button
+                    className="page-link"
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    &laquo; Previous
+                  </button>
+                </li>
+                {renderPagination()}
+                <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                  <button
+                    className="page-link"
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    disabled={currentPage === filteredTotalPages}
+                  >
+                    Next &raquo;
+                  </button>
+                </li>
+              </ul>
+              <div className="d-flex align-items-center">
+                <input
+                  type="number"
+                  min="1"
+                  max={filteredTotalPages}
+                  value={pageInput}
+                  onChange={(e) => setPageInput(e.target.value)}
+                  placeholder="Go to page"
+                  className="form-control me-2"
+                />
+                <button className="btn btn-primary" onClick={handlePageNavigation}>
+                  Go
+                </button>
+              </div>
+            </nav>
+          )}
         </div>
       </div>
     </div>
+    </div >
+    </div >
   )
 }
 

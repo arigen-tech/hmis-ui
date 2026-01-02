@@ -89,6 +89,7 @@ useEffect(() => {
         return {
           id: invIndex + 1,
           si_no: invIndex + 1,
+          // generatedSampleId:inv.generatedSampleId||'',
           diag_no: inv.diagNo || '',
           investigation: inv.investigationName || '',
           sample: inv.sampleName || '',
@@ -106,7 +107,8 @@ useEffect(() => {
           subTests: inv.resultSubInvestigationResponseList.map((subTest, subIndex) => ({
             id: `${invIndex + 1}.${subIndex + 1}`,
             si_no: getSubTestNumber(invIndex + 1, subIndex, inv.resultSubInvestigationResponseList.length),
-            diag_no: "---",
+            generatedSampleId:subTest.generatedSampleId||'',
+            diag_no: "",
             investigation: subTest.subInvestigationName || '',
             sample: subTest.sampleName || '',
             result: "",
@@ -131,6 +133,7 @@ useEffect(() => {
           si_no: invIndex + 1,
           diag_no: inv.diagNo || '',
           investigation: inv.investigationName || '',
+          generatedSampleId:inv.generatedSampleId||'',
           sample: inv.sampleName || '',
           result: "",
           units: inv.unitName || '',
@@ -747,7 +750,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                     <thead className="table-light">
                       <tr>
                         <th>SI No.</th>
-                        <th>Diag No.</th>
+                        <th>Sample Id</th>
                         <th>Investigation</th>
                         <th>Sample</th>
                         <th>Result</th>
@@ -764,7 +767,15 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                             // Main investigation without sub-tests
                             <tr key={investigation.id}>
                               <td>{investigation.si_no}</td>
-                              <td>{investigation.diag_no}</td>
+                              <td>
+                                <input
+                                      type="text"
+                                      className="form-control"
+                                      value={investigation.generatedSampleId}
+                                      style={{ width: "150px" }}
+                                      readOnly
+                                    />
+                              </td>
                               <td>
                                 <input
                                   type="text"
@@ -789,6 +800,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                                   type="text"
                                   className="form-control"
                                   value={investigation.units}
+                                  style={{ width: "60px" }}
                                   readOnly
                                 />
                               </td>
@@ -797,6 +809,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                                   className="form-control"
                                   rows="2"
                                   value={investigation.normal_range}
+                                  style={{ width: "120px" }}
                                   readOnly
                                 ></textarea>
                               </td>
@@ -830,7 +843,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                               {/* Main investigation row (header) */}
                               <tr key={investigation.id}>
                                 <td>{investigation.si_no}</td>
-                                <td>{investigation.diag_no}</td>
+                                <td>{investigation.generatedSampleId}</td>
                                 <td colSpan="7">
                                   <strong>{investigation.investigation}</strong>
                                 </td>
@@ -839,7 +852,15 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                               {investigation.subTests.map((subTest) => (
                                 <tr key={subTest.id}>
                                   <td>{subTest.si_no}</td>
-                                  <td>{subTest.diag_no}</td>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      value={subTest.generatedSampleId}
+                                      style={{ width: "150px" }}
+                                      readOnly
+                                    />
+                                  </td>
                                   <td>
                                     <input
                                       type="text"
@@ -864,6 +885,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                                       type="text"
                                       className="form-control"
                                       value={subTest.units}
+                                      style={{ width: "60px" }}
                                       readOnly
                                     />
                                   </td>
@@ -872,6 +894,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                                       className="form-control"
                                       rows="2"
                                       value={subTest.normal_range}
+                                      style={{ width: "120px" }}
                                       readOnly
                                     ></textarea>
                                   </td>
@@ -1034,7 +1057,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                           <th>Collection Date/Time</th>
                           {/* <th>Collection Time</th> */}
                           <th>Patient Name</th>
-                          <th>Relation</th>
+                          <th>Age/Gender</th>
                           <th>Mobile No</th>
                           <th>Department Name</th>
                           {/* <th>Doctor Name</th> */}
@@ -1056,7 +1079,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                               <td>{<td>{`${item.collection_date} - ${item.collection_time}`}</td>}</td>
                               {/* <td>{item.collection_time}</td> */}
                               <td>{item.patient_name}</td>
-                              <td>{item.relation}</td>
+                              <td>{`${item.age}/ ${item.gender}`}</td>
                               <td>{item.mobile_no}</td>
                               <td>{item.department}</td>
                               {/* <td>{item.doctor_name}</td> */}

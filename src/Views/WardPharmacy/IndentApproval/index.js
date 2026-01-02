@@ -4,6 +4,7 @@ import Popup from "../../../Components/popup"
 import { Store_Internal_Indent, MAS_DRUG_MAS } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
+import DatePicker from "../../../Components/DatePicker"
 
 const IndentApproval = () => {
   const [currentView, setCurrentView] = useState("list")
@@ -434,7 +435,7 @@ const IndentApproval = () => {
 
     return (
       <div className="content-wrapper">
-      {loading && <LoadingScreen/>}
+        {loading && <LoadingScreen />}
 
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
@@ -687,21 +688,21 @@ const IndentApproval = () => {
             <div className="card-body">
               <div className="row mb-4">
                 <div className="col-md-2">
-                  <label className="form-label fw-bold">From Date</label>
-                  <input
-                    type="date"
-                    className="form-control"
+                  <DatePicker
+                    label="From Date"
                     value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
+                    onChange={setFromDate}  
+                    compact={true}
+                    
                   />
                 </div>
                 <div className="col-md-2">
-                  <label className="form-label fw-bold">To Date</label>
-                  <input
-                    type="date"
-                    className="form-control"
+                  <DatePicker
+                    label="To Date"
                     value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
+                    onChange={setToDate}  
+                    compact={true}
+                    
                   />
                 </div>
                 <div className="col-md-2 d-flex align-items-end">

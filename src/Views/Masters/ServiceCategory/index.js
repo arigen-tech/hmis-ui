@@ -3,6 +3,12 @@ import LoadingScreen from "../../../Components/Loading/index";
 import Popup from "../../../Components/popup";
 import { MAS_SERVICE_CATEGORY } from "../../../config/apiConfig";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
+import {
+  UPDATE_SERVICE_CATEGORY_SUCC_MSG,
+  ADD_SERVICE_CATEGORY_SUCC_MSG,
+  FAIL_TO_SAVE_CHANGES,
+  FAIL_TO_UPDATE_STS
+} from "../../../config/constants";
 
 
 const ServiceCategoryMaster = () => {
@@ -123,8 +129,8 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
       if (response.status === 200) {
         showPopup(
           editingService
-            ? "Service Category updated successfully!"
-            : "New Service Category added successfully!",
+            ? UPDATE_SERVICE_CATEGORY_SUCC_MSG
+            : ADD_SERVICE_CATEGORY_SUCC_MSG,
           "success"
         );
 
@@ -144,7 +150,7 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
       }
     } catch (error) {
       console.error("Error saving service category:", error);
-      showPopup(error.message || "Error saving service category. Please try again.", "error");
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setProcess(false);
     }
@@ -185,7 +191,7 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
         }
       } catch (error) {
         console.error("Error updating status:", error);
-        showPopup(error.message || "Error updating status. Please try again.", "error");
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setProcess(false);
       }

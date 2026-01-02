@@ -3,7 +3,17 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import axios from "axios";
 import { API_HOST,MAS_DEPARTMENT,MAS_USER_DEPARTMENT } from "../../../config/apiConfig";
-import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import {
+    FETCH_USER_DEPARTMENT_ERR_MSG,
+    DUPLICATE_USER_DEPARTMENT,
+    UPDATE_USER_DEPARTMENT_SUCC_MSG,
+    ADD_USER_DEPARTMENT_SUCC_MSG,
+    FAIL_TO_SAVE_CHANGES,
+    INVALID_PAGE_NO_WARN_MSG,
+    FAIL_TO_LOAD_USERS,
+    FAIL_TO_LOAD_DEPARTMENTS
+} from "../../../config/constants";
 
 
 const Userdepartment = () => {
@@ -63,7 +73,7 @@ const Userdepartment = () => {
             }
         } catch (err) {
             console.error("Error fetching user department data:", err);
-            showPopup("Failed to load user department data", "error");
+            showPopup(FETCH_USER_DEPARTMENT_ERR_MSG, "error");
         } finally {
             setLoading(false);
         }
@@ -86,7 +96,7 @@ const Userdepartment = () => {
             }
         } catch (err) {
             console.error("Error fetching users:", err);
-            showPopup("Failed to load users", "error");
+            showPopup(FAIL_TO_LOAD_USERS, "error");
         } finally {
             setLoading(false);
         }
@@ -102,7 +112,7 @@ const Userdepartment = () => {
             }
         } catch (err) {
             console.error("Error fetching departments:", err);
-            showPopup("Failed to load departments", "error");
+            showPopup(FAIL_TO_LOAD_DEPARTMENTS, "error");
         } finally {
             setLoading(false);
         }
@@ -154,7 +164,7 @@ const Userdepartment = () => {
                 );
 
                 if (isDuplicate) {
-                    showPopup("This user and department combination already exists!", "error");
+                    showPopup(DUPLICATE_USER_DEPARTMENT, "error");
                     setLoading(false);
                     return;
                 }
@@ -168,7 +178,7 @@ const Userdepartment = () => {
                 });
 
                 if (response && response.response) {
-                    showPopup("User department updated successfully!", "success");
+                    showPopup(UPDATE_USER_DEPARTMENT_SUCC_MSG, "success");
                     fetchUserDepartmentData(1);
                 }
             } else {
@@ -180,7 +190,7 @@ const Userdepartment = () => {
                 );
 
                 if (isDuplicate) {
-                    showPopup("This user and department combination already exists!", "error");
+                    showPopup(DUPLICATE_USER_DEPARTMENT, "error");
                     setLoading(false);
                     return;
                 }
@@ -192,7 +202,7 @@ const Userdepartment = () => {
                 });
 
                 if (response && response.response) {
-                    showPopup("User department added successfully!", "success");
+                    showPopup(ADD_USER_DEPARTMENT_SUCC_MSG, "success");
                     fetchUserDepartmentData(1);
                 }
             }
@@ -208,7 +218,7 @@ const Userdepartment = () => {
             setShowForm(false);
         } catch (err) {
             console.error("Error saving user department data:", err);
-            showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
+            showPopup(FAIL_TO_SAVE_CHANGES, "error");
         } finally {
             setLoading(false);
         }
@@ -295,7 +305,7 @@ const Userdepartment = () => {
             setCurrentPage(pageNumber);
         } else {
            
-            showPopup("Please enter a valid page number", "error");
+            showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
         }
     };
     

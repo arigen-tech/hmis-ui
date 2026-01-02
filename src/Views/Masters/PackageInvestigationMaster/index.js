@@ -5,6 +5,14 @@ import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import { INVESTIGATION_PACKAGE_API, INVESTIGATION_PACKAGE_Mapping, MAS_INVESTIGATION } from "../../../config/apiConfig"
+import {
+  FETCH_PACKAGE_INV_ERR_MSG,
+  UPDATE_PACKAGE_INV_SUCC_MSG,
+  ADD_PACKAGE_INV_SUCC_MSG,
+  FAIL_TO_SAVE_CHANGES,
+  SOME_INVESTIGATIONS_INVALID,
+  SELECT_A_PACKAGE_AT_LEAST_ONE_INVESTIGATION,
+  DUPLICATE_INV,FAIL_TO_UPDATE_STS} from "../../../config/constants"
 
 const PackageInvestigationMaster = () => {
   const [mappingList, setMappingList] = useState([])
@@ -58,7 +66,7 @@ const PackageInvestigationMaster = () => {
       await Promise.all([fetchMappings(), fetchInvestigations(), fetchPackages()])
     } catch (error) {
       console.error("Error fetching initial data:", error)
-      showPopup("Failed to load data", "error")
+      showPopup(FETCH_PACKAGE_INV_ERR_MSG, "error")
     } finally {
       setLoading(false)
     }
@@ -156,7 +164,7 @@ const PackageInvestigationMaster = () => {
       setInvestigationSearchQuery("")
     } catch (error) {
       console.error("Error loading package investigations:", error)
-      showPopup("Failed to load package investigations", "error")
+      showPopup(FETCH_PACKAGE_INV_ERR_MSG, "error")
     } finally {
       setLoading(false)
     }
@@ -204,7 +212,7 @@ const PackageInvestigationMaster = () => {
         )
       } catch (error) {
         console.error("Error updating status:", error)
-        showPopup("Failed to update status", "error")
+        showPopup(FAIL_TO_UPDATE_STS, "error")
       } finally {
         setLoading(false)
       }
@@ -280,7 +288,7 @@ const PackageInvestigationMaster = () => {
       const investigationIds = selectedMapping.investigations.map((id) => Number(id)).filter((id) => !isNaN(id))
 
       if (investigationIds.length !== selectedMapping.investigations.length) {
-        showPopup("Some investigation IDs were invalid", "error")
+        showPopup(SOME_INVESTIGATIONS_INVALID, "error")
         return
       }
 
@@ -298,7 +306,7 @@ const PackageInvestigationMaster = () => {
 
       if (response && (response.response || response.status === 200)) {
         await fetchMappings()
-        showPopup("Investigations updated successfully!", "success")
+        showPopup(UPDATE_PACKAGE_INV_SUCC_MSG, "success")
         setShowInvestigationForm(false)
         setSelectedMapping(null)
       } else {
@@ -306,7 +314,7 @@ const PackageInvestigationMaster = () => {
       }
     } catch (error) {
       console.error("Error updating investigations:", error)
-      showPopup(error.message || "Failed to update investigations", "error")
+      showPopup(UPDATE_PACKAGE_INV_SUCC_MSG, "error")
     } finally {
       setLoading(false)
     }
@@ -323,7 +331,7 @@ const PackageInvestigationMaster = () => {
   const handleSavePackage = async (e) => {
     e.preventDefault()
     if (!isFormValid) {
-      showPopup("Please select a package and at least one investigation.", "error")
+      showPopup(SELECT_A_PACKAGE_AT_LEAST_ONE_INVESTIGATION, "error")
       return
     }
 
@@ -332,13 +340,13 @@ const PackageInvestigationMaster = () => {
 
       const existingMappings = mappingList.filter((mapping) => mapping.packageId == formData.packageId)
       if (existingMappings.length > 0) {
-        showPopup("Package already has investigation mappings. Please edit existing mappings instead.", "error")
+        showPopup(DUPLICATE_INV, "error")
         return
       }
 
       const investigationIds = formData.investigations.map((id) => Number(id)).filter((id) => !isNaN(id))
       if (investigationIds.length !== formData.investigations.length) {
-        showPopup("Some investigation IDs were invalid", "error")
+        showPopup(SOME_INVESTIGATIONS_INVALID, "error")
         return
       }
 
@@ -351,7 +359,7 @@ const PackageInvestigationMaster = () => {
 
       if (response && (response.response || response.status === 200)) {
         await fetchMappings()
-        showPopup("Package mappings added successfully!", "success")
+        showPopup(ADD_PACKAGE_INV_SUCC_MSG, "success")
         setShowAddForm(false)
         setFormData({
           packageId: "",
@@ -362,7 +370,7 @@ const PackageInvestigationMaster = () => {
       }
     } catch (error) {
       console.error("Error saving package mappings:", error)
-      showPopup("Failed to save package mappings. Please try again.", "error")
+      showPopup(FAIL_TO_SAVE_CHANGES, "error")
     } finally {
       setLoading(false)
     }

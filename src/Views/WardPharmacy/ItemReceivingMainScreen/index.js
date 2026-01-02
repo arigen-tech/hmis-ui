@@ -3,6 +3,7 @@ import LoadingScreen from "../../../Components/Loading"
 import { Store_Internal_Indent } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
 import Popup from "../../../Components/popup"
+import DatePicker from "../../../Components/DatePicker"
 
 const ItemReceivingMainScreen = () => {
   const [indentData, setIndentData] = useState([])
@@ -563,21 +564,21 @@ const ItemReceivingMainScreen = () => {
               {/* Search Row */}
               <div className="row mb-3">
                 <div className="col-md-3">
-                  <label className="form-label fw-bold">From Date</label>
-                  <input
-                    type="date"
-                    className="form-control"
+                   <DatePicker
+                    label="From Date"
                     value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
+                    onChange={setFromDate}  
+                    compact={true}
+                    
                   />
                 </div>
                 <div className="col-md-3">
-                  <label className="form-label fw-bold">To Date</label>
-                  <input
-                    type="date"
-                    className="form-control"
+                 <DatePicker
+                    label="To Date"
                     value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
+                    onChange={setToDate}  
+                    compact={true}
+                    
                   />
                 </div>
                 <div className="col-md-2 d-flex align-items-end">

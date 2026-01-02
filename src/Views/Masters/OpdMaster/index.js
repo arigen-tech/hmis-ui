@@ -4,13 +4,23 @@ import Popup from "../../../Components/popup"
 import { MAS_OPD_SESSION } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import { FETCH_OPD_ERR_MSG,
+  FAIL_TO_SAVE_CHANGES,
+  ADD_OPD_SUCC_MSG,END_TIME_AFTER_START_TIME,FAIL_TO_UPDATE_STS,
+  UPDATE_OPD_SUCC_MSG,
+  DUPLICATE_OPD
+} from "../../../config/constants"
+
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+
 
 const OpdSessionMaster = () => {
   const [opdSessionData, setOpdSessionData] = useState([])
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
-  const itemsPerPage = 5
+
+  
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, sessionId: null, newStatus: false })
   const [popupMessage, setPopupMessage] = useState(null)
   const [showForm, setShowForm] = useState(false)
@@ -39,7 +49,7 @@ const OpdSessionMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching OPD session data:", err)
-      showPopup("Failed to load OPD session data", "error")
+      showPopup(FETCH_OPD_ERR_MSG, "error")
     } finally {
       setLoading(false)
     }
@@ -54,18 +64,11 @@ const OpdSessionMaster = () => {
     session?.sessionName?.toLowerCase().includes(searchQuery?.toLowerCase() || ""),
   )
 
-  const currentItems = filteredSessions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
-  const filteredTotalPages = Math.ceil(filteredSessions.length / itemsPerPage)
 
-  const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10)
-    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-      setCurrentPage(pageNumber)
-    } else {
-      alert("Please enter a valid page number.")
-    }
-  }
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
+  const currentItems = filteredSessions.slice(indexOfFirst, indexOfLast)
 
   const handleEdit = (session) => {
     setEditingSession(session)
@@ -93,14 +96,14 @@ const OpdSessionMaster = () => {
       )
 
       if (isDuplicate && !editingSession) {
-        showPopup("OPD Session with the same name already exists!", "error")
+        showPopup(DUPLICATE_OPD, "error")
         setLoading(false)
         return
       }
 
       // Validate time range
       if (formData.fromTime >= formData.endTime) {
-        showPopup("End time must be after start time", "error")
+        showPopup(END_TIME_AFTER_START_TIME, "error")
         setLoading(false)
         return
       }
@@ -116,7 +119,7 @@ const OpdSessionMaster = () => {
 
         if (response && response.status === 200) {
           fetchOpdSessionData()
-          showPopup("OPD Session updated successfully!", "success")
+          showPopup(UPDATE_OPD_SUCC_MSG, "success")
         }
       } else {
         // Add new OPD session
@@ -129,7 +132,7 @@ const OpdSessionMaster = () => {
 
         if (response && response.status === 200) {
           fetchOpdSessionData()
-          showPopup("New OPD Session added successfully!", "success")
+          showPopup(ADD_OPD_SUCC_MSG, "success")
         }
       }
 
@@ -139,7 +142,7 @@ const OpdSessionMaster = () => {
       setShowForm(false)
     } catch (err) {
       console.error("Error saving OPD session:", err)
-      showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error")
+      showPopup(FAIL_TO_SAVE_CHANGES, "error")
     } finally {
       setLoading(false)
     }
@@ -179,7 +182,7 @@ const OpdSessionMaster = () => {
         }
       } catch (err) {
         console.error("Error updating OPD session status:", err)
-        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error")
+        showPopup(FAIL_TO_UPDATE_STS, "error")
       } finally {
         setLoading(false)
       }
@@ -318,54 +321,18 @@ const OpdSessionMaster = () => {
                       ))}
                     </tbody>
                   </table>
-                  <nav className="d-flex justify-content-between align-items-center mt-3">
-                    <div>
-                      <span>
-                        Page {currentPage} of {filteredTotalPages} | Total Records: {filteredSessions.length}
-                      </span>
-                    </div>
-                    <ul className="pagination mb-0">
-                      <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                        <button
-                          className="page-link"
-                          onClick={() => setCurrentPage(currentPage - 1)}
-                          disabled={currentPage === 1}
-                        >
-                          &laquo; Previous
-                        </button>
-                      </li>
-                      {[...Array(filteredTotalPages)].map((_, index) => (
-                        <li className={`page-item ${currentPage === index + 1 ? "active" : ""}`} key={index}>
-                          <button className="page-link" onClick={() => setCurrentPage(index + 1)}>
-                            {index + 1}
-                          </button>
-                        </li>
-                      ))}
-                      <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                        <button
-                          className="page-link"
-                          onClick={() => setCurrentPage(currentPage + 1)}
-                          disabled={currentPage === filteredTotalPages}
-                        >
-                          Next &raquo;
-                        </button>
-                      </li>
-                    </ul>
-                    <div className="d-flex align-items-center">
-                      <input
-                        type="number"
-                        min="1"
-                        max={filteredTotalPages}
-                        value={pageInput}
-                        onChange={(e) => setPageInput(e.target.value)}
-                        placeholder="Go to page"
-                        className="form-control me-2"
-                      />
-                      <button className="btn btn-primary" onClick={handlePageNavigation}>
-                        Go
-                      </button>
-                    </div>
-                  </nav>
+                  <div>
+
+                    {filteredSessions.length > 0 && (
+                    <Pagination
+                      totalItems={filteredSessions.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  )}
+                  </div>
+
                 </div>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>

@@ -4,6 +4,7 @@ import Popup from "../../../Components/popup"
 import { Store_Internal_Indent } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
+import DatePicker from "../../../Components/DatePicker"
 
 const IndentIssue = () => {
   const [currentView, setCurrentView] = useState("list")
@@ -272,62 +273,62 @@ const IndentIssue = () => {
   };
 
   const handleEditClick = async (record, e) => {
-  e.stopPropagation();
-  setLoading(true);
+    e.stopPropagation();
+    setLoading(true);
 
-  try {
-    setSelectedRecord(record);
-    if (!record || !Array.isArray(record.items)) return;
+    try {
+      setSelectedRecord(record);
+      if (!record || !Array.isArray(record.items)) return;
 
-    const entries = record.items.map((item) => {
-      // Get the first batch (FEFO sorted)
-      const defaultBatch = item.batches && item.batches.length > 0 ? item.batches[0] : null;
-      // FIXED: Use batch.batchStock instead of batch.batchstock
-      const defaultBatchStock = defaultBatch ? defaultBatch.batchStock : 0;
-      const approvedQty = item.approvedQty || 0;
-      const previousIssuedQty = item.issuedQty || 0;
+      const entries = record.items.map((item) => {
+        // Get the first batch (FEFO sorted)
+        const defaultBatch = item.batches && item.batches.length > 0 ? item.batches[0] : null;
+        // FIXED: Use batch.batchStock instead of batch.batchstock
+        const defaultBatchStock = defaultBatch ? defaultBatch.batchStock : 0;
+        const approvedQty = item.approvedQty || 0;
+        const previousIssuedQty = item.issuedQty || 0;
 
-      let totalAvailableStock = 0;
-      if (item.batches && Array.isArray(item.batches)) {
-        totalAvailableStock = item.batches.reduce((sum, batch) => {
-          // FIXED: Use batch.batchStock instead of batch.batchstock
-          return sum + (Number(batch.batchStock) || 0);
-        }, 0);
-      }
+        let totalAvailableStock = 0;
+        if (item.batches && Array.isArray(item.batches)) {
+          totalAvailableStock = item.batches.reduce((sum, batch) => {
+            // FIXED: Use batch.batchStock instead of batch.batchstock
+            return sum + (Number(batch.batchStock) || 0);
+          }, 0);
+        }
 
-      // Calculate the remaining quantity to issue
-      const remainingQty = Math.max(0, approvedQty - previousIssuedQty);
+        // Calculate the remaining quantity to issue
+        const remainingQty = Math.max(0, approvedQty - previousIssuedQty);
 
-      // Auto-suggest the full remaining quantity if we have enough stock
-      const autoQtyIssued = totalAvailableStock >= remainingQty ? remainingQty.toString() : "";
+        // Auto-suggest the full remaining quantity if we have enough stock
+        const autoQtyIssued = totalAvailableStock >= remainingQty ? remainingQty.toString() : "";
 
-      return {
-        id: item.indentTId || null,
-        itemId: item.itemId || "",
-        itemCode: item.pvmsNo || `ITEM_${item.itemId}`,
-        itemName: item.itemName || "",
-        apu: item.unitAuName || "",
-        qtyDemanded: item.requestedQty || 0,
-        approvedQty: approvedQty,
-        previousIssuedQty: previousIssuedQty,
-        batchNo: defaultBatch ? defaultBatch.batchNo : "",
-        dom: defaultBatch ? defaultBatch.manufactureDate : "",
-        doe: defaultBatch ? defaultBatch.expiryDate : "",
-        qtyIssued: autoQtyIssued,
-        balanceAfterIssue: Math.max(0, remainingQty - Number(autoQtyIssued)),
-        batchStock: defaultBatchStock,
-        availableStock: totalAvailableStock,
-      };
-    });
+        return {
+          id: item.indentTId || null,
+          itemId: item.itemId || "",
+          itemCode: item.pvmsNo || `ITEM_${item.itemId}`,
+          itemName: item.itemName || "",
+          apu: item.unitAuName || "",
+          qtyDemanded: item.requestedQty || 0,
+          approvedQty: approvedQty,
+          previousIssuedQty: previousIssuedQty,
+          batchNo: defaultBatch ? defaultBatch.batchNo : "",
+          dom: defaultBatch ? defaultBatch.manufactureDate : "",
+          doe: defaultBatch ? defaultBatch.expiryDate : "",
+          qtyIssued: autoQtyIssued,
+          balanceAfterIssue: Math.max(0, remainingQty - Number(autoQtyIssued)),
+          batchStock: defaultBatchStock,
+          availableStock: totalAvailableStock,
+        };
+      });
 
-    setIndentEntries(entries);
-    setCurrentView("detail");
-  } catch (error) {
-    console.error("Error in handleEditClick:", error);
-  } finally {
-    setLoading(false);
-  }
-};
+      setIndentEntries(entries);
+      setCurrentView("detail");
+    } catch (error) {
+      console.error("Error in handleEditClick:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleBackToList = () => {
     setCurrentView("list")
@@ -1249,7 +1250,7 @@ const IndentIssue = () => {
                               type="number"
                               className="form-control form-control-sm"
                               value={entry.qtyIssued}
-                              style={{width: "60px"}}
+                              style={{ width: "60px" }}
                               onChange={(e) => handleIndentEntryChange(index, "qtyIssued", e.target.value)}
                               placeholder="0"
                               min="0"
@@ -1394,21 +1395,19 @@ const IndentIssue = () => {
             <div className="card-body">
               <div className="row mb-4">
                 <div className="col-md-3">
-                  <label className="form-label fw-bold">From Date</label>
-                  <input
-                    type="date"
-                    className="form-control"
+                  <DatePicker
+                    label="From Date"
                     value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
+                    onChange={setFromDate}
+                    compact={true}
                   />
                 </div>
                 <div className="col-md-3">
-                  <label className="form-label fw-bold">To Date</label>
-                  <input
-                    type="date"
-                    className="form-control"
+                  <DatePicker
+                    label="To Date"
                     value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
+                    onChange={setToDate}
+                    compact={true}
                   />
                 </div>
                 <div className="col-md-3 d-flex align-items-end">

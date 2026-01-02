@@ -891,7 +891,7 @@ const IndentViewUpdate = () => {
                     value={fromDate}
                     onChange={setFromDate}  
                     compact={true}
-                    placeholder="MM/DD/YYYY"
+                   
                   />
                 </div>
                 <div className="col-md-2">
@@ -900,7 +900,7 @@ const IndentViewUpdate = () => {
                     value={toDate}
                     onChange={setToDate}
                     compact={true}
-                    placeholder="MM/DD/YYYY"
+                    
                   />
                 </div>
                 <div className="col-md-2">

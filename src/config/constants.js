@@ -4,6 +4,11 @@ export const DEPARTMENT_CODE_OPD=5;
 
 
 
+//Common
+
+export const FAIL_TO_SAVE_CHANGES="Failed to save changes";
+export const FAIL_TO_UPDATE_STS="Failed to update status";
+export const INVALID_PAGE_NO_WARN_MSG="Please enter a valid page number.";
 
 
 
@@ -59,7 +64,6 @@ export const RESULT_ENTRY_WARN_MSG="Please enter at least one result before subm
 export const FETCH_AUTO_FILL_ERR_MSG="Missing required data. Please contact administrator.";
 export const RESULT_SUBMIT_SUCC_MSG="Results submitted successfully!";
 export const RESULT_SUBMIT_ERR_MSG="Error submitting results";
-export const INVALID_PAGE_NO_WARN_MSG="Please enter a valid page number.";
 
 
 //PendingForSampleCollection
@@ -113,7 +117,7 @@ export const FETCH_SUB_CHARGE_CODES_ERR_MSG="Failed to load sub-charge codes";
 export const DUPLICATE_SUB_CHARGE_CODE_ERR_MSG="A sub charge code with this code already exists!";
 export const UPDATE_SUB_CHARGE_CODE_SUCC_MSG="Sub charge code updated successfully!";
 export const ADD_SUB_CHARGE_CODE_SUCC_MSG="New sub charge code added successfully!";
-export const FAIL_TO_SAVE_CHANGES="Failed to save changes";
+
 
 //UOMMaster
 
@@ -121,7 +125,7 @@ export const FETCH_UOM_ERR_MSG="Failed to load UOM data";
 export const DUPLICATE_UOM_ERR_MSG="UOM with the same code already exists!";
 export const UPDATE_UOM_SUCC_MSG="UOM updated successfully!";
 export const ADD_UOM_SUCC_MSG="New UOM added successfully!";
-export const FAIL_TO_UPDATE_STS="Failed to update status"
+
 
 
 
@@ -141,6 +145,7 @@ export const INVALID_PAGE="Invalid page !";
 export const FETCH_RESULT_UPDATE_DATA_ERR_MSG="Failed to load update results";
 export const RESULT_UPDATE_SUCC_MSG="All results updated successfully!";
 export const RESULT_UPDATE_ERR_MSG="Results failed to update";
+export const SELECT_ROW_TO_EDIT_WARN_MSG= "Please select at least one row to edit before updating.";
 
 
 //OPDBillingDetails
@@ -382,6 +387,30 @@ export const UPDATE_BILLING_POLICY_SUCC_MSG = "Billing Policy updated successful
 export const DUPLICATE_BILLING_POLICY = "Billing Policy already exists!";
 export const FETCH_BILLING_POLICY_ERR_MSG = "Failed to load billing policy data";
 
+//SpectacleUseMaster
+
+
+export const ADD_SPECTACLE_USE_SUCC_MSG = "Spectacle Use added successfully!";
+export const UPDATE_SPECTACLE_USE_SUCC_MSG = "Spectacle Use updated successfully!";
+export const FETCH_SPECTACLE_USE_ERR_MSG = "Failed to load spectacle use data!";
+export const DUPLICATE_SPECTACLE_USE = "Spectacle Use already exists!";
+
+//BookedStatusMaster
+
+
+export const ADD_BOOKED_STATUS_SUCC_MSG = "Booked Status added successfully!";
+export const UPDATE_BOOKED_STATUS_SUCC_MSG = "Booked Status updated successfully!";
+export const FETCH_BOOKED_STATUS_ERR_MSG = "Failed to fetch booked status data!";
+export const DUPLICATE_BOOKED_STATUS = "Booked Status already exists!";
+
+//ToothConditionMaster
+
+
+export const ADD_TOOTH_CONDITION_SUCC_MSG = "Tooth Condition added successfully!";
+export const UPDATE_TOOTH_CONDITION_SUCC_MSG = "Tooth Condition updated successfully!";
+export const FETCH_TOOTH_CONDITION_ERR_MSG = "Failed to fetch tooth condition data!";
+export const DUPLICATE_TOOTH_CONDITION = "Tooth Condition already exists!";
+
 
 
 
@@ -407,8 +436,165 @@ export const ROL_LOAD_ERROR = "Error fetching ROL items from server";
 export const NO_ROL_DATA = "No items found below reorder level. All items have sufficient stock.";
 export const IMPORT_FROM_PREVIOUS = "Import from Previous Indent feature coming soon";
 
+//Blood GAROUP Master
 
 
+export const FETCH_BLOOD_GROUP_ERR_MSG="Failed to load blood group data";
+export const DUPLICATE_BLOOD_GROUP="Blood group with the same name already exists!";
+export const UPDATE_BLOOD_GROUP_SUCC_MSG="Blood group updated successfully!";
+export const ADD_BLOOD_GROUP_SUCC_MSG="New blood group added successfully!";
+export const INVALID_BLOOD_GROUP_ID="Error: Invalid blood group ID";
 
+
+//Country Master
+export const FETCH_COUNTRY_ERR_MSG="Failed to load country data";
+export const DUPLICATE_COUNTRY="Country with the same name already exists!";
+export const UPDATE_COUNTRY_SUCC_MSG="Country updated successfully!";
+export const ADD_COUNTRY_SUCC_MSG="New country added successfully!";
+
+
+//Department Type Master
+export const DUPLICATE_DEPARTMENT_TYPE="Department type with the same name already exists!";
+export const UPDATE_DEPARTMENT_TYPE_SUCC_MSG="Department type updated successfully!";
+export const ADD_DEPARTMENT_TYPE_SUCC_MSG="New department type added successfully!";
+
+//District Master
+export const FETCH_DISTRICT_ERR_MSG="Failed to load district data";
+export const DUPLICATE_DISTRICT="District with the same name already exists!";
+export const UPDATE_DISTRICT_SUCC_MSG="District updated successfully!";
+export const ADD_DISTRICT_SUCC_MSG="New district added successfully!";
+
+
+//Frequency Master
+export const FETCH_FREQUENCY_ERR_MSG="Failed to load frequency data";
+export const DUPLICATE_FREQUENCY="Frequency with the same name already exists!";
+export const UPDATE_FREQUENCY_SUCC_MSG="Frequency updated successfully!";
+export const ADD_FREQUENCY_SUCC_MSG="New frequency added successfully!";
+
+
+//Gender Master
+export const FETCH_GENDER_ERR_MSG="Failed to load gender data";
+export const DUPLICATE_GENDER="Gender with the same name already exists!";
+export const UPDATE_GENDER_SUCC_MSG="Gender updated successfully!";
+export const ADD_GENDER_SUCC_MSG="New gender added successfully!";
+
+//Hospital Master
+export const FETCH_HOSPITAL_ERR_MSG="Failed to load hospital data";
+export const DUPLICATE_HOSPITAL="Hospital with the same name already exists!";
+export const UPDATE_HOSPITAL_SUCC_MSG="Hospital updated successfully!";
+export const ADD_HOSPITAL_SUCC_MSG="New hospital added successfully!";
+export const FAILED_TO_LOAD_SELECTED_COUNTRY="Failed to load states for selected country";
+
+
+//HSN Master
+export const FETCH_HSN_ERR_MSG="Failed to load HSN data";
+export const DUPLICATE_HSN="HSN with the same code already exists!";
+export const UPDATE_HSN_SUCC_MSG="HSN updated successfully!";
+export const ADD_HSN_SUCC_MSG="New HSN added successfully!";
+export const VALID_GST_RATE="Please enter a valid GST Rate between 0 and 100.";
+
+
+//Identification Master
+export const FETCH_IDENTIFICATION_ERR_MSG="Failed to load identification data";
+export const DUPLICATE_IDENTIFICATION="Identification with the same name already exists!";
+export const UPDATE_IDENTIFICATION_SUCC_MSG="Identification updated successfully!";
+export const ADD_IDENTIFICATION_SUCC_MSG="New identification added successfully!";
+
+
+//Investigation Pricing Master
+export const FETCH_INV_PRICING_ERR_MSG="Failed to load investigation pricing data";
+export const UPDATE_INV_PRICING_SUCC_MSG="Investigation pricing updated successfully!";
+export const ADD_INV_PRICING_SUCC_MSG="New investigation pricing added successfully!";
+export const FAIL_TO_LOAD_INV_OPTION="Failed to load investigation options";
+export const FILL_ALL_REQUIRED_FIELDS="Please fill in all required fields";
+export const TO_DATE_AFTER_FROM_DATE="To Date must be after From Date";
+
+
+//Marital Status Master
+export const FETCH_MARITAL_STATUS_ERR_MSG="Failed to load marital status data";
+export const DUPLICATE_MARITAL_STATUS="Marital status with the same name already exists!";
+export const UPDATE_MARITAL_STATUS_SUCC_MSG="Marital status updated successfully!";
+export const ADD_MARITAL_STATUS_SUCC_MSG="New marital status added successfully!";
+
+
+//OPD Master
+export const FETCH_OPD_ERR_MSG="Failed to load OPD data";
+export const DUPLICATE_OPD="OPD with the same name already exists!";
+export const UPDATE_OPD_SUCC_MSG="OPD updated successfully!";
+export const ADD_OPD_SUCC_MSG="New OPD added successfully!";
+export const END_TIME_AFTER_START_TIME="End Time must be after Start Time";
+
+
+//OPD service master
+export const UPDATE_OPD_SERVICE_SUCC_MSG="OPD service updated successfully!";
+export const ADD_OPD_SERVICE_SUCC_MSG="New OPD service added successfully!";
+
+
+//Package Investigation Master
+export const FETCH_PACKAGE_INV_ERR_MSG="Failed to load package investigation data";
+export const UPDATE_PACKAGE_INV_SUCC_MSG="Package investigation updated successfully!";
+export const ADD_PACKAGE_INV_SUCC_MSG="New package investigation added successfully!";
+export const SOME_INVESTIGATIONS_INVALID="Some investigation IDs were invalid";
+export const SELECT_A_PACKAGE_AT_LEAST_ONE_INVESTIGATION="Please select a package and at least one investigation";
+export const DUPLICATE_INV="Duplicate investigation ! Investigation already exists in that package";
+
+
+//Package Master
+export const FETCH_PACKAGE_ERR_MSG="Failed to load package data";
+export const UPDATE_PACKAGE_SUCC_MSG="Package updated successfully!";
+export const ADD_PACKAGE_SUCC_MSG="New package added successfully!";
+export const VALID_BASE_COST="Please enter a valid Base Cost.";
+export const DISCOUNT_CANOT_NAGATIVE="Flat discount cannot be negative.";
+export const DISCOUNT_PERCENTAGE="Discount percentage must be between 0 and 100.";
+
+
+//Relationship Master
+export const FETCH_RELATIONSHIP_ERR_MSG="Failed to load relationship data";
+export const DUPLICATE_RELATIONSHIP="Relationship with the same name already exists!";
+export const UPDATE_RELATIONSHIP_SUCC_MSG="Relationship updated successfully!";
+export const ADD_RELATIONSHIP_SUCC_MSG="New relationship added successfully!";
+
+
+//Religion Master
+export const FETCH_RELIGION_ERR_MSG="Failed to load religion data";
+export const DUPLICATE_RELIGION="Religion with the same name already exists!";
+export const UPDATE_RELIGION_SUCC_MSG="Religion updated successfully!";
+export const ADD_RELIGION_SUCC_MSG="New religion added successfully!";
+
+
+//Service Category
+export const UPDATE_SERVICE_CATEGORY_SUCC_MSG="Service category updated successfully!";
+export const ADD_SERVICE_CATEGORY_SUCC_MSG="New service category added successfully!";
+
+
+//state master
+export const FETCH_STATE_ERR_MSG="Failed to load state data";
+export const DUPLICATE_STATE="State with the same name already exists!";
+export const UPDATE_STATE_SUCC_MSG="State updated successfully!";
+export const ADD_STATE_SUCC_MSG="New state added successfully!";
+
+
+//user department master
+export const FETCH_USER_DEPARTMENT_ERR_MSG="Failed to load user department data";
+export const DUPLICATE_USER_DEPARTMENT="User department with the same name already exists!";
+export const UPDATE_USER_DEPARTMENT_SUCC_MSG="User department updated successfully!";
+export const ADD_USER_DEPARTMENT_SUCC_MSG="New user department added successfully!";
+export const FAIL_TO_LOAD_USERS="Failed to load users";
+export const FAIL_TO_LOAD_DEPARTMENTS="Failed to load departments";
+
+
+//Lab Amendment Type Master 
+
+export const ADD_LAB_AMENDMENT_TYPE_SUCC_MSG = "Amendment type added successfully!";
+export const UPDATE_LAB_AMENDMENT_TYPE_SUCC_MSG = "Amendment type updated successfully!";
+export const DUPLICATE_LAB_AMENDMENT_TYPE = "Amendment type code is already exists!";
+export const FETCH_LAB_AMENDMENT_TYPE_ERR_MSG = "Failed to fetch amendment types";
+
+//Patient Preparation Master
+
+export const ADD_PREPARATION_SUCC_MSG = "Patient preparation added successfully!";
+export const UPDATE_PREPARATION_SUCC_MSG = "Patient preparation updated successfully!";
+export const DUPLICATE_PREPARATION_CODE = "Preparation code already exists!";
+export const FETCH_PREPARATION_ERR_MSG = "Failed to fetch patient preparations.";
 
 
