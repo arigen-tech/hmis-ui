@@ -2361,12 +2361,7 @@ const EmployeeRegistration = () => {
                                     >
                                         Add Row +
                                     </button>
-                                    <div className="mt-2">
-                                        <small className="text-muted">
-                                            <i className="icofont-info-circle me-1"></i>
-                                            Start typing to search for specialty centers. Select from the dropdown list.
-                                        </small>
-                                    </div>
+                                    
                                 </div>
                             </div>
                         </div>
@@ -2419,9 +2414,6 @@ const EmployeeRegistration = () => {
                                                                 {getErrorMessage('workExperiences', index, 'organizationName')}
                                                             </div>
                                                         )}
-                                                        <small className="text-muted">
-                                                            Example: "Senior Developer at XYZ Corp (2020-2023)"
-                                                        </small>
                                                     </td>
                                                     <td>
                                                         {formData.workExperiences.length > 1 ? (
@@ -2456,12 +2448,6 @@ const EmployeeRegistration = () => {
                                         >
                                             <i className="icofont-plus me-1"></i> Add Work Experience
                                         </button>
-                                        <div className="text-muted">
-                                            <small>
-                                                <i className="icofont-info-circle me-1"></i>
-                                                Include company names, positions, and duration
-                                            </small>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -2521,14 +2507,7 @@ const EmployeeRegistration = () => {
                                                                 {getErrorMessage('memberships', index, 'levelName')}
                                                             </div>
                                                         )}
-                                                        <div className="d-flex justify-content-between mt-1">
-                                                            <small className="text-muted">
-                                                                Example: "Member of American Medical Association (ID: AMA12345)"
-                                                            </small>
-                                                            <small className={`${row.levelName.length > mlenght - 10 ? 'text-warning' : 'text-muted'}`}>
-                                                                {row.levelName.length}/{mlenght}
-                                                            </small>
-                                                        </div>
+                                                        
                                                     </td>
                                                     <td>
                                                         {formData.memberships.length > 1 ? (
@@ -2563,12 +2542,6 @@ const EmployeeRegistration = () => {
                                         >
                                             <i className="icofont-plus me-1"></i> Add Membership
                                         </button>
-                                        <div className="text-muted">
-                                            <small>
-                                                <i className="icofont-info-circle me-1"></i>
-                                                Include association names and membership IDs if available
-                                            </small>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -2628,14 +2601,6 @@ const EmployeeRegistration = () => {
                                                                 {getErrorMessage('specialtyInterest', index, 'specialtyInterestName')}
                                                             </div>
                                                         )}
-                                                        <div className="d-flex justify-content-between mt-1">
-                                                            <small className="text-muted">
-                                                                Example: "Cardiac Surgery", "Neuro Rehabilitation"
-                                                            </small>
-                                                            <small className={`${row.specialtyInterestName.length > mlenght - 10 ? 'text-warning' : 'text-muted'}`}>
-                                                                {row.specialtyInterestName.length}/{mlenght}
-                                                            </small>
-                                                        </div>
                                                     </td>
                                                     <td>
                                                         {formData.specialtyInterest.length > 1 ? (
@@ -2670,12 +2635,6 @@ const EmployeeRegistration = () => {
                                         >
                                             <i className="icofont-plus me-1"></i> Add Specialty Interest
                                         </button>
-                                        <div className="text-muted">
-                                            <small>
-                                                <i className="icofont-info-circle me-1"></i>
-                                                List medical or professional specialty areas of interest
-                                            </small>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -2735,14 +2694,6 @@ const EmployeeRegistration = () => {
                                                                 {getErrorMessage('awardsDistinction', index, 'awardName')}
                                                             </div>
                                                         )}
-                                                        <div className="d-flex justify-content-between mt-1">
-                                                            <small className="text-muted">
-                                                                Example: "Employee of the Year 2022", "Research Paper Award"
-                                                            </small>
-                                                            <small className={`${row.awardName.length > mlenght - 10 ? 'text-warning' : 'text-muted'}`}>
-                                                                {row.awardName.length}/{mlenght}
-                                                            </small>
-                                                        </div>
                                                     </td>
                                                     <td>
                                                         {formData.awardsDistinction.length > 1 ? (
@@ -2777,12 +2728,6 @@ const EmployeeRegistration = () => {
                                         >
                                             <i className="icofont-plus me-1"></i> Add Award
                                         </button>
-                                        <div className="text-muted">
-                                            <small>
-                                                <i className="icofont-info-circle me-1"></i>
-                                                Include professional, academic, or recognition awards
-                                            </small>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -2965,12 +2910,6 @@ const EmployeeRegistration = () => {
                                         >
                                             <i className="icofont-plus me-1"></i> Add Document
                                         </button>
-                                        <div className="text-muted">
-                                            <small>
-                                                <i className="icofont-info-circle me-1"></i>
-                                                Add all required supporting documents
-                                            </small>
-                                        </div>
                                     </div>
                                 </div>
                             </div>

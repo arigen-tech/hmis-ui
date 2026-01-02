@@ -1722,6 +1722,12 @@ const ViewSearchEmployee = () => {
 
             <div className="card-header py-3 bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
               <h3 className="fw-bold mb-0">Update Employee</h3>
+
+              <button className="btn btn-secondary ms-auto me-3" onClick={ () => {
+                resetForm();
+              } }>
+                <i className="icofont-arrow-left me-1"></i> Back to Search
+              </button>
             </div>
           </div>
         </div>

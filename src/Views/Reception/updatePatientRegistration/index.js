@@ -2150,7 +2150,7 @@ const UpdatePatientRegistration = () => {
                         onChange={handleChangeSearch}
                       />
                     </div>
-                    <div className="col-md-3">
+                    {/* <div className="col-md-3">
                       <label className="form-label">UHID No.</label>
                       <input
                         type="text"
@@ -2160,8 +2160,8 @@ const UpdatePatientRegistration = () => {
                         value={formData.uhidNo}
                         onChange={handleChangeSearch}
                       />
-                    </div>
-                    <div className="col-md-3">
+                    </div> */}
+                    {/* <div className="col-md-3">
                       <label className="form-label">Appointment Date</label>
                       <input
                         type="date"
@@ -2170,7 +2170,7 @@ const UpdatePatientRegistration = () => {
                         value={formData.appointmentDate}
                         onChange={handleChangeSearch}
                       />
-                    </div>
+                    </div> */}
                   </div>
                   <div className="mt-3 mb-3">
                     <button

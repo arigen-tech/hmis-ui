@@ -49,7 +49,7 @@ const OPDServiceMaster = () => {
       fetchServicecategoryData();
       fetchDepartmentData();
       if (formData.departmentId) {
-        fetchDoctorData();
+      fetchDoctorData();
       }
     }
   }, [showForm, formData.departmentId]);
@@ -276,8 +276,8 @@ const OPDServiceMaster = () => {
     const { id, value } = e.target;
 
     const parsedValue = ["doctorId", "departmentId", "serviceCategory"].includes(id)
-      ? parseInt(value, 10) || ""
-      : value;
+        ? parseInt(value, 10) || ""
+        : value;
 
     const updatedFormData = { ...formData, [id]: parsedValue };
 
@@ -371,9 +371,28 @@ const OPDServiceMaster = () => {
                         </span>
                       </div>
                     </form>
-                    <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                    <button
+                      type="button"
+                      className="btn btn-success me-2"
+                      onClick={() => {
+                        setEditingService(null);   // ✅ RESET EDIT MODE
+                        setIsFormValid(false);
+                        setFormData({
+                          serviceCode: "",
+                          serviceName: "",
+                          baseTariff: "",
+                          serviceCategory: "",
+                          departmentId: "",
+                          doctorId: "",
+                          fromDate: "",
+                          toDate: "",
+                        });
+                        setShowForm(true);
+                      }}
+                    >
                       <i className="mdi mdi-plus"></i> Add
                     </button>
+
                     {/* <button type="button" className="btn btn-success me-2">
                       <i className="mdi mdi-plus"></i> Generate Report
                     </button> */}
