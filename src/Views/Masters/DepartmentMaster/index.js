@@ -403,15 +403,6 @@ const DepartmentMaster = () => {
                                 </>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
-                                    <div className="d-flex justify-content-end mb-3">
-                                        <button
-                                            type="button"
-                                            className="btn btn-secondary"
-                                            onClick={() => setShowForm(false)}
-                                        >
-                                            <i className="mdi mdi-arrow-left"></i> Back
-                                        </button>
-                                    </div>
 
                                     <div className="form-group col-md-4">
                                         <label >
@@ -494,6 +485,7 @@ const DepartmentMaster = () => {
                                         />
                                     </div>
 
+                                    
                                     {/* Ward Category Field - Only shown when department type ID is WARD_ID (10) */}
                                     {parseInt(formData.departmentTypeId) === WARD_ID && (
                                         <div className="form-group col-md-4 mt-3">
@@ -517,6 +509,23 @@ const DepartmentMaster = () => {
                                             </select>
                                         </div>
                                     )}
+<div className="form-group col-md-4 mt-5">
+  <div className="form-check d-flex align-items-center">
+    <label
+      className="form-check-label me-2"
+      htmlFor="isIndentApplicable"
+    >
+      Is Indent Applicable
+    </label>
+    <input
+      type="checkbox"
+      id="isIndentApplicable"
+      className="form-check-input m-0"
+    />
+  </div>
+</div>
+
+
 
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-4">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
