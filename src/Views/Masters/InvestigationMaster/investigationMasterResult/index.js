@@ -27,7 +27,10 @@ const InvestigationMasterResult = () => {
     subChargeCodeName,
     collectionId,
     interpretation,
-    genderApplicable
+    genderApplicable,
+    preparationRequired,
+    estimatedDays,
+    turnaroundTime,
   } = location.state || {}
 
   const [subTests, setSubTests] = useState([])
@@ -234,6 +237,9 @@ const InvestigationMasterResult = () => {
         categoryId: categoryId,
         interpretation: interpretation,
         genderApplicable: genderCode,
+        preparationRequired:preparationRequired,
+        estimatedDays:estimatedDays,
+        tatHours:turnaroundTime,
         masInvestReq: subTests.map(test => {
           const fixedValues = test.fixedValues?.map(fv => ({
             fixedId: fv.fixedId || null,

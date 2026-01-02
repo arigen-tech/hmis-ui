@@ -13,7 +13,7 @@ import {
   DG_MAS_INVESTIGATION_CATEGORY,
   DG_MAS_INVESTIGATION_METHODOLOGY,
 } from "../../../config/apiConfig"
-import { ADD_INV_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DROP_DOWN_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, MISSING_MANDOTORY_FIELD, MISSING_MANDOTORY_FIELD_MSG, SELECT_INV_ERR_MSG, SELECT_INVESTIGATIONS_ERROR_MSG, UPDATE_INV_SUCC_MSG } from "../../../config/constants"
+import { ADD_INV_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DROP_DOWN_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, MISSING_MANDOTORY_FIELD_MSG, SELECT_INV_ERR_MSG, UPDATE_INV_SUCC_MSG } from "../../../config/constants"
 
 // Import the Preparation Modal component
 import MasPreparationModel from "./Masprep/masprep"
@@ -339,7 +339,7 @@ const InvestigationMaster = () => {
     }
 
     // Extract preparation details from the investigation
-    const prepText = investigation.preparationRequired || ""
+    const prepText = investigation.preparationText || ""
 
     setSelectedInvestigation(investigation)
     setFormData({
@@ -370,7 +370,7 @@ const InvestigationMaster = () => {
       status: investigation.status || "n",
       interpretation: investigation.interpretation,
       preparationRequired: prepText,
-      turnaroundTime: investigation.turnaroundTime || "",
+      turnaroundTime: investigation.tatHours || "",
       estimatedDays: investigation.estimatedDays || "",
     })
 
@@ -439,7 +439,7 @@ const InvestigationMaster = () => {
         interpretation: formData.interpretation,
         preparationRequired: formData.preparationRequired || null,
         estimatedDays: formData.estimatedDays || null,
-        turnaroundTime: formData.turnaroundTime || null,
+        tatHours: formData.turnaroundTime || null,
         // Include additional fields that might be required
         appearInDischargeSummary: selectedInvestigation?.appearInDischargeSummary || null,
         testOrderNo: selectedInvestigation?.testOrderNo || null,

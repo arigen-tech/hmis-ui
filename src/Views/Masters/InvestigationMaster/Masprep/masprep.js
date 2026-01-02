@@ -1,42 +1,34 @@
 import { useEffect, useState } from "react";
 import LoadingScreen from "../../../../Components/Loading";
+import { getRequest } from "../../../../service/apiService";
+import { MAS_PATIENT_PREPARATION } from "../../../../config/apiConfig";
 
 const MasPreparationModel = ({ show, onOk, onClose, selectedItems }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedPreparations, setSelectedPreparations] = useState([]);
 
-    // Normalize API response keys and accept dummy items
-    const normalize = (item) => {
-        return {
-            id: item.preparationId || item.id,
-            name: item.preparationName || item.name || "",
-            turnaroundTime: item.turnaroundTime ?? 0,
-            estimatedDays: item.estimatedDays ?? 0
-        };
-    };
-
+    // Fetch preparation data from API
     const fetchPreparationData = async () => {
         setLoading(true);
         try {
-            // Using dummy data to keep the modal simple
-            const dummy = [
-                { id: 1, name: "Fasting 8 Hours", turnaroundTime: 0, estimatedDays: 0 },
-                { id: 2, name: "No food 2 hours before test", turnaroundTime: 0, estimatedDays: 0 },
-                { id: 3, name: "Bring previous reports", turnaroundTime: 0, estimatedDays: 0 },
-                { id: 4, name: "Avoid fatty foods", turnaroundTime: 0, estimatedDays: 0 },
-                { id: 5, name: "Drink plenty of water", turnaroundTime: 0, estimatedDays: 0 },
-                { id: 6, name: "No alcohol 24 hours before", turnaroundTime: 0, estimatedDays: 0 },
-                { id: 7, name: "Stop certain medications", turnaroundTime: 0, estimatedDays: 0 },
-                { id: 8, name: "Wear comfortable clothing", turnaroundTime: 0, estimatedDays: 0 },
-                { id: 9, name: "Bring ID proof", turnaroundTime: 0, estimatedDays: 0 },
-                { id: 10, name: "Inform about allergies", turnaroundTime: 0, estimatedDays: 0 },
-            ];
-            const formatted = dummy.map((item) => normalize(item));
-            setData(formatted);
+            // Call the getAll API with flag=1 to get only active records
+            const response = await getRequest(`${MAS_PATIENT_PREPARATION}/all?flag=1`);
+            
+            if (response && response.response) {
+                // Map the API response to include only preparationId and preparationName
+                const formatted = response.response.map(item => ({
+                    id: item.preparationId,
+                    name: item.preparationName,
+                }));
+                setData(formatted);
+            } else {
+                setData([]);
+            }
         } catch (error) {
-            console.error("Error preparing dummy data:", error);
-            setData([]);
+        
+            console.error("Error fetching preparation data:", error);
+            
         } finally {
             setLoading(false);
         }
@@ -62,8 +54,6 @@ const MasPreparationModel = ({ show, onOk, onClose, selectedItems }) => {
             setSelectedPreparations(prev => [...prev, {
                 id: item.id,
                 preparationText: item.name,
-                estimatedDays: item.estimatedDays,
-                turnaroundTime: item.turnaroundTime
             }]);
         }
     };
@@ -132,11 +122,11 @@ const MasPreparationModel = ({ show, onOk, onClose, selectedItems }) => {
                                     </div>
 
                                     {/* Note for users */}
-                                    <div className="alert alert-light mt-3 p-2">
+                                    {/* <div className="alert alert-light mt-3 p-2">
                                         <small className="text-muted">
                                             <strong>Note:</strong> Selected preparations will be concatenated with line breaks in the main form.
                                         </small>
-                                    </div>
+                                    </div> */}
                                 </>
                             )}
                         </div>
