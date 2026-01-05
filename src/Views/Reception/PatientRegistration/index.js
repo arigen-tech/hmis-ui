@@ -1142,6 +1142,55 @@ const PatientRegistration = () => {
     return `${years}Y ${months}M ${days}D`;
   }
 
+  const showTokenPopup = () => {
+  Swal.fire({
+    title: "Token Availability",
+    html: `
+      <div class="container-fluid">
+        <div class="text-center mb-3">
+          <h5 class="fw-bold">Available Time Slots</h5>
+        </div>
+        <div class="row">
+          <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+              <div class="card-body">
+                <h6 class="fw-bold mb-3 text-primary">Morning Session</h6>
+                <div class="d-grid gap-2">
+                  <button type="button" class="btn btn-outline-secondary">10:00 AM</button>
+                  <button type="button" class="btn btn-outline-secondary">10:15 AM</button>
+                  <button type="button" class="btn btn-outline-secondary">10:45 AM</button>
+                  <button type="button" class="btn btn-outline-secondary">11:15 AM</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+              <div class="card-body">
+                <h6 class="fw-bold mb-3 text-primary">Afternoon Session</h6>
+                <div class="d-grid gap-2">
+                  <button type="button" class="btn btn-outline-secondary">11:30 AM</button>
+                  <button type="button" class="btn btn-outline-secondary">11:45 AM</button>
+                  <button type="button" class="btn btn-outline-secondary">12:00 PM</button>
+                  <button type="button" class="btn btn-outline-secondary">12:15 PM</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,
+    showCloseButton: true,
+    showConfirmButton: false,
+    width: 600,
+    padding: "1.5rem",
+    customClass: {
+      container: 'swal2-bootstrap',
+      popup: 'border-0'
+    }
+  });
+};
+
   return (
     <div className="body d-flex py-3">
       <div className="container-fluid">
@@ -1701,6 +1750,43 @@ const PatientRegistration = () => {
                     );
                   })}
                 </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* NEW: Token Availability Section */}
+        <div className="row mb-3">
+          <div className="col-sm-12">
+            <div className="card shadow mb-3" style={{ backgroundColor: '#f8f9fa' }}>
+              <div className="card-body">
+                <div className="row g-3 align-items-center">
+                  <div className="col-md-6">
+                    <div className="d-flex align-items-center">
+                      <label className="form-label me-3 mb-0 fw-bold">Date:</label>
+                      <button 
+                        type="button" 
+                        className="btn btn-outline-primary px-4"
+                      >
+                        {new Date().toLocaleDateString('en-US', { 
+                          weekday: 'short', 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="col-md-6 text-end">
+                    <button 
+                      type="button" 
+                      className="btn btn-primary px-4"
+                      onClick={showTokenPopup}
+                    >
+                      Show Token
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
