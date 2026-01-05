@@ -68,6 +68,7 @@ export const OPD_PATIENT = "/patient";
 
 
 export const FILTER_OPD_DEPT = `OPD`;
+export const ALL_LAB_HISTORY_REPORT=`${ALL_REPORTS}/lab-histrory`
 
 
 
@@ -222,4 +223,9 @@ export const OB_BOOKED_STATUS = `${MASTERS}/obMasBookedStatus`;
 export const MAS_TOOTH_CONDITION = `${MASTERS}/masToothCondition`;
 export const LAB_AMENDMENT_TYPE_API = `${MASTERS}/lab-amendment-type`;
 export const MAS_PATIENT_PREPARATION = `${MASTERS}/patient-preparation`;
+
+
+// Constants for date validation for Lab report
+  export const MAX_MONTHS_BACK = 4; // 4 months maximum back date
+  export const MAX_DAYS_BACK = MAX_MONTHS_BACK * 30;
 
