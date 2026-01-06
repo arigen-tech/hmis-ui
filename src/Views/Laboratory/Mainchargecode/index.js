@@ -4,6 +4,8 @@ import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import { MAS_MAIN_CHARGE_CODE } from "../../../config/apiConfig"
 import {  ADD_MAIN_CHARGE_CODE_SUCC_MSG, DUPLICATE_MAIN_CHARGE_CODE_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_MAIN_CHARGE_CODE_ERR_MSG, UPDATE_MAIN_CHARGE_CODE_SUCC_MSG } from "../../../config/constants"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+
 
 
 
@@ -58,9 +60,10 @@ const MainChargeCode = () => {
        item?.chargecodeName?.toString().toLowerCase().includes(searchQuery.toLowerCase()))
   ) : []
   
-  const filteredTotalPages = Math.ceil(filteredMainChargeCodes.length / itemsPerPage)
-
-  const currentItems = filteredMainChargeCodes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
+  const currentItems = filteredMainChargeCodes.slice(indexOfFirst, indexOfLast)
+  
 
   const handleEdit = (item) => {
     setEditingMainCharge(item)
@@ -183,14 +186,6 @@ const MainChargeCode = () => {
     setIsFormValid(!!updatedFormData.chargecodeCode && !!updatedFormData.chargecodeName)
   }
 
-  const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10)
-    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-      setCurrentPage(pageNumber)
-    } else {
-      alert("Please enter a valid page number.")
-    }
-  }
 
   const handleRefresh = () => {
     setSearchQuery("")
@@ -198,42 +193,6 @@ const MainChargeCode = () => {
     fetchMainChargeCodeData()
   }
 
-  const renderPagination = () => {
-    const pageNumbers = []
-    const maxVisiblePages = 5
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1)
-
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1)
-    }
-
-    if (startPage > 1) {
-      pageNumbers.push(1)
-      if (startPage > 2) pageNumbers.push("...")
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i)
-    }
-
-    if (endPage < filteredTotalPages) {
-      if (endPage < filteredTotalPages - 1) pageNumbers.push("...")
-      pageNumbers.push(filteredTotalPages)
-    }
-
-    return pageNumbers.map((number, index) => (
-      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-        {typeof number === "number" ? (
-          <button className="page-link" onClick={() => setCurrentPage(number)}>
-            {number}
-          </button>
-        ) : (
-          <span className="page-link disabled">{number}</span>
-        )}
-      </li>
-    ))
-  }
 
   return (
     <div className="content-wrapper">
@@ -244,7 +203,7 @@ const MainChargeCode = () => {
               <h4 className="card-title p-2">Main Charge Code</h4>
 
               <div className="d-flex justify-content-between align-items-center">
-                {!showForm && (
+                {!showForm ? (
                   <>
                     <form className="d-inline-block searchform me-4" role="search">
                       <div className="input-group searchinput">
@@ -271,7 +230,15 @@ const MainChargeCode = () => {
                       <i className="mdi mdi-plus"></i> Generate Report
                     </button> */}
                   </>
-                )}
+                ) : (
+
+                  <div className="d-flex justify-content-end">
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                    <i className="mdi mdi-arrow-left"></i> Back
+                  </button>
+                </div>
+                  )}
+                
               </div>
             </div>
             <div className="card-body">
@@ -326,11 +293,7 @@ const MainChargeCode = () => {
                 </div>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
-                  <div className="d-flex justify-content-end">
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
-                      <i className="mdi mdi-arrow-left"></i> Back
-                    </button>
-                  </div>
+
                   <div className="row">
                     <div className="form-group col-md-4 mt-3">
                       <label>
@@ -407,48 +370,14 @@ const MainChargeCode = () => {
               )}
 
               {!showForm && (
-                <nav className="d-flex justify-content-between align-items-center mt-3">
-                  <div>
-                    <span>
-                      Page {currentPage} of {filteredTotalPages} | Total Records: {filteredMainChargeCodes.length}
-                    </span>
-                  </div>
-                  <ul className="pagination mb-0">
-                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                      <button
-                        className="page-link"
-                        onClick={() => setCurrentPage(currentPage - 1)}
-                        disabled={currentPage === 1}
-                      >
-                        &laquo; Previous
-                      </button>
-                    </li>
-                    {renderPagination()}
-                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                      <button
-                        className="page-link"
-                        onClick={() => setCurrentPage(currentPage + 1)}
-                        disabled={currentPage === filteredTotalPages}
-                      >
-                        Next &raquo;
-                      </button>
-                    </li>
-                  </ul>
-                  <div className="d-flex align-items-center">
-                    <input
-                      type="number"
-                      min="1"
-                      max={filteredTotalPages}
-                      value={pageInput}
-                      onChange={(e) => setPageInput(e.target.value)}
-                      placeholder="Go to page"
-                      className="form-control me-2"
-                    />
-                    <button className="btn btn-primary" onClick={handlePageNavigation}>
-                      Go
-                    </button>
-                  </div>
-                </nav>
+                <>
+                      <Pagination
+                    totalItems={filteredMainChargeCodes.length}
+                    itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                    currentPage={currentPage}
+                    onPageChange={setCurrentPage}
+                  />
+                </>
               )}
             </div>
           </div>
