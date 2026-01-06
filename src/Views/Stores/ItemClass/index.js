@@ -3,6 +3,8 @@ import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import { MAS_ITEM_CLASS, MAS_ITEM_SECTION } from "../../../config/apiConfig";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+
 
 const Itemclass = () => {
     const [formData, setFormData] = useState({ ClassCode: "", ClassName: "", Section: "" })
@@ -87,54 +89,13 @@ const Itemclass = () => {
             Class.sectionName.toLowerCase().includes(searchQuery.toLowerCase()),
     )
 
-    const filteredTotalPages = Math.ceil(filtereditemClassData.length / itemsPerPage)
-    const currentItems = filtereditemClassData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  
+    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
+    const currentItems = filtereditemClassData.slice(indexOfFirst, indexOfLast)
+  
+   
 
-    const handlePageNavigation = () => {
-        const pageNumber = Number.parseInt(pageInput, 10)
-        if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-            setCurrentPage(pageNumber)
-        } else {
-            alert("Please enter a valid page number.")
-        }
-    }
-
-    const renderPagination = () => {
-        const pageNumbers = []
-        const maxVisiblePages = 5
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-        const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1)
-
-        if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1)
-        }
-
-        if (startPage > 1) {
-            pageNumbers.push(1)
-            if (startPage > 2) pageNumbers.push("...")
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            pageNumbers.push(i)
-        }
-
-        if (endPage < filteredTotalPages) {
-            if (endPage < filteredTotalPages - 1) pageNumbers.push("...")
-            pageNumbers.push(filteredTotalPages)
-        }
-
-        return pageNumbers.map((number, index) => (
-            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-                {typeof number === "number" ? (
-                    <button className="page-link" onClick={() => setCurrentPage(number)}>
-                        {number}
-                    </button>
-                ) : (
-                    <span className="page-link disabled">{number}</span>
-                )}
-            </li>
-        ))
-    }
 
     const handleEdit = (item) => {
         setEditingClass(item);
@@ -345,48 +306,14 @@ const Itemclass = () => {
                                             ))}
                                         </tbody>
                                     </table>
-                                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                                        <div>
-                                            <span>
-                                                Page {currentPage} of {filteredTotalPages} | Total Records: {filtereditemClassData.length}
-                                            </span>
-                                        </div>
-                                        <ul className="pagination mb-0">
-                                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                                <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage - 1)}
-                                                    disabled={currentPage === 1}
-                                                >
-                                                    &laquo; Previous
-                                                </button>
-                                            </li>
-                                            {renderPagination()}
-                                            <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                                <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage + 1)}
-                                                    disabled={currentPage === filteredTotalPages}
-                                                >
-                                                    Next &raquo;
-                                                </button>
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex align-items-center">
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max={filteredTotalPages}
-                                                value={pageInput}
-                                                onChange={(e) => setPageInput(e.target.value)}
-                                                placeholder="Go to page"
-                                                className="form-control me-2"
-                                            />
-                                            <button className="btn btn-primary" onClick={handlePageNavigation}>
-                                                Go
-                                            </button>
-                                        </div>
-                                    </nav>
+                                    {filtereditemClassData.length > 0 && (
+                    <Pagination
+                      totalItems={filtereditemClassData.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  )}
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
