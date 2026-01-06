@@ -3,7 +3,8 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_DG_SAMPLE } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
-import { ADD_SAMPLE_ERR_MSG, ADD_SAMPLE_SUCC_MSG, DUPLICATE_SAMPLE, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_SAMPLE_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_SAMPLE_ERR_MSG, UPDATE_SAMPLE_SUCC_MSG } from "../../../config/constants";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { ADD_SAMPLE_ERR_MSG, ADD_SAMPLE_SUCC_MSG, DUPLICATE_SAMPLE, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_SAMPLE_ERR_MSG, UPDATE_SAMPLE_ERR_MSG, UPDATE_SAMPLE_SUCC_MSG } from "../../../config/constants";
 
 const SampleMaster = () => {
   const [sampleData, setSampleData] = useState([]);
@@ -25,8 +26,6 @@ const SampleMaster = () => {
   const [editingSample, setEditingSample] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
-  const [pageInput, setPageInput] = useState("1");
 
   const SAMPLE_DESCRIPTION_MAX_LENGTH = 30;
   const SAMPLE_CODE_MAX_LENGTH = 30;
@@ -76,6 +75,10 @@ const SampleMaster = () => {
     setIsFormValid(validateForm());
   }, [formData]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   // Filter data based on search query (keeps backend order for filtered items)
   const filteredSampleData = sampleData.filter(sample =>
     sample.sampleDescription?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -83,22 +86,9 @@ const SampleMaster = () => {
     (sample.status === "y" ? "active" : "inactive").includes(searchQuery.toLowerCase())
   );
 
-  // Calculate pagination values - NO SORTING APPLIED
-  const totalPages = Math.ceil(filteredSampleData.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredSampleData.slice(indexOfFirstItem, indexOfLastItem);
-
-  // Reset to page 1 when search changes
-  useEffect(() => {
-    setCurrentPage(1);
-    setPageInput("1");
-  }, [searchQuery]);
-
-  // Update page input when current page changes
-  useEffect(() => {
-    setPageInput(currentPage.toString());
-  }, [currentPage]);
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredSampleData.slice(indexOfFirst, indexOfLast);
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -228,84 +218,7 @@ const SampleMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    setPageInput("1");
     fetchSampleData(0); // Refresh from API
-  };
-
-  const handlePageNavigation = () => {
-    const pageNumber = parseInt(pageInput);
-    if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
-    } else {
-      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
-      setPageInput(currentPage.toString());
-    }
-  };
-
-  const handlePageInputChange = (e) => {
-    setPageInput(e.target.value);
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handlePageNavigation();
-    }
-  };
-
-  const renderPagination = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-
-    // Add first page and ellipsis if needed
-    if (startPage > 1) {
-      pageNumbers.push(1);
-      if (startPage > 2) {
-        pageNumbers.push("ellipsis-left");
-      }
-    }
-
-    // Add page numbers
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i);
-    }
-
-    // Add last page and ellipsis if needed
-    if (endPage < totalPages) {
-      if (endPage < totalPages - 1) {
-        pageNumbers.push("ellipsis-right");
-      }
-      pageNumbers.push(totalPages);
-    }
-
-    return pageNumbers.map((number, index) => {
-      if (number === "ellipsis-left" || number === "ellipsis-right") {
-        return (
-          <li key={index} className="page-item disabled">
-            <span className="page-link">...</span>
-          </li>
-        );
-      }
-
-      return (
-        <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-          <button
-            className="page-link"
-            onClick={() => {
-              setCurrentPage(number);
-              setPageInput(number.toString());
-            }}
-          >
-            {number}
-          </button>
-        </li>
-      );
-    });
   };
 
   return (
@@ -336,7 +249,7 @@ const SampleMaster = () => {
                   <></>
                 )}
 
-                <div className="d-flex align-items-center">
+                <div className="d-flex align-items-center ms-auto">
                   {!showForm ? (
                     <>
                       <button
@@ -424,66 +337,14 @@ const SampleMaster = () => {
                     </table>
                   </div>
 
+                  {/* PAGINATION USING REUSABLE COMPONENT */}
                   {filteredSampleData.length > 0 && (
-                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                      <div>
-                        <span className="text-muted">
-                          Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredSampleData.length)} of {filteredSampleData.length} entries
-                        </span>
-                      </div>
-
-                      <ul className="pagination mb-0">
-                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                          <button
-                            className="page-link"
-                            onClick={() => {
-                              if (currentPage > 1) {
-                                setCurrentPage(currentPage - 1);
-                              }
-                            }}
-                            disabled={currentPage === 1}
-                          >
-                            &laquo; Previous
-                          </button>
-                        </li>
-
-                        {renderPagination()}
-
-                        <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                          <button
-                            className="page-link"
-                            onClick={() => {
-                              if (currentPage < totalPages) {
-                                setCurrentPage(currentPage + 1);
-                              }
-                            }}
-                            disabled={currentPage === totalPages}
-                          >
-                            Next &raquo;
-                          </button>
-                        </li>
-                      </ul>
-
-                      <div className="d-flex align-items-center">
-                        <span className="me-2">Go to:</span>
-                        <input
-                          type="number"
-                          min="1"
-                          max={totalPages}
-                          value={pageInput}
-                          onChange={handlePageInputChange}
-                          onKeyPress={handleKeyPress}
-                          className="form-control me-2"
-                          style={{ width: "80px" }}
-                        />
-                        <button
-                          className="btn btn-primary"
-                          onClick={handlePageNavigation}
-                        >
-                          Go
-                        </button>
-                      </div>
-                    </nav>
+                    <Pagination
+                      totalItems={filteredSampleData.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
                   )}
                 </>
               ) : (
