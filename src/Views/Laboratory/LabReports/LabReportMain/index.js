@@ -4,7 +4,9 @@ import LoadingScreen from "../../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import Popup from "../../../../Components/popup";
 import { MAX_MONTHS_BACK } from "../../../../config/apiConfig";
-
+import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
+import { ALL_REPORTS } from "../../../../config/apiConfig";
+import { LAB_REPORT_GENERATION_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG, INVALID_ORDER_ID_ERR_MSG } from '../../../../config/constants';
 
 const LabReports = () => {
   const [mobileNo, setMobileNo] = useState("")
@@ -12,15 +14,19 @@ const LabReports = () => {
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
   const [labData, setLabData] = useState([])
   const [filteredLabData, setFilteredLabData] = useState([])
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
   const [popupMessage, setPopupMessage] = useState(null);
-
-
-   
+  
+  // Add these state variables for PDF handling
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  
+  // Track loading states for individual records
+  const [generatingPdfIds, setGeneratingPdfIds] = useState(new Set());
+  const [printingIds, setPrintingIds] = useState(new Set());
 
   // Function to calculate 4 months ago date
   const getFourMonthsAgoDate = () => {
@@ -112,7 +118,8 @@ const LabReports = () => {
       if (response && response.response) {
         // Map API response to match frontend structure
         const mappedData = response.response.map(item => ({
-          id: item.resultEntryDetailsId || item.orderHdId,
+          id: item.resultEntryDetailsId || item.orderHdId || Math.random().toString(),
+          orderHdId: item.orderHdId,
           investigationDate: formatDateForDisplay(item.investigationDate),
           patientName: item.patientName || "",
           mobileNo: item.phnNum || "",
@@ -204,16 +211,107 @@ const LabReports = () => {
     }
   };
 
+  // Helper function to check if a record is generating PDF
+  const isGeneratingPdf = (recordId) => {
+    return generatingPdfIds.has(recordId);
+  };
+
+  // Helper function to check if a record is printing
+  const isPrinting = (recordId) => {
+    return printingIds.has(recordId);
+  };
+
+  // Generate lab report for viewing/downloading
+  const generateLabReport = async (record) => {
+    const orderHdId = record.orderHdId;
+    const recordId = record.id;
+    
+    if (!orderHdId) {
+      showPopup(`${INVALID_ORDER_ID_ERR_MSG} for generating report`, "error");
+      return;
+    }
+    
+    // Add this record to generating set
+    setGeneratingPdfIds(prev => new Set(prev).add(recordId));
+    setPdfUrl(null);
+    setSelectedRecord(record);
+    
+    try {
+      const url = `${ALL_REPORTS}/labInvestigationReport?orderhd_id=${orderHdId}&flag=d`;
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      const blob = await response.blob();
+      const fileURL = window.URL.createObjectURL(blob);
+      setPdfUrl(fileURL);
+      
+    } catch (error) {
+      console.error("Error generating PDF", error);
+      showPopup(LAB_REPORT_GENERATION_ERR_MSG, "error");
+    } finally {
+      // Remove this record from generating set
+      setGeneratingPdfIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(recordId);
+        return newSet;
+      });
+    }
+  };
+
+  // Print report function
+  const handlePrintReport = async (record) => {
+    const orderHdId = record.orderHdId;
+    const recordId = record.id;
+    
+    if (!orderHdId) {
+      showPopup(`${INVALID_ORDER_ID_ERR_MSG} for printing`, "error");
+      return;
+    }
+    
+    // Add this record to printing set
+    setPrintingIds(prev => new Set(prev).add(recordId));
+    
+    try {
+      const url = `${ALL_REPORTS}/labInvestigationReport?orderhd_id=${orderHdId}&flag=p`;
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
+      
+      if (response.status === 200) {
+        showPopup("Report sent to printer successfully!", "success");
+      } else {
+        showPopup(LAB_REPORT_PRINT_ERR_MSG, "error");
+      }
+    } catch (error) {
+      console.error("Error printing report", error);
+      showPopup(LAB_REPORT_PRINT_ERR_MSG, "error");
+    } finally {
+      // Remove this record from printing set
+      setPrintingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(recordId);
+        return newSet;
+      });
+    }
+  };
+
   // View report handler
   const handleViewReport = (record) => {
-    console.log("View report for:", record)
-    // You might want to navigate to a detailed view or open a modal
-  }
-
-  // Print report handler
-  const handlePrintReport = (record) => {
-    console.log("Print report for:", record)
-    // Implement print functionality
+    console.log("View report for:", record);
+    generateLabReport(record);
   }
 
   // Initialize with default dates on component mount
@@ -238,6 +336,26 @@ const LabReports = () => {
 
   return (
     <div className="content-wrapper">
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
+      
+      {/* Add PDF Viewer Component */}
+      {pdfUrl && selectedRecord && (
+        <PdfViewer
+          pdfUrl={pdfUrl}
+          onClose={() => {
+            setPdfUrl(null);
+            setSelectedRecord(null);
+          }}
+          name={`Lab Report - ${selectedRecord?.patientName || 'Patient'}`}
+        />
+      )}
+
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -283,9 +401,6 @@ const LabReports = () => {
                         max={getFromDateMinMax().max}
                         required
                       />
-                      {/* <small className="text-muted">
-                        Max {MAX_MONTHS_BACK} months back from today
-                      </small> */}
                     </div>
                     <div className="col-md-2">
                       <label className="form-label">To Date <span className="text-danger">*</span></label>
@@ -298,9 +413,6 @@ const LabReports = () => {
                         required
                         readOnly
                       />
-                      {/* <small className="text-muted">
-                        Today's date
-                      </small> */}
                     </div>
                     <div className="col-md-4 d-flex align-items-end">
                       <button 
@@ -380,15 +492,31 @@ const LabReports = () => {
                                     type="button" 
                                     className="btn btn-sm btn-primary"
                                     onClick={() => handleViewReport(item)}
+                                    disabled={isGeneratingPdf(item.id) || isPrinting(item.id)}
                                   >
-                                    View
+                                    {isGeneratingPdf(item.id) ? (
+                                      <>
+                                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                        Generating...
+                                      </>
+                                    ) : (
+                                      "View"
+                                    )}
                                   </button>
                                   <button 
                                     type="button" 
                                     className="btn btn-sm btn-secondary"
                                     onClick={() => handlePrintReport(item)}
+                                    disabled={isGeneratingPdf(item.id) || isPrinting(item.id)}
                                   >
-                                    Print
+                                    {isPrinting(item.id) ? (
+                                      <>
+                                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                        Printing...
+                                      </>
+                                    ) : (
+                                      "Print"
+                                    )}
                                   </button>
                                 </div>
                               </td>
@@ -418,4 +546,4 @@ const LabReports = () => {
   )
 }
 
-export default LabReports
+export default LabReports;
