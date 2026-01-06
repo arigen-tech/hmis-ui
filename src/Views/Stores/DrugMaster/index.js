@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import { MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN } from "../../../config/apiConfig";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const DrugMaster = () => {
     const [formData, setFormData] = useState({
@@ -40,12 +41,10 @@ const DrugMaster = () => {
 
     const [searchQuery, setSearchQuery] = useState("")
     const [currentPage, setCurrentPage] = useState(1)
-    const [pageInput, setPageInput] = useState("")
     const [loading, setLoading] = useState(false);
     const departmentId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
     const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
 
-    const itemsPerPage = 5
     const [editingDrug, setEditingDrug] = useState(null)
     const [showForm, setShowForm] = useState(false)
     const [isFormValid, setIsFormValid] = useState(false)
@@ -54,7 +53,6 @@ const DrugMaster = () => {
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value)
-        setCurrentPage(1)
     }
 
     useEffect(() => {
@@ -440,6 +438,12 @@ const DrugMaster = () => {
         resetForm();
     }
 
+    const handleRefresh = () => {
+        setSearchQuery("");
+        setCurrentPage(1);
+        fetchDrugMasterData();
+    };
+
     const showPopup = (message, type = "info") => {
         setPopupMessage({
             message,
@@ -463,54 +467,9 @@ const DrugMaster = () => {
         );
     });
 
-    const filteredTotalPages = Math.ceil(filteredDrugs.length / itemsPerPage)
-    const currentItems = filteredDrugs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-
-    const handlePageNavigation = () => {
-        const pageNumber = Number.parseInt(pageInput, 10)
-        if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-            setCurrentPage(pageNumber)
-        } else {
-            alert("Please enter a valid page number.")
-        }
-    }
-
-    const renderPagination = () => {
-        const pageNumbers = []
-        const maxVisiblePages = 5
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-        const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1)
-
-        if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1)
-        }
-
-        if (startPage > 1) {
-            pageNumbers.push(1)
-            if (startPage > 2) pageNumbers.push("...")
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            pageNumbers.push(i)
-        }
-
-        if (endPage < filteredTotalPages) {
-            if (endPage < filteredTotalPages - 1) pageNumbers.push("...")
-            pageNumbers.push(filteredTotalPages)
-        }
-
-        return pageNumbers.map((number, index) => (
-            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-                {typeof number === "number" ? (
-                    <button className="page-link" onClick={() => setCurrentPage(number)}>
-                        {number}
-                    </button>
-                ) : (
-                    <span className="page-link disabled">{number}</span>
-                )}
-            </li>
-        ))
-    }
+    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+    const currentItems = filteredDrugs.slice(indexOfFirst, indexOfLast);
 
     return (
         <div className="content-wrapper">
@@ -522,7 +481,7 @@ const DrugMaster = () => {
                             {loading && <LoadingScreen />}
 
                             <div className="d-flex justify-content-between align-items-center">
-                                {!showForm && (
+                                {!showForm ? (
                                     <>
                                         <form className="d-inline-block searchform me-4" role="search">
                                             <div className="input-group searchinput">
@@ -539,78 +498,103 @@ const DrugMaster = () => {
                                                 </span>
                                             </div>
                                         </form>
-                                        <button type="button" className="btn btn-success me-2" onClick={handleAdd}>
-                                            <i className="mdi mdi-plus"></i> Add
-                                        </button>
+                                        <div className="d-flex align-items-center ms-auto">
+                                            <button type="button" className="btn btn-success me-2" onClick={handleAdd}>
+                                                <i className="mdi mdi-plus"></i> Add
+                                            </button>
+                                            <button 
+                                                type="button" 
+                                                className="btn btn-success me-2 flex-shrink-0" 
+                                                onClick={handleRefresh}
+                                            >
+                                                <i className="mdi mdi-refresh"></i> Show All
+                                            </button>
+                                        </div>
                                     </>
+                                ) : (
+                                    <button type="button" className="btn btn-secondary" onClick={handleBack}>
+                                        <i className="mdi mdi-arrow-left"></i> Back
+                                    </button>
                                 )}
                             </div>
                         </div>
 
                         <div className="card-body">
                             {!showForm ? (
-                                <div className="table-responsive packagelist">
-                                    <table className="table table-bordered table-hover align-middle">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th>Drug Code</th>
-                                                <th>Drug Name</th>
-                                                <th>Item Group</th>
-                                                <th>Unit</th>
-                                                <th>Section</th>
-                                                <th>Item Class</th>
-                                                <th>Status</th>
-                                                <th>Edit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentItems.length > 0 ? (
-                                                currentItems.map((item) => (
-                                                    <tr key={item.itemId}>
-                                                        <td>{item.pvmsNo}</td>
-                                                        <td>{item.nomenclature}</td>
-                                                        <td>{item.groupName}</td>
-                                                        <td>{item.unitAU}</td>
-                                                        <td>{item.sectionName}</td>
-                                                        <td>{item.itemClassName}</td>
-                                                        <td>
-                                                            <div className="form-check form-switch">
-                                                                <input
-                                                                    className="form-check-input"
-                                                                    type="checkbox"
-                                                                    checked={item.status === "y"}
-                                                                    onChange={() => handleSwitchChange(item.itemId, item.status === "y" ? "n" : "y", item.nomenclature)}
-                                                                    id={`switch-${item.itemId}`}
-                                                                />
-                                                                <label
-                                                                    className="form-check-label px-0"
-                                                                    htmlFor={`switch-${item.itemId}`}
+                                <>
+                                    <div className="table-responsive packagelist">
+                                        <table className="table table-bordered table-hover align-middle">
+                                            <thead className="table-light">
+                                                <tr>
+                                                    <th>Drug Code</th>
+                                                    <th>Drug Name</th>
+                                                    <th>Item Group</th>
+                                                    <th>Unit</th>
+                                                    <th>Section</th>
+                                                    <th>Item Class</th>
+                                                    <th>Status</th>
+                                                    <th>Edit</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {currentItems.length > 0 ? (
+                                                    currentItems.map((item) => (
+                                                        <tr key={item.itemId}>
+                                                            <td>{item.pvmsNo}</td>
+                                                            <td>{item.nomenclature}</td>
+                                                            <td>{item.groupName}</td>
+                                                            <td>{item.unitAU}</td>
+                                                            <td>{item.sectionName}</td>
+                                                            <td>{item.itemClassName}</td>
+                                                            <td>
+                                                                <div className="form-check form-switch">
+                                                                    <input
+                                                                        className="form-check-input"
+                                                                        type="checkbox"
+                                                                        checked={item.status === "y"}
+                                                                        onChange={() => handleSwitchChange(item.itemId, item.status === "y" ? "n" : "y", item.nomenclature)}
+                                                                        id={`switch-${item.itemId}`}
+                                                                    />
+                                                                    <label
+                                                                        className="form-check-label px-0"
+                                                                        htmlFor={`switch-${item.itemId}`}
+                                                                    >
+                                                                        {item.status === "y" ? "Active" : "Deactivated"}
+                                                                    </label>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <button
+                                                                    className="btn btn-sm btn-success me-2"
+                                                                    onClick={() => handleEdit(item)}
+                                                                    disabled={item.status !== "y"}
                                                                 >
-                                                                    {item.status === "y" ? "Active" : "Deactivated"}
-                                                                </label>
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            <button
-                                                                className="btn btn-sm btn-success me-2"
-                                                                onClick={() => handleEdit(item)}
-                                                                disabled={item.status !== "y"}
-                                                            >
-                                                                <i className="fa fa-pencil"></i>
-                                                            </button>
+                                                                    <i className="fa fa-pencil"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan="8" className="text-center">
+                                                            No drugs found
                                                         </td>
                                                     </tr>
-                                                ))
-                                            ) : (
-                                                <tr>
-                                                    <td colSpan="8" className="text-center">
-                                                        No drugs found
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    
+                                    {/* PAGINATION USING REUSABLE COMPONENT */}
+                                    {filteredDrugs.length > 0 && (
+                                        <Pagination
+                                            totalItems={filteredDrugs.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
+                                    )}
+                                </>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
                                     <div className="d-flex justify-content-end mb-3">
@@ -997,53 +981,6 @@ const DrugMaster = () => {
 
                             {popupMessage && (
                                 <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
-                            )}
-
-                            {/* Pagination - only show when not in form mode */}
-                            {!showForm && filteredDrugs.length > 0 && (
-                                <nav className="d-flex justify-content-between align-items-center mt-3">
-                                    <div>
-                                        <span>
-                                            Page {currentPage} of {filteredTotalPages} | Total Records: {filteredDrugs.length}
-                                        </span>
-                                    </div>
-                                    <ul className="pagination mb-0">
-                                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                            <button
-                                                className="page-link"
-                                                onClick={() => setCurrentPage(currentPage - 1)}
-                                                disabled={currentPage === 1}
-                                            >
-                                                &laquo; Previous
-                                            </button>
-                                        </li>
-                                        {renderPagination()}
-                                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                            <button
-                                                className="page-link"
-                                                onClick={() => setCurrentPage(currentPage + 1)}
-                                                disabled={currentPage === filteredTotalPages}
-                                            >
-                                                Next &raquo;
-                                            </button>
-                                        </li>
-                                    </ul>
-                                    <div className="d-flex align-items-center">
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            max={filteredTotalPages}
-                                            value={pageInput}
-                                            onChange={(e) => setPageInput(e.target.value)}
-                                            placeholder="Go to page"
-                                            className="form-control me-2"
-                                            style={{ width: '100px' }}
-                                        />
-                                        <button className="btn btn-primary" onClick={handlePageNavigation}>
-                                            Go
-                                        </button>
-                                    </div>
-                                </nav>
                             )}
                         </div>
                     </div>
