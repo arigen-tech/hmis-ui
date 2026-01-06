@@ -7,6 +7,7 @@ import { postRequest, putRequest, getRequest } from "../../../service/apiService
 import { FETCH_INV_PRICING_ERR_MSG, FAIL_TO_LOAD_INV_OPTION,FILL_ALL_REQUIRED_FIELDS,TO_DATE_AFTER_FROM_DATE,
     UPDATE_INV_PRICING_SUCC_MSG,ADD_INV_PRICING_SUCC_MSG,FAIL_TO_UPDATE_STS,FAIL_TO_SAVE_CHANGES
  } from "../../../config/constants"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
 const Investigationpricing = () => {
     const [investigationList, setInvestigationList] = useState([])
@@ -25,10 +26,8 @@ const Investigationpricing = () => {
     const [editingInvestigation, setEditingInvestigation] = useState(null)
     const [popupMessage, setPopupMessage] = useState(null)
     const [currentPage, setCurrentPage] = useState(1)
-    const [pageInput, setPageInput] = useState("")
     const [loading, setLoading] = useState(true)
     const [searchText, setSearchText] = useState("")
-    const itemsPerPage = 5
 
     useEffect(() => {
         fetchInvestigationPriceDetails()
@@ -66,8 +65,8 @@ const Investigationpricing = () => {
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value)
-        setCurrentPage(1)
     }
+
 
     const filteredInvestigationList = investigationList.filter(
         (item) =>
@@ -75,9 +74,9 @@ const Investigationpricing = () => {
             (item.price && item.price.toString().toLowerCase().includes(searchQuery.toLowerCase()))
     )
 
-    const filteredTotalPages = Math.ceil(filteredInvestigationList.length / itemsPerPage)
-
-    const currentItems = filteredInvestigationList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+    const currentItems = filteredInvestigationList.slice(indexOfFirst, indexOfLast);
 
     const handleEdit = (item) => {
         setEditingInvestigation(item)
@@ -258,50 +257,10 @@ const resetForm = () => {
         }, 0)
     }
 
-    const handlePageNavigation = () => {
-        const pageNumber = Number.parseInt(pageInput, 10)
-        if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-            setCurrentPage(pageNumber)
-        } else {
-            alert("Please enter a valid page number.")
-        }
-    }
-
-    const renderPagination = () => {
-        const pageNumbers = []
-        const maxVisiblePages = 5
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-        const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1)
-
-        if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1)
-        }
-
-        if (startPage > 1) {
-            pageNumbers.push(1)
-            if (startPage > 2) pageNumbers.push("...")
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            pageNumbers.push(i)
-        }
-
-        if (endPage < filteredTotalPages) {
-            if (endPage < filteredTotalPages - 1) pageNumbers.push("...")
-            pageNumbers.push(filteredTotalPages)
-        }
-
-        return pageNumbers.map((number, index) => (
-            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-                {typeof number === "number" ? (
-                    <button className="page-link" onClick={() => setCurrentPage(number)}>
-                        {number}
-                    </button>
-                ) : (
-                    <span className="page-link disabled">{number}</span>
-                )}
-            </li>
-        ))
+    const handleRefresh = () => {
+        setSearchQuery("")
+        setCurrentPage(1)
+        fetchInvestigationPriceDetails()
     }
 
     const handleAddClick = () => {
@@ -394,91 +353,121 @@ const resetForm = () => {
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
                         <div className="card-header d-flex justify-content-between align-items-center">
-                            <h4 className="card-title p-2">Investigation Pricing Master</h4>
+                            <h4 className="card-title">Investigation Pricing Master</h4>
 
                             <div className="d-flex justify-content-between align-items-center">
-                                {!showForm && (
-                                    <>
-                                        <form className="d-inline-block searchform me-4" role="search">
-                                            <div className="input-group searchinput">
-                                                <input
-                                                    type="search"
-                                                    className="form-control"
-                                                    placeholder="Search"
-                                                    aria-label="Search"
-                                                    value={searchQuery}
-                                                    onChange={handleSearchChange}
-                                                />
-                                                <span className="input-group-text" id="search-icon">
-                                                    <i className="fa fa-search"></i>
-                                                </span>
-                                            </div>
-                                        </form>
-                                        <button type="button" className="btn btn-success me-2" onClick={handleAddClick}>
-                                            <i className="mdi mdi-plus"></i> Add
-                                        </button>
-                                        {/* <button type="button" className="btn btn-success me-2">
-                                            <i className="mdi mdi-plus"></i> Generate Report
-                                        </button> */}
-                                    </>
+                                {!showForm ? (
+                                    <form className="d-inline-block searchform me-4" role="search">
+                                        <div className="input-group searchinput">
+                                            <input
+                                                type="search"
+                                                className="form-control"
+                                                placeholder="Search "
+                                                aria-label="Search"
+                                                value={searchQuery}
+                                                onChange={handleSearchChange}
+                                            />
+                                            <span className="input-group-text" id="search-icon">
+                                                <i className="fa fa-search"></i>
+                                            </span>
+                                        </div>
+                                    </form>
+                                ) : (
+                                    <></>
                                 )}
+
+                                <div className="d-flex align-items-center">
+                                    {!showForm ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2"
+                                                onClick={handleAddClick}
+                                            >
+                                                <i className="mdi mdi-plus"></i> Add
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2 flex-shrink-0"
+                                                onClick={handleRefresh}
+                                            >
+                                                <i className="mdi mdi-refresh"></i> Show All
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                                            <i className="mdi mdi-arrow-left"></i> Back
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                         <div className="card-body">
                             {loading ? (
                                 <LoadingScreen />
                             ) : !showForm ? (
-                                <div className="table-responsive packagelist">
-                                    <table className="table table-bordered table-hover align-middle">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th>Investigation Name</th>
-                                                <th>From Date</th>
-                                                <th>To Date</th>
-                                                <th>Price</th>
-                                                <th>Status</th>
-                                                <th>Edit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentItems.map((item) => (
-                                                <tr key={item.id}>
-                                                    <td>{getInvestigationName(item.investigationId)}</td>
-                                                    <td>{formatDate(item.fromDt)}</td>
-                                                    <td>{formatDate(item.toDt)}</td>
-                                                    <td>₹{item.price}</td>
-                                                    <td>
-                                                        <div className="form-check form-switch">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={item.status === "y"}
-                                                                onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
-                                                                id={`switch-${item.id}`}
-                                                            />
-                                                            <label
-                                                                className="form-check-label px-0"
-                                                                htmlFor={`switch-${item.id}`}
-                                                                onClick={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
-                                                            >
-                                                                {item.status === "y" ? "Active" : "Deactivated"}
-                                                            </label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-success me-2"
-                                                            onClick={() => handleEdit(item)}
-                                                            disabled={item.status !== "y"}
-                                                        >
-                                                            <i className="fa fa-pencil"></i>
-                                                        </button>
-                                                    </td>
+                                <>
+                                    <div className="table-responsive packagelist">
+                                        <table className="table table-bordered table-hover align-middle">
+                                            <thead className="table-light">
+                                                <tr>
+                                                    <th>Investigation Name</th>
+                                                    <th>From Date</th>
+                                                    <th>To Date</th>
+                                                    <th>Price</th>
+                                                    <th>Status</th>
+                                                    <th>Edit</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                            </thead>
+                                            <tbody>
+                                                {currentItems.map((item) => (
+                                                    <tr key={item.id}>
+                                                        <td>{getInvestigationName(item.investigationId)}</td>
+                                                        <td>{formatDate(item.fromDt)}</td>
+                                                        <td>{formatDate(item.toDt)}</td>
+                                                        <td>₹{item.price}</td>
+                                                        <td>
+                                                            <div className="form-check form-switch">
+                                                                <input
+                                                                    className="form-check-input"
+                                                                    type="checkbox"
+                                                                    checked={item.status === "y"}
+                                                                    onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
+                                                                    id={`switch-${item.id}`}
+                                                                />
+                                                                <label
+                                                                    className="form-check-label px-0"
+                                                                    htmlFor={`switch-${item.id}`}
+                                                                    onClick={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
+                                                                >
+                                                                    {item.status === "y" ? "Active" : "Deactivated"}
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <button
+                                                                className="btn btn-sm btn-success me-2"
+                                                                onClick={() => handleEdit(item)}
+                                                                disabled={item.status !== "y"}
+                                                            >
+                                                                <i className="fa fa-pencil"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {/* PAGINATION USING REUSABLE COMPONENT */}
+                                    {filteredInvestigationList.length > 0 && (
+                                        <Pagination
+                                            totalItems={filteredInvestigationList.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
+                                    )}
+                                </>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
                                     <div className="d-flex justify-content-end">
@@ -642,51 +631,6 @@ const resetForm = () => {
                                         </div>
                                     </div>
                                 </div>
-                            )}
-
-                            {!showForm && (
-                                <nav className="d-flex justify-content-between align-items-center mt-3">
-                                    <div>
-                                        <span>
-                                            Page {currentPage} of {filteredTotalPages} | Total Records: {filteredInvestigationList.length}
-                                        </span>
-                                    </div>
-                                    <ul className="pagination mb-0">
-                                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                            <button
-                                                className="page-link"
-                                                onClick={() => setCurrentPage(currentPage - 1)}
-                                                disabled={currentPage === 1}
-                                            >
-                                                &laquo; Previous
-                                            </button>
-                                        </li>
-                                        {renderPagination()}
-                                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                            <button
-                                                className="page-link"
-                                                onClick={() => setCurrentPage(currentPage + 1)}
-                                                disabled={currentPage === filteredTotalPages}
-                                            >
-                                                Next &raquo;
-                                            </button>
-                                        </li>
-                                    </ul>
-                                    <div className="d-flex align-items-center">
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            max={filteredTotalPages}
-                                            value={pageInput}
-                                            onChange={(e) => setPageInput(e.target.value)}
-                                            placeholder="Go to page"
-                                            className="form-control me-2"
-                                        />
-                                        <button className="btn btn-primary" onClick={handlePageNavigation}>
-                                            Go
-                                        </button>
-                                    </div>
-                                </nav>
                             )}
                         </div>
                     </div>
