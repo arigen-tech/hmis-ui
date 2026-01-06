@@ -1,10 +1,9 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import { INVESTIGATION_PACKAGE_API, INVESTIGATION_PACKAGE_Mapping, MAS_INVESTIGATION } from "../../../config/apiConfig"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import {
   FETCH_PACKAGE_INV_ERR_MSG,
   UPDATE_PACKAGE_INV_SUCC_MSG,
@@ -33,8 +32,6 @@ const PackageInvestigationMaster = () => {
   const [investigationSearchQuery, setInvestigationSearchQuery] = useState("")
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
-  const itemsPerPage = 5
 
   const [formData, setFormData] = useState({
     packageId: "",
@@ -59,6 +56,10 @@ const PackageInvestigationMaster = () => {
   useEffect(() => {
     setIsFormValid(!!formData.packageId && formData.investigations.length > 0)
   }, [formData])
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const fetchInitialData = async () => {
     try {
@@ -125,7 +126,6 @@ const PackageInvestigationMaster = () => {
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
-    setCurrentPage(1)
   }
 
   const filteredMappingList = mappingList.filter((item) => {
@@ -135,8 +135,9 @@ const PackageInvestigationMaster = () => {
     )
   })
 
-  const filteredTotalPages = Math.ceil(filteredMappingList.length / itemsPerPage)
-  const currentItems = filteredMappingList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredMappingList.slice(indexOfFirst, indexOfLast);
 
   const filteredInvestigations = investigationList.filter(
     (item) =>
@@ -376,51 +377,11 @@ const PackageInvestigationMaster = () => {
     }
   }
 
-  const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10)
-    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-      setCurrentPage(pageNumber)
-    } else {
-      alert("Please enter a valid page number.")
-    }
-  }
-
-  const renderPagination = () => {
-    const pageNumbers = []
-    const maxVisiblePages = 5
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1)
-
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1)
-    }
-
-    if (startPage > 1) {
-      pageNumbers.push(1)
-      if (startPage > 2) pageNumbers.push("...")
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i)
-    }
-
-    if (endPage < filteredTotalPages) {
-      if (endPage < filteredTotalPages - 1) pageNumbers.push("...")
-      pageNumbers.push(filteredTotalPages)
-    }
-
-    return pageNumbers.map((number, index) => (
-      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-        {typeof number === "number" ? (
-          <button className="page-link" onClick={() => setCurrentPage(number)}>
-            {number}
-          </button>
-        ) : (
-          <span className="page-link disabled">{number}</span>
-        )}
-      </li>
-    ))
-  }
+  const handleRefresh = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+    fetchInitialData();
+  };
 
   if (loading) {
     return <LoadingScreen />
@@ -434,7 +395,7 @@ const PackageInvestigationMaster = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">Package Investigation Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                {!showInvestigationForm && !showAddForm && (
+                {!showInvestigationForm && !showAddForm ? (
                   <>
                     <form className="d-inline-block searchform me-4" role="search">
                       <div className="input-group searchinput">
@@ -451,83 +412,120 @@ const PackageInvestigationMaster = () => {
                         </span>
                       </div>
                     </form>
-                    <button type="button" className="btn btn-success me-2" onClick={handleAddPackage}>
-                      <i className="mdi mdi-plus"></i> Add
-                    </button>
-                    {/* <button type="button" className="btn btn-success me-2">
-                      <i className="mdi mdi-plus"></i> Generate Report
-                    </button> */}
+                    <div className="d-flex align-items-center ms-auto">
+                      <button type="button" className="btn btn-success me-2" onClick={handleAddPackage}>
+                        <i className="mdi mdi-plus"></i> Add
+                      </button>
+                      <button 
+                        type="button" 
+                        className="btn btn-success me-2 flex-shrink-0" 
+                        onClick={handleRefresh}
+                      >
+                        <i className="mdi mdi-refresh"></i> Show All
+                      </button>
+                    </div>
                   </>
+                ) : (
+                  <div className="ms-auto">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        // Close the Add form if open
+                        if (showAddForm) {
+                          setShowAddForm(false);
+                          setFormData({ packageId: "", investigations: [] });
+                          setInvestigationSearchQuery("");
+                        }
+                        // Close the Edit/Manage Investigations form if open
+                        if (showInvestigationForm) {
+                          setShowInvestigationForm(false);
+                          setSelectedMapping(null);
+                          setInvestigationSearchQuery("");
+                        }
+                      }}
+                    >
+                      <i className="mdi mdi-arrow-left"></i> Back
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
 
             <div className="card-body">
               {!showInvestigationForm && !showAddForm ? (
-                <div className="table-responsive packagelist">
-                  <table className="table table-bordered table-hover align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Package Name</th>
-                        <th>Investigation Name</th>
-                        <th>Status</th>
-                        <th>Edit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentItems.length > 0 ? (
-                        currentItems.map((item) => (
-                          <tr key={item.pimId}>
-                            <td>
-                              <strong>{item.packName || "N/A"}</strong>
-                            </td>
-                            <td>{item.investigationName || "No investigation"}</td>
-                            <td>
-                              <div className="form-check form-switch">
-                                <input
-                                  className="form-check-input"
-                                  type="checkbox"
-                                  checked={item.status === "y"}
-                                  onChange={() => handleSwitchChange(item, item.status === "y" ? "n" : "y")}
-                                  id={`switch-${item.pimId}`}
-                                />
-                                <label
-                                  className="form-check-label px-0"
-                                  htmlFor={`switch-${item.pimId}`}
-                                  onClick={() => handleSwitchChange(item, item.status === "y" ? "n" : "y")}
+                <>
+                  <div className="table-responsive packagelist">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Package Name</th>
+                          <th>Investigation Name</th>
+                          <th>Status</th>
+                          <th>Edit</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((item) => (
+                            <tr key={item.pimId}>
+                              <td>
+                                <strong>{item.packName || "N/A"}</strong>
+                              </td>
+                              <td>{item.investigationName || "No investigation"}</td>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={item.status === "y"}
+                                    onChange={() => handleSwitchChange(item, item.status === "y" ? "n" : "y")}
+                                    id={`switch-${item.pimId}`}
+                                  />
+                                  <label
+                                    className="form-check-label px-0"
+                                    htmlFor={`switch-${item.pimId}`}
+                                    onClick={() => handleSwitchChange(item, item.status === "y" ? "n" : "y")}
+                                  >
+                                    {item.status === "y" ? "Active" : "Deactivated"}
+                                  </label>
+                                </div>
+                              </td>
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-primary"
+                                  onClick={() => handleManageInvestigations(item)}
+                                  disabled={item.status !== "y"}
                                 >
-                                  {item.status === "y" ? "Active" : "Deactivated"}
-                                </label>
-                              </div>
-                            </td>
-                            <td>
-                              <button
-                                className="btn btn-sm btn-primary"
-                                onClick={() => handleManageInvestigations(item)}
-                                disabled={item.status !== "y"}
-                              >
-                                <i className="fa fa-pencil"></i>
-                              </button>
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="4" className="text-center">
+                              No package investigation mappings found
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="4" className="text-center">
-                            No package investigation mappings found
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {/* PAGINATION USING REUSABLE COMPONENT */}
+                  {filteredMappingList.length > 0 && (
+                    <Pagination
+                      totalItems={filteredMappingList.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  )}
+                </>
               ) : showAddForm ? (
                 <form className="forms row" onSubmit={handleSavePackage}>
-                  <div className="d-flex justify-content-end">
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowAddForm(false)}>
-                      <i className="mdi mdi-arrow-left"></i> Back
-                    </button>
-                  </div>
+                 
 
                   <div className="row">
                     <div className="form-group col-md-6 mt-3">
@@ -629,26 +627,7 @@ const PackageInvestigationMaster = () => {
                 </form>
               ) : (
                 <div className="investigation-management">
-                  <div className="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                      <h5>
-                        Managing Investigations for: <strong>{selectedMapping?.packName}</strong>
-                      </h5>
-                      <p className="text-muted">
-                        Currently selected: {selectedMapping?.investigations?.length || 0} investigation(s)
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={() => {
-                        setShowInvestigationForm(false)
-                        setSelectedMapping(null)
-                      }}
-                    >
-                      <i className="mdi mdi-arrow-left"></i> Back
-                    </button>
-                  </div>
+                  
 
                   <div className="row">
                     <div className="col-md-6">
@@ -774,51 +753,6 @@ const PackageInvestigationMaster = () => {
 
               {popupMessage && (
                 <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
-              )}
-
-              {!showInvestigationForm && !showAddForm && (
-                <nav className="d-flex justify-content-between align-items-center mt-3">
-                  <div>
-                    <span>
-                      Page {currentPage} of {filteredTotalPages} | Total Records: {filteredMappingList.length}
-                    </span>
-                  </div>
-                  <ul className="pagination mb-0">
-                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                      <button
-                        className="page-link"
-                        onClick={() => setCurrentPage(currentPage - 1)}
-                        disabled={currentPage === 1}
-                      >
-                        &laquo; Previous
-                      </button>
-                    </li>
-                    {renderPagination()}
-                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                      <button
-                        className="page-link"
-                        onClick={() => setCurrentPage(currentPage + 1)}
-                        disabled={currentPage === filteredTotalPages}
-                      >
-                        Next &raquo;
-                      </button>
-                    </li>
-                  </ul>
-                  <div className="d-flex align-items-center">
-                    <input
-                      type="number"
-                      min="1"
-                      max={filteredTotalPages}
-                      value={pageInput}
-                      onChange={(e) => setPageInput(e.target.value)}
-                      placeholder="Go to page"
-                      className="form-control me-2"
-                    />
-                    <button className="btn btn-primary" onClick={handlePageNavigation}>
-                      Go
-                    </button>
-                  </div>
-                </nav>
               )}
             </div>
           </div>
