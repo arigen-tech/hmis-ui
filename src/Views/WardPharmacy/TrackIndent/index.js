@@ -369,7 +369,6 @@ const TrackIndent = () => {
                       type="text"
                       className="form-control"
                       value={selectedIndent?.indentNo || ""}
-                      style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
                   </div>
@@ -383,7 +382,6 @@ const TrackIndent = () => {
                           ? new Date(selectedIndent.indentDate).toLocaleDateString("en-GB")
                           : ""
                       }
-                      style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
                   </div>
@@ -393,7 +391,6 @@ const TrackIndent = () => {
                       type="text"
                       className="form-control"
                       value={selectedIndent?.createdBy || ""}
-                      style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
                   </div>
@@ -403,7 +400,6 @@ const TrackIndent = () => {
                       type="text"
                       className="form-control"
                       value={selectedIndent?.requestedDepartment || ""}
-                      style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
                   </div>
@@ -416,32 +412,31 @@ const TrackIndent = () => {
                       type="text"
                       className="form-control"
                       value={selectedIndent?.approvedBy || ""}
-                      style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
                   </div>
                 </div>
 
-                <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
+                <div className="table-responsive">
                   <table className="table table-bordered table-hover align-middle" >
-                    <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
+                    <thead>
                       <tr>
-                        <th style={{ width: "400px", minWidth: "350px" }}>
+                        <th>
                           Drug Name / Drug Code
                         </th>
-                        <th style={{ width: "60px", minWidth: "50px", textAlign: "center" }}>
+                        <th>
                           A/U
                         </th>
-                        <th style={{ width: "80px", minWidth: "70px", textAlign: "center" }}>
+                        <th>
                           Qty Requested
                         </th>
-                        <th style={{ width: "80px", minWidth: "70px", textAlign: "center" }}>
+                        <th>
                           Approved Qty
                         </th>
-                        <th style={{ width: "80px", minWidth: "70px", textAlign: "center" }}>
+                        <th>
                           Received Qty
                         </th>
-                        <th style={{ width: "250px", minWidth: "250px" }}>
+                        <th>
                           Reason for Indent
                         </th>
                       </tr>
@@ -455,7 +450,6 @@ const TrackIndent = () => {
                                 type="text"
                                 className="form-control form-control-sm"
                                 value={item.drugName}
-                                style={{ backgroundColor: "#e9ecef" }}
                                 readOnly
                               />
                             </td>
@@ -464,7 +458,6 @@ const TrackIndent = () => {
                                 type="text"
                                 className="form-control form-control-sm"
                                 value={item.apu}
-                                style={{ backgroundColor: "#e9ecef" }}
                                 readOnly
                               />
                             </td>
@@ -473,7 +466,6 @@ const TrackIndent = () => {
                                 type="number"
                                 className="form-control form-control-sm"
                                 value={item.qtyRequested}
-                                style={{ backgroundColor: "#e9ecef" }}
                                 readOnly
                               />
                             </td>
@@ -482,7 +474,6 @@ const TrackIndent = () => {
                                 type="number"
                                 className="form-control form-control-sm"
                                 value={item.approvedQty}
-                                style={{ backgroundColor: "#e9ecef" }}
                                 readOnly
                               />
                             </td>
@@ -492,12 +483,6 @@ const TrackIndent = () => {
                                 className="form-control form-control-sm"
                                 value={item.receivedQty}
                                 onClick={() => handleReceivedQtyClick(item)}
-                                style={{
-                                  color: "#0066cc",
-                                  fontWeight: "600",
-                                  cursor: "pointer",
-                                  backgroundColor: "#fff",
-                                }}
                                 readOnly
                               />
                             </td>
@@ -505,7 +490,6 @@ const TrackIndent = () => {
                               <textarea
                                 className="form-control form-control-sm"
                                 value={item.reasonForIndent}
-                                style={{ minHeight: "40px", backgroundColor: "#e9ecef" }}
                                 readOnly
                               />
                             </td>
@@ -542,7 +526,6 @@ const TrackIndent = () => {
         {showReceivedQtyPopup && selectedItemForPopup && (
           <div
             className="modal show d-block"
-            style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
             onClick={handleClosePopup}
           >
             <div
@@ -562,7 +545,6 @@ const TrackIndent = () => {
                       className="form-control"
                       value={selectedItemForPopup.drugName}
                       readOnly
-                      style={{ backgroundColor: "#e9ecef" }}
                     />
                   </div>
 
@@ -585,7 +567,6 @@ const TrackIndent = () => {
                                   className="form-control form-control-sm"
                                   value={batch.batchNo}
                                   readOnly
-                                  style={{ backgroundColor: "#e9ecef" }}
                                 />
                               </td>
                               <td>
@@ -594,7 +575,6 @@ const TrackIndent = () => {
                                   className="form-control form-control-sm"
                                   value={batch.expiryDate}
                                   readOnly
-                                  style={{ backgroundColor: "#e9ecef" }}
                                 />
                               </td>
                               <td>
@@ -603,7 +583,6 @@ const TrackIndent = () => {
                                   className="form-control form-control-sm"
                                   value={batch.qty}
                                   readOnly
-                                  style={{ backgroundColor: "#e9ecef" }}
                                 />
                               </td>
                             </tr>
@@ -626,7 +605,6 @@ const TrackIndent = () => {
                       className="form-control"
                       value={selectedItemForPopup.receivedQty}
                       readOnly
-                      style={{ backgroundColor: "#e9ecef", fontWeight: "600", color: "#0066cc" }}
                     />
                   </div>
                 </div>
@@ -675,7 +653,6 @@ const TrackIndent = () => {
                       className="form-control"
                       value={userDepartment}
                       readOnly
-                      style={{ backgroundColor: "#e9ecef" }}
                     />
                   )}
                 </div>
@@ -720,7 +697,7 @@ const TrackIndent = () => {
             
               <div className="table-responsive">
                 <table className="table table-bordered table-hover align-middle">
-                  <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
+                  <thead>
                     <tr>
                       <th>Indent Date</th>
                       <th>Indent No</th>
@@ -744,25 +721,25 @@ const TrackIndent = () => {
                     ) : (
                       currentItems.map((item) => (
                         <tr key={item.indentId}>
-                          <td onClick={(e) => handleRowClick(item, e)} style={{ cursor: "pointer" }}>
+                          <td onClick={(e) => handleRowClick(item, e)}>
                             {formatDate(item.indentDate)}
                           </td>
-                          <td onClick={(e) => handleRowClick(item, e)} style={{ cursor: "pointer" }}>
+                          <td onClick={(e) => handleRowClick(item, e)}>
                             {item.indentNo}
                           </td>
-                          <td onClick={(e) => handleRowClick(item, e)} style={{ cursor: "pointer" }}>
+                          <td onClick={(e) => handleRowClick(item, e)}>
                             {item.department}
                           </td>
-                          <td onClick={(e) => handleRowClick(item, e)} style={{ cursor: "pointer" }}>
+                          <td onClick={(e) => handleRowClick(item, e)}>
                             {formatDate(item.approvedDate)}
                           </td>
-                          <td onClick={(e) => handleRowClick(item, e)} style={{ cursor: "pointer" }}>
+                          <td onClick={(e) => handleRowClick(item, e)}>
                             {formatDate(item.issuedDate)}
                           </td>
-                          <td onClick={(e) => handleRowClick(item, e)} style={{ cursor: "pointer" }}>
+                          <td onClick={(e) => handleRowClick(item, e)}>
                             {item.status}
                           </td>
-                          <td style={{ textAlign: "center", width: "120px" }}>
+                          <td>
                             <button 
                               type="button" 
                               className="btn btn-success btn-sm text-nowrap"
@@ -771,7 +748,7 @@ const TrackIndent = () => {
                               Indent Report
                             </button>
                           </td>
-                          <td style={{ textAlign: "center", width: "120px" }}>
+                          <td>
                             {canShowIssueReport(item) ? (
                               <button 
                                 type="button" 
@@ -784,7 +761,7 @@ const TrackIndent = () => {
                               <span className="text-muted">N/A</span>
                             )}
                           </td>
-                          <td style={{ textAlign: "center", width: "130px" }}>
+                          <td>
                             {canShowReceivingReport(item) ? (
                               <button 
                                 type="button" 
@@ -797,7 +774,7 @@ const TrackIndent = () => {
                               <span className="text-muted">N/A</span>
                             )}
                           </td>
-                          <td style={{ textAlign: "center", width: "120px" }}>
+                          <td>
                             {canShowReturnReport(item) ? (
                               <button 
                                 type="button" 
@@ -833,7 +810,6 @@ const TrackIndent = () => {
                     onChange={(e) => setPageInput(e.target.value)}
                     placeholder="Go to page"
                     className="form-control me-2"
-                    style={{ width: "120px" }}
                   />
                   <button className="btn btn-primary" onClick={handlePageNavigation}>
                     Go
