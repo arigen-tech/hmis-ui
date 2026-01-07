@@ -6,7 +6,7 @@ import Popup from "../../../../Components/popup";
 import { MAX_MONTHS_BACK } from "../../../../config/apiConfig";
 import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
 import { ALL_REPORTS } from "../../../../config/apiConfig";
-import { LAB_REPORT_GENERATION_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG, INVALID_ORDER_ID_ERR_MSG } from '../../../../config/constants';
+import { LAB_REPORT_GENERATION_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG, INVALID_ORDER_ID_ERR_MSG, SELECT_DATE_WARN_MSG, FETCH_LAB_HISTORY_REPORT_ERR_MSG, INVALID_DATE_PICK_WARN_MSG } from '../../../../config/constants';
 
 const LabReports = () => {
   const [mobileNo, setMobileNo] = useState("")
@@ -16,41 +16,32 @@ const LabReports = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [labData, setLabData] = useState([])
   const [filteredLabData, setFilteredLabData] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [initialLoading, setInitialLoading] = useState(true)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [showReport, setShowReport] = useState(false)
   const [popupMessage, setPopupMessage] = useState(null);
-  
+
   // Add these state variables for PDF handling
   const [pdfUrl, setPdfUrl] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
-  
+
   // Track loading states for individual records
   const [generatingPdfIds, setGeneratingPdfIds] = useState(new Set());
   const [printingIds, setPrintingIds] = useState(new Set());
 
-  // Function to calculate 4 months ago date
-  const getFourMonthsAgoDate = () => {
-    const today = new Date();
-    const fourMonthsAgo = new Date();
-    fourMonthsAgo.setMonth(today.getMonth() - MAX_MONTHS_BACK);
-    return fourMonthsAgo.toISOString().split('T')[0];
+  // Function to get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    return new Date().toISOString().split('T')[0];
   };
 
-  // Function to validate from date is within last 4 months
-  const isValidFromDate = (date) => {
-    if (!date) return false;
+  // Function to calculate month difference between two dates
+  const getMonthDifference = (date1, date2) => {
+    const d1 = new Date(date1);
+    const d2 = new Date(date2);
     
-    const selectedDate = new Date(date);
-    const today = new Date();
-    const fourMonthsAgo = new Date();
-    fourMonthsAgo.setMonth(today.getMonth() - MAX_MONTHS_BACK);
+    let months = (d2.getFullYear() - d1.getFullYear()) * 12;
+    months += d2.getMonth() - d1.getMonth();
     
-    // Set time to 00:00:00 for accurate comparison
-    selectedDate.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-    fourMonthsAgo.setHours(0, 0, 0, 0);
-    
-    return selectedDate >= fourMonthsAgo && selectedDate <= today;
+    return months;
   };
 
   const showPopup = (message, type = "info") => {
@@ -61,18 +52,6 @@ const LabReports = () => {
         setPopupMessage(null);
       },
     });
-  };
-
-  // Function to get min and max date for fromDate input
-  const getFromDateMinMax = () => {
-    const today = new Date();
-    const fourMonthsAgo = new Date();
-    fourMonthsAgo.setMonth(today.getMonth() - MAX_MONTHS_BACK);
-    
-    return {
-      min: fourMonthsAgo.toISOString().split('T')[0],
-      max: today.toISOString().split('T')[0]
-    };
   };
 
   // Format date from API (YYYY-MM-DD) to DD/MM/YYYY for display
@@ -98,23 +77,23 @@ const LabReports = () => {
   // Fetch lab reports from API
   const fetchLabReports = async () => {
     try {
-      setLoading(true);
-      
+      setIsGenerating(true);
+
       // Build query parameters
       const params = new URLSearchParams();
       if (mobileNo) params.append('mobileNo', mobileNo);
       if (patientName) params.append('patientName', patientName);
-      
+
       // Dates are mandatory for API
-      const apiFromDate = fromDate || new Date().toISOString().split('T')[0];
-      const apiToDate = toDate || new Date().toISOString().split('T')[0];
-      
+      const apiFromDate = fromDate || getTodayDate();
+      const apiToDate = toDate || getTodayDate();
+
       params.append('fromDate', apiFromDate);
       params.append('toDate', apiToDate);
 
       // Make API call
       const response = await getRequest(`/report/lab-history/all?${params.toString()}`);
-      
+
       if (response && response.response) {
         // Map API response to match frontend structure
         const mappedData = response.response.map(item => ({
@@ -131,83 +110,79 @@ const LabReports = () => {
           enteredBy: item.resultEnteredBy || "",
           validatedBy: item.resultValidatedBy || ""
         }));
-        
+
         setLabData(mappedData);
         setFilteredLabData(mappedData);
+        setShowReport(true);
       } else {
         // Fallback to empty array if no data
         setLabData([]);
         setFilteredLabData([]);
+        setShowReport(true);
       }
     } catch (error) {
       console.error("Error fetching lab reports:", error);
+      showPopup(FETCH_LAB_HISTORY_REPORT_ERR_MSG, "error");
       // Keep existing data or set empty arrays
       if (labData.length === 0) {
         setLabData([]);
         setFilteredLabData([]);
       }
+      setShowReport(true);
     } finally {
-      setLoading(false);
-      setInitialLoading(false);
+      setIsGenerating(false);
     }
   };
 
   // Handle search (calls API)
   const handleSearch = () => {
     if (!fromDate || !toDate) {
-      showPopup("Please select both From Date and To Date","error");
+      showPopup(SELECT_DATE_WARN_MSG, "warning");
       return;
     }
-    
-    // Validate from date is within last 4 months
-    if (!isValidFromDate(fromDate)) {
-      showPopup(`From Date must be within the last ${MAX_MONTHS_BACK} months (from ${getFourMonthsAgoDate()} to today)`,"error")
-      return;
-    }
-    
+
     // Validate that from date is not after to date
     if (new Date(fromDate) > new Date(toDate)) {
-      alert("From Date cannot be after To Date");
+      showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
       return;
     }
-    
+
+    // Validate that date range doesn't exceed MAX_MONTHS_BACK
+    const monthDiff = getMonthDifference(fromDate, toDate);
+    if (monthDiff > MAX_MONTHS_BACK) {
+      showPopup(`Date range cannot exceed ${MAX_MONTHS_BACK} months.`/* Current difference: ${monthDiff} months`*/, "error");
+      return;
+    }
+
     fetchLabReports();
     setCurrentPage(1);
   }
 
-  // Handle show all (reset filters and fetch all data)
+  // Handle show all (reset filters)
   const handleShowAll = () => {
     setMobileNo("")
     setPatientName("")
-    
-    // Set default dates (last 4 months to today)
-    const today = new Date();
-    const fourMonthsAgo = new Date();
-    fourMonthsAgo.setMonth(today.getMonth() - MAX_MONTHS_BACK);
-    
-    setFromDate(fourMonthsAgo.toISOString().split('T')[0]);
-    setToDate(today.toISOString().split('T')[0]);
-    
-    // Trigger API call with default dates
-    setTimeout(() => {
-      fetchLabReports();
-      setCurrentPage(1);
-    }, 100);
+    setFromDate("")
+    setToDate(getTodayDate()) // Reset to today's date
+    setCurrentPage(1);
+    setShowReport(false);
   }
 
-  // Handle from date change with validation
+  // Handle from date change
   const handleFromDateChange = (e) => {
+    setFromDate(e.target.value);
+  };
+
+  // Handle to date change
+  const handleToDateChange = (e) => {
     const selectedDate = e.target.value;
+    const today = getTodayDate();
     
-    // Validate date is within last 4 months
-    if (selectedDate && !isValidFromDate(selectedDate)) {
-      alert(`From Date must be within the last ${MAX_MONTHS_BACK} months (from ${getFourMonthsAgoDate()} to today)`);
-      
-      // Reset to default 4 months ago
-      const fourMonthsAgo = getFourMonthsAgoDate();
-      setFromDate(fourMonthsAgo);
+    // If user tries to select a date after today, set it to today
+    if (selectedDate > today) {
+      setToDate(today);
     } else {
-      setFromDate(selectedDate);
+      setToDate(selectedDate);
     }
   };
 
@@ -225,20 +200,20 @@ const LabReports = () => {
   const generateLabReport = async (record) => {
     const orderHdId = record.orderHdId;
     const recordId = record.id;
-    
+
     if (!orderHdId) {
       showPopup(`${INVALID_ORDER_ID_ERR_MSG} for generating report`, "error");
       return;
     }
-    
+
     // Add this record to generating set
     setGeneratingPdfIds(prev => new Set(prev).add(recordId));
     setPdfUrl(null);
     setSelectedRecord(record);
-    
+
     try {
       const url = `${ALL_REPORTS}/labInvestigationReport?orderhd_id=${orderHdId}&flag=d`;
-      
+
       const response = await fetch(url, {
         method: "GET",
         headers: {
@@ -253,7 +228,7 @@ const LabReports = () => {
       const blob = await response.blob();
       const fileURL = window.URL.createObjectURL(blob);
       setPdfUrl(fileURL);
-      
+
     } catch (error) {
       console.error("Error generating PDF", error);
       showPopup(LAB_REPORT_GENERATION_ERR_MSG, "error");
@@ -271,27 +246,27 @@ const LabReports = () => {
   const handlePrintReport = async (record) => {
     const orderHdId = record.orderHdId;
     const recordId = record.id;
-    
+
     if (!orderHdId) {
       showPopup(`${INVALID_ORDER_ID_ERR_MSG} for printing`, "error");
       return;
     }
-    
+
     // Add this record to printing set
     setPrintingIds(prev => new Set(prev).add(recordId));
-    
+
     try {
       const url = `${ALL_REPORTS}/labInvestigationReport?orderhd_id=${orderHdId}&flag=p`;
-      
+
       const response = await fetch(url, {
         method: "GET",
         headers: {
           Accept: "application/pdf",
         },
       });
-      
+
       if (response.status === 200) {
-        showPopup("Report sent to printer successfully!", "success");
+        // showPopup("Report sent to printer successfully!", "success");
       } else {
         showPopup(LAB_REPORT_PRINT_ERR_MSG, "error");
       }
@@ -314,19 +289,10 @@ const LabReports = () => {
     generateLabReport(record);
   }
 
-  // Initialize with default dates on component mount
+  // Initialize with today's date as default for To Date
   useEffect(() => {
-    const today = new Date();
-    const fourMonthsAgo = new Date();
-    fourMonthsAgo.setMonth(today.getMonth() - MAX_MONTHS_BACK);
-    
-    setFromDate(fourMonthsAgo.toISOString().split('T')[0]);
-    setToDate(today.toISOString().split('T')[0]);
-    
-    // Fetch initial data after setting dates
-    setTimeout(() => {
-      fetchLabReports();
-    }, 100);
+    const today = getTodayDate();
+    setToDate(today);
   }, []);
 
   // Calculate current items for pagination
@@ -343,7 +309,7 @@ const LabReports = () => {
           onClose={popupMessage.onClose}
         />
       )}
-      
+
       {/* Add PDF Viewer Component */}
       {pdfUrl && selectedRecord && (
         <PdfViewer
@@ -363,80 +329,94 @@ const LabReports = () => {
               <h4 className="card-title p-2 mb-0">LAB REPORTS</h4>
             </div>
             <div className="card-body">
-              {initialLoading ? (
-                <div className="text-center py-5">
+              <div className="row mb-4">
+                <div className="col-md-2">
+                  <label className="form-label">Mobile No</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={mobileNo}
+                    onChange={(e) => {
+                      // Only allow numbers and max 10 digits
+                      const value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+                      if (value.length <= 10) {
+                        setMobileNo(value);
+                      }
+                    }}
+                    placeholder="Enter mobile number"
+                    maxLength="10"
+                    pattern="\d{10}"
+                    title="Please enter exactly 10 digits"
+                  />
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label">Patient Name</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={patientName}
+                    onChange={(e) => setPatientName(e.target.value)}
+                    placeholder="Enter patient name"
+                  />
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label">From Date <span className="text-danger">*</span></label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={fromDate}
+                    onChange={handleFromDateChange}
+                    max={getTodayDate()} // Cannot select future dates
+                    required
+                  />
+                </div>
+                <div className="col-md-2">
+                  <label className="form-label">To Date <span className="text-danger">*</span></label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={toDate}
+                    onChange={handleToDateChange}
+                    max={getTodayDate()} // Cannot select future dates
+                    required
+                  />
+                </div>
+                <div className="col-md-4 d-flex align-items-end">
+                  <button
+                    type="button"
+                    className="btn btn-primary me-2"
+                    onClick={handleSearch}
+                    disabled={isGenerating}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Searching...
+                      </>
+                    ) : (
+                      "Search"
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handleShowAll}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+
+              {isGenerating && (
+                <div className="text-center py-4">
                   <LoadingScreen />
                 </div>
-              ) : (
-                <>
-                  <div className="row mb-4">
-                    <div className="col-md-2">
-                      <label className="form-label">Mobile No</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={mobileNo}
-                        onChange={(e) => setMobileNo(e.target.value)}
-                        placeholder="Enter mobile number"
-                      />
-                    </div>
-                    <div className="col-md-2">
-                      <label className="form-label">Patient Name</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={patientName}
-                        onChange={(e) => setPatientName(e.target.value)}
-                        placeholder="Enter patient name"
-                      />
-                    </div>
-                    <div className="col-md-2">
-                      <label className="form-label">From Date <span className="text-danger">*</span></label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        value={fromDate}
-                        onChange={handleFromDateChange}
-                        min={getFromDateMinMax().min}
-                        max={getFromDateMinMax().max}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-2">
-                      <label className="form-label">To Date <span className="text-danger">*</span></label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        value={toDate}
-                        onChange={(e) => setToDate(e.target.value)}
-                        max={new Date().toISOString().split('T')[0]}
-                        required
-                        readOnly
-                      />
-                    </div>
-                    <div className="col-md-4 d-flex align-items-end">
-                      <button 
-                        type="button" 
-                        className="btn btn-primary me-2" 
-                        onClick={handleSearch}
-                        disabled={loading}
-                      >
-                        {loading ? "Searching..." : "Search"}
-                      </button>
-                      <button 
-                        type="button" 
-                        className="btn btn-primary" 
-                        onClick={handleShowAll}
-                        disabled={loading}
-                      >
-                        Show All
-                      </button>
-                    </div>
-                  </div>
+              )}
 
+              {!isGenerating && showReport && (
+                <>
                   <div className="mb-3">
                     <span className="fw-bold">{filteredLabData.length} matches</span>
-                    {loading && <span className="ms-2 text-muted">Loading...</span>}
                   </div>
 
                   <div className="table-responsive">
@@ -457,23 +437,7 @@ const LabReports = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {loading ? (
-                          <tr>
-                            <td colSpan={11} className="text-center py-4">
-                              <div className="d-flex justify-content-center">
-                                <div className="spinner-border text-primary" role="status">
-                                  <span className="visually-hidden">Loading...</span>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        ) : currentItems.length === 0 ? (
-                          <tr>
-                            <td colSpan={11} className="text-center py-4">
-                              No Record Found
-                            </td>
-                          </tr>
-                        ) : (
+                        {filteredLabData.length > 0 ? (
                           currentItems.map((item) => (
                             <tr key={item.id}>
                               <td>{item.investigationDate}</td>
@@ -488,8 +452,8 @@ const LabReports = () => {
                               <td>{item.validatedBy}</td>
                               <td>
                                 <div className="d-flex gap-2">
-                                  <button 
-                                    type="button" 
+                                  <button
+                                    type="button"
                                     className="btn btn-sm btn-primary"
                                     onClick={() => handleViewReport(item)}
                                     disabled={isGeneratingPdf(item.id) || isPrinting(item.id)}
@@ -503,8 +467,8 @@ const LabReports = () => {
                                       "View"
                                     )}
                                   </button>
-                                  <button 
-                                    type="button" 
+                                  <button
+                                    type="button"
                                     className="btn btn-sm btn-secondary"
                                     onClick={() => handlePrintReport(item)}
                                     disabled={isGeneratingPdf(item.id) || isPrinting(item.id)}
@@ -522,6 +486,12 @@ const LabReports = () => {
                               </td>
                             </tr>
                           ))
+                        ) : (
+                          <tr>
+                            <td colSpan="11" className="text-center py-4">
+                              No Record Found
+                            </td>
+                          </tr>
                         )}
                       </tbody>
                     </table>

@@ -4,6 +4,7 @@ import LoadingScreen from "../../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import Popup from "../../../../Components/popup";
 import { MAS_INVESTIGATION, MAX_MONTHS_BACK } from "../../../../config/apiConfig";
+import {FETCH_LAB_TAT_DETAILED_REPORT_ERR_MSG, FETCH_LAB_TAT_SUMMARY_REPORT_ERR_MSG, INVALID_DATE_PICK_WARN_MSG, SELECT_DATE_WARN_MSG} from "../../../../config/constants"
 
 const TATReport = () => {
   
@@ -27,24 +28,20 @@ const TATReport = () => {
   const [detailedReportData, setDetailedReportData] = useState([]);
   const [summaryReportData, setSummaryReportData] = useState([]);
   
-  // Calculate 4 months ago date
-  const getFourMonthsAgoDate = () => {
-    const today = new Date();
-    const fourMonthsAgo = new Date();
-    fourMonthsAgo.setMonth(today.getMonth() - MAX_MONTHS_BACK);
-    return fourMonthsAgo.toISOString().split('T')[0];
+  // Function to get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    return new Date().toISOString().split('T')[0];
   };
 
-  // Get min and max for from date
-  const getFromDateMinMax = () => {
-    const today = new Date();
-    const fourMonthsAgo = new Date();
-    fourMonthsAgo.setMonth(today.getMonth() - MAX_MONTHS_BACK);
+  // Function to calculate month difference between two dates
+  const getMonthDifference = (date1, date2) => {
+    const d1 = new Date(date1);
+    const d2 = new Date(date2);
     
-    return {
-      min: fourMonthsAgo.toISOString().split('T')[0],
-      max: today.toISOString().split('T')[0]
-    };
+    let months = (d2.getFullYear() - d1.getFullYear()) * 12;
+    months += d2.getMonth() - d1.getMonth();
+    
+    return months;
   };
 
   // Popup function
@@ -155,11 +152,13 @@ const TATReport = () => {
         setShowReport(true);
       } else {
         setDetailedReportData([]);
+        setShowReport(true);
       }
     } catch (error) {
       console.error("Error fetching detailed report:", error);
-      showPopup("Error fetching detailed report. Please try again.", "error");
+      showPopup(FETCH_LAB_TAT_DETAILED_REPORT_ERR_MSG, "error");
       setDetailedReportData([]);
+      setShowReport(true);
     } finally {
       setIsGenerating(false);
     }
@@ -199,55 +198,34 @@ const TATReport = () => {
         setShowReport(true);
       } else {
         setSummaryReportData([]);
+        setShowReport(true);
       }
     } catch (error) {
       console.error("Error fetching summary report:", error);
-      showPopup("Error fetching summary report. Please try again.", "error");
+      showPopup(FETCH_LAB_TAT_SUMMARY_REPORT_ERR_MSG, "error");
       setSummaryReportData([]);
+      setShowReport(true);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // Handle from date change with validation
+  // Handle from date change
   const handleFromDateChange = (e) => {
-    const selectedDate = e.target.value;
-    const today = new Date().toISOString().split('T')[0];
-    const fourMonthsAgo = getFourMonthsAgoDate();
-
-    if (selectedDate > today) {
-      showPopup("From date cannot be in the future", "error");
-      setFromDate(today);
-      return;
-    }
-
-    if (selectedDate < fourMonthsAgo) {
-      showPopup(`From date cannot be more than ${MAX_MONTHS_BACK} months back`, "error");
-      setFromDate(fourMonthsAgo);
-      return;
-    }
-
-    setFromDate(selectedDate);
+    setFromDate(e.target.value);
   };
 
-  // Handle to date change with validation
+  // Handle to date change
   const handleToDateChange = (e) => {
     const selectedDate = e.target.value;
-    const today = new Date().toISOString().split('T')[0];
-
+    const today = getTodayDate();
+    
+    // If user tries to select a date after today, set it to today
     if (selectedDate > today) {
-      showPopup("To date cannot be in the future", "error");
       setToDate(today);
-      return;
+    } else {
+      setToDate(selectedDate);
     }
-
-    if (fromDate && selectedDate < fromDate) {
-      showPopup("To date cannot be earlier than From date", "error");
-      setToDate(fromDate);
-      return;
-    }
-
-    setToDate(selectedDate);
   };
 
   // Handle investigation change
@@ -274,12 +252,20 @@ const TATReport = () => {
   // Handle view report
   const handleViewReport = () => {
     if (!fromDate || !toDate) {
-      showPopup("Please select both From Date and To Date", "error");
+      showPopup(SELECT_DATE_WARN_MSG, "Warning");
       return;
     }
 
+    // Validate that from date is not after to date
     if (new Date(fromDate) > new Date(toDate)) {
-      showPopup("From Date cannot be later than To Date", "error");
+      showPopup(INVALID_DATE_PICK_WARN_MSG, "Warning");
+      return;
+    }
+
+    // Validate that date range doesn't exceed MAX_MONTHS_BACK
+    const monthDiff = getMonthDifference(fromDate, toDate);
+    if (monthDiff > MAX_MONTHS_BACK) {
+      showPopup(`Date range cannot exceed ${MAX_MONTHS_BACK} months.`, "error");
       return;
     }
 
@@ -294,12 +280,20 @@ const TATReport = () => {
   // Handle print report
   const handlePrintReport = () => {
     if (!fromDate || !toDate) {
-      showPopup("Please select both From Date and To Date", "error");
+      showPopup(SELECT_DATE_WARN_MSG, "Warning");
       return;
     }
 
+    // Validate that from date is not after to date
     if (new Date(fromDate) > new Date(toDate)) {
-      showPopup("From Date cannot be later than To Date", "error");
+      showPopup(INVALID_DATE_PICK_WARN_MSG, "Warning");
+      return;
+    }
+
+    // Validate that date range doesn't exceed MAX_MONTHS_BACK
+    const monthDiff = getMonthDifference(fromDate, toDate);
+    if (monthDiff > MAX_MONTHS_BACK) {
+      showPopup(`Date range cannot exceed ${MAX_MONTHS_BACK} months.`, "error");
       return;
     }
 
@@ -310,15 +304,10 @@ const TATReport = () => {
     }, 1000);
   };
 
-  // Initialize dates and fetch options
+  // Initialize with today's date as default for To Date
   useEffect(() => {
-    // Set default dates
-    const today = new Date();
-    const fourMonthsAgo = new Date();
-    fourMonthsAgo.setMonth(today.getMonth() - MAX_MONTHS_BACK);
-    
-    setFromDate(fourMonthsAgo.toISOString().split('T')[0]);
-    setToDate(today.toISOString().split('T')[0]);
+    const today = getTodayDate();
+    setToDate(today);
     
     // Fetch dropdown options
     fetchInvestigations();
@@ -354,13 +343,10 @@ const TATReport = () => {
                     type="date"
                     className="form-control"
                     value={fromDate}
-                    min={getFromDateMinMax().min}
-                    max={getFromDateMinMax().max}
                     onChange={handleFromDateChange}
+                    max={getTodayDate()} // Cannot select future dates
+                    required
                   />
-                  {/* <small className="text-muted">
-                    Max {MAX_MONTHS_BACK} months back from today
-                  </small> */}
                 </div>
 
                 <div className="col-md-3">
@@ -369,14 +355,10 @@ const TATReport = () => {
                     type="date"
                     className="form-control"
                     value={toDate}
-                    max={new Date().toISOString().split('T')[0]}
                     onChange={handleToDateChange}
+                    max={getTodayDate()} // Cannot select future dates
                     required
-                    readOnly
                   />
-                  {/* <small className="text-muted">
-                    Today's date
-                  </small> */}
                 </div>
 
                 <div className="form-group col-md-3 position-relative">
@@ -385,7 +367,7 @@ const TATReport = () => {
                     type="text"
                     className="form-control mt-1"
                     id="investigationName"
-                    placeholder="Search Investigation Name"
+                    placeholder="Investigation Name"
                     value={investigation}
                     onChange={handleInvestigationChange}
                     onFocus={() => setInvestigationDropdownVisible(true)}
@@ -473,7 +455,7 @@ const TATReport = () => {
                         Generating...
                       </>
                     ) : (
-                      "View HTML"
+                      "Search"
                     )}
                   </button>
                   
@@ -518,16 +500,16 @@ const TATReport = () => {
                 </div>
               )}
 
-              {showReport && !isGenerating && currentData.length > 0 && (
+              {!isGenerating && showReport && (
                 <div className="row mt-4">
                   <div className="col-12">
                     <div className="card">
                       <div className="card-header">
                         <h5 className="card-title mb-0">
                           {reportType === "detailed" ? "Detailed TAT Report" : "TAT Summary Report"}
-                          <span className="ms-3 text-muted">
+                          {/* <span className="ms-3 text-muted">
                             ({formatDateForDisplay(fromDate)} to {formatDateForDisplay(toDate)})
-                          </span>
+                          </span> */}
                         </h5>
                       </div>
                       <div className="card-body">
@@ -548,19 +530,27 @@ const TATReport = () => {
                                 </tr>
                               </thead>
                               <tbody>
-                                {currentItems.map((row, index) => (
-                                  <tr key={index}>
-                                    <td>{row.investigationName}</td>
-                                    <td>{row.sampleId}</td>
-                                    <td>{row.sampleReceivedDateTime}</td>
-                                    <td>{row.reportAuthorizedDateTime}</td>
-                                    <td>{row.expectedTAT}</td>
-                                    <td>{row.actualTAT}</td>
-                                    <td>{row.delay}</td>
-                                    <td>{row.iauStatus}</td>
-                                    <td>{row.technicianName}</td>
+                                {currentData.length > 0 ? (
+                                  currentItems.map((row, index) => (
+                                    <tr key={index}>
+                                      <td>{row.investigationName}</td>
+                                      <td>{row.sampleId}</td>
+                                      <td>{row.sampleReceivedDateTime}</td>
+                                      <td>{row.reportAuthorizedDateTime}</td>
+                                      <td>{row.expectedTAT}</td>
+                                      <td>{row.actualTAT}</td>
+                                      <td>{row.delay}</td>
+                                      <td>{row.iauStatus}</td>
+                                      <td>{row.technicianName}</td>
+                                    </tr>
+                                  ))
+                                ) : (
+                                  <tr>
+                                    <td colSpan="9" className="text-center py-4">
+                                      No Record Found
+                                    </td>
                                   </tr>
-                                ))}
+                                )}
                               </tbody>
                             </table>
                           ) : (
@@ -579,19 +569,27 @@ const TATReport = () => {
                                 </tr>
                               </thead>
                               <tbody>
-                                {currentItems.map((row, index) => (
-                                  <tr key={index}>
-                                    <td>{row.investigationName}</td>
-                                    <td>{row.expectedTAT}</td>
-                                    <td>{row.totalTests}</td>
-                                    <td>{row.averageTAT}</td>
-                                    <td>{row.minimumTAT}</td>
-                                    <td>{row.maximumTAT}</td>
-                                    <td>{row.testsWithinTAT}</td>
-                                    <td>{row.testsBreached}</td>
-                                    <td>{row.compliancePercent}</td>
+                                {currentData.length > 0 ? (
+                                  currentItems.map((row, index) => (
+                                    <tr key={index}>
+                                      <td>{row.investigationName}</td>
+                                      <td>{row.expectedTAT}</td>
+                                      <td>{row.totalTests}</td>
+                                      <td>{row.averageTAT}</td>
+                                      <td>{row.minimumTAT}</td>
+                                      <td>{row.maximumTAT}</td>
+                                      <td>{row.testsWithinTAT}</td>
+                                      <td>{row.testsBreached}</td>
+                                      <td>{row.compliancePercent}</td>
+                                    </tr>
+                                  ))
+                                ) : (
+                                  <tr>
+                                    <td colSpan="9" className="text-center py-4">
+                                      No Record Found
+                                    </td>
                                   </tr>
-                                ))}
+                                )}
                               </tbody>
                             </table>
                           )}
@@ -607,16 +605,6 @@ const TATReport = () => {
                           />
                         )}
                       </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {showReport && !isGenerating && currentData.length === 0 && (
-                <div className="row mt-4">
-                  <div className="col-12">
-                    <div className="alert alert-info">
-                      No records found for the selected criteria.
                     </div>
                   </div>
                 </div>

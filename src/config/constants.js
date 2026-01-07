@@ -598,3 +598,23 @@ export const DUPLICATE_PREPARATION_CODE = "Preparation code already exists!";
 export const FETCH_PREPARATION_ERR_MSG = "Failed to fetch patient preparations.";
 
 
+//Lab Report
+export const SELECT_DATE_WARN_MSG = "Please select both From Date and To Date";
+export const FETCH_LAB_HISTORY_REPORT_ERR_MSG = "Error fetching lab reports. Please try again.";
+export const INVALID_DATE_PICK_WARN_MSG = "From Date cannot be after To Date";
+
+//Lab TAT Report
+
+export const FETCH_LAB_TAT_SUMMARY_REPORT_ERR_MSG = "Error fetching summary report. Please try again.";
+export const FETCH_LAB_TAT_DETAILED_REPORT_ERR_MSG = "Error fetching detail report. Please try again.";
+
+//Result Amendment Report
+
+export const FETCH_AMEND_REPORT_ERR_MSG = "Error fetching result amendment report. Please try again.";
+
+
+
+
+
+
+
