@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react"
 import { OPEN_BALANCE, MAS_DRUG_MAS } from "../../../config/apiConfig";
 import { getRequest, putRequest } from "../../../service/apiService"
 import Popup from "../../../Components/popup"
+import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
 
 
 const PhysicalStockAdjustmentApproval = () => {
@@ -25,9 +26,9 @@ const PhysicalStockAdjustmentApproval = () => {
   const [selectedAction, setSelectedAction] = useState("")
   const [remark, setRemark] = useState("")
 
-  const itemsPerPage = 5
-  const totalPages = Math.ceil(physicalStockData.length / itemsPerPage)
-  const currentItems = physicalStockData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = physicalStockData.slice(indexOfFirst, indexOfLast);
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -79,14 +80,7 @@ const PhysicalStockAdjustmentApproval = () => {
     setToDate("")
   }
 
-  const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10)
-    if (pageNumber > 0 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber)
-    } else {
-      alert("Please enter a valid page number.")
-    }
-  }
+ 
 
   const handleSubmit = async () => {
     if (!selectedAction) {
@@ -127,43 +121,6 @@ const PhysicalStockAdjustmentApproval = () => {
     }
   };
 
-
-  const renderPagination = () => {
-    const pageNumbers = []
-    const maxVisiblePages = 5
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1)
-
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1)
-    }
-
-    if (startPage > 1) {
-      pageNumbers.push(1)
-      if (startPage > 2) pageNumbers.push("...")
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i)
-    }
-
-    if (endPage < totalPages) {
-      if (endPage < totalPages - 1) pageNumbers.push("...")
-      pageNumbers.push(totalPages)
-    }
-
-    return pageNumbers.map((number, index) => (
-      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-        {typeof number === "number" ? (
-          <button className="page-link" onClick={() => setCurrentPage(number)}>
-            {number}
-          </button>
-        ) : (
-          <span className="page-link disabled">{number}</span>
-        )}
-      </li>
-    ))
-  }
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
@@ -509,49 +466,12 @@ const PhysicalStockAdjustmentApproval = () => {
                   </tbody>
                 </table>
               </div>
-              <nav className="d-flex justify-content-between align-items-center mt-2">
-                <div>
-                  <span>
-                    Page {currentPage} of {totalPages} | Total Records: {physicalStockData.length}
-                  </span>
-                </div>
-                <ul className="pagination mb-0">
-                  <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                    >
-                      &laquo; Previous
-                    </button>
-                  </li>
-                  {renderPagination()}
-                  <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next &raquo;
-                    </button>
-                  </li>
-                </ul>
-                <div className="d-flex align-items-center">
-                  <input
-                    type="number"
-                    min="1"
-                    max={totalPages}
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                    placeholder="Go to page"
-                    className="form-control me-2"
-                    style={{ width: "120px" }}
-                  />
-                  <button className="btn btn-primary" onClick={handlePageNavigation}>
-                    Go
-                  </button>
-                </div>
-              </nav>
+              <Pagination
+                                            totalItems={physicalStockData.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
             </div>
           </div>
         </div>
