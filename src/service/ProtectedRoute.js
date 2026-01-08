@@ -153,6 +153,8 @@ const validRoutes = [
   "/TATReport",
   "/ResultAmendmentReport",
   "/EntMasTonsilGrade",
+  "/ReceivingReport",
+  "/ReturnRegister",
   
 ];
 

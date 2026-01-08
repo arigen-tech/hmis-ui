@@ -149,6 +149,8 @@ import InvestigationRegister from './Views/Laboratory/LabReports/InvestigationRe
 import TATReport from './Views/Laboratory/LabReports/TatReport';
 import ResultAmendmentReport from './Views/Laboratory/LabReports/ResultAmendmentReport';
 import EntMasTonsilGradeMaster from './Views/Masters/EntMasTonsilGrade';
+import ReceivingReport from './Views/WardPharmacy/IndentReports/ReceivingReport';
+import ReturnRegister from './Views/WardPharmacy/IndentReports/ReturnReport';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -331,6 +333,8 @@ function App() {
                 <Route path="/TATReport" element={<TATReport/>} />
                 <Route path="/ResultAmendmentReport" element={<ResultAmendmentReport/>} />
                 <Route path="EntMasTonsilGrade" element={<EntMasTonsilGradeMaster />} />
+                <Route path="/ReceivingReport" element={<ReceivingReport/>} />
+                <Route path="/ReturnRegister" element={<ReturnRegister/>} />
                 <Route path="*" element={<PageNotFound />} />
               </Route>
             </Route>
