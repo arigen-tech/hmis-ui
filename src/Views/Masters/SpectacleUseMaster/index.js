@@ -1,417 +1,412 @@
-
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
+import { OPTH_SPECTACLE_USE } from "../../../config/apiConfig"; 
 import LoadingScreen from "../../../Components/Loading";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import {
+  ADD_SPECTACLE_USE_SUCC_MSG,
+  DUPLICATE_SPECTACLE_USE,
+  FAIL_TO_SAVE_CHANGES,
+  FAIL_TO_UPDATE_STS,
+  FETCH_SPECTACLE_USE_ERR_MSG,
+  UPDATE_SPECTACLE_USE_SUCC_MSG
+} from "../../../config/constants"; 
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const SpectacleUseMaster = () => {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [spectacleUseData, setSpectacleUseData] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
+  const [confirmDialog, setConfirmDialog] = useState({ 
+    isOpen: false, 
+    id: null, 
+    newStatus: false, 
+    useName: "" 
+  });
+  const [popupMessage, setPopupMessage] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
-
-  const [popupMessage, setPopupMessage] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  /* ---------- Pagination ---------- */
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageInput, setPageInput] = useState("");
-  const itemsPerPage = 5;
-
   const [formData, setFormData] = useState({
-    lens_type: "",
+    useName: "",
   });
+  const [loading, setLoading] = useState(true);
 
-  /* ---------- Confirm Status Dialog ---------- */
-  const [confirmDialog, setConfirmDialog] = useState({
-    isOpen: false,
-    recordId: null,
-    newStatus: null,
-  });
+  const USE_NAME_MAX_LENGTH = 100;
 
-  /* ---------- Fetch Data ---------- */
-  const fetchData = async () => {
+  useEffect(() => {
+    fetchSpectacleUseData(0);
+  }, []);
+
+  // Function to format date as dd-MM-YYYY
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+
+    try {
+      const date = new Date(dateString);
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return "";
+      }
+
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "";
+    }
+  };
+
+  const fetchSpectacleUseData = async (flag = 0) => {
     try {
       setLoading(true);
-      const dummyData = [
-        { id: 1, lens_type: "Single Vision", status: "Y", last_updated_date: "2025-12-01 08:30:00" },
-        { id: 2, lens_type: "Bifocal", status: "Y", last_updated_date: "2025-12-02 09:15:00" },
-        { id: 3, lens_type: "Progressive", status: "N", last_updated_date: "2025-12-03 10:00:00" },
-        { id: 4, lens_type: "Reading", status: "Y", last_updated_date: "2025-12-04 10:45:00" },
-        { id: 5, lens_type: "Computer Lens", status: "Y", last_updated_date: "2025-12-05 11:30:00" },
-        { id: 6, lens_type: "Photochromic", status: "Y", last_updated_date: "2025-12-06 12:00:00" },
-      ];
-      setData(dummyData);
+      const response = await getRequest(`${OPTH_SPECTACLE_USE}/getAll/${flag}`);
+      if (response && response.response) {
+        const mappedData = response.response.map(item => ({
+          id: item.id,
+          useName: item.useName,
+          status: item.status,
+          lastUpdated: formatDate(item.lastUpdateDate)
+        }));
+        setSpectacleUseData(mappedData);
+      }
     } catch (err) {
-      console.error(err);
-      showPopup("Failed to fetch data!", "error");
+      console.error("Error fetching spectacle use data:", err);
+      showPopup(FETCH_SPECTACLE_USE_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  /* ---------- Filter + Pagination ---------- */
-  const filteredData = data.filter((rec) =>
-    rec.lens_type.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
-  /* ---------- Popup ---------- */
-  const showPopup = (message, type) =>
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
-
-  /* ---------- Handlers ---------- */
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
+  };
+
+  const filteredSpectacleUse = (spectacleUseData || []).filter(
+    (spectacleUse) =>
+      spectacleUse?.useName?.toLowerCase().includes(searchQuery?.toLowerCase() || "")
+  );
+
+  useEffect(() => {
     setCurrentPage(1);
+  }, [searchQuery]);
+
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredSpectacleUse.slice(indexOfFirst, indexOfLast);
+
+  const handleEdit = (record) => {
+    setEditingRecord(record);
+    setFormData({
+      useName: record.useName,
+    });
+    setIsFormValid(true);
+    setShowForm(true);
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+
+    try {
+      setLoading(true);
+
+      const isDuplicate = spectacleUseData.some(
+        (spectacleUse) =>
+          spectacleUse.useName.toLowerCase() === formData.useName.toLowerCase() &&
+          (!editingRecord || editingRecord.id !== spectacleUse.id)
+      );
+
+      if (isDuplicate && !editingRecord) {
+        showPopup(DUPLICATE_SPECTACLE_USE, "error");
+        setLoading(false);
+        return;
+      }
+
+      if (editingRecord) {
+        const response = await putRequest(`${OPTH_SPECTACLE_USE}/update/${editingRecord.id}`, {
+          useName: formData.useName,
+        });
+
+        if (response && response.status === 200) {
+          fetchSpectacleUseData();
+          showPopup(UPDATE_SPECTACLE_USE_SUCC_MSG, "success");
+        }
+      } else {
+        const response = await postRequest(`${OPTH_SPECTACLE_USE}/create`, {
+          useName: formData.useName,
+        });
+
+        if (response && response.status === 200) {
+          fetchSpectacleUseData();
+          showPopup(ADD_SPECTACLE_USE_SUCC_MSG, "success");
+        }
+      }
+
+      setEditingRecord(null);
+      setFormData({ useName: "" });
+      setShowForm(false);
+    } catch (err) {
+      console.error("Error saving spectacle use:", err);
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+      },
+    });
+  };
+
+  const handleSwitchChange = (id, newStatus, useName) => {
+    setConfirmDialog({ isOpen: true, id: id, newStatus, useName });
+  };
+
+  const handleConfirm = async (confirmed) => {
+    if (confirmed && confirmDialog.id !== null) {
+      try {
+        setLoading(true);
+        const response = await putRequest(
+          `${OPTH_SPECTACLE_USE}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
+        );
+        if (response && response.response) {
+          setSpectacleUseData((prevData) =>
+            prevData.map((spectacleUse) =>
+              spectacleUse.id === confirmDialog.id
+                ? { ...spectacleUse, status: confirmDialog.newStatus }
+                : spectacleUse
+            )
+          );
+          showPopup(
+            `Spectacle Use ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            "success"
+          );
+        }
+      } catch (err) {
+        console.error("Error updating spectacle use status:", err);
+        showPopup(FAIL_TO_UPDATE_STS, "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+    setConfirmDialog({ isOpen: false, id: null, newStatus: null, useName: "" });
+  };
+
+  const handleInputChange = (e) => {
+    const { id, value } = e.target;
+    setFormData((prevData) => ({ ...prevData, [id]: value }));
+    setIsFormValid(formData.useName.trim() !== "");
   };
 
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    fetchData();
+    fetchSpectacleUseData();
   };
 
-  const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    const updated = { ...formData, [id]: value };
-    setFormData(updated);
-    setIsFormValid(updated.lens_type.trim() !== "");
-  };
-
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
-
-    const now = new Date().toISOString().replace("T", " ").split(".")[0];
-
-    if (editingRecord) {
-      setData(
-        data.map((rec) =>
-          rec.id === editingRecord.id
-            ? { ...rec, lens_type: formData.lens_type, last_updated_date: now }
-            : rec
-        )
-      );
-      showPopup("Record updated successfully!", "success");
-    } else {
-      setData([
-        ...data,
-        {
-          id: Date.now(),
-          lens_type: formData.lens_type,
-          status: "Y",
-          last_updated_date: now,
-        },
-      ]);
-      showPopup("New record added successfully!", "success");
-    }
-
-    resetForm();
-  };
-
-  const handleEdit = (rec) => {
-    setEditingRecord(rec);
-    setFormData({ lens_type: rec.lens_type });
-    setIsFormValid(true);
-    setShowForm(true);
-  };
-
-  /* ---------- Status Change with Confirmation ---------- */
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, recordId: id, newStatus });
-  };
-
-  const handleConfirmStatusChange = (confirmed) => {
-    if (confirmed && confirmDialog.recordId !== null) {
-      setData(
-        data.map((rec) =>
-          rec.id === confirmDialog.recordId
-            ? { ...rec, status: confirmDialog.newStatus }
-            : rec
-        )
-      );
-
-      const recordName =
-        data.find((rec) => rec.id === confirmDialog.recordId)?.lens_type || "";
-      showPopup(
-        `${recordName} ${confirmDialog.newStatus === "Y" ? "Activated" : "Deactivated"
-        } successfully!`,
-        "success"
-      );
-    }
-    setConfirmDialog({ isOpen: false, recordId: null, newStatus: null });
-  };
-
-  const resetForm = () => {
-    setFormData({ lens_type: "" });
+  const handleBack = () => {
     setEditingRecord(null);
+    setFormData({ useName: "" });
     setShowForm(false);
     setIsFormValid(false);
   };
 
-  const handleGoToPage = () => {
-    const pageNumber = parseInt(pageInput, 10);
-    if (pageNumber >= 1 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
-      setPageInput("");
-    } else {
-      alert("Invalid page number");
-    }
-  };
-
-  const renderPagination = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-    if (endPage - startPage < maxVisiblePages - 1)
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-
-    if (startPage > 1) {
-      pageNumbers.push(1);
-      if (startPage > 2) pageNumbers.push("...");
-    }
-    for (let i = startPage; i <= endPage; i++) pageNumbers.push(i);
-    if (endPage < totalPages) {
-      if (endPage < totalPages - 1) pageNumbers.push("...");
-      pageNumbers.push(totalPages);
-    }
-
-    return (
-      <>
-        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-          <button
-            className="page-link"
-            onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
-          >
-            Prev
-          </button>
-        </li>
-
-        {pageNumbers.map((num, idx) => (
-          <li key={idx} className={`page-item ${num === currentPage ? "active" : ""}`}>
-            {typeof num === "number" ? (
-              <button className="page-link" onClick={() => setCurrentPage(num)}>
-                {num}
-              </button>
-            ) : (
-              <span className="page-link disabled">{num}</span>
-            )}
-          </li>
-        ))}
-
-        <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-          <button
-            className="page-link"
-            onClick={() =>
-              currentPage < totalPages && setCurrentPage(currentPage + 1)
-            }
-          >
-            Next
-          </button>
-        </li>
-      </>
-    );
-  };
-
-  if (loading) return <LoadingScreen />;
-
   return (
     <div className="content-wrapper">
-      <div className="card form-card">
-        <div className="card-header d-flex justify-content-between align-items-center">
-          <h4 className="card-title">Spectacle Use Master</h4>
-          <div className="d-flex align-items-center">
-            {!showForm && (
-              <input
-                type="text"
-                className="form-control w-50 me-2"
-                placeholder="Search"
-                value={searchQuery}
-                onChange={handleSearchChange}
-              />
-            )}
-            {!showForm ? (
-              <>
-                <button
-                  className="btn btn-success me-2"
-                  onClick={() => setShowForm(true)}
-                >
-                  Add
-                </button>
-                <button className="btn btn-success flex-shrink-0" onClick={handleRefresh}>
-                  Show All
-                </button>
-              </>
-            ) : (
-              <button className="btn btn-secondary" onClick={resetForm}>
-                Back
-              </button>
-            )}
-          </div>
-        </div>
+      <div className="row">
+        <div className="col-12 grid-margin stretch-card">
+          <div className="card form-card">
+            <div className="card-header d-flex justify-content-between align-items-center">
+              <h4 className="card-title">Spectacle Use Master</h4>
+              <div className="d-flex justify-content-between align-items-center">
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search Spectacle Use"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
 
-        <div className="card-body">
-          {!showForm ? (
-            <>
-              <div className="table-responsive">
-                <table className="table table-bordered table-hover">
-                  <thead className="table-light">
-                    <tr>
-                      <th>ID</th>
-                      <th>Lens Type</th>
-                      <th>Last Update Date</th>
-                      <th>Status</th>
-                      <th>Edit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentItems.length ? (
-                      currentItems.map((rec) => (
-                        <tr key={rec.id}>
-                          <td>{rec.id}</td>
-                          <td>{rec.lens_type}</td>
-                          <td>{rec.last_updated_date}</td>
-                          <td>
-                            <div className="form-check form-switch">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                checked={rec.status === "Y"}
-                                onChange={() =>
-                                  handleSwitchChange(rec.id, rec.status === "Y" ? "N" : "Y")
-                                }
-                              />
-                              <label className="form-check-label">
-                                {rec.status === "Y" ? "Active" : "Inactive"}
-                              </label>
-                            </div>
-                          </td>
-
-
-                          <td>
-                            <button
-                              className="btn btn-success btn-sm d-flex align-items-center justify-content-center"
-                              onClick={() => handleEdit(rec)}
-                              disabled={rec.status !== "Y"}
-                            >
-                              <i className="fa fa-pencil"></i>
-                            </button>
-                          </td>
-
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="5" className="text-center">
-                          No record found
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination */}
-              <div className="d-flex justify-content-between align-items-center mt-3">
-                <div>
-                  Page {currentPage} of {totalPages} | Total Records: {filteredData.length}
-                </div>
-                <ul className="pagination mb-0 d-flex justify-content-center">
-                  {renderPagination()}
-                </ul>
                 <div className="d-flex align-items-center">
-                  <input
-                    type="number"
-                    className="form-control ms-2"
-                    placeholder="Go to page"
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                  />
-                  <button className="btn btn-primary ms-2" onClick={handleGoToPage}>
-                    Go
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <form className="row" onSubmit={handleSave}>
-              <div className="form-group col-md-6">
-                <label>
-                  Lens Type <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="lens_type"
-                  className="form-control mt-1"
-                  value={formData.lens_type}
-                  onChange={handleInputChange}
-                />
-              </div>
-              <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>
-                  Save
-                </button>
-                <button className="btn btn-danger" type="button" onClick={resetForm}>
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
-
-          {popupMessage && <Popup {...popupMessage} />}
-
-          {confirmDialog.isOpen && (
-            <div className="modal d-block" tabIndex="-1">
-              <div className="modal-dialog">
-                <div className="modal-content">
-                  <div className="modal-header">
-                    <h5 className="modal-title">Confirm Status Change</h5>
-                    <button
-                      type="button"
-                      className="btn-close"
-                      onClick={() => handleConfirmStatusChange(false)}
-                    ></button>
-                  </div>
-                  <div className="modal-body">
-                    <p>
-                      Are you sure you want to{" "}
-                      {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}{" "}
-                      <strong>
-                        {data.find((rec) => rec.id === confirmDialog.recordId)?.lens_type}
-                      </strong>?
-                    </p>
-                  </div>
-                  <div className="modal-footer">
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => handleConfirmStatusChange(false)}
-                    >
-                      No
+                  {!showForm ? (
+                    <>
+                      <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                        <i className="mdi mdi-plus"></i> Add
+                      </button>
+                      <button type="button" className="btn btn-success me-2 flex-shrink-0" onClick={handleRefresh}>
+                        <i className="mdi mdi-refresh"></i> Show All
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" className="btn btn-secondary" onClick={handleBack}>
+                      <i className="mdi mdi-arrow-left"></i> Back
                     </button>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => handleConfirmStatusChange(true)}
-                    >
-                      Yes
-                    </button>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
-          )}
+            <div className="card-body">
+              {loading ? (
+                <LoadingScreen />
+              ) : !showForm ? (
+                <>
+                  <div className="table-responsive packagelist">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
+                        <tr>
+                        
+                          <th>Spectacle Use</th>
+                          <th>Last Updated</th>
+                          <th>Status</th>
+                          <th>Edit</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((spectacleUse) => (
+                            <tr key={spectacleUse.id}>
+                            
+                              <td>{spectacleUse.useName}</td>
+                              <td>{spectacleUse.lastUpdated}</td>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={spectacleUse.status === "y"}
+                                    onChange={() => handleSwitchChange(
+                                      spectacleUse.id, 
+                                      spectacleUse.status === "y" ? "n" : "y", 
+                                      spectacleUse.useName
+                                    )}
+                                    id={`switch-${spectacleUse.id}`}
+                                  />
+                                  <label
+                                    className="form-check-label px-0"
+                                    htmlFor={`switch-${spectacleUse.id}`}
+                                  >
+                                    {spectacleUse.status === "y" ? "Active" : "Deactivated"}
+                                  </label>
+                                </div>
+                              </td>
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-success me-2"
+                                  onClick={() => handleEdit(spectacleUse)}
+                                  disabled={spectacleUse.status !== "y"}
+                                >
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={5} className="text-center">
+                              No spectacle use data found
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* PAGINATION USING REUSABLE COMPONENT */}
+                  {filteredSpectacleUse.length > 0 && (
+                    <Pagination
+                      totalItems={filteredSpectacleUse.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  )}
+                </>
+              ) : (
+                <form className="forms row" onSubmit={handleSave}>
+                  <div className="form-group col-md-4">
+                    <label>Spectacle Use Name <span className="text-danger">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control mt-1"
+                      id="useName"
+                      placeholder="Enter Spectacle Use Name"
+                      value={formData.useName}
+                      onChange={handleInputChange}
+                      maxLength={USE_NAME_MAX_LENGTH}
+                      required
+                    />
+                  </div>
+                  <div className="form-group col-md-12 d-flex justify-content-end mt-4">
+                    <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
+                      Save
+                    </button>
+                    <button type="button" className="btn btn-danger" onClick={handleBack}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
 
+              {popupMessage && (
+                <Popup
+                  message={popupMessage.message}
+                  type={popupMessage.type}
+                  onClose={popupMessage.onClose}
+                />
+              )}
+
+              {confirmDialog.isOpen && (
+                <div className="modal d-block" tabIndex="-1" role="dialog">
+                  <div className="modal-dialog" role="document">
+                    <div className="modal-content">
+                      <div className="modal-header">
+                        <h5 className="modal-title">Confirm Status Change</h5>
+                        <button type="button" className="close" onClick={() => handleConfirm(false)}>
+                          <span>&times;</span>
+                        </button>
+                      </div>
+                      <div className="modal-body">
+                        <p>
+                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          <strong>{confirmDialog.useName}</strong>?
+                        </p>
+                      </div>
+                      <div className="modal-footer">
+                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                          No
+                        </button>
+                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                          Yes
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
