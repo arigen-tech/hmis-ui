@@ -4,6 +4,8 @@ import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS
 import { getRequest, putRequest } from "../../../service/apiService"
 import ReactDOM from 'react-dom';
 import LoadingScreen from "../../../Components/Loading";
+import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
+
 
 
 const OpeningBalanceApproval = () => {
@@ -198,14 +200,6 @@ const OpeningBalanceApproval = () => {
     setCurrentPage(1);
   }
 
-  const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10)
-    if (pageNumber > 0 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber)
-    } else {
-      alert("Please enter a valid page number.")
-    }
-  }
 
   const addNewEntry = () => {
     const newId = Date.now() + Math.random(); // unique id
@@ -1141,50 +1135,13 @@ const OpeningBalanceApproval = () => {
                 </table>
               </div>
 
-              {/* Pagination */}
-              <nav className="d-flex justify-content-between align-items-center mt-2">
-                <div>
-                  <span>
-                    Page {currentPage} of {totalPages} | Total Records: {approvalData.length}
-                  </span>
-                </div>
-                <ul className="pagination mb-0">
-                  <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                    >
-                      &laquo; Previous
-                    </button>
-                  </li>
-                  {renderPagination()}
-                  <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next &raquo;
-                    </button>
-                  </li>
-                </ul>
-                <div className="d-flex align-items-center">
-                  <input
-                    type="number"
-                    min="1"
-                    max={totalPages}
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                    placeholder="Go to page"
-                    className="form-control me-2"
-                    style={{ width: "120px" }}
-                  />
-                  <button className="btn btn-primary" onClick={handlePageNavigation}>
-                    Go
-                  </button>
-                </div>
-              </nav>
+              <Pagination
+                                            totalItems={filteredApprovalData.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
+
             </div>
           </div>
         </div>
