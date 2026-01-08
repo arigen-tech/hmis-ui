@@ -128,14 +128,14 @@ const UpdateResultValidation = () => {
                         original_si_no: getSubTestNumber(invIndex + 1, subIndex, inv.entryUpdateSubInvestigationResponses.length),
                         resultEntryDetailsId: subTest.resultEntryDetailsId,
                         diag_no: "---",
-                        generatedSampleId:subTest.generatedSampleId||'',
+                        generatedSampleId: subTest.generatedSampleId || '',
                         investigation: subTest.subInvestigationName || '',
                         sample: subTest.sampleName || '',
                         result: subTest.result || "",
                         oldResult: subTest.result || "", // Store original result for amendment audit
                         units: subTest.unit || '',
                         normal_range: subTest.normalValue || '',
-                        remarks: subTest.remarks || "",
+                        remarks: "", // Initialize as empty string (not retrieved from backend)
                         amendmentTypeId: null, // Initialize amendment type
                         inRange: subTest.inRange !== undefined ? subTest.inRange : null,
                         comparisonType: subTest.comparisonType || "",
@@ -155,7 +155,7 @@ const UpdateResultValidation = () => {
                       oldResult: inv.result || "", // Store original result for amendment audit
                       units: inv.unit || '',
                       normal_range: inv.normalValue || '',
-                      remarks: inv.remarks || "",
+                      remarks: "", // Initialize as empty string (not retrieved from backend)
                       amendmentTypeId: null, // Initialize amendment type
                       inRange: inv.inRange !== undefined ? inv.inRange : null,
                       comparisonType: inv.comparisonType || "",
@@ -170,14 +170,14 @@ const UpdateResultValidation = () => {
                       original_si_no: invIndex + 1,
                       resultEntryDetailsId: inv.resultEntryDetailsId,
                       diag_no: inv.diagNo || '',
-                      generatedSampleId:inv.generatedSampleId||'',
+                      generatedSampleId: inv.generatedSampleId || '',
                       investigation: inv.investigationName || '',
                       sample: inv.sampleName || '',
                       result: inv.result || "",
                       oldResult: inv.result || "", // Store original result for amendment audit
                       units: inv.unit || '',
                       normal_range: inv.normalValue || '',
-                      remarks: inv.remarks || "",
+                      remarks: "", // Initialize as empty string (not retrieved from backend)
                       amendmentTypeId: null, // Initialize amendment type
                       inRange: inv.inRange !== undefined ? inv.inRange : null,
                       comparisonType: inv.comparisonType || "",
@@ -563,7 +563,7 @@ const UpdateResultValidation = () => {
     }
   }
 
-  // Render remarks input field with edit check
+  // Render remarks input field with edit check - Now always empty initially
   const renderRemarksInput = (test) => {
     const isEditable = isRowEditable(test.id);
     
@@ -656,7 +656,7 @@ const UpdateResultValidation = () => {
               result: inv.result || "",
               oldResult: inv.oldResult || "", // Send original result for audit
               amendmentTypeId: inv.amendmentTypeId || null, // Send amendment type
-              remarks: inv.remarks || "",
+              remarks: inv.remarks || "", // Send remarks (empty string if not entered)
               fixedId: inv.fixedId || null,
               comparisonType: inv.comparisonType || ""
             });
@@ -808,9 +808,6 @@ const UpdateResultValidation = () => {
                 <div className="d-flex justify-content-between align-items-center">
                   <h4 className="card-title p-2">UPDATE RESULT ENTRY</h4>
                   <div className="d-flex align-items-center">
-                    {/* <span className="badge bg-info me-3">
-                      Editable Rows: {editableRows.length}
-                    </span> */}
                     <button className="btn btn-secondary" onClick={handleBackToList}>
                       <i className="mdi mdi-arrow-left"></i> Back to List
                     </button>
@@ -886,17 +883,6 @@ const UpdateResultValidation = () => {
                     </div>
                   </div>
                 </div>
-
-                {/* Instructions */}
-                {/* <div className="alert alert-info mb-4">
-                  <i className="mdi mdi-information-outline me-2"></i>
-                  <strong>Instructions:</strong> 
-                  <ol className="mb-0 mt-1">
-                    <li>Check the "Edit" box for each row you want to update.</li>
-                    <li>Only checked rows will be editable and updated when you click the UPDATE button.</li>
-                    <li>For each editable row, <strong>Amendment Type is mandatory</strong> before updating.</li>
-                  </ol>
-                </div> */}
 
                 {/* Investigations Table with Edit Checkbox Column */}
                 <div className="table-responsive" style={{ overflowX: "auto" }}>
