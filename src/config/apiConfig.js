@@ -68,7 +68,10 @@ export const OPD_PATIENT = "/patient";
 
 
 export const FILTER_OPD_DEPT = `OPD`;
-export const ALL_LAB_HISTORY_REPORT=`${ALL_REPORTS}/lab-histrory`
+export const ALL_LAB_HISTORY_REPORT=`${ALL_REPORTS}/lab-histrory`;
+export const OPD_REPORT_API=`${ALL_REPORTS}/opdReport`;
+export const LAB_REPORT_API=`${ALL_REPORTS}/labReport`;
+
 
 
 
@@ -224,6 +227,7 @@ export const MAS_TOOTH_CONDITION = `${MASTERS}/masToothCondition`;
 export const LAB_AMENDMENT_TYPE_API = `${MASTERS}/lab-amendment-type`;
 export const MAS_PATIENT_PREPARATION = `${MASTERS}/patient-preparation`;
 export const MAS_TONSIL_GRADE = `${MASTERS}/entMasTonsilGrade`;
+export const BILLING = `${LAB}/billingStatus`;
 
 
 // Constants for date validation for Lab report
