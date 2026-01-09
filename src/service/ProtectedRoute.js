@@ -156,6 +156,9 @@ const validRoutes = [
   "/ReceivingReport",
   "/ReturnRegister",
   "/BookingAppointmentHistory",
+  "/OrderTrackingReport",
+  "/PendingInvestigationsReport",
+  "/SampleRejectionReport",
   
 ];
 
