@@ -4,20 +4,19 @@ import LoadingScreen from "../../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import Popup from "../../../../Components/popup";
 import { MAS_INVESTIGATION, MAX_MONTHS_BACK } from "../../../../config/apiConfig";
-import {FETCH_LAB_TAT_DETAILED_REPORT_ERR_MSG, FETCH_LAB_TAT_SUMMARY_REPORT_ERR_MSG, INVALID_DATE_PICK_WARN_MSG, SELECT_DATE_WARN_MSG} from "../../../../config/constants"
+import { FETCH_AMEND_REPORT_ERR_MSG, INVALID_DATE_PICK_WARN_MSG, SELECT_DATE_WARN_MSG } from "../../../../config/constants";
 
-const TATReport = () => {
-  
-  // State variables
+const ResultAmendmentReport = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [patientMobile, setPatientMobile] = useState("");
+  const [patientName, setPatientName] = useState("");
   const [investigation, setInvestigation] = useState("");
   const [selectedInvestigation, setSelectedInvestigation] = useState(null);
   const [isInvestigationDropdownVisible, setInvestigationDropdownVisible] = useState(false);
   const [modality, setModality] = useState("");
   const [selectedModality, setSelectedModality] = useState(null);
   const [modalityOptions, setModalityOptions] = useState([]);
-  const [reportType, setReportType] = useState("detailed");
   const [isGenerating, setIsGenerating] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -25,8 +24,7 @@ const TATReport = () => {
   
   // API Data states
   const [investigationOptions, setInvestigationOptions] = useState([]);
-  const [detailedReportData, setDetailedReportData] = useState([]);
-  const [summaryReportData, setSummaryReportData] = useState([]);
+  const [reportData, setReportData] = useState([]);
   
   // Function to get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
@@ -118,92 +116,61 @@ const TATReport = () => {
     }
   };
 
-  // Fetch detailed TAT report
-  const fetchDetailedReport = async () => {
-    try {
-      setIsGenerating(true);
-      
-      const params = new URLSearchParams();
-      if (selectedInvestigation?.id) {
-        params.append('investigationId', selectedInvestigation.id);
-      }
-      if (selectedModality?.id) {
-        params.append('subchargeCodeId', selectedModality.id);
-      }
-      params.append('fromDate', fromDate);
-      params.append('toDate', toDate);
-
-      const response = await getRequest(`/report/lab-tat/details?${params.toString()}`);
-      
-      if (response && response.response) {
-        const mappedData = response.response.map(item => ({
-          investigationName: item.investigationName || "",
-          sampleId: item.generatedSampleId || "",
-          sampleReceivedDateTime: formatDateTimeForDisplay(item.sampleReceivedDate),
-          reportAuthorizedDateTime: formatDateTimeForDisplay(item.reportAuthorizedDate),
-          expectedTAT: item.expectedTatHours || 0,
-          actualTAT: item.actualTatHours || 0,
-          delay: item.delay || 0,
-          iauStatus: item.tatStatus || "",
-          technicianName: item.technicianName || ""
-        }));
-        
-        setDetailedReportData(mappedData);
-        setShowReport(true);
-      } else {
-        setDetailedReportData([]);
-        setShowReport(true);
-      }
-    } catch (error) {
-      console.error("Error fetching detailed report:", error);
-      showPopup(FETCH_LAB_TAT_DETAILED_REPORT_ERR_MSG, "error");
-      setDetailedReportData([]);
-      setShowReport(true);
-    } finally {
-      setIsGenerating(false);
-    }
+  // Format result with unit
+  const formatResultWithUnit = (result, unit) => {
+    if (!result && !unit) return "";
+    if (!result) return "";
+    if (!unit) return result;
+    return `${result} ${unit}`;
   };
 
-  // Fetch summary TAT report
-  const fetchSummaryReport = async () => {
+  // Fetch amendment audit report
+  const fetchAmendAuditReport = async () => {
     try {
       setIsGenerating(true);
       
       const params = new URLSearchParams();
+      if (patientMobile) {
+        params.append('phnNum', patientMobile);
+      }
+      if (patientName) {
+        params.append('patientName', patientName);
+      }
       if (selectedInvestigation?.id) {
         params.append('investigationId', selectedInvestigation.id);
       }
       if (selectedModality?.id) {
-        params.append('subchargeCodeId', selectedModality.id);
+        params.append('subChargeCodeId', selectedModality.id);
       }
       params.append('fromDate', fromDate);
       params.append('toDate', toDate);
 
-      const response = await getRequest(`/report/lab-tat/summary?${params.toString()}`);
+      const response = await getRequest(`/report/lab-amend-audit?${params.toString()}`);
       
       if (response && response.response) {
         const mappedData = response.response.map(item => ({
+          amendId: item.amendId || "",
+          sampleId: item.sampleId || "",
+          patientName: item.patientName || "",
           investigationName: item.investigationName || "",
-          expectedTAT: item.expectedTatHours || 0,
-          totalTests: item.totalTests || 0,
-          averageTAT: item.averageTatHours || 0,
-          minimumTAT: item.minTatHours || 0,
-          maximumTAT: item.maxTatHours || 0,
-          testsWithinTAT: item.noOfTestsWithinTatHour || 0,
-          testsBreached: item.noOfTestsBreached || 0,
-          compliancePercent: item.compliance ? `${item.compliance}%` : "0%"
+          unitName: item.unitName || "",
+          oldResult: formatResultWithUnit(item.oldResult, item.unitName),
+          newResult: formatResultWithUnit(item.newResult, item.unitName),
+          reasonForChange: item.reasonForChange || "",
+          authorizedBy: item.authorizedBy || "",
+          dateTime: formatDateTimeForDisplay(item.dateTime)
         }));
         
-        setSummaryReportData(mappedData);
+        setReportData(mappedData);
         setShowReport(true);
       } else {
-        setSummaryReportData([]);
+        setReportData([]);
         setShowReport(true);
       }
     } catch (error) {
-      console.error("Error fetching summary report:", error);
-      showPopup(FETCH_LAB_TAT_SUMMARY_REPORT_ERR_MSG, "error");
-      setSummaryReportData([]);
+      console.error("Error fetching amendment audit report:", error);
+      showPopup(FETCH_AMEND_REPORT_ERR_MSG, "error");
+      setReportData([]);
       setShowReport(true);
     } finally {
       setIsGenerating(false);
@@ -269,11 +236,7 @@ const TATReport = () => {
       return;
     }
 
-    if (reportType === "detailed") {
-      fetchDetailedReport();
-    } else {
-      fetchSummaryReport();
-    }
+    fetchAmendAuditReport();
     setCurrentPage(1);
   };
 
@@ -299,7 +262,7 @@ const TATReport = () => {
 
     setIsGenerating(true);
     setTimeout(() => {
-      showPopup(`${reportType === "detailed" ? "Detailed TAT" : "TAT Summary"} Report would be printed here`, "info");
+      showPopup("Result Amendment Report would be printed here", "info");
       setIsGenerating(false);
     }, 1000);
   };
@@ -314,16 +277,10 @@ const TATReport = () => {
     fetchModalities();
   }, []);
 
-  // Reset page when report type changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [reportType]);
-
   // Calculate pagination
-  const currentData = reportType === "detailed" ? detailedReportData : summaryReportData;
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = currentData.slice(indexOfFirst, indexOfLast);
+  const currentItems = reportData.slice(indexOfFirst, indexOfLast);
 
   return (
     <div className="content-wrapper">
@@ -332,7 +289,7 @@ const TATReport = () => {
           <div className="card form-card">
             <div className="card-header">
               <h4 className="card-title p-2 mb-0">
-                TAT Report
+                Result Amendment/Update Report
               </h4>
             </div>
             <div className="card-body">
@@ -361,7 +318,36 @@ const TATReport = () => {
                   />
                 </div>
 
-                <div className="form-group col-md-3 position-relative">
+                <div className="col-md-3">
+                  <label className="form-label fw-bold">Patient Mobile No</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={patientMobile}
+                    onChange={(e) => {
+                      // Remove all non-digit characters and limit to 10 digits
+                      const value = e.target.value.replace(/\D/g, '');
+                      if (value.length <= 10) {
+                        setPatientMobile(value);
+                      }
+                    }}
+                    placeholder="Enter mobile number"
+                    maxLength="10"
+                  />
+                </div>
+
+                <div className="col-md-3">
+                  <label className="form-label fw-bold">Patient Name</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={patientName}
+                    onChange={(e) => setPatientName(e.target.value)}
+                    placeholder="Enter patient name"
+                  />
+                </div>
+
+                <div className="form-group col-md-3 position-relative mt-3">
                   <label className="form-label fw-bold">Investigation Name</label>
                   <input
                     type="text"
@@ -391,7 +377,7 @@ const TATReport = () => {
                   )}
                 </div>
 
-                <div className="col-md-3 mt-1">
+                <div className="col-md-3 mt-3">
                   <label className="form-label fw-bold">Modality</label>
                   <select 
                     className="form-select" 
@@ -405,39 +391,6 @@ const TATReport = () => {
                       </option>
                     ))}
                   </select>
-                </div>
-              </div>
-
-              <div className="row mb-4">
-                <div className="col-md-12">
-                  <div className="form-check form-check-inline">
-                    <input
-                      className="form-check-input"
-                      type="radio"
-                      name="reportType"
-                      id="detailed"
-                      value="detailed"
-                      checked={reportType === "detailed"}
-                      onChange={(e) => setReportType(e.target.value)}
-                    />
-                    <label className="form-check-label fw-bold" htmlFor="detailed">
-                      Detailed TAT Report
-                    </label>
-                  </div>
-                  <div className="form-check form-check-inline">
-                    <input
-                      className="form-check-input"
-                      type="radio"
-                      name="reportType"
-                      id="summary"
-                      value="summary"
-                      checked={reportType === "summary"}
-                      onChange={(e) => setReportType(e.target.value)}
-                    />
-                    <label className="form-check-label fw-bold" htmlFor="summary">
-                      TAT Summary Report
-                    </label>
-                  </div>
                 </div>
               </div>
 
@@ -506,7 +459,7 @@ const TATReport = () => {
                     <div className="card">
                       <div className="card-header">
                         <h5 className="card-title mb-0">
-                          {reportType === "detailed" ? "Detailed TAT Report" : "TAT Summary Report"}
+                          Result Amendment/Update Report
                           {/* <span className="ms-3 text-muted">
                             ({formatDateForDisplay(fromDate)} to {formatDateForDisplay(toDate)})
                           </span> */}
@@ -514,91 +467,48 @@ const TATReport = () => {
                       </div>
                       <div className="card-body">
                         <div className="table-responsive">
-                          {reportType === "detailed" ? (
-                            <table className="table table-bordered table-hover">
-                              <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
-                                <tr>
-                                  <th>Investigation Name</th>
-                                  <th>Sample ID</th>
-                                  <th>Sample Received Date & Time</th>
-                                  <th>Report Authorized Date & Time</th>
-                                  <th>Expected TAT (hrs)</th>
-                                  <th>Actual TAT (hrs)</th>
-                                  <th>Delay (hrs)</th>
-                                  <th>IAU Status (Within / Breach)</th>
-                                  <th>Technician Name</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {currentData.length > 0 ? (
-                                  currentItems.map((row, index) => (
-                                    <tr key={index}>
-                                      <td>{row.investigationName}</td>
-                                      <td>{row.sampleId}</td>
-                                      <td>{row.sampleReceivedDateTime}</td>
-                                      <td>{row.reportAuthorizedDateTime}</td>
-                                      <td>{row.expectedTAT}</td>
-                                      <td>{row.actualTAT}</td>
-                                      <td>{row.delay}</td>
-                                      <td>{row.iauStatus}</td>
-                                      <td>{row.technicianName}</td>
-                                    </tr>
-                                  ))
-                                ) : (
-                                  <tr>
-                                    <td colSpan="9" className="text-center py-4">
-                                      No Record Found
-                                    </td>
+                          <table className="table table-bordered table-hover">
+                            <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
+                              <tr>
+                                <th>Sample ID</th>
+                                <th>Patient Name</th>
+                                <th>Investigation Name</th>
+                                <th>Old Result</th>
+                                <th>New Result</th>
+                                <th>Reason for Change</th>
+                                <th>Authorized By</th>
+                                <th>Date & Time</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {reportData.length > 0 ? (
+                                currentItems.map((row, index) => (
+                                  <tr key={index}>
+                                    <td>{row.sampleId}</td>
+                                    <td>{row.patientName}</td>
+                                    <td>{row.investigationName}</td>
+                                    <td>{row.oldResult}</td>
+                                    <td>{row.newResult}</td>
+                                    <td>{row.reasonForChange}</td>
+                                    <td>{row.authorizedBy}</td>
+                                    <td>{row.dateTime}</td>
                                   </tr>
-                                )}
-                              </tbody>
-                            </table>
-                          ) : (
-                            <table className="table table-bordered table-hover">
-                              <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
+                                ))
+                              ) : (
                                 <tr>
-                                  <th>Investigation Name</th>
-                                  <th>Expected TAT (hrs)</th>
-                                  <th>Total Tests</th>
-                                  <th>Average TAT (hrs)</th>
-                                  <th>Minimum TAT (hrs)</th>
-                                  <th>Maximum TAT (hrs)</th>
-                                  <th>Tests Within TAT</th>
-                                  <th>Tests Breached</th>
-                                  <th>Compliance %</th>
+                                  <td colSpan="8" className="text-center py-4">
+                                    No Record Found
+                                  </td>
                                 </tr>
-                              </thead>
-                              <tbody>
-                                {currentData.length > 0 ? (
-                                  currentItems.map((row, index) => (
-                                    <tr key={index}>
-                                      <td>{row.investigationName}</td>
-                                      <td>{row.expectedTAT}</td>
-                                      <td>{row.totalTests}</td>
-                                      <td>{row.averageTAT}</td>
-                                      <td>{row.minimumTAT}</td>
-                                      <td>{row.maximumTAT}</td>
-                                      <td>{row.testsWithinTAT}</td>
-                                      <td>{row.testsBreached}</td>
-                                      <td>{row.compliancePercent}</td>
-                                    </tr>
-                                  ))
-                                ) : (
-                                  <tr>
-                                    <td colSpan="9" className="text-center py-4">
-                                      No Record Found
-                                    </td>
-                                  </tr>
-                                )}
-                              </tbody>
-                            </table>
-                          )}
+                              )}
+                            </tbody>
+                          </table>
                         </div>
                         
                         {/* PAGINATION USING REUSABLE COMPONENT */}
-                        {currentData.length > 0 && (
+                        {reportData.length > 0 && (
                           <Pagination
-                            totalItems={currentData.length}
+                            totalItems={reportData.length}
                             itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                             currentPage={currentPage}
                             onPageChange={setCurrentPage}
@@ -626,4 +536,4 @@ const TATReport = () => {
   );
 };
 
-export default TATReport;
+export default ResultAmendmentReport;

@@ -3,14 +3,13 @@ import Popup from "../../../Components/popup"
 import { ITEM_TYPE, MAS_ITEM_TYPE, MAS_STORE_GROUP } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
 const ItemTypeManagement = () => {
   const [itemTypes, setItemTypes] = useState([])
   const [storeGroups, setStoreGroups] = useState([])
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
-  const itemsPerPage = 5
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, itemTypeId: null, newStatus: false })
   const [popupMessage, setPopupMessage] = useState(null)
   const [showForm, setShowForm] = useState(false)
@@ -80,6 +79,10 @@ const ItemTypeManagement = () => {
     setCurrentPage(1)
   }
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   const filteredItemTypes = itemTypes.filter((type) => {
     const q = (searchQuery || "").trim().toLowerCase()
     return (
@@ -90,14 +93,9 @@ const ItemTypeManagement = () => {
     )
   })
 
-  const currentItems = filteredItemTypes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-  const filteredTotalPages = Math.ceil(filteredItemTypes.length / itemsPerPage)
-
-  const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10)
-    if (pageNumber > 0 && pageNumber <= filteredTotalPages) setCurrentPage(pageNumber)
-    else alert("Invalid page number")
-  }
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
+  const currentItems = filteredItemTypes.slice(indexOfFirst, indexOfLast)
 
   const handleEdit = (type) => {
     setEditingType(type)
@@ -230,38 +228,6 @@ const ItemTypeManagement = () => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) })
   }
 
-  const renderPagination = () => {
-    const pageNumbers = []
-    const max = 5
-    let start = Math.max(1, currentPage - Math.floor(max / 2))
-    const end = Math.min(filteredTotalPages, start + max - 1)
-    if (end - start < max - 1) start = Math.max(1, end - max + 1)
-
-    if (start > 1) {
-      pageNumbers.push(1)
-      if (start > 2) pageNumbers.push("...")
-    }
-
-    for (let i = start; i <= end; i++) pageNumbers.push(i)
-
-    if (end < filteredTotalPages) {
-      if (end < filteredTotalPages - 1) pageNumbers.push("...")
-      pageNumbers.push(filteredTotalPages)
-    }
-
-    return pageNumbers.map((num, i) => (
-      <li key={i} className={`page-item ${num === currentPage ? "active" : ""}`}>
-        {typeof num === "number" ? (
-          <button className="page-link" onClick={() => setCurrentPage(num)}>
-            {num}
-          </button>
-        ) : (
-          <span className="page-link disabled">{num}</span>
-        )}
-      </li>
-    ))
-  }
-
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -271,26 +237,39 @@ const ItemTypeManagement = () => {
               <h4 className="card-title p-2">Item Type Master</h4>
               <div className="d-flex justify-content-between align-items-center">
 
-                {!showForm && (
+                {!showForm ? (
                   <>
-                      <form className="d-inline-block searchform me-4" role="search">
-                        <div className="input-group searchinput">
-                          <input
-                            type="search"
-                            className="form-control"
-                            placeholder="Search"
-                            value={searchQuery}
-                            onChange={handleSearchChange}
-                          />
-                          <span className="input-group-text">
-                            <i className="fa fa-search"></i>
-                          </span>
-                        </div>
-                      </form>
-                      <button className="btn btn-success me-1" onClick={() => setShowForm(true)}>
-                        <i className="mdi mdi-plus"></i> ADD
+                    <form className="d-inline-block searchform me-4" role="search">
+                      <div className="input-group searchinput">
+                        <input
+                          type="search"
+                          className="form-control"
+                          placeholder="Search"
+                          value={searchQuery}
+                          onChange={handleSearchChange}
+                        />
+                        <span className="input-group-text">
+                          <i className="fa fa-search"></i>
+                        </span>
+                      </div>
+                    </form>
+                    <div className="d-flex align-items-center ms-auto">
+                      <button className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                        <i className="mdi mdi-plus"></i> Add
                       </button>
-                      </>
+                      <button 
+                        type="button" 
+                        className="btn btn-success me-2 flex-shrink-0" 
+                        onClick={handleRefresh}
+                      >
+                        <i className="mdi mdi-refresh"></i> Show All
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <button className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                    <i className="mdi mdi-arrow-left"></i> Back
+                  </button>
                 )}
               </div>
             </div>
@@ -299,60 +278,74 @@ const ItemTypeManagement = () => {
               {loading ? (
                 <LoadingScreen />
               ) : !showForm ? (
-                <div className="table-responsive packagelist">
-                  <table className="table table-bordered table-hover align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Item Type Code</th>
-                        <th>Item Type Name</th>
-                        <th>Item Group</th>
-                        <th>Status</th>
-                        <th>Edit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentItems.map((type) => (
-                        <tr key={type.itemTypeId}>
-                          <td>{type.itemTypeCode}</td>
-                          <td>{type.itemTypeName}</td>
-                          <td>{type.itemGroup}</td> {/* ✅ FIXED */}
-                          <td>
-                            <div className="form-check form-switch">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                checked={type.status === "y"}
-                                onChange={() =>
-                                  handleSwitchChange(type.itemTypeId, type.status === "y" ? "n" : "y")
-                                }
-                              />
-                              <label className="form-check-label">
-                                {type.status === "y" ? "Active" : "Deactivated"}
-                              </label>
-                            </div>
-                          </td>
-                          <td>
-                            <button
-                              className="btn btn-sm btn-success"
-                              onClick={() => handleEdit(type)}
-                              disabled={type.status !== "y"}
-                            >
-                              <i className="fa fa-pencil"></i>
-                            </button>
-                          </td>
+                <>
+                  <div className="table-responsive packagelist">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Item Type Code</th>
+                          <th>Item Type Name</th>
+                          <th>Item Group</th>
+                          <th>Status</th>
+                          <th>Edit</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((type) => (
+                            <tr key={type.itemTypeId}>
+                              <td>{type.itemTypeCode}</td>
+                              <td>{type.itemTypeName}</td>
+                              <td>{type.itemGroup}</td> {/* ✅ FIXED */}
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={type.status === "y"}
+                                    onChange={() =>
+                                      handleSwitchChange(type.itemTypeId, type.status === "y" ? "n" : "y")
+                                    }
+                                  />
+                                  <label className="form-check-label">
+                                    {type.status === "y" ? "Active" : "Deactivated"}
+                                  </label>
+                                </div>
+                              </td>
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-success"
+                                  onClick={() => handleEdit(type)}
+                                  disabled={type.status !== "y"}
+                                >
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={5} className="text-center">
+                              No item types found
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {/* PAGINATION USING REUSABLE COMPONENT */}
+                  {filteredItemTypes.length > 0 && (
+                    <Pagination
+                      totalItems={filteredItemTypes.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  )}
+                </>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
-                  <div className="d-flex justify-content-end">
-                    <button className="btn btn-secondary" onClick={() => setShowForm(false)}>
-                      <i className="mdi mdi-arrow-left"></i> Back
-                    </button>
-                  </div>
-
                   <div className="form-group col-md-4">
                     <label>Item Type Code *</label>
                     <input
@@ -448,46 +441,6 @@ const ItemTypeManagement = () => {
                   </div>
                 </div>
               )}
-
-              <nav className="d-flex justify-content-between mt-3">
-                <span>
-                  Page {currentPage} of {filteredTotalPages} | Total: {filteredItemTypes.length}
-                </span>
-                <ul className="pagination mb-0">
-                  <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                    >
-                      Previous
-                    </button>
-                  </li>
-                  {renderPagination()}
-                  <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === filteredTotalPages}
-                    >
-                      Next
-                    </button>
-                  </li>
-                </ul>
-
-                <div className="d-flex align-items-center">
-                  <input
-                    type="number"
-                    className="form-control form-control-sm me-2"
-                    placeholder="Go to"
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                  />
-                  <button className="btn btn-sm btn-primary" onClick={handlePageNavigation}>
-                    Go
-                  </button>
-                </div>
-              </nav>
             </div>
           </div>
         </div>

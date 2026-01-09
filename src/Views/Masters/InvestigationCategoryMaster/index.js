@@ -4,6 +4,7 @@ import { DG_MAS_INVESTIGATION_CATEGORY } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import { ADD_INV_CATEGORY_SUCC_MSG, DUPLICATE_INV_CATEGORY, FAIL_TO_SAVE_CHANGES, FETCH_INV_CATEGORY_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_INV_CATEGORY_SUCC_MSG } from "../../../config/constants";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
 const InvestigationCategory = () => {
   const [categories, setCategories] = useState([]);
@@ -18,7 +19,7 @@ const InvestigationCategory = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const itemsPerPage = 5;
+  const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
   const CATEGORY_NAME_MAX_LENGTH = 30;
 
@@ -51,11 +52,12 @@ const InvestigationCategory = () => {
       category.categoryName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredTotalPages = Math.ceil(filteredCategories.length / itemsPerPage);
-  const currentItems = filteredCategories.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const indexOfLastItem = currentPage * itemsPerPage;
+   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+   const currentItems = filteredCategories.slice(
+    indexOfFirstItem,
+    indexOfLastItem
+);
 
   const handleEdit = (category) => {
     setEditingCategory(category);
@@ -146,20 +148,7 @@ const InvestigationCategory = () => {
     fetchCategories();
   };
 
-  const handlePageNavigation = () => {
-    const pageNumber = parseInt(pageInput, 10);
-    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-      setCurrentPage(pageNumber);
-      setPageInput("");
-    } else {
-      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
-    }
-  };
-
-  if (isLoading) {
-    return <LoadingScreen />;
-  }
-
+  
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -256,67 +245,12 @@ const InvestigationCategory = () => {
                   </table>
                   
                   {filteredCategories.length > 0 && (
-                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                      <div>
-                        <span>
-                          Page {currentPage} of {filteredTotalPages} | Total Records: {filteredCategories.length}
-                        </span>
-                      </div>
-                      
-                      <ul className="pagination mb-0">
-                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                          <button
-                            className="page-link"
-                            onClick={() => setCurrentPage(currentPage - 1)}
-                            disabled={currentPage === 1}
-                          >
-                            &laquo; Previous
-                          </button>
-                        </li>
-                        
-                        {[...Array(filteredTotalPages)].map((_, index) => (
-                          <li
-                            className={`page-item ${currentPage === index + 1 ? "active" : ""}`}
-                            key={index}
-                          >
-                            <button 
-                              className="page-link" 
-                              onClick={() => setCurrentPage(index + 1)}
-                            >
-                              {index + 1}
-                            </button>
-                          </li>
-                        ))}
-                        
-                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                          <button
-                            className="page-link"
-                            onClick={() => setCurrentPage(currentPage + 1)}
-                            disabled={currentPage === filteredTotalPages}
-                          >
-                            Next &raquo;
-                          </button>
-                        </li>
-                      </ul>
-                      
-                      <div className="d-flex align-items-center">
-                        <input
-                          type="number"
-                          min="1"
-                          max={filteredTotalPages}
-                          value={pageInput}
-                          onChange={(e) => setPageInput(e.target.value)}
-                          placeholder="Go to page"
-                          className="form-control me-2"
-                        />
-                        <button
-                          className="btn btn-primary"
-                          onClick={handlePageNavigation}
-                        >
-                          Go
-                        </button>
-                      </div>
-                    </nav>
+                   <Pagination
+                                     totalItems={filteredCategories.length}
+                                     itemsPerPage={itemsPerPage}
+                                     currentPage={currentPage}
+                                     onPageChange={setCurrentPage}
+                                   />
                   )}
                 </div>
               ) : (

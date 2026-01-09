@@ -151,6 +151,10 @@ const validRoutes = [
   "/LabReports",
   "/InvestigationRegister",
   "/TATReport",
+  "/ResultAmendmentReport",
+  "/EntMasTonsilGrade",
+  "/ReceivingReport",
+  "/ReturnRegister",
   
 ];
 

@@ -14,6 +14,7 @@ import {
   DG_MAS_INVESTIGATION_METHODOLOGY,
 } from "../../../config/apiConfig"
 import { ADD_INV_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DROP_DOWN_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, MISSING_MANDOTORY_FIELD_MSG, SELECT_INV_ERR_MSG, UPDATE_INV_SUCC_MSG } from "../../../config/constants"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
 // Import the Preparation Modal component
 import MasPreparationModel from "./Masprep/masprep"
@@ -73,8 +74,6 @@ const InvestigationMaster = () => {
     methodologies:[],
   })
   const [popupMessage, setPopupMessage] = useState(null)
-
-  const itemsPerPage = 5
 
   const navigate = useNavigate()
 
@@ -184,8 +183,11 @@ const InvestigationMaster = () => {
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
-    setCurrentPage(1)
   }
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
 
   const handleRefresh = () => {
     setSearchQuery("")
@@ -568,58 +570,9 @@ const InvestigationMaster = () => {
       item.uomName?.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
-  const filteredTotalPages = Math.ceil(filteredInvestigations.length / itemsPerPage)
-  const totalFilteredItems = filteredInvestigations.length
-
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredInvestigations.slice(indexOfFirstItem, indexOfLastItem);
-
-  const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(currentPage, 10);
-    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-      setCurrentPage(pageNumber);
-    } else {
-      showPopup(INVALID_PAGE_NO_WARN_MSG, "warning")
-    }
-  }
-
-  const renderPagination = () => {
-    const pageNumbers = []
-    const maxVisiblePages = 5
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1)
-
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1)
-    }
-
-    if (startPage > 1) {
-      pageNumbers.push(1)
-      if (startPage > 2) pageNumbers.push("...")
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i)
-    }
-
-    if (endPage < filteredTotalPages) {
-      if (endPage < filteredTotalPages - 1) pageNumbers.push("...")
-      pageNumbers.push(filteredTotalPages)
-    }
-
-    return pageNumbers.map((number, index) => (
-      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-        {typeof number === "number" ? (
-          <button className="page-link" onClick={() => setCurrentPage(number)}>
-            {number}
-          </button>
-        ) : (
-          <span className="page-link disabled">{number}</span>
-        )}
-      </li>
-    ))
-  }
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredInvestigations.slice(indexOfFirst, indexOfLast);
 
   if (loading && investigations.length === 0) {
     return <LoadingScreen message="Loading investigation data..." />
@@ -641,7 +594,7 @@ const InvestigationMaster = () => {
                     <input
                       type="search"
                       className="form-control"
-                      placeholder="Search"
+                      placeholder="Search "
                       aria-label="Search"
                       value={searchQuery}
                       onChange={handleSearchChange}
@@ -731,6 +684,8 @@ const InvestigationMaster = () => {
                   </tbody>
                 </table>
               </div>
+
+             
 
               {/* Form Section */}
               <div className="row mb-3 mt-3">
@@ -1188,51 +1143,14 @@ const InvestigationMaster = () => {
                 </div>
               )}
 
-              {/* Pagination */}
+               {/* PAGINATION USING REUSABLE COMPONENT */}
               {filteredInvestigations.length > 0 && (
-                <nav className="d-flex justify-content-between align-items-center mt-2">
-                  <div>
-                    <span>
-                      Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredItems}
-                    </span>
-                  </div>
-                  <ul className="pagination mb-0">
-                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                      <button
-                        className="page-link"
-                        onClick={() => setCurrentPage(currentPage - 1)}
-                        disabled={currentPage === 1}
-                      >
-                        &laquo; Previous
-                      </button>
-                    </li>
-                    {renderPagination()}
-                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                      <button
-                        className="page-link"
-                        onClick={() => setCurrentPage(currentPage + 1)}
-                        disabled={currentPage === filteredTotalPages}
-                      >
-                        Next &raquo;
-                      </button>
-                    </li>
-                  </ul>
-                  <div className="d-flex align-items-center">
-                    <input
-                      type="number"
-                      min="1"
-                      max={filteredTotalPages}
-                      value={currentPage}
-                      onChange={(e) => setCurrentPage(e.target.value)}
-                      placeholder="Go to page"
-                      className="form-control me-2"
-                      style={{ width: '100px' }}
-                    />
-                    <button className="btn btn-primary" onClick={handlePageNavigation}>
-                      Go
-                    </button>
-                  </div>
-                </nav>
+                <Pagination
+                  totalItems={filteredInvestigations.length}
+                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
               )}
             </div>
           </div>

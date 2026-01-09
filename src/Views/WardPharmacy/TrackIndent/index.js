@@ -1,5 +1,6 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import LoadingScreen from "../../../Components/Loading"
+import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
 
 const TrackIndent = () => {
   const [currentView, setCurrentView] = useState("list")
@@ -12,9 +13,13 @@ const TrackIndent = () => {
   const [filteredIndentData, setFilteredIndentData] = useState([])
   const [showReceivedQtyPopup, setShowReceivedQtyPopup] = useState(false)
   const [selectedItemForPopup, setSelectedItemForPopup] = useState(null)
-  const [loading , setLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [departments, setDepartments] = useState([])
+  const [selectedDepartment, setSelectedDepartment] = useState("")
+  const [userRole, setUserRole] = useState("") // "admin" or "department_user"
+  const [userDepartment, setUserDepartment] = useState("") // For department users
 
-  // Mock data based on images
+  // Mock data based on images - updated with more fields
   const mockIndentData = [
     {
       indentId: 1,
@@ -22,6 +27,11 @@ const TrackIndent = () => {
       indentNo: "00207762025",
       createdBy: "Rahul Dev",
       requestedDepartment: "Pharmacy Department",
+      department: "Pharmacy Department",
+      approvedDate: "2025-11-19",
+      issuedDate: "2025-11-20",
+      receivedDate: "2025-11-21",
+      returnDate: null,
       status: "Received",
       items: [
         {
@@ -71,7 +81,12 @@ const TrackIndent = () => {
       indentNo: "00207652025",
       createdBy: "Rahul Dev",
       requestedDepartment: "Pharmacy Department",
-      status: "Received",
+      department: "Pharmacy Department",
+      approvedDate: "2025-11-19",
+      issuedDate: "2025-11-20",
+      receivedDate: null,
+      returnDate: null,
+      status: "Issued",
       items: [],
     },
     {
@@ -79,8 +94,13 @@ const TrackIndent = () => {
       indentDate: "2025-11-17",
       indentNo: "00207432025",
       createdBy: "Rahul Dev",
-      requestedDepartment: "Pharmacy Department",
-      status: "Received",
+      requestedDepartment: "Dispensary",
+      department: "Dispensary",
+      approvedDate: "2025-11-18",
+      issuedDate: null,
+      receivedDate: null,
+      returnDate: "2025-11-19",
+      status: "Returned",
       items: [],
     },
     {
@@ -88,8 +108,13 @@ const TrackIndent = () => {
       indentDate: "2025-11-15",
       indentNo: "00207002025",
       createdBy: "Rahul Dev",
-      requestedDepartment: "Pharmacy Department",
-      status: "Received",
+      requestedDepartment: "Laboratory",
+      department: "Laboratory",
+      approvedDate: "2025-11-16",
+      issuedDate: null,
+      receivedDate: null,
+      returnDate: null,
+      status: "Approved",
       items: [],
     },
     {
@@ -97,44 +122,123 @@ const TrackIndent = () => {
       indentDate: "2025-11-14",
       indentNo: "00206832025",
       createdBy: "Rahul Dev",
-      requestedDepartment: "Pharmacy Department",
-      status: "Received",
+      requestedDepartment: "Radiology",
+      department: "Radiology",
+      approvedDate: null,
+      issuedDate: null,
+      receivedDate: null,
+      returnDate: null,
+      status: "Pending",
       items: [],
     },
   ]
 
-  useState(() => {
+  // Mock departments data
+  const mockDepartments = [
+    "Pharmacy Department",
+    "Dispensary",
+    "Laboratory",
+    "Radiology",
+    "ICU",
+    "OPD",
+    "Emergency"
+  ]
+
+  // Initialize component - simulate user login
+  useEffect(() => {
+    // In real app, this would come from authentication/context
+    // For demo, we'll simulate both scenarios
+    const simulatedUserRole = "admin" // Change to "department_user" for department view
+    const simulatedUserDepartment = "Dispensary"
+    
+    setUserRole(simulatedUserRole)
+    setUserDepartment(simulatedUserDepartment)
+    
+    if (simulatedUserRole === "department_user") {
+      setSelectedDepartment(simulatedUserDepartment)
+    }
+    
+    setDepartments(mockDepartments)
     setIndentData(mockIndentData)
-    setFilteredIndentData(mockIndentData)
+    
+    // Filter data based on user role
+    if (simulatedUserRole === "department_user") {
+      const filtered = mockIndentData.filter(item => 
+        item.department === simulatedUserDepartment
+      )
+      setFilteredIndentData(filtered)
+    } else {
+      setFilteredIndentData(mockIndentData)
+    }
   }, [])
 
   const handleSearch = () => {
     if (!fromDate || !toDate) {
-      setFilteredIndentData(indentData)
-      setLoading(false)
+      // Validate date range (not more than 1 year)
+      alert("Please select both From Date and To Date")
       return
     }
+    
     const from = new Date(fromDate)
     const to = new Date(toDate)
-
-    const filtered = indentData.filter((item) => {
+    
+    // Validate date range not more than 1 year
+    const oneYearAgo = new Date()
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+    
+    if (from < oneYearAgo) {
+      alert("Date range cannot be more than 1 year from current date")
+      return
+    }
+    
+    const diffTime = Math.abs(to - from)
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    if (diffDays > 365) {
+      alert("Date range cannot be more than 1 year")
+      return
+    }
+    
+    setLoading(true)
+    
+    let filtered = indentData
+    
+    // Filter by department if selected
+    if (selectedDepartment) {
+      filtered = filtered.filter(item => item.department === selectedDepartment)
+    }
+    
+    // Filter by date range
+    filtered = filtered.filter((item) => {
       const itemDate = new Date(item.indentDate)
       return itemDate >= from && itemDate <= to
     })
-    setFilteredIndentData(filtered)
-    setCurrentPage(1)
+    
+    setTimeout(() => {
+      setFilteredIndentData(filtered)
+      setCurrentPage(1)
+      setLoading(false)
+    }, 300)
   }
 
   const handleShowAll = () => {
     setFromDate("")
     setToDate("")
-    setFilteredIndentData(indentData)
+    
+    let filtered = indentData
+    if (userRole === "department_user") {
+      filtered = filtered.filter(item => item.department === userDepartment)
+    } else if (selectedDepartment) {
+      filtered = filtered.filter(item => item.department === selectedDepartment)
+    }
+    
+    setFilteredIndentData(filtered)
   }
 
   const handleRowClick = (record, e) => {
     e.stopPropagation()
     setSelectedIndent(record)
-    setLoading(true);
+    setLoading(true)
     setCurrentView("detail")
     setTimeout(() => setLoading(false), 300)
   }
@@ -154,73 +258,55 @@ const TrackIndent = () => {
     setSelectedItemForPopup(null)
   }
 
-
-
-  const handleIndentReport = () => {
-    console.log("Generating Indent Report for:", selectedIndent)
-    alert("Indent Report generated successfully!")
+  const handleIndentReport = (indentNo) => {
+    console.log("Generating Indent Report for:", indentNo)
+    alert(`Indent Report generated successfully for ${indentNo}!`)
   }
 
-  const handleIssueReport = () => {
-    console.log("Generating Issue Report for:", selectedIndent)
-    alert("Issue Report generated successfully!")
+  const handleIssueReport = (indentNo) => {
+    console.log("Generating Issue Report for:", indentNo)
+    alert(`Issue Report generated successfully for ${indentNo}!`)
   }
 
-  const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10)
-    if (pageNumber > 0 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber)
-    } else {
-      alert("Please enter a valid page number.")
+  const handleReceivingReport = (indentNo) => {
+    console.log("Generating Receiving Report for:", indentNo)
+    alert(`Receiving Report generated successfully for ${indentNo}!`)
+  }
+
+  const handleReturnReport = (indentNo) => {
+    console.log("Generating Return Report for:", indentNo)
+    alert(`Return Report generated successfully for ${indentNo}!`)
+  }
+
+  
+
+  const handleDepartmentChange = (dept) => {
+    setSelectedDepartment(dept)
+    setCurrentPage(1)
+    
+    let filtered = indentData
+    if (dept) {
+      filtered = filtered.filter(item => item.department === dept)
     }
+    setFilteredIndentData(filtered)
   }
 
   const itemsPerPage = 5
-  const currentItems = filteredIndentData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredIndentData.slice(indexOfFirst, indexOfLast);
   const totalPages = Math.ceil(filteredIndentData.length / itemsPerPage)
 
-
-  const renderPagination = () => {
-    const pageNumbers = []
-    const maxVisiblePages = 5
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1)
-
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1)
-    }
-
-    if (startPage > 1) {
-      pageNumbers.push(1)
-      if (startPage > 2) pageNumbers.push("...")
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i)
-    }
-
-    if (endPage < totalPages) {
-      if (endPage < totalPages - 1) pageNumbers.push("...")
-      pageNumbers.push(totalPages)
-    }
-
-    return pageNumbers.map((number, index) => (
-      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-        {typeof number === "number" ? (
-          <button className="page-link" onClick={() => setCurrentPage(number)}>
-            {number}
-          </button>
-        ) : (
-          <span className="page-link disabled">{number}</span>
-        )}
-      </li>
-    ))
-  }
-
+ 
   const formatDate = (dateStr) => {
-    if (!dateStr) return ""
+    if (!dateStr) return "-"
     return dateStr.split("T")[0]
   }
+
+  // Check if report buttons should be enabled for a given indent
+  const canShowIssueReport = (indent) => indent.issuedDate !== null
+  const canShowReceivingReport = (indent) => indent.receivedDate !== null
+  const canShowReturnReport = (indent) => indent.returnDate !== null
 
   if (currentView === "detail") {
     return (
@@ -243,7 +329,6 @@ const TrackIndent = () => {
                       type="text"
                       className="form-control"
                       value={selectedIndent?.indentNo || ""}
-                      style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
                   </div>
@@ -257,7 +342,6 @@ const TrackIndent = () => {
                           ? new Date(selectedIndent.indentDate).toLocaleDateString("en-GB")
                           : ""
                       }
-                      style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
                   </div>
@@ -267,7 +351,6 @@ const TrackIndent = () => {
                       type="text"
                       className="form-control"
                       value={selectedIndent?.createdBy || ""}
-                      style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
                   </div>
@@ -277,7 +360,6 @@ const TrackIndent = () => {
                       type="text"
                       className="form-control"
                       value={selectedIndent?.requestedDepartment || ""}
-                      style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
                   </div>
@@ -290,48 +372,34 @@ const TrackIndent = () => {
                       type="text"
                       className="form-control"
                       value={selectedIndent?.approvedBy || ""}
-                      style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
                   </div>
                 </div>
 
-
-                <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
+                <div className="table-responsive">
                   <table className="table table-bordered table-hover align-middle" >
-                    <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
-                    <tr>
-  {/* BIG column */}
-  <th style={{ width: "400px", minWidth: "350px" }}>
-    Drug Name / Drug Code
-  </th>
-
-  {/* VERY SMALL column */}
-  <th style={{ width: "60px", minWidth: "50px", textAlign: "center" }}>
-    A/U
-  </th>
-
-  {/* SMALL column */}
-  <th style={{ width: "80px", minWidth: "70px", textAlign: "center" }}>
-    Qty Requested
-  </th>
-
-  {/* SMALL column */}
-  <th style={{ width: "80px", minWidth: "70px", textAlign: "center" }}>
-    Approved Qty
-  </th>
-
-  {/* SMALL column */}
-  <th style={{ width: "80px", minWidth: "70px", textAlign: "center" }}>
-    Received Qty
-  </th>
-
-  {/* LARGE column (unchanged) */}
-  <th style={{ width: "250px", minWidth: "250px" }}>
-    Reason for Indent
-  </th>
-</tr>
-
+                    <thead>
+                      <tr>
+                        <th>
+                          Drug Name / Drug Code
+                        </th>
+                        <th>
+                          A/U
+                        </th>
+                        <th>
+                          Qty Requested
+                        </th>
+                        <th>
+                          Approved Qty
+                        </th>
+                        <th>
+                          Received Qty
+                        </th>
+                        <th>
+                          Reason for Indent
+                        </th>
+                      </tr>
                     </thead>
                     <tbody>
                       {selectedIndent?.items && selectedIndent.items.length > 0 ? (
@@ -342,7 +410,6 @@ const TrackIndent = () => {
                                 type="text"
                                 className="form-control form-control-sm"
                                 value={item.drugName}
-                                style={{  backgroundColor: "#e9ecef" }}
                                 readOnly
                               />
                             </td>
@@ -351,7 +418,6 @@ const TrackIndent = () => {
                                 type="text"
                                 className="form-control form-control-sm"
                                 value={item.apu}
-                                style={{ backgroundColor: "#e9ecef" }}
                                 readOnly
                               />
                             </td>
@@ -360,7 +426,6 @@ const TrackIndent = () => {
                                 type="number"
                                 className="form-control form-control-sm"
                                 value={item.qtyRequested}
-                                style={{ backgroundColor: "#e9ecef" }}
                                 readOnly
                               />
                             </td>
@@ -369,7 +434,6 @@ const TrackIndent = () => {
                                 type="number"
                                 className="form-control form-control-sm"
                                 value={item.approvedQty}
-                                style={{  backgroundColor: "#e9ecef" }}
                                 readOnly
                               />
                             </td>
@@ -379,12 +443,6 @@ const TrackIndent = () => {
                                 className="form-control form-control-sm"
                                 value={item.receivedQty}
                                 onClick={() => handleReceivedQtyClick(item)}
-                                style={{
-                                  color: "#0066cc",
-                                  fontWeight: "600",
-                                  cursor: "pointer",
-                                  backgroundColor: "#fff",
-                                }}
                                 readOnly
                               />
                             </td>
@@ -392,7 +450,6 @@ const TrackIndent = () => {
                               <textarea
                                 className="form-control form-control-sm"
                                 value={item.reasonForIndent}
-                                style={{  minHeight: "40px", backgroundColor: "#e9ecef" }}
                                 readOnly
                               />
                             </td>
@@ -410,10 +467,10 @@ const TrackIndent = () => {
                 </div>
 
                 <div className="d-flex justify-content-end gap-2 mt-4">
-                  <button type="button" className="btn btn-primary" onClick={handleIndentReport}>
+                  <button type="button" className="btn btn-primary" onClick={() => handleIndentReport(selectedIndent?.indentNo)}>
                     Indent Report
                   </button>
-                  <button type="button" className="btn btn-primary" onClick={handleIssueReport}>
+                  <button type="button" className="btn btn-primary" onClick={() => handleIssueReport(selectedIndent?.indentNo)}>
                     Issue Report
                   </button>
                   <button type="button" className="btn btn-danger" onClick={handleBackToList}>
@@ -429,7 +486,6 @@ const TrackIndent = () => {
         {showReceivedQtyPopup && selectedItemForPopup && (
           <div
             className="modal show d-block"
-            style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
             onClick={handleClosePopup}
           >
             <div
@@ -437,7 +493,7 @@ const TrackIndent = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="modal-content">
-                <div className="modal-header" >
+                <div className="modal-header">
                   <h5 className="modal-title fw-bold">Received Quantity Details</h5>
                   <button type="button" className="btn-close" onClick={handleClosePopup}></button>
                 </div>
@@ -449,7 +505,6 @@ const TrackIndent = () => {
                       className="form-control"
                       value={selectedItemForPopup.drugName}
                       readOnly
-                      style={{ backgroundColor: "#e9ecef" }}
                     />
                   </div>
 
@@ -472,7 +527,6 @@ const TrackIndent = () => {
                                   className="form-control form-control-sm"
                                   value={batch.batchNo}
                                   readOnly
-                                  style={{ backgroundColor: "#e9ecef" }}
                                 />
                               </td>
                               <td>
@@ -481,7 +535,6 @@ const TrackIndent = () => {
                                   className="form-control form-control-sm"
                                   value={batch.expiryDate}
                                   readOnly
-                                  style={{ backgroundColor: "#e9ecef" }}
                                 />
                               </td>
                               <td>
@@ -490,7 +543,6 @@ const TrackIndent = () => {
                                   className="form-control form-control-sm"
                                   value={batch.qty}
                                   readOnly
-                                  style={{ backgroundColor: "#e9ecef" }}
                                 />
                               </td>
                             </tr>
@@ -513,7 +565,6 @@ const TrackIndent = () => {
                       className="form-control"
                       value={selectedItemForPopup.receivedQty}
                       readOnly
-                      style={{ backgroundColor: "#e9ecef", fontWeight: "600", color: "#0066cc" }}
                     />
                   </div>
                 </div>
@@ -542,6 +593,30 @@ const TrackIndent = () => {
             </div>
             <div className="card-body">
               <div className="row mb-4">
+                {/* Department Dropdown - Show for admin, auto-selected for department user */}
+                <div className="col-md-3">
+                  <label className="form-label fw-bold">Department</label>
+                  {userRole === "admin" ? (
+                    <select
+                      className="form-select"
+                      value={selectedDepartment}
+                      onChange={(e) => handleDepartmentChange(e.target.value)}
+                    >
+                      <option value="">All Departments</option>
+                      {departments.map((dept, index) => (
+                        <option key={index} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={userDepartment}
+                      readOnly
+                    />
+                  )}
+                </div>
+                
                 <div className="col-md-2">
                   <label className="form-label fw-bold">From Date</label>
                   <input
@@ -550,6 +625,7 @@ const TrackIndent = () => {
                     value={fromDate}
                     onChange={(e) => setFromDate(e.target.value)}
                     placeholder="DD/MM/YYYY"
+                    max={new Date().toISOString().split('T')[0]}
                   />
                 </div>
                 <div className="col-md-2">
@@ -560,48 +636,117 @@ const TrackIndent = () => {
                     value={toDate}
                     onChange={(e) => setToDate(e.target.value)}
                     placeholder="DD/MM/YYYY"
+                    max={new Date().toISOString().split('T')[0]}
                   />
                 </div>
                 <div className="col-md-2 d-flex align-items-end">
                   <button type="button" className="btn btn-primary me-2" onClick={handleSearch}>
                     Search
                   </button>
+                 
                 </div>
-                <div className="col-md-6 d-flex justify-content-end align-items-end">
-                  <button type="button" className="btn btn-primary" onClick={handleShowAll}>
+                
+                <div className="col-md-3 d-flex justify-content-end align-items-end">
+                  {/* Global report buttons removed as per requirement - now each row has its own report buttons */}
+                   <button type="button" className="btn btn-secondary" onClick={handleShowAll}>
                     Show All
                   </button>
                 </div>
               </div>
 
-              <div className="mb-3">
-                <span className="fw-bold">{filteredIndentData.length} matches</span>
-              </div>
-
+            
               <div className="table-responsive">
                 <table className="table table-bordered table-hover align-middle">
-                  <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
+                  <thead>
                     <tr>
                       <th>Indent Date</th>
                       <th>Indent No</th>
-                      <th>Created By</th>
+                      <th>Department</th>
+                      <th>Approved Date</th>
+                      <th>Issued Date</th>
                       <th>Status</th>
+                      <th>Indent Report</th>
+                      <th>Issue Report</th>
+                      <th>Receiving Report</th>
+                      <th>Return Report</th>
                     </tr>
                   </thead>
                   <tbody>
                     {currentItems.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="text-center">
+                        <td colSpan={10} className="text-center">
                           No records found.
                         </td>
                       </tr>
                     ) : (
                       currentItems.map((item) => (
-                        <tr key={item.indentId} onClick={(e) => handleRowClick(item, e)} style={{ cursor: "pointer" }}>
-                          <td>{formatDate(item.indentDate)}</td>
-                          <td>{item.indentNo}</td>
-                          <td>{item.createdBy}</td>
-                          <td>{item.status}</td>
+                        <tr key={item.indentId}>
+                          <td onClick={(e) => handleRowClick(item, e)}>
+                            {formatDate(item.indentDate)}
+                          </td>
+                          <td onClick={(e) => handleRowClick(item, e)}>
+                            {item.indentNo}
+                          </td>
+                          <td onClick={(e) => handleRowClick(item, e)}>
+                            {item.department}
+                          </td>
+                          <td onClick={(e) => handleRowClick(item, e)}>
+                            {formatDate(item.approvedDate)}
+                          </td>
+                          <td onClick={(e) => handleRowClick(item, e)}>
+                            {formatDate(item.issuedDate)}
+                          </td>
+                          <td onClick={(e) => handleRowClick(item, e)}>
+                            {item.status}
+                          </td>
+                          <td>
+                            <button 
+                              type="button" 
+                              className="btn btn-success btn-sm text-nowrap"
+                              onClick={() => handleIndentReport(item.indentNo)}
+                            >
+                              Indent Report
+                            </button>
+                          </td>
+                          <td>
+                            {canShowIssueReport(item) ? (
+                              <button 
+                                type="button" 
+                                className="btn btn-success btn-sm"
+                                onClick={() => handleIssueReport(item.indentNo)}
+                              >
+                                Issue Report
+                              </button>
+                            ) : (
+                              <span className="text-muted">N/A</span>
+                            )}
+                          </td>
+                          <td>
+                            {canShowReceivingReport(item) ? (
+                              <button 
+                                type="button" 
+                                className="btn btn-success btn-sm text-nowrap"
+                                onClick={() => handleReceivingReport(item.indentNo)}
+                              >
+                                Receiving Report
+                              </button>
+                            ) : (
+                              <span className="text-muted">N/A</span>
+                            )}
+                          </td>
+                          <td>
+                            {canShowReturnReport(item) ? (
+                              <button 
+                                type="button" 
+                                className="btn btn-success btn-sm text-nowrap"
+                                onClick={() => handleReturnReport(item.indentNo)}
+                              >
+                                Return Report
+                              </button>
+                            ) : (
+                              <span className="text-muted">N/A</span>
+                            )}
+                          </td>
                         </tr>
                       ))
                     )}
@@ -609,29 +754,12 @@ const TrackIndent = () => {
                 </table>
               </div>
 
-              <nav className="d-flex justify-content-between align-items-center mt-2">
-                <div>
-                  <span>
-                    Page {currentPage} of {totalPages} | Total Records: {filteredIndentData.length}
-                  </span>
-                </div>
-                <ul className="pagination mb-0">{renderPagination()}</ul>
-                <div className="d-flex align-items-center">
-                  <input
-                    type="number"
-                    min="1"
-                    max={totalPages}
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                    placeholder="Go to page"
-                    className="form-control me-2"
-                    style={{ width: "120px" }}
-                  />
-                  <button className="btn btn-primary" onClick={handlePageNavigation}>
-                    Go
-                  </button>
-                </div>
-              </nav>
+             <Pagination
+                                            totalItems={filteredIndentData.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
             </div>
           </div>
         </div>

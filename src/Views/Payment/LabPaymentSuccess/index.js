@@ -1,25 +1,31 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { ALL_REPORTS } from "../../../config/apiConfig";
+import { useState } from "react";
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
+
 const LabPaymentSuccess = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   const { amount = 0, paymentResponse } = location.state || {};
   const billNo = paymentResponse?.response?.billNo;
   const paymentStatus = paymentResponse?.response?.paymentStatus;
 
-  const handleDownloadReceipt = async () => {
+  const generateLabReport = async (flag = "d") => {
     if (!billNo || !paymentStatus) {
-      console.error("Missing bill number or payment status for receipt download.");
+      alert("Missing bill number or payment status for generating report");
       return;
     }
-
+    
+    setIsGeneratingPDF(true);
+    setPdfUrl(null);
+    
     try {
-      // ✅ Use exactly the returned status from backend!
-      const url = `${ALL_REPORTS}/labReport?billNo=${encodeURIComponent(billNo)}&paymentStatus=${paymentStatus}`;
-
-      console.log("Download URL:", url);
-
+      const url = `${ALL_REPORTS}/labReport?billNo=${encodeURIComponent(billNo)}&paymentStatus=${encodeURIComponent(paymentStatus)}&flag=${flag}`;
+      
       const response = await fetch(url, {
         method: "GET",
         headers: {
@@ -28,25 +34,55 @@ const LabPaymentSuccess = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to download receipt.");
+        throw new Error("Failed to generate PDF");
       }
 
       const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = `LabReceipt_${billNo}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(downloadUrl);
+      const fileURL = window.URL.createObjectURL(blob);
+      setPdfUrl(fileURL);
+      
     } catch (error) {
-      console.error(error);
-      alert("Failed to download receipt.");
+      console.error("Error generating PDF", error);
+      alert("Failed to generate receipt");
+    } finally {
+      setIsGeneratingPDF(false);
     }
   };
 
+  const handlePrint = async () => {
+    if (!billNo || !paymentStatus) {
+      alert("Missing bill number or payment status for printing");
+      return;
+    }
+    
+    setIsPrinting(true);
+    
+    try {
+      const url = `${ALL_REPORTS}/labReport?billNo=${encodeURIComponent(billNo)}&paymentStatus=${encodeURIComponent(paymentStatus)}&flag=p`;
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
+      
+      if (response.status === 200) {
+        // alert("Receipt sent to printer successfully!");
+      } else {
+        alert("Failed to print receipt");
+      }
+    } catch (error) {
+      console.error("Error printing receipt", error);
+      alert("Failed to print receipt");
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  const handleViewDownload = () => {
+    generateLabReport("d");
+  };
 
   const handleBackToRegistration = () => {
     navigate("/labregistration");
@@ -76,16 +112,13 @@ const LabPaymentSuccess = () => {
                   Your payment of ₹{amount.toFixed(2)} has been processed successfully.
                 </p>
 
-                <div className="  p-3 rounded mb-4">
+                <div className="p-3 rounded mb-4">
                   <h5 className="mb-3">Payment Details</h5>
                   <div className="row justify-content-center">
                     <div className="col-sm-6">
-                      {/* <p className="mb-2">
+                      <p className="mb-2">
                         <strong>Bill No:</strong> {billNo || "N/A"}
-                      </p> */}
-                      {/* <p className="mb-2">
-                        <strong>Payment Status:</strong> {paymentStatus || "N/A"}
-                      </p> */}
+                      </p>
                       <p className="mb-2">
                         <strong>Amount Paid:</strong> ₹{amount.toFixed(2)}
                       </p>
@@ -96,10 +129,38 @@ const LabPaymentSuccess = () => {
                 <div className="d-flex justify-content-center gap-3">
                   <button
                     className="btn btn-primary d-flex align-items-center gap-2"
-                    onClick={handleDownloadReceipt}
+                    onClick={handleViewDownload}
+                    disabled={isGeneratingPDF || !billNo || !paymentStatus}
                   >
-                    Download Receipt
+                    {isGeneratingPDF ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD
+                      </>
+                    )}
                   </button>
+
+                  <button
+                    className="btn btn-warning d-flex align-items-center gap-2"
+                    onClick={handlePrint}
+                    disabled={isPrinting || !billNo || !paymentStatus}
+                  >
+                    {isPrinting ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Printing...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fa fa-print me-2"></i> PRINT
+                      </>
+                    )}
+                  </button>
+
                   <button
                     className="btn btn-secondary d-flex align-items-center gap-2"
                     onClick={handleBackToRegistration}
@@ -112,6 +173,16 @@ const LabPaymentSuccess = () => {
           </div>
         </div>
       </div>
+
+      {pdfUrl && (
+        <PdfViewer
+          pdfUrl={pdfUrl}
+          onClose={() => {
+            setPdfUrl(null);
+          }}
+          name={`Lab Receipt - ${billNo || 'Receipt'}`}
+        />
+      )}
     </div>
   );
 };

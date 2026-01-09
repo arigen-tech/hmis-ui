@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react"
 import LoadingScreen from "../../../Components/Loading"
 import { getRequest } from "../../../service/apiService"
-import { LAB } from "../../../config/apiConfig"
+import { BILLING, LAB_REPORT_API, OPD_REPORT_API } from "../../../config/apiConfig"
+import Popup from "../../../Components/popup"
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"
 
 const PatientwiseBilldatails = () => {
   const [patientList, setPatientList] = useState([])
@@ -12,47 +14,167 @@ const PatientwiseBilldatails = () => {
   const [error, setError] = useState(null)
   const itemsPerPage = 5
 
-  const fetchPendingBilling = async () => {
+  // Add state variables for PDF handling (same as LabReports)
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [popupMessage, setPopupMessage] = useState(null);
+  
+  // Track loading states for individual records
+  const [generatingPdfIds, setGeneratingPdfIds] = useState(new Set());
+  const [printingIds, setPrintingIds] = useState(new Set());
+
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+      },
+    });
+  };
+
+  const fetchBillingStatus = async () => {
     try {
       setIsLoading(true)
       setError(null)
 
-      const response = await getRequest(`${LAB}/pending`)
+      const response = await getRequest(`${BILLING}`)
 
       if (response && response.response) {
         const mappedData = response.response.map((item) => ({
-          id: item.billinghdid,
-          patientId: item.patientid,
-          patientName: item.patientName || "N/A",
-          mobileNo: item.mobileNo || "N/A",
-          age: item.age || "N/A",
-          sex: item.sex || "N/A",
-          relation: item.relation || "N/A",
-          billingType: item.billingType || "N/A",
-          consultedDoctor: item.consultedDoctor || "N/A",
-          department: item.department || "N/A",
-          amount: item.amount || 0,
-          billingStatus: item.billingStatus === "p" ? "Pending" : "Pending",
+          id: item.headerId,
+          visitId: item.visitId,
+          patientId: item.headerId,
+          patientName: item.patientName || "",
+          mobileNo: item.phoneNo || "",
+          age: item.age || "",
+          sex: item.sex || "",
+          relation: item.relation || "",
+          billingType: item.serviceCategoryName || "",
+          department: item.department || "",
+          amount: item.netAmount,
+          billingStatus: item.paymentStatus,
+          billNo: item.billNo,
+          billDate: item.billDate || "",
+          serviceCategoryId: item.serviceCategoryId || null,
           fullData: item,
         }))
 
         setPatientList(mappedData)
       }
     } catch (error) {
-      console.error("Error fetching pending billing data:", error)
+      console.error("Error fetching billing status data:", error)
       setError(error.message)
+      showPopup("Failed to fetch billing data", "error");
     } finally {
       setIsLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchPendingBilling()
+    fetchBillingStatus()
   }, [])
 
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery])
+
+  // Helper function to check if a record is generating PDF
+  const isGeneratingPdf = (recordId) => {
+    return generatingPdfIds.has(recordId);
+  };
+
+  // Helper function to check if a record is printing
+  const isPrinting = (recordId) => {
+    return printingIds.has(recordId);
+  };
+
+  // Generate PDF report based on serviceCategoryId
+  const generateReport = async (record, flag = "D") => {
+    const recordId = record.id;
+    
+    // Add this record to generating set
+    if (flag === "D") {
+      setGeneratingPdfIds(prev => new Set(prev).add(recordId));
+    } else {
+      setPrintingIds(prev => new Set(prev).add(recordId));
+    }
+    
+    setPdfUrl(null);
+    setSelectedRecord(record);
+
+    try {
+      let apiUrl = "";
+      
+      // Determine API endpoint based on serviceCategoryId
+      if (record.serviceCategoryId === 1) {
+        // OPD Report
+        apiUrl = `${OPD_REPORT_API}?visit=${record.visitId}&flag=${flag}`;
+      } else if (record.serviceCategoryId === 2) {
+        // Lab Report
+        apiUrl = `${LAB_REPORT_API}?billNo=${record.billNo}&paymentStatus=${record.billingStatus}&flag=${flag}`;
+      } else {
+        showPopup("Report type not supported for this service category", "error");
+        return;
+      }
+
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      if (flag === "D") {
+        // For download/view - create blob and URL
+        const blob = await response.blob();
+        const fileURL = window.URL.createObjectURL(blob);
+        setPdfUrl(fileURL);
+      } else {
+        // For print - just send to printer, no need to display
+        showPopup("Report sent to printer successfully!", "success");
+      }
+
+    } catch (error) {
+      console.error("Error generating PDF", error);
+      if (flag === "D") {
+        showPopup("Failed to generate report", "error");
+      } else {
+        showPopup("Failed to print report", "error");
+      }
+    } finally {
+      // Remove this record from loading sets
+      if (flag === "D") {
+        setGeneratingPdfIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(recordId);
+          return newSet;
+        });
+      } else {
+        setPrintingIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(recordId);
+          return newSet;
+        });
+      }
+    }
+  };
+
+  // View report handler
+  const handleViewReport = (record) => {
+    console.log("View report for:", record);
+    generateReport(record, "D");
+  }
+
+  // Print report handler
+  const handlePrintReport = (record) => {
+    console.log("Print report for:", record);
+    generateReport(record, "P");
+  }
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
@@ -61,16 +183,12 @@ const PatientwiseBilldatails = () => {
   const filteredPatientList = patientList.filter(
     (item) =>
       item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.mobileNo.includes(searchQuery)
+      item.mobileNo.includes(searchQuery) ||
+      item.billNo.includes(searchQuery)
   )
 
   const filteredTotalPages = Math.ceil(filteredPatientList.length / itemsPerPage)
   const currentItems = filteredPatientList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-
-  const handleViewClick = (patientData) => {
-    console.log("View clicked for:", patientData)
-    // Add view functionality here
-  }
 
   const handlePageNavigation = () => {
     const pageNumber = Number.parseInt(pageInput, 10)
@@ -78,13 +196,8 @@ const PatientwiseBilldatails = () => {
       setCurrentPage(pageNumber)
       setPageInput("")
     } else {
-      alert("Please enter a valid page number.")
+      showPopup("Please enter a valid page number.", "warning");
     }
-  }
-
-  const handlePrintClick = (patientData) => {
-    console.log("Print clicked for:", patientData)
-    // Add print functionality here
   }
 
   const renderPagination = () => {
@@ -124,12 +237,70 @@ const PatientwiseBilldatails = () => {
     ))
   }
 
+  // Format date for better display
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A"
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('en-GB')
+    } catch (error) {
+      return dateString
+    }
+  }
+
+  // Get status badge color
+  const getStatusBadgeColor = (status) => {
+    switch(status?.toLowerCase()) {
+      case 'paid':
+        return 'bg-success'
+      case 'pending':
+        return 'bg-warning'
+      case 'cancelled':
+        return 'bg-danger'
+      default:
+        return 'bg-secondary'
+    }
+  }
+
+  // Format billing type badge
+  const getBillingTypeBadge = (type) => {
+    switch(type?.toLowerCase()) {
+      case 'op':
+        return 'bg-info'
+      case 'ip':
+        return 'bg-primary'
+      default:
+        return 'bg-secondary'
+    }
+  }
+
   if (isLoading) {
     return <LoadingScreen />
   }
 
   return (
     <div className="content-wrapper">
+      {/* Popup Component */}
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
+
+      {/* PDF Viewer Component (same as LabReports) */}
+      {pdfUrl && selectedRecord && (
+        <PdfViewer
+          pdfUrl={pdfUrl}
+          onClose={() => {
+            setPdfUrl(null);
+            setSelectedRecord(null);
+          }}
+          name={`${selectedRecord?.serviceCategoryId === 1 ? 'OPD' : 'LAB'} Report - ${selectedRecord?.patientName || 'Patient'}`}
+        />
+      )}
+
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -142,7 +313,7 @@ const PatientwiseBilldatails = () => {
                       <input
                         type="search"
                         className="form-control"
-                        placeholder="Search by name or mobile"
+                        placeholder="Search by name, mobile or bill no"
                         aria-label="Search"
                         value={searchQuery}
                         onChange={handleSearchChange}
@@ -153,13 +324,20 @@ const PatientwiseBilldatails = () => {
                     </div>
                   </form>
                 )}
+                <button 
+                  className="btn btn-success me-2" 
+                  onClick={fetchBillingStatus}
+                  disabled={isLoading}
+                >
+                  <i className="mdi mdi-refresh"></i> Refresh
+                </button>
               </div>
             </div>
             <div className="card-body">
               {error && (
                 <div className="alert alert-danger" role="alert">
                   <strong>Error:</strong> {error}
-                  <button type="button" className="btn btn-sm btn-outline-danger ms-2" onClick={fetchPendingBilling}>
+                  <button type="button" className="btn btn-sm btn-outline-danger ms-2" onClick={fetchBillingStatus}>
                     Retry
                   </button>
                 </div>
@@ -167,7 +345,7 @@ const PatientwiseBilldatails = () => {
 
               {!error && filteredPatientList.length === 0 && (
                 <div className="alert alert-info" role="alert">
-                  <i className="mdi mdi-information"></i> No pending billing records found.
+                  <i className="mdi mdi-information"></i> No billing records found.
                 </div>
               )}
 
@@ -176,45 +354,69 @@ const PatientwiseBilldatails = () => {
                   <table className="table table-bordered table-hover align-middle">
                     <thead className="table-light">
                       <tr>
+                        <th>Bill No</th>
                         <th>Patient Name</th>
                         <th>Contact No.</th>
-                        <th>Age</th>
-                        <th>Sex</th>
+                        <th>Age/Sex</th>
                         <th>Relation</th>
                         <th>Department</th>
+                        <th>Bill Date</th>
                         <th>Amount</th>
                         <th>Billing Type</th>
-                        <th>Invoice</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {currentItems.map((item) => (
                         <tr key={item.id}>
+                          <td>{item.billNo}</td>
                           <td>{item.patientName}</td>
                           <td>{item.mobileNo}</td>
-                          <td>{item.age}</td>
-                          <td>{item.sex}</td>
+                          <td>{item.age}/{item.sex}</td>
                           <td>{item.relation}</td>
                           <td>{item.department}</td>
+                          <td>{formatDate(item.billDate)}</td>
                           <td>₹{typeof item.amount === "number" ? item.amount.toFixed(2) : item.amount}</td>
                           <td>
-                            <span className="badge bg-info">{item.billingType}</span>
+                            <span className={`badge ${getBillingTypeBadge(item.billingType)}`}>
+                              {item.billingType}
+                            </span>
                           </td>
                           <td>
                             <div className="d-flex gap-2">
                               <button
                                 className="btn btn-success btn-sm"
-                                onClick={() => handleViewClick(item)}
-                                title="View Details"
+                                onClick={() => handleViewReport(item)}
+                                disabled={isGeneratingPdf(item.id) || isPrinting(item.id)}
+                                title="View Report"
                               >
-                                <i className="mdi mdi-eye me-1"></i> View
+                                {isGeneratingPdf(item.id) ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    Generating...
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="mdi mdi-eye me-1"></i> View
+                                  </>
+                                )}
                               </button>
                               <button
-                                className="btn btn-success btn-sm"
-                                onClick={() => handlePrintClick(item)}
-                                title="Print Invoice"
+                                className="btn btn-primary btn-sm"
+                                onClick={() => handlePrintReport(item)}
+                                disabled={isGeneratingPdf(item.id) || isPrinting(item.id)}
+                                title="Print Report"
                               >
-                                <i className="mdi mdi-printer me-1"></i> Print
+                                {isPrinting(item.id) ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    Printing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="mdi mdi-printer me-1"></i> Print
+                                  </>
+                                )}
                               </button>
                             </div>
                           </td>

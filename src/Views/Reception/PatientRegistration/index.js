@@ -18,6 +18,7 @@ import {
   STATE_BY_COUNTRY
 } from "../../../config/apiConfig";
 import { DEPARTMENT_CODE_OPD } from "../../../config/constants";
+import DatePicker from "../../../Components/DatePicker";
 
 const PatientRegistration = () => {
   const navigate = useNavigate();
@@ -984,68 +985,68 @@ const PatientRegistration = () => {
             });
 
           } else if (resp) {
-              // Existing billing flow
-              Swal.fire({
-                title: "Patient Registered Successfully!",
-                html: `
+            // Existing billing flow
+            Swal.fire({
+              title: "Patient Registered Successfully!",
+              html: `
           <p><strong>${resp.patientName}</strong> has been registered successfully.</p>
           <p>Do you want to proceed to billing?</p>
         `,
-                icon: "success",
-                showCancelButton: true,
-                confirmButtonText: "Proceed to Billing",
-                cancelButtonText: "Close",
-                allowOutsideClick: false,
-              }).then((result) => {
-                if (result.isConfirmed) {
-                  navigate("/OPDBillingDetails", {
-                    state: {
-                      billingData: {
-                        patientUhid: patientResp.uhidNo,
-                        patientId: resp.patientid,
-                        patientName: resp.patientName,
-                        mobileNo: resp.mobileNo,
-                        age: resp.age,
-                        sex: resp.sex,
-                        relation: resp.relation,
-                        address: resp.address,
-                        appointments: resp.appointments,
-                        details: resp.details,
-                        billingHeaderIds: (resp.appointments || []).map(a => a.billingHdId),
-                        registrationCost: resp.registrationCost
-                      }
+              icon: "success",
+              showCancelButton: true,
+              confirmButtonText: "Proceed to Billing",
+              cancelButtonText: "Close",
+              allowOutsideClick: false,
+            }).then((result) => {
+              if (result.isConfirmed) {
+                navigate("/OPDBillingDetails", {
+                  state: {
+                    billingData: {
+                      patientUhid: patientResp.uhidNo,
+                      patientId: resp.patientid,
+                      patientName: resp.patientName,
+                      mobileNo: resp.mobileNo,
+                      age: resp.age,
+                      sex: resp.sex,
+                      relation: resp.relation,
+                      address: resp.address,
+                      appointments: resp.appointments,
+                      details: resp.details,
+                      billingHeaderIds: (resp.appointments || []).map(a => a.billingHdId),
+                      registrationCost: resp.registrationCost
                     }
-                  });
-                } else if (result.dismiss === Swal.DismissReason.cancel) {
-                  window.location.reload();
-                }
-              });
-
-            } else if (patientResp) {
-              // Case: no billing response but patient saved
-              const displayName =
-                patientResp.patientFn ||
-                patientResp.patientName ||
-                `${formData.firstName} ${formData.lastName}`.trim();
-
-              Swal.fire({
-                title: "Patient Registered Successfully!",
-                html: `<p><strong>${displayName || "Patient"}</strong> has been registered successfully.</p>`,
-                icon: "success",
-                confirmButtonText: "OK",
-                allowOutsideClick: false,
-              }).then(() => {
+                  }
+                });
+              } else if (result.dismiss === Swal.DismissReason.cancel) {
                 window.location.reload();
-              });
+              }
+            });
 
-            } else {
-              // Fallback
-              Swal.fire({
-                icon: "success",
-                title: "Patient Registered",
-                text: "Patient registered successfully.",
-              }).then(() => window.location.reload());
-            }
+          } else if (patientResp) {
+            // Case: no billing response but patient saved
+            const displayName =
+              patientResp.patientFn ||
+              patientResp.patientName ||
+              `${formData.firstName} ${formData.lastName}`.trim();
+
+            Swal.fire({
+              title: "Patient Registered Successfully!",
+              html: `<p><strong>${displayName || "Patient"}</strong> has been registered successfully.</p>`,
+              icon: "success",
+              confirmButtonText: "OK",
+              allowOutsideClick: false,
+            }).then(() => {
+              window.location.reload();
+            });
+
+          } else {
+            // Fallback
+            Swal.fire({
+              icon: "success",
+              title: "Patient Registered",
+              text: "Patient registered successfully.",
+            }).then(() => window.location.reload());
+          }
 
         } else {
           Swal.fire({
@@ -1141,6 +1142,55 @@ const PatientRegistration = () => {
 
     return `${years}Y ${months}M ${days}D`;
   }
+
+  const showTokenPopup = () => {
+    Swal.fire({
+      title: "Token Availability",
+      html: `
+      <div class="container-fluid">
+        <div class="text-center mb-3">
+          <h5 class="fw-bold">Available Time Slots</h5>
+        </div>
+        <div class="row">
+          <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+              <div class="card-body">
+                <h6 class="fw-bold mb-3 text-primary">Morning Session</h6>
+                <div class="d-grid gap-2">
+                  <button type="button" class="btn btn-outline-secondary">10:00 AM</button>
+                  <button type="button" class="btn btn-outline-secondary">10:15 AM</button>
+                  <button type="button" class="btn btn-outline-secondary">10:45 AM</button>
+                  <button type="button" class="btn btn-outline-secondary">11:15 AM</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+              <div class="card-body">
+                <h6 class="fw-bold mb-3 text-primary">Afternoon Session</h6>
+                <div class="d-grid gap-2">
+                  <button type="button" class="btn btn-outline-secondary">11:30 AM</button>
+                  <button type="button" class="btn btn-outline-secondary">11:45 AM</button>
+                  <button type="button" class="btn btn-outline-secondary">12:00 PM</button>
+                  <button type="button" class="btn btn-outline-secondary">12:15 PM</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,
+      showCloseButton: true,
+      showConfirmButton: false,
+      width: 600,
+      padding: "1.5rem",
+      customClass: {
+        container: 'swal2-bootstrap',
+        popup: 'border-0'
+      }
+    });
+  };
 
   return (
     <div className="body d-flex py-3">
@@ -1706,6 +1756,31 @@ const PatientRegistration = () => {
           </div>
         </div>
 
+        {/* NEW: Token Availability Section */}
+        <div className="row mb-3">
+          <div className="col-sm-12">
+            <div className="card shadow mb-3">
+              <div className="card-body">
+                <div className="row g-3 align-items-center">
+                  <div className="col-md-6">
+                    <div className="d-flex align-items-center">
+                      <DatePicker />
+                    </div>
+                  </div>
+                  <div className="col-md-6 text-end">
+                    <button
+                      type="button"
+                      className="btn btn-primary px-4"
+                      onClick={showTokenPopup}
+                    >
+                      Show Token
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         {/* Submit and Reset Buttons */}
         <div className="row mb-3">
           <div className="col-sm-12">

@@ -3,10 +3,9 @@ import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import { MAS_ITEM_CATEGORY, MAS_ITEM_SECTION } from "../../../config/apiConfig";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const ItemCategory = () => {
-
-
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, categoryId: null, newStatus: false })
     const [formData, setFormData] = useState({
         sectionType: "",
@@ -21,18 +20,9 @@ const ItemCategory = () => {
     const [editingCategory, setEditingCategory] = useState(null)
     const [popupMessage, setPopupMessage] = useState(null)
     const [currentPage, setCurrentPage] = useState(1)
-    const [totalFilteredItems, setTotalFilteredItems] = useState(0)
     const [currentItem, setCurrentItem] = useState(null)
-
-    const [pageInput, setPageInput] = useState("")
     const [process, setProcess] = useState(false);
-
     const [loading, setLoading] = useState(false);
-
-    const itemsPerPage = 5
-
-
-
 
     useEffect(() => {
         fetchItemCategoryData();
@@ -57,7 +47,6 @@ const ItemCategory = () => {
     };
 
     const fetchItemSectionData = async () => {
-        // setLoading(true);
         try {
             const data = await getRequest(`${MAS_ITEM_SECTION}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
@@ -69,17 +58,15 @@ const ItemCategory = () => {
         } catch (error) {
             console.error("Error fetching Item Section data:", error);
         }
-        //  finally {
-        //     setLoading(false);
-        // }
     }
-
-
 
     const handleSearchChange = (e) => {
-        setSearchQuery(e.target.value)
-        setCurrentPage(1)
+        setSearchQuery(e.target.value);
     }
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
 
     const search = searchQuery.trim().toLowerCase();
 
@@ -99,10 +86,9 @@ const ItemCategory = () => {
         );
     });
 
-
-    const filteredTotalPages = Math.ceil(filteredItemCategories.length / itemsPerPage)
-
-    const currentItems = filteredItemCategories.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+    const currentItems = filteredItemCategories.slice(indexOfFirst, indexOfLast);
 
     const handleEdit = (item) => {
         setEditingCategory(item);
@@ -114,7 +100,6 @@ const ItemCategory = () => {
         });
         setIsFormValid(true);
     };
-
 
     const handleSave = async (e) => {
         e.preventDefault();
@@ -226,50 +211,10 @@ const ItemCategory = () => {
         setIsFormValid(!!updatedFormData.sectionType && !!updatedFormData.categoryCode && !!updatedFormData.categoryName)
     }
 
-    const handlePageNavigation = () => {
-        const pageNumber = Number.parseInt(pageInput, 10)
-        if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-            setCurrentPage(pageNumber)
-        } else {
-            alert("Please enter a valid page number.")
-        }
-    }
-
-    const renderPagination = () => {
-        const pageNumbers = []
-        const maxVisiblePages = 5
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-        const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1)
-
-        if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1)
-        }
-
-        if (startPage > 1) {
-            pageNumbers.push(1)
-            if (startPage > 2) pageNumbers.push("...")
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            pageNumbers.push(i)
-        }
-
-        if (endPage < filteredTotalPages) {
-            if (endPage < filteredTotalPages - 1) pageNumbers.push("...")
-            pageNumbers.push(filteredTotalPages)
-        }
-
-        return pageNumbers.map((number, index) => (
-            <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-                {typeof number === "number" ? (
-                    <button className="page-link" onClick={() => setCurrentPage(number)}>
-                        {number}
-                    </button>
-                ) : (
-                    <span className="page-link disabled">{number}</span>
-                )}
-            </li>
-        ))
+    const handleRefresh = () => {
+        setSearchQuery("");
+        setCurrentPage(1);
+        fetchItemCategoryData();
     }
 
     return (
@@ -279,86 +224,46 @@ const ItemCategory = () => {
                     <div className="card form-card">
                         <div className="card-header d-flex justify-content-between align-items-center">
                             <h4 className="card-title p-2">Item Category</h4>
-                            {loading && <LoadingScreen />}
-                            {!showForm && (
-                                <div className="d-flex justify-content-between align-items-center ">
+                            <div className="d-flex justify-content-between align-items-center">
+                                {!showForm ? (
+                                    <form className="d-inline-block searchform me-4" role="search">
+                                        <div className="input-group searchinput">
+                                            <input
+                                                type="search"
+                                                className="form-control"
+                                                placeholder="Search Item Category"
+                                                aria-label="Search"
+                                                value={searchQuery}
+                                                onChange={handleSearchChange}
+                                            />
+                                            <span className="input-group-text" id="search-icon">
+                                                <i className="fa fa-search"></i>
+                                            </span>
+                                        </div>
+                                    </form>
+                                ) : (
+                                    <></>
+                                )}
 
-                                        <form className="d-inline-block searchform me-4" role="search">
-                                            <div className="input-group searchinput">
-                                                <input
-                                                    type="search"
-                                                    className="form-control"
-                                                    placeholder="Search"
-                                                    aria-label="Search"
-                                                    value={searchQuery}
-                                                    onChange={handleSearchChange}
-                                                />
-                                                <span className="input-group-text" id="search-icon">
-                                                    <i className="fa fa-search"></i>
-                                                </span>
-                                            </div>
-                                        </form>
-                                        <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
-                                            <i className="mdi mdi-plus"></i> Add
-                                        </button>
-                                        {/* <button type="button" className="btn btn-success me-2">
-                                            <i className="mdi mdi-plus"></i> Generate Report
-                                        </button> */}
-                                </div>
-                            )}
-                        </div>
-                        <div className="card-body">
-                            {!showForm ? (
-                                <div className="table-responsive packagelist">
-                                    <table className="table table-bordered table-hover align-middle">
-                                        <thead className="table-light">
-                                            <tr>
-
-                                                <th>Item Category Code</th>
-                                                <th>Item Category Name</th>
-                                                <th>Section</th>
-                                                <th>Status</th>
-                                                <th>Edit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentItems.map((category) => (
-                                                <tr key={category.itemCategoryId}>
-
-                                                    <td>{category.itemCategoryCode}</td>
-                                                    <td>{category.itemCategoryName}</td>
-                                                    <td>{category.sectionName}</td>
-                                                    <td>
-                                                        <div className="form-check form-switch">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={category.status === "y"}
-                                                                onChange={() => handleSwitchChange(category.itemCategoryId, category.itemCategoryName, category.status === "y" ? "n" : "y")}
-                                                                id={`switch-${category.id}`}
-                                                            />
-                                                            <label className="form-check-label px-0" htmlFor={`switch-${category.itemCategoryId}`}>
-                                                                {category.status === "y" ? "Active" : "Deactivated"}
-                                                            </label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-success me-2"
-                                                            onClick={() => handleEdit(category)}
-                                                            disabled={category.status !== "y"}
-                                                        >
-                                                            <i className="fa fa-pencil"></i>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            ) : (
-                                <form className="forms row" onSubmit={handleSave}>
-                                    <div className="d-flex justify-content-end">
+                                <div className="d-flex align-items-center">
+                                    {!showForm ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2"
+                                                onClick={() => setShowForm(true)}
+                                            >
+                                                <i className="mdi mdi-plus"></i> Add
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2 flex-shrink-0"
+                                                onClick={handleRefresh}
+                                            >
+                                                <i className="mdi mdi-refresh"></i> Show All
+                                            </button>
+                                        </>
+                                    ) : (
                                         <button type="button" className="btn btn-secondary" onClick={() => {
                                             setShowForm(false);
                                             setFormData({
@@ -370,7 +275,73 @@ const ItemCategory = () => {
                                         }}>
                                             <i className="mdi mdi-arrow-left"></i> Back
                                         </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="card-body">
+                            {loading ? (
+                                <LoadingScreen />
+                            ) : !showForm ? (
+                                <>
+                                    <div className="table-responsive packagelist">
+                                        <table className="table table-bordered table-hover align-middle">
+                                            <thead className="table-light">
+                                                <tr>
+                                                    <th>Item Category Code</th>
+                                                    <th>Item Category Name</th>
+                                                    <th>Section</th>
+                                                    <th>Status</th>
+                                                    <th>Edit</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {currentItems.map((category) => (
+                                                    <tr key={category.itemCategoryId}>
+                                                        <td>{category.itemCategoryCode}</td>
+                                                        <td>{category.itemCategoryName}</td>
+                                                        <td>{category.sectionName}</td>
+                                                        <td>
+                                                            <div className="form-check form-switch">
+                                                                <input
+                                                                    className="form-check-input"
+                                                                    type="checkbox"
+                                                                    checked={category.status === "y"}
+                                                                    onChange={() => handleSwitchChange(category.itemCategoryId, category.itemCategoryName, category.status === "y" ? "n" : "y")}
+                                                                    id={`switch-${category.id}`}
+                                                                />
+                                                                <label className="form-check-label px-0" htmlFor={`switch-${category.itemCategoryId}`}>
+                                                                    {category.status === "y" ? "Active" : "Deactivated"}
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <button
+                                                                className="btn btn-sm btn-success me-2"
+                                                                onClick={() => handleEdit(category)}
+                                                                disabled={category.status !== "y"}
+                                                            >
+                                                                <i className="fa fa-pencil"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
                                     </div>
+                                    {/* PAGINATION USING REUSABLE COMPONENT */}
+                                    {filteredItemCategories.length > 0 && (
+                                        <Pagination
+                                            totalItems={filteredItemCategories.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
+                                    )}
+                                </>
+                            ) : (
+                                <form className="forms row" onSubmit={handleSave}>
+                                    
                                     <div className="row">
                                         <div className="form-group col-md-4 mt-3">
                                             <label>
@@ -484,49 +455,6 @@ const ItemCategory = () => {
                                     </div>
                                 </div>
                             )}
-
-                            <nav className="d-flex justify-content-between align-items-center mt-3">
-                                <div>
-                                    <span>
-                                        Page {currentPage} of {filteredTotalPages} | Total Records: {filteredItemCategories.length}
-                                    </span>
-                                </div>
-                                <ul className="pagination mb-0">
-                                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                        <button
-                                            className="page-link"
-                                            onClick={() => setCurrentPage(currentPage - 1)}
-                                            disabled={currentPage === 1}
-                                        >
-                                            &laquo; Previous
-                                        </button>
-                                    </li>
-                                    {renderPagination()}
-                                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                        <button
-                                            className="page-link"
-                                            onClick={() => setCurrentPage(currentPage + 1)}
-                                            disabled={currentPage === filteredTotalPages}
-                                        >
-                                            Next &raquo;
-                                        </button>
-                                    </li>
-                                </ul>
-                                <div className="d-flex align-items-center">
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max={filteredTotalPages}
-                                        value={pageInput}
-                                        onChange={(e) => setPageInput(e.target.value)}
-                                        placeholder="Go to page"
-                                        className="form-control me-2"
-                                    />
-                                    <button className="btn btn-primary" onClick={handlePageNavigation}>
-                                        Go
-                                    </button>
-                                </div>
-                            </nav>
                         </div>
                     </div>
                 </div>
@@ -536,4 +464,3 @@ const ItemCategory = () => {
 }
 
 export default ItemCategory
-

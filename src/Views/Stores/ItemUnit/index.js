@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import { MAS_STORE_UNIT } from "../../../config/apiConfig";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const StoreUnitMaster = () => {
   const [storeUnits, setStoreUnits] = useState([]);
@@ -18,10 +19,6 @@ const StoreUnitMaster = () => {
   const [editingUnit, setEditingUnit] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [filteredTotalPages, setFilteredTotalPages] = useState(1);
-  const [totalFilteredUnits, setTotalFilteredUnits] = useState(0);
-  const [itemsPerPage] = useState(5);
-  const [pageInput, setPageInput] = useState(1);
 
   const UNIT_NAME_MAX_LENGTH = 30;
 
@@ -43,8 +40,6 @@ const StoreUnitMaster = () => {
         }));
   
         setStoreUnits(transformedData);
-        setTotalFilteredUnits(transformedData.length);
-        setFilteredTotalPages(Math.ceil(transformedData.length / itemsPerPage));
       }
     } catch (err) {
       console.error("Error fetching store unit data:", err);
@@ -62,13 +57,17 @@ const StoreUnitMaster = () => {
     setCurrentPage(1);
   };
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   const filteredStoreUnits = storeUnits.filter(unit =>
     unit.unitName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredStoreUnits.slice(indexOfFirstItem, indexOfLastItem);
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredStoreUnits.slice(indexOfFirst, indexOfLast);
 
   const handleEdit = (unit) => {
     setEditingUnit(unit);
@@ -221,50 +220,6 @@ const StoreUnitMaster = () => {
     fetchStoreUnits();
   };
 
-  const handlePageNavigation = () => {
-    const pageNumber = Number(pageInput);
-    if (pageNumber >= 1 && pageNumber <= filteredTotalPages) {
-      setCurrentPage(pageNumber);
-    }
-  };
-
-  const renderPagination = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
-
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-
-    if (startPage > 1) {
-      pageNumbers.push(1);
-      if (startPage > 2) pageNumbers.push("...");
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i);
-    }
-
-    if (endPage < filteredTotalPages) {
-      if (endPage < filteredTotalPages - 1) pageNumbers.push("...");
-      pageNumbers.push(filteredTotalPages);
-    }
-
-    return pageNumbers.map((number, index) => (
-      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-        {typeof number === "number" ? (
-          <button className="page-link" onClick={() => setCurrentPage(number)}>
-            {number}
-          </button>
-        ) : (
-          <span className="page-link disabled">{number}</span>
-        )}
-      </li>
-    ));
-  };
-
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -274,26 +229,26 @@ const StoreUnitMaster = () => {
               <h4 className="card-title">Store Unit Master</h4>
               <div className="d-flex justify-content-between align-items-center">
                 {!showForm ? (
-                                    <form className="d-inline-block searchform me-4" role="search">
-                                        <div className="input-group searchinput">
-                                            <input
-                                                type="search"
-                                                className="form-control"
-                                                placeholder="Search"
-                                                aria-label="Search"
-                                                value={searchQuery}
-                                                onChange={handleSearchChange}
-                                            />
-                                            <span className="input-group-text" id="search-icon">
-                                                <i className="fa fa-search"></i>
-                                            </span>
-                                        </div>
-                                    </form>
-                                ) : (
-                                    <></>
-                                )}
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search"
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
+                )}
 
-                <div className="d-flex align-items-center">
+                <div className="d-flex align-items-center ms-auto">
                   {!showForm ? (
                     <>
                       <button
@@ -310,7 +265,7 @@ const StoreUnitMaster = () => {
                       </button>
                       <button
                         type="button"
-                        className="btn btn-success me-2"
+                        className="btn btn-success me-2 flex-shrink-0"
                         onClick={handleRefresh}
                       >
                         <i className="mdi mdi-refresh"></i> Show All
@@ -328,103 +283,68 @@ const StoreUnitMaster = () => {
               {loading ? (
                 <LoadingScreen />
               ) : !showForm ? (
-                <div className="table-responsive packagelist">
-                  <table className="table table-bordered table-hover align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Unit Name</th>
-                        <th>Status</th>
-                        <th>Edit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentItems.length > 0 ? (
-                        currentItems.map((unit) => (
-                          <tr key={unit.id}>
-                            <td>{unit.unitName}</td>
-                            <td>
-                              <div className="form-check form-switch">
-                                <input
-                                  className="form-check-input"
-                                  type="checkbox"
-                                  checked={unit.status === "y"}
-                                  onChange={() => handleSwitchChange(unit.id, unit.status === "y" ? "n" : "y")}
-                                  id={`switch-${unit.id}`}
-                                />
-                                <label
-                                  className="form-check-label px-0"
-                                  htmlFor={`switch-${unit.id}`}
-                                >
-                                  {unit.status === "y" ? 'Active' : 'Deactivated'}
-                                </label>
-                              </div>
-                            </td>
-                            <td>
-                              <button
-                                className="btn btn-sm btn-success me-2"
-                                onClick={() => handleEdit(unit)}
-                                disabled={unit.status !== "y"}
-                              >
-                                <i className="fa fa-pencil"></i>
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
+                <>
+                  <div className="table-responsive packagelist">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
                         <tr>
-                          <td colSpan="3" className="text-center">No store units found</td>
+                          <th>Unit Name</th>
+                          <th>Status</th>
+                          <th>Edit</th>
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((unit) => (
+                            <tr key={unit.id}>
+                              <td>{unit.unitName}</td>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={unit.status === "y"}
+                                    onChange={() => handleSwitchChange(unit.id, unit.status === "y" ? "n" : "y")}
+                                    id={`switch-${unit.id}`}
+                                  />
+                                  <label
+                                    className="form-check-label px-0"
+                                    htmlFor={`switch-${unit.id}`}
+                                  >
+                                    {unit.status === "y" ? 'Active' : 'Deactivated'}
+                                  </label>
+                                </div>
+                              </td>
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-success me-2"
+                                  onClick={() => handleEdit(unit)}
+                                  disabled={unit.status !== "y"}
+                                >
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="3" className="text-center">No store units found</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {/* PAGINATION USING REUSABLE COMPONENT */}
                   {filteredStoreUnits.length > 0 && (
-                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                      <div>
-                        <span>
-                          Page {currentPage} of {filteredTotalPages} | Total Records: {filteredStoreUnits.length}
-                        </span>
-                      </div>
-                      <ul className="pagination mb-0">
-                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                          <button
-                            className="page-link"
-                            onClick={() => setCurrentPage(currentPage - 1)}
-                            disabled={currentPage === 1}
-                          >
-                            &laquo; Previous
-                          </button>
-                        </li>
-                        {renderPagination()}
-                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                          <button
-                            className="page-link"
-                            onClick={() => setCurrentPage(currentPage + 1)}
-                            disabled={currentPage === filteredTotalPages}
-                          >
-                            Next &raquo;
-                          </button>
-                        </li>
-                      </ul>
-                      <div className="d-flex align-items-center">
-                        <input
-                          type="number"
-                          min="1"
-                          max={filteredTotalPages}
-                          value={pageInput}
-                          onChange={(e) => setPageInput(e.target.value)}
-                          placeholder="Go to page"
-                          className="form-control me-2"
-                        />
-                        <button
-                          className="btn btn-primary"
-                          onClick={handlePageNavigation}
-                        >
-                          Go
-                        </button>
-                      </div>
-                    </nav>
+                    <Pagination
+                      totalItems={filteredStoreUnits.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
                   )}
-                </div>
+                </>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="form-group col-md-4">

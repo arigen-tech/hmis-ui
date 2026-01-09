@@ -5,6 +5,7 @@ import { Store_Internal_Indent, MAS_DRUG_MAS } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import DatePicker from "../../../Components/DatePicker"
+import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
 
 const PendingIndentApproval = () => {
   const [currentView, setCurrentView] = useState("list")
@@ -270,14 +271,7 @@ const PendingIndentApproval = () => {
   }
 
   // Handle page navigation
-  const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10)
-    if (pageNumber > 0 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber)
-    } else {
-      showPopup("Please enter a valid page number.", "warning")
-    }
-  }
+ 
 
   // Show popup
   const showPopup = (message, type = "info") => {
@@ -377,45 +371,12 @@ const PendingIndentApproval = () => {
 
   // Pagination
   const itemsPerPage = 5
-  const currentItems = filteredIndentData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredIndentData.slice(indexOfFirst, indexOfLast);
   const totalPages = Math.ceil(filteredIndentData.length / itemsPerPage)
 
-  const renderPagination = () => {
-    const pageNumbers = []
-    const maxVisiblePages = 5
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1)
-
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1)
-    }
-
-    if (startPage > 1) {
-      pageNumbers.push(1)
-      if (startPage > 2) pageNumbers.push("...")
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i)
-    }
-
-    if (endPage < totalPages) {
-      if (endPage < totalPages - 1) pageNumbers.push("...")
-      pageNumbers.push(totalPages)
-    }
-
-    return pageNumbers.map((number, index) => (
-      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-        {typeof number === "number" ? (
-          <button className="page-link" onClick={() => setCurrentPage(number)}>
-            {number}
-          </button>
-        ) : (
-          <span className="page-link disabled">{number}</span>
-        )}
-      </li>
-    ))
-  }
+ 
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -785,29 +746,14 @@ const PendingIndentApproval = () => {
                 </table>
               </div>
 
-              <nav className="d-flex justify-content-between align-items-center mt-2">
-                <div>
-                  <span>
-                    Page {currentPage} of {totalPages} | Total Records: {filteredIndentData.length}
-                  </span>
-                </div>
-                <ul className="pagination mb-0">{renderPagination()}</ul>
-                <div className="d-flex align-items-center">
-                  <input
-                    type="number"
-                    min="1"
-                    max={totalPages}
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                    placeholder="Go to page"
-                    className="form-control me-2"
-                    style={{ width: "120px" }}
-                  />
-                  <button className="btn btn-primary" onClick={handlePageNavigation}>
-                    Go
-                  </button>
-                </div>
-              </nav>
+              <Pagination
+                                            totalItems={filteredIndentData.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
+
+                   
             </div>
           </div>
         </div>

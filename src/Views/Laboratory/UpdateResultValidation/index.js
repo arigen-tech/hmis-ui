@@ -4,6 +4,7 @@ import { LAB, LAB_AMENDMENT_TYPE_API } from "../../../config/apiConfig" // Added
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
 import {FETCH_RESULT_UPDATE_DATA_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, RESULT_UPDATE_ERR_MSG, RESULT_UPDATE_SUCC_MSG, UNEXPECTED_ERROR, SELECT_ROW_TO_EDIT_WARN_MSG} from "../../../config/constants"
+import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
 
 const UpdateResultValidation = () => {
   const [resultList, setResultList] = useState([])
@@ -128,14 +129,14 @@ const UpdateResultValidation = () => {
                         original_si_no: getSubTestNumber(invIndex + 1, subIndex, inv.entryUpdateSubInvestigationResponses.length),
                         resultEntryDetailsId: subTest.resultEntryDetailsId,
                         diag_no: "---",
-                        generatedSampleId:subTest.generatedSampleId||'',
+                        generatedSampleId: subTest.generatedSampleId || '',
                         investigation: subTest.subInvestigationName || '',
                         sample: subTest.sampleName || '',
                         result: subTest.result || "",
                         oldResult: subTest.result || "", // Store original result for amendment audit
                         units: subTest.unit || '',
                         normal_range: subTest.normalValue || '',
-                        remarks: subTest.remarks || "",
+                        remarks: "", // Initialize as empty string (not retrieved from backend)
                         amendmentTypeId: null, // Initialize amendment type
                         inRange: subTest.inRange !== undefined ? subTest.inRange : null,
                         comparisonType: subTest.comparisonType || "",
@@ -155,7 +156,7 @@ const UpdateResultValidation = () => {
                       oldResult: inv.result || "", // Store original result for amendment audit
                       units: inv.unit || '',
                       normal_range: inv.normalValue || '',
-                      remarks: inv.remarks || "",
+                      remarks: "", // Initialize as empty string (not retrieved from backend)
                       amendmentTypeId: null, // Initialize amendment type
                       inRange: inv.inRange !== undefined ? inv.inRange : null,
                       comparisonType: inv.comparisonType || "",
@@ -170,14 +171,14 @@ const UpdateResultValidation = () => {
                       original_si_no: invIndex + 1,
                       resultEntryDetailsId: inv.resultEntryDetailsId,
                       diag_no: inv.diagNo || '',
-                      generatedSampleId:inv.generatedSampleId||'',
+                      generatedSampleId: inv.generatedSampleId || '',
                       investigation: inv.investigationName || '',
                       sample: inv.sampleName || '',
                       result: inv.result || "",
                       oldResult: inv.result || "", // Store original result for amendment audit
                       units: inv.unit || '',
                       normal_range: inv.normalValue || '',
-                      remarks: inv.remarks || "",
+                      remarks: "", // Initialize as empty string (not retrieved from backend)
                       amendmentTypeId: null, // Initialize amendment type
                       inRange: inv.inRange !== undefined ? inv.inRange : null,
                       comparisonType: inv.comparisonType || "",
@@ -563,7 +564,7 @@ const UpdateResultValidation = () => {
     }
   }
 
-  // Render remarks input field with edit check
+  // Render remarks input field with edit check - Now always empty initially
   const renderRemarksInput = (test) => {
     const isEditable = isRowEditable(test.id);
     
@@ -656,7 +657,7 @@ const UpdateResultValidation = () => {
               result: inv.result || "",
               oldResult: inv.oldResult || "", // Send original result for audit
               amendmentTypeId: inv.amendmentTypeId || null, // Send amendment type
-              remarks: inv.remarks || "",
+              remarks: inv.remarks || "", // Send remarks (empty string if not entered)
               fixedId: inv.fixedId || null,
               comparisonType: inv.comparisonType || ""
             });
@@ -744,55 +745,12 @@ const UpdateResultValidation = () => {
     return patientNameMatch && mobileNoMatch
   })
 
-  const filteredTotalPages = Math.ceil(filteredResultList.length / itemsPerPage) || 1
-  const currentItems = filteredResultList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const filteredTotalPages = Math.ceil(filteredResultList.length / DEFAULT_ITEMS_PER_PAGE) || 1
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredResultList.slice(indexOfFirst, indexOfLast);
 
-  const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10)
-    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-      setCurrentPage(pageNumber)
-    } else {
-      showPopup(INVALID_PAGE_NO_WARN_MSG, "warning")
-    }
-  }
-
-  const renderPagination = () => {
-    const pageNumbers = []
-    const maxVisiblePages = 5
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1)
-
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1)
-    }
-
-    if (startPage > 1) {
-      pageNumbers.push(1)
-      if (startPage > 2) pageNumbers.push("...")
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i)
-    }
-
-    if (endPage < filteredTotalPages) {
-      if (endPage < filteredTotalPages - 1) pageNumbers.push("...")
-      pageNumbers.push(filteredTotalPages)
-    }
-
-    return pageNumbers.map((number, index) => (
-      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-        {typeof number === "number" ? (
-          <button className="page-link" onClick={() => setCurrentPage(number)}>
-            {number}
-          </button>
-        ) : (
-          <span className="page-link disabled">{number}</span>
-        )}
-      </li>
-    ))
-  }
-
+  
   // Detail View with Edit Checkbox Column
   if (showDetailView && selectedResult) {
     return (
@@ -808,9 +766,6 @@ const UpdateResultValidation = () => {
                 <div className="d-flex justify-content-between align-items-center">
                   <h4 className="card-title p-2">UPDATE RESULT ENTRY</h4>
                   <div className="d-flex align-items-center">
-                    {/* <span className="badge bg-info me-3">
-                      Editable Rows: {editableRows.length}
-                    </span> */}
                     <button className="btn btn-secondary" onClick={handleBackToList}>
                       <i className="mdi mdi-arrow-left"></i> Back to List
                     </button>
@@ -886,17 +841,6 @@ const UpdateResultValidation = () => {
                     </div>
                   </div>
                 </div>
-
-                {/* Instructions */}
-                {/* <div className="alert alert-info mb-4">
-                  <i className="mdi mdi-information-outline me-2"></i>
-                  <strong>Instructions:</strong> 
-                  <ol className="mb-0 mt-1">
-                    <li>Check the "Edit" box for each row you want to update.</li>
-                    <li>Only checked rows will be editable and updated when you click the UPDATE button.</li>
-                    <li>For each editable row, <strong>Amendment Type is mandatory</strong> before updating.</li>
-                  </ol>
-                </div> */}
 
                 {/* Investigations Table with Edit Checkbox Column */}
                 <div className="table-responsive" style={{ overflowX: "auto" }}>
@@ -1200,49 +1144,12 @@ const UpdateResultValidation = () => {
 
                   {/* Pagination */}
                   {filteredResultList.length > 0 && (
-                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                      <div>
-                        <span>
-                          Page {currentPage} of {filteredTotalPages} | Total Records: {filteredResultList.length}
-                        </span>
-                      </div>
-                      <ul className="pagination mb-0">
-                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                          <button
-                            className="page-link"
-                            onClick={() => setCurrentPage(currentPage - 1)}
-                            disabled={currentPage === 1}
-                          >
-                            &laquo; Previous
-                          </button>
-                        </li>
-                        {renderPagination()}
-                        <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                          <button
-                            className="page-link"
-                            onClick={() => setCurrentPage(currentPage + 1)}
-                            disabled={currentPage === filteredTotalPages}
-                          >
-                            Next &raquo;
-                          </button>
-                        </li>
-                      </ul>
-                      <div className="d-flex align-items-center">
-                        <input
-                          type="number"
-                          min="1"
-                          max={filteredTotalPages}
-                          value={pageInput}
-                          onChange={(e) => setPageInput(e.target.value)}
-                          placeholder="Go to page"
-                          className="form-control me-2"
-                          style={{ width: "120px" }}
-                        />
-                        <button className="btn btn-primary" onClick={handlePageNavigation}>
-                          GO
-                        </button>
-                      </div>
-                    </nav>
+                   <Pagination
+                     totalItems={filteredResultList.length}
+                     itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                     currentPage={currentPage}
+                     onPageChange={setCurrentPage}
+                   />
                   )}
                 </>
               )}

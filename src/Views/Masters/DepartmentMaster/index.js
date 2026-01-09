@@ -17,7 +17,8 @@ const DepartmentMaster = () => {
         departmentType: "",
         departmentTypeId: "",
         departmentNo: "",
-        wardCategoryId: ""
+        wardCategoryId: "",
+        indentApplicable: "n" 
     });
     const [searchQuery, setSearchQuery] = useState("");
     const [showForm, setShowForm] = useState(false);
@@ -121,6 +122,14 @@ const DepartmentMaster = () => {
         setIsFormValid(isValid);
     };
 
+    const handleCheckboxChange = (e) => {
+        const { id, checked } = e.target;
+        setFormData((prevData) => ({ 
+            ...prevData, 
+            [id]: checked ? "y" : "n" 
+        }));
+    };
+
     const handleEdit = (dept) => {
         setEditingDepartment(dept);
         setFormData({
@@ -129,7 +138,8 @@ const DepartmentMaster = () => {
             departmentType: dept.departmentTypeName,
             departmentTypeId: dept.departmentTypeId,
             departmentNo: dept.departmentNo || "",
-            wardCategoryId: dept.wardCategoryId || ""
+            wardCategoryId: dept.wardCategoryId || "",
+            indentApplicable: dept.indentApplicable || "n"
         });
         setIsFormValid(true);
         setShowForm(true);
@@ -146,7 +156,7 @@ const DepartmentMaster = () => {
                 (dept) =>
                     dept.id !== (editingDepartment ? editingDepartment.id : null) &&
                     (dept.departmentCode === formData.departmentCode ||
-                        dept.departmentName === formData.departmentName ||
+                        // dept.departmentName === formData.departmentName ||
                         (formData.departmentNo && dept.departmentNo === formData.departmentNo))
             );
 
@@ -162,6 +172,7 @@ const DepartmentMaster = () => {
                 departmentName: formData.departmentName,
                 departmentTypeId: formData.departmentTypeId,
                 departmentNo: formData.departmentNo || null,
+                indentApplicable: formData.indentApplicable, // Add indentApplicable field
                 status: editingDepartment ? editingDepartment.status : "y",
             };
 
@@ -201,7 +212,8 @@ const DepartmentMaster = () => {
                 departmentType: "", 
                 departmentTypeId: "",
                 departmentNo: "",
-                wardCategoryId: ""
+                wardCategoryId: "",
+                indentApplicable: "n" 
             });
             setShowForm(false);
             fetchDepartments();
@@ -308,7 +320,8 @@ const DepartmentMaster = () => {
                                                         departmentType: "",
                                                         departmentTypeId: "",
                                                         departmentNo: "",
-                                                        wardCategoryId: ""
+                                                        wardCategoryId: "",
+                                                        indentApplicable: "n" 
                                                     });
                                                     setIsFormValid(false);
                                                 }}
@@ -344,6 +357,7 @@ const DepartmentMaster = () => {
                                                     <th>Department</th>
                                                     <th>Department Type</th>
                                                     <th>Department Number</th>
+                                                    <th>Indent Applicable</th>
                                                     <th>Status</th>
                                                     <th>Edit</th>
                                                 </tr>
@@ -356,6 +370,9 @@ const DepartmentMaster = () => {
                                                             <td>{dept.departmentName}</td>
                                                             <td>{dept.departmentTypeName}</td>
                                                             <td>{dept.departmentNo || "-"}</td>
+                                                            <td>
+                                                                {dept.indentApplicable === "y" ? "Yes" : "No"}
+                                                            </td>
                                                             <td>
                                                                 <div className="form-check form-switch">
                                                                     <input
@@ -383,7 +400,7 @@ const DepartmentMaster = () => {
                                                     ))
                                                 ) : (
                                                     <tr>
-                                                        <td colSpan={6} className="text-center">
+                                                        <td colSpan={7} className="text-center">
                                                             No departments found
                                                         </td>
                                                     </tr>
@@ -509,30 +526,31 @@ const DepartmentMaster = () => {
                                             </select>
                                         </div>
                                     )}
-<div className="form-group col-md-4 mt-5">
-  <div className="form-check d-flex align-items-center">
-    <label
-      className="form-check-label me-2"
-      htmlFor="isIndentApplicable"
-    >
-      Is Indent Applicable
-    </label>
-    <input
-      type="checkbox"
-        style={{
-                                                                        width: "15px",
-                                                                        height: '15px',
-                                                                        border: '2px solid black',
-                                                                        boxShadow: 'none',
-                                                                        outline: 'none'
-                                                                    }}
-      id="isIndentApplicable"
-      className="form-check-input m-0"
-    />
-  </div>
-</div>
-
-
+                                    
+                                    <div className="form-group col-md-4 mt-3">
+                                        <div className="form-check d-flex align-items-center" style={{ height: "100%" }}>
+                                            <label
+                                                className="form-check-label me-2"
+                                                htmlFor="indentApplicable"
+                                            >
+                                                Is Indent Applicable
+                                            </label>
+                                            <input
+                                                type="checkbox"
+                                                style={{
+                                                    width: "15px",
+                                                    height: '15px',
+                                                    border: '2px solid black',
+                                                    boxShadow: 'none',
+                                                    outline: 'none'
+                                                }}
+                                                id="indentApplicable"
+                                                className="form-check-input m-0"
+                                                checked={formData.indentApplicable === "y"}
+                                                onChange={handleCheckboxChange}
+                                            />
+                                        </div>
+                                    </div>
 
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-4">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>

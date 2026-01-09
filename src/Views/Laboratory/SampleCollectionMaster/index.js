@@ -4,6 +4,7 @@ import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import { DG_MAS_COLLECTION } from "../../../config/apiConfig"
 import { ADD_SAMPLE_COLLECTION_SUCC_MSG, DUPLICATE_SAMPLE_COLLECTION_ERR_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_SAMPLE_COLLECTION_ERR_MSG, UPDATE_SAMPLE_COLLECTION_SUCC_MSG } from "../../../config/constants"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
 const SampleCollectionMaster = () => {
   const [sampleCollections, setSampleCollections] = useState([])
@@ -18,9 +19,7 @@ const SampleCollectionMaster = () => {
   const [editingCollection, setEditingCollection] = useState(null)
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
   const [loading, setLoading] = useState(true)
-  const itemsPerPage = 5
 
   useEffect(() => {
     fetchSampleCollectionData(0)
@@ -46,16 +45,16 @@ const SampleCollectionMaster = () => {
     setSearchQuery(e.target.value)
     setCurrentPage(1)
   }
-  
+
   const filteredSampleCollections = Array.isArray(sampleCollections) ? sampleCollections.filter(
     (item) =>
       (item?.collectionCode?.toString().toLowerCase().includes(searchQuery.toLowerCase()) || 
        item?.collectionName?.toString().toLowerCase().includes(searchQuery.toLowerCase()))
   ) : []
   
-  const filteredTotalPages = Math.ceil(filteredSampleCollections.length / itemsPerPage)
-
-  const currentItems = filteredSampleCollections.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredSampleCollections.slice(indexOfFirst, indexOfLast);
 
   const handleEdit = (item) => {
     setEditingCollection(item)
@@ -178,56 +177,10 @@ const SampleCollectionMaster = () => {
     setIsFormValid(!!updatedFormData.collectionCode && !!updatedFormData.collectionName)
   }
 
-  const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10)
-    if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-      setCurrentPage(pageNumber)
-    } else {
-      alert("Please enter a valid page number.")
-    }
-  }
-
   const handleRefresh = () => {
     setSearchQuery("")
     setCurrentPage(1)
     fetchSampleCollectionData()
-  }
-
-  const renderPagination = () => {
-    const pageNumbers = []
-    const maxVisiblePages = 5
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-    const endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1)
-
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1)
-    }
-
-    if (startPage > 1) {
-      pageNumbers.push(1)
-      if (startPage > 2) pageNumbers.push("...")
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i)
-    }
-
-    if (endPage < filteredTotalPages) {
-      if (endPage < filteredTotalPages - 1) pageNumbers.push("...")
-      pageNumbers.push(filteredTotalPages)
-    }
-
-    return pageNumbers.map((number, index) => (
-      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-        {typeof number === "number" ? (
-          <button className="page-link" onClick={() => setCurrentPage(number)}>
-            {number}
-          </button>
-        ) : (
-          <span className="page-link disabled">{number}</span>
-        )}
-      </li>
-    ))
   }
 
   return (
@@ -239,86 +192,113 @@ const SampleCollectionMaster = () => {
               <h4 className="card-title p-2">Sample Collection Master</h4>
 
               <div className="d-flex justify-content-between align-items-center">
-                {!showForm && (
-                  <>
-                    <form className="d-inline-block searchform me-4" role="search">
-                      <div className="input-group searchinput">
-                        <input
-                          type="search"
-                          className="form-control"
-                          placeholder="Search"
-                          aria-label="Search"
-                          value={searchQuery}
-                          onChange={handleSearchChange}
-                        />
-                        <span className="input-group-text" id="search-icon">
-                          <i className="fa fa-search"></i>
-                        </span>
-                      </div>
-                    </form>
-                    <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
-                      <i className="mdi mdi-plus"></i> Add
-                    </button>
-                    <button type="button" className="btn btn-success me-2" onClick={handleRefresh}>
-                      <i className="mdi mdi-refresh"></i> Show All
-                    </button>
-                    {/* <button type="button" className="btn btn-success me-2">
-                      <i className="mdi mdi-plus"></i> Generate Report
-                    </button> */}
-                  </>
+                {!showForm ? (
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                        type="search"
+                        className="form-control"
+                        placeholder="Search "
+                        aria-label="Search"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
+                        <i className="fa fa-search"></i>
+                      </span>
+                    </div>
+                  </form>
+                ) : (
+                  <></>
                 )}
+
+                <div className="d-flex align-items-center">
+                  {!showForm ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-success me-2"
+                        onClick={() => setShowForm(true)}
+                      >
+                        <i className="mdi mdi-plus"></i> Add
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-success me-2 flex-shrink-0"
+                        onClick={handleRefresh}
+                      >
+                        <i className="mdi mdi-refresh"></i> Show All
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                      <i className="mdi mdi-arrow-left"></i> Back
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
             <div className="card-body">
               {loading ? (
                 <LoadingScreen />
               ) : !showForm ? (
-                <div className="table-responsive packagelist">
-                  <table className="table table-bordered table-hover align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Collection Code</th>
-                        <th>Collection Name</th>
-                        <th>Status</th>
-                        <th>Edit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentItems.map((item) => (
-                        <tr key={item.collectionId}>
-                          <td>{item.collectionCode}</td>
-                          <td>{item.collectionName}</td>
-                          <td>
-                            <div className="form-check form-switch">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                checked={item.status === "y"}
-                                onChange={() => handleSwitchChange(item.collectionId, item.status === "y" ? "n" : "y")}
-                                id={`switch-${item.collectionId}`}
-                              />
-                              <label
-                                className="form-check-label px-0"
-                                htmlFor={`switch-${item.collectionId}`}
-                              >
-                                {item.status === "y" ? "Active" : "Deactivated"}
-                              </label>
-                            </div>
-                          </td>
-                          <td>
-                            <button
-                              className="btn btn-sm btn-success me-2"
-                              onClick={() => handleEdit(item)}
-                              disabled={item.status !== "y"}
-                            >
-                              <i className="fa fa-pencil"></i>
-                            </button>
-                          </td>
+                <>
+                  <div className="table-responsive packagelist">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Collection Code</th>
+                          <th>Collection Name</th>
+                          <th>Status</th>
+                          <th>Edit</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {currentItems.map((item) => (
+                          <tr key={item.collectionId}>
+                            <td>{item.collectionCode}</td>
+                            <td>{item.collectionName}</td>
+                            <td>
+                              <div className="form-check form-switch">
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  checked={item.status === "y"}
+                                  onChange={() => handleSwitchChange(item.collectionId, item.status === "y" ? "n" : "y")}
+                                  id={`switch-${item.collectionId}`}
+                                />
+                                <label
+                                  className="form-check-label px-0"
+                                  htmlFor={`switch-${item.collectionId}`}
+                                >
+                                  {item.status === "y" ? "Active" : "Deactivated"}
+                                </label>
+                              </div>
+                            </td>
+                            <td>
+                              <button
+                                className="btn btn-sm btn-success me-2"
+                                onClick={() => handleEdit(item)}
+                                disabled={item.status !== "y"}
+                              >
+                                <i className="fa fa-pencil"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* PAGINATION USING REUSABLE COMPONENT */}
+                  {filteredSampleCollections.length > 0 && (
+                    <Pagination
+                      totalItems={filteredSampleCollections.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  )}
+                </>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="d-flex justify-content-end">
@@ -401,51 +381,6 @@ const SampleCollectionMaster = () => {
                     </div>
                   </div>
                 </div>
-              )}
-
-              {!showForm && (
-                <nav className="d-flex justify-content-between align-items-center mt-3">
-                  <div>
-                    <span>
-                      Page {currentPage} of {filteredTotalPages} | Total Records: {filteredSampleCollections.length}
-                    </span>
-                  </div>
-                  <ul className="pagination mb-0">
-                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                      <button
-                        className="page-link"
-                        onClick={() => setCurrentPage(currentPage - 1)}
-                        disabled={currentPage === 1}
-                      >
-                        &laquo; Previous
-                      </button>
-                    </li>
-                    {renderPagination()}
-                    <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                      <button
-                        className="page-link"
-                        onClick={() => setCurrentPage(currentPage + 1)}
-                        disabled={currentPage === filteredTotalPages}
-                      >
-                        Next &raquo;
-                      </button>
-                    </li>
-                  </ul>
-                  <div className="d-flex align-items-center">
-                    <input
-                      type="number"
-                      min="1"
-                      max={filteredTotalPages}
-                      value={pageInput}
-                      onChange={(e) => setPageInput(e.target.value)}
-                      placeholder="Go to page"
-                      className="form-control me-2"
-                    />
-                    <button className="btn btn-primary" onClick={handlePageNavigation}>
-                      Go
-                    </button>
-                  </div>
-                </nav>
               )}
             </div>
           </div>

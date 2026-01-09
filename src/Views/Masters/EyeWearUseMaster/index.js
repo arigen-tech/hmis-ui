@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const EyeWearUseMaster = () => {
   const [data, setData] = useState([]);
@@ -47,8 +48,9 @@ const EyeWearUseMaster = () => {
   useEffect(() => { fetchData(); }, []);
 
   const filteredData = data.filter((rec) => rec.use_name.toLowerCase().includes(searchQuery.toLowerCase()));
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const currentItems = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
+  const currentItems = filteredData.slice(indexOfFirst, indexOfLast)
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
@@ -119,36 +121,7 @@ const EyeWearUseMaster = () => {
     else { alert("Invalid page number"); }
   };
 
-  const renderPagination = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    if (endPage - startPage < maxVisiblePages - 1) startPage = Math.max(1, endPage - maxVisiblePages + 1);
-
-    if (startPage > 1) { pageNumbers.push(1); if (startPage > 2) pageNumbers.push("..."); }
-    for (let i = startPage; i <= endPage; i++) pageNumbers.push(i);
-    if (endPage < totalPages) { if (endPage < totalPages - 1) pageNumbers.push("..."); pageNumbers.push(totalPages); }
-
-    return (
-      <>
-        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-          <button className="page-link" onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}>Prev</button>
-        </li>
-        {pageNumbers.map((num, idx) => (
-          <li key={idx} className={`page-item ${num === currentPage ? "active" : ""}`}>
-            {typeof num === "number" ? <button className="page-link" onClick={() => setCurrentPage(num)}>{num}</button> : <span className="page-link disabled">{num}</span>}
-          </li>
-        ))}
-        <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-          <button className="page-link" onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}>Next</button>
-        </li>
-      </>
-    );
-  };
-
-  if (loading) return <LoadingScreen />;
-
+  
   return (
     <div className="content-wrapper">
       <div className="card form-card">
@@ -212,15 +185,13 @@ const EyeWearUseMaster = () => {
                   </tbody>
                 </table>
               </div>
-
-              <div className="d-flex justify-content-between align-items-center mt-3">
-                <div>Page {currentPage} of {totalPages} | Total Records: {filteredData.length}</div>
-                <ul className="pagination mb-0 d-flex justify-content-center">{renderPagination()}</ul>
-                <div className="d-flex align-items-center">
-                  <input type="number" className="form-control ms-2" placeholder="Go to page" value={pageInput} onChange={(e) => setPageInput(e.target.value)} />
-                  <button className="btn btn-primary ms-2" onClick={handleGoToPage}>Go</button>
-                </div>
-              </div>
+              {/* PAGINATION */}
+               <Pagination
+               totalItems={filteredData.length}
+               itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+               currentPage={currentPage}
+               onPageChange={setCurrentPage}
+             /> 
             </>
           ) : (
             <form className="row" onSubmit={handleSave}>

@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
-import axios from "axios";
-import { API_HOST, DG_MAS_INVESTIGATION_METHODOLOGY } from "../../../config/apiConfig";
+import { DG_MAS_INVESTIGATION_METHODOLOGY } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { ADD_INV_METHODOLOGY_SUCC_MSG, DUPLICATE_INV_METHODOLOGY, FAIL_TO_SAVE_CHANGES, FETCH_INV_METHODOLOGY_ERR_MSG, UPDATE_INV_METHODOLOGY_SUCC_MSG } from "../../../config/constants";
 
 const InvestigationMethodologyMaster = () => {
@@ -19,9 +19,7 @@ const InvestigationMethodologyMaster = () => {
     const [editingMethodology, setEditingMethodology] = useState(null);
     const [popupMessage, setPopupMessage] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageInput, setPageInput] = useState("");
     const [isLoading, setIsLoading] = useState(true);
-    const itemsPerPage = 5;
 
     const METHOD_NAME_MAX_LENGTH = 30;
     const NOTE_MAX_LENGTH = 50;
@@ -48,7 +46,6 @@ const InvestigationMethodologyMaster = () => {
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
-        setCurrentPage(1); 
     };
 
     const filteredMethodologies = methodologies.filter(
@@ -57,11 +54,9 @@ const InvestigationMethodologyMaster = () => {
             methodology.note.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const filteredTotalPages = Math.ceil(filteredMethodologies.length / itemsPerPage);
-    const currentItems = filteredMethodologies.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
+    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+    const currentItems = filteredMethodologies.slice(indexOfFirst, indexOfLast);
 
     const handleEdit = (methodology) => {
         setEditingMethodology(methodology);
@@ -151,13 +146,10 @@ const InvestigationMethodologyMaster = () => {
         });
     };
     
-    const handlePageNavigation = () => {
-        const pageNumber = parseInt(pageInput, 10);
-        if (pageNumber > 0 && pageNumber <= filteredTotalPages) {
-            setCurrentPage(pageNumber);
-        } else {
-            alert("Please enter a valid page number.");
-        }
+    const handleRefresh = () => {
+        setSearchQuery("");
+        setCurrentPage(1);
+        fetchMethodologies();
     };
 
     if (isLoading) {
@@ -195,9 +187,13 @@ const InvestigationMethodologyMaster = () => {
                                             <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                                                 <i className="mdi mdi-plus"></i> Add
                                             </button>
-                                            {/* <button type="button" className="btn btn-success me-2 flex-shrink-0">
-                                                <i className="mdi mdi-plus"></i> Generate Report
-                                            </button> */}
+                                            <button 
+                                                type="button" 
+                                                className="btn btn-success me-2 flex-shrink-0" 
+                                                onClick={handleRefresh}
+                                            >
+                                                <i className="mdi mdi-refresh"></i> Show All
+                                            </button>
                                         </>
                                     ) : (
                                         <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
@@ -209,87 +205,53 @@ const InvestigationMethodologyMaster = () => {
                         </div>
                         <div className="card-body">
                             {!showForm ? (
-                                <div className="table-responsive packagelist">
-                                    <table className="table table-bordered table-hover align-middle">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th>Method Name</th>
-                                                <th>Note</th>
-                                                <th>Edit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentItems.map((methodology) => (
-                                                <tr key={methodology.methodId}>
-                                                    <td>{methodology.methodName}</td>
-                                                    <td>{methodology.note}</td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-success me-2"
-                                                            onClick={() => handleEdit(methodology)}
-                                                        >
-                                                            <i className="fa fa-pencil"></i>
-                                                        </button>
-                                                    </td>
+                                <>
+                                    <div className="table-responsive packagelist">
+                                        <table className="table table-bordered table-hover align-middle">
+                                            <thead className="table-light">
+                                                <tr>
+                                                    <th>Method Name</th>
+                                                    <th>Note</th>
+                                                    <th>Edit</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                                        <div>
-                                            <span>
-                                                Page {currentPage} of {filteredTotalPages} | Total Records: {filteredMethodologies.length}
-                                            </span>
-                                        </div>
-                                        <ul className="pagination mb-0">
-                                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                                <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage - 1)}
-                                                    disabled={currentPage === 1}
-                                                >
-                                                    &laquo; Previous
-                                                </button>
-                                            </li>
-                                            {[...Array(filteredTotalPages)].map((_, index) => (
-                                                <li
-                                                    className={`page-item ${currentPage === index + 1 ? "active" : ""}`}
-                                                    key={index}
-                                                >
-                                                    <button className="page-link" onClick={() => setCurrentPage(index + 1)}>
-                                                        {index + 1}
-                                                    </button>
-                                                </li>
-                                            ))}
-                                            <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
-                                                <button
-                                                    className="page-link"
-                                                    onClick={() => setCurrentPage(currentPage + 1)}
-                                                    disabled={currentPage === filteredTotalPages}
-                                                >
-                                                    Next &raquo;
-                                                </button>
-                                            </li>
-                                        </ul>
-                                        <div className="d-flex align-items-center">
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max={filteredTotalPages}
-                                                value={pageInput}
-                                                onChange={(e) => setPageInput(e.target.value)}
-                                                placeholder="Go to page"
-                                                className="form-control me-2"
-                                            />
-                                            <button
-                                                className="btn btn-primary"
-                                                onClick={handlePageNavigation}
-                                            >
-                                                Go
-                                            </button>
-                                        </div>
-                                    </nav>
-                                </div>
+                                            </thead>
+                                            <tbody>
+                                                {currentItems.length > 0 ? (
+                                                    currentItems.map((methodology) => (
+                                                        <tr key={methodology.methodId}>
+                                                            <td>{methodology.methodName}</td>
+                                                            <td>{methodology.note}</td>
+                                                            <td>
+                                                                <button
+                                                                    className="btn btn-sm btn-success me-2"
+                                                                    onClick={() => handleEdit(methodology)}
+                                                                >
+                                                                    <i className="fa fa-pencil"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan="3" className="text-center">
+                                                            No methodologies found
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    
+                                    {/* PAGINATION USING REUSABLE COMPONENT */}
+                                    {filteredMethodologies.length > 0 && (
+                                        <Pagination
+                                            totalItems={filteredMethodologies.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
+                                    )}
+                                </>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
                                     <div className="form-group col-md-4 mt-3">
