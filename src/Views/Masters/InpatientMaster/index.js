@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination"
+
 
 const InpatientMaster = () => {
   const [data, setData] = useState([]);
@@ -39,9 +41,9 @@ const InpatientMaster = () => {
   const [showAll, setShowAll] = useState(false);
 
   // PAGINATION
-  const [pageInput, setPageInput] = useState("");
+ const [pageInput, setPageInput] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
   // ================== SAMPLE DATA ==================
   useEffect(() => {
@@ -195,11 +197,9 @@ const InpatientMaster = () => {
     showAll ? true : rec.admission_no.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const currentItems = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+ const indexOfLast = currentPage * itemsPerPage;
+const indexOfFirst = indexOfLast - itemsPerPage;
+const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -303,49 +303,8 @@ const InpatientMaster = () => {
   const showPopup = (message, type) => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
-   //================== HANDLE GO PAGE ==================
-  const handlePageNavigation = () => {
-    const page = Number(pageInput);
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-    setPageInput("");
-  };
-
-  // ================== PAGINATION COMPONENT (YOUR CODE) ==================
-  const Pagination = () => (
-    <nav>
-      <ul className="pagination">
-
-        {/* PREVIOUS */}
-        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-          <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)}>
-            Prev
-          </button>
-        </li>
-
-        {/* PAGE NUMBERS */}
-        {[...Array(totalPages).keys()].map((num) => (
-          <li
-            key={num}
-            className={`page-item ${currentPage === num + 1 ? "active" : ""}`}
-          >
-            <button className="page-link" onClick={() => setCurrentPage(num + 1)}>
-              {num + 1}
-            </button>
-          </li>
-        ))}
-
-        {/* NEXT */}
-        <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-          <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)}>
-            Next
-          </button>
-        </li>
-      </ul>
-    </nav>
-  );
-
+   
+        
   // ================== RENDER ==================
   return (
     <div className="content-wrapper">
@@ -401,172 +360,152 @@ const InpatientMaster = () => {
         </div>
 
         {/* BODY */}
-        <div className="card-body">
-          {!showForm ? (
-            <>
-              {/* TABLE */}
-              <div className="table-responsive">
-                <table className="table table-bordered table-hover">
-                  <thead className="table-light">
-                    <tr>
-                      <th>Admission No</th>
-                      <th>Patient ID</th>
-                      <th>Date</th>
-                      <th>Time</th>
-                      <th>Priority</th>
-                      <th>Source</th>
-                      <th>MLC</th>
-                      <th>VIP</th>
-                      <th>Status</th>
-                      <th>Edit</th>
-                    </tr>
-                  </thead>
 
-                  <tbody>
-                    {currentItems.map((rec) => (
-                      <tr key={rec.inpatient_id}>
-                        <td>{rec.admission_no}</td>
-                        <td>{rec.patient}</td>
-                        <td>{rec.admission_date}</td>
-                        <td>{rec.admission_time}</td>
-                        <td>{rec.admission_priority}</td>
-                        <td>{rec.admission_source}</td>
-                        <td>{rec.mlc_flag}</td>
-                        <td>{rec.vip_flag}</td>
+<div className="card-body">
 
-                        {/* STATUS SWITCH */}
-                        <td>
-                          <div className="form-check form-switch">
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              checked={rec.status === "Y"}
-                              onChange={() =>
-                                handleSwitchChange(
-                                  rec.inpatient_id,
-                                  rec.status === "Y" ? "N" : "Y"
-                                )
-                              }
-                            />
-                            <label className="form-check-label">
-                              {rec.status === "Y" ? "Active" : "Inactive"}
-                            </label>
-                          </div>
-                        </td>
+  {!showForm ? (
+    <>
+      {/* TABLE */}
+      <div className="table-responsive">
+        <table className="table table-bordered table-hover">
+          <thead className="table-light">
+            <tr>
+              <th>Admission No</th>
+              <th>Patient ID</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Priority</th>
+              <th>Source</th>
+              <th>MLC</th>
+              <th>VIP</th>
+              <th>Status</th>
+              <th>Edit</th>
+            </tr>
+          </thead>
 
-                        {/* EDIT */}
-                        <td>
-                          <button
-                            className="btn btn-success btn-sm"
-                            onClick={() => handleEdit(rec)}
-                            disabled={rec.status !== "Y"}
-                          >
-                            <i className="fa fa-pencil"></i>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          <tbody>
+            {currentItems.map((rec) => (
+              <tr key={rec.inpatient_id}>
+                <td>{rec.admission_no}</td>
+                <td>{rec.patient}</td>
+                <td>{rec.admission_date}</td>
+                <td>{rec.admission_time}</td>
+                <td>{rec.admission_priority}</td>
+                <td>{rec.admission_source}</td>
+                <td>{rec.mlc_flag}</td>
+                <td>{rec.vip_flag}</td>
 
-              {/* UPDATED PAGINATION */}
-              <div className="d-flex align-items-center justify-content-between mt-3">
-                <div>Page {currentPage} of {totalPages} | Total Records: {filteredData.length}</div>
-                <Pagination />
-                <div className="d-flex">
-                  <input
-                    type="number"
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                    className="form-control form-control-sm me-2"
-                    style={{ width: "70px" }}
-                    placeholder="Go To Page"
-                  />
-                  <button className="btn btn-sm btn-primary" onClick={handlePageNavigation}>Go</button>
-                </div>
-              </div>
-              
-            </>
-          ) : (
-            <>
-              {/* FORM */}
-              <form className="row" onSubmit={handleSave}>
-                <div className="form-group col-md-3">
-                  <label>Admission No <span className="text">*</span></label>
-                  <input
-                    id="admission_no"
-                    className="form-control"
-                    value={formData.admission_no}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
+                <td>
+                  <div className="form-check form-switch">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      checked={rec.status === "Y"}
+                      onChange={() =>
+                        handleSwitchChange(
+                          rec.inpatient_id,
+                          rec.status === "Y" ? "N" : "Y"
+                        )
+                      }
+                    />
+                    <label className="form-check-label">
+                      {rec.status === "Y" ? "Active" : "Inactive"}
+                    </label>
+                  </div>
+                </td>
 
-                <div className="form-group col-md-3">
-                  <label>Patient <span className="text-danger">*</span></label>
-                  <input
-                    id="patient"
-                    className="form-control"
-                    value={formData.patient}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                <div className="form-group col-md-3">
-                  <label>Visit ID<span className="text-danger">*</span></label>
-                  <input
-                    id="visit_id"
-                    className="form-control"
-                    value={formData.visit_id}
-                    onChange={handleInputChange}
-                  />
-                </div>
-
-                <div className="form-group col-md-3">
-                  <label>Date <span className="text-danger">*</span></label>
-                  <input
-                    id="admission_date"
-                    type="date"
-                    className="form-control"
-                    value={formData.admission_date}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                <div className="form-group col-md-3 mt-3">
-                  <label>Time <span className="text-danger">*</span></label>
-                  <input
-                    id="admission_time"
-                    type="time"
-                    className="form-control"
-                    value={formData.admission_time}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                {/* SUBMIT BUTTON */}
-                <div className="form-group col-md-12 mt-4 d-flex justify-content-end">
+                <td>
                   <button
-                    className="btn btn-primary me-2"
-                    disabled={!isFormValid}
+                    className="btn btn-success btn-sm"
+                    onClick={() => handleEdit(rec)}
+                    disabled={rec.status !== "Y"}
                   >
-                    Save
+                    <i className="fa fa-pencil"></i>
                   </button>
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    onClick={() => setShowForm(false)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </>
-          )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* PAGINATION */}
+      {Math.ceil(filteredData.length / itemsPerPage) > 1 && (
+        <Pagination
+          totalItems={filteredData.length}
+          itemsPerPage={itemsPerPage}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+        />
+      )}
+    </>
+  ) : (
+    <>
+      {/* FORM */}
+      <form className="row" onSubmit={handleSave}>
+        <div className="form-group col-md-3">
+          <label>Admission No *</label>
+          <input
+            id="admission_no"
+            className="form-control"
+            value={formData.admission_no}
+            onChange={handleInputChange}
+            required
+          />
+        </div>
+
+        <div className="form-group col-md-3">
+          <label>Patient *</label>
+          <input
+            id="patient"
+            className="form-control"
+            value={formData.patient}
+            onChange={handleInputChange}
+            required
+          />
+        </div>
+
+        <div className="form-group col-md-3">
+          <label>Date *</label>
+          <input
+            id="admission_date"
+            type="date"
+            className="form-control"
+            value={formData.admission_date}
+            onChange={handleInputChange}
+            required
+          />
+        </div>
+
+        <div className="form-group col-md-3">
+          <label>Time *</label>
+          <input
+            id="admission_time"
+            type="time"
+            className="form-control"
+            value={formData.admission_time}
+            onChange={handleInputChange}
+            required
+          />
+        </div>
+
+        <div className="form-group col-md-12 mt-4 d-flex justify-content-end">
+          <button className="btn btn-primary me-2" disabled={!isFormValid}>
+            Save
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={() => setShowForm(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </>
+  )}
+
+</div>
 
           {/* POPUP */}
           {popupMessage && (
@@ -614,10 +553,12 @@ const InpatientMaster = () => {
               </div>
             </div>
           )}
-        </div>
+       
       </div>
+
+      {loading && <LoadingScreen />}
     </div>
   );
-};
+}
 
 export default InpatientMaster;
