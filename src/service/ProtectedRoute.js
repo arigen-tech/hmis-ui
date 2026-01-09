@@ -155,6 +155,7 @@ const validRoutes = [
   "/EntMasTonsilGrade",
   "/ReceivingReport",
   "/ReturnRegister",
+  "/BookingAppointmentHistory",
   
 ];
 
