@@ -5,22 +5,22 @@ import placeholderImage from "../../../assets/images/placeholder.jpg";
 import { getRequest, postRequest } from "../../../service/apiService";
 
 
+import DatePicker from "../../../Components/DatePicker";
 import {
   ALL_COUNTRY, ALL_DEPARTMENT,
   ALL_GENDER,
   ALL_RELATION,
   API_HOST,
   DISTRICT_BY_STATE, DOCTOR_BY_SPECIALITY,
+  GET_AVAILABILITY_TOKENS,
   GET_DOCTOR_SESSION,
   GET_SESSION, HOSPITAL,
   MAS_SERVICE_CATEGORY,
   PATIENT_IMAGE_UPLOAD,
   PATIENT_REGISTRATION,
-  STATE_BY_COUNTRY,
-  GET_AVAILABILITY_TOKENS
+  STATE_BY_COUNTRY
 } from "../../../config/apiConfig";
 import { DEPARTMENT_CODE_OPD } from "../../../config/constants";
-import DatePicker from "../../../Components/DatePicker";
 
 const PatientRegistration = () => {
   const navigate = useNavigate();
@@ -174,14 +174,15 @@ const PatientRegistration = () => {
   };
 
   const createInstant = (dateStr, timeStr) => {
-    if (!dateStr || !timeStr) return null;
-    let formattedTime = timeStr;
-    if (formattedTime && formattedTime.split(':').length === 2) {
-      formattedTime = `${formattedTime}:00`; // Add seconds
-    }
-
-    return `${dateStr}T${formattedTime}.000Z`;
-  };
+  if (!dateStr || !timeStr) return null;
+  
+  let formattedTime = timeStr;
+  if (formattedTime && formattedTime.split(':').length === 2) {
+    formattedTime = `${formattedTime}:00`;
+  }
+  
+  return `${dateStr}T${formattedTime}Z`;
+};
 
   const fetchTokenAvailability = async (appointmentIndex = 0) => {
     try {
@@ -975,23 +976,34 @@ const PatientRegistration = () => {
     return valid;
   };
 
-  const visitList = appointments.map(appt => ({
-    id: 0,
-    tokenNo: appt.tokenNo || 0,
-    tokenStartTime: appt.tokenStartTime || "",
-    tokenEndTime: appt.tokenEndTime || "",
-    visitStatus: "NEW",
-    visitDate: appt.selDate || null,
-    departmentId: Number(appt.speciality),
-    doctorId: Number(appt.selDoctorId),
-    doctorName: appt.doctorName || "",
-    sessionId: Number(appt.selSession),
-    hospitalId: Number(sessionStorage.getItem('hospitalId')),
-    priority: 0,
-    billingStatus: "Pending",
-    patientId: 0,
-    iniDoctorId: 0
-  }));
+  const visitList = appointments
+  .filter(appt => appt.speciality && appt.selDoctorId && appt.selSession && appt.tokenStartTime)
+  .map(appt => {
+        const dateStr = appt.selDate;
+        const dateOnly = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+        
+        const visitDateTime = createInstant(dateOnly, appt.tokenStartTime);
+        const startTime = createInstant(dateOnly, appt.tokenStartTime);
+        const endTime = createInstant(dateOnly, appt.tokenEndTime);
+    
+    return {
+      id: 0,
+      tokenNo: appt.tokenNo || 0,
+      tokenStartTime: startTime,
+      tokenEndTime: endTime,
+      visitStatus: "NEW",
+      visitDate: visitDateTime,
+      departmentId: Number(appt.speciality),
+      doctorId: Number(appt.selDoctorId),
+      doctorName: appt.doctorName || "",
+      sessionId: Number(appt.selSession),
+      hospitalId: Number(sessionStorage.getItem('hospitalId')),
+      priority: 0,
+      billingStatus: "Pending",
+      patientId: 0,
+      iniDoctorId: 0
+    };
+  });
 
 
   useEffect(() => {
@@ -1312,14 +1324,25 @@ const PatientRegistration = () => {
 
   const selectToken = async (appointmentIndex, tokenNo, tokenStartTime, tokenEndTime) => {
     try {
-      // Directly select the token without confirmation dialog
+
+      let formattedStartTime = tokenStartTime;
+    let formattedEndTime = tokenEndTime;
+    
+    if (tokenStartTime && tokenStartTime.split(':').length === 2) {
+      formattedStartTime = `${tokenStartTime}:00`;
+    }
+    
+    if (tokenEndTime && tokenEndTime.split(':').length === 2) {
+      formattedEndTime = `${tokenEndTime}:00`;
+    }
+
       setAppointments(prev => prev.map((app, index) =>
         index === appointmentIndex ? {
           ...app,
           tokenNo,
-          tokenStartTime,
-          tokenEndTime,
-          selectedTimeSlot: `${tokenStartTime} - ${tokenEndTime}`
+        tokenStartTime: formattedStartTime,
+        tokenEndTime: formattedEndTime,
+        selectedTimeSlot: `${tokenStartTime} - ${tokenEndTime}`
         } : app
       ));
 

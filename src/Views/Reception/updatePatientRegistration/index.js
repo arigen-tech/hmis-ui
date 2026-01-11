@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
+import DatePicker from "../../../Components/DatePicker";
 import {
   ALL_COUNTRY,
   ALL_DEPARTMENT,
@@ -11,6 +12,7 @@ import {
   API_HOST,
   DISTRICT_BY_STATE,
   DOCTOR_BY_SPECIALITY,
+  GET_AVAILABILITY_TOKENS,
   GET_DOCTOR_SESSION,
   GET_SESSION,
   HOSPITAL,
@@ -18,12 +20,10 @@ import {
   PATIENT_FOLLOW_UP_DETAILS,
   PATIENT_IMAGE_UPLOAD,
   PATIENT_SEARCH,
-  GET_AVAILABILITY_TOKENS,
   STATE_BY_COUNTRY
 } from "../../../config/apiConfig";
 import { DEPARTMENT_CODE_OPD } from "../../../config/constants";
 import { getRequest, postRequest } from "../../../service/apiService";
-import DatePicker from "../../../Components/DatePicker";
 
 const UpdatePatientRegistration = () => {
   async function fetchHospitalDetails() {
@@ -175,10 +175,10 @@ const UpdatePatientRegistration = () => {
         selDoctorId: "",
         selSession: "",
         selDate: null,
-        tokenNo: null, 
+        tokenNo: null,
         tokenStartTime: "",
         tokenEndTime: "",
-        selectedTimeSlot: "" ,
+        selectedTimeSlot: "",
         departmentName: "",
         doctorName: "",
         sessionName: "",
@@ -311,7 +311,7 @@ const UpdatePatientRegistration = () => {
           tokenStartTime: "",
           tokenEndTime: "",
           selectedTimeSlot: ""
-} : a
+        } : a
       )
     );
 
@@ -330,7 +330,8 @@ const UpdatePatientRegistration = () => {
           tokenNo: null,
           tokenStartTime: "",
           tokenEndTime: "",
-          selectedTimeSlot: "" } : a
+          selectedTimeSlot: ""
+        } : a
       )
     );
     checkSessionValid(id, doctorId, specialityId, value);
@@ -341,9 +342,10 @@ const UpdatePatientRegistration = () => {
       prev.map((appt, i) => {
         if (i === index) {
           if (field === "selDate") {
+            const dateOnly = value.split('T')[0];
             return {
               ...appt,
-              [field]: value,
+              [field]: dateOnly,
               tokenNo: null,
               tokenStartTime: "",
               tokenEndTime: "",
@@ -751,12 +753,20 @@ const UpdatePatientRegistration = () => {
 
         // Handle appointments - ALWAYS show appointment section even if no appointments exist
         if (data.appointments && data.appointments.length > 0) {
-          const mappedAppointments = data.appointments.map((appt, index) => ({
-            id: index,
+          const mappedAppointments = data.appointments.map((appt, index) => {
+
+            const extractDate = (dateString) => {
+      if (!dateString) return null;
+      if (dateString.includes('T')) return dateString.split('T')[0];
+      if (dateString.includes(' ')) return dateString.split(' ')[0];
+      return dateString;
+    };
+           return {
+             id: index,
             speciality: appt.specialityId?.toString() || "",
             selDoctorId: appt.doctorId?.toString() || "",
             selSession: appt.sessionId?.toString() || "",
-            selDate: appt.selDate || null,
+            selDate: extractDate(appt.visitDate),
             departmentName: appt.specialityName || "",
             doctorName: appt.doctorName || "",
             sessionName: appt.sessionName || "",
@@ -767,7 +777,8 @@ const UpdatePatientRegistration = () => {
             selectedTimeSlot: appt.tokenStartTime && appt.tokenEndTime
               ? `${appt.tokenStartTime} - ${appt.tokenEndTime}`
               : ""
-          }));
+           }
+          });
 
           setAppointments(mappedAppointments);
           setNextAppointmentId(mappedAppointments.length);
@@ -1170,7 +1181,18 @@ const UpdatePatientRegistration = () => {
     const currentDate = new Date().toISOString();
     const currentDateOnly = new Date().toISOString().split('T')[0];
 
-    // Helper functions
+
+ const toInstant = (dateStr, timeStr) => {
+    if (!dateStr || !timeStr) return null;
+    const dateOnly = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+    let timeWithSeconds = timeStr;
+    if (timeStr && timeStr.split(':').length === 2) {
+      timeWithSeconds = `${timeStr}:00`;
+    }
+    
+    return `${dateOnly}T${timeWithSeconds}Z`;
+  };
+
     const toNumber = (value) => {
       if (value === null || value === undefined || value === '') return null;
       const num = Number(value);
@@ -1183,15 +1205,12 @@ const UpdatePatientRegistration = () => {
       return toNumber(value);
     };
 
-    // Smart truncation function that handles base64 images
     const smartTruncate = (value, defaultMaxLength = 255) => {
       if (!value) return "";
 
       const strValue = String(value);
 
-      // Handle base64 images - store only filename, not the actual data
       if (strValue.startsWith('data:image')) {
-        // Extract filename from base64 or use default
         const timestamp = new Date().getTime();
         const extension = strValue.includes('image/png') ? 'png' :
           strValue.includes('image/jpeg') ? 'jpg' :
@@ -1199,7 +1218,6 @@ const UpdatePatientRegistration = () => {
         return `patient_${patientDetailForm.id || 'new'}_${timestamp}.${extension}`;
       }
 
-      // Handle URLs - if it's a very long URL, extract the filename part
       if (strValue.includes('http') && strValue.length > 200) {
         try {
           const url = new URL(strValue);
@@ -1207,20 +1225,16 @@ const UpdatePatientRegistration = () => {
           const filename = pathname.split('/').pop() || `image_${new Date().getTime()}.jpg`;
           return filename.substring(0, defaultMaxLength);
         } catch (e) {
-          // Not a valid URL, fall back to truncation
         }
       }
 
-      // For regular strings, truncate if necessary
       return strValue.length > defaultMaxLength ?
         strValue.substring(0, defaultMaxLength) : strValue;
     };
 
-    // Create a safe string field handler that logs warnings
     const safeStringField = (fieldName, value, context = 'patient') => {
       const strValue = smartTruncate(value);
 
-      // Log warning if value was truncated
       if (value && String(value).length > 255 && strValue.length === 255) {
         console.warn(`⚠️ Field ${context}.${fieldName} was truncated from ${String(value).length} to 255 characters`);
         console.warn(`Original value start:`, String(value).substring(0, 100));
@@ -1229,7 +1243,6 @@ const UpdatePatientRegistration = () => {
       return strValue;
     };
 
-    // Validate and prepare data with automatic length management
     const prepareData = (data, fieldName = 'root') => {
       if (typeof data === 'string') {
         return safeStringField(fieldName, data);
@@ -1353,13 +1366,16 @@ const UpdatePatientRegistration = () => {
       appointments
         .filter(appt => appt.speciality && appt.selDoctorId && appt.selSession)
         .map(appt => {
+
+          const startTime = toInstant(appt.selDate, appt.tokenStartTime);
+          const endTime = toInstant(appt.selDate,appt.tokenEndTime);
+
           return {
             id: appt.visitId || null,
             tokenNo: appt.tokenNo || null,
-            tokenStartTime: appt.tokenStartTime || null,
-            tokenEndTime: appt.tokenEndTime || null,
-            visitDate: appt.selDate || currentDateOnly,
-            visitDate: currentDate,
+            tokenStartTime: startTime,
+            tokenEndTime: endTime,
+            visitDate: startTime,
             departmentId: toNumber(appt.speciality),
             doctorId: toNumber(appt.selDoctorId),
             doctorName: appt.doctorName || "",
@@ -1659,17 +1675,17 @@ const UpdatePatientRegistration = () => {
                 <div class="row row-cols-4 g-1" id="token-slots">
                   ${tokens.map(token => `
                     <div class="col">
-                      <button type="button" 
-                              class="btn ${token.available ? 'btn-outline-success' : 'btn-outline-secondary disabled'} w-100 d-flex flex-column align-items-center justify-content-center p-1" 
-                              style="height: 65px; font-size: 0.75rem;"
-                              data-token-id="${token.tokenNo || ''}"
-                              data-token-starttime="${token.startTime || ''}"
-                              data-token-endtime="${token.endTime || ''}"
-                              ${!token.available ? 'disabled' : ''}>
-                        <span class="fw-bold">${token.startTime.split(':')[0]}:${token.startTime.split(':')[1]}</span>
-                        <span>${token.endTime.split(':')[0]}:${token.endTime.split(':')[1]}</span>
-                        ${!token.available ? '<span class="badge bg-danger mt-0" style="font-size: 0.6rem;">Booked</span>' : ''}
-                      </button>
+<button type="button" 
+        class="btn ${token.available ? 'btn-outline-success' : 'btn-outline-secondary disabled'} w-100 d-flex flex-column align-items-center justify-content-center p-1" 
+        style="height: 65px; font-size: 0.75rem;"
+        data-token-id="${token.tokenNo || ''}"
+        data-token-starttime="${token.startTime || '00:00:00'}"  // Ensure full time format
+        data-token-endtime="${token.endTime || '00:00:00'}"      // Ensure full time format
+        ${!token.available ? 'disabled' : ''}>
+  <span class="fw-bold">${token.startTime.split(':')[0]}:${token.startTime.split(':')[1]}</span>
+  <span>${token.endTime.split(':')[0]}:${token.endTime.split(':')[1]}</span>
+  ${!token.available ? '<span class="badge bg-danger mt-0" style="font-size: 0.6rem;">Booked</span>' : ''}
+</button>
                     </div>
                   `).join('')}
                 </div>
@@ -2121,169 +2137,169 @@ const UpdatePatientRegistration = () => {
             </div>
           </div>
 
-          
-              {/* Vital Details Section */}
-              {!preConsultationFlag && (
-                <div className="row mb-3">
-                  <div className="col-sm-12">
-                    <div className="card shadow mb-3">
-                      <div className="card-header py-3   border-bottom-1">
-                        <h6 className="mb-0 fw-bold">Vital Details</h6>
+
+          {/* Vital Details Section */}
+          {!preConsultationFlag && (
+            <div className="row mb-3">
+              <div className="col-sm-12">
+                <div className="card shadow mb-3">
+                  <div className="card-header py-3   border-bottom-1">
+                    <h6 className="mb-0 fw-bold">Vital Details</h6>
+                  </div>
+                  <div className="card-body">
+                    <form className="vital">
+                      <div className="row g-3 align-items-center">
+                        {/* Patient Height */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">Patient Height<span
+                            className="text-danger">*</span></label>
+                          <input type="number" className={`form-control ${errors.height ? 'is-invalid' : ''}`}
+                            placeholder="Height" name="height" value={patientDetailForm.height} onChange={handleChange} />
+                          <span className="input-group-text">cm</span>
+                          {errors.height && (
+                            <div className="invalid-feedback d-block">{errors.height}</div>
+                          )}
+                        </div>
+
+                        {/* Weight */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">Weight<span className="text-danger">*</span></label>
+                          <input type="text" className={`form-control ${errors.weight ? 'is-invalid' : ''}`}
+                            placeholder="Weight" name="weight" value={patientDetailForm.weight} onChange={handleChange} />
+                          <span className="input-group-text">kg</span>
+                          {errors.weight && (
+                            <div className="invalid-feedback d-block">{errors.weight}</div>
+                          )}
+                        </div>
+
+                        {/* Temperature */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">Temperature<span className="text-danger">*</span></label>
+                          <input type="text" className={`form-control ${errors.temperature ? 'is-invalid' : ''}`}
+                            placeholder="Temperature" name="temperature" value={patientDetailForm.temperature}
+                            onChange={handleChange} />
+                          <span className="input-group-text">°F</span>
+                          {errors.temperature && (
+                            <div className="invalid-feedback d-block">{errors.temperature}</div>
+                          )}
+                        </div>
+
+                        {/* BP (Systolic / Diastolic) */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">BP<span className="text-danger">*</span></label>
+                          <input type="text" className={`form-control ${errors.systolicBP ? 'is-invalid' : ''}`}
+                            placeholder="Systolic" name="systolicBP" value={patientDetailForm.systolicBP}
+                            onChange={handleChange} />
+                          <span className="input-group-text">/</span>
+                          {errors.systolicBP && (
+                            <div className="invalid-feedback d-block">{errors.systolicBP}</div>
+                          )}
+                          <input type="text" className={`form-control ${errors.diastolicBP ? 'is-invalid' : ''}`}
+                            placeholder="Diastolic" name="diastolicBP" value={patientDetailForm.diastolicBP}
+                            onChange={handleChange} />
+                          <span className="input-group-text">mmHg</span>
+                          {errors.diastolicBP && (
+                            <div className="invalid-feedback d-block">{errors.diastolicBP}</div>
+                          )}
+                        </div>
+
+                        {/* Pulse */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">Pulse<span className="text-danger">*</span></label>
+                          <input type="text" className={`form-control ${errors.pulse ? 'is-invalid' : ''}`}
+                            placeholder="Pulse" name="pulse" value={patientDetailForm.pulse} onChange={handleChange} />
+                          <span className="input-group-text">/min</span>
+                          {errors.pulse && (
+                            <div className="invalid-feedback d-block">{errors.pulse}</div>
+                          )}
+                        </div>
+
+                        {/* BMI */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">BMI</label>
+                          <input type="text" className={`form-control ${errors.bmi ? 'is-invalid' : ''}`}
+                            placeholder="BMI" name="bmi" value={patientDetailForm.bmi} onChange={handleChange} />
+                          <span className="input-group-text">kg/m²</span>
+                          {errors.bmi && (
+                            <div className="invalid-feedback d-block">{errors.bmi}</div>
+                          )}
+                        </div>
+
+                        {/* RR */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">RR</label>
+                          <input type="text" className={`form-control ${errors.rr ? 'is-invalid' : ''}`}
+                            placeholder="RR" name="rr" value={patientDetailForm.rr} onChange={handleChange} />
+                          <span className="input-group-text">/min</span>
+                          {errors.rr && (
+                            <div className="invalid-feedback d-block">{errors.rr}</div>
+                          )}
+                        </div>
+
+                        {/* SpO2 */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">SpO2</label>
+                          <input type="text" className={`form-control ${errors.spo2 ? 'is-invalid' : ''}`}
+                            placeholder="SpO2" name="spo2" value={patientDetailForm.spo2} onChange={handleChange} />
+                          <span className="input-group-text">%</span>
+                          {errors.height && (
+                            <div className="invalid-feedback d-block">{errors.spo2}</div>
+                          )}
+                        </div>
                       </div>
-                      <div className="card-body">
-                        <form className="vital">
-                          <div className="row g-3 align-items-center">
-                            {/* Patient Height */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">Patient Height<span
-                                className="text-danger">*</span></label>
-                              <input type="number" className={`form-control ${errors.height ? 'is-invalid' : ''}`}
-                                placeholder="Height" name="height" value={patientDetailForm.height} onChange={handleChange} />
-                              <span className="input-group-text">cm</span>
-                              {errors.height && (
-                                <div className="invalid-feedback d-block">{errors.height}</div>
-                              )}
-                            </div>
-
-                            {/* Weight */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">Weight<span className="text-danger">*</span></label>
-                              <input type="text" className={`form-control ${errors.weight ? 'is-invalid' : ''}`}
-                                placeholder="Weight" name="weight" value={patientDetailForm.weight} onChange={handleChange} />
-                              <span className="input-group-text">kg</span>
-                              {errors.weight && (
-                                <div className="invalid-feedback d-block">{errors.weight}</div>
-                              )}
-                            </div>
-
-                            {/* Temperature */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">Temperature<span className="text-danger">*</span></label>
-                              <input type="text" className={`form-control ${errors.temperature ? 'is-invalid' : ''}`}
-                                placeholder="Temperature" name="temperature" value={patientDetailForm.temperature}
-                                onChange={handleChange} />
-                              <span className="input-group-text">°F</span>
-                              {errors.temperature && (
-                                <div className="invalid-feedback d-block">{errors.temperature}</div>
-                              )}
-                            </div>
-
-                            {/* BP (Systolic / Diastolic) */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">BP<span className="text-danger">*</span></label>
-                              <input type="text" className={`form-control ${errors.systolicBP ? 'is-invalid' : ''}`}
-                                placeholder="Systolic" name="systolicBP" value={patientDetailForm.systolicBP}
-                                onChange={handleChange} />
-                              <span className="input-group-text">/</span>
-                              {errors.systolicBP && (
-                                <div className="invalid-feedback d-block">{errors.systolicBP}</div>
-                              )}
-                              <input type="text" className={`form-control ${errors.diastolicBP ? 'is-invalid' : ''}`}
-                                placeholder="Diastolic" name="diastolicBP" value={patientDetailForm.diastolicBP}
-                                onChange={handleChange} />
-                              <span className="input-group-text">mmHg</span>
-                              {errors.diastolicBP && (
-                                <div className="invalid-feedback d-block">{errors.diastolicBP}</div>
-                              )}
-                            </div>
-
-                            {/* Pulse */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">Pulse<span className="text-danger">*</span></label>
-                              <input type="text" className={`form-control ${errors.pulse ? 'is-invalid' : ''}`}
-                                placeholder="Pulse" name="pulse" value={patientDetailForm.pulse} onChange={handleChange} />
-                              <span className="input-group-text">/min</span>
-                              {errors.pulse && (
-                                <div className="invalid-feedback d-block">{errors.pulse}</div>
-                              )}
-                            </div>
-
-                            {/* BMI */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">BMI</label>
-                              <input type="text" className={`form-control ${errors.bmi ? 'is-invalid' : ''}`}
-                                placeholder="BMI" name="bmi" value={patientDetailForm.bmi} onChange={handleChange} />
-                              <span className="input-group-text">kg/m²</span>
-                              {errors.bmi && (
-                                <div className="invalid-feedback d-block">{errors.bmi}</div>
-                              )}
-                            </div>
-
-                            {/* RR */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">RR</label>
-                              <input type="text" className={`form-control ${errors.rr ? 'is-invalid' : ''}`}
-                                placeholder="RR" name="rr" value={patientDetailForm.rr} onChange={handleChange} />
-                              <span className="input-group-text">/min</span>
-                              {errors.rr && (
-                                <div className="invalid-feedback d-block">{errors.rr}</div>
-                              )}
-                            </div>
-
-                            {/* SpO2 */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">SpO2</label>
-                              <input type="text" className={`form-control ${errors.spo2 ? 'is-invalid' : ''}`}
-                                placeholder="SpO2" name="spo2" value={patientDetailForm.spo2} onChange={handleChange} />
-                              <span className="input-group-text">%</span>
-                              {errors.height && (
-                                <div className="invalid-feedback d-block">{errors.spo2}</div>
-                              )}
-                            </div>
-                          </div>
-                        </form>
-                      </div>
-                    </div>
+                    </form>
                   </div>
                 </div>
-              )}
+              </div>
+            </div>
+          )}
 
-              {/* Update Options Section - Moved under Vital Details */}
-              <div className="row mb-3">
-                <div className="col-sm-12">
-                  <div className="card shadow mb-3">
-                    <div className="card-header py-3   border-bottom-1">
-                      <h6 className="mb-0 fw-bold">Update Options</h6>
-                    </div>
-                    <div className="card-body">
-                      <div className="row g-3">
-                        <div className="col-md-12">
-                          <div className="form-check form-check-inline">
-                            <input
-                              className="form-check-input"
-                              type="radio"
-                              name="appointmentType"
-                              id="updateInfo"
-                              value="updateInfo"
-                              onChange={handleRadioChange}
-                              checked={!appointmentFlag}
-                            />
-                            <label className="form-check-label" htmlFor="updateInfo">
-                              Update Information Only
-                            </label>
-                          </div>
-                          <div className="form-check form-check-inline">
-                            <input
-                              className="form-check-input"
-                              type="radio"
-                              name="appointmentType"
-                              id="appointment"
-                              value="appointment"
-                              onChange={handleRadioChange}
-                              checked={appointmentFlag}
-                            />
-                            <label className="form-check-label" htmlFor="appointment">
-                              Update with Appointment
-                            </label>
-                          </div>
-                        </div>
+          {/* Update Options Section - Moved under Vital Details */}
+          <div className="row mb-3">
+            <div className="col-sm-12">
+              <div className="card shadow mb-3">
+                <div className="card-header py-3   border-bottom-1">
+                  <h6 className="mb-0 fw-bold">Update Options</h6>
+                </div>
+                <div className="card-body">
+                  <div className="row g-3">
+                    <div className="col-md-12">
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="appointmentType"
+                          id="updateInfo"
+                          value="updateInfo"
+                          onChange={handleRadioChange}
+                          checked={!appointmentFlag}
+                        />
+                        <label className="form-check-label" htmlFor="updateInfo">
+                          Update Information Only
+                        </label>
+                      </div>
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="appointmentType"
+                          id="appointment"
+                          value="appointment"
+                          onChange={handleRadioChange}
+                          checked={appointmentFlag}
+                        />
+                        <label className="form-check-label" htmlFor="appointment">
+                          Update with Appointment
+                        </label>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
 
-              {/* Appointment Details Section - only show when appointmentFlag is true */}
+          {/* Appointment Details Section - only show when appointmentFlag is true */}
           {appointmentFlag && (
             <div className="row mb-3">
               <div className="col-sm-12">
@@ -2291,7 +2307,7 @@ const UpdatePatientRegistration = () => {
                   <div className="card-header py-3 border-bottom-1 d-flex align-items-center justify-content-between">
                     <h6 className="mb-0 fw-bold">Appointment Details</h6>
                     <div className="d-flex gap-2">
-                      <button type="button" className="btn btn-sm btn-outline-primary" onClick={addAppointmentRow}>
+                      <button type="button" className="btn btn-sm btn-outline-secondary text-white" onClick={addAppointmentRow}>
                         + Add Appointment
                       </button>
                     </div>
