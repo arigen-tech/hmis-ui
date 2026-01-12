@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const ObConsanguinityMaster = () => {
   const [data, setData] = useState([]);
@@ -47,13 +48,11 @@ const ObConsanguinityMaster = () => {
   const filteredData = data.filter((rec) =>
     rec.value.toLowerCase().includes(searchQuery.toLowerCase())
   );
+const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
+  const currentItems = filteredData.slice(indexOfFirst, indexOfLast)
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-
-  const currentItems = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  
 
   // ================= FORM =================
   const handleInputChange = (e) => {
@@ -125,14 +124,7 @@ const ObConsanguinityMaster = () => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
-  // ================= PAGE NAV =================
-  const handlePageNavigation = () => {
-    const page = Number(pageInput);
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-    setPageInput("");
-  };
+  
 
   const handleRefresh = () => {
     setSearchQuery("");
@@ -242,54 +234,12 @@ const ObConsanguinityMaster = () => {
               </table>
 
               {/* PAGINATION */}
-              <div className="d-flex justify-content-between align-items-center mt-3 flex-wrap">
-                <div>
-                  Total Records: {filteredData.length} | Page {currentPage} of {totalPages}
-                </div>
-
-                <nav>
-                  <ul className="pagination mb-0">
-                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                      <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)}>
-                        Prev
-                      </button>
-                    </li>
-
-                    {[...Array(totalPages)].map((_, i) => (
-                      <li
-                        key={i}
-                        className={`page-item ${currentPage === i + 1 ? "active" : ""}`}
-                      >
-                        <button className="page-link" onClick={() => setCurrentPage(i + 1)}>
-                          {i + 1}
-                        </button>
-                      </li>
-                    ))}
-
-                    <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                      <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)}>
-                        Next
-                      </button>
-                    </li>
-                  </ul>
-                </nav>
-
-                <div className="d-flex align-items-center">
-                  <input
-                    type="number"
-                    min="1"
-                    max={totalPages}
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                    className="form-control form-control-sm me-2"
-                    style={{ width: "70px" }}
-                    placeholder="Go To page"
-                  />
-                  <button className="btn btn-sm btn-primary" onClick={handlePageNavigation}>
-                    Go
-                  </button>
-                </div>
-              </div>
+               <Pagination
+               totalItems={filteredData.length}
+               itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+               currentPage={currentPage}
+               onPageChange={setCurrentPage}
+             /> 
             </>
           ) : (
             // FORM
