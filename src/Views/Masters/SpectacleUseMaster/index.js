@@ -11,7 +11,7 @@ import {
   FETCH_SPECTACLE_USE_ERR_MSG,
   UPDATE_SPECTACLE_USE_SUCC_MSG
 } from "../../../config/constants"; 
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
 const SpectacleUseMaster = () => {
   const [spectacleUseData, setSpectacleUseData] = useState([]);
