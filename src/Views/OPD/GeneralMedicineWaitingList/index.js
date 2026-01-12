@@ -9,6 +9,7 @@ import LoadingScreen from "../../../Components/Loading/index";
 import Popup from "../../../Components/popup";
 import DuplicatePopup from "../GeneralMedicineWaitingList/DuplicatePopup";
 import MasFamilyModel from "../GeneralMedicineWaitingList/FaimalyHistryModel"
+import Pagination,{DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination"             
 
 
 const GeneralMedicineWaitingList = () => {
@@ -2661,12 +2662,14 @@ const handleRelease = (patientId) => {
     setSurgeryItems(newItems)
   }
 
-  const totalPages = Math.ceil(waitingList.length / itemsPerPage);
+  
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = waitingList.slice(indexOfFirst, indexOfLast);
 
-  const currentItems = waitingList.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  
+
+
 
   const calculateFollowUpDate = (days) => {
     const date = new Date();
@@ -2675,52 +2678,7 @@ const handleRelease = (patientId) => {
   };
 
 
-  // HANDLE PAGE INPUT
-  const handlePageNavigation = () => {
-    const pageNumber = Number.parseInt(pageInput, 10);
-    if (pageNumber > 0 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
-    }
-  };
-
-  // PAGINATION BUTTONS
-  const renderPagination = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
-
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-
-    if (startPage > 1) {
-      pageNumbers.push(1);
-      if (startPage > 2) pageNumbers.push("...");
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i);
-    }
-
-    if (endPage < totalPages) {
-      if (endPage < totalPages - 1) pageNumbers.push("...");
-      pageNumbers.push(totalPages);
-    }
-
-    return pageNumbers.map((number, index) => (
-      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-        {typeof number === "number" ? (
-          <button className="page-link" onClick={() => setCurrentPage(number)}>
-            {number}
-          </button>
-        ) : (
-          <span className="page-link disabled">{number}</span>
-        )}
-      </li>
-    ));
-  };
+  
 
   // PRIORITY COLOR
   const getPriorityColor = (priority) => {
@@ -5436,54 +5394,12 @@ const handleRelease = (patientId) => {
                 <span className="badge bg-success">Priority-3</span>
               </div>
 
-              <nav className="d-flex justify-content-between align-items-center mt-3">
-                <div>
-                  <span>
-                    Page {currentPage} of {totalPages} | Total Records: {waitingList.length}
-                  </span>
-                </div>
-
-                <ul className="pagination mb-0">
-                  <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                    >
-                      « Previous
-                    </button>
-                  </li>
-
-                  {renderPagination()}
-
-                  <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                    <button
-                      className="page-link"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next »
-                    </button>
-                  </li>
-                </ul>
-
-                <div className="d-flex align-items-center">
-                  <input
-                    type="number"
-                    min={1}
-                    max={totalPages}
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                    placeholder="Go to page"
-                    className="form-control me-2"
-                    style={{ width: "120px" }}
-                  />
-                  <button className="btn btn-primary" onClick={handlePageNavigation}>
-                    GO
-                  </button>
-                </div>
-              </nav>
-
+              <Pagination
+                                            totalItems={waitingList.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
             </div>
           </div>
         </div>
