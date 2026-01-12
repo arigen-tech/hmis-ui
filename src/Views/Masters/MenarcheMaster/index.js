@@ -130,11 +130,7 @@ const MenarcheMaster = () => {
     setCurrentPage(1);
   };
 
-  const handleGoPage = () => {
-    const page = Number(goPage);
-    if (page >= 1 && page <= totalPages) setCurrentPage(page);
-    setGoPage("");
-  };
+
 
   // ================= UI =================
   return (

@@ -57,7 +57,7 @@ export const DG_MAS_INVESTIGATION_METHODOLOGY=`${MASTERS}/masInvestigationMethod
 export const MAS_DESIGNATION = `${MASTERS}/masDesignation`;
 export const MAS_SPECIALITY_CENTER = `${MASTERS}/masSpecialty`;
 export const MAS_EMPLOYEE_TYPE = `${MASTERS}/employeeType`;
-
+export const CHECK_AVAILABILITY_TOKEN = `/doctor/checkAllAvailableTokens`;
 
 export const DG_UOM = `${MASTERS}/dgUom`;
 export const MAS_BRAND = `${MASTERS}/masBrand`;
@@ -150,6 +150,7 @@ export const PATIENT_REGISTRATION=`/patient/register`;
 export const GET_PRECONSULTATION=`/patient/getPendingPreConsultations`;
 export const SET_VITALS=`/patient/saveVitalDetails`;
 export const GET_WAITING_LIST=`/patient/getWaitingList`;
+export const GET_AVAILABILITY_TOKENS = `/doctor/checkAllAvailableTokens`;
 
 export const PATIENT_FOLLOW_UP = `/patient/update`;
 export const PATIENT_SEARCH = `/patient/search`;

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
+import DatePicker from "../../../Components/DatePicker";
 import {
   ALL_COUNTRY,
   ALL_DEPARTMENT,
@@ -11,6 +12,7 @@ import {
   API_HOST,
   DISTRICT_BY_STATE,
   DOCTOR_BY_SPECIALITY,
+  GET_AVAILABILITY_TOKENS,
   GET_DOCTOR_SESSION,
   GET_SESSION,
   HOSPITAL,
@@ -86,7 +88,9 @@ const UpdatePatientRegistration = () => {
     fetchAllDistrictData();
     fetchHospitalDetails();
   }, []);
-
+  const [availableTokens, setAvailableTokens] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dateResetKey, setDateResetKey] = useState(0);
   const [popupMessage, setPopupMessage] = useState(null);
   const [hospitalId, setHospitalId] = useState(12);
   const [errors, setErrors] = useState({});
@@ -136,16 +140,31 @@ const UpdatePatientRegistration = () => {
       speciality: "",
       selDoctorId: "",
       selSession: "",
+      selDate: null,
       departmentName: "",
       doctorName: "",
       sessionName: "",
-      visitId: null // Added to track existing visits
+      visitId: null,
+      tokenNo: null,
+      tokenStartTime: "",
+      tokenEndTime: "",
+      selectedTimeSlot: ""
     }
   ]);
 
   const [nextAppointmentId, setNextAppointmentId] = useState(1);
   const [doctorDataMap, setDoctorDataMap] = useState({});
   const [sessionDataMap, setSessionDataMap] = useState({});
+
+  const isPastDate = (dateStr) => {
+    const selected = new Date(dateStr);
+    const today = new Date();
+
+    selected.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    return selected < today;
+  };
 
   const addAppointmentRow = () => {
     setAppointments(prev => [
@@ -155,6 +174,11 @@ const UpdatePatientRegistration = () => {
         speciality: "",
         selDoctorId: "",
         selSession: "",
+        selDate: null,
+        tokenNo: null,
+        tokenStartTime: "",
+        tokenEndTime: "",
+        selectedTimeSlot: "",
         departmentName: "",
         doctorName: "",
         sessionName: "",
@@ -195,11 +219,74 @@ const UpdatePatientRegistration = () => {
             speciality: value,
             selDoctorId: "",
             selSession: "",
-            departmentName: selectedDepartment ? selectedDepartment.departmentName : ""
+            departmentName: selectedDepartment ? selectedDepartment.departmentName : "",
+            selDate: null,
+            tokenNo: null,
+            tokenStartTime: "",
+            tokenEndTime: "",
+            selectedTimeSlot: ""
           }
           : a
       )
     );
+
+    const fetchTokenAvailability = async (appointmentIndex = 0) => {
+      try {
+        setLoading(true);
+
+        const targetAppointment = appointments[appointmentIndex];
+
+        if (!targetAppointment.speciality || !targetAppointment.selDoctorId ||
+          !targetAppointment.selSession || !targetAppointment.selDate) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Incomplete Details',
+            text: 'Please select Speciality, Doctor, and Session first.',
+          });
+          return;
+        }
+
+        const selectedSession = session.find(s => s.id == targetAppointment.selSession);
+        const sessionName = selectedSession ? selectedSession.sessionName : targetAppointment.sessionName || "";
+
+        const params = new URLSearchParams({
+          deptId: targetAppointment.speciality,
+          doctorId: targetAppointment.selDoctorId,
+          appointmentDate: targetAppointment.selDate,
+          sessionId: targetAppointment.selSession,
+        }).toString();
+
+        const url = `${GET_AVAILABILITY_TOKENS}?${params}`;
+        const data = await getRequest(url);
+
+        if (data.status === 200 && Array.isArray(data.response)) {
+          setAvailableTokens(data.response);
+          showTokenPopup(
+            data.response,
+            sessionName,
+            targetAppointment.selDate,
+            appointmentIndex
+          );
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'No Tokens Available',
+            text: data.message || 'No tokens available for the selected criteria.',
+          });
+          setAvailableTokens([]);
+        }
+
+      } catch (error) {
+        console.error("Error fetching token availability:", error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Failed to fetch token availability. Please try again.',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
 
     // Fetch doctors according to department
     try {
@@ -219,7 +306,12 @@ const UpdatePatientRegistration = () => {
 
     setAppointments(prev =>
       prev.map(a =>
-        a.id === id ? { ...a, selDoctorId: value, selSession: "", doctorName } : a
+        a.id === id ? {
+          ...a, selDoctorId: value, selSession: "", doctorName, selDate: null, tokenNo: null,
+          tokenStartTime: "",
+          tokenEndTime: "",
+          selectedTimeSlot: ""
+        } : a
       )
     );
 
@@ -227,12 +319,44 @@ const UpdatePatientRegistration = () => {
   };
 
   const handleSessionChange = (id, value, specialityId, doctorId) => {
+    const selectedSession = session.find(s => s.id == value);
+    const sessionName = selectedSession ? selectedSession.sessionName : "";
     setAppointments(prev =>
       prev.map(a =>
-        a.id === id ? { ...a, selSession: value } : a
+        a.id === id ? {
+          ...a, selSession: value,
+          sessionName: sessionName,
+          selDate: null,
+          tokenNo: null,
+          tokenStartTime: "",
+          tokenEndTime: "",
+          selectedTimeSlot: ""
+        } : a
       )
     );
     checkSessionValid(id, doctorId, specialityId, value);
+  };
+
+  const handleAppointmentChange = (index, field, value) => {
+    setAppointments(prev =>
+      prev.map((appt, i) => {
+        if (i === index) {
+          if (field === "selDate") {
+            const dateOnly = value.split('T')[0];
+            return {
+              ...appt,
+              [field]: dateOnly,
+              tokenNo: null,
+              tokenStartTime: "",
+              tokenEndTime: "",
+              selectedTimeSlot: ""
+            };
+          }
+          return { ...appt, [field]: value };
+        }
+        return appt;
+      })
+    );
   };
 
   async function checkDoctorValid(rowId, doctorId, deptId) {
@@ -435,7 +559,7 @@ const UpdatePatientRegistration = () => {
     setSearchPerformed(false);
     setCurrentPage(1);
     setShowPatientDetails(false);
-    setShowDetails(false);
+    setShowDetails(true);
     setPatientDetailForm({
       patientGender: "",
       patientRelation: ""
@@ -462,12 +586,7 @@ const UpdatePatientRegistration = () => {
     const newAppointmentFlag = event.target.value === "appointment";
     setAppointmentFlag(newAppointmentFlag);
 
-    // Always show details when appointment is selected
-    if (newAppointmentFlag) {
-      setShowDetails(true);
-    } else {
-      setShowDetails(!preConsultationFlag);
-    }
+    setShowDetails(true);
   };
 
   const startCamera = async () => {
@@ -634,24 +753,37 @@ const UpdatePatientRegistration = () => {
 
         // Handle appointments - ALWAYS show appointment section even if no appointments exist
         if (data.appointments && data.appointments.length > 0) {
-          const mappedAppointments = data.appointments.map((appt, index) => ({
-            id: index,
+          const mappedAppointments = data.appointments.map((appt, index) => {
+
+            const extractDate = (dateString) => {
+      if (!dateString) return null;
+      if (dateString.includes('T')) return dateString.split('T')[0];
+      if (dateString.includes(' ')) return dateString.split(' ')[0];
+      return dateString;
+    };
+           return {
+             id: index,
             speciality: appt.specialityId?.toString() || "",
             selDoctorId: appt.doctorId?.toString() || "",
             selSession: appt.sessionId?.toString() || "",
+            selDate: extractDate(appt.visitDate),
             departmentName: appt.specialityName || "",
             doctorName: appt.doctorName || "",
             sessionName: appt.sessionName || "",
             visitId: appt.appointmentId || null,
             tokenNo: appt.tokenNo || null,
-          }));
+            tokenStartTime: appt.tokenStartTime || "",
+            tokenEndTime: appt.tokenEndTime || "",
+            selectedTimeSlot: appt.tokenStartTime && appt.tokenEndTime
+              ? `${appt.tokenStartTime} - ${appt.tokenEndTime}`
+              : ""
+           }
+          });
 
           setAppointments(mappedAppointments);
           setNextAppointmentId(mappedAppointments.length);
-          // Auto select appointment radio button when appointments exist
           setAppointmentFlag(true);
 
-          // Load doctor data for each appointment
           mappedAppointments.forEach(async (appt) => {
             if (appt.speciality) {
               try {
@@ -668,7 +800,6 @@ const UpdatePatientRegistration = () => {
             }
           });
         } else {
-          // Even if no existing appointments, show appointment section
           setAppointments([{
             id: 0,
             speciality: "",
@@ -681,11 +812,10 @@ const UpdatePatientRegistration = () => {
             tokenNo: null
           }]);
           setNextAppointmentId(1);
-          setAppointmentFlag(true); // Default to appointment tab
+          setAppointmentFlag(false);
         }
 
         setShowPatientDetails(true);
-        // Always show details section
         setShowDetails(true);
 
         Swal.fire("Loaded", "Patient details loaded successfully", "success");
@@ -1007,6 +1137,39 @@ const UpdatePatientRegistration = () => {
     return isValid;
   };
 
+  const isFormValid = () => {
+    if (!patientDetailForm.id) {
+      return false;
+    }
+
+    // Check if appointmentFlag is true
+    if (appointmentFlag) {
+      const hasValidAppointment = appointments.some(a =>
+        a.speciality && a.selDoctorId && a.selSession
+      );
+
+      if (!hasValidAppointment) {
+        return false;
+      }
+
+      const appointmentsWithDetails = appointments.filter(appt =>
+        appt.speciality && appt.selDoctorId && appt.selSession
+      );
+
+      if (appointmentsWithDetails.length > 0) {
+        const allHaveTimeSlots = appointmentsWithDetails.every(appt =>
+          appt.selectedTimeSlot && appt.selectedTimeSlot.trim() !== ""
+        );
+
+        if (!allHaveTimeSlots) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  };
+
   const sendPatientData = async () => {
     if (!validateForm()) {
       Swal.fire("Validation Error", "Please check all required fields", "error");
@@ -1018,7 +1181,18 @@ const UpdatePatientRegistration = () => {
     const currentDate = new Date().toISOString();
     const currentDateOnly = new Date().toISOString().split('T')[0];
 
-    // Helper functions
+
+ const toInstant = (dateStr, timeStr) => {
+    if (!dateStr || !timeStr) return null;
+    const dateOnly = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+    let timeWithSeconds = timeStr;
+    if (timeStr && timeStr.split(':').length === 2) {
+      timeWithSeconds = `${timeStr}:00`;
+    }
+    
+    return `${dateOnly}T${timeWithSeconds}Z`;
+  };
+
     const toNumber = (value) => {
       if (value === null || value === undefined || value === '') return null;
       const num = Number(value);
@@ -1031,15 +1205,12 @@ const UpdatePatientRegistration = () => {
       return toNumber(value);
     };
 
-    // Smart truncation function that handles base64 images
     const smartTruncate = (value, defaultMaxLength = 255) => {
       if (!value) return "";
 
       const strValue = String(value);
 
-      // Handle base64 images - store only filename, not the actual data
       if (strValue.startsWith('data:image')) {
-        // Extract filename from base64 or use default
         const timestamp = new Date().getTime();
         const extension = strValue.includes('image/png') ? 'png' :
           strValue.includes('image/jpeg') ? 'jpg' :
@@ -1047,7 +1218,6 @@ const UpdatePatientRegistration = () => {
         return `patient_${patientDetailForm.id || 'new'}_${timestamp}.${extension}`;
       }
 
-      // Handle URLs - if it's a very long URL, extract the filename part
       if (strValue.includes('http') && strValue.length > 200) {
         try {
           const url = new URL(strValue);
@@ -1055,20 +1225,16 @@ const UpdatePatientRegistration = () => {
           const filename = pathname.split('/').pop() || `image_${new Date().getTime()}.jpg`;
           return filename.substring(0, defaultMaxLength);
         } catch (e) {
-          // Not a valid URL, fall back to truncation
         }
       }
 
-      // For regular strings, truncate if necessary
       return strValue.length > defaultMaxLength ?
         strValue.substring(0, defaultMaxLength) : strValue;
     };
 
-    // Create a safe string field handler that logs warnings
     const safeStringField = (fieldName, value, context = 'patient') => {
       const strValue = smartTruncate(value);
 
-      // Log warning if value was truncated
       if (value && String(value).length > 255 && strValue.length === 255) {
         console.warn(`⚠️ Field ${context}.${fieldName} was truncated from ${String(value).length} to 255 characters`);
         console.warn(`Original value start:`, String(value).substring(0, 100));
@@ -1077,7 +1243,6 @@ const UpdatePatientRegistration = () => {
       return strValue;
     };
 
-    // Validate and prepare data with automatic length management
     const prepareData = (data, fieldName = 'root') => {
       if (typeof data === 'string') {
         return safeStringField(fieldName, data);
@@ -1201,10 +1366,16 @@ const UpdatePatientRegistration = () => {
       appointments
         .filter(appt => appt.speciality && appt.selDoctorId && appt.selSession)
         .map(appt => {
+
+          const startTime = toInstant(appt.selDate, appt.tokenStartTime);
+          const endTime = toInstant(appt.selDate,appt.tokenEndTime);
+
           return {
-            id: appt.visitId || null, // This is crucial - send existing visit ID or null for new
-            tokenNo: null,
-            visitDate: currentDate,
+            id: appt.visitId || null,
+            tokenNo: appt.tokenNo || null,
+            tokenStartTime: startTime,
+            tokenEndTime: endTime,
+            visitDate: startTime,
             departmentId: toNumber(appt.speciality),
             doctorId: toNumber(appt.selDoctorId),
             doctorName: appt.doctorName || "",
@@ -1370,6 +1541,38 @@ const UpdatePatientRegistration = () => {
     ));
   };
 
+  const selectToken = async (appointmentIndex, tokenNo, tokenStartTime, tokenEndTime) => {
+    try {
+      setAppointments(prev => prev.map((app, index) =>
+        index === appointmentIndex ? {
+          ...app,
+          tokenNo,
+          tokenStartTime,
+          tokenEndTime,
+          selectedTimeSlot: `${tokenStartTime} - ${tokenEndTime}`
+        } : app
+      ));
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Token Selected',
+        text: `Token ${tokenStartTime} to ${tokenEndTime} has been reserved.`,
+        timer: 1500,
+        showConfirmButton: false
+      });
+
+      Swal.close();
+
+    } catch (error) {
+      console.error("Error selecting token:", error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to select token. Please try again.',
+      });
+    }
+  };
+
   // UPDATE YOUR handlePageNavigation METHOD
   const handlePageNavigation = (e) => {
     e.preventDefault();
@@ -1390,6 +1593,128 @@ const UpdatePatientRegistration = () => {
       </div>
     </div>;
   }
+
+  const fetchTokenAvailability = async (appointmentIndex = 0) => {
+    try {
+      setLoading(true);
+
+      const targetAppointment = appointments[appointmentIndex];
+
+      if (!targetAppointment.speciality || !targetAppointment.selDoctorId ||
+        !targetAppointment.selSession || !targetAppointment.selDate) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Incomplete Details',
+          text: 'Please select Speciality, Doctor, and Session first.',
+        });
+        return;
+      }
+
+      const params = new URLSearchParams({
+        deptId: targetAppointment.speciality,
+        doctorId: targetAppointment.selDoctorId,
+        appointmentDate: targetAppointment.selDate,
+        sessionId: targetAppointment.selSession,
+      }).toString();
+
+      const url = `${GET_AVAILABILITY_TOKENS}?${params}`;
+      const data = await getRequest(url);
+
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setAvailableTokens(data.response);
+        showTokenPopup(
+          data.response,
+          targetAppointment.sessionName,
+          targetAppointment.selDate,
+          appointmentIndex
+        );
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'No Tokens Available',
+          text: data.message || 'No tokens available for the selected criteria.',
+        });
+        setAvailableTokens([]);
+      }
+
+    } catch (error) {
+      console.error("Error fetching token availability:", error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to fetch token availability. Please try again.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showTokenPopup = (tokens = [], sessionName, appointmentDate, appointmentIndex) => {
+    if (tokens.length === 0) {
+      Swal.fire({
+        icon: 'info',
+        title: 'No Tokens Available',
+        text: 'No tokens are available for the selected session.',
+      });
+      return;
+    }
+
+    Swal.fire({
+      title: `Time Slots - Appointment ${appointmentIndex + 1}`,
+      html: `
+      <div class="container-fluid">
+        <div class="text-center mb-2">
+          <h5 class="fw-bold mb-1">Available Time Slots</h5>
+          <p class="text-muted small">Date: ${appointmentDate} | Session: ${sessionName}</p>
+        </div>
+        <div class="row">
+          <div class="col-12">
+            <div class="card border-0 shadow-sm">
+              <div class="card-body p-3">
+                <h6 class="fw-bold mb-2 text-primary">${sessionName} Session</h6>
+                <div class="row row-cols-4 g-1" id="token-slots">
+                  ${tokens.map(token => `
+                    <div class="col">
+<button type="button" 
+        class="btn ${token.available ? 'btn-outline-success' : 'btn-outline-secondary disabled'} w-100 d-flex flex-column align-items-center justify-content-center p-1" 
+        style="height: 65px; font-size: 0.75rem;"
+        data-token-id="${token.tokenNo || ''}"
+        data-token-starttime="${token.startTime || '00:00:00'}"  // Ensure full time format
+        data-token-endtime="${token.endTime || '00:00:00'}"      // Ensure full time format
+        ${!token.available ? 'disabled' : ''}>
+  <span class="fw-bold">${token.startTime.split(':')[0]}:${token.startTime.split(':')[1]}</span>
+  <span>${token.endTime.split(':')[0]}:${token.endTime.split(':')[1]}</span>
+  ${!token.available ? '<span class="badge bg-danger mt-0" style="font-size: 0.6rem;">Booked</span>' : ''}
+</button>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,
+      showCloseButton: true,
+      showConfirmButton: false,
+      width: 550,
+      padding: "1rem",
+      didOpen: () => {
+        document.querySelectorAll('.btn-outline-success').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const tokenNo = e.target.closest('button').getAttribute('data-token-id');
+            const tokenStartTime = e.target.closest('button').getAttribute('data-token-starttime');
+            const tokenEndTime = e.target.closest('button').getAttribute('data-token-endtime');
+            selectToken(appointmentIndex, tokenNo, tokenStartTime, tokenEndTime);
+          });
+        });
+      },
+      customClass: {
+        container: 'swal2-bootstrap',
+        popup: 'border-0'
+      }
+    });
+  };
 
   // Show FORM VIEW when patient is selected
   if (showPatientDetails) {
@@ -1812,278 +2137,328 @@ const UpdatePatientRegistration = () => {
             </div>
           </div>
 
-          {showDetails && (
-            <>
-              {/* Vital Details Section */}
-              {!preConsultationFlag && (
-                <div className="row mb-3">
-                  <div className="col-sm-12">
-                    <div className="card shadow mb-3">
-                      <div className="card-header py-3   border-bottom-1">
-                        <h6 className="mb-0 fw-bold">Vital Details</h6>
+
+          {/* Vital Details Section */}
+          {!preConsultationFlag && (
+            <div className="row mb-3">
+              <div className="col-sm-12">
+                <div className="card shadow mb-3">
+                  <div className="card-header py-3   border-bottom-1">
+                    <h6 className="mb-0 fw-bold">Vital Details</h6>
+                  </div>
+                  <div className="card-body">
+                    <form className="vital">
+                      <div className="row g-3 align-items-center">
+                        {/* Patient Height */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">Patient Height<span
+                            className="text-danger">*</span></label>
+                          <input type="number" className={`form-control ${errors.height ? 'is-invalid' : ''}`}
+                            placeholder="Height" name="height" value={patientDetailForm.height} onChange={handleChange} />
+                          <span className="input-group-text">cm</span>
+                          {errors.height && (
+                            <div className="invalid-feedback d-block">{errors.height}</div>
+                          )}
+                        </div>
+
+                        {/* Weight */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">Weight<span className="text-danger">*</span></label>
+                          <input type="text" className={`form-control ${errors.weight ? 'is-invalid' : ''}`}
+                            placeholder="Weight" name="weight" value={patientDetailForm.weight} onChange={handleChange} />
+                          <span className="input-group-text">kg</span>
+                          {errors.weight && (
+                            <div className="invalid-feedback d-block">{errors.weight}</div>
+                          )}
+                        </div>
+
+                        {/* Temperature */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">Temperature<span className="text-danger">*</span></label>
+                          <input type="text" className={`form-control ${errors.temperature ? 'is-invalid' : ''}`}
+                            placeholder="Temperature" name="temperature" value={patientDetailForm.temperature}
+                            onChange={handleChange} />
+                          <span className="input-group-text">°F</span>
+                          {errors.temperature && (
+                            <div className="invalid-feedback d-block">{errors.temperature}</div>
+                          )}
+                        </div>
+
+                        {/* BP (Systolic / Diastolic) */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">BP<span className="text-danger">*</span></label>
+                          <input type="text" className={`form-control ${errors.systolicBP ? 'is-invalid' : ''}`}
+                            placeholder="Systolic" name="systolicBP" value={patientDetailForm.systolicBP}
+                            onChange={handleChange} />
+                          <span className="input-group-text">/</span>
+                          {errors.systolicBP && (
+                            <div className="invalid-feedback d-block">{errors.systolicBP}</div>
+                          )}
+                          <input type="text" className={`form-control ${errors.diastolicBP ? 'is-invalid' : ''}`}
+                            placeholder="Diastolic" name="diastolicBP" value={patientDetailForm.diastolicBP}
+                            onChange={handleChange} />
+                          <span className="input-group-text">mmHg</span>
+                          {errors.diastolicBP && (
+                            <div className="invalid-feedback d-block">{errors.diastolicBP}</div>
+                          )}
+                        </div>
+
+                        {/* Pulse */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">Pulse<span className="text-danger">*</span></label>
+                          <input type="text" className={`form-control ${errors.pulse ? 'is-invalid' : ''}`}
+                            placeholder="Pulse" name="pulse" value={patientDetailForm.pulse} onChange={handleChange} />
+                          <span className="input-group-text">/min</span>
+                          {errors.pulse && (
+                            <div className="invalid-feedback d-block">{errors.pulse}</div>
+                          )}
+                        </div>
+
+                        {/* BMI */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">BMI</label>
+                          <input type="text" className={`form-control ${errors.bmi ? 'is-invalid' : ''}`}
+                            placeholder="BMI" name="bmi" value={patientDetailForm.bmi} onChange={handleChange} />
+                          <span className="input-group-text">kg/m²</span>
+                          {errors.bmi && (
+                            <div className="invalid-feedback d-block">{errors.bmi}</div>
+                          )}
+                        </div>
+
+                        {/* RR */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">RR</label>
+                          <input type="text" className={`form-control ${errors.rr ? 'is-invalid' : ''}`}
+                            placeholder="RR" name="rr" value={patientDetailForm.rr} onChange={handleChange} />
+                          <span className="input-group-text">/min</span>
+                          {errors.rr && (
+                            <div className="invalid-feedback d-block">{errors.rr}</div>
+                          )}
+                        </div>
+
+                        {/* SpO2 */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">SpO2</label>
+                          <input type="text" className={`form-control ${errors.spo2 ? 'is-invalid' : ''}`}
+                            placeholder="SpO2" name="spo2" value={patientDetailForm.spo2} onChange={handleChange} />
+                          <span className="input-group-text">%</span>
+                          {errors.height && (
+                            <div className="invalid-feedback d-block">{errors.spo2}</div>
+                          )}
+                        </div>
                       </div>
-                      <div className="card-body">
-                        <form className="vital">
-                          <div className="row g-3 align-items-center">
-                            {/* Patient Height */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">Patient Height<span
-                                className="text-danger">*</span></label>
-                              <input type="number" className={`form-control ${errors.height ? 'is-invalid' : ''}`}
-                                placeholder="Height" name="height" value={patientDetailForm.height} onChange={handleChange} />
-                              <span className="input-group-text">cm</span>
-                              {errors.height && (
-                                <div className="invalid-feedback d-block">{errors.height}</div>
-                              )}
-                            </div>
-
-                            {/* Weight */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">Weight<span className="text-danger">*</span></label>
-                              <input type="text" className={`form-control ${errors.weight ? 'is-invalid' : ''}`}
-                                placeholder="Weight" name="weight" value={patientDetailForm.weight} onChange={handleChange} />
-                              <span className="input-group-text">kg</span>
-                              {errors.weight && (
-                                <div className="invalid-feedback d-block">{errors.weight}</div>
-                              )}
-                            </div>
-
-                            {/* Temperature */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">Temperature<span className="text-danger">*</span></label>
-                              <input type="text" className={`form-control ${errors.temperature ? 'is-invalid' : ''}`}
-                                placeholder="Temperature" name="temperature" value={patientDetailForm.temperature}
-                                onChange={handleChange} />
-                              <span className="input-group-text">°F</span>
-                              {errors.temperature && (
-                                <div className="invalid-feedback d-block">{errors.temperature}</div>
-                              )}
-                            </div>
-
-                            {/* BP (Systolic / Diastolic) */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">BP<span className="text-danger">*</span></label>
-                              <input type="text" className={`form-control ${errors.systolicBP ? 'is-invalid' : ''}`}
-                                placeholder="Systolic" name="systolicBP" value={patientDetailForm.systolicBP}
-                                onChange={handleChange} />
-                              <span className="input-group-text">/</span>
-                              {errors.systolicBP && (
-                                <div className="invalid-feedback d-block">{errors.systolicBP}</div>
-                              )}
-                              <input type="text" className={`form-control ${errors.diastolicBP ? 'is-invalid' : ''}`}
-                                placeholder="Diastolic" name="diastolicBP" value={patientDetailForm.diastolicBP}
-                                onChange={handleChange} />
-                              <span className="input-group-text">mmHg</span>
-                              {errors.diastolicBP && (
-                                <div className="invalid-feedback d-block">{errors.diastolicBP}</div>
-                              )}
-                            </div>
-
-                            {/* Pulse */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">Pulse<span className="text-danger">*</span></label>
-                              <input type="text" className={`form-control ${errors.pulse ? 'is-invalid' : ''}`}
-                                placeholder="Pulse" name="pulse" value={patientDetailForm.pulse} onChange={handleChange} />
-                              <span className="input-group-text">/min</span>
-                              {errors.pulse && (
-                                <div className="invalid-feedback d-block">{errors.pulse}</div>
-                              )}
-                            </div>
-
-                            {/* BMI */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">BMI</label>
-                              <input type="text" className={`form-control ${errors.bmi ? 'is-invalid' : ''}`}
-                                placeholder="BMI" name="bmi" value={patientDetailForm.bmi} onChange={handleChange} />
-                              <span className="input-group-text">kg/m²</span>
-                              {errors.bmi && (
-                                <div className="invalid-feedback d-block">{errors.bmi}</div>
-                              )}
-                            </div>
-
-                            {/* RR */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">RR</label>
-                              <input type="text" className={`form-control ${errors.rr ? 'is-invalid' : ''}`}
-                                placeholder="RR" name="rr" value={patientDetailForm.rr} onChange={handleChange} />
-                              <span className="input-group-text">/min</span>
-                              {errors.rr && (
-                                <div className="invalid-feedback d-block">{errors.rr}</div>
-                              )}
-                            </div>
-
-                            {/* SpO2 */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">SpO2</label>
-                              <input type="text" className={`form-control ${errors.spo2 ? 'is-invalid' : ''}`}
-                                placeholder="SpO2" name="spo2" value={patientDetailForm.spo2} onChange={handleChange} />
-                              <span className="input-group-text">%</span>
-                              {errors.height && (
-                                <div className="invalid-feedback d-block">{errors.spo2}</div>
-                              )}
-                            </div>
-                          </div>
-                        </form>
-                      </div>
-                    </div>
+                    </form>
                   </div>
                 </div>
-              )}
+              </div>
+            </div>
+          )}
 
-              {/* Update Options Section - Moved under Vital Details */}
-              <div className="row mb-3">
-                <div className="col-sm-12">
-                  <div className="card shadow mb-3">
-                    <div className="card-header py-3   border-bottom-1">
-                      <h6 className="mb-0 fw-bold">Update Options</h6>
-                    </div>
-                    <div className="card-body">
-                      <div className="row g-3">
-                        <div className="col-md-12">
-                          <div className="form-check form-check-inline">
-                            <input
-                              className="form-check-input"
-                              type="radio"
-                              name="appointmentType"
-                              id="updateInfo"
-                              value="updateInfo"
-                              onChange={handleRadioChange}
-                              checked={!appointmentFlag}
-                            />
-                            <label className="form-check-label" htmlFor="updateInfo">
-                              Update Information Only
-                            </label>
-                          </div>
-                          <div className="form-check form-check-inline">
-                            <input
-                              className="form-check-input"
-                              type="radio"
-                              name="appointmentType"
-                              id="appointment"
-                              value="appointment"
-                              onChange={handleRadioChange}
-                              checked={appointmentFlag}
-                            />
-                            <label className="form-check-label" htmlFor="appointment">
-                              Update with Appointment
-                            </label>
-                          </div>
-                        </div>
+          {/* Update Options Section - Moved under Vital Details */}
+          <div className="row mb-3">
+            <div className="col-sm-12">
+              <div className="card shadow mb-3">
+                <div className="card-header py-3   border-bottom-1">
+                  <h6 className="mb-0 fw-bold">Update Options</h6>
+                </div>
+                <div className="card-body">
+                  <div className="row g-3">
+                    <div className="col-md-12">
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="appointmentType"
+                          id="updateInfo"
+                          value="updateInfo"
+                          onChange={handleRadioChange}
+                          checked={!appointmentFlag}
+                        />
+                        <label className="form-check-label" htmlFor="updateInfo">
+                          Update Information Only
+                        </label>
+                      </div>
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="appointmentType"
+                          id="appointment"
+                          value="appointment"
+                          onChange={handleRadioChange}
+                          checked={appointmentFlag}
+                        />
+                        <label className="form-check-label" htmlFor="appointment">
+                          Update with Appointment
+                        </label>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
 
-              {/* Appointment Details Section - only show when appointmentFlag is true */}
-              {appointmentFlag && (
-                <div className="row mb-3">
-                  <div className="col-sm-12">
-                    <div className="card shadow mb-3">
-                      <div className="card-header py-3   border-bottom-1 d-flex align-items-center justify-content-between">
-                        <h6 className="mb-0 fw-bold">Appointment Details</h6>
-                        <div className="d-flex gap-2">
-                          <button type="button" className="btn btn-sm btn-outline-primary" onClick={addAppointmentRow}>
-                            + Add Appointment
-                          </button>
-                        </div>
-                      </div>
-                      <div className="card-body">
-                        <form>
-                          {appointments.map((appointment, index) => {
-                            const doctorOptions = doctorDataMap[appointment.id] || [];
-                            return (
-                              <div className="row g-3 mb-3 border-bottom pb-3" key={`appointment-${appointment.id}`}>
-                                <div className="col-12 d-flex align-items-center justify-content-between">
-                                  <h6 className="fw-bold text-muted mb-0">
-                                    Appointment {index + 1}
-                                    {appointment.visitId && <span className="text-success ms-2">(Existing)</span>}
-                                    {appointment.tokenNo && (
-                                      <span className="badge bg-primary text-white fs-5 fw-bold px-3 py-2 ms-2">
-                                        <i className="icofont-ticket me-2"></i>
-                                        TOKEN #{appointment.tokenNo}
-                                      </span>
-                                    )}
-                                  </h6>
-                                  {appointments.length > 1 && (
-                                    <button
-                                      type="button"
-                                      className="btn btn-sm btn-outline-danger"
-                                      onClick={() => removeAppointmentRow(appointment.id)}
-                                    >
-                                      Remove
-                                    </button>
-                                  )}
-                                </div>
-                                <div className="col-md-4">
-                                  <label className="form-label">Speciality *</label>
-                                  <select
-                                    className="form-select"
-                                    value={appointment.speciality}
-                                    onChange={(e) => handleSpecialityChange(appointment.id, e.target.value)}
-                                    required
-                                  >
-                                    <option value="">Select Speciality</option>
-                                    {departmentData.map((department) => (
-                                      <option key={department.id} value={department.id}>
-                                        {department.departmentName}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                                <div className="col-md-4">
-                                  <label className="form-label">Doctor Name *</label>
-                                  <select
-                                    className="form-select"
-                                    value={appointment.selDoctorId}
-                                    onChange={(e) =>
-                                      handleDoctorChange(appointment.id, e.target.value, appointment.speciality)
-                                    }
-                                    required
-                                    disabled={!appointment.speciality}
-                                  >
-                                    <option value="">Select Doctor</option>
-                                    {doctorOptions.map((doctor) => (
-                                      <option key={doctor.userId} value={doctor.userId}>
-                                        {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""} ${doctor.lastName ? doctor.lastName : ""}`}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                                <div className="col-md-4">
-                                  <label className="form-label">Session *</label>
-                                  <select
-                                    className="form-select"
-                                    value={appointment.selSession}
-                                    disabled={!appointment.selDoctorId}
-                                    onChange={(e) =>
-                                      handleSessionChange(
-                                        appointment.id,
-                                        e.target.value,
-                                        appointment.speciality,
-                                        appointment.selDoctorId
-                                      )
-                                    }
-                                    required
-                                  >
-                                    <option value="">Select Session</option>
-                                    {session.map((ses) => (
-                                      <option key={ses.id} value={ses.id}>
-                                        {ses.sessionName}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </form>
-                      </div>
+          {/* Appointment Details Section - only show when appointmentFlag is true */}
+          {appointmentFlag && (
+            <div className="row mb-3">
+              <div className="col-sm-12">
+                <div className="card shadow mb-3">
+                  <div className="card-header py-3 border-bottom-1 d-flex align-items-center justify-content-between">
+                    <h6 className="mb-0 fw-bold">Appointment Details</h6>
+                    <div className="d-flex gap-2">
+                      <button type="button" className="btn btn-sm btn-outline-secondary text-white" onClick={addAppointmentRow}>
+                        + Add Appointment
+                      </button>
                     </div>
                   </div>
+                  <div className="card-body">
+                    <form>
+                      {appointments.map((appointment, index) => {
+                        const doctorOptions = doctorDataMap[appointment.id] || [];
+                        return (
+                          <div className="row g-3 mb-3 border-bottom pb-3" key={`appointment-${appointment.id}`}>
+                            <div className="col-12 d-flex align-items-center justify-content-between">
+                              <h6 className="fw-bold text-muted mb-0">
+                                Appointment {index + 1}
+                                {appointment.visitId && <span className="text-success ms-2">(Existing)</span>}
+                              </h6>
+                              {appointments.length > 1 && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-danger"
+                                  onClick={() => removeAppointmentRow(appointment.id)}
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </div>
+                            <div className="col-md-4">
+                              <label className="form-label">Speciality *</label>
+                              <select
+                                className="form-select"
+                                value={appointment.speciality}
+                                onChange={(e) => handleSpecialityChange(appointment.id, e.target.value)}
+                                required
+                              >
+                                <option value="">Select Speciality</option>
+                                {departmentData.map((department) => (
+                                  <option key={department.id} value={department.id}>
+                                    {department.departmentName}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="col-md-4">
+                              <label className="form-label">Doctor Name *</label>
+                              <select
+                                className="form-select"
+                                value={appointment.selDoctorId}
+                                onChange={(e) =>
+                                  handleDoctorChange(appointment.id, e.target.value, appointment.speciality)
+                                }
+                                required
+                                disabled={!appointment.speciality}
+                              >
+                                <option value="">Select Doctor</option>
+                                {doctorOptions.map((doctor) => (
+                                  <option key={doctor.userId} value={doctor.userId}>
+                                    {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""} ${doctor.lastName ? doctor.lastName : ""}`}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="col-md-4">
+                              <label className="form-label">Session *</label>
+                              <select
+                                className="form-select"
+                                value={appointment.selSession}
+                                disabled={!appointment.selDoctorId}
+                                onChange={(e) =>
+                                  handleSessionChange(
+                                    appointment.id,
+                                    e.target.value,
+                                    appointment.speciality,
+                                    appointment.selDoctorId
+                                  )
+                                }
+                                required
+                              >
+                                <option value="">Select Session</option>
+                                {session.map((ses) => (
+                                  <option key={ses.id} value={ses.id}>
+                                    {ses.sessionName}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Add Date Picker and Show Token Button */}
+                            <div className="d-flex align-items-center col-md-4">
+                              <div className="col-md-9">
+                                <DatePicker
+                                  key={dateResetKey + "-" + index}
+                                  value={appointment.selDate || null}
+                                  onChange={(date) => {
+                                    if (isPastDate(date)) {
+                                      Swal.fire({
+                                        icon: "warning",
+                                        title: "Invalid Date",
+                                        text: "You cannot select a past date",
+                                        timer: 2000
+                                      });
+                                      handleAppointmentChange(index, "selDate", "");
+                                      setDateResetKey(prev => prev + 1);
+                                      return;
+                                    }
+                                    handleAppointmentChange(index, "selDate", date);
+                                  }}
+                                  placeholder="Select Date"
+                                  className="form-control"
+                                />
+                              </div>
+                              <div className="col-md-4 align-items-center mt-4 ms-2">
+                                <button
+                                  type="button"
+                                  className="btn btn-primary btn-sm"
+                                  onClick={() => {
+                                    if (appointment.speciality && appointment.selDoctorId && appointment.selSession) {
+                                      fetchTokenAvailability(index);
+                                    } else {
+                                      Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Incomplete Details',
+                                        text: 'Please select Speciality, Doctor, and Session first.',
+                                      });
+                                    }
+                                  }}
+                                  disabled={!appointment.speciality || !appointment.selDoctorId || !appointment.selSession || !appointment.selDate}
+                                >
+                                  Show Token
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Add Time Slot Display */}
+                            <div className="col-md-4">
+                              <label className="form-label">Time Slot</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={appointment.selectedTimeSlot || ""}
+                                placeholder="No time slot selected"
+                                readOnly
+                                style={{ backgroundColor: appointment.selectedTimeSlot ? '#f0fff0' : '#f8f9fa' }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </form>
+                  </div>
                 </div>
-              )}
-            </>
+              </div>
+            </div>
           )}
 
           {/* Submit and Reset Buttons */}
@@ -2093,7 +2468,7 @@ const UpdatePatientRegistration = () => {
                 <div className="card-body">
                   <div className="row g-3">
                     <div className="mt-4">
-                      <button type="button" onClick={handleSubmit} className="btn btn-primary me-2">Update Registration</button>
+                      <button type="button" onClick={handleSubmit} className="btn btn-primary me-2" disabled={!isFormValid()}>Update Registration</button>
                       <button type="button" onClick={handleReset} className="btn btn-secondary">Reset</button>
                     </div>
                   </div>

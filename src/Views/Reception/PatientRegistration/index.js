@@ -4,12 +4,15 @@ import Swal from "sweetalert2";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import { getRequest, postRequest } from "../../../service/apiService";
 
+
+import DatePicker from "../../../Components/DatePicker";
 import {
   ALL_COUNTRY, ALL_DEPARTMENT,
   ALL_GENDER,
   ALL_RELATION,
   API_HOST,
   DISTRICT_BY_STATE, DOCTOR_BY_SPECIALITY,
+  GET_AVAILABILITY_TOKENS,
   GET_DOCTOR_SESSION,
   GET_SESSION, HOSPITAL,
   MAS_SERVICE_CATEGORY,
@@ -18,7 +21,6 @@ import {
   STATE_BY_COUNTRY
 } from "../../../config/apiConfig";
 import { DEPARTMENT_CODE_OPD } from "../../../config/constants";
-import DatePicker from "../../../Components/DatePicker";
 
 const PatientRegistration = () => {
   const navigate = useNavigate();
@@ -47,18 +49,27 @@ const PatientRegistration = () => {
   const [doctorDataMap, setDoctorDataMap] = useState({});
   const [session, setSession] = useState([]);
   const [isDuplicatePatient, setIsDuplicatePatient] = useState(false);
+  const [availableTokens, setAvailableTokens] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dateResetKey, setDateResetKey] = useState(0);
   const [appointments, setAppointments] = useState([{
     id: 0,
     speciality: "",
     selDoctorId: "",
     selSession: "",
+    selDate: null,
     departmentName: "",
     doctorName: "",
     sessionName: "",
     discount: 0,
     netAmount: "0.00",
     gst: "0.00",
-    totalAmount: "0.00"
+    totalAmount: "0.00",
+
+    tokenNo: null,
+    tokenStartTime: "",
+    tokenEndTime: "",
+    selectedTimeSlot: ""
   }]);
   const [nextAppointmentId, setNextAppointmentId] = useState(1);
   const [formData, setFormData] = useState({
@@ -146,8 +157,88 @@ const PatientRegistration = () => {
     if (!hasValidAppointment) {
       return false;
     }
+
+    const appointmentsWithDetails = appointments.filter(appt =>
+      appt.speciality && appt.selDoctorId && appt.selSession
+    );
+
+    if (appointmentsWithDetails.length > 0) {
+      const allHaveTimeSlots = appointmentsWithDetails.every(appt => appt.selectedTimeSlot && appt.selectedTimeSlot.trim() !== "");
+
+      if (!allHaveTimeSlots) {
+        // Don't show alert here, just return false
+        return false;
+      }
+    }
     return true;
   };
+
+  const createInstant = (dateStr, timeStr) => {
+  if (!dateStr || !timeStr) return null;
+  
+  let formattedTime = timeStr;
+  if (formattedTime && formattedTime.split(':').length === 2) {
+    formattedTime = `${formattedTime}:00`;
+  }
+  
+  return `${dateStr}T${formattedTime}Z`;
+};
+
+  const fetchTokenAvailability = async (appointmentIndex = 0) => {
+    try {
+      setLoading(true);
+
+      const targetAppointment = appointments[appointmentIndex];
+
+      if (!targetAppointment.speciality || !targetAppointment.selDoctorId ||
+        !targetAppointment.selSession || !targetAppointment.selDate) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Incomplete Details',
+          text: 'Please select Speciality, Doctor, and Session first.',
+        });
+        return;
+      }
+
+      const params = new URLSearchParams({
+        deptId: targetAppointment.speciality,
+        doctorId: targetAppointment.selDoctorId,
+        appointmentDate: targetAppointment.selDate,
+        sessionId: targetAppointment.selSession,
+      }).toString();
+
+      const url = `${GET_AVAILABILITY_TOKENS}?${params}`;
+      const data = await getRequest(url);
+
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setAvailableTokens(data.response);
+        showTokenPopup(
+          data.response,
+          targetAppointment.sessionName,
+          targetAppointment.selDate,
+          appointmentIndex
+        );
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'No Tokens Available',
+          text: data.message || 'No tokens available for the selected criteria.',
+        });
+        setAvailableTokens([]);
+      }
+
+    } catch (error) {
+      console.error("Error fetching token availability:", error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to fetch token availability. Please try again.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
 
   async function fetchGstConfiguration() {
@@ -170,7 +261,7 @@ const PatientRegistration = () => {
 
   const startCamera = async () => {
     try {
-      setIsCameraOn(true); // Ensure the video element is rendered before accessing ref
+      setIsCameraOn(true);
       setTimeout(async () => {
         stream = await navigator.mediaDevices.getUserMedia({ video: true });
         if (videoRef.current) {
@@ -204,7 +295,6 @@ const PatientRegistration = () => {
       const video = videoRef.current;
       const canvas = canvasRef.current;
 
-      // Set canvas dimensions to match video stream
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
 
@@ -214,7 +304,6 @@ const PatientRegistration = () => {
 
       setImage(imageData);
       stopCamera();
-      // //debugger
       confirmUpload(imageData);
     }
   };
@@ -245,29 +334,27 @@ const PatientRegistration = () => {
 
   const uploadImage = async (base64Image) => {
     try {
-      // Convert base64 to Blob
       const blob = await fetch(base64Image).then((res) => res.blob());
       const formData1 = new FormData();
       formData1.append("file", blob, "photo.png");
 
-      // Send the formData to the server
+
       const response = await fetch(`${API_HOST}${PATIENT_IMAGE_UPLOAD}`, {
         method: "POST",
         body: formData1,
       });
 
-      // Parse JSON response
       const data = await response.json();
 
       if (response.status === 200 && data.response) {
-        // Extracting the image path
+
         const extractedPath = data.response;
 
-        // Updating state with the extracted image path
+
         setImageURL(extractedPath);
         console.log("Uploaded Image URL:", extractedPath);
 
-        // Show success alert
+
         Swal.fire("Success!", "Image uploaded successfully!", "success");
       } else {
         Swal.fire("Error!", "Failed to upload image!", "error");
@@ -286,12 +373,10 @@ const PatientRegistration = () => {
     const today = new Date();
     const birthYear = today.getFullYear() - age;
 
-    // Default to today's month and day
     return new Date(birthYear, today.getMonth(), today.getDate()).toISOString().split('T')[0];
   }
 
   function checkBMI(a, b) {
-    //debugger
     if (a === '' || b == '') {
       return;
     }
@@ -392,7 +477,6 @@ const PatientRegistration = () => {
   };
 
   const handleAddChange = (e) => {
-    //debugger
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -424,13 +508,18 @@ const PatientRegistration = () => {
         speciality: "",
         selDoctorId: "",
         selSession: "",
+        selDate: null,
         departmentName: "",
         doctorName: "",
         sessionName: "",
         discount: 0,
         netAmount: "0.00",
         gst: "0.00",
-        totalAmount: "0.00"
+        totalAmount: "0.00",
+        tokenNo: null,
+        tokenStartTime: "",
+        tokenEndTime: "",
+        selectedTimeSlot: ""
       }
     ]);
     setNextAppointmentId((prev) => prev + 1);
@@ -449,6 +538,15 @@ const PatientRegistration = () => {
       return updated;
     });
   };
+  const isPastDate = (dateStr) => {
+    const selected = new Date(dateStr);
+    const today = new Date();
+
+    selected.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    return selected < today;
+  };
 
   const handleSpecialityChange = (id, value) => {
     const selectedDepartment = departmentData.find(dept => dept.id == value);
@@ -457,7 +555,10 @@ const PatientRegistration = () => {
     setAppointments((prev) =>
       prev.map((appointment) =>
         appointment.id === id
-          ? { ...appointment, speciality: value, selDoctorId: "", selSession: "", departmentName }
+          ? {
+            ...appointment, speciality: value, selDoctorId: "", selSession: "", departmentName, selDate: null,
+            tokenNo: null
+          }
           : appointment
       )
     );
@@ -480,7 +581,10 @@ const PatientRegistration = () => {
 
     setAppointments(prev =>
       prev.map(a =>
-        a.id === id ? { ...a, selDoctorId: value, selSession: "", doctorName } : a
+        a.id === id ? {
+          ...a, selDoctorId: value, selSession: "", doctorName, selDate: null,
+          tokenNo: null
+        } : a
       )
     );
 
@@ -488,16 +592,20 @@ const PatientRegistration = () => {
     checkDoctorValid(id, value, specialityId);
   };
 
-
   const handleSessionChange = (id, value, specialityId, doctorId) => {
+    const selectedSession = session.find(s => s.id == value);
+    const sessionName = selectedSession ? selectedSession.sessionName : "";
 
     setAppointments(prev =>
       prev.map(a =>
-        a.id === id ? { ...a, selSession: value } : a
+        a.id === id ? {
+          ...a, selSession: value, sessionName: sessionName, selDate: null,
+          tokenNo: null
+        } : a
       )
     );
 
-    // Check session validity
+
     checkSessionValid(id, doctorId, specialityId, value);
   };
 
@@ -515,7 +623,7 @@ const PatientRegistration = () => {
 
       setAppointments(prev =>
         prev.map(a =>
-          a.id === rowId ? { ...a, selDoctorId: "", selSession: "" } : a
+          a.id === rowId ? { ...a, selDoctorId: "", selSession: "", } : a
         )
       );
     }
@@ -539,8 +647,6 @@ const PatientRegistration = () => {
       );
     }
   }
-
-
 
   async function fetchGenderData() {
     setLoading(true);
@@ -740,7 +846,37 @@ const PatientRegistration = () => {
     }
   }
 
+  // In your sendRegistrationRequest function, add validation before sending
   function sendRegistrationRequest() {
+    if (!isFormValid()) {
+      // Check specifically for time slots
+      const appointmentsWithDetails = appointments.filter(appt =>
+        appt.speciality && appt.selDoctorId && appt.selSession
+      );
+
+      const missingTimeSlots = appointmentsWithDetails.filter(appt =>
+        !appt.selectedTimeSlot || appt.selectedTimeSlot.trim() === ""
+      );
+
+      if (missingTimeSlots.length > 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Missing Time Slots',
+          text: 'Please select time slots for all appointments before registration.',
+          timer: 3000
+        });
+        return;
+      }
+
+      Swal.fire({
+        icon: 'warning',
+        title: 'Incomplete Form',
+        text: 'Please fill all required fields.',
+        timer: 3000
+      });
+      return;
+    }
+
     console.log(formData);
     sendPatientData();
   }
@@ -840,22 +976,68 @@ const PatientRegistration = () => {
     return valid;
   };
 
-  const visitList = appointments.map(appt => ({
-    id: 0,
-    tokenNo: 0,
-    visitStatus: "NEW",
-    visitDate: new Date(Date.now()).toJSON(),
-    departmentId: Number(appt.speciality),
-    doctorId: Number(appt.selDoctorId),
-    doctorName: appt.doctorName || "",
-    sessionId: Number(appt.selSession),
-    hospitalId: Number(sessionStorage.getItem('hospitalId')),
-    priority: 0,
-    billingStatus: "Pending",
-    patientId: 0,
-    iniDoctorId: 0
-  }));
+  const visitList = appointments
+  .filter(appt => appt.speciality && appt.selDoctorId && appt.selSession && appt.tokenStartTime)
+  .map(appt => {
+        const dateStr = appt.selDate;
+        const dateOnly = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+        
+        const visitDateTime = createInstant(dateOnly, appt.tokenStartTime);
+        const startTime = createInstant(dateOnly, appt.tokenStartTime);
+        const endTime = createInstant(dateOnly, appt.tokenEndTime);
+    
+    return {
+      id: 0,
+      tokenNo: appt.tokenNo || 0,
+      tokenStartTime: startTime,
+      tokenEndTime: endTime,
+      visitStatus: "NEW",
+      visitDate: visitDateTime,
+      departmentId: Number(appt.speciality),
+      doctorId: Number(appt.selDoctorId),
+      doctorName: appt.doctorName || "",
+      sessionId: Number(appt.selSession),
+      hospitalId: Number(sessionStorage.getItem('hospitalId')),
+      priority: 0,
+      billingStatus: "Pending",
+      patientId: 0,
+      iniDoctorId: 0
+    };
+  });
 
+
+  useEffect(() => {
+    const hasInvalidAppointment = appointments.some(appt =>
+      appt.selectedTimeSlot && (!appt.selDoctorId || !appt.selSession || !appt.selDate)
+    );
+
+    if (hasInvalidAppointment) {
+      setAppointments(prev => prev.map(appt => {
+        if (appt.selectedTimeSlot && (!appt.selDoctorId || !appt.selSession || !appt.selDate)) {
+          return {
+            ...appt,
+            tokenNo: null,
+            tokenStartTime: "",
+            tokenEndTime: "",
+            selectedTimeSlot: ""
+          };
+        }
+        return appt;
+      }));
+    }
+  }, [appointments.map(a => `${a.selDoctorId}-${a.selSession}-${a.selDate}-${a.selectedTimeSlot}`).join(',')]);
+
+  const clearTimeSlot = (appointmentIndex) => {
+    setAppointments(prev => prev.map((app, index) =>
+      index === appointmentIndex ? {
+        ...app,
+        tokenNo: null,
+        tokenStartTime: "",
+        tokenEndTime: "",
+        selectedTimeSlot: ""
+      } : app
+    ));
+  };
 
   const sendPatientData = async () => {
     if (validateForm() && validateVitalDetails()) {
@@ -1070,6 +1252,7 @@ const PatientRegistration = () => {
 
     }
   };
+
   async function fetchDoctor(value, rowId) {
     try {
       const data = await getRequest(`${DOCTOR_BY_SPECIALITY}${value}`);
@@ -1112,7 +1295,6 @@ const PatientRegistration = () => {
       else if (data.response[0].rosterVal == "YN") {
         sessionVal = [{ key: 0, value: 'Morning' }]
       }
-      // setSession(sessionVal);
     }
     else {
       Swal.fire(data.message);
@@ -1127,14 +1309,11 @@ const PatientRegistration = () => {
     let months = today.getMonth() - birthDate.getMonth();
     let days = today.getDate() - birthDate.getDate();
 
-    // Adjust if the day difference is negative
     if (days < 0) {
       months--;
       const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
       days += prevMonth.getDate();
     }
-
-    // Adjust if the month difference is negative
     if (months < 0) {
       years--;
       months += 12;
@@ -1143,48 +1322,133 @@ const PatientRegistration = () => {
     return `${years}Y ${months}M ${days}D`;
   }
 
-  const showTokenPopup = () => {
+  const selectToken = async (appointmentIndex, tokenNo, tokenStartTime, tokenEndTime) => {
+    try {
+
+      let formattedStartTime = tokenStartTime;
+    let formattedEndTime = tokenEndTime;
+    
+    if (tokenStartTime && tokenStartTime.split(':').length === 2) {
+      formattedStartTime = `${tokenStartTime}:00`;
+    }
+    
+    if (tokenEndTime && tokenEndTime.split(':').length === 2) {
+      formattedEndTime = `${tokenEndTime}:00`;
+    }
+
+      setAppointments(prev => prev.map((app, index) =>
+        index === appointmentIndex ? {
+          ...app,
+          tokenNo,
+        tokenStartTime: formattedStartTime,
+        tokenEndTime: formattedEndTime,
+        selectedTimeSlot: `${tokenStartTime} - ${tokenEndTime}`
+        } : app
+      ));
+
+      // Show success message briefly
+      Swal.fire({
+        icon: 'success',
+        title: 'Token Selected',
+        text: `Token ${tokenStartTime} to ${tokenEndTime} has been reserved.`,
+        timer: 1500,
+        showConfirmButton: false
+      });
+
+      // Close the token selection popup
+      Swal.close();
+
+    } catch (error) {
+      console.error("Error selecting token:", error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to select token. Please try again.',
+      });
+    }
+  };
+  const handleAppointmentChange = (index, field, value) => {
+    setAppointments(prev =>
+      prev.map((appt, i) => {
+        if (i === index) {
+          // If date is being changed, clear the time slot
+          if (field === "selDate") {
+            return {
+              ...appt,
+              [field]: value,
+              tokenNo: null,
+              tokenStartTime: "",
+              tokenEndTime: "",
+              selectedTimeSlot: ""
+            };
+          }
+          return { ...appt, [field]: value };
+        }
+        return appt;
+      })
+    );
+  };
+
+  const showTokenPopup = (tokens = [], sessionName, appointmentDate, appointmentIndex) => {
+    if (tokens.length === 0) {
+      Swal.fire({
+        icon: 'info',
+        title: 'No Tokens Available',
+        text: 'No tokens are available for the selected session.',
+      });
+      return;
+    }
+
     Swal.fire({
-      title: "Token Availability",
+      title: `Time Slots - Appointment ${appointmentIndex + 1}`,
       html: `
-      <div class="container-fluid">
-        <div class="text-center mb-3">
-          <h5 class="fw-bold">Available Time Slots</h5>
-        </div>
-        <div class="row">
-          <div class="col-md-6">
-            <div class="card border-0 shadow-sm">
-              <div class="card-body">
-                <h6 class="fw-bold mb-3 text-primary">Morning Session</h6>
-                <div class="d-grid gap-2">
-                  <button type="button" class="btn btn-outline-secondary">10:00 AM</button>
-                  <button type="button" class="btn btn-outline-secondary">10:15 AM</button>
-                  <button type="button" class="btn btn-outline-secondary">10:45 AM</button>
-                  <button type="button" class="btn btn-outline-secondary">11:15 AM</button>
+  <div class="container-fluid">
+    <div class="text-center mb-2">
+      <h5 class="fw-bold mb-1">Available Time Slots</h5>
+      <p class="text-muted small">Date: ${appointmentDate} | Session: ${sessionName}</p>
+    </div>
+    <div class="row">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-3">
+            <h6 class="fw-bold mb-2 text-primary">${sessionName} Session</h6>
+            <div class="row row-cols-4 g-1" id="token-slots">
+              ${tokens.map(token => `
+                <div class="col">
+                  <button type="button" 
+                          class="btn ${token.available ? 'btn-outline-success' : 'btn-outline-secondary disabled'} w-100 d-flex flex-column align-items-center justify-content-center p-1" 
+                          style="height: 65px; font-size: 0.75rem;"
+                          data-token-id="${token.tokenNo || ''}"
+                          data-token-starttime="${token.startTime || ''}"
+                          data-token-endtime="${token.endTime || ''}"
+                          ${!token.available ? 'disabled' : ''}>
+                    <span class="fw-bold">${token.startTime.split(':')[0]}:${token.startTime.split(':')[1]}</span>
+                    <span>${token.endTime.split(':')[0]}:${token.endTime.split(':')[1]}</span>
+                    ${!token.available ? '<span class="badge bg-danger mt-0" style="font-size: 0.6rem;">Booked</span>' : ''}
+                  </button>
                 </div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-6">
-            <div class="card border-0 shadow-sm">
-              <div class="card-body">
-                <h6 class="fw-bold mb-3 text-primary">Afternoon Session</h6>
-                <div class="d-grid gap-2">
-                  <button type="button" class="btn btn-outline-secondary">11:30 AM</button>
-                  <button type="button" class="btn btn-outline-secondary">11:45 AM</button>
-                  <button type="button" class="btn btn-outline-secondary">12:00 PM</button>
-                  <button type="button" class="btn btn-outline-secondary">12:15 PM</button>
-                </div>
-              </div>
+              `).join('')}
             </div>
           </div>
         </div>
       </div>
-    `,
+    </div>
+  </div>
+`,
       showCloseButton: true,
       showConfirmButton: false,
-      width: 600,
-      padding: "1.5rem",
+      width: 550,
+      padding: "1rem",
+      didOpen: () => {
+        document.querySelectorAll('.btn-outline-success').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const tokenNo = e.target.closest('button').getAttribute('data-token-id');
+            const tokenStartTime = e.target.closest('button').getAttribute('data-token-starttime');
+            const tokenEndTime = e.target.closest('button').getAttribute('data-token-endtime');
+            selectToken(appointmentIndex, tokenNo, tokenStartTime, tokenEndTime);
+          });
+        });
+      },
       customClass: {
         container: 'swal2-bootstrap',
         popup: 'border-0'
@@ -1669,7 +1933,7 @@ const PatientRegistration = () => {
               <div className="card-header py-3   border-bottom-1 d-flex align-items-center justify-content-between">
                 <h6 className="mb-0 fw-bold">Appointment Details</h6>
                 <div className="d-flex gap-2">
-                  <button type="button" className="btn btn-sm btn-outline-primary" onClick={addAppointmentRow}>
+                  <button type="button" className="btn btn-sm btn-outline-secondary text-white  " onClick={addAppointmentRow}>
                     + Add
                   </button>
                 </div>
@@ -1747,6 +2011,64 @@ const PatientRegistration = () => {
                             ))}
                           </select>
                         </div>
+                        <div className="d-flex align-items-center col-md-4 ">
+                          <div className="col-md-9">
+                            <DatePicker
+                              key={dateResetKey + "-" + index}// remove this line if you don't want to reset
+                              value={appointment.selDate || null}
+                              onChange={(date) => {//remove this line if you don't want to reset
+                                if (isPastDate(date)) {
+                                  Swal.fire({
+                                    icon: "warning",
+                                    title: "Invalid Date",
+                                    text: "You cannot select a past date",
+                                    timer: 2000
+                                  });
+                                  handleAppointmentChange(index, "selDate", "");
+                                  setDateResetKey(prev => prev + 1);
+                                  return;
+                                }
+
+                                handleAppointmentChange(index, "selDate", date);
+                              }}
+                              placeholder="Select Date"
+                              className="form-control"
+                            />
+                          </div>
+                          <div className="col-md-4 align-items-center mt-4 ms-2">
+                            <button
+                              type="button"
+                              className="btn btn-primary btn-sm"
+                              onClick={() => {
+                                if (appointment.speciality && appointment.selDoctorId && appointment.selSession) {
+                                  fetchTokenAvailability(index);
+                                } else {
+                                  Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Incomplete Details',
+                                    text: 'Please select Speciality, Doctor, and Session first.',
+                                  });
+                                }
+                              }}
+                              disabled={!appointment.speciality || !appointment.selDoctorId || !appointment.selSession || !appointment.selDate}
+                            >
+                              Show Token
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="col-md-4">
+                          <label className="form-label">Time Slot</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            value={appointment.selectedTimeSlot || ""}
+                            placeholder="No time slot selected"
+                            readOnly
+                            style={{ backgroundColor: appointment.selectedTimeSlot ? '#f0fff0' : '#f8f9fa' }}
+                          />
+                        </div>
+
                       </div>
                     );
                   })}
@@ -1756,7 +2078,7 @@ const PatientRegistration = () => {
           </div>
         </div>
 
-        {/* NEW: Token Availability Section */}
+        {/* NEW: Token Availability Section
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
@@ -1780,7 +2102,7 @@ const PatientRegistration = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
         {/* Submit and Reset Buttons */}
         <div className="row mb-3">
           <div className="col-sm-12">
