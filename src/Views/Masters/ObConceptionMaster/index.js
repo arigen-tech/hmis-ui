@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const ObConceptionMaster = () => {
   const [data, setData] = useState([]);
@@ -38,6 +39,8 @@ const ObConceptionMaster = () => {
       { id: 3, value: "IUI", description: "Intrauterine Insemination", status: "Y" },
       { id: 4, value: "ICSI", description: "Intracytoplasmic Sperm Injection", status: "N" },
       { id: 5, value: "Others", description: "Other conception method", status: "Y" },
+      { id: 5, value: "Others", description: "Other conception method", status: "Y" },
+      
     ];
     setData(sample);
   }, []);
@@ -47,12 +50,10 @@ const ObConceptionMaster = () => {
     rec.value.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
+  const currentItems = filteredData.slice(indexOfFirst, indexOfLast)
 
-  const currentItems = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -140,15 +141,7 @@ const ObConceptionMaster = () => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
-  // ================= PAGE NAV =================
-  const handlePageNavigation = () => {
-    const page = Number(pageInput);
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-    setPageInput("");
-  };
-
+ 
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
@@ -249,45 +242,12 @@ const ObConceptionMaster = () => {
               </table>
 
               {/* PAGINATION */}
-              <div className="d-flex justify-content-between align-items-center mt-3 flex-wrap">
-                <div>
-                  Total Records: {filteredData.length} | Page {currentPage} of {totalPages}
-                </div>
-
-                <nav>
-                  <ul className="pagination mb-0">
-                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                      <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)}>Prev</button>
-                    </li>
-                    {[...Array(totalPages).keys()].map((num) => (
-                      <li key={num} className={`page-item ${currentPage === num + 1 ? "active" : ""}`}>
-                        <button className="page-link" onClick={() => setCurrentPage(num + 1)}>
-                          {num + 1}
-                        </button>
-                      </li>
-                    ))}
-                    <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                      <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)}>Next</button>
-                    </li>
-                  </ul>
-                </nav>
-
-                <div className="d-flex align-items-center">
-                  <input
-                    type="number"
-                    min="1"
-                    max={totalPages}
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                    className="form-control form-control-sm me-2"
-                    style={{ width: "70px" }}
-                    placeholder="Go To page"
-                  />
-                  <button className="btn btn-sm btn-primary" onClick={handlePageNavigation}>
-                    Go
-                  </button>
-                </div>
-              </div>
+               <Pagination
+               totalItems={filteredData.length}
+               itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+               currentPage={currentPage}
+               onPageChange={setCurrentPage}
+             /> 
             </>
           ) : (
             // FORM
