@@ -4,6 +4,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_PATIENT_ACUITY } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import { ADD_PATIENT_ACUITY_SUCC_MSG, DUPLICATE_PATIENT_ACUITY, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_PATIENT_ACUITY_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_PATIENT_ACUITY_SUCC_MSG } from "../../../config/constants";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const PatientacuityMaster = () => {
   const [data, setData] = useState([]);
@@ -97,11 +98,12 @@ const PatientacuityMaster = () => {
       (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  // Pagination calculations
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const indexOfLast = currentPage * itemsPerPage;
-  const indexOfFirst = indexOfLast - itemsPerPage;
-  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
+   const indexOfLastItem = currentPage * itemsPerPage;
+   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+   const currentItems = filteredData.slice(
+    indexOfFirstItem,
+    indexOfLastItem
+);
 
   // Search
   const handleSearchChange = (e) => {
@@ -244,29 +246,8 @@ const PatientacuityMaster = () => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
-  // Page navigation handlers
-  const handlePrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  // Go to page functionality
-  const handlePageNavigation = () => {
-    const pageNumber = parseInt(pageInput, 10);
-    if (pageNumber > 0 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
-      setPageInput("");
-    } else {
-      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
-    }
-  };
+ 
+  
 
   const handleRefresh = () => {
     setSearchQuery("");
@@ -412,71 +393,15 @@ const PatientacuityMaster = () => {
                     </table>
                   </div>
                   
-                  {/* PAGINATION - EXACT SAME PATTERN AS INVESTIGATION CATEGORY */}
-                  {filteredData.length > 0 && (
-                    <nav className="d-flex justify-content-between align-items-center mt-3">
-                      <div>
-                        <span>
-                          Page {currentPage} of {totalPages} | Total Records: {filteredData.length}
-                        </span>
-                      </div>
-                      
-                      <ul className="pagination mb-0">
-                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                          <button
-                            className="page-link"
-                            onClick={handlePrevPage}
-                            disabled={currentPage === 1}
-                          >
-                            &laquo; Previous
-                          </button>
-                        </li>
-                        
-                        {[...Array(totalPages)].map((_, index) => (
-                          <li
-                            className={`page-item ${currentPage === index + 1 ? "active" : ""}`}
-                            key={index}
-                          >
-                            <button 
-                              className="page-link" 
-                              onClick={() => setCurrentPage(index + 1)}
-                            >
-                              {index + 1}
-                            </button>
-                          </li>
-                        ))}
-                        
-                        <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                          <button
-                            className="page-link"
-                            onClick={handleNextPage}
-                            disabled={currentPage === totalPages}
-                          >
-                            Next &raquo;
-                          </button>
-                        </li>
-                      </ul>
-                      
-                      <div className="d-flex align-items-center">
-                        <input
-                          type="number"
-                          min="1"
-                          max={totalPages}
-                          value={pageInput}
-                          onChange={(e) => setPageInput(e.target.value)}
-                          placeholder="Go to page"
-                          className="form-control me-2"
-                          style={{ width: "100px" }}
-                        />
-                        <button
-                          className="btn btn-primary"
-                          onClick={handlePageNavigation}
-                        >
-                          Go
-                        </button>
-                      </div>
-                    </nav>
-                  )}
+                  {/* PAGINATION */}
+          
+                    <Pagination
+                      totalItems={filteredData.length}
+                      itemsPerPage={itemsPerPage}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
+                
                 </>
               ) : (
                 // FORM
