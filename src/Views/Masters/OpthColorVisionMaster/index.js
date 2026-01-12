@@ -149,14 +149,7 @@ const OpthColorVisionMaster = () => {
     setCurrentPage(1);
   };
 
-  const handlePrev = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
-  };
-
-  const handleNext = () => {
-    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-  };
-
+ 
   // ================= UI =================
   return (
     <div className="content-wrapper">
