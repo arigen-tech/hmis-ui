@@ -241,7 +241,7 @@ const BookingAppointmentHistory = () => {
           const appointmentSlot = formatAppointmentTime(
             appointment.appointmentStartTime,
             appointment.appointmentEndTime,
-            false  
+            false
             
           );
           return {
@@ -264,7 +264,7 @@ const BookingAppointmentHistory = () => {
             doctorName: appointment.doctorName || "Unknown Doctor",
             departmentName:
               appointment.departmentName || appointment.speciality || "N/A",
-            appointmentSlot: appointmentSlot, // Now formatted as HH:MM - HH:MM
+            appointmentSlot: appointmentSlot,
             originalDoctorId: appointment.doctorId || 0,
             originalDepartmentId: appointment.departmentId || 0,
             originalDate: appointment.appointmentDate
@@ -356,12 +356,12 @@ const BookingAppointmentHistory = () => {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          // Call your cancel appointment API here
+
           const cancelData = {
             appointmentId: patientToCancel.id,
             reasonCode: selectedReason,
             reasonName: reason ? reason.reasonName : selectedReason,
-            cancelledBy: "SYSTEM", // Replace with actual user
+            cancelledBy: "SYSTEM",
             cancelledDate: new Date().toISOString(),
             patientName: patientToCancel.patientName,
             mobileNumber: patientToCancel.mobileNumber,
@@ -369,10 +369,6 @@ const BookingAppointmentHistory = () => {
             timeSlot: patientToCancel.appointmentSlot,
           };
 
-          // Example API call (replace with your actual API endpoint)
-          // const response = await postRequest('/api/appointments/cancel', cancelData);
-
-          // For now, just show success message
           Swal.fire({
             icon: "success",
             title: "Appointment Cancelled",
@@ -424,7 +420,6 @@ const BookingAppointmentHistory = () => {
       date: date,
     }));
 
-    // Clear token when date changes
     setSelectedToken(null);
   };
 

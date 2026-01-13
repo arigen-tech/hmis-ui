@@ -81,7 +81,6 @@ const UpdatePatientRegistration = () => {
   }
 
   useEffect(() => {
-    // Fetching gender data (simulated API response)
     fetchGenderData();
     fetchAllStateData();
     fetchRelationData();
@@ -195,7 +194,6 @@ const UpdatePatientRegistration = () => {
   };
 
   const removeAppointmentRow = (id) => {
-    // Don't remove if it's the only row
     if (appointments.length <= 1) {
       Swal.fire("Error", "At least one appointment row is required", "error");
       return;
@@ -562,16 +560,16 @@ const UpdatePatientRegistration = () => {
 
       if (Array.isArray(response.response)) {
         setPatients(response.response);
-        setSearchPerformed(true); // ADD THIS
+        setSearchPerformed(true);
       } else {
         setPatients([]);
-        setSearchPerformed(false); // ADD THIS
+        setSearchPerformed(false);
         Swal.fire("Info", "No patients found matching your criteria", "info");
       }
     } catch (error) {
       console.error("Error searching patients:", error);
       Swal.fire("Error", "Failed to search patients", "error");
-      setSearchPerformed(false); // ADD THIS
+      setSearchPerformed(false);
     } finally {
       setLoading(false);
       setCurrentPage(1);
@@ -1014,13 +1012,11 @@ const handleEdit = async (patient) => {
   const handleSubmit = () => {
     console.log("Patient Detail Form:", patientDetailForm);
 
-    // Check if patient is selected
     if (!patientDetailForm.id) {
       Swal.fire("Error", "Please select a patient to update", "error");
       return;
     }
 
-    // If appointmentFlag is true, validate appointments
     if (appointmentFlag) {
       const validAppointments = appointments.filter(
         (appt) => appt.speciality && appt.selDoctorId && appt.selSession
@@ -1085,7 +1081,6 @@ const handleEdit = async (patient) => {
         } else if (data.response[0].rosterVal == "YN") {
           sessionVal = [{ key: 0, value: "Morning" }];
         }
-        // setSession(sessionVal);
       } else {
         Swal.fire(data.message);
       }
@@ -1096,7 +1091,6 @@ const handleEdit = async (patient) => {
     const newErrors = {};
     let isValid = true;
 
-    // Basic patient info validation
     if (!patientDetailForm.patientFn?.trim()) {
       newErrors.patientFn = "First name is required";
       isValid = false;
@@ -1293,7 +1287,6 @@ const handleEdit = async (patient) => {
       return data;
     };
 
-    // 1. Prepare patient request with dynamic field handling
     const patientRequest = {
       id: toNumber(patientDetailForm.id) || null,
       uhidNo: patientDetailForm.uhidNo || "",
@@ -1309,7 +1302,6 @@ const handleEdit = async (patient) => {
       patientGenderId: extractId(patientDetailForm.patientGender),
       patientEmailId: patientDetailForm.patientEmailId || "",
       patientMobileNumber: patientDetailForm.patientMobileNumber || "",
-      // Handle patientImage specially - it's the most likely culprit
       patientImage: smartTruncate(
         imageURL || patientDetailForm.patientImage || ""
       ),
@@ -1462,9 +1454,7 @@ const handleEdit = async (patient) => {
     } catch (error) {
       console.error("Error in update:", error);
 
-      // Provide specific guidance based on error type
       if (error.message && error.message.includes("too long")) {
-        // Try to identify which field caused the issue
         const fieldMatch = error.message.match(/column "([^"]+)"/i);
         if (fieldMatch) {
           const fieldName = fieldMatch[1];
@@ -1820,9 +1810,7 @@ const handleEdit = async (patient) => {
     });
   };
 
-  // Show FORM VIEW when patient is selected
-  if (showPatientDetails) {
-    return (
+  if (showPatientDetails) {  return (
       <div className="body d-flex py-3">
         <div className="container-xxl">
           <div className="row align-items-center">
@@ -2140,7 +2128,7 @@ const handleEdit = async (patient) => {
                                 value: selectedCountry,
                               },
                             });
-                            fetchStates(selectedCountry.id); // pass id to fetchStates
+                            fetchStates(selectedCountry.id); 
                           }}
                         >
                           <option value="">Select Country</option>
@@ -2354,7 +2342,7 @@ const handleEdit = async (patient) => {
                                 value: selectedCountry,
                               },
                             });
-                            fetchNokStates(selectedCountry.id); // pass id to fetchStates
+                            fetchNokStates(selectedCountry.id); 
                           }}
                         >
                           <option value="">Select Country</option>
@@ -3032,7 +3020,7 @@ const handleEdit = async (patient) => {
     );
   }
 
-  // Show SEARCH VIEW (default)
+
   return (
     <div className="body d-flex py-3">
       <div className="container-xxl">

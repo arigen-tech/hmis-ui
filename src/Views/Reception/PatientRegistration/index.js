@@ -945,7 +945,6 @@ const PatientRegistration = () => {
     }
   }
 
-  // In your sendRegistrationRequest function, add validation before sending
   function sendRegistrationRequest() {
     if (!isFormValid()) {
       // Check specifically for time slots
@@ -980,7 +979,7 @@ const PatientRegistration = () => {
     sendPatientData();
   }
   const validateVitalDetails = () => {
-    if (preConsultationFlag) return true; // Not required when true
+    if (preConsultationFlag) return true;
 
     const vitalFields = [
       "height",
@@ -1264,14 +1263,13 @@ const PatientRegistration = () => {
 
         visits: visitList,
       };
-      //debugger
       // Filter out invalid visits (doctor/session empty)
       requestData.visits = visitList.filter(
         (v) => !isNaN(v.doctorId) && v.doctorId > 0 && !isNaN(v.departmentId)
       );
 
       if (requestData.visits.length === 0) {
-        requestData.visits = null; // or []
+        requestData.visits = null; 
       }
 
       try {
@@ -1302,7 +1300,6 @@ const PatientRegistration = () => {
               window.location.reload();
             });
           } else if (resp) {
-            // Existing billing flow
             Swal.fire({
               title: "Patient Registered Successfully!",
               html: `
@@ -1417,7 +1414,7 @@ const PatientRegistration = () => {
     const value = `${today.getFullYear()}-${String(
       today.getMonth() + 1
     ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    console.log("value", value); // "2025-12-05" जैसे
+    console.log("value", value);
 
     const data = await getRequest(
       `${GET_DOCTOR_SESSION}deptId=${deptId}&doctorId=${doctorId}&rosterDate=${value}&sessionId=${sessionId}`
@@ -1520,7 +1517,6 @@ const PatientRegistration = () => {
     setAppointments((prev) =>
       prev.map((appt, i) => {
         if (i === index) {
-          // If date is being changed, clear the time slot
           if (field === "selDate") {
             return {
               ...appt,
