@@ -97,7 +97,7 @@ export const LAB_REPORT_API=`${ALL_REPORTS}/labReport`;
 
 
 
-
+export const GET_ALL_REASONS = `${MASTERS}/cancel-payment-reason`;
 export const DEPARTMENT = `/department`;
 export const ALL_DEPARTMENT = `${MASTERS}/department/getAll`;
 export const DOCTOR = `/users`;
@@ -151,6 +151,8 @@ export const GET_PRECONSULTATION=`/patient/getPendingPreConsultations`;
 export const SET_VITALS=`/patient/saveVitalDetails`;
 export const GET_WAITING_LIST=`/patient/getWaitingList`;
 export const GET_AVAILABILITY_TOKENS = `/doctor/checkAllAvailableTokens`;
+export const GET_APPOINTMENT_HISTORY = `/mobileController/getAppointmentHistory`;
+
 
 export const PATIENT_FOLLOW_UP = `/patient/update`;
 export const PATIENT_SEARCH = `/patient/search`;
