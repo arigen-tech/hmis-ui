@@ -238,18 +238,7 @@ const MenarcheMaster = () => {
             </>
           ) : (
             <form onSubmit={handleSave} className="row g-3">
-              <div className="col-md-5">
-                <label>
-                  Age of Menarche Code <span className="text-danger">*</span>
-                </label>
-                <input
-                  id="ageOfMenarcheCode"
-                  className="form-control"
-                  value={formData.ageOfMenarcheCode}
-                  onChange={handleInputChange}
-                />
-              </div>
-
+              
               <div className="col-md-5">
                 <label>
                   Age of Menarche <span className="text-danger">*</span>

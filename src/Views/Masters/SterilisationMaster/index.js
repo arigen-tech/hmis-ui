@@ -232,18 +232,7 @@ const SterilisationMaster = () => {
             </>
           ) : (
             <form onSubmit={handleSave} className="row g-3">
-              <div className="col-md-5">
-                <label>
-                  Sterilisation Code <span className="text-danger">*</span>
-                </label>
-                <input
-                  id="sterilisationCode"
-                  className="form-control"
-                  value={formData.sterilisationCode}
-                  onChange={handleInputChange}
-                />
-              </div>
-
+             
               <div className="col-md-5">
                 <label>
                   Sterilisation Name <span className="text-danger">*</span>

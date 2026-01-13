@@ -248,18 +248,6 @@ const MenstrualPatternMaster = () => {
             <form onSubmit={handleSave} className="row g-3">
               <div className="col-md-5">
                 <label>
-                  Menstrual Pattern Code <span className="text-danger">*</span>
-                </label>
-                <input
-                  id="menstrualPatternCode"
-                  className="form-control"
-                  value={formData.menstrualPatternCode}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="col-md-5">
-                <label>
                   Menstrual Pattern Name <span className="text-danger">*</span>
                 </label>
                 <input

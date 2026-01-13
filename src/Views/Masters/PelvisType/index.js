@@ -228,16 +228,7 @@ const PelvisType = () => {
             </>
           ) : (
             <form onSubmit={handleSave} className="row g-3">
-              <div className="col-md-5">
-                <label>Pelvis Type Code <span className="text-danger">*</span></label>
-                <input
-                  id="pelvisTypeCode"
-                  className="form-control"
-                  value={formData.pelvisTypeCode}
-                  onChange={handleInputChange}
-                />
-              </div>
-
+             
               <div className="col-md-5">
                 <label>Pelvis Type Name <span className="text-danger">*</span></label>
                 <input

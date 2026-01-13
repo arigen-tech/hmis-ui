@@ -236,18 +236,7 @@ const SmearResultMaster = () => {
             </>
           ) : (
             <form onSubmit={handleSave} className="row g-3">
-              <div className="col-md-5">
-                <label>
-                  Smear Result Code <span className="text-danger">*</span>
-                </label>
-                <input
-                  id="smearResultCode"
-                  className="form-control"
-                  value={formData.smearResultCode}
-                  onChange={handleInputChange}
-                />
-              </div>
-
+              
               <div className="col-md-5">
                 <label>
                   Smear Result Name <span className="text-danger">*</span>

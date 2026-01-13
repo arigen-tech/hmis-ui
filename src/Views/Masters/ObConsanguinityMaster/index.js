@@ -35,12 +35,12 @@ const ObConsanguinityMaster = () => {
   // ================= SAMPLE DATA =================
   useEffect(() => {
     setData([
-      { id: 1, value: "First Cousin", description: "Consanguinity type", status: "Y" },
-      { id: 2, value: "Second Cousin", description: "Consanguinity type", status: "Y" },
-      { id: 3, value: "Uncle-Niece", description: "Consanguinity type", status: "N" },
-      { id: 4, value: "Aunt-Nephew", description: "Consanguinity type", status: "Y" },
-      { id: 5, value: "No Relation", description: "Consanguinity type", status: "Y" },
-      { id: 6, value: "Others", description: "Consanguinity type", status: "Y" },
+      { id: 1, value: "First Cousin",  status: "Y" },
+      { id: 2, value: "Second Cousin", status: "Y" },
+      { id: 3, value: "Uncle-Niece", status: "N" },
+      { id: 4, value: "Aunt-Nephew", status: "Y" },
+      { id: 5, value: "No Relation", status: "Y" },
+      { id: 6, value: "Others", status: "Y" },
     ]);
   }, []);
 
@@ -189,7 +189,7 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
                   <tr>
                     <th>ID</th>
                     <th>Value</th>
-                    <th>Description</th>
+          
                     <th>Status</th>
                     <th>Edit</th>
                   </tr>
@@ -199,7 +199,7 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
                     <tr key={rec.id}>
                       <td>{rec.id}</td>
                       <td>{rec.value}</td>
-                      <td>{rec.description}</td>
+      
                       <td>
                         <div className="form-check form-switch">
                           <input
@@ -244,19 +244,10 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
           ) : (
             // FORM
             <form className="row g-3" onSubmit={handleSave}>
-              <div className="col-md-4">
-                <label>ID <span className="text-danger">*</span></label>
-                <input id="id" className="form-control" value={formData.id} onChange={handleInputChange} />
-              </div>
-
+             
               <div className="col-md-4">
                 <label>Value <span className="text-danger">*</span></label>
                 <input id="value" className="form-control" value={formData.value} onChange={handleInputChange} />
-              </div>
-
-              <div className="col-md-4">
-                <label>Description</label>
-                <input id="description" className="form-control" value={formData.description} onChange={handleInputChange} />
               </div>
 
               <div className="col-md-12 text-end mt-4">

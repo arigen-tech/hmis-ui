@@ -229,15 +229,7 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
             </>
           ) : (
             <form onSubmit={handleSave} className="row g-3">
-              <div className="col-md-5">
-                <label>Cervix Position Code <span className="text-danger">*</span></label>
-                <input
-                  id="cervixPositionCode"
-                  className="form-control"
-                  value={formData.cervixPositionCode}
-                  onChange={handleInputChange}
-                />
-              </div>
+             
 
               <div className="col-md-5">
                 <label>Cervix Position Name <span className="text-danger">*</span></label>

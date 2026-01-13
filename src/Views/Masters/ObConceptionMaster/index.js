@@ -34,12 +34,12 @@ const ObConceptionMaster = () => {
   // ================= SAMPLE DATA =================
   useEffect(() => {
     const sample = [
-      { id: 1, value: "Natural Conception", description: "Natural conception", status: "Y" },
-      { id: 2, value: "IVF", description: "In Vitro Fertilization", status: "Y" },
-      { id: 3, value: "IUI", description: "Intrauterine Insemination", status: "Y" },
-      { id: 4, value: "ICSI", description: "Intracytoplasmic Sperm Injection", status: "N" },
-      { id: 5, value: "Others", description: "Other conception method", status: "Y" },
-      { id: 5, value: "Others", description: "Other conception method", status: "Y" },
+      { id: 1, value: "Natural Conception", status: "Y" },
+      { id: 2, value: "IVF",status: "Y" },
+      { id: 3, value: "IUI", status: "Y" },
+      { id: 4, value: "ICSI", status: "N" },
+      { id: 5, value: "Others", status: "Y" },
+      { id: 5, value: "Others", status: "Y" },
       
     ];
     setData(sample);
@@ -197,7 +197,7 @@ const ObConceptionMaster = () => {
                   <tr>
                     <th>ID</th>
                     <th>Conception Type</th>
-                    <th>Description</th>
+            
                     <th>Active</th>
                     <th>Edit</th>
                   </tr>
@@ -207,7 +207,7 @@ const ObConceptionMaster = () => {
                     <tr key={rec.id}>
                       <td>{rec.id}</td>
                       <td>{rec.value}</td>
-                      <td>{rec.description}</td>
+      
                       <td>
                         <div className="form-check form-switch">
                           <input
@@ -252,21 +252,13 @@ const ObConceptionMaster = () => {
           ) : (
             // FORM
             <form className="row" onSubmit={handleSave}>
-              <div className="col-md-4">
-                <label>ID <span className="text-danger">*</span></label>
-                <input id="id" className="form-control" value={formData.id} onChange={handleInputChange} />
-              </div>
-
+              
               <div className="col-md-4">
                 <label>Conception Type <span className="text-danger">*</span></label>
                 <input id="value" className="form-control" value={formData.value} onChange={handleInputChange} />
               </div>
 
-              <div className="col-md-4">
-                <label>Description</label>
-                <input id="description" className="form-control" value={formData.description} onChange={handleInputChange} />
-              </div>
-
+             
               <div className="col-md-12 mt-4 text-end">
                 <button className="btn btn-primary me-2" disabled={!isFormValid}>Save</button>
                 <button className="btn btn-danger" onClick={() => setShowForm(false)}>Cancel</button>

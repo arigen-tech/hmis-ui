@@ -34,12 +34,12 @@ const OpthDistanceVisionMaster = () => {
   // ================= SAMPLE DATA =================
   useEffect(() => {
     const sample = [
-      { id: 1, value: "Distance Vision Test 1", description: "Distance vision check", status: "Y" },
-      { id: 2, value: "Distance Vision Test 2", description: "Distance vision check", status: "Y" },
-      { id: 3, value: "Distance Vision Test 3", description: "Distance vision check", status: "N" },
-      { id: 4, value: "Distance Vision Test 4", description: "Distance vision check", status: "Y" },
-      { id: 5, value: "Distance Vision Test 5", description: "Distance vision check", status: "Y" },
-      { id: 6, value: "Distance Vision Test 6", description: "Distance vision check", status: "Y" },
+      { id: 1, value: "Distance Vision Test 1",status: "Y" },
+      { id: 2, value: "Distance Vision Test 2",status: "Y" },
+      { id: 3, value: "Distance Vision Test 3", status: "N" },
+      { id: 4, value: "Distance Vision Test 4", status: "Y" },
+      { id: 5, value: "Distance Vision Test 5", status: "Y" },
+      { id: 6, value: "Distance Vision Test 6", status: "Y" },
     ];
     setData(sample);
   }, []);
@@ -71,9 +71,8 @@ const OpthDistanceVisionMaster = () => {
 
   const resetForm = () => {
     setFormData({
-      id: "",
       value: "",
-      description: "",
+      
     });
     setIsFormValid(false);
   };
@@ -196,7 +195,6 @@ const OpthDistanceVisionMaster = () => {
                     <tr>
                       <th>ID</th>
                       <th>Value</th>
-                      <th>Description</th>
                       <th>Status</th>
                       <th>Edit</th>
                     </tr>
@@ -206,7 +204,7 @@ const OpthDistanceVisionMaster = () => {
                       <tr key={rec.id}>
                         <td>{rec.id}</td>
                         <td>{rec.value}</td>
-                        <td>{rec.description}</td>
+          
                         <td>
                           <div className="form-check form-switch">
                             <input
@@ -252,21 +250,13 @@ const OpthDistanceVisionMaster = () => {
           ) : (
             // FORM
             <form className="row" onSubmit={handleSave}>
-              <div className="form-group col-md-4">
-                <label>ID<span className="text-danger">*</span></label>
-                <input id="id" className="form-control" value={formData.id} onChange={handleInputChange} />
-              </div>
-
+              
               <div className="form-group col-md-4">
                 <label>Value <span className="text-danger">*</span></label>
                 <input id="value" className="form-control" value={formData.value} onChange={handleInputChange} />
               </div>
 
-              <div className="form-group col-md-4">
-                <label>Description</label>
-                <input id="description" className="form-control" value={formData.description} onChange={handleInputChange} />
-              </div>
-
+              
               <div className="form-group col-md-12 mt-4 d-flex justify-content-end">
                 <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                   Save

@@ -231,15 +231,6 @@ const StationPresentingMaster = () => {
             </>
           ) : (
             <form onSubmit={handleSave} className="row g-3">
-              <div className="col-md-5">
-                <label>Station Presenting Code <span className="text-danger">*</span></label>
-                <input
-                  id="stationPresentingCode"
-                  className="form-control"
-                  value={formData.stationPresentingCode}
-                  onChange={handleInputChange}
-                />
-              </div>
 
               <div className="col-md-5">
                 <label>Station Presenting Name <span className="text-danger">*</span></label>

@@ -14,7 +14,7 @@ const TrimesterMaster = () => {
   });
 
   const [formData, setFormData] = useState({
-    trimesterCode: "",
+
     trimesterName: "",
   });
 
@@ -57,7 +57,7 @@ const TrimesterMaster = () => {
   };
 
   const resetForm = () => {
-    setFormData({ trimesterCode: "", trimesterName: "" });
+    setFormData({ trimesterName: "" });
     setIsFormValid(false);
   };
 
@@ -222,15 +222,6 @@ const TrimesterMaster = () => {
           {/* ================= FORM ================= */}
           {showForm && (
             <form onSubmit={handleSave} className="row g-3">
-              <div className="col-md-5">
-                <label>Trimester Code <span className="text-danger">*</span></label>
-                <input
-                  id="trimesterCode"
-                  className="form-control"
-                  value={formData.trimesterCode}
-                  onChange={handleInputChange}
-                />
-              </div>
 
               <div className="col-md-5">
                 <label>Trimester Name <span className="text-danger">*</span></label>

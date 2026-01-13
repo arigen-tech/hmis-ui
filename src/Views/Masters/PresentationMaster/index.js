@@ -14,7 +14,7 @@ const PresentationMaster = () => {
   });
 
   const [formData, setFormData] = useState({
-    presentationCode: "",
+    
     presentationName: "",
   });
 
@@ -228,16 +228,6 @@ const PresentationMaster = () => {
           {/* ================= FORM ================= */}
           {showForm && (
             <form onSubmit={handleSave} className="row g-3">
-              <div className="col-md-5">
-                <label>Presentation Code <span className="text-danger">*</span></label>
-                <input
-                  id="presentationCode"
-                  className="form-control"
-                  value={formData.presentationCode}
-                  onChange={handleInputChange}
-                />
-              </div>
-
               <div className="col-md-5">
                 <label>Presentation Name <span className="text-danger">*</span></label>
                 <input

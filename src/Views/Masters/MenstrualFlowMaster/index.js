@@ -232,18 +232,7 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
             </>
           ) : (
             <form onSubmit={handleSave} className="row g-3">
-              <div className="col-md-5">
-                <label>
-                  Menstrual Flow Code <span className="text-danger">*</span>
-                </label>
-                <input
-                  id="menstrualFlowCode"
-                  className="form-control"
-                  value={formData.menstrualFlowCode}
-                  onChange={handleInputChange}
-                />
-              </div>
-
+            
               <div className="col-md-5">
                 <label>
                   Menstrual Flow Name <span className="text-danger">*</span>
