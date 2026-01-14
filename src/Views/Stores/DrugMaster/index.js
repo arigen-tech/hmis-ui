@@ -620,11 +620,7 @@ const DrugMaster = () => {
                                 </>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
-                                    <div className="d-flex justify-content-end mb-3">
-                                        <button type="button" className="btn btn-secondary" onClick={handleBack}>
-                                            <i className="mdi mdi-arrow-left"></i> Back
-                                        </button>
-                                    </div>
+                                   
 
                                     <div className="row">
                                         <div className="form-group col-md-4 mt-3">
