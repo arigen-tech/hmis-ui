@@ -2,10 +2,10 @@ import { useState, useRef, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS } from "../../../config/apiConfig";
 import { getRequest, putRequest } from "../../../service/apiService"
-import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { ALL_REPORTS } from "../../../config/apiConfig";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
-import { LAB_REPORT_GENERATION_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG, INVALID_ORDER_ID_ERR_MSG, SELECT_DATE_WARN_MSG, FETCH_LAB_HISTORY_REPORT_ERR_MSG, INVALID_DATE_PICK_WARN_MSG} from '../../../config/constants';
+import { LAB_REPORT_GENERATION_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG, INVALID_ORDER_ID_ERR_MSG, SELECT_DATE_WARN_MSG, FETCH_LAB_HISTORY_REPORT_ERR_MSG, INVALID_DATE_PICK_WARN_MSG } from '../../../config/constants';
 
 
 
@@ -22,10 +22,10 @@ const OpeningBalanceApproval = () => {
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
   const [printingIds, setPrintingIds] = useState(new Set());
 
-   const [pdfUrl, setPdfUrl] = useState(null);
+  const [pdfUrl, setPdfUrl] = useState(null);
   const [pdfSelectedRecord, setPdfSelectedRecord] = useState(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  
+
 
 
   const fetchOpenBalance = async () => {
@@ -122,63 +122,63 @@ const OpeningBalanceApproval = () => {
     })
   }
 
- const handleViewDownload = (record) => {
-  console.log("View report for:", record);
-  generateOpeningBalancePdf(record);
-};
+  const handleViewDownload = (record) => {
+    console.log("View report for:", record);
+    generateOpeningBalancePdf(record);
+  };
 
-  
+
 
   // Generate PDF for viewing
-const generateOpeningBalancePdf = async (record) => {
-  const balanceMId = record.balanceMId;
+  const generateOpeningBalancePdf = async (record) => {
+    const balanceMId = record.balanceMId;
 
-  if (!balanceMId) {
-    showPopup("Invalid Balance ID for generating report", "error");
-    return;
-  }
-
-  // Clear previous PDF and show loading
-  setIsGeneratingPdf(true);
-  setPdfUrl(null);
-  setPdfSelectedRecord(null);
-
-  try {
-    // Build the PDF URL (adjust this according to your API endpoint)
-    const url = `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceMId}&flag=d`;
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Accept: "application/pdf",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to generate PDF");
+    if (!balanceMId) {
+      showPopup("Invalid Balance ID for generating report", "error");
+      return;
     }
 
-    const blob = await response.blob();
-    const fileURL = window.URL.createObjectURL(blob);
-    
-    // Set PDF URL and record details to trigger the viewer
-    setPdfUrl(fileURL);
-    setPdfSelectedRecord({
-      balanceNo: record.balanceNo,
-      departmentName: record.departmentName,
-      enteredDt: record.enteredDt,
-    });
+    // Clear previous PDF and show loading
+    setIsGeneratingPdf(true);
+    setPdfUrl(null);
+    setPdfSelectedRecord(null);
 
-  } catch (error) {
-    console.error("Error generating PDF", error);
-    showPopup("Error generating PDF report. Please try again.", "error");
-  } finally {
-    setIsGeneratingPdf(false);
-  }
-};
+    try {
+      // Build the PDF URL (adjust this according to your API endpoint)
+      const url = `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceMId}&flag=d`;
 
-const handlePrintReport = async (record) => {
-     const balanceMId = record.balanceMId;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      const blob = await response.blob();
+      const fileURL = window.URL.createObjectURL(blob);
+
+      // Set PDF URL and record details to trigger the viewer
+      setPdfUrl(fileURL);
+      setPdfSelectedRecord({
+        balanceNo: record.balanceNo,
+        departmentName: record.departmentName,
+        enteredDt: record.enteredDt,
+      });
+
+    } catch (error) {
+      console.error("Error generating PDF", error);
+      showPopup("Error generating PDF report. Please try again.", "error");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const handlePrintReport = async (record) => {
+    const balanceMId = record.balanceMId;
 
 
     if (!balanceMId) {
@@ -190,7 +190,7 @@ const handlePrintReport = async (record) => {
     setPrintingIds(prev => new Set(prev).add(balanceMId));
 
     try {
-    const url = `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceMId}&flag=p`;
+      const url = `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceMId}&flag=p`;
 
 
       const response = await fetch(url, {
@@ -324,36 +324,36 @@ const handlePrintReport = async (record) => {
                     />
                   </div>
                   <div className="col-md-2 mt-3">
-                    <button 
-    className="btn btn-success"
-    onClick={() => handleViewDownload(selectedRecord)}
-    disabled={isGeneratingPdf}
-  >
-    {isGeneratingPdf ? (
-      <>
-        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-        Generating...
-      </>
-    ) : (
-      "View/Download"
-    )}
-  </button>
+                    <button
+                      className="btn btn-success"
+                      onClick={() => handleViewDownload(selectedRecord)}
+                      disabled={isGeneratingPdf}
+                    >
+                      {isGeneratingPdf ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Generating...
+                        </>
+                      ) : (
+                        "View/Download"
+                      )}
+                    </button>
                   </div>
                   <div className="col-md-2 mt-3">
-                     <button
-                                    type="button"
-                                    className="btn btn-sm btn-secondary"
-                                    onClick={() => handlePrintReport(selectedRecord)}
-                                  >
-                                    {isPrinting(selectedRecord.id) ? (
-                                      <>
-                                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                                        Printing...
-                                      </>
-                                    ) : (
-                                      "Print"
-                                    )}
-                                  </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-secondary"
+                      onClick={() => handlePrintReport(selectedRecord)}
+                    >
+                      {isPrinting(selectedRecord.id) ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                          Printing...
+                        </>
+                      ) : (
+                        "Print"
+                      )}
+                    </button>
                   </div>
                 </div>
 
@@ -692,11 +692,11 @@ const handlePrintReport = async (record) => {
 
               {/* Pagination */}
               <Pagination
-                                            totalItems={filteredApprovalData.length}
-                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                            currentPage={currentPage}
-                                            onPageChange={setCurrentPage}
-                                        />
+                totalItems={filteredApprovalData.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
             </div>
           </div>
         </div>
