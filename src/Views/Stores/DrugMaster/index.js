@@ -2,7 +2,9 @@ import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+// import { MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN, MAS_DRUG_SCHEDULE } from "../../../config/apiConfig";
 import { MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN } from "../../../config/apiConfig";
+
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const DrugMaster = () => {
@@ -21,7 +23,8 @@ const DrugMaster = () => {
         reorderLevelStore: "",
         hsnCode: "",
         noOfDays: "",
-        frequency: "",
+        drugSchedule: "",
+        isGeneric: "",
         dosage: "",
         facilityCode: "",
         dangerousDrug: false,
@@ -36,6 +39,7 @@ const DrugMaster = () => {
     const [serviceCategoryData, setServiceCategoryData] = useState([]);
     const [storeUnitData, setStoreUnitData] = useState([]);
     const [hsnList, setHsnList] = useState([]);
+    const [drugScheduleData, setDrugScheduleData] = useState([]);
     const [process, setProcess] = useState(false)
     const [editEnabled, setEditEnabled] = useState(false)
 
@@ -226,6 +230,21 @@ const DrugMaster = () => {
         }
     };
 
+    // const fetchDrugScheduleData = async () => {
+    //     try {
+    //         const data = await getRequest(`${MAS_DRUG_SCHEDULE}/getAll/1`);
+    //         if (data.status === 200 && Array.isArray(data.response)) {
+    //             setDrugScheduleData(data.response);
+    //         } else {
+    //             setDrugScheduleData([]);
+    //             console.error("Unexpected API response format for drug schedule:", data);
+    //         }
+    //     } catch (error) {
+    //         console.error("Error fetching drug schedule data:", error);
+    //         setDrugScheduleData([]);
+    //     }
+    // };
+
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target
         const updatedFormData = {
@@ -281,7 +300,8 @@ const DrugMaster = () => {
                 reorderLevelStore: drug.reOrderLevelStore?.toString() || "",
                 hsnCode: drug.hsnCode || "",
                 noOfDays: drug.noOfDays?.toString() || "",
-                frequency: drug.frequency || "",
+                drugSchedule: drug.masDrugScheduleRule || "",
+                isGeneric: drug.isGeneric || "",
                 dosage: drug.dosage || "",
                 facilityCode: drug.facilityCode || "",
                 dangerousDrug: drug.dangerousDrug || false,
@@ -328,7 +348,8 @@ const DrugMaster = () => {
             reorderLevelStore: "",
             hsnCode: "",
             noOfDays: "",
-            frequency: "",
+            drugSchedule: "",
+            isGeneric: "",
             dosage: "",
             facilityCode: "",
             dangerousDrug: false,
@@ -362,7 +383,8 @@ const DrugMaster = () => {
                 reOrderLevelStore: Number(formData.reorderLevelStore) || 0,
                 hsnCode: formData.hsnCode || "",
                 noOfDays: Number(formData.noOfDays) || 0,
-                frequency: formData.frequency || "",
+                masDrugScheduleRule: formData.drugSchedule || "",
+                isGeneric: formData.isGeneric || "",
                 dosage: formData.dosage || "",
                 facilityCode: formData.facilityCode,
                 dangerousDrug: formData.dangerousDrug,
@@ -426,7 +448,8 @@ const DrugMaster = () => {
             reorderLevelStore: "",
             hsnCode: "",
             noOfDays: "",
-            frequency: "",
+            drugSchedule: "",
+            isGeneric: "",
             dosage: "",
             facilityCode: "",
             dangerousDrug: false,
@@ -858,17 +881,33 @@ const DrugMaster = () => {
                                         </div>
 
                                         <div className="form-group col-md-4 mt-3">
-                                            <label>Frequency</label>
+                                            <label>Drug Schedule</label>
                                             <select
                                                 className="form-select"
-                                                name="frequency"
-                                                value={formData.frequency}
+                                                name="drugSchedule"
+                                                value={formData.drugSchedule}
+                                                onChange={handleInputChange}
+                                            >
+                                                <option value="">Select Drug Schedule</option>
+                                                {drugScheduleData.map((schedule) => (
+                                                    <option key={schedule.scheduleId} value={schedule.scheduleName}>
+                                                        {schedule.scheduleName}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="form-group col-md-4 mt-3">
+                                            <label>Is Generic</label>
+                                            <select
+                                                className="form-select"
+                                                name="isGeneric"
+                                                value={formData.isGeneric}
                                                 onChange={handleInputChange}
                                             >
                                                 <option value="">Select</option>
-                                                <option value="Once Daily">Once Daily</option>
-                                                <option value="Twice Daily">Twice Daily</option>
-                                                <option value="Thrice Daily">Thrice Daily</option>
+                                                <option value="y">Yes</option>
+                                                <option value="n">No</option>
                                             </select>
                                         </div>
 

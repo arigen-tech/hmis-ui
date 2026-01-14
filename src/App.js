@@ -155,6 +155,7 @@ import BookingAppointmentHistory from './Views/Reception/BookingAppointmentHisto
 import OrderTrackingReport from './Views/Laboratory/LabReports/OrderTrackingReport';
 import PendingInvestigationsReport from './Views/Laboratory/LabReports/PendingInvestigationReport';
 import SampleRejectionReport from './Views/Laboratory/LabReports/SampleRejectionReport';
+import RadiologyInvestigationMaster from './Views/Radiology/InvestigationMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -343,6 +344,7 @@ function App() {
                 <Route path="/OrderTrackingReport" element={<OrderTrackingReport/>} />
                 <Route path="/PendingInvestigationsReport" element={<PendingInvestigationsReport/>} />
                 <Route path="/SampleRejectionReport" element={<SampleRejectionReport/>} />                <Route path="*" element={<PageNotFound />} />
+                <Route path="/RadiologyInvestigationMaster" element={<RadiologyInvestigationMaster/>} />
               </Route>
             </Route>
 
