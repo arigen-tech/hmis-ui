@@ -161,6 +161,7 @@ const validRoutes = [
   "/SampleRejectionReport",
   "/RadiologyInvestigationMaster",
   "/MembraneStatusMaster",
+  "/LensTypeMaster",
   
 ];
 
