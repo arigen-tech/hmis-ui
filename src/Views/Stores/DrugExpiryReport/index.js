@@ -4,13 +4,15 @@ import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest } from "../../../service/apiService";
 import { OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"
+
 const DrugExpiry = () => {
   const today = new Date().toISOString().split("T")[0];
   const [searchFormData, setSearchFormData] = useState({
     drugCode: "",
     drugName: "",
     fromDate: today,
-    toDate: today
+    toDate: today,
+    daysOption: "",
   });
 
   const [drugCodeQuery, setDrugCodeQuery] = useState("");
@@ -21,7 +23,7 @@ const DrugExpiry = () => {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [printingIds, setPrintingIds] = useState(new Set());
-
+  const [dateFieldsEnabled, setDateFieldsEnabled] = useState(true);
 
   console.log("searchFormData", searchFormData)
 
@@ -59,8 +61,6 @@ const DrugExpiry = () => {
     fatchDrugCodeOptions();
   }, []);
 
-
-
   useEffect(() => {
     if (!showDrugDropdown) return;
     function handleClickOutside(event) {
@@ -74,10 +74,52 @@ const DrugExpiry = () => {
 
   const itemsPerPage = 5
 
-
   const handleSearchInputChange = (e) => {
     const { id, value } = e.target
-    setSearchFormData((prevData) => ({ ...prevData, [id]: value }))
+    
+    if (id === "daysOption") {
+      const newValue = value;
+      setSearchFormData(prevData => ({ 
+        ...prevData, 
+        [id]: newValue 
+      }));
+      
+      // Enable/disable date fields based on selection
+      if (newValue === "other") {
+        setDateFieldsEnabled(true);
+      } else {
+        setDateFieldsEnabled(false);
+        
+        // Calculate dates based on selected days
+        const today = new Date();
+        let fromDate = new Date();
+        
+        if (newValue === "30") {
+          fromDate.setDate(today.getDate() - 30);
+        } else if (newValue === "60") {
+          fromDate.setDate(today.getDate() - 60);
+        } else if (newValue === "90") {
+          fromDate.setDate(today.getDate() - 90);
+        } else if (newValue === "120") {
+          fromDate.setDate(today.getDate() - 120);
+        } else {
+          fromDate = today;
+        }
+        
+        const formatDate = (date) => {
+          return date.toISOString().split("T")[0];
+        };
+        
+        setSearchFormData(prevData => ({
+          ...prevData,
+          daysOption: newValue,
+          fromDate: formatDate(fromDate),
+          toDate: formatDate(today)
+        }));
+      }
+    } else {
+      setSearchFormData((prevData) => ({ ...prevData, [id]: value }))
+    }
   }
 
   const handleDrugCodeSearch = (e) => {
@@ -114,13 +156,11 @@ const DrugExpiry = () => {
     setShowNameDropdown(false);
   };
 
-
-
   const handleSearchSubmit = async (event) => {
     event.preventDefault();
 
     if (!searchFormData.fromDate || !searchFormData.toDate) {
-      showPopup("Please fill all mandatory fields (Drug Code, From Date, To Date)", "error")
+      showPopup("Please fill all mandatory fields (From Date, To Date)", "error")
       return
     }
 
@@ -130,7 +170,6 @@ const DrugExpiry = () => {
       console.warn("Please select both fromDate and toDate");
     }
   };
-
 
   const fetchBatchStock = async () => {
     try {
@@ -165,13 +204,13 @@ const DrugExpiry = () => {
     }
   };
 
-
   const handleReset = () => {
     setSearchFormData({
       drugCode: "",
       drugName: "",
-      fromDate: "",
-      toDate: ""
+      fromDate: today,
+      toDate: today,
+      daysOption: "",
     });
 
     setDrugCodeQuery("");
@@ -180,10 +219,8 @@ const DrugExpiry = () => {
     setShowCodeDropdown(false);
     setShowNameDropdown(false);
     setShowResults(false);
+    setDateFieldsEnabled(true);
   };
-
-
-
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -194,9 +231,6 @@ const DrugExpiry = () => {
       },
     })
   }
-
-
-
 
   const handleGenerate = async () => {
     const fromDate = searchFormData.fromDate;
@@ -223,12 +257,6 @@ const DrugExpiry = () => {
       localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
 
     setIsGeneratingPDF(true);
-    //  const { drugCode } = searchFormData;
-
-    //   const drugCodeStr = (drugCode ?? "").toString().trim();
-
-    //   const itemId = drugCodeStr || "0";
-
 
     try {
       const formatDate = (dateStr) => {
@@ -265,55 +293,38 @@ const DrugExpiry = () => {
   const handlePrintReport = async (record) => {
     const balanceMId = record.balanceMId;
 
-
-  //  if (!balanceMId) {
-  //    showPopup(`${INVALID_ORDER_ID_ERR_MSG} for printing`, "error");
-  //    return;
-  //  }
-
-   // Add this record to printing set
-   const hospitalId =
+    const hospitalId =
       localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
     const departmentId =
       localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
 
-   setPrintingIds(prev => new Set(prev).add(hospitalId));
+    setPrintingIds(prev => new Set(prev).add(hospitalId));
 
-   try {
-     const fromDate = searchFormData.fromDate;
-    const toDate = searchFormData.toDate;
-    const formatDate = (dateStr) => {
+    try {
+      const fromDate = searchFormData.fromDate;
+      const toDate = searchFormData.toDate;
+      const formatDate = (dateStr) => {
         const date = new Date(dateStr);
         return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
       };
-      
-
-
-    
 
       const url = `${ALL_REPORTS}/drugExpiryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&itemId=12956&fromDate=${formatDate(fromDate)}&toDate=${formatDate(toDate)}&flag=p`;
 
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
 
-
-     const response = await fetch(url, {
-       method: "GET",
-       headers: {
-         Accept: "application/pdf",
-       },
-     });
-
-    }finally {
-     // Remove this record from printing set
-     setPrintingIds(prev => {
-       const newSet = new Set(prev);
-       newSet.delete(balanceMId);
-       return newSet;
-     });
-   }
- };
-
-
-
+    } finally {
+      setPrintingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(balanceMId);
+        return newSet;
+      });
+    }
+  };
 
   const filteredTotalPages = Math.ceil(filteredResults.length / itemsPerPage)
   const currentItems = filteredResults.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
@@ -386,6 +397,26 @@ const DrugExpiry = () => {
                 <div className="row">
                   <div className="form-group col-md-4 mt-3">
                     <label>
+                      Select Days <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      className="form-select"
+                      id="daysOption"
+                      onChange={handleSearchInputChange}
+                      value={searchFormData.daysOption}
+                      required
+                    >
+                      <option value="">Select Days</option>
+                      <option value="30">30 Days</option>
+                      <option value="60">60 Days</option>
+                      <option value="90">90 Days</option>
+                      <option value="120">120 Days</option>
+                      <option value="other">Other Dates</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group col-md-4 mt-3">
+                    <label>
                       From Date <span className="text-danger">*</span>
                     </label>
                     <input
@@ -396,6 +427,7 @@ const DrugExpiry = () => {
                       value={searchFormData.fromDate}
                       max={searchFormData.toDate || new Date().toISOString().split("T")[0]}
                       required
+                      disabled={!dateFieldsEnabled}
                     />
                   </div>
                   <div className="form-group col-md-4 mt-3">
@@ -410,6 +442,7 @@ const DrugExpiry = () => {
                       value={searchFormData.toDate}
                       min={searchFormData.fromDate}
                       required
+                      disabled={!dateFieldsEnabled}
                     />
                   </div>
                   <div className="form-group col-md-4 mt-3 position-relative">
@@ -484,9 +517,9 @@ const DrugExpiry = () => {
                     </button>
 
                     <button
-                      type="button" // <-- Change to button
+                      type="button"
                       className="btn btn-primary me-2"
-                      onClick={handleReset} // <-- Use onClick
+                      onClick={handleReset}
                     >
                       Reset
                     </button>
