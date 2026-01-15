@@ -233,6 +233,10 @@ export const LAB_AMENDMENT_TYPE_API = `${MASTERS}/lab-amendment-type`;
 export const MAS_PATIENT_PREPARATION = `${MASTERS}/patient-preparation`;
 export const MAS_TONSIL_GRADE = `${MASTERS}/entMasTonsilGrade`;
 export const BILLING = `${LAB}/billingStatus`;
+export const MAS_OB_CONCEPTION = `${MASTERS}/obMasConception`;
+export const MAS_CERVIX_POSITION = `${MASTERS}/ObMasCervixPosition`;
+export const MAS_OPTH_COLOR_VISION = `${MASTERS}/opthMasColorVision`;
+export const MAS_OP_PELVIS_TYPE = `${MASTERS}/obMasPelvisType`;
 
 
 // Constants for date validation for Lab report

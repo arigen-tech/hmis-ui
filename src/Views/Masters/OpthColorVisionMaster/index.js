@@ -1,161 +1,176 @@
+
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import { MAS_OPTH_COLOR_VISION } from "../../../config/apiConfig";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const OpthColorVisionMaster = () => {
   const [data, setData] = useState([]);
-  const [confirmDialog, setConfirmDialog] = useState({
-    isOpen: false,
-    id: null,
-    newStatus: "",
-    visionTestName: ""
-  });
+  const [loading, setLoading] = useState(false);
 
-  const [loading] = useState(false);
-
-  const [formData, setFormData] = useState({
-    vision_code: "",
-    vision_name: "",
-    description: "",
-  });
-
+  const [formData, setFormData] = useState({ colorValue: "" });
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
+
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // ================= PAGINATION =================
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageInput, setPageInput] = useState("");
-  const itemsPerPage = 5;
+  const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
-  // ================= SAMPLE DATA =================
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    record: null,
+    newStatus: "",
+  });
+
+  const MAX_LENGTH = 20;
+
+  const formatDate = (dateString) => {
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
+    try {
+      const { response } = await getRequest(`${MAS_OPTH_COLOR_VISION}/getAll/${flag}`);
+      setData(response || []);
+    } catch {
+      showPopup("Failed to fetch records", "error");
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const sample = [
-      { vision_code:"1",vision_name: "Red-Green Test", description: "Color blindness test", status: "Y" },
-      {  vision_code: "2", vision_name: "Blue-Yellow Test", description: "Detects blue-yellow deficiency", status: "Y" },
-      {  vision_code: "3", vision_name: "Total Color Vision", description: "Full spectrum test", status: "N" },
-      { vision_code: "4", vision_name: "Contrast Sensitivity", description: "Contrast test", status: "Y" },
-      {  vision_code: "5", vision_name: "Ishihara Plate Test", description: "Color vision plate test", status: "Y" },
-      {  vision_code: "6", vision_name: "Anomaloscope", description: "Advanced color test", status: "Y" },
-    ];
-    setData(sample);
+    fetchData();
   }, []);
 
-  // ================= SEARCH =================
   const filteredData = data.filter((rec) =>
-    rec.vision_name.toLowerCase().includes(searchQuery.toLowerCase())
+    (rec?.colorValue ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
- const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
-  const currentItems = filteredData.slice(indexOfFirst, indexOfLast)
-
+  const currentItems = filteredData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
   };
 
-  // ================= FORM =================
   const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    const updated = { ...formData, [id]: value };
-    setFormData(updated);
-    setIsFormValid(
-      updated.vision_code.trim() !== "" &&
-      updated.vision_name.trim() !== ""
-    );
+    const value = e.target.value;
+    setFormData({ colorValue: value });
+    setIsFormValid(value.trim() !== "");
   };
 
   const resetForm = () => {
-    setFormData({
-      vision_code: "",
-      vision_name: "",
-      description: "",
-    });
+    setFormData({ colorValue: "" });
     setIsFormValid(false);
   };
 
-  // ================= SAVE =================
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
-
-    if (editingRecord) {
-      setData(
-        data.map((rec) =>
-          rec.id === editingRecord.id
-            ? { ...rec, ...formData }
-            : rec
-        )
-      );
-      showPopup("Record updated successfully", "success");
-    } else {
-      setData([
-        ...data,
-        {
-          id: Date.now(),
-          ...formData,
-          status: "Y",
-        },
-      ]);
-      showPopup("Record added successfully", "success");
-    }
-
+  const handleCancel = () => {
     resetForm();
     setEditingRecord(null);
     setShowForm(false);
   };
 
-  // ================= EDIT =================
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+
+    const newValue = formData.colorValue.trim().toLowerCase();
+    const duplicate = data.find(
+      (rec) =>
+        rec.colorValue?.trim().toLowerCase() === newValue &&
+        (!editingRecord || rec.id !== editingRecord.id)
+    );
+
+    if (duplicate) {
+      showPopup("Color value already exists!", "error");
+      return;
+    }
+
+    try {
+      if (editingRecord) {
+        await putRequest(`${MAS_OPTH_COLOR_VISION}/update/${editingRecord.id}`, {
+          ...editingRecord,
+          colorValue: formData.colorValue.trim(),
+        });
+        showPopup("Record updated successfully", "success");
+      } else {
+        await postRequest(`${MAS_OPTH_COLOR_VISION}/create`, {
+          colorValue: formData.colorValue.trim(),
+          status: "Y",
+        });
+        showPopup("Record added successfully", "success");
+      }
+      fetchData();
+      handleCancel();
+    } catch {
+      showPopup("Save failed", "error");
+    }
+  };
+
   const handleEdit = (rec) => {
     setEditingRecord(rec);
-    setFormData(rec);
+    setFormData({ colorValue: rec.colorValue || "" });
     setShowForm(true);
     setIsFormValid(true);
   };
 
-  // ================= STATUS =================
-  const handleSwitchChange = (id, newStatus, visionTestName) => {
-    setConfirmDialog({ isOpen: true, id, newStatus, visionTestName });
+  const handleSwitchChange = (rec) => {
+    setConfirmDialog({
+      isOpen: true,
+      record: rec,
+      newStatus: rec.status === "y" ? "n" : "y",
+    });
   };
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed) {
-      setData(
-        data.map((rec) =>
-          rec.id === confirmDialog.id
-            ? { ...rec, status: confirmDialog.newStatus }
-            : rec
-        )
-      );
-      showPopup("Status updated successfully", "success");
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
     }
-    setConfirmDialog({ isOpen: false, id: null, newStatus: "", visionTestName: "" });
+    const { record, newStatus } = confirmDialog;
+    try {
+      setLoading(true);
+      await putRequest(`${MAS_OPTH_COLOR_VISION}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`);
+      showPopup("Status updated successfully", "success");
+      fetchData();
+    } catch {
+      showPopup("Status update failed", "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+    }
   };
 
   const showPopup = (message, type) => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
-  // ================= GO TO PAGE =================
-  
-
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
+    fetchData();
   };
 
- 
-  // ================= UI =================
   return (
     <div className="content-wrapper">
       <div className="card form-card">
-
-        {/* HEADER */}
         <div className="card-header d-flex justify-content-between align-items-center">
           <h4>Opth Color Vision Master</h4>
           <div className="d-flex">
@@ -168,12 +183,15 @@ const OpthColorVisionMaster = () => {
                 onChange={handleSearchChange}
               />
             )}
-
             {!showForm ? (
               <>
                 <button
                   className="btn btn-success me-2"
-                  onClick={() => { resetForm(); setShowForm(true); setEditingRecord(null); }}
+                  onClick={() => {
+                    resetForm();
+                    setShowForm(true);
+                    setEditingRecord(null);
+                  }}
                 >
                   Add
                 </button>
@@ -189,7 +207,6 @@ const OpthColorVisionMaster = () => {
           </div>
         </div>
 
-        {/* BODY */}
         <div className="card-body">
           {loading ? (
             <LoadingScreen />
@@ -199,9 +216,8 @@ const OpthColorVisionMaster = () => {
                 <table className="table table-bordered table-hover">
                   <thead className="table-light">
                     <tr>
-                      <th>Id</th>
-                      <th>Value</th>
-                      <th>Description</th>
+                      <th>Color Value</th>
+                      <th>Last Update Date</th>
                       <th>Status</th>
                       <th>Edit</th>
                     </tr>
@@ -209,25 +225,20 @@ const OpthColorVisionMaster = () => {
                   <tbody>
                     {currentItems.map((rec) => (
                       <tr key={rec.id}>
-                        <td>{rec.vision_code}</td>
-                        <td>{rec.vision_name}</td>
-                        <td>{rec.description}</td>
+                        <td>{rec.colorValue}</td>
+                        <td>{formatDate(rec.lastUpdateDate)}</td>
                         <td>
                           <div className="form-check form-switch">
                             <input
                               className="form-check-input"
                               type="checkbox"
-                              checked={rec.status === "Y"}
-                              onChange={() =>
-                                handleSwitchChange(
-                                  rec.id,
-                                  rec.status === "Y" ? "N" : "Y",
-                                  rec.vision_name
-                                )
-                              }
+                              checked={rec.status === "y"}
+                              onChange={() => handleSwitchChange(rec)}
                             />
-                            <label className="form-check-label">
-                              {rec.status === "Y" ? "Active" : "Inactive"}
+                            <label className="form-check-label px-0">
+                              {rec.status  === "y"
+                                ? "Active"
+                                : "Inactive"}
                             </label>
                           </div>
                         </td>
@@ -235,7 +246,7 @@ const OpthColorVisionMaster = () => {
                           <button
                             className="btn btn-success btn-sm"
                             onClick={() => handleEdit(rec)}
-                            disabled={rec.status !== "Y"}
+                            disabled={rec.status !== "y"}
                           >
                             <i className="fa fa-pencil"></i>
                           </button>
@@ -246,30 +257,28 @@ const OpthColorVisionMaster = () => {
                 </table>
               </div>
 
-              {/* PAGINATION + PAGE INFO + GO BUTTON */}
-             <Pagination
-               totalItems={filteredData.length}
-               itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-               currentPage={currentPage}
-               onPageChange={setCurrentPage}
-             />
-              </>
+              {filteredData.length > 0 && (
+                <Pagination
+                  totalItems={filteredData.length}
+                  itemsPerPage={itemsPerPage}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
+              )}
+            </>
           ) : (
-            // FORM
             <form className="row" onSubmit={handleSave}>
               <div className="form-group col-md-4">
-                <label>Vision Code <span className="text-danger">*</span></label>
-                <input id="vision_code" className="form-control" value={formData.vision_code} onChange={handleInputChange} />
-              </div>
-
-              <div className="form-group col-md-4">
-                <label>Vision Name <span className="text-danger">*</span></label>
-                <input id="vision_name" className="form-control" value={formData.vision_name} onChange={handleInputChange} />
-              </div>
-
-              <div className="form-group col-md-4">
-                <label>Description</label>
-                <input id="description" className="form-control" value={formData.description} onChange={handleInputChange} />
+                <label>
+                  Color Value <span className="text-danger">*</span>
+                </label>
+                <input
+                  id="colorValue"
+                  className="form-control"
+                  value={formData.colorValue}
+                  onChange={handleInputChange}
+                  maxLength={MAX_LENGTH}
+                />
               </div>
 
               <div className="form-group col-md-12 mt-4 d-flex justify-content-end">
@@ -290,18 +299,22 @@ const OpthColorVisionMaster = () => {
               <div className="modal-dialog">
                 <div className="modal-content">
                   <div className="modal-body">
-                    Are you sure you want to {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}{" "}
-                    <strong>{confirmDialog.visionTestName}</strong>?
+                    Are you sure you want to{" "}
+                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    <strong>{confirmDialog.record?.colorValue}</strong>?
                   </div>
                   <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
+                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                      No
+                    </button>
+                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                      Yes
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
           )}
-
         </div>
       </div>
     </div>
