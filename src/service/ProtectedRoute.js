@@ -160,6 +160,7 @@ const validRoutes = [
   "/PendingInvestigationsReport",
   "/SampleRejectionReport",
   "/RadiologyInvestigationMaster",
+  "/MembraneStatusMaster",
   
 ];
 
