@@ -163,6 +163,15 @@ const validRoutes = [
   "/MembraneStatusMaster",
   "/LensTypeMaster",
   "/OpthMasSpectacleUse",
+  "/ImmunisationStatus",
+  "/LiquorMaster",
+  "/CervixConsistencyMaster",
+  "/EarTmStatusMaster",
+  "/EarCanalMaster",
+  "/EarRinneMaster",
+  "/EarWeberMaster",
+  "/EntMasSeptum",
+  "/EntMasMucosaMaster",
   
 ];
 

@@ -159,6 +159,15 @@ import RadiologyInvestigationMaster from './Views/Radiology/InvestigationMaster'
 import MembraneStatusMaster from './Views/Masters/MembraneMaster';
 import LensTypeMaster from './Views/Masters/LensTypeMaster';
 import OpthMasSpectacleUse from './Views/Masters/MasSpectacleMaster';
+import ImmunisationStatus from './Views/Masters/ImmunisationStatusMaster';
+import LiquorMaster from './Views/Masters/LiquorMaster';
+import CervixConsistencyMaster from './Views/Masters/CervixConsistencyMaster';
+import EarTmStatusMaster from './Views/Masters/EarTmStatusMaster';
+import EarCanalMaster from './Views/Masters/EarCanalMaster';
+import EarRinneMaster from './Views/Masters/EarRinneMaster';
+import EarWeberMaster from './Views/Masters/EarWeberMaster';
+import EntMasSeptum from './Views/Masters/EntMasSeptum';
+import EntMasMucosaMaster from './Views/Masters/EntMasMucosaMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -351,6 +360,15 @@ function App() {
                 <Route path="/MembraneStatusMaster" element={<MembraneStatusMaster/>} />
                 <Route path="/LensTypeMaster" element={<LensTypeMaster/>} />
                 <Route path="/OpthMasSpectacleUse" element={<OpthMasSpectacleUse/>} />
+                <Route path="/ImmunisationStatus" element={<ImmunisationStatus/>} />
+                <Route path="/LiquorMaster" element={<LiquorMaster/>} />
+                <Route path="/CervixConsistencyMaster" element={<CervixConsistencyMaster/>} />
+                <Route path="/EarTmStatusMaster" element={<EarTmStatusMaster/>} />
+                <Route path="/EarCanalMaster" element={<EarCanalMaster/>} />
+                <Route path="/EarRinneMaster" element={<EarRinneMaster/>} />
+                <Route path="/EarWeberMaster" element={<EarWeberMaster/>} />
+                <Route path="/EntMasSeptum" element={<EntMasSeptum/>} />
+                <Route path="/EntMasMucosaMaster" element={<EntMasMucosaMaster/>} />
               </Route>
             </Route>
 
