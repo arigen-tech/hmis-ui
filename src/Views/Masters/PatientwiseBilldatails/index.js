@@ -7,14 +7,17 @@ import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"
 
 const PatientwiseBilldatails = () => {
   const [patientList, setPatientList] = useState([])
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchData, setSearchData] = useState({
+    patientName: "",
+    mobileNo: ""
+  })
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const itemsPerPage = 5
 
-  // Add state variables for PDF handling (same as LabReports)
+  // Add state variables for PDF handling
   const [pdfUrl, setPdfUrl] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
@@ -77,7 +80,7 @@ const PatientwiseBilldatails = () => {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery])
+  }, [searchData.patientName, searchData.mobileNo])
 
   // Helper function to check if a record is generating PDF
   const isGeneratingPdf = (recordId) => {
@@ -177,14 +180,23 @@ const PatientwiseBilldatails = () => {
   }
 
   const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value)
+    const { id, value } = e.target
+    setSearchData((prevData) => ({ ...prevData, [id]: value }))
+  }
+
+  const handleSearchReset = () => {
+    setSearchData({
+      patientName: "",
+      mobileNo: ""
+    })
   }
 
   const filteredPatientList = patientList.filter(
     (item) =>
-      item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.mobileNo.includes(searchQuery) ||
-      item.billNo.includes(searchQuery)
+      (searchData.patientName === "" || 
+        item.patientName.toLowerCase().includes(searchData.patientName.toLowerCase())) &&
+      (searchData.mobileNo === "" || 
+        (item.mobileNo && item.mobileNo.includes(searchData.mobileNo)))
   )
 
   const filteredTotalPages = Math.ceil(filteredPatientList.length / itemsPerPage)
@@ -289,7 +301,7 @@ const PatientwiseBilldatails = () => {
         />
       )}
 
-      {/* PDF Viewer Component (same as LabReports) */}
+      {/* PDF Viewer Component */}
       {pdfUrl && selectedRecord && (
         <PdfViewer
           pdfUrl={pdfUrl}
@@ -297,7 +309,7 @@ const PatientwiseBilldatails = () => {
             setPdfUrl(null);
             setSelectedRecord(null);
           }}
-          name={`${selectedRecord?.serviceCategoryId === 1 ? 'OPD' : 'LAB'} Report - ${selectedRecord?.patientName || 'Patient'}`}
+          name={`${selectedRecord?.serviceCategoryId === 1 ? 'OPD' : 'LAB'} Invoice - ${selectedRecord?.patientName || 'Patient'}`}
         />
       )}
 
@@ -305,34 +317,9 @@ const PatientwiseBilldatails = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title m-0">Patient wise Bill Details</h4>
-              <div className="d-flex justify-content-between align-items-center">
-                {!isLoading && (
-                  <form className="d-inline-block searchform me-4" role="search">
-                    <div className="input-group searchinput">
-                      <input
-                        type="search"
-                        className="form-control"
-                        placeholder="Search by name, mobile or bill no"
-                        aria-label="Search"
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                      />
-                      <span className="input-group-text" id="search-icon">
-                        <i className="fa fa-search"></i>
-                      </span>
-                    </div>
-                  </form>
-                )}
-                <button 
-                  className="btn btn-success me-2" 
-                  onClick={fetchBillingStatus}
-                  disabled={isLoading}
-                >
-                  <i className="mdi mdi-refresh"></i> Refresh
-                </button>
-              </div>
+              <h4 className="card-title p-2">Patient wise Bill Details</h4>
             </div>
+
             <div className="card-body">
               {error && (
                 <div className="alert alert-danger" role="alert">
@@ -342,6 +329,57 @@ const PatientwiseBilldatails = () => {
                   </button>
                 </div>
               )}
+
+              {/* Patient Search Section - Similar to SampleValidation */}
+              <div className="card mb-3">
+                <div className="card-header py-3 border-bottom-1">
+                  <h6 className="mb-0 fw-bold">PATIENT SEARCH</h6>
+                </div>
+                <div className="card-body">
+                  <form>
+                    <div className="row g-4 align-items-end">
+                      <div className="col-md-3">
+                        <label className="form-label">Patient Name</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="patientName"
+                          placeholder="Enter patient name"
+                          value={searchData.patientName}
+                          onChange={handleSearchChange}
+                        />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Mobile No.</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="mobileNo"
+                          placeholder="Enter mobile number"
+                          value={searchData.mobileNo}
+                          onChange={handleSearchChange}
+                        />
+                      </div>
+                      <div className="col-md-3 d-flex">
+                        <button 
+                          type="button" 
+                          className="btn btn-primary me-2"
+                          onClick={() => {}}
+                        >
+                          <i className="fa fa-search"></i> Search
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={handleSearchReset}
+                        >
+                          <i className="mdi mdi-refresh"></i> Reset
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
 
               {!error && filteredPatientList.length === 0 && (
                 <div className="alert alert-info" role="alert">
