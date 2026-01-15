@@ -20,6 +20,7 @@ const DrugExpiry = () => {
   const [showNameDropdown, setShowNameDropdown] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
+  const [printingIds, setPrintingIds] = useState(new Set());
 
 
   console.log("searchFormData", searchFormData)
@@ -197,7 +198,7 @@ const DrugExpiry = () => {
 
 
 
-  const handlePrint = async () => {
+  const handleGenerate = async () => {
     const fromDate = searchFormData.fromDate;
     const toDate = searchFormData.toDate;
 
@@ -222,6 +223,12 @@ const DrugExpiry = () => {
       localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
 
     setIsGeneratingPDF(true);
+    //  const { drugCode } = searchFormData;
+
+    //   const drugCodeStr = (drugCode ?? "").toString().trim();
+
+    //   const itemId = drugCodeStr || "0";
+
 
     try {
       const formatDate = (dateStr) => {
@@ -229,7 +236,7 @@ const DrugExpiry = () => {
         return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
       };
 
-      const url = `${ALL_REPORTS}/drugExpiryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&itemId=0&fromDate=${formatDate(fromDate)}&toDate=${formatDate(toDate)}`;
+      const url = `${ALL_REPORTS}/drugExpiryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&itemId=12956&fromDate=${formatDate(fromDate)}&toDate=${formatDate(toDate)}&flag=d`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -254,6 +261,57 @@ const DrugExpiry = () => {
       setIsGeneratingPDF(false);
     }
   };
+
+  const handlePrintReport = async (record) => {
+    const balanceMId = record.balanceMId;
+
+
+  //  if (!balanceMId) {
+  //    showPopup(`${INVALID_ORDER_ID_ERR_MSG} for printing`, "error");
+  //    return;
+  //  }
+
+   // Add this record to printing set
+   const hospitalId =
+      localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
+    const departmentId =
+      localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
+
+   setPrintingIds(prev => new Set(prev).add(hospitalId));
+
+   try {
+     const fromDate = searchFormData.fromDate;
+    const toDate = searchFormData.toDate;
+    const formatDate = (dateStr) => {
+        const date = new Date(dateStr);
+        return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
+      };
+      
+
+
+    
+
+      const url = `${ALL_REPORTS}/drugExpiryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&itemId=12956&fromDate=${formatDate(fromDate)}&toDate=${formatDate(toDate)}&flag=p`;
+
+
+
+     const response = await fetch(url, {
+       method: "GET",
+       headers: {
+         Accept: "application/pdf",
+       },
+     });
+
+    }finally {
+     // Remove this record from printing set
+     setPrintingIds(prev => {
+       const newSet = new Set(prev);
+       newSet.delete(balanceMId);
+       return newSet;
+     });
+   }
+ };
+
 
 
 
@@ -520,11 +578,11 @@ const DrugExpiry = () => {
                     </div>
                   )}
 
-                  <div className="d-flex justify-content-end mt-3">
+                  <div className="d-flex justify-content-end mt-3 gap-2">
                     <button
                       type="button"
-                      className="btn btn-warning"
-                      onClick={handlePrint}
+                      className="btn btn-success"
+                      onClick={handleGenerate}
                       disabled={isGeneratingPDF || filteredResults.length === 0}
                     >
                       {isGeneratingPDF ? (
@@ -533,8 +591,16 @@ const DrugExpiry = () => {
                           Generating...
                         </>
                       ) : (
-                        "Generate PDF Report"
+                        "View/Download PDF"
                       )}
+                    </button>
+                     <button
+                      type="button"
+                      className="btn btn-warning"
+                      onClick={handlePrintReport}
+
+                    >
+                        Print PDF
                     </button>
                   </div>
                 </>
