@@ -158,6 +158,7 @@ import SampleRejectionReport from './Views/Laboratory/LabReports/SampleRejection
 import RadiologyInvestigationMaster from './Views/Radiology/InvestigationMaster';
 import MembraneStatusMaster from './Views/Masters/MembraneMaster';
 import LensTypeMaster from './Views/Masters/LensTypeMaster';
+import OpthMasSpectacleUse from './Views/Masters/MasSpectacleMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -349,6 +350,7 @@ function App() {
                 <Route path="/RadiologyInvestigationMaster" element={<RadiologyInvestigationMaster/>} />
                 <Route path="/MembraneStatusMaster" element={<MembraneStatusMaster/>} />
                 <Route path="/LensTypeMaster" element={<LensTypeMaster/>} />
+                <Route path="/OpthMasSpectacleUse" element={<OpthMasSpectacleUse/>} />
               </Route>
             </Route>
 

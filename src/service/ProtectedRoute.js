@@ -162,6 +162,7 @@ const validRoutes = [
   "/RadiologyInvestigationMaster",
   "/MembraneStatusMaster",
   "/LensTypeMaster",
+  "/OpthMasSpectacleUse",
   
 ];
 
