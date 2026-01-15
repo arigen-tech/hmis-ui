@@ -613,6 +613,29 @@ export const FETCH_LAB_TAT_DETAILED_REPORT_ERR_MSG = "Error fetching detail repo
 export const FETCH_AMEND_REPORT_ERR_MSG = "Error fetching result amendment report. Please try again.";
 
 
+//Lab Order Tracking Report
+
+export const FUTURE_DATE_PICK_WARN_MSG = "Date cannot be in the future";
+export const PAST_DATE_PICK_WARN_MSG ="To date cannot be earlier than From date";
+export const SELECT_FROM_DATE_FIRST_WARN_MSG ="Please select From Date first";
+export const FETCH_ORDER_TRACKING_ERR_MSG ="Failed to fetch order tracking report. Please try again.";
+export const SELECT_FIELD_WARN_MSG ="Please enter either Patient Name or Mobile Number"
+
+//PendingInvestigationReport
+
+export const FETCH_PENDING_INVESTIGATIONS_ERR_MSG ="Failed to fetch incomplete investigations report. Please try again."
+
+
+//SampleRejectionReport
+
+export const FETCH_SAMPLE_REJECT_ERR_MSG ="Failed to fetch sample rejection report. Please try again."
+
+
+
+
+
+
+
 
 
 
