@@ -198,27 +198,31 @@ const PatientRegistration = () => {
     return `${dateStr}T${formattedTime}Z`;
   };
 
-  const fetchTokenAvailability = async (appointmentIndex = 0) => {
+  const fetchTokenAvailability = async (appointmentIndex = 0, dateOverride = null) => {
     try {
       setLoading(true);
 
       const targetAppointment = appointments[appointmentIndex];
+      const selectedDate = dateOverride || targetAppointment.selDate;
 
-      // Check if all required fields are selected
+      // Add early return if already showing popup
+      if (Swal.isVisible()) {
+        return;
+      }
+
       if (
         !targetAppointment.speciality ||
         !targetAppointment.selDoctorId ||
         !targetAppointment.selSession ||
-        !targetAppointment.selDate
+        !selectedDate
       ) {
-        // Don't show warning for automatic calls, just return
-        return;
+        return; // Silent return, don't show alert here
       }
 
       const params = new URLSearchParams({
         deptId: targetAppointment.speciality,
         doctorId: targetAppointment.selDoctorId,
-        appointmentDate: targetAppointment.selDate,
+        appointmentDate: selectedDate,
         sessionId: targetAppointment.selSession,
       }).toString();
 
@@ -231,40 +235,35 @@ const PatientRegistration = () => {
         );
 
         if (availableTokens.length > 0) {
-          setAvailableTokens(availableTokens);
-          showTokenPopup(
-            availableTokens,
-            targetAppointment.sessionName,
-            targetAppointment.selDate,
-            appointmentIndex
-          );
+          // Check if popup is already open
+          if (!Swal.isVisible()) {
+            showTokenPopup(
+              availableTokens,
+              targetAppointment.sessionName,
+              selectedDate,
+              appointmentIndex
+            );
+          }
         } else {
-          // If no tokens available, show info message
-          Swal.fire({
-            icon: "info",
-            title: "No Tokens Available",
-            text: "No available time slots for the selected criteria. Please try another date or session.",
-            timer: 3000,
-          });
-        }
-      } else {
-        // Only show error if it's not an empty response
-        if (data.message && !data.message.includes("No tokens")) {
-          Swal.fire({
-            icon: "error",
-            title: "Error",
-            text: data.message || "Failed to fetch token availability.",
-          });
+          // Only show info if popup is not already visible
+          if (!Swal.isVisible()) {
+            Swal.fire({
+              icon: "info",
+              title: "No Tokens Available",
+              text: "No available time slots for the selected criteria. Please try another date or session.",
+              timer: 3000,
+            });
+          }
         }
       }
     } catch (error) {
       console.error("Error fetching token availability:", error);
-      if (!error.message?.includes("Network")) {
+      // Don't show error if already showing another alert
+      if (!Swal.isVisible()) {
         Swal.fire({
           icon: "error",
-          title: "Connection Error",
-          text: "Please check your connection and try again.",
-          timer: 2000,
+          title: "Error",
+          text: "Failed to fetch token availability. Please try again.",
         });
       }
     } finally {
@@ -502,9 +501,8 @@ const PatientRegistration = () => {
         value !== "" &&
         (isNaN(value) || Number(value) < 0)
       ) {
-        error = `${
-          name.charAt(0).toUpperCase() + name.slice(1)
-        } must be a non-negative number.`;
+        error = `${name.charAt(0).toUpperCase() + name.slice(1)
+          } must be a non-negative number.`;
       }
     }
 
@@ -524,24 +522,24 @@ const PatientRegistration = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  useEffect(() => {
-    if (appointments.length === 0) {
-      setFormData((prev) => ({
-        ...prev,
-        speciality: "",
-        selDoctorId: "",
-        selSession: "",
-      }));
-      return;
-    }
-    const primary = appointments[0];
-    setFormData((prev) => ({
-      ...prev,
-      speciality: primary.speciality,
-      selDoctorId: primary.selDoctorId,
-      selSession: primary.selSession,
-    }));
-  }, [appointments]);
+  // useEffect(() => {
+  //   if (appointments.length === 0) {
+  //     setFormData((prev) => ({
+  //       ...prev,
+  //       speciality: "",
+  //       selDoctorId: "",
+  //       selSession: "",
+  //     }));
+  //     return;
+  //   }
+  //   const primary = appointments[0];
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     speciality: primary.speciality,
+  //     selDoctorId: primary.selDoctorId,
+  //     selSession: primary.selSession,
+  //   }));
+  // }, [appointments]);
 
   useEffect(() => {
     appointments.forEach((appointment, index) => {
@@ -626,14 +624,14 @@ const PatientRegistration = () => {
       prev.map((appointment) =>
         appointment.id === id
           ? {
-              ...appointment,
-              speciality: value,
-              selDoctorId: "",
-              selSession: "",
-              departmentName,
-              selDate: null,
-              tokenNo: null,
-            }
+            ...appointment,
+            speciality: value,
+            selDoctorId: "",
+            selSession: "",
+            departmentName,
+            selDate: null,
+            tokenNo: null,
+          }
           : appointment
       )
     );
@@ -648,14 +646,61 @@ const PatientRegistration = () => {
     }
   };
 
+  const onDateChange = async (index, date) => {
+    if (!date) return;
+
+    // 1. Convert Date Object to YYYY-MM-DD safely
+    let dateString = "";
+    if (date instanceof Date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      dateString = `${year}-${month}-${day}`;
+    } else {
+      dateString = date.split("T")[0];
+    }
+
+    // 2. Check if date is in past
+    if (isPastDate(dateString)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid Date",
+        text: "You cannot select a past date",
+        timer: 2000,
+      });
+      setDateResetKey((prev) => prev + 1);
+      return;
+    }
+
+    // 3. Get current appointment details BEFORE updating state
+    const currentAppointment = appointments[index];
+
+    // 4. First update the state with new date (clear any existing time slot)
+    handleAppointmentChange(index, "selDate", dateString);
+
+    // Clear time slot when date changes
+    if (currentAppointment.selectedTimeSlot) {
+      handleAppointmentChange(index, "selectedTimeSlot", "");
+    }
+
+    // 5. Then fetch tokens if all fields are selected
+    if (currentAppointment.speciality &&
+      currentAppointment.selDoctorId &&
+      currentAppointment.selSession) {
+      // Add a small delay to ensure state is updated
+      setTimeout(() => {
+        fetchTokenAvailability(index);
+      }, 300);
+    }
+  };
+
   const handleDoctorChange = (id, value, specialityId) => {
     const doctorOptions = doctorDataMap[id] || [];
     const selectedDoctor = doctorOptions.find(
       (doctor) => doctor.userId == value
     );
     const doctorName = selectedDoctor
-      ? `${selectedDoctor.firstName} ${selectedDoctor.middleName || ""} ${
-          selectedDoctor.lastName || ""
+      ? `${selectedDoctor.firstName} ${selectedDoctor.middleName || ""} ${selectedDoctor.lastName || ""
         }`.trim()
       : "";
 
@@ -663,13 +708,13 @@ const PatientRegistration = () => {
       prev.map((a) =>
         a.id === id
           ? {
-              ...a,
-              selDoctorId: value,
-              selSession: "",
-              doctorName,
-              selDate: null,
-              tokenNo: null,
-            }
+            ...a,
+            selDoctorId: value,
+            selSession: "",
+            doctorName,
+            selDate: null,
+            tokenNo: null,
+          }
           : a
       )
     );
@@ -685,12 +730,12 @@ const PatientRegistration = () => {
       prev.map((a) =>
         a.id === id
           ? {
-              ...a,
-              selSession: value,
-              sessionName: sessionName,
-              selDate: null,
-              tokenNo: null,
-            }
+            ...a,
+            selSession: value,
+            sessionName: sessionName,
+            selDate: null,
+            tokenNo: null,
+          }
           : a
       )
     );
@@ -1030,9 +1075,8 @@ const PatientRegistration = () => {
 
     requiredFields.forEach((field) => {
       if (!formData[field] || formData[field].toString().trim() === "") {
-        newErrors[field] = `${
-          field.charAt(0).toUpperCase() + field.slice(1)
-        } is required.`;
+        newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)
+          } is required.`;
         valid = false;
       }
     });
@@ -1066,9 +1110,8 @@ const PatientRegistration = () => {
         } else {
           // Validate numeric fields
           if (isNaN(value) || Number(value) < 0) {
-            newErrors[field] = `${
-              field.charAt(0).toUpperCase() + field.slice(1)
-            } must be a non-negative number.`;
+            newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)
+              } must be a non-negative number.`;
             valid = false;
           }
         }
@@ -1077,9 +1120,8 @@ const PatientRegistration = () => {
         (field === "age" || requiredFields.includes(field)) &&
         Number(value) <= 0
       ) {
-        newErrors[field] = `${
-          field.charAt(0).toUpperCase() + field.slice(1)
-        } must be greater than 0.`;
+        newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)
+          } must be greater than 0.`;
         valid = false;
       }
     });
@@ -1163,12 +1205,12 @@ const PatientRegistration = () => {
       prev.map((app, index) =>
         index === appointmentIndex
           ? {
-              ...app,
-              tokenNo: null,
-              tokenStartTime: "",
-              tokenEndTime: "",
-              selectedTimeSlot: "",
-            }
+            ...app,
+            tokenNo: null,
+            tokenStartTime: "",
+            tokenEndTime: "",
+            selectedTimeSlot: "",
+          }
           : app
       )
     );
@@ -1269,7 +1311,7 @@ const PatientRegistration = () => {
       );
 
       if (requestData.visits.length === 0) {
-        requestData.visits = null; 
+        requestData.visits = null;
       }
 
       try {
@@ -1346,9 +1388,8 @@ const PatientRegistration = () => {
 
             Swal.fire({
               title: "Patient Registered Successfully!",
-              html: `<p><strong>${
-                displayName || "Patient"
-              }</strong> has been registered successfully.</p>`,
+              html: `<p><strong>${displayName || "Patient"
+                }</strong> has been registered successfully.</p>`,
               icon: "success",
               confirmButtonText: "OK",
               allowOutsideClick: false,
@@ -1484,12 +1525,12 @@ const PatientRegistration = () => {
         prev.map((app, index) =>
           index === appointmentIndex
             ? {
-                ...app,
-                tokenNo,
-                tokenStartTime: formattedStartTime,
-                tokenEndTime: formattedEndTime,
-                selectedTimeSlot: `${formattedStartTime} - ${formattedEndTime}`,
-              }
+              ...app,
+              tokenNo,
+              tokenStartTime: formattedStartTime,
+              tokenEndTime: formattedEndTime,
+              selectedTimeSlot: `${formattedStartTime} - ${formattedEndTime}`,
+            }
             : app
         )
       );
@@ -1518,9 +1559,10 @@ const PatientRegistration = () => {
       prev.map((appt, i) => {
         if (i === index) {
           if (field === "selDate") {
+            const dateOnly = value.split("T")[0];
             return {
               ...appt,
-              [field]: value,
+              [field]: dateOnly,
               tokenNo: null,
               tokenStartTime: "",
               tokenEndTime: "",
@@ -1572,17 +1614,16 @@ const PatientRegistration = () => {
           <h6 class="fw-bold mb-2 text-primary">${sessionName} Session</h6>
           <div class="row row-cols-4 g-1" id="token-slots">
             ${tokens
-              .map((token) => {
-                const displayStart = formatTimeForDisplay(token.startTime);
-                const displayEnd = formatTimeForDisplay(token.endTime);
-                return `
+          .map((token) => {
+            const displayStart = formatTimeForDisplay(token.startTime);
+            const displayEnd = formatTimeForDisplay(token.endTime);
+            return `
                 <div class="col">
                   <button type="button" 
-                          class="btn ${
-                            token.available
-                              ? "btn-outline-success"
-                              : "btn-outline-secondary disabled"
-                          } w-100 d-flex flex-column align-items-center justify-content-center p-1" 
+                          class="btn ${token.available
+                ? "btn-outline-success"
+                : "btn-outline-secondary disabled"
+              } w-100 d-flex flex-column align-items-center justify-content-center p-1" 
                           style="height: 65px; font-size: 0.75rem;"
                           data-token-id="${token.tokenNo || ""}"
                           data-token-starttime="${token.startTime || ""}"
@@ -1590,16 +1631,15 @@ const PatientRegistration = () => {
                           ${!token.available ? "disabled" : ""}>
                     <span class="fw-bold">${displayStart}</span>
                     <span>${displayEnd}</span>
-                    ${
-                      !token.available
-                        ? '<span class="badge bg-danger mt-0" style="font-size: 0.6rem;">Booked</span>'
-                        : ""
-                    }
+                    ${!token.available
+                ? '<span class="badge bg-danger mt-0" style="font-size: 0.6rem;">Booked</span>'
+                : ""
+              }
                   </button>
                 </div>
               `;
-              })
-              .join("")}
+          })
+          .join("")}
           </div>
         </div>
       </div>
@@ -1668,9 +1708,8 @@ const PatientRegistration = () => {
                           </label>
                           <input
                             type="text"
-                            className={`form-control ${
-                              errors.firstName ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.firstName ? "is-invalid" : ""
+                              }`}
                             id="firstName"
                             name="firstName"
                             value={formData.firstName}
@@ -1719,9 +1758,8 @@ const PatientRegistration = () => {
                           <input
                             type="text"
                             id="mobileNo"
-                            className={`form-control ${
-                              errors.mobileNo ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.mobileNo ? "is-invalid" : ""
+                              }`}
                             name="mobileNo"
                             value={formData.mobileNo}
                             onChange={handleChange}
@@ -1739,9 +1777,8 @@ const PatientRegistration = () => {
                             Gender <span className="text-danger">*</span>
                           </label>
                           <select
-                            className={`form-select ${
-                              errors.gender ? "is-invalid" : ""
-                            }`}
+                            className={`form-select ${errors.gender ? "is-invalid" : ""
+                              }`}
                             id="gender"
                             name="gender"
                             value={formData.gender}
@@ -1765,9 +1802,8 @@ const PatientRegistration = () => {
                             Relation <span className="text-danger">*</span>
                           </label>
                           <select
-                            className={`form-select ${
-                              errors.relation ? "is-invalid" : ""
-                            }`}
+                            className={`form-select ${errors.relation ? "is-invalid" : ""
+                              }`}
                             id="relation"
                             name="relation"
                             value={formData.relation}
@@ -1794,9 +1830,8 @@ const PatientRegistration = () => {
                             type="date"
                             id="dob"
                             name="dob"
-                            className={`form-control ${
-                              errors.dob ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.dob ? "is-invalid" : ""
+                              }`}
                             value={formData.dob}
                             max={new Date().toISOString().split("T")[0]}
                             onChange={handleChange}
@@ -1814,9 +1849,8 @@ const PatientRegistration = () => {
                             type="text" // <<== NOT number!
                             id="age"
                             name="age"
-                            className={`form-control ${
-                              errors.age ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.age ? "is-invalid" : ""
+                              }`}
                             value={formData.age || ""}
                             onChange={handleChange}
                             placeholder="Enter Age"
@@ -1834,9 +1868,8 @@ const PatientRegistration = () => {
                             type="email"
                             id="email"
                             name="email"
-                            className={`form-control ${
-                              errors.email ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.email ? "is-invalid" : ""
+                              }`}
                             value={formData.email}
                             onChange={handleChange}
                             placeholder="Enter Email Address"
@@ -2013,9 +2046,8 @@ const PatientRegistration = () => {
                       <label className="form-label">Pin Code</label>
                       <input
                         type="text"
-                        className={`form-control ${
-                          errors.pinCode ? "is-invalid" : ""
-                        }`}
+                        className={`form-control ${errors.pinCode ? "is-invalid" : ""
+                          }`}
                         name="pinCode"
                         value={formData.pinCode}
                         onChange={handleChange}
@@ -2271,9 +2303,8 @@ const PatientRegistration = () => {
                           </label>
                           <input
                             type="number"
-                            className={`form-control ${
-                              errors.height ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.height ? "is-invalid" : ""
+                              }`}
                             min={0}
                             placeholder="Height"
                             name="height"
@@ -2296,9 +2327,8 @@ const PatientRegistration = () => {
                           <input
                             type="number"
                             min={0}
-                            className={`form-control ${
-                              errors.weight ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.weight ? "is-invalid" : ""
+                              }`}
                             placeholder="Weight"
                             name="weight"
                             value={formData.weight}
@@ -2320,9 +2350,8 @@ const PatientRegistration = () => {
                           <input
                             type="number"
                             min={0}
-                            className={`form-control ${
-                              errors.temperature ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.temperature ? "is-invalid" : ""
+                              }`}
                             placeholder="Temperature"
                             name="temperature"
                             value={formData.temperature}
@@ -2344,9 +2373,8 @@ const PatientRegistration = () => {
                           <input
                             type="number"
                             min={0}
-                            className={`form-control ${
-                              errors.systolicBP ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.systolicBP ? "is-invalid" : ""
+                              }`}
                             placeholder="Systolic"
                             name="systolicBP"
                             value={formData.systolicBP}
@@ -2361,9 +2389,8 @@ const PatientRegistration = () => {
                           <input
                             type="number"
                             min={0}
-                            className={`form-control ${
-                              errors.diastolicBP ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.diastolicBP ? "is-invalid" : ""
+                              }`}
                             placeholder="Diastolic"
                             name="diastolicBP"
                             value={formData.diastolicBP}
@@ -2385,9 +2412,8 @@ const PatientRegistration = () => {
                           <input
                             type="number"
                             min={0}
-                            className={`form-control ${
-                              errors.pulse ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.pulse ? "is-invalid" : ""
+                              }`}
                             placeholder="Pulse"
                             name="pulse"
                             value={formData.pulse}
@@ -2407,9 +2433,8 @@ const PatientRegistration = () => {
                           <input
                             type="number"
                             min={0}
-                            className={`form-control ${
-                              errors.bmi ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.bmi ? "is-invalid" : ""
+                              }`}
                             placeholder="BMI"
                             name="bmi"
                             value={formData.bmi}
@@ -2431,9 +2456,8 @@ const PatientRegistration = () => {
                           <input
                             type="number"
                             min={0}
-                            className={`form-control ${
-                              errors.rr ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.rr ? "is-invalid" : ""
+                              }`}
                             placeholder="RR"
                             name="rr"
                             value={formData.rr}
@@ -2455,9 +2479,8 @@ const PatientRegistration = () => {
                           <input
                             type="number"
                             min={0}
-                            className={`form-control ${
-                              errors.spo2 ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.spo2 ? "is-invalid" : ""
+                              }`}
                             placeholder="SpO2"
                             name="spo2"
                             value={formData.spo2}
@@ -2556,9 +2579,8 @@ const PatientRegistration = () => {
                             <option value="">Select Doctor</option>
                             {doctorOptions.map((doctor) => (
                               <option key={doctor.id} value={doctor.userId}>
-                                {`${doctor.firstName} ${
-                                  doctor.middleName ? doctor.middleName : ""
-                                } ${doctor.lastName ? doctor.lastName : ""}`}
+                                {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""
+                                  } ${doctor.lastName ? doctor.lastName : ""}`}
                               </option>
                             ))}
                           </select>
@@ -2590,38 +2612,7 @@ const PatientRegistration = () => {
                           <DatePicker
                             key={dateResetKey + "-" + index}
                             value={appointment.selDate || null}
-                            onChange={(date) => {
-                              if (isPastDate(date)) {
-                                Swal.fire({
-                                  icon: "warning",
-                                  title: "Invalid Date",
-                                  text: "You cannot select a past date",
-                                  timer: 2000,
-                                });
-                                handleAppointmentChange(index, "selDate", "");
-                                setDateResetKey((prev) => prev + 1);
-                                return;
-                              }
-
-                              handleAppointmentChange(index, "selDate", date);
-
-                              if (
-                                appointment.speciality &&
-                                appointment.selDoctorId &&
-                                appointment.selSession &&
-                                date
-                              ) {
-                                handleAppointmentChange(
-                                  index,
-                                  "selectedTimeSlot",
-                                  ""
-                                );
-
-                                setTimeout(() => {
-                                  fetchTokenAvailability(index);
-                                }, 100);
-                              }
-                            }}
+                            onChange={(date) => onDateChange(index, date)}
                             placeholder="Select Date"
                             className="form-control"
                           />

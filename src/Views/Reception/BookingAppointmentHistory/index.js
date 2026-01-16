@@ -1,55 +1,66 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Swal from "sweetalert2";
 import DatePicker from "../../../Components/DatePicker";
 import LoadingScreen from "../../../Components/Loading";
-import Pagination, {
-    DEFAULT_ITEMS_PER_PAGE,
-} from "../../../Components/Pagination";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import Popup from "../../../Components/popup";
 import {
-    GET_ALL_REASONS,
-    GET_APPOINTMENT_HISTORY,
-    GET_AVAILABILITY_TOKENS,
-    GET_SESSION,
+  GET_ALL_REASONS,
+  GET_APPOINTMENT_HISTORY,
+  GET_AVAILABILITY_TOKENS,
+  GET_SESSION,
+  CANCEL_APPOINTMENT,
+  GET_DOCTOR_SESSION,
+  RESCHEDULE_APPOINTMENT,
 } from "../../../config/apiConfig";
-import { getRequest } from "../../../service/apiService";
+import { getRequest, postRequest } from "../../../service/apiService";
+import {MISSING_MOBILE_NUMBER, NO_DATA_FOUND} from "../../../config/constants";
 
-const formatAppointmentTime = (startTime, endTime, useLocalTime = false) => {
-    if (!startTime || !endTime) return "N/A";
-    
-    const formatTime = (isoString, useLocal) => {
-        try {
-            if (useLocal) {
-                // Convert to local time
-                const date = new Date(isoString);
-                const hours = String(date.getHours()).padStart(2, '0');
-                const minutes = String(date.getMinutes()).padStart(2, '0');
-                return `${hours}:${minutes}`;
-            } else {
-                // Extract UTC time directly from ISO string
-                const match = isoString.match(/T(\d{2}):(\d{2})/);
-                if (match) {
-                    return `${match[1]}:${match[2]}`;
-                }
-                return "";
-            }
-        } catch (error) {
-            console.error("Error formatting time:", error);
-            return "";
-        }
-    };
-    
-    const start = formatTime(startTime, useLocalTime);
-    const end = formatTime(endTime, useLocalTime);
-    
-    return start && end ? `${start} - ${end}` : "N/A";
+
+// Helper functions
+const formatTimeToHHMM = (timeString) => {
+  if (!timeString) return "";
+  if (timeString.includes('T')) {
+    const date = new Date(timeString);
+    if (isNaN(date.getTime())) return "";
+    return date.toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  }
+  return timeString.substring(0, 5);
 };
 
+const formatAppointmentTime = (start, end) => {
+  if (!start || !end) return "N/A";
+
+  const startTime = formatTimeToHHMM(start);
+  const endTime = formatTimeToHHMM(end);
+
+  return `${startTime}-${endTime}`;
+};
+
+const formatDateForDisplay = (dateString) => {
+  if (!dateString) return "";
+  try {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, "0");
+    const monthNames = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ];
+    const month = monthNames[date.getMonth()];
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  } catch (error) {
+    return "";
+  }
+};
 
 const BookingAppointmentHistory = () => {
+  // UI States
   const [mobileNumber, setMobileNumber] = useState("");
-  const [selectedDepartment, setSelectedDepartment] = useState("");
-  const [selectedDoctor, setSelectedDoctor] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -68,12 +79,11 @@ const BookingAppointmentHistory = () => {
     departmentName: "",
     sessionName: "",
   });
-  const [availableSessions, setAvailableSessions] = useState([]);
   const [availableTokens, setAvailableTokens] = useState([]);
-  const [loadingSessions, setLoadingSessions] = useState(false);
   const [loadingTokens, setLoadingTokens] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [selectedToken, setSelectedToken] = useState(null);
+  const [isFetchingTokens, setIsFetchingTokens] = useState(false);
 
   // Cancel Popup States
   const [showCancelPopup, setShowCancelPopup] = useState(false);
@@ -82,27 +92,34 @@ const BookingAppointmentHistory = () => {
   const [loadingReasons, setLoadingReasons] = useState(false);
   const [patientToCancel, setPatientToCancel] = useState(null);
 
+  // Functionality States
+  const [newDate, setNewDate] = useState("");
+  const [newSession, setNewSession] = useState("");
+  const [selectedSlot, setSelectedSlot] = useState(null);
+
   useEffect(() => {
     fetchSessions();
     fetchCancellationReasons();
   }, []);
 
   // Fetch sessions
-  async function fetchSessions() {
+  const fetchSessions = async () => {
     try {
       const data = await getRequest(`${GET_SESSION}1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setSessions(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error("Invalid response format:", data);
         setSessions([]);
       }
     } catch (error) {
       console.error("Error fetching sessions:", error);
       setSessions([]);
     }
-  }
-  async function fetchCancellationReasons() {
+  };
+
+  // Fetch cancellation reasons
+  const fetchCancellationReasons = async () => {
     setLoadingReasons(true);
     try {
       const data = await getRequest(`${GET_ALL_REASONS}/1`);
@@ -123,7 +140,6 @@ const BookingAppointmentHistory = () => {
         );
 
         setCancellationReasons(activeReasons);
-        console.log("Cancellation reasons loaded:", activeReasons.length);
       } else {
         console.error("API Error:", data.message);
         setCancellationReasons([]);
@@ -134,7 +150,7 @@ const BookingAppointmentHistory = () => {
     } finally {
       setLoadingReasons(false);
     }
-  }
+  };
 
   const getTodayDate = () => {
     return new Date().toISOString().split("T")[0];
@@ -148,36 +164,10 @@ const BookingAppointmentHistory = () => {
     });
   };
 
-  const formatDateForDisplay = (dateString) => {
-    if (!dateString) return "";
-    try {
-      const date = new Date(dateString);
-      const day = String(date.getDate()).padStart(2, "0");
-      const monthNames = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ];
-      const month = monthNames[date.getMonth()];
-      const year = date.getFullYear();
-      return `${day}-${month}-${year}`;
-    } catch (error) {
-      return "";
-    }
-  };
-
+  // Search appointments
   const handleSearch = async () => {
     if (!mobileNumber.trim()) {
-      showPopup("Please enter Mobile Number", "error");
+      showPopup(`${MISSING_MOBILE_NUMBER}`);
       return;
     }
 
@@ -190,24 +180,10 @@ const BookingAppointmentHistory = () => {
     setShowReport(false);
 
     try {
-      // Simple request body - check your API documentation
+      const res = await getRequest(`${GET_APPOINTMENT_HISTORY}?flag=0&mobileNo=${mobileNumber}`);
 
-      console.log("Fetching appointment history...");
-      const data = await getRequest(`${GET_APPOINTMENT_HISTORY}`);
-
-      console.log("API Response:", data);
-
-      if (data.status === 200) {
-        // Handle response - adjust based on your actual API response
-        let appointments = [];
-
-        if (Array.isArray(data.response)) {
-          appointments = data.response;
-        } else if (data.response && Array.isArray(data.response.appointments)) {
-          appointments = data.response.appointments;
-        } else if (data.response && Array.isArray(data.response.data)) {
-          appointments = data.response.data;
-        }
+      if (res.status === 200) {
+        const appointments = res.response?.appointments || res.response?.data || res.response || [];
 
         if (!appointments || appointments.length === 0) {
           setReportData([]);
@@ -216,73 +192,42 @@ const BookingAppointmentHistory = () => {
           return;
         }
 
-      const formatTimeFromISO = (isoString) => {
-    if (!isoString) return "";
-    try {
-        // Parse the UTC time string
-        const date = new Date(isoString);
-        
-        // Extract local time hours and minutes
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        
-        // For debugging - check what timezone conversion is happening
-        console.log("Original UTC:", isoString, "Local:", `${hours}:${minutes}`);
-        
-        return `${hours}:${minutes}`;
-    } catch (error) {
-        console.error("Error formatting time:", error);
-        return "";
-    }
-};
-
-        // Transform data to match your UI
+        // Transform data to match UI
         const transformedData = appointments.map((appointment, index) => {
           const appointmentSlot = formatAppointmentTime(
             appointment.appointmentStartTime,
-            appointment.appointmentEndTime,
-            false
-            
+            appointment.appointmentEndTime
           );
+
           return {
-            id:
-              appointment.id ||
-              appointment.appointmentId ||
-              appointment.visitId ||
-              index + 1,
-            patientName:
-              appointment.patientName || appointment.name || "Unknown",
-            mobileNumber:
-              appointment.mobileNo ||
-              appointment.mobileNumber ||
-              appointment.phone ||
-              mobileNumber.trim(),
+            id: appointment.id || appointment.appointmentId || appointment.visitId || index + 1,
+            patientName: appointment.patientName || appointment.name || "Unknown",
+            mobileNumber: appointment.mobileNo || appointment.mobileNumber || appointment.phone || mobileNumber.trim(),
             patientAge: appointment.age || appointment.patientAge || "N/A",
-            appointmentDate: appointment.appointmentDate
-              ? formatDateForDisplay(appointment.appointmentDate)
-              : "N/A",
+            appointmentDate: appointment.appointmentDate ? formatDateForDisplay(appointment.appointmentDate) : "N/A",
             doctorName: appointment.doctorName || "Unknown Doctor",
-            departmentName:
-              appointment.departmentName || appointment.speciality || "N/A",
+            departmentName: appointment.departmentName || appointment.speciality || "N/A",
             appointmentSlot: appointmentSlot,
             originalDoctorId: appointment.doctorId || 0,
             originalDepartmentId: appointment.departmentId || 0,
-            originalDate: appointment.appointmentDate
-              ? appointment.appointmentDate.split("T")[0]
-              : "",
+            originalDate: appointment.appointmentDate ? appointment.appointmentDate.split("T")[0] : "",
             originalSessionId: appointment.sessionId || 0,
             visitId: appointment.visitId,
             tokenNo: appointment.tokenNo,
+            doctorId: appointment.doctorId,
+            departmentId: appointment.departmentId,
+            displayDate: formatDateForDisplay(appointment.appointmentDate),
+            displayTime: appointmentSlot,
+            shortDate: appointment.appointmentDate?.split("T")[0]
           };
         });
 
         setReportData(transformedData);
         setShowReport(true);
       } else {
-        // API error
         setReportData([]);
         setShowReport(true);
-        showPopup(data.message || "No data found", "info");
+        showPopup(res.message || `${NO_DATA_FOUND}`, "info");
       }
     } catch (error) {
       console.error("Error:", error);
@@ -294,112 +239,62 @@ const BookingAppointmentHistory = () => {
     }
   };
 
+  // Check session validity
+  const checkSession = async (doctorId, deptId, sessionId) => {
+    if (!doctorId || !deptId || !sessionId) return true;
+    try {
+      const res = await getRequest(
+        `${GET_DOCTOR_SESSION}deptId=${deptId}&doctorId=${doctorId}&rosterDate=${new Date().toISOString().split("T")[0]}&sessionId=${sessionId}`
+      );
+      if (res.status !== 200) {
+        Swal.fire({
+          icon: "warning",
+          title: "Session Not Available",
+          text: res.message || "This session is not available.",
+          timer: 2000,
+        });
+        return false;
+      }
+      return true;
+    } catch {
+      return true;
+    }
+  };
+
   // Open Reschedule Popup
   const handleReschedule = (patientData) => {
     setSelectedPatient(patientData);
 
     // Set initial data from existing appointment
+    const initialDate = patientData.shortDate || getTodayDate();
+
     setRescheduleData({
       department: patientData.departmentName,
       doctor: patientData.doctorName,
-      date: patientData.originalDate || getTodayDate(),
+      date: initialDate,
       session: patientData.originalSessionId || "",
       doctorName: patientData.doctorName,
       departmentName: patientData.departmentName,
-      sessionName:
-        sessions.find((s) => s.id == patientData.originalSessionId)
-          ?.sessionName || "",
+      sessionName: sessions.find((s) => s.id == patientData.originalSessionId)?.sessionName || "",
     });
 
+    setNewDate(initialDate);
+    setNewSession(patientData.originalSessionId || "");
+    setSelectedSlot(null);
+    setSelectedToken(null);
     setShowReschedulePopup(true);
   };
 
   // Open Cancel Popup
   const handleCancel = (patientData) => {
     setPatientToCancel(patientData);
-    setSelectedReason(""); // Reset selected reason
+    setSelectedReason("");
     setShowCancelPopup(true);
   };
 
-  // Submit Cancellation
-  const submitCancellation = async () => {
-    if (!selectedReason) {
-      Swal.fire({
-        icon: "warning",
-        title: "Reason Required",
-        text: "Please select a cancellation reason.",
-      });
-      return;
-    }
-
-    // Get selected reason details
-    const reason = cancellationReasons.find(
-      (r) => r.reasonCode === selectedReason
-    );
-
-    Swal.fire({
-      title: "Confirm Cancellation",
-      html: `
-                <p>Are you sure you want to cancel this appointment?</p>
-                <p><strong>Patient:</strong> ${patientToCancel.patientName}</p>
-                <p><strong>Date:</strong> ${patientToCancel.appointmentDate}</p>
-                <p><strong>Slot:</strong> ${patientToCancel.appointmentSlot}</p>
-                <p><strong>Reason:</strong> ${
-                  reason ? reason.reasonName : selectedReason
-                }</p>
-            `,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Yes, Cancel",
-      cancelButtonText: "No, Keep It",
-      confirmButtonColor: "#dc3545",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-
-          const cancelData = {
-            appointmentId: patientToCancel.id,
-            reasonCode: selectedReason,
-            reasonName: reason ? reason.reasonName : selectedReason,
-            cancelledBy: "SYSTEM",
-            cancelledDate: new Date().toISOString(),
-            patientName: patientToCancel.patientName,
-            mobileNumber: patientToCancel.mobileNumber,
-            appointmentDate: patientToCancel.originalDate,
-            timeSlot: patientToCancel.appointmentSlot,
-          };
-
-          Swal.fire({
-            icon: "success",
-            title: "Appointment Cancelled",
-            text: "Appointment has been successfully cancelled.",
-            timer: 2000,
-          });
-
-          // Close popup
-          setShowCancelPopup(false);
-          setSelectedReason("");
-          setPatientToCancel(null);
-
-          // Refresh the appointment list
-          handleSearch();
-        } catch (error) {
-          console.error("Error cancelling appointment:", error);
-          Swal.fire({
-            icon: "error",
-            title: "Cancellation Failed",
-            text: "Failed to cancel appointment. Please try again.",
-          });
-        }
-      }
-    });
-  };
-
-  // Handle Date Change in Reschedule
-  const handleDateChange = (date) => {
+  // Handle Date Change in Reschedule - Automatically fetch tokens
+  const handleDateChange = async (date) => {
     if (!date) return;
-
-    // Check if date is in past
     const selectedDate = new Date(date);
     const today = new Date();
     selectedDate.setHours(0, 0, 0, 0);
@@ -420,55 +315,89 @@ const BookingAppointmentHistory = () => {
       date: date,
     }));
 
+    setNewDate(date);
+    setSelectedSlot(null);
     setSelectedToken(null);
+
+    if (newSession && selectedPatient) {
+      await fetchTokensForDate(date);
+    }
   };
 
+  useEffect(() => {
+    if (newDate && newSession && selectedPatient) {
+      fetchTokensForDate(newDate);
+    }
+  }, [newDate]);
+
   // Handle Session Change in Reschedule
-  const handleSessionChange = (sessionId) => {
-    const selectedSession = sessions.find((s) => s.id == sessionId);
+  const handleSessionChange = async (sessionId) => {
+    if (!selectedPatient) return;
+
+    const session = sessions.find((s) => s.id == sessionId);
     setRescheduleData((prev) => ({
       ...prev,
       session: sessionId,
-      sessionName: selectedSession ? selectedSession.sessionName : "",
+      sessionName: session ? session.sessionName : "",
     }));
 
-    // Clear token when session changes
-    setSelectedToken(null);
+    const valid = await checkSession(
+      selectedPatient.doctorId,
+      selectedPatient.departmentId,
+      sessionId
+    );
+
+    if (valid) {
+      setNewSession(String(sessionId));
+      setSelectedSlot(null);
+      setSelectedToken(null);
+
+      // Automatically fetch tokens if date is already selected
+      if (newDate) {
+        await fetchTokensForSession(sessionId);
+      }
+    } else {
+      setNewSession("");
+      setSelectedSlot(null);
+      setSelectedToken(null);
+    }
   };
 
-  // Show Available Tokens
-  const showAvailableTokens = async () => {
-    if (!selectedPatient || !rescheduleData.date || !rescheduleData.session) {
-      Swal.fire({
-        icon: "warning",
-        title: "Missing Details",
-        text: "Please select Date and Session first.",
-      });
-      return;
-    }
+  // Fetch tokens for selected date
+  const fetchTokensForDate = async (date) => {
+    if (!selectedPatient || !newSession) return;
 
     setLoadingTokens(true);
+    setIsFetchingTokens(true);
+
     try {
-      // Use original doctor and department IDs from selected patient
       const params = new URLSearchParams({
-        deptId: 854,
-        doctorId: 30,
-        appointmentDate: rescheduleData.date,
-        sessionId: rescheduleData.session,
-      }).toString();
+        deptId: selectedPatient.departmentId,
+        doctorId: selectedPatient.doctorId,
+        appointmentDate: date,
+        sessionId: newSession
+      });
 
-      const url = `${GET_AVAILABILITY_TOKENS}?${params}`;
-      const data = await getRequest(url);
+      const res = await getRequest(`${GET_AVAILABILITY_TOKENS}?${params}`);
 
-      if (data.status === 200 && Array.isArray(data.response)) {
-        setAvailableTokens(data.response);
-        showTokenPopup(data.response);
+      if (res.status === 200 && Array.isArray(res.response)) {
+        setAvailableTokens(res.response);
+        if (res.response.length > 0) {
+          showTokenPopup(res.response);
+        } else {
+          Swal.fire({
+            icon: "info",
+            title: "No Tokens Available",
+            text: "No tokens are available for the selected date and session.",
+            timer: 2000,
+          });
+        }
       } else {
         Swal.fire({
           icon: "error",
           title: "No Tokens Available",
-          text:
-            data.message || "No tokens available for the selected criteria.",
+          text: res.message || "No tokens available for the selected criteria.",
+          timer: 2000,
         });
         setAvailableTokens([]);
       }
@@ -478,9 +407,63 @@ const BookingAppointmentHistory = () => {
         icon: "error",
         title: "Error",
         text: "Failed to fetch token availability. Please try again.",
+        timer: 2000,
       });
     } finally {
       setLoadingTokens(false);
+      setIsFetchingTokens(false);
+    }
+  };
+
+  // Fetch tokens for selected session
+  const fetchTokensForSession = async (sessionId) => {
+    if (!selectedPatient || !newDate) return;
+
+    setLoadingTokens(true);
+    setIsFetchingTokens(true);
+
+    try {
+      const params = new URLSearchParams({
+        deptId: selectedPatient.departmentId,
+        doctorId: selectedPatient.doctorId,
+        appointmentDate: newDate,
+        sessionId: sessionId
+      });
+
+      const res = await getRequest(`${GET_AVAILABILITY_TOKENS}?${params}`);
+
+      if (res.status === 200 && Array.isArray(res.response)) {
+        setAvailableTokens(res.response);
+        if (res.response.length > 0) {
+          showTokenPopup(res.response);
+        } else {
+          Swal.fire({
+            icon: "info",
+            title: "No Tokens Available",
+            text: "No tokens are available for the selected date and session.",
+            timer: 2000,
+          });
+        }
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "No Tokens Available",
+          text: res.message || "No tokens available for the selected criteria.",
+          timer: 2000,
+        });
+        setAvailableTokens([]);
+      }
+    } catch (error) {
+      console.error("Error fetching token availability:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to fetch token availability. Please try again.",
+        timer: 2000,
+      });
+    } finally {
+      setLoadingTokens(false);
+      setIsFetchingTokens(false);
     }
   };
 
@@ -491,178 +474,248 @@ const BookingAppointmentHistory = () => {
         icon: "info",
         title: "No Tokens Available",
         text: "No tokens are available for the selected session.",
+        timer: 2000,
       });
       return;
     }
 
+    const rawDate = newDate;
+    const formattedDate = rawDate.split('-').reverse().join('/');
+    const selectedSession = sessions.find(s => String(s.id) === String(newSession));
+    const sessionName = selectedSession?.sessionName || "Selected Session";
+
     Swal.fire({
       title: `Available Time Slots`,
       html: `
-                <div class="container-fluid">
-                    <div class="text-center mb-2">
-                        <h5 class="fw-bold mb-1">Available Time Slots</h5>
-                        <p class="text-muted small">
-                            Date: ${rescheduleData.date} | 
-                            Session: ${rescheduleData.sessionName}
-                        </p>
-                    </div>
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-body p-3">
-                                    <div class="row row-cols-4 g-1" id="token-slots">
-                                        ${tokens
-                                          .map(
-                                            (token) => `
-                                            <div class="col">
-                                                <button type="button" 
-                                                        class="btn ${
-                                                          token.available
-                                                            ? "btn-outline-success"
-                                                            : "btn-outline-secondary disabled"
-                                                        } w-100 d-flex flex-column align-items-center justify-content-center p-1" 
-                                                        style="height: 65px; font-size: 0.75rem;"
-                                                        data-token-id="${
-                                                          token.tokenNo || ""
-                                                        }"
-                                                        data-token-starttime="${
-                                                          token.startTime || ""
-                                                        }"
-                                                        data-token-endtime="${
-                                                          token.endTime || ""
-                                                        }"
-                                                        ${
-                                                          !token.available
-                                                            ? "disabled"
-                                                            : ""
-                                                        }>
-                                                    <span class="fw-bold">${
-                                                      token.startTime.split(
-                                                        ":"
-                                                      )[0]
-                                                    }:${
-                                              token.startTime.split(":")[1]
-                                            }</span>
-                                                    <span>${
-                                                      token.endTime.split(
-                                                        ":"
-                                                      )[0]
-                                                    }:${
-                                              token.endTime.split(":")[1]
-                                            }</span>
-                                                    ${
-                                                      !token.available
-                                                        ? '<span class="badge bg-danger mt-0" style="font-size: 0.6rem;">Booked</span>'
-                                                        : ""
-                                                    }
-                                                </button>
-                                            </div>
-                                        `
-                                          )
-                                          .join("")}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <div class="container-fluid">
+          <div class="text-center mb-3">
+            <h6 class="fw-bold text-muted mb-1">Available Time Slots</h6>
+            <p class="text-secondary small">
+              Date: ${formattedDate} | Session: ${sessionName}
+            </p>
+            <hr />
+            <p class="text-primary fw-bold small mb-2">${sessionName} Session</p>
+          </div>
+          <div class="row row-cols-4 g-2 justify-content-center" id="token-grid">
+            ${tokens.map((token) => {
+        const isAvailable = token.available;
+        const startTime = formatTimeToHHMM(token.startTime);
+        const endTime = formatTimeToHHMM(token.endTime);
+
+        return `
+                <div class="col">
+                  <button type="button" 
+                    class="btn ${isAvailable ? "btn-outline-success" : "btn-outline-secondary disabled"} 
+                    w-100 d-flex flex-column align-items-center justify-content-center" 
+                    style="height: 60px; font-size: 0.8rem; border-radius: 8px; border-width: 1.5px;"
+                    data-token-id="${token.tokenNo || ""}"
+                    data-token-start="${token.startTime}"
+                    data-token-end="${token.endTime}"
+                    ${!isAvailable ? "disabled" : ""}>
+                    <span class="fw-bold" style="color: ${isAvailable ? "#28a745" : "#6c757d"};">${startTime}</span>
+                    <span style="color: ${isAvailable ? "#28a745" : "#6c757d"}; opacity: 0.8;">${endTime}</span>
+                  </button>
                 </div>
-            `,
+              `;
+      }).join("")}
+          </div>
+        </div>
+      `,
       showCloseButton: true,
       showConfirmButton: false,
-      width: 550,
-      padding: "1rem",
+      width: 600,
+      padding: "1.5rem",
+      customClass: {
+        title: 'fs-4 fw-bold text-dark opacity-75',
+      },
       didOpen: () => {
-        document.querySelectorAll(".btn-outline-success").forEach((btn) => {
+        document.querySelectorAll("#token-grid button:not([disabled])").forEach((btn) => {
           btn.addEventListener("click", (e) => {
-            const tokenNo = e.target
-              .closest("button")
-              .getAttribute("data-token-id");
-            const tokenStartTime = e.target
-              .closest("button")
-              .getAttribute("data-token-starttime");
-            const tokenEndTime = e.target
-              .closest("button")
-              .getAttribute("data-token-endtime");
-            selectToken(tokenNo, tokenStartTime, tokenEndTime);
+            const el = e.currentTarget;
+            const tokenNo = el.getAttribute("data-token-id");
+            const start = el.getAttribute("data-token-start");
+            const end = el.getAttribute("data-token-end");
+
+            // Select token
+            const startHHMM = formatTimeToHHMM(start);
+            const endHHMM = formatTimeToHHMM(end);
+            const slot = `${startHHMM}-${endHHMM}`;
+
+            setSelectedSlot({
+              tokenNo,
+              start: startHHMM,
+              end: endHHMM,
+              slot
+            });
+
+            setSelectedToken({
+              tokenNo,
+              tokenStartTime: start,
+              tokenEndTime: end,
+              timeSlot: slot
+            });
+
+            Swal.close();
+            Swal.fire({
+              icon: "success",
+              title: "Time Slot Selected",
+              text: `Time slot ${startHHMM} to ${endHHMM} has been selected.`,
+              timer: 1500,
+              showConfirmButton: false,
+            });
           });
         });
       },
     });
   };
 
-  // Select Token
-  const selectToken = (tokenNo, tokenStartTime, tokenEndTime) => {
-    setSelectedToken({
-      tokenNo,
-      tokenStartTime,
-      tokenEndTime,
-      timeSlot: `${tokenStartTime} - ${tokenEndTime}`,
-    });
-
-    Swal.fire({
-      icon: "success",
-      title: "Time Slot Selected",
-      text: `Time slot ${tokenStartTime} to ${tokenEndTime} has been selected.`,
-      timer: 1500,
-      showConfirmButton: false,
-    });
-
-    Swal.close();
-  };
-
   // Submit Reschedule
-  const submitReschedule = () => {
-    if (!selectedToken) {
+  const submitReschedule = async () => {
+    if (!selectedSlot && !selectedToken) {
       Swal.fire({
         icon: "warning",
         title: "No Time Slot Selected",
         text: "Please select a time slot first.",
+        timer: 2000,
       });
       return;
     }
 
-    // Here you would call your reschedule API
-    Swal.fire({
+    const slotToUse = selectedSlot || selectedToken;
+
+    const result = await Swal.fire({
       title: "Confirm Reschedule",
       html: `
-                <p>Are you sure you want to reschedule the appointment?</p>
-                <p><strong>Patient:</strong> ${selectedPatient.patientName}</p>
-                <p><strong>New Date:</strong> ${rescheduleData.date}</p>
-                <p><strong>New Time Slot:</strong> ${selectedToken.timeSlot}</p>
-            `,
+        <p>Reschedule ${selectedPatient.patientName} to ${newDate} at ${slotToUse.slot}?</p>
+        <p><strong>Current:</strong> ${selectedPatient.displayDate} at ${selectedPatient.displayTime}</p>
+      `,
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Yes, Reschedule",
-      cancelButtonText: "Cancel",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        // Call API to reschedule
-        console.log("Rescheduling appointment:", {
-          patientId: selectedPatient.id,
-          newDate: rescheduleData.date,
-          newTimeSlot: selectedToken,
-          doctorId: selectedPatient.originalDoctorId,
-          departmentId: selectedPatient.originalDepartmentId,
-          sessionId: rescheduleData.session,
-        });
+      cancelButtonText: "Cancel"
+    });
 
+    if (result.isConfirmed) {
+      Swal.showLoading();
+      try {
+        // Correctly create ISO strings for the backend
+        const appointmentDateInstant = new Date(newDate).toISOString();
+        const startTimeInstant = new Date(`${newDate}T${slotToUse.start}:00`).toISOString();
+        const endTimeInstant = new Date(`${newDate}T${slotToUse.end}:00`).toISOString();
+
+        const reschedulePayload = {
+          visitId: selectedPatient.visitId,
+          tokenNumber: slotToUse.tokenNo,
+          sessionId: parseInt(newSession, 10),
+          visitDate: appointmentDateInstant,
+          appointmentStartTime: startTimeInstant,
+          appointmentEndTime: endTimeInstant
+        };
+
+        const res = await postRequest(RESCHEDULE_APPOINTMENT, reschedulePayload);
+
+        if (res.status === 200) {
+          Swal.fire({
+            icon: "success",
+            title: "Success",
+            text: "Appointment rescheduled successfully.",
+            timer: 2000,
+          });
+          setShowReschedulePopup(false);
+          setSelectedToken(null);
+          setSelectedSlot(null);
+          handleSearch(); // Refresh the list
+        } else {
+          throw new Error(res.message || "Server error");
+        }
+      } catch (error) {
+        console.error("Reschedule failed:", error);
         Swal.fire({
-          icon: "success",
-          title: "Appointment Rescheduled",
-          text: "Appointment has been successfully rescheduled.",
+          icon: "error",
+          title: "Error",
+          text: error.message || "Reschedule failed.",
           timer: 2000,
         });
-
-        // Close popup and refresh data
-        setShowReschedulePopup(false);
-        setSelectedToken(null);
-
-        // Refresh the appointment list
-        handleSearch();
       }
-    });
+    }
   };
 
+  // Submit Cancellation
+  const submitCancellation = async () => {
+    if (!selectedReason) {
+      Swal.fire({
+        icon: "warning",
+        title: "Reason Required",
+        text: "Please select a cancellation reason.",
+        timer: 2000,
+      });
+      return;
+    }
+
+    // Get the full reason object
+    const selectedReasonObj = cancellationReasons.find(r => {
+      const reasonId = r.id || r.reasonId || r.reasonCode;
+      return String(reasonId) === String(selectedReason);
+    });
+
+    const reasonName = selectedReasonObj?.reasonName || selectedReasonObj?.name || "Unknown";
+
+    const result = await Swal.fire({
+      title: "Confirm Cancellation",
+      html: `
+        <div class="text-start">
+          <p>Cancel appointment for <strong>${patientToCancel.patientName}</strong>?</p>
+          <div class="alert alert-warning p-2">
+            <p class="mb-0"><strong>Reason:</strong> ${reasonName}</p>
+          </div>
+        </div>
+      `,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Cancel",
+      cancelButtonText: "No",
+      confirmButtonColor: "#dc3545",
+    });
+
+    if (result.isConfirmed) {
+      Swal.showLoading();
+      try {
+        const cancelRequest = {
+          visitId: patientToCancel.visitId,
+          cancelReasonId: parseInt(selectedReason, 10),
+          cancelledBy: "SYSTEM",
+          cancelledDateTime: new Date().toISOString(),
+        };
+
+        const res = await postRequest(CANCEL_APPOINTMENT, cancelRequest);
+
+        if (res.status === 200) {
+          Swal.fire({
+            icon: "success",
+            title: "Cancelled",
+            text: "Appointment cancelled successfully",
+            timer: 2000,
+          });
+          setShowCancelPopup(false);
+          setSelectedReason("");
+          setPatientToCancel(null);
+          handleSearch();
+        } else {
+          throw new Error(res.message || "Server error");
+        }
+      } catch (error) {
+        console.error("Cancellation failed:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: error.message || "Cancellation failed",
+          timer: 2000,
+        });
+      }
+    }
+  };
+
+  // Pagination
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = reportData.slice(indexOfFirst, indexOfLast);
@@ -734,12 +787,7 @@ const BookingAppointmentHistory = () => {
                       <div className="card-body">
                         <div className="table-responsive">
                           <table className="table table-bordered table-hover">
-                            <thead
-                              style={{
-                                backgroundColor: "#9db4c0",
-                                color: "black",
-                              }}
-                            >
+                            <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
                               <tr>
                                 <th>Patient Name</th>
                                 <th>Mobile Number</th>
@@ -830,6 +878,8 @@ const BookingAppointmentHistory = () => {
                   onClick={() => {
                     setShowReschedulePopup(false);
                     setSelectedToken(null);
+                    setSelectedSlot(null);
+                    setLoadingTokens(false);
                   }}
                 ></button>
               </div>
@@ -842,12 +892,10 @@ const BookingAppointmentHistory = () => {
                     <div className="row">
                       <div className="col-md-6">
                         <p>
-                          <strong>Patient:</strong>{" "}
-                          {selectedPatient.patientName}
+                          <strong>Patient:</strong> {selectedPatient.patientName}
                         </p>
                         <p>
-                          <strong>Mobile:</strong>{" "}
-                          {selectedPatient.mobileNumber}
+                          <strong>Mobile:</strong> {selectedPatient.mobileNumber}
                         </p>
                         <p>
                           <strong>Age:</strong> {selectedPatient.patientAge}
@@ -855,12 +903,10 @@ const BookingAppointmentHistory = () => {
                       </div>
                       <div className="col-md-6">
                         <p>
-                          <strong>Current Date:</strong>{" "}
-                          {selectedPatient.appointmentDate}
+                          <strong>Current Date:</strong> {selectedPatient.appointmentDate}
                         </p>
                         <p>
-                          <strong>Current Slot:</strong>{" "}
-                          {selectedPatient.appointmentSlot}
+                          <strong>Current Slot:</strong> {selectedPatient.appointmentSlot}
                         </p>
                       </div>
                     </div>
@@ -895,16 +941,6 @@ const BookingAppointmentHistory = () => {
                         />
                       </div>
 
-                      {/* Date Selection */}
-                      <div className="col-md-6">
-                        <DatePicker
-                          value={rescheduleData.date}
-                          onChange={handleDateChange}
-                          placeholder="Select New Date"
-                          className="form-control"
-                        />
-                      </div>
-
                       {/* Session Selection */}
                       <div className="col-md-6">
                         <label className="form-label">Session</label>
@@ -912,6 +948,7 @@ const BookingAppointmentHistory = () => {
                           className="form-select"
                           value={rescheduleData.session}
                           onChange={(e) => handleSessionChange(e.target.value)}
+                          disabled={isFetchingTokens}
                         >
                           <option value="">Select Session</option>
                           {sessions.map((ses) => (
@@ -922,6 +959,25 @@ const BookingAppointmentHistory = () => {
                         </select>
                       </div>
 
+                      
+                      {/* Date Selection */}
+                      <div className="col-md-6">
+                        <DatePicker
+                          value={rescheduleData.date}
+                          onChange={handleDateChange}
+                          placeholder="Select New Date"
+                          className="form-control"
+                          min={new Date().toISOString().split("T")[0]}
+                          disabled={isFetchingTokens}
+                        />
+                        {isFetchingTokens && (
+                          <div className="text-info small mt-1">
+                            <span className="spinner-border spinner-border-sm me-1"></span>
+                            Loading available time slots...
+                          </div>
+                        )}
+                      </div>
+
                       {/* Selected Time Slot */}
                       <div className="col-md-12">
                         <label className="form-label">Selected Time Slot</label>
@@ -929,41 +985,22 @@ const BookingAppointmentHistory = () => {
                           type="text"
                           className="form-control"
                           value={
-                            selectedToken
-                              ? selectedToken.timeSlot
-                              : "No time slot selected"
+                            selectedSlot
+                              ? selectedSlot.slot
+                              : (selectedToken ? selectedToken.timeSlot : "Select a date and session to see available time slots")
                           }
                           readOnly
                           style={{
-                            backgroundColor: selectedToken
-                              ? "#f0fff0"
-                              : "#f8f9fa",
-                            fontWeight: selectedToken ? "bold" : "normal",
+                            backgroundColor: selectedSlot || selectedToken ? "#f0fff0" : "#f8f9fa",
+                            fontWeight: selectedSlot || selectedToken ? "bold" : "normal",
                           }}
                         />
-                      </div>
-
-                      {/* Show Token Button */}
-                      <div className="col-md-12 mt-3">
-                        <button
-                          type="button"
-                          className="btn btn-primary"
-                          onClick={showAvailableTokens}
-                          disabled={
-                            !rescheduleData.date ||
-                            !rescheduleData.session ||
-                            loadingTokens
-                          }
-                        >
-                          {loadingTokens ? (
-                            <>
-                              <span className="spinner-border spinner-border-sm me-2"></span>
-                              Loading Tokens...
-                            </>
-                          ) : (
-                            "Show Available Time Slots"
-                          )}
-                        </button>
+                        {loadingTokens && (
+                          <div className="text-info small mt-1">
+                            <span className="spinner-border spinner-border-sm me-1"></span>
+                            Fetching available time slots...
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -976,7 +1013,9 @@ const BookingAppointmentHistory = () => {
                   onClick={() => {
                     setShowReschedulePopup(false);
                     setSelectedToken(null);
+                    setSelectedSlot(null);
                   }}
+                  disabled={isFetchingTokens}
                 >
                   Cancel
                 </button>
@@ -984,7 +1023,7 @@ const BookingAppointmentHistory = () => {
                   type="button"
                   className="btn btn-primary"
                   onClick={submitReschedule}
-                  disabled={!selectedToken}
+                  disabled={(!selectedSlot && !selectedToken) || isFetchingTokens}
                 >
                   Confirm Reschedule
                 </button>
@@ -1024,23 +1063,19 @@ const BookingAppointmentHistory = () => {
                     <div className="row">
                       <div className="col-md-12 mb-3">
                         <p>
-                          <strong>Patient:</strong>{" "}
-                          {patientToCancel.patientName}
+                          <strong>Patient:</strong> {patientToCancel.patientName}
                         </p>
                         <p>
-                          <strong>Date:</strong>{" "}
-                          {patientToCancel.appointmentDate}
+                          <strong>Date:</strong> {patientToCancel.appointmentDate}
                         </p>
                         <p>
-                          <strong>Time Slot:</strong>{" "}
-                          {patientToCancel.appointmentSlot}
+                          <strong>Time Slot:</strong> {patientToCancel.appointmentSlot}
                         </p>
                         <p>
                           <strong>Doctor:</strong> {patientToCancel.doctorName}
                         </p>
                         <p>
-                          <strong>Department:</strong>{" "}
-                          {patientToCancel.departmentName}
+                          <strong>Department:</strong> {patientToCancel.departmentName}
                         </p>
                       </div>
                     </div>
@@ -1068,22 +1103,20 @@ const BookingAppointmentHistory = () => {
                           onChange={(e) => setSelectedReason(e.target.value)}
                         >
                           <option value="">-- Select Reason --</option>
-                          {cancellationReasons
-                            .filter((reason) => reason.status === "Y")
-                            .map((reason) => (
-                              <option
-                                key={reason.reasonCode}
-                                value={reason.reasonCode}
-                              >
-                                {reason.reasonName}
+                          {cancellationReasons.map((reason) => {
+                            const reasonId = reason.id || reason.reasonId || reason.reasonCode;
+                            const reasonName = reason.reasonName || reason.name;
+                            return (
+                              <option key={reasonId} value={reasonId}>
+                                {reasonName}
                               </option>
-                            ))}
+                            );
+                          })}
                         </select>
                       )}
                       {cancellationReasons.length === 0 && !loadingReasons && (
                         <div className="text-danger small mt-1">
-                          No cancellation reasons available. Please contact
-                          administrator.
+                          No cancellation reasons available. Please contact administrator.
                         </div>
                       )}
                     </div>

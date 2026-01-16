@@ -153,6 +153,7 @@ export const SELECT_ROW_TO_EDIT_WARN_MSG= "Please select at least one row to edi
 export const APPOINTMENT_NOT_FOUND_ERR_MSG= "No appointment data found";
 
 
+
 //BedManagementMaster
 
 export const FETCH_DROP_DOWN_ERR_MSG="Some options could not be loaded. Please try again later";
@@ -612,6 +613,9 @@ export const FETCH_LAB_TAT_DETAILED_REPORT_ERR_MSG = "Error fetching detail repo
 
 export const FETCH_AMEND_REPORT_ERR_MSG = "Error fetching result amendment report. Please try again.";
 
+//OPD Patient Appointment
+export const MISSING_MOBILE_NUMBER = "Please enter Mobile Number";
+export const NO_DATA_FOUND = "No data found";
 
 //Lab Order Tracking Report
 

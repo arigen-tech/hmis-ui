@@ -219,88 +219,23 @@ const UpdatePatientRegistration = () => {
       prev.map((a) =>
         a.id === rowId
           ? {
-              ...a,
-              speciality: value,
-              selDoctorId: "",
-              selSession: "",
-              departmentName: selectedDepartment
-                ? selectedDepartment.departmentName
-                : "",
-              selDate: null,
-              tokenNo: null,
-              tokenStartTime: "",
-              tokenEndTime: "",
-              selectedTimeSlot: "",
-            }
+            ...a,
+            speciality: value,
+            selDoctorId: "",
+            selSession: "",
+            departmentName: selectedDepartment
+              ? selectedDepartment.departmentName
+              : "",
+            selDate: null,
+            tokenNo: null,
+            tokenStartTime: "",
+            tokenEndTime: "",
+            selectedTimeSlot: "",
+          }
           : a
       )
     );
 
-    const fetchTokenAvailability = async (appointmentIndex = 0) => {
-      try {
-        setLoading(true);
-
-        const targetAppointment = appointments[appointmentIndex];
-
-        if (
-          !targetAppointment.speciality ||
-          !targetAppointment.selDoctorId ||
-          !targetAppointment.selSession ||
-          !targetAppointment.selDate
-        ) {
-          Swal.fire({
-            icon: "warning",
-            title: "Incomplete Details",
-            text: "Please select Speciality, Doctor, and Session first.",
-          });
-          return;
-        }
-
-        const selectedSession = session.find(
-          (s) => s.id == targetAppointment.selSession
-        );
-        const sessionName = selectedSession
-          ? selectedSession.sessionName
-          : targetAppointment.sessionName || "";
-
-        const params = new URLSearchParams({
-          deptId: targetAppointment.speciality,
-          doctorId: targetAppointment.selDoctorId,
-          appointmentDate: targetAppointment.selDate,
-          sessionId: targetAppointment.selSession,
-        }).toString();
-
-        const url = `${GET_AVAILABILITY_TOKENS}?${params}`;
-        const data = await getRequest(url);
-
-        if (data.status === 200 && Array.isArray(data.response)) {
-          setAvailableTokens(data.response);
-          showTokenPopup(
-            data.response,
-            sessionName,
-            targetAppointment.selDate,
-            appointmentIndex
-          );
-        } else {
-          Swal.fire({
-            icon: "error",
-            title: "No Tokens Available",
-            text:
-              data.message || "No tokens available for the selected criteria.",
-          });
-          setAvailableTokens([]);
-        }
-      } catch (error) {
-        console.error("Error fetching token availability:", error);
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: "Failed to fetch token availability. Please try again.",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
 
     // Fetch doctors according to department
     try {
@@ -319,8 +254,7 @@ const UpdatePatientRegistration = () => {
       (doctor) => doctor.userId == value
     );
     const doctorName = selectedDoctor
-      ? `${selectedDoctor.firstName} ${selectedDoctor.middleName || ""} ${
-          selectedDoctor.lastName || ""
+      ? `${selectedDoctor.firstName} ${selectedDoctor.middleName || ""} ${selectedDoctor.lastName || ""
         }`.trim()
       : "";
 
@@ -328,16 +262,16 @@ const UpdatePatientRegistration = () => {
       prev.map((a) =>
         a.id === id
           ? {
-              ...a,
-              selDoctorId: value,
-              selSession: "",
-              doctorName,
-              selDate: null,
-              tokenNo: null,
-              tokenStartTime: "",
-              tokenEndTime: "",
-              selectedTimeSlot: "",
-            }
+            ...a,
+            selDoctorId: value,
+            selSession: "",
+            doctorName,
+            selDate: null,
+            tokenNo: null,
+            tokenStartTime: "",
+            tokenEndTime: "",
+            selectedTimeSlot: "",
+          }
           : a
       )
     );
@@ -352,15 +286,15 @@ const UpdatePatientRegistration = () => {
       prev.map((a) =>
         a.id === id
           ? {
-              ...a,
-              selSession: value,
-              sessionName: sessionName,
-              selDate: null,
-              tokenNo: null,
-              tokenStartTime: "",
-              tokenEndTime: "",
-              selectedTimeSlot: "",
-            }
+            ...a,
+            selSession: value,
+            sessionName: sessionName,
+            selDate: null,
+            tokenNo: null,
+            tokenStartTime: "",
+            tokenEndTime: "",
+            selectedTimeSlot: "",
+          }
           : a
       )
     );
@@ -717,107 +651,152 @@ const UpdatePatientRegistration = () => {
     setImage(placeholderImage);
   };
 
-const handleEdit = async (patient) => {
-  try {
-    const patientId = patient.id;
-    const response = await getRequest(`${PATIENT_FOLLOW_UP_DETAILS}/${patientId}`);
+  const handleEdit = async (patient) => {
+    try {
+      const patientId = patient.id;
+      const response = await getRequest(`${PATIENT_FOLLOW_UP_DETAILS}/${patientId}`);
 
-    if (response.status === 200) {
-      const data = response.response;
+      if (response.status === 200) {
+        const data = response.response;
+        const personal = data.personal || {};
+        const address = data.address || {};
+        const nok = data.nok || {};
+        const emergency = data.emergency || {};
 
-      if (data.appointments && data.appointments.length > 0) {
-        const mappedAppointments = data.appointments.map((appt, index) => {
-          
-          const extractDate = (dateString) => {
-            if (!dateString) return null;
-            if (dateString.includes('T')) return dateString.split('T')[0];
-            if (dateString.includes(' ')) return dateString.split(' ')[0];
-            return dateString;
-          };
-          
-          const formatTimeToHHMM = (timeStr) => {
-            if (!timeStr) return '';
-            if (timeStr.includes(':')) {
-              const parts = timeStr.split(':');
-              if (parts.length >= 2) {
-                return `${parts[0]}:${parts[1]}`;
+        // Map the patient data to your form structure
+        const mappedPatientData = {
+          id: patientId,
+          uhidNo: patient.uhidNo || "",
+          patientFn: personal.firstName || "",
+          patientMn: personal.middleName || "",
+          patientLn: personal.lastName || "",
+          patientMobileNumber: personal.mobileNo || "",
+          patientEmailId: personal.email || "",
+          patientDob: personal.dob || "",
+          patientAge: personal.age || "",
+          patientGender: personal.gender ? { id: personal.gender } : "",
+          patientRelation: personal.relation ? { id: personal.relation } : "",
+          patientAddress1: address.address1 || "",
+          patientAddress2: address.address2 || "",
+          patientCity: address.city || "",
+          patientPincode: address.pinCode || "",
+          patientDistrict: address.district ? { id: address.district } : "",
+          patientState: address.state ? { id: address.state } : "",
+          patientCountry: address.country ? { id: address.country } : "",
+          nokFn: nok.firstName || "",
+          nokMn: nok.middleName || "",
+          nokLn: nok.lastName || "",
+          nokEmail: nok.email || "",
+          nokMobileNumber: nok.mobileNo || "",
+          nokAddress1: nok.address1 || "",
+          nokAddress2: nok.address2 || "",
+          nokCity: nok.city || "",
+          nokPincode: nok.pinCode || "",
+          nokDistrict: nok.district ? { id: nok.district } : "",
+          nokState: nok.state ? { id: nok.state } : "",
+          nokCountry: nok.country ? { id: nok.country } : "",
+          emerFn: emergency.firstName || "",
+          emerLn: emergency.lastName || "",
+          emerMobile: emergency.mobileNo || "",
+        };
+
+        // Update the patient detail form with mapped data
+        setPatientDetailForm(mappedPatientData);
+
+        // Handle appointments if exists
+        if (data.appointments && data.appointments.length > 0) {
+          const mappedAppointments = data.appointments.map((appt, index) => {
+            const extractDate = (dateString) => {
+              if (!dateString) return null;
+              if (dateString.includes('T')) return dateString.split('T')[0];
+              if (dateString.includes(' ')) return dateString.split(' ')[0];
+              return dateString;
+            };
+
+            const formatTimeToHHMM = (timeStr) => {
+              if (!timeStr) return '';
+              if (timeStr.includes(':')) {
+                const parts = timeStr.split(':');
+                if (parts.length >= 2) {
+                  return `${parts[0]}:${parts[1]}`;
+                }
+              }
+              return timeStr;
+            };
+
+            const startTime = formatTimeToHHMM(appt.tokenStartTime);
+            const endTime = formatTimeToHHMM(appt.tokenEndTime);
+
+            return {
+              id: index,
+              speciality: appt.specialityId?.toString() || "",
+              selDoctorId: appt.doctorId?.toString() || "",
+              selSession: appt.sessionId?.toString() || "",
+              selDate: extractDate(appt.visitDate),
+              departmentName: appt.specialityName || "",
+              doctorName: appt.doctorName || "",
+              sessionName: appt.sessionName || "",
+              visitId: appt.appointmentId || null,
+              tokenNo: appt.tokenNo || null,
+              tokenStartTime: startTime,
+              tokenEndTime: endTime,
+              selectedTimeSlot: startTime && endTime
+                ? `${startTime} - ${endTime}`
+                : ""
+            };
+          });
+
+          setAppointments(mappedAppointments);
+          setNextAppointmentId(mappedAppointments.length);
+          setAppointmentFlag(true);
+
+          // Fetch doctor data for each appointment
+          mappedAppointments.forEach(async (appt) => {
+            if (appt.speciality) {
+              try {
+                const doctorData = await getRequest(`${DOCTOR_BY_SPECIALITY}${appt.speciality}`);
+                if (doctorData.status === 200) {
+                  setDoctorDataMap(prev => ({
+                    ...prev,
+                    [appt.id]: doctorData.response
+                  }));
+                }
+              } catch (err) {
+                console.error(`Error fetching doctors for speciality ${appt.speciality}:`, err);
               }
             }
-            return timeStr;
-          };
-          
-          const startTime = formatTimeToHHMM(appt.tokenStartTime);
-          const endTime = formatTimeToHHMM(appt.tokenEndTime);
-          
-          return {
-            id: index,
-            speciality: appt.specialityId?.toString() || "",
-            selDoctorId: appt.doctorId?.toString() || "",
-            selSession: appt.sessionId?.toString() || "",
-            selDate: extractDate(appt.visitDate),
-            departmentName: appt.specialityName || "",
-            doctorName: appt.doctorName || "",
-            sessionName: appt.sessionName || "",
-            visitId: appt.appointmentId || null,
-            tokenNo: appt.tokenNo || null,
-            tokenStartTime: startTime,
-            tokenEndTime: endTime,
-            selectedTimeSlot: startTime && endTime
-              ? `${startTime} - ${endTime}`
-              : ""
-          };
-        });
+          });
+        } else {
+          setAppointments([{
+            id: 0,
+            speciality: "",
+            selDoctorId: "",
+            selSession: "",
+            departmentName: "",
+            doctorName: "",
+            sessionName: "",
+            visitId: null,
+            tokenNo: null,
+            tokenStartTime: "",
+            tokenEndTime: "",
+            selectedTimeSlot: ""
+          }]);
+          setNextAppointmentId(1);
+          setAppointmentFlag(false);
+        }
 
-        setAppointments(mappedAppointments);
-        setNextAppointmentId(mappedAppointments.length);
-        setAppointmentFlag(true);
+        setShowPatientDetails(true);
+        setShowDetails(true);
 
-        mappedAppointments.forEach(async (appt) => {
-          if (appt.speciality) {
-            try {
-              const doctorData = await getRequest(`${DOCTOR_BY_SPECIALITY}${appt.speciality}`);
-              if (doctorData.status === 200) {
-                setDoctorDataMap(prev => ({
-                  ...prev,
-                  [appt.id]: doctorData.response
-                }));
-              }
-            } catch (err) {
-              console.error(`Error fetching doctors for speciality ${appt.speciality}:`, err);
-            }
-          }
-        });
+        Swal.fire("Success", "Patient details loaded successfully", "success");
       } else {
-        setAppointments([{
-          id: 0,
-          speciality: "",
-          selDoctorId: "",
-          selSession: "",
-          departmentName: "",
-          doctorName: "",
-          sessionName: "",
-          visitId: null,
-          tokenNo: null,
-          tokenStartTime: "",
-          tokenEndTime: "",
-          selectedTimeSlot: ""
-        }]);
-        setNextAppointmentId(1);
-        setAppointmentFlag(false);
+        Swal.fire("Error", response.message || "Unable to load patient details", "error");
       }
-
-      setShowPatientDetails(true);
-      setShowDetails(true);
-
-      Swal.fire("Loaded", "Patient details loaded successfully", "success");
-    } else {
-      Swal.fire("Error", response.message || "Unable to load patient details", "error");
+    } catch (err) {
+      console.error(err);
+      Swal.fire("Error", "Unable to load patient details", "error");
     }
-  } catch (err) {
-    console.error(err);
-    Swal.fire("Error", "Unable to load patient details", "error");
-  }
-};
+  };
 
   async function fetchGenderData() {
     setLoading(true);
@@ -1216,13 +1195,12 @@ const handleEdit = async (patient) => {
         const extension = strValue.includes("image/png")
           ? "png"
           : strValue.includes("image/jpeg")
-          ? "jpg"
-          : strValue.includes("image/gif")
-          ? "gif"
-          : "img";
-        return `patient_${
-          patientDetailForm.id || "new"
-        }_${timestamp}.${extension}`;
+            ? "jpg"
+            : strValue.includes("image/gif")
+              ? "gif"
+              : "img";
+        return `patient_${patientDetailForm.id || "new"
+          }_${timestamp}.${extension}`;
       }
 
       if (strValue.includes("http") && strValue.length > 200) {
@@ -1232,7 +1210,7 @@ const handleEdit = async (patient) => {
           const filename =
             pathname.split("/").pop() || `image_${new Date().getTime()}.jpg`;
           return filename.substring(0, defaultMaxLength);
-        } catch (e) {}
+        } catch (e) { }
       }
 
       return strValue.length > defaultMaxLength
@@ -1245,8 +1223,7 @@ const handleEdit = async (patient) => {
 
       if (value && String(value).length > 255 && strValue.length === 255) {
         console.warn(
-          `⚠️ Field ${context}.${fieldName} was truncated from ${
-            String(value).length
+          `⚠️ Field ${context}.${fieldName} was truncated from ${String(value).length
           } to 255 characters`
         );
         console.warn(`Original value start:`, String(value).substring(0, 100));
@@ -1380,32 +1357,32 @@ const handleEdit = async (patient) => {
     // 3. Prepare visits array
     const visitsArray = appointmentFlag
       ? appointments
-          .filter(
-            (appt) => appt.speciality && appt.selDoctorId && appt.selSession
-          )
-          .map((appt) => {
-            const startTime = toInstant(appt.selDate, appt.tokenStartTime);
-            const endTime = toInstant(appt.selDate, appt.tokenEndTime);
+        .filter(
+          (appt) => appt.speciality && appt.selDoctorId && appt.selSession
+        )
+        .map((appt) => {
+          const startTime = toInstant(appt.selDate, appt.tokenStartTime);
+          const endTime = toInstant(appt.selDate, appt.tokenEndTime);
 
-            return {
-              id: appt.visitId || null,
-              tokenNo: appt.tokenNo || null,
-              tokenStartTime: startTime,
-              tokenEndTime: endTime,
-              visitDate: startTime,
-              departmentId: toNumber(appt.speciality),
-              doctorId: toNumber(appt.selDoctorId),
-              doctorName: appt.doctorName || "",
-              sessionId: toNumber(appt.selSession),
-              hospitalId: hospitalId,
-              priority: null,
-              billingStatus: "Pending",
-              patientId: toNumber(patientDetailForm.id),
-              iniDoctorId: toNumber(appt.selDoctorId),
-              visitType: "F",
-              lastChgBy: username,
-            };
-          })
+          return {
+            id: appt.visitId || null,
+            tokenNo: appt.tokenNo || null,
+            tokenStartTime: startTime,
+            tokenEndTime: endTime,
+            visitDate: startTime,
+            departmentId: toNumber(appt.speciality),
+            doctorId: toNumber(appt.selDoctorId),
+            doctorName: appt.doctorName || "",
+            sessionId: toNumber(appt.selSession),
+            hospitalId: hospitalId,
+            priority: null,
+            billingStatus: "Pending",
+            patientId: toNumber(patientDetailForm.id),
+            iniDoctorId: toNumber(appt.selDoctorId),
+            visitType: "F",
+            lastChgBy: username,
+          };
+        })
       : [];
 
     // 4. Create the final request and apply automatic validation
@@ -1486,9 +1463,8 @@ const handleEdit = async (patient) => {
 
   // Pagination calculations
   const filteredPatients = patients.filter((patient) => {
-    const fullName = `${patient.patientFn || ""} ${patient.patientMn || ""} ${
-      patient.patientLn || ""
-    }`.toLowerCase();
+    const fullName = `${patient.patientFn || ""} ${patient.patientMn || ""} ${patient.patientLn || ""
+      }`.toLowerCase();
     const mobile = patient.patientMobileNumber || "";
 
     return (
@@ -1587,12 +1563,12 @@ const handleEdit = async (patient) => {
         prev.map((app, index) =>
           index === appointmentIndex
             ? {
-                ...app,
-                tokenNo,
-                tokenStartTime: formattedStartTime,
-                tokenEndTime: formattedEndTime,
-                selectedTimeSlot: `${formattedStartTime} - ${formattedEndTime}`,
-              }
+              ...app,
+              tokenNo,
+              tokenStartTime: formattedStartTime,
+              tokenEndTime: formattedEndTime,
+              selectedTimeSlot: `${formattedStartTime} - ${formattedEndTime}`,
+            }
             : app
         )
       );
@@ -1641,17 +1617,60 @@ const handleEdit = async (patient) => {
     );
   }
 
-  const fetchTokenAvailability = async (appointmentIndex = 0) => {
+  const onDateChange = (index, date) => {
+    if (!date) return;
+
+    // 1. Convert Date Object to YYYY-MM-DD safely
+    let dateString = "";
+    if (date instanceof Date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      dateString = `${year}-${month}-${day}`;
+    } else {
+      dateString = date.split("T")[0];
+    }
+
+    // 2. Validate using the fresh variable
+    if (isPastDate(dateString)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid Date",
+        text: "You cannot select a past date",
+        timer: 2000,
+      });
+      setDateResetKey((prev) => prev + 1);
+      return;
+    }
+
+    // 3. Get current appointment details
+    const currentAppointment = appointments[index];
+
+    // 4. Immediately fetch tokens with new date if all fields are selected
+    if (currentAppointment.speciality &&
+      currentAppointment.selDoctorId &&
+      currentAppointment.selSession) {
+      fetchTokenAvailability(index, dateString);
+    }
+
+    // 5. Update State
+    handleAppointmentChange(index, "selDate", dateString);
+  };
+
+  const fetchTokenAvailability = async (appointmentIndex = 0, dateOverride = null) => {
     try {
       setLoading(true);
 
       const targetAppointment = appointments[appointmentIndex];
 
+      // Use the dateOverride if provided, otherwise use the stored date
+      const selectedDate = dateOverride || targetAppointment.selDate;
+
       if (
         !targetAppointment.speciality ||
         !targetAppointment.selDoctorId ||
         !targetAppointment.selSession ||
-        !targetAppointment.selDate
+        !selectedDate
       ) {
         Swal.fire({
           icon: "warning",
@@ -1664,7 +1683,7 @@ const handleEdit = async (patient) => {
       const params = new URLSearchParams({
         deptId: targetAppointment.speciality,
         doctorId: targetAppointment.selDoctorId,
-        appointmentDate: targetAppointment.selDate,
+        appointmentDate: selectedDate, // Use the new date
         sessionId: targetAppointment.selSession,
       }).toString();
 
@@ -1676,15 +1695,14 @@ const handleEdit = async (patient) => {
         showTokenPopup(
           data.response,
           targetAppointment.sessionName,
-          targetAppointment.selDate,
+          selectedDate, // Pass the correct date
           appointmentIndex
         );
       } else {
         Swal.fire({
           icon: "error",
           title: "No Tokens Available",
-          text:
-            data.message || "No tokens available for the selected criteria.",
+          text: data.message || "No tokens available for the selected criteria.",
         });
         setAvailableTokens([]);
       }
@@ -1730,30 +1748,29 @@ const handleEdit = async (patient) => {
           <h6 class="fw-bold mb-2 text-primary">${sessionName} Session</h6>
           <div class="row row-cols-4 g-1" id="token-slots">
             ${tokens
-              .map((token) => {
-                // Format display times to remove seconds
-                const formatDisplayTime = (timeStr) => {
-                  if (!timeStr) return "";
-                  if (timeStr.includes(":")) {
-                    const parts = timeStr.split(":");
-                    if (parts.length >= 2) {
-                      return `${parts[0]}:${parts[1]}`; // HH:mm
-                    }
-                  }
-                  return timeStr;
-                };
+          .map((token) => {
+            // Format display times to remove seconds
+            const formatDisplayTime = (timeStr) => {
+              if (!timeStr) return "";
+              if (timeStr.includes(":")) {
+                const parts = timeStr.split(":");
+                if (parts.length >= 2) {
+                  return `${parts[0]}:${parts[1]}`; // HH:mm
+                }
+              }
+              return timeStr;
+            };
 
-                const displayStart = formatDisplayTime(token.startTime);
-                const displayEnd = formatDisplayTime(token.endTime);
+            const displayStart = formatDisplayTime(token.startTime);
+            const displayEnd = formatDisplayTime(token.endTime);
 
-                return `
+            return `
                 <div class="col">
                   <button type="button" 
-                          class="btn ${
-                            token.available
-                              ? "btn-outline-success"
-                              : "btn-outline-secondary disabled"
-                          } w-100 d-flex flex-column align-items-center justify-content-center p-1" 
+                          class="btn ${token.available
+                ? "btn-outline-success"
+                : "btn-outline-secondary disabled"
+              } w-100 d-flex flex-column align-items-center justify-content-center p-1" 
                           style="height: 65px; font-size: 0.75rem;"
                           data-token-id="${token.tokenNo || ""}"
                           data-token-starttime="${token.startTime || ""}"
@@ -1761,16 +1778,15 @@ const handleEdit = async (patient) => {
                           ${!token.available ? "disabled" : ""}>
                     <span class="fw-bold">${displayStart}</span>
                     <span>${displayEnd}</span>
-                    ${
-                      !token.available
-                        ? '<span class="badge bg-danger mt-0" style="font-size: 0.6rem;">Booked</span>'
-                        : ""
-                    }
+                    ${!token.available
+                ? '<span class="badge bg-danger mt-0" style="font-size: 0.6rem;">Booked</span>'
+                : ""
+              }
                   </button>
                 </div>
               `;
-              })
-              .join("")}
+          })
+          .join("")}
           </div>
         </div>
       </div>
@@ -1810,7 +1826,8 @@ const handleEdit = async (patient) => {
     });
   };
 
-  if (showPatientDetails) {  return (
+  if (showPatientDetails) {
+    return (
       <div className="body d-flex py-3">
         <div className="container-xxl">
           <div className="row align-items-center">
@@ -1968,9 +1985,8 @@ const handleEdit = async (patient) => {
                               type="date"
                               id="dob"
                               name="dob"
-                              className={`form-control ${
-                                errors.patientDob ? "is-invalid" : ""
-                              }`}
+                              className={`form-control ${errors.patientDob ? "is-invalid" : ""
+                                }`}
                               value={patientDetailForm.patientDob}
                               max={new Date().toISOString().split("T")[0]}
                               onChange={handleChange}
@@ -1988,9 +2004,8 @@ const handleEdit = async (patient) => {
                               type="text"
                               id="age"
                               name="age"
-                              className={`form-control ${
-                                errors.age ? "is-invalid" : ""
-                              }`}
+                              className={`form-control ${errors.age ? "is-invalid" : ""
+                                }`}
                               value={patientDetailForm.patientAge || ""}
                               onChange={handleChange}
                               placeholder="Enter Age"
@@ -2000,9 +2015,8 @@ const handleEdit = async (patient) => {
                             <label className="form-label">Email </label>
                             <input
                               type="email"
-                              className={`form-control ${
-                                errors.patientEmailId ? "is-invalid" : ""
-                              }`}
+                              className={`form-control ${errors.patientEmailId ? "is-invalid" : ""
+                                }`}
                               placeholder="Enter Email Address"
                               name="patientEmailId"
                               value={patientDetailForm.patientEmailId || ""}
@@ -2128,7 +2142,7 @@ const handleEdit = async (patient) => {
                                 value: selectedCountry,
                               },
                             });
-                            fetchStates(selectedCountry.id); 
+                            fetchStates(selectedCountry.id);
                           }}
                         >
                           <option value="">Select Country</option>
@@ -2342,7 +2356,7 @@ const handleEdit = async (patient) => {
                                 value: selectedCountry,
                               },
                             });
-                            fetchNokStates(selectedCountry.id); 
+                            fetchNokStates(selectedCountry.id);
                           }}
                         >
                           <option value="">Select Country</option>
@@ -2524,9 +2538,8 @@ const handleEdit = async (patient) => {
                           </label>
                           <input
                             type="number"
-                            className={`form-control ${
-                              errors.height ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.height ? "is-invalid" : ""
+                              }`}
                             placeholder="Height"
                             name="height"
                             value={patientDetailForm.height}
@@ -2547,9 +2560,8 @@ const handleEdit = async (patient) => {
                           </label>
                           <input
                             type="text"
-                            className={`form-control ${
-                              errors.weight ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.weight ? "is-invalid" : ""
+                              }`}
                             placeholder="Weight"
                             name="weight"
                             value={patientDetailForm.weight}
@@ -2570,9 +2582,8 @@ const handleEdit = async (patient) => {
                           </label>
                           <input
                             type="text"
-                            className={`form-control ${
-                              errors.temperature ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.temperature ? "is-invalid" : ""
+                              }`}
                             placeholder="Temperature"
                             name="temperature"
                             value={patientDetailForm.temperature}
@@ -2593,9 +2604,8 @@ const handleEdit = async (patient) => {
                           </label>
                           <input
                             type="text"
-                            className={`form-control ${
-                              errors.systolicBP ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.systolicBP ? "is-invalid" : ""
+                              }`}
                             placeholder="Systolic"
                             name="systolicBP"
                             value={patientDetailForm.systolicBP}
@@ -2609,9 +2619,8 @@ const handleEdit = async (patient) => {
                           )}
                           <input
                             type="text"
-                            className={`form-control ${
-                              errors.diastolicBP ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.diastolicBP ? "is-invalid" : ""
+                              }`}
                             placeholder="Diastolic"
                             name="diastolicBP"
                             value={patientDetailForm.diastolicBP}
@@ -2632,9 +2641,8 @@ const handleEdit = async (patient) => {
                           </label>
                           <input
                             type="text"
-                            className={`form-control ${
-                              errors.pulse ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.pulse ? "is-invalid" : ""
+                              }`}
                             placeholder="Pulse"
                             name="pulse"
                             value={patientDetailForm.pulse}
@@ -2653,9 +2661,8 @@ const handleEdit = async (patient) => {
                           <label className="form-label me-2">BMI</label>
                           <input
                             type="text"
-                            className={`form-control ${
-                              errors.bmi ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.bmi ? "is-invalid" : ""
+                              }`}
                             placeholder="BMI"
                             name="bmi"
                             value={patientDetailForm.bmi}
@@ -2674,9 +2681,8 @@ const handleEdit = async (patient) => {
                           <label className="form-label me-2">RR</label>
                           <input
                             type="text"
-                            className={`form-control ${
-                              errors.rr ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.rr ? "is-invalid" : ""
+                              }`}
                             placeholder="RR"
                             name="rr"
                             value={patientDetailForm.rr}
@@ -2695,9 +2701,8 @@ const handleEdit = async (patient) => {
                           <label className="form-label me-2">SpO2</label>
                           <input
                             type="text"
-                            className={`form-control ${
-                              errors.spo2 ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.spo2 ? "is-invalid" : ""
+                              }`}
                             placeholder="SpO2"
                             name="spo2"
                             value={patientDetailForm.spo2}
@@ -2864,11 +2869,9 @@ const handleEdit = async (patient) => {
                                     key={doctor.userId}
                                     value={doctor.userId}
                                   >
-                                    {`${doctor.firstName} ${
-                                      doctor.middleName ? doctor.middleName : ""
-                                    } ${
-                                      doctor.lastName ? doctor.lastName : ""
-                                    }`}
+                                    {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""
+                                      } ${doctor.lastName ? doctor.lastName : ""
+                                      }`}
                                   </option>
                                 ))}
                               </select>
@@ -2900,64 +2903,14 @@ const handleEdit = async (patient) => {
 
                             {/* Add Date Picker and Show Token Button */}
                             <div className="d-flex align-items-center col-md-4">
-                              <div className="col-md-9">
+                              <div className="col-md-12">
                                 <DatePicker
                                   key={dateResetKey + "-" + index}
                                   value={appointment.selDate || null}
-                                  onChange={(date) => {
-                                    if (isPastDate(date)) {
-                                      Swal.fire({
-                                        icon: "warning",
-                                        title: "Invalid Date",
-                                        text: "You cannot select a past date",
-                                        timer: 2000,
-                                      });
-                                      handleAppointmentChange(
-                                        index,
-                                        "selDate",
-                                        ""
-                                      );
-                                      setDateResetKey((prev) => prev + 1);
-                                      return;
-                                    }
-                                    handleAppointmentChange(
-                                      index,
-                                      "selDate",
-                                      date
-                                    );
-                                  }}
+                                  onChange={(date) => onDateChange(index, date)}
                                   placeholder="Select Date"
                                   className="form-control"
                                 />
-                              </div>
-                              <div className="col-md-4 align-items-center mt-4 ms-2">
-                                <button
-                                  type="button"
-                                  className="btn btn-primary btn-sm"
-                                  onClick={() => {
-                                    if (
-                                      appointment.speciality &&
-                                      appointment.selDoctorId &&
-                                      appointment.selSession
-                                    ) {
-                                      fetchTokenAvailability(index);
-                                    } else {
-                                      Swal.fire({
-                                        icon: "warning",
-                                        title: "Incomplete Details",
-                                        text: "Please select Speciality, Doctor, and Session first.",
-                                      });
-                                    }
-                                  }}
-                                  disabled={
-                                    !appointment.speciality ||
-                                    !appointment.selDoctorId ||
-                                    !appointment.selSession ||
-                                    !appointment.selDate
-                                  }
-                                >
-                                  Show Token
-                                </button>
                               </div>
                             </div>
 
@@ -3125,9 +3078,8 @@ const handleEdit = async (patient) => {
                             {currentItems.map((patient, index) => (
                               <tr key={index} className="table-row-hover">
                                 <td>
-                                  {`${patient.patientFn || ""} ${
-                                    patient.patientMn || ""
-                                  } ${patient.patientLn || ""}`.trim()}
+                                  {`${patient.patientFn || ""} ${patient.patientMn || ""
+                                    } ${patient.patientLn || ""}`.trim()}
                                 </td>
                                 <td>{patient.patientMobileNumber || ""}</td>
                                 <td>{patient.uhidNo || ""}</td>
@@ -3168,9 +3120,8 @@ const handleEdit = async (patient) => {
                     </div>
                     <ul className="pagination mb-0">
                       <li
-                        className={`page-item ${
-                          currentPage === 1 ? "disabled" : ""
-                        }`}
+                        className={`page-item ${currentPage === 1 ? "disabled" : ""
+                          }`}
                       >
                         <button
                           type="button"
@@ -3183,9 +3134,8 @@ const handleEdit = async (patient) => {
                       </li>
                       {renderPagination()}
                       <li
-                        className={`page-item ${
-                          currentPage === totalPages ? "disabled" : ""
-                        }`}
+                        className={`page-item ${currentPage === totalPages ? "disabled" : ""
+                          }`}
                       >
                         <button
                           type="button"

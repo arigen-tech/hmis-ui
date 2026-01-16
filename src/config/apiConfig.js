@@ -1,6 +1,6 @@
- export const API_HOST = 'http://103.133.215.182:8081/hims';
+//  export const API_HOST = 'http://103.133.215.182:8081/hims';
 
-//  export const API_HOST = 'http://localhost:8080';
+ export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://192.168.1.8:8080';
 
 //export const API_HOST = 'http://localhost:8080';
@@ -153,6 +153,8 @@ export const SET_VITALS=`/patient/saveVitalDetails`;
 export const GET_WAITING_LIST=`/patient/getWaitingList`;
 export const GET_AVAILABILITY_TOKENS = `/doctor/checkAllAvailableTokens`;
 export const GET_APPOINTMENT_HISTORY = `/mobileController/getAppointmentHistory`;
+export const CANCEL_APPOINTMENT = "/patient/cancel-appointment";
+export const RESCHEDULE_APPOINTMENT = "/patient/reschedule_Appointment"
 
 
 
