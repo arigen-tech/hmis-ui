@@ -2,9 +2,7 @@ import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-// import { MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN, MAS_DRUG_SCHEDULE } from "../../../config/apiConfig";
 import { MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN } from "../../../config/apiConfig";
-
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const DrugMaster = () => {
@@ -22,13 +20,10 @@ const DrugMaster = () => {
         reorderLevel: "",
         reorderLevelStore: "",
         hsnCode: "",
-        noOfDays: "",
         drugSchedule: "",
         isGeneric: "",
-        dosage: "",
         facilityCode: "",
         dangerousDrug: false,
-        inactiveForEntry: false,
     })
     const [popupMessage, setPopupMessage] = useState(null)
     const [drugs, setDrugs] = useState([])
@@ -230,21 +225,6 @@ const DrugMaster = () => {
         }
     };
 
-    // const fetchDrugScheduleData = async () => {
-    //     try {
-    //         const data = await getRequest(`${MAS_DRUG_SCHEDULE}/getAll/1`);
-    //         if (data.status === 200 && Array.isArray(data.response)) {
-    //             setDrugScheduleData(data.response);
-    //         } else {
-    //             setDrugScheduleData([]);
-    //             console.error("Unexpected API response format for drug schedule:", data);
-    //         }
-    //     } catch (error) {
-    //         console.error("Error fetching drug schedule data:", error);
-    //         setDrugScheduleData([]);
-    //     }
-    // };
-
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target
         const updatedFormData = {
@@ -299,13 +279,10 @@ const DrugMaster = () => {
                 reorderLevel: drug.reOrderLevelDispensary?.toString() || "",
                 reorderLevelStore: drug.reOrderLevelStore?.toString() || "",
                 hsnCode: drug.hsnCode || "",
-                noOfDays: drug.noOfDays?.toString() || "",
                 drugSchedule: drug.masDrugScheduleRule || "",
                 isGeneric: drug.isGeneric || "",
-                dosage: drug.dosage || "",
                 facilityCode: drug.facilityCode || "",
                 dangerousDrug: drug.dangerousDrug || false,
-                inactiveForEntry: drug.inactiveForEntry || false,
             });
 
             // Then fetch dependent data
@@ -347,13 +324,10 @@ const DrugMaster = () => {
             reorderLevel: "",
             reorderLevelStore: "",
             hsnCode: "",
-            noOfDays: "",
             drugSchedule: "",
             isGeneric: "",
-            dosage: "",
             facilityCode: "",
             dangerousDrug: false,
-            inactiveForEntry: false,
         });
     }
 
@@ -382,13 +356,10 @@ const DrugMaster = () => {
                 reOrderLevelDispensary: Number(formData.reorderLevel) || 0,
                 reOrderLevelStore: Number(formData.reorderLevelStore) || 0,
                 hsnCode: formData.hsnCode || "",
-                noOfDays: Number(formData.noOfDays) || 0,
                 masDrugScheduleRule: formData.drugSchedule || "",
                 isGeneric: formData.isGeneric || "",
-                dosage: formData.dosage || "",
                 facilityCode: formData.facilityCode,
                 dangerousDrug: formData.dangerousDrug,
-                inactiveForEntry: formData.inactiveForEntry,
                 status: "y"
             };
 
@@ -447,13 +418,10 @@ const DrugMaster = () => {
             reorderLevel: "",
             reorderLevelStore: "",
             hsnCode: "",
-            noOfDays: "",
             drugSchedule: "",
             isGeneric: "",
-            dosage: "",
             facilityCode: "",
             dangerousDrug: false,
-            inactiveForEntry: false,
         });
     };
 
@@ -500,7 +468,7 @@ const DrugMaster = () => {
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
                         <div className="card-header d-flex justify-content-between align-items-center">
-                            <h4 className="card-title p-2">Item Drug Master</h4>
+                            <h4 className="card-title p-2">Drug Master</h4>
                             {loading && <LoadingScreen />}
 
                             <div className="d-flex justify-content-between align-items-center">
@@ -852,31 +820,6 @@ const DrugMaster = () => {
                                         </div>
 
                                         <div className="form-group col-md-4 mt-3">
-                                            <label>Dosage</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                placeholder="Dosage"
-                                                name="dosage"
-                                                value={formData.dosage}
-                                                onChange={handleInputChange}
-                                            />
-                                        </div>
-
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>No of Days</label>
-                                            <input
-                                                type="number"
-                                                className="form-control"
-                                                placeholder="No of Days"
-                                                name="noOfDays"
-                                                value={formData.noOfDays}
-                                                onChange={handleInputChange}
-                                                min="0"
-                                            />
-                                        </div>
-
-                                        <div className="form-group col-md-4 mt-3">
                                             <label>Drug Schedule</label>
                                             <select
                                                 className="form-select"
@@ -927,8 +870,8 @@ const DrugMaster = () => {
 
                                         <div className="form-group col-md-6 mt-3">
                                             <label>Options</label>
-                                            <div className="form-control d-flex align-items-center">
-                                                <div className="form-check me-4">
+                                            <div className="form-control">
+                                                <div className="form-check">
                                                     <input
                                                         className="form-check-input"
                                                         type="checkbox"
@@ -939,19 +882,6 @@ const DrugMaster = () => {
                                                     />
                                                     <label className="form-check-label" htmlFor="dangerousDrug">
                                                         Dangerous Drug
-                                                    </label>
-                                                </div>
-                                                <div className="form-check">
-                                                    <input
-                                                        className="form-check-input"
-                                                        type="checkbox"
-                                                        id="inactiveForEntry"
-                                                        name="inactiveForEntry"
-                                                        checked={formData.inactiveForEntry}
-                                                        onChange={handleInputChange}
-                                                    />
-                                                    <label className="form-check-label" htmlFor="inactiveForEntry">
-                                                        Inactive for entry
                                                     </label>
                                                 </div>
                                             </div>
