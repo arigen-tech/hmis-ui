@@ -168,6 +168,7 @@ import EarRinneMaster from './Views/Masters/EarRinneMaster';
 import EarWeberMaster from './Views/Masters/EarWeberMaster';
 import EntMasSeptum from './Views/Masters/EntMasSeptum';
 import EntMasMucosaMaster from './Views/Masters/EntMasMucosaMaster';
+import NonDrugMaster from './Views/Stores/NondrugMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -369,6 +370,7 @@ function App() {
                 <Route path="/EarWeberMaster" element={<EarWeberMaster/>} />
                 <Route path="/EntMasSeptum" element={<EntMasSeptum/>} />
                 <Route path="/EntMasMucosaMaster" element={<EntMasMucosaMaster/>} />
+                <Route path="/NonDrugMaster" element={<NonDrugMaster/>} />
               </Route>
             </Route>
 
