@@ -84,6 +84,8 @@ const BookingAppointmentHistory = () => {
   const [sessions, setSessions] = useState([]);
   const [selectedToken, setSelectedToken] = useState(null);
   const [isFetchingTokens, setIsFetchingTokens] = useState(false);
+  const [showTimeSlots, setShowTimeSlots] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState(null);
 
   // Cancel Popup States
   const [showCancelPopup, setShowCancelPopup] = useState(false);
@@ -95,7 +97,6 @@ const BookingAppointmentHistory = () => {
   // Functionality States
   const [newDate, setNewDate] = useState("");
   const [newSession, setNewSession] = useState("");
-  const [selectedSlot, setSelectedSlot] = useState(null);
 
   useEffect(() => {
     fetchSessions();
@@ -282,6 +283,8 @@ const BookingAppointmentHistory = () => {
     setNewSession(patientData.originalSessionId || "");
     setSelectedSlot(null);
     setSelectedToken(null);
+    setShowTimeSlots(false);
+    setAvailableTokens([]);
     setShowReschedulePopup(true);
   };
 
@@ -292,7 +295,7 @@ const BookingAppointmentHistory = () => {
     setShowCancelPopup(true);
   };
 
-  // Handle Date Change in Reschedule - Automatically fetch tokens
+  // Handle Date Change in Reschedule
   const handleDateChange = async (date) => {
     if (!date) return;
     const selectedDate = new Date(date);
@@ -318,17 +321,12 @@ const BookingAppointmentHistory = () => {
     setNewDate(date);
     setSelectedSlot(null);
     setSelectedToken(null);
+    setShowTimeSlots(false);
 
     if (newSession && selectedPatient) {
       await fetchTokensForDate(date);
     }
   };
-
-  useEffect(() => {
-    if (newDate && newSession && selectedPatient) {
-      fetchTokensForDate(newDate);
-    }
-  }, [newDate]);
 
   // Handle Session Change in Reschedule
   const handleSessionChange = async (sessionId) => {
@@ -351,6 +349,7 @@ const BookingAppointmentHistory = () => {
       setNewSession(String(sessionId));
       setSelectedSlot(null);
       setSelectedToken(null);
+      setShowTimeSlots(false);
 
       // Automatically fetch tokens if date is already selected
       if (newDate) {
@@ -360,6 +359,7 @@ const BookingAppointmentHistory = () => {
       setNewSession("");
       setSelectedSlot(null);
       setSelectedToken(null);
+      setShowTimeSlots(false);
     }
   };
 
@@ -382,24 +382,16 @@ const BookingAppointmentHistory = () => {
 
       if (res.status === 200 && Array.isArray(res.response)) {
         setAvailableTokens(res.response);
-        if (res.response.length > 0) {
-          showTokenPopup(res.response);
-        } else {
-          Swal.fire({
-            icon: "info",
-            title: "No Tokens Available",
-            text: "No tokens are available for the selected date and session.",
-            timer: 2000,
-          });
-        }
+        setShowTimeSlots(true);
       } else {
         Swal.fire({
-          icon: "error",
+          icon: "info",
           title: "No Tokens Available",
           text: res.message || "No tokens available for the selected criteria.",
           timer: 2000,
         });
         setAvailableTokens([]);
+        setShowTimeSlots(false);
       }
     } catch (error) {
       console.error("Error fetching token availability:", error);
@@ -409,6 +401,8 @@ const BookingAppointmentHistory = () => {
         text: "Failed to fetch token availability. Please try again.",
         timer: 2000,
       });
+      setAvailableTokens([]);
+      setShowTimeSlots(false);
     } finally {
       setLoadingTokens(false);
       setIsFetchingTokens(false);
@@ -434,24 +428,16 @@ const BookingAppointmentHistory = () => {
 
       if (res.status === 200 && Array.isArray(res.response)) {
         setAvailableTokens(res.response);
-        if (res.response.length > 0) {
-          showTokenPopup(res.response);
-        } else {
-          Swal.fire({
-            icon: "info",
-            title: "No Tokens Available",
-            text: "No tokens are available for the selected date and session.",
-            timer: 2000,
-          });
-        }
+        setShowTimeSlots(true);
       } else {
         Swal.fire({
-          icon: "error",
+          icon: "info",
           title: "No Tokens Available",
           text: res.message || "No tokens available for the selected criteria.",
           timer: 2000,
         });
         setAvailableTokens([]);
+        setShowTimeSlots(false);
       }
     } catch (error) {
       console.error("Error fetching token availability:", error);
@@ -461,111 +447,40 @@ const BookingAppointmentHistory = () => {
         text: "Failed to fetch token availability. Please try again.",
         timer: 2000,
       });
+      setAvailableTokens([]);
+      setShowTimeSlots(false);
     } finally {
       setLoadingTokens(false);
       setIsFetchingTokens(false);
     }
   };
 
-  // Show Token Popup
-  const showTokenPopup = (tokens = []) => {
-    if (tokens.length === 0) {
-      Swal.fire({
-        icon: "info",
-        title: "No Tokens Available",
-        text: "No tokens are available for the selected session.",
-        timer: 2000,
-      });
-      return;
-    }
+  // Handle token selection
+  const handleTokenSelect = (token) => {
+    const startHHMM = formatTimeToHHMM(token.startTime);
+    const endHHMM = formatTimeToHHMM(token.endTime);
+    const slot = `${startHHMM}-${endHHMM}`;
 
-    const rawDate = newDate;
-    const formattedDate = rawDate.split('-').reverse().join('/');
-    const selectedSession = sessions.find(s => String(s.id) === String(newSession));
-    const sessionName = selectedSession?.sessionName || "Selected Session";
+    setSelectedSlot({
+      tokenNo: token.tokenNo,
+      start: startHHMM,
+      end: endHHMM,
+      slot
+    });
+
+    setSelectedToken({
+      tokenNo: token.tokenNo,
+      tokenStartTime: token.startTime,
+      tokenEndTime: token.endTime,
+      timeSlot: slot
+    });
 
     Swal.fire({
-      title: `Available Time Slots`,
-      html: `
-        <div class="container-fluid">
-          <div class="text-center mb-3">
-            <h6 class="fw-bold text-muted mb-1">Available Time Slots</h6>
-            <p class="text-secondary small">
-              Date: ${formattedDate} | Session: ${sessionName}
-            </p>
-            <hr />
-            <p class="text-primary fw-bold small mb-2">${sessionName} Session</p>
-          </div>
-          <div class="row row-cols-4 g-2 justify-content-center" id="token-grid">
-            ${tokens.map((token) => {
-        const isAvailable = token.available;
-        const startTime = formatTimeToHHMM(token.startTime);
-        const endTime = formatTimeToHHMM(token.endTime);
-
-        return `
-                <div class="col">
-                  <button type="button" 
-                    class="btn ${isAvailable ? "btn-outline-success" : "btn-outline-secondary disabled"} 
-                    w-100 d-flex flex-column align-items-center justify-content-center" 
-                    style="height: 60px; font-size: 0.8rem; border-radius: 8px; border-width: 1.5px;"
-                    data-token-id="${token.tokenNo || ""}"
-                    data-token-start="${token.startTime}"
-                    data-token-end="${token.endTime}"
-                    ${!isAvailable ? "disabled" : ""}>
-                    <span class="fw-bold" style="color: ${isAvailable ? "#28a745" : "#6c757d"};">${startTime}</span>
-                    <span style="color: ${isAvailable ? "#28a745" : "#6c757d"}; opacity: 0.8;">${endTime}</span>
-                  </button>
-                </div>
-              `;
-      }).join("")}
-          </div>
-        </div>
-      `,
-      showCloseButton: true,
+      icon: "success",
+      title: "Time Slot Selected",
+      text: `Time slot ${startHHMM} to ${endHHMM} has been selected.`,
+      timer: 1500,
       showConfirmButton: false,
-      width: 600,
-      padding: "1.5rem",
-      customClass: {
-        title: 'fs-4 fw-bold text-dark opacity-75',
-      },
-      didOpen: () => {
-        document.querySelectorAll("#token-grid button:not([disabled])").forEach((btn) => {
-          btn.addEventListener("click", (e) => {
-            const el = e.currentTarget;
-            const tokenNo = el.getAttribute("data-token-id");
-            const start = el.getAttribute("data-token-start");
-            const end = el.getAttribute("data-token-end");
-
-            // Select token
-            const startHHMM = formatTimeToHHMM(start);
-            const endHHMM = formatTimeToHHMM(end);
-            const slot = `${startHHMM}-${endHHMM}`;
-
-            setSelectedSlot({
-              tokenNo,
-              start: startHHMM,
-              end: endHHMM,
-              slot
-            });
-
-            setSelectedToken({
-              tokenNo,
-              tokenStartTime: start,
-              tokenEndTime: end,
-              timeSlot: slot
-            });
-
-            Swal.close();
-            Swal.fire({
-              icon: "success",
-              title: "Time Slot Selected",
-              text: `Time slot ${startHHMM} to ${endHHMM} has been selected.`,
-              timer: 1500,
-              showConfirmButton: false,
-            });
-          });
-        });
-      },
     });
   };
 
@@ -624,6 +539,8 @@ const BookingAppointmentHistory = () => {
           setShowReschedulePopup(false);
           setSelectedToken(null);
           setSelectedSlot(null);
+          setShowTimeSlots(false);
+          setAvailableTokens([]);
           handleSearch(); // Refresh the list
         } else {
           throw new Error(res.message || "Server error");
@@ -880,6 +797,8 @@ const BookingAppointmentHistory = () => {
                     setSelectedToken(null);
                     setSelectedSlot(null);
                     setLoadingTokens(false);
+                    setShowTimeSlots(false);
+                    setAvailableTokens([]);
                   }}
                 ></button>
               </div>
@@ -978,7 +897,7 @@ const BookingAppointmentHistory = () => {
                         )}
                       </div>
 
-                      {/* Selected Time Slot */}
+                      {/* Selected Time Slot Display */}
                       <div className="col-md-12">
                         <label className="form-label">Selected Time Slot</label>
                         <input
@@ -987,7 +906,7 @@ const BookingAppointmentHistory = () => {
                           value={
                             selectedSlot
                               ? selectedSlot.slot
-                              : (selectedToken ? selectedToken.timeSlot : "Select a date and session to see available time slots")
+                              : (selectedToken ? selectedToken.timeSlot : "No time slot selected")
                           }
                           readOnly
                           style={{
@@ -995,13 +914,69 @@ const BookingAppointmentHistory = () => {
                             fontWeight: selectedSlot || selectedToken ? "bold" : "normal",
                           }}
                         />
-                        {loadingTokens && (
-                          <div className="text-info small mt-1">
-                            <span className="spinner-border spinner-border-sm me-1"></span>
-                            Fetching available time slots...
-                          </div>
-                        )}
                       </div>
+
+                      {/* Available Time Slots Section */}
+                      {showTimeSlots && newSession && newDate && (
+                        <div className="col-md-12 mt-3">
+                          <div className="card">
+                            <div className="card-header bg-light">
+                              <h6 className="mb-0 fw-bold">Available Time Slots</h6>
+                              <p className="mb-0 text-muted small">
+                                Date: {newDate.split('-').reverse().join('/')} | 
+                                Session: {sessions.find(s => String(s.id) === String(newSession))?.sessionName || "Selected Session"}
+                              </p>
+                            </div>
+                            <div className="card-body">
+                              {loadingTokens ? (
+                                <div className="text-center py-3">
+                                  <div className="spinner-border spinner-border-sm me-2"></div>
+                                  Loading time slots...
+                                </div>
+                              ) : availableTokens.length > 0 ? (
+                                <div>
+                                  <p className="text-primary fw-bold small mb-2">
+                                    {sessions.find(s => String(s.id) === String(newSession))?.sessionName || "Selected Session"} Session
+                                  </p>
+                                  <div className="row row-cols-4 g-2 justify-content-center">
+                                    {availableTokens.map((token, index) => {
+                                      const isAvailable = token.available;
+                                      const startTime = formatTimeToHHMM(token.startTime);
+                                      const endTime = formatTimeToHHMM(token.endTime);
+                                      const isSelected = selectedSlot?.tokenNo === token.tokenNo;
+
+                                      return (
+                                        <div className="col" key={index}>
+                                          <button
+                                            type="button"
+                                            className={`btn ${isSelected ? "btn-success" : (isAvailable ? "btn-outline-success" : "btn-outline-secondary disabled")} 
+                                              w-100 d-flex flex-column align-items-center justify-content-center`}
+                                            style={{
+                                              height: '60px',
+                                              fontSize: '0.8rem',
+                                              borderRadius: '8px',
+                                              borderWidth: isSelected ? '2px' : '1.5px'
+                                            }}
+                                            onClick={() => isAvailable && handleTokenSelect(token)}
+                                            disabled={!isAvailable}
+                                          >
+                                            <span className="fw-bold">{startTime}</span>
+                                            <span style={{ opacity: 0.8 }}>{endTime}</span>
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="alert alert-info text-center py-2">
+                                  No time slots available for this session and date.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1014,6 +989,8 @@ const BookingAppointmentHistory = () => {
                     setShowReschedulePopup(false);
                     setSelectedToken(null);
                     setSelectedSlot(null);
+                    setShowTimeSlots(false);
+                    setAvailableTokens([]);
                   }}
                   disabled={isFetchingTokens}
                 >
