@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
+import { MAS_OB_CONCEPTION } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
+import { getRequest, postRequest, putRequest } from "../../../service/apiService";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+
+
 
 const ObConceptionMaster = () => {
   const [data, setData] = useState([]);
@@ -10,11 +15,9 @@ const ObConceptionMaster = () => {
     newStatus: "",
     statusName: ""
   });
-
-  const [loading] = useState(false);
-
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    id: "",
+    // id: "",
     value: "",
     description: "",
   });
@@ -30,125 +33,191 @@ const ObConceptionMaster = () => {
   const [pageInput, setPageInput] = useState("");
   const itemsPerPage = 5;
 
-  // ================= SAMPLE DATA =================
+  const OB_CONCEPTION_CODE_MAX_LENGTH = 10;
+
+
+
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+
+    try {
+      const date = new Date(dateString);
+
+      if (isNaN(date.getTime())) {
+        return "N/A";
+      }
+
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "N/A";
+    }
+  };
+
+
+
+  //  fetchData
+
+  const fetchData = async (flag = 0) => {
+
+    try {
+      const response = await getRequest(`${MAS_OB_CONCEPTION}/getAll/0`);
+
+      if (response && response.response) {
+        setData(response.response);
+      }
+    } catch (error) {
+      console.error(error);
+      showPopup("Failed to fetch records", "error");
+    }
+  };
+
+
   useEffect(() => {
-    const sample = [
-      { id: 1, value: "Natural Conception", description: "Natural conception", status: "Y" },
-      { id: 2, value: "IVF", description: "In Vitro Fertilization", status: "Y" },
-      { id: 3, value: "IUI", description: "Intrauterine Insemination", status: "Y" },
-      { id: 4, value: "ICSI", description: "Intracytoplasmic Sperm Injection", status: "N" },
-      { id: 5, value: "Others", description: "Other conception method", status: "Y" },
-    ];
-    setData(sample);
+    fetchData();
   }, []);
 
+
   // ================= SEARCH =================
+
   const filteredData = data.filter((rec) =>
-    rec.value.toLowerCase().includes(searchQuery.toLowerCase())
+    (rec.conceptionType || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+
+
+
+  // const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
   const currentItems = filteredData.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
+
+  // ================= SEARCH =================
+
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
   };
+
+
 
   // ================= FORM =================
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     const updated = { ...formData, [id]: value };
     setFormData(updated);
-    setIsFormValid(
-      updated.id.toString().trim() !== "" &&
-      updated.value.trim() !== ""
-    );
+    setIsFormValid(updated.value.trim() != "");
   };
 
+
   const resetForm = () => {
-    setFormData({
-      id: "",
-      value: "",
-      description: "",
-    });
+    setFormData({ value: "", description: "", });
     setIsFormValid(false);
   };
 
   // ================= SAVE =================
-  const handleSave = (e) => {
+
+
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
 
-    if (editingRecord) {
-      setData(
-        data.map((rec) =>
-          rec.id === editingRecord.id
-            ? { ...rec, ...formData }
-            : rec
-        )
-      );
-      showPopup("Record updated successfully", "success");
-    } else {
-      setData([
-        ...data,
-        {
-          ...formData,
-          status: "Y",
-        },
-      ]);
-      showPopup("Record added successfully", "success");
+    const newValue = formData.value.trim().toLowerCase();
+
+    const duplicate = data.find((rec) =>
+      rec.conceptionType?.trim().toLowerCase() === newValue &&
+      (!editingRecord || rec.id !== editingRecord.id)
+    );
+
+    if (duplicate) {
+      showPopup("Conception with the same code or name  already exists!", "error");
+      return;
     }
 
-    resetForm();
-    setEditingRecord(null);
-    setShowForm(false);
+    try {
+      if (editingRecord) {
+        // UPDATE
+        await putRequest(`${MAS_OB_CONCEPTION}/update/${editingRecord.id}`, {
+          id: editingRecord.id,
+          conceptionType: formData.value,
+          description: formData.description || "",
+          status: editingRecord.status,
+        });
+        showPopup("Record updated successfully", "success");
+      } else {
+        // CREATE
+        await postRequest(`${MAS_OB_CONCEPTION}/create`, {
+          conceptionType: formData.value,
+          description: formData.description || "",
+          status: "Y",
+        });
+        showPopup("Record added successfully", "success");
+      }
+
+      fetchData();
+      resetForm();
+      setEditingRecord(null);
+      setShowForm(false);
+    } catch (error) {
+      showPopup("Something went wrong while saving the record", "error");
+    }
   };
 
+
+
   // ================= EDIT =================
-  const handleEdit = (rec) => {
-    setEditingRecord(rec);
-    setFormData(rec);
+
+  const handleEdit = (record) => {
+    setEditingRecord(record);
+    setFormData({
+      value: record.conceptionType,
+      description: record.description || "",
+    });
     setShowForm(true);
     setIsFormValid(true);
   };
+
+
 
   // ================= STATUS =================
   const handleSwitchChange = (id, newStatus, name) => {
     setConfirmDialog({ isOpen: true, id, newStatus, statusName: name });
   };
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed) {
-      setData(
-        data.map((rec) =>
-          rec.id === confirmDialog.id
-            ? { ...rec, status: confirmDialog.newStatus }
-            : rec
-        )
-      );
-      showPopup("Status updated successfully", "success");
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, id: null, newStatus: "", statusName: "", });
+      return;
     }
-    setConfirmDialog({ isOpen: false, id: null, newStatus: "", statusName: "" });
+    try {
+      await putRequest(
+        `${MAS_OB_CONCEPTION}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
+      );
+
+      showPopup("Status updated successfully", "success");
+      fetchData();
+    } catch (error) {
+      showPopup("Failed to update status", "error");
+    }
+    setConfirmDialog({
+      isOpen: false, id: null,  newStatus: "", statusName: "",});
+
   };
+
 
   const showPopup = (message, type) => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
-  // ================= PAGE NAV =================
-  const handlePageNavigation = () => {
-    const page = Number(pageInput);
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-    setPageInput("");
-  };
-
+  
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
@@ -164,14 +233,7 @@ const ObConceptionMaster = () => {
           <h4>Ob Conception Master</h4>
           <div className="d-flex">
             {!showForm && (
-              <input
-                className="form-control me-2"
-                style={{ width: "220px" }}
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={handleSearchChange}
-              />
-            )}
+              <input className="form-control me-2" style={{ width: "220px" }} placeholder="Search..." value={searchQuery} onChange={handleSearchChange}/>)}
 
             {!showForm ? (
               <>
@@ -202,35 +264,37 @@ const ObConceptionMaster = () => {
               <table className="table table-bordered table-hover">
                 <thead className="table-light">
                   <tr>
-                    <th>ID</th>
                     <th>Conception Type</th>
-                    <th>Description</th>
-                    <th>Active</th>
+                    <th>Last Updated Date</th>
+                    <th>status</th>
                     <th>Edit</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {currentItems.map((rec) => (
                     <tr key={rec.id}>
-                      <td>{rec.id}</td>
-                      <td>{rec.value}</td>
-                      <td>{rec.description}</td>
+                      <td>{rec.conceptionType}</td>
+                      <td>{formatDate(rec.lastUpdateDate)}</td>
+
                       <td>
                         <div className="form-check form-switch">
                           <input
                             className="form-check-input"
                             type="checkbox"
-                            checked={rec.status === "Y"}
+                            checked={rec.status === "y"}
                             onChange={() =>
                               handleSwitchChange(
                                 rec.id,
-                                rec.status === "Y" ? "N" : "Y",
-                                rec.value
+                                rec.status === "y" ? "n" : "y",
+                                rec.conceptionType
+
+
                               )
                             }
                           />
                           <label className="form-check-label ms-2">
-                            {rec.status === "Y" ? "Active" : "Inactive"}
+                            {rec.status === "y" ? "Active" : "Inactive"}
                           </label>
                         </div>
                       </td>
@@ -238,7 +302,7 @@ const ObConceptionMaster = () => {
                         <button
                           className="btn btn-success btn-sm"
                           onClick={() => handleEdit(rec)}
-                          disabled={rec.status !== "Y"}
+                          disabled={rec.status !== "y"}
                         >
                           <i className="fa fa-pencil"></i>
                         </button>
@@ -249,62 +313,22 @@ const ObConceptionMaster = () => {
               </table>
 
               {/* PAGINATION */}
-              <div className="d-flex justify-content-between align-items-center mt-3 flex-wrap">
-                <div>
-                  Total Records: {filteredData.length} | Page {currentPage} of {totalPages}
-                </div>
-
-                <nav>
-                  <ul className="pagination mb-0">
-                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                      <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)}>Prev</button>
-                    </li>
-                    {[...Array(totalPages).keys()].map((num) => (
-                      <li key={num} className={`page-item ${currentPage === num + 1 ? "active" : ""}`}>
-                        <button className="page-link" onClick={() => setCurrentPage(num + 1)}>
-                          {num + 1}
-                        </button>
-                      </li>
-                    ))}
-                    <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                      <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)}>Next</button>
-                    </li>
-                  </ul>
-                </nav>
-
-                <div className="d-flex align-items-center">
-                  <input
-                    type="number"
-                    min="1"
-                    max={totalPages}
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                    className="form-control form-control-sm me-2"
-                    style={{ width: "70px" }}
-                    placeholder="Go To page"
-                  />
-                  <button className="btn btn-sm btn-primary" onClick={handlePageNavigation}>
-                    Go
-                  </button>
-                </div>
-              </div>
+              {filteredData.length > 0 && (
+                <Pagination
+                  totalItems={filteredData.length}
+                  itemsPerPage={itemsPerPage}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
+              )}
             </>
           ) : (
             // FORM
             <form className="row" onSubmit={handleSave}>
               <div className="col-md-4">
-                <label>ID <span className="text-danger">*</span></label>
-                <input id="id" className="form-control" value={formData.id} onChange={handleInputChange} />
-              </div>
-
-              <div className="col-md-4">
                 <label>Conception Type <span className="text-danger">*</span></label>
-                <input id="value" className="form-control" value={formData.value} onChange={handleInputChange} />
-              </div>
+                <input id="value" className="form-control" value={formData.value} onChange={handleInputChange} maxLength={OB_CONCEPTION_CODE_MAX_LENGTH} required />
 
-              <div className="col-md-4">
-                <label>Description</label>
-                <input id="description" className="form-control" value={formData.description} onChange={handleInputChange} />
               </div>
 
               <div className="col-md-12 mt-4 text-end">
@@ -316,53 +340,37 @@ const ObConceptionMaster = () => {
 
           {popupMessage && <Popup {...popupMessage} />}
 
-          {/* CONFIRM MODAL */}
-          
-{/* ================= CONFIRM MODAL (UPPER LAYER) ================= */}
-{confirmDialog.isOpen && (
-  <>
-    {/* BACKDROP */}
-    <div
-      className="modal-backdrop fade show"
-      style={{ zIndex: 1040 }}
-    ></div>
 
-    {/* MODAL */}
-    <div
-      className="modal fade show d-block"
-      tabIndex="-1"
-      style={{ zIndex: 1050 }}
-    >
-      <div className="modal-dialog">
-        <div className="modal-content">
-          <div className="modal-body">
-            Are you sure you want to{" "}
-      
-              {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}
-            {" "}
-            <strong>{confirmDialog.statusName}</strong>?
-          </div>
+          {/* ================= CONFIRM MODAL (UPPER LAYER) ================= */}
+          {confirmDialog.isOpen && (
+            <>
+              <div
+                className="modal-backdrop fade show" style={{ zIndex: 1040 }} ></div>
+              <div
+                className="modal fade show d-block"
+                tabIndex="-1"
+                style={{ zIndex: 1050 }}
+              >
+                <div className="modal-dialog">
+                  <div className="modal-content">
+                    <div className="modal-body">
+                      Are you sure you want to{" "}
 
-          <div className="modal-footer">
-            <button
-              className="btn btn-secondary"
-              onClick={() => handleConfirm(false)}
-            >
-              No
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={() => handleConfirm(true)}
-            >
-              Yes
-            </button>
-          </div>
+                      {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}
+                      {" "}
+                      <strong>{confirmDialog.statusName}</strong>?
+                    </div>
 
-        </div>
-      </div>
-    </div>
-  </>
-)}
+                    <div className="modal-footer">
+                      <button className="btn btn-secondary" onClick={() => handleConfirm(false)}> No </button>
+                      <button className="btn btn-primary" onClick={() => handleConfirm(true)}> Yes </button>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
         </div>
       </div>

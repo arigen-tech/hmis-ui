@@ -1,21 +1,24 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import { MAS_CERVIX_POSITION } from "../../../config/apiConfig";
+import { getRequest, postRequest, putRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
-const CervixPosition= () => {
+
+
+const CervixPosition = () => {
   const [data, setData] = useState([]);
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
-    cervixPositionName: null,
+    cervixPosition: null,
     newStatus: "",
   });
 
   const [formData, setFormData] = useState({
-    cervixPositionCode: "",
-    cervixPositionName: "",
+    cervixPosition: "",
   });
 
   const [showForm, setShowForm] = useState(false);
@@ -29,65 +32,132 @@ const CervixPosition= () => {
   const [goPage, setGoPage] = useState("");
   const itemsPerPage = 5;
 
-  // ================= SAMPLE DATA =================
-  useEffect(() => {
-  setData([
-    { cervixPositionCode: "CP1", cervixPositionName: "Anterior", status: "Y" },
-    { cervixPositionCode: "CP2", cervixPositionName: "Posterior", status: "Y" },
-    { cervixPositionCode: "CP3", cervixPositionName: "Mid Position", status: "N" },
-    { cervixPositionCode: "CP4", cervixPositionName: "High Cervix", status: "Y" },
-    { cervixPositionCode: "CP5", cervixPositionName: "Low Cervix", status: "N" },
-  ]);
-}, []);
 
+  const MAS_CERVIX_POSITION_CODE_MAX_LENGTH = 10
+
+
+  //  dateTime
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+
+    try {
+      const date = new Date(dateString);
+
+      if (isNaN(date.getTime())) {
+        return "N/A";
+      }
+
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "N/A";
+    }
+  };
+
+
+
+
+  // fetchData
+
+  const fetchData = async (flag = 0) => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${MAS_CERVIX_POSITION}/getAll/${flag}`);
+      console.log(response);
+
+      if (response?.response) {
+        setData(response.response);
+      } else {
+        setData([]);
+      }
+    } catch (error) {
+      console.log(error);
+      showPopup("Failed to fetch records", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   // ================= SEARCH =================
   const filteredData = data.filter((rec) =>
-    rec.cervixPositionName.toLowerCase().includes(searchQuery.toLowerCase())
+    rec.cervixPosition.toLowerCase().includes(searchQuery.toLowerCase())
   );
-const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
-  const currentItems = filteredData.slice(indexOfFirst, indexOfLast)
 
- 
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+
+  const currentItems = filteredData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   // ================= FORM =================
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     const updated = { ...formData, [id]: value };
     setFormData(updated);
-    setIsFormValid(
-      updated.cervixPositionCode && updated.cervixPositionName
-    );
+    setIsFormValid(updated.cervixPosition.trim() !== "");
   };
 
   const resetForm = () => {
-    setFormData({ cervixPositionCode: "", cervixPositionName: "" });
+    setFormData({ cervixPosition: "" });
     setIsFormValid(false);
   };
 
   // ================= SAVE =================
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
 
-    if (editingRecord) {
-      setData(
-        data.map((rec) =>
-          rec.cervixPositionCode === editingRecord.cervixPositionCode
-            ? { ...rec, ...formData }
-            : rec
-        )
-      );
-      showPopup("Record updated successfully", "success");
-    } else {
-      setData([...data, { ...formData, status: "N" }]);
-      showPopup("Record added successfully", "success");
+    const newValue = formData.cervixPosition.trim().toLowerCase();
+
+
+    const duplicate = data.find((rec) =>
+      rec.cervixPosition?.trim().toLowerCase() === newValue &&
+      (!editingRecord || rec.id !== editingRecord.id)
+    );
+
+    if (duplicate) {
+      showPopup("cervix Position with the same code or name  already exists!", "error");
+      return;
     }
 
-    resetForm();
-    setEditingRecord(null);
-    setShowForm(false);
+    try {
+      if (editingRecord) {
+        await putRequest(`${MAS_CERVIX_POSITION}/update/${editingRecord.id}`, {
+          id: editingRecord.id,
+          cervixPosition: formData.cervixPosition,
+          status: editingRecord.status,
+        });
+
+        showPopup("Record updated successfully", "success");
+      } else {
+        await postRequest(`${MAS_CERVIX_POSITION}/create`, {
+          cervixPosition: formData.cervixPosition,
+          status: "Y",
+        });
+
+        showPopup("Record added successfully", "success");
+      }
+      fetchData();
+      resetForm();
+      setEditingRecord(null);
+      setShowForm(false);
+    } catch (error) {
+      console.log(error);
+
+    }
   };
+
 
   // ================= EDIT =================
   const handleEdit = (rec) => {
@@ -98,15 +168,15 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
   };
 
   // ================= STATUS =================
-  const handleSwitchChange = (cervixPositionName, newStatus) => {
-    setConfirmDialog({ isOpen: true, cervixPositionName, newStatus });
+  const handleSwitchChange = (cervixPosition, newStatus) => {
+    setConfirmDialog({ isOpen: true, cervixPosition, newStatus });
   };
 
   const handleConfirm = (confirmed) => {
     if (confirmed) {
       setData(
         data.map((rec) =>
-          rec.cervixPositionName === confirmDialog.cervixPositionName
+          rec.cervixPosition === confirmDialog.cervixPosition
             ? { ...rec, status: confirmDialog.newStatus }
             : rec
         )
@@ -115,7 +185,7 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
     }
     setConfirmDialog({
       isOpen: false,
-      cervixPositionName: null,
+      cervixPosition: null,
       newStatus: "",
     });
   };
@@ -127,6 +197,13 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
+    fetchData();
+  };
+
+  const handleGoPage = () => {
+    const page = Number(goPage);
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
+    setGoPage("");
   };
 
   // ================= UI =================
@@ -176,40 +253,42 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
               <table className="table table-bordered table-hover">
                 <thead className="table-light">
                   <tr>
-                    <th>Cervix Position Code</th>
-                    <th>Cervix Position Name</th>
+                    <th>Cervix Position</th>
+                    <th>lastUpdateDate</th>
                     <th>Status</th>
                     <th>Edit</th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {currentItems.map((rec, index) => (
-                    <tr key={index}>
-                      <td>{rec.cervixPositionCode}</td>
-                      <td>{rec.cervixPositionName}</td>
+                  {currentItems.map((rec) => (
+                    <tr key={rec.id}>
+                      <td>{rec.cervixPosition}</td>
+                      <td>{formatDate(rec.lastUpdateDate)}</td>
                       <td>
                         <div className="form-check form-switch">
                           <input
                             className="form-check-input"
                             type="checkbox"
-                            checked={rec.status === "Y"}
+                            checked={rec.status.toUpperCase() === "Y"}
                             onChange={() =>
                               handleSwitchChange(
-                                rec.cervixPositionName,
-                                rec.status === "Y" ? "N" : "Y"
+                                rec.cervixPosition,
+                                rec.status.toUpperCase() === "Y" ? "N" : "Y"
                               )
                             }
                           />
                           <label className="form-check-label ms-2">
-                            {rec.status === "Y" ? "Active" : "Inactive"}
+                            {rec.status.toUpperCase() === "Y" ? "Active" : "Inactive"}
                           </label>
                         </div>
                       </td>
                       <td>
+
                         <button
                           className="btn btn-success btn-sm"
-                          disabled={rec.status !== "Y"}
                           onClick={() => handleEdit(rec)}
+                          disabled={rec.status.toUpperCase() !== "Y"}
                         >
                           <i className="fa fa-pencil"></i>
                         </button>
@@ -217,45 +296,36 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
                     </tr>
                   ))}
                 </tbody>
+
               </table>
 
-              {/* PAGINATION */}         
-               <Pagination
-               totalItems={filteredData.length}
-               itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-               currentPage={currentPage}
-               onPageChange={setCurrentPage}
-             /> 
+              {/* PAGINATION */}
+              {filteredData.length > 0 && (
+                <Pagination
+                  totalItems={filteredData.length}
+                  itemsPerPage={itemsPerPage}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
+              )}
+
             </>
           ) : (
             <form onSubmit={handleSave} className="row g-3">
               <div className="col-md-5">
                 <label>Cervix Position Code <span className="text-danger">*</span></label>
                 <input
-                  id="cervixPositionCode"
+                  id="cervixPosition"
                   className="form-control"
-                  value={formData.cervixPositionCode}
+                  value={formData.cervixPosition}
                   onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="col-md-5">
-                <label>Cervix Position Name <span className="text-danger">*</span></label>
-                <input
-                  id="cervixPositionName"
-                  className="form-control"
-                  value={formData.cervixPositionName}
-                  onChange={handleInputChange}
+                  // maxLength={MAS_CERVIX_POSITION_CODE_MAX_LENGTH}
                 />
               </div>
 
               <div className="col-12 text-end">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>
-                  Save
-                </button>
-                <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
-                  Cancel
-                </button>
+                <button className="btn btn-primary me-2" disabled={!isFormValid}>Save</button>
+                <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>Cancel</button>
               </div>
             </form>
           )}
@@ -269,7 +339,7 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
                   <div className="modal-body">
                     Are you sure you want to{" "}
                     {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}{" "}
-                    <strong>{confirmDialog.cervixPositionName}</strong>?
+                    <strong>{confirmDialog.cervixPosition}</strong>?
                   </div>
                   <div className="modal-footer">
                     <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const TrimesterMaster = () => {
   const [data, setData] = useState([]);
@@ -13,7 +14,7 @@ const TrimesterMaster = () => {
   });
 
   const [formData, setFormData] = useState({
-    trimesterCode: "",
+
     trimesterName: "",
   });
 
@@ -42,13 +43,11 @@ const TrimesterMaster = () => {
     rec.trimesterName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
+  const currentItems = filteredData.slice(indexOfFirst, indexOfLast)
 
-  const currentItems = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
+  
   // ================= FORM =================
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -58,7 +57,7 @@ const TrimesterMaster = () => {
   };
 
   const resetForm = () => {
-    setFormData({ trimesterCode: "", trimesterName: "" });
+    setFormData({ trimesterName: "" });
     setIsFormValid(false);
   };
 
@@ -122,11 +121,6 @@ const TrimesterMaster = () => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
-  const handleGoPage = () => {
-    const page = Number(goPage);
-    if (page >= 1 && page <= totalPages) setCurrentPage(page);
-    setGoPage("");
-  };
 
   // ================= UI =================
   return (
@@ -216,60 +210,18 @@ const TrimesterMaster = () => {
               </table>
 
               {/* PAGINATION */}
-              <div className="d-flex justify-content-between align-items-center mt-3 flex-wrap">
-                <div>
-                  Total Records: {filteredData.length} | Page {currentPage} of {totalPages}
-                </div>
-
-                <nav>
-                  <ul className="pagination mb-0">
-                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                      <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)}>Prev</button>
-                    </li>
-
-                    {[...Array(totalPages).keys()].map((num) => (
-                      <li key={num} className={`page-item ${currentPage === num + 1 ? "active" : ""}`}>
-                        <button className="page-link" onClick={() => setCurrentPage(num + 1)}>
-                          {num + 1}
-                        </button>
-                      </li>
-                    ))}
-
-                    <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                      <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)}>Next</button>
-                    </li>
-                  </ul>
-                </nav>
-
-                <div className="d-flex">
-                  <input
-                    type="number"
-                    placeholder="Go To page"
-                    className="form-control form-control-sm me-2"
-                    style={{ width: 70 }}
-                    value={goPage}
-                    onChange={(e) => setGoPage(e.target.value)}
-                  />
-                  <button className="btn btn-sm btn-primary" onClick={handleGoPage}>
-                    Go
-                  </button>
-                </div>
-              </div>
+               <Pagination
+               totalItems={filteredData.length}
+               itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+               currentPage={currentPage}
+               onPageChange={setCurrentPage}
+             /> 
             </>
           )}
 
           {/* ================= FORM ================= */}
           {showForm && (
             <form onSubmit={handleSave} className="row g-3">
-              <div className="col-md-5">
-                <label>Trimester Code <span className="text-danger">*</span></label>
-                <input
-                  id="trimesterCode"
-                  className="form-control"
-                  value={formData.trimesterCode}
-                  onChange={handleInputChange}
-                />
-              </div>
 
               <div className="col-md-5">
                 <label>Trimester Name <span className="text-danger">*</span></label>

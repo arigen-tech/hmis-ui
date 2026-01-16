@@ -1,41 +1,56 @@
 import { useState } from "react";
 import { ALL_REPORTS } from "../../../config/apiConfig";
+import Popup from "../../../Components/popup";
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 
 const OpeningBalanceRegister = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [isGeneratingExcel, setIsGeneratingExcel] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [popupMessage, setPopupMessage] = useState(null);
 
-  const handleGeneratePDF = async () => {
+  const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
+  const departmentId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
+  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null)
+      },
+    })
+  }
+
+ 
+
+  const handleViewDownload = async () => {
     if (!fromDate || !toDate) {
-      alert("Please select both From Date and To Date");
+      showPopup("Please select both From Date and To Date", "error");
       return;
     }
 
     if (new Date(fromDate) > new Date(toDate)) {
-      alert("From Date cannot be later than To Date");
+      showPopup("From Date cannot be later than To Date", "error");
       return;
     }
 
     if (new Date(fromDate) > new Date() || new Date(toDate) > new Date()) {
-      alert("Dates cannot be in the future");
+      showPopup("Dates cannot be in the future", "error");
       return;
     }
 
-    const hospitalId =
-      localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
-    const departmentId =
-      localStorage.getItem("departmentId") ||
-      sessionStorage.getItem("departmentId");
-
     if (!hospitalId || !departmentId) {
-      alert("Hospital and Department must be selected.");
+      showPopup("Hospital and Department must be selected.", "error");
       return;
     }
 
     setIsGeneratingPDF(true);
-
+    setPdfUrl(null);
+    
     try {
       const formatDate = (dateStr) => {
         const date = new Date(dateStr);
@@ -48,12 +63,14 @@ const OpeningBalanceRegister = () => {
       const formattedFromDate = formatDate(fromDate);
       const formattedToDate = formatDate(toDate);
 
-      const url = `${ALL_REPORTS}/openingBalanceRegistryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&fromDate=${formattedFromDate}&toDate=${formattedToDate}`;
+      // Use "d" flag for download/view
+      const url = `${ALL_REPORTS}/openingBalanceRegistryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&fromDate=${formattedFromDate}&toDate=${formattedToDate}&flag=d`;
 
       const response = await fetch(url, {
         method: "GET",
         headers: {
           Accept: "application/pdf",
+          Authorization: `Bearer ${token}`
         },
       });
 
@@ -63,28 +80,74 @@ const OpeningBalanceRegister = () => {
 
       const blob = await response.blob();
       const fileURL = window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = fileURL;
-      link.setAttribute("download", "PhysicalStockTakingRegister.pdf");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
+      setPdfUrl(fileURL);
+      
     } catch (error) {
       console.error("Error generating PDF", error);
-      alert("Error generating PDF report. Please try again.");
+      showPopup("Report generation failed", "error");
     } finally {
       setIsGeneratingPDF(false);
     }
   };
 
-  const handleGenerateExcel = () => {
-    setIsGeneratingExcel(true);
-    setTimeout(() => {
-      alert("Excel report service is currently unavailable");
-      setIsGeneratingExcel(false);
-    }, 500);
+  const handlePrint = async () => {
+    if (!fromDate || !toDate) {
+      showPopup("Please select both From Date and To Date", "error");
+      return;
+    }
+
+    if (new Date(fromDate) > new Date(toDate)) {
+      showPopup("From Date cannot be later than To Date", "error");
+      return;
+    }
+
+    if (new Date(fromDate) > new Date() || new Date(toDate) > new Date()) {
+      showPopup("Dates cannot be in the future", "error");
+      return;
+    }
+
+    if (!hospitalId || !departmentId) {
+      showPopup("Hospital and Department must be selected.", "error");
+      return;
+    }
+
+    setIsPrinting(true);
+    
+    try {
+      const formatDate = (dateStr) => {
+        const date = new Date(dateStr);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
+      };
+
+      const formattedFromDate = formatDate(fromDate);
+      const formattedToDate = formatDate(toDate);
+
+      // Use "p" flag for printing
+      const url = `${ALL_REPORTS}/openingBalanceRegistryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&fromDate=${formattedFromDate}&toDate=${formattedToDate}&flag=p`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+          Authorization: `Bearer ${token}`
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send to printer");
+      }
+
+      //showPopup("Report sent to printer successfully!", "success");
+      
+    } catch (error) {
+      console.error("Error printing report", error);
+      showPopup("Report printing failed", "error");
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   const handleFromDateChange = (e) => {
@@ -92,7 +155,7 @@ const OpeningBalanceRegister = () => {
     const today = new Date().toISOString().split('T')[0];
 
     if (selectedDate > today) {
-      alert("From date cannot be in the future");
+      showPopup("From date cannot be in the future", "error");
       return;
     }
 
@@ -109,12 +172,12 @@ const OpeningBalanceRegister = () => {
     const today = new Date().toISOString().split('T')[0];
 
     if (selectedDate > today) {
-      alert("To date cannot be in the future");
+      showPopup("To date cannot be in the future", "error");
       return;
     }
 
     if (fromDate && selectedDate < fromDate) {
-      alert("To date cannot be earlier than From date");
+      showPopup("To date cannot be earlier than From date", "error");
       return;
     }
 
@@ -126,7 +189,7 @@ const OpeningBalanceRegister = () => {
     if (!fromDate) {
       e.preventDefault();
       e.target.blur();
-      alert("Please select From Date first");
+      showPopup("Please select From Date first", "error");
     }
   };
 
@@ -165,11 +228,12 @@ const OpeningBalanceRegister = () => {
                   />
                 </div>
                 <div className="col-md-8 d-flex align-items-end gap-2">
+                 
                   <button
                     type="button"
-                    className="btn btn-warning"
-                    onClick={handleGeneratePDF}
-                    disabled={isGeneratingPDF || isGeneratingExcel}
+                    className="btn btn-primary"
+                    onClick={handleViewDownload}
+                    disabled={isGeneratingPDF || isPrinting}
                   >
                     {isGeneratingPDF ? (
                       <>
@@ -177,22 +241,26 @@ const OpeningBalanceRegister = () => {
                         Generating...
                       </>
                     ) : (
-                      "Generate PDF Report"
+                      <>
+                        <i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD
+                      </>
                     )}
                   </button>
                   <button
                     type="button"
-                    className="btn btn-success"
-                    onClick={handleGenerateExcel}
-                    disabled={isGeneratingExcel || isGeneratingPDF}
+                    className="btn btn-warning"
+                    onClick={handlePrint}
+                    disabled={isPrinting || isGeneratingPDF}
                   >
-                    {isGeneratingExcel ? (
+                    {isPrinting ? (
                       <>
                         <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Generating...
+                        Printing...
                       </>
                     ) : (
-                      "Excel Report"
+                      <>
+                        <i className="fa fa-print me-2"></i> PRINT
+                      </>
                     )}
                   </button>
                 </div>
@@ -201,6 +269,20 @@ const OpeningBalanceRegister = () => {
           </div>
         </div>
       </div>
+
+      {/* PDF Viewer Modal */}
+      {pdfUrl && (
+        <PdfViewer
+          pdfUrl={pdfUrl}
+          onClose={() => {
+            setPdfUrl(null);
+          }}
+          name="Opening Balance Register"
+        />
+      )}
+
+      {/* Popup Message */}
+      {popupMessage && <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />}
     </div>
   );
 };

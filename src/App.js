@@ -151,6 +151,23 @@ import ResultAmendmentReport from './Views/Laboratory/LabReports/ResultAmendment
 import EntMasTonsilGradeMaster from './Views/Masters/EntMasTonsilGrade';
 import ReceivingReport from './Views/WardPharmacy/IndentReports/ReceivingReport';
 import ReturnRegister from './Views/WardPharmacy/IndentReports/ReturnReport';
+import BookingAppointmentHistory from './Views/Reception/BookingAppointmentHistory';
+import OrderTrackingReport from './Views/Laboratory/LabReports/OrderTrackingReport';
+import PendingInvestigationsReport from './Views/Laboratory/LabReports/PendingInvestigationReport';
+import SampleRejectionReport from './Views/Laboratory/LabReports/SampleRejectionReport';
+import RadiologyInvestigationMaster from './Views/Radiology/InvestigationMaster';
+import MembraneStatusMaster from './Views/Masters/MembraneMaster';
+import LensTypeMaster from './Views/Masters/LensTypeMaster';
+import OpthMasSpectacleUse from './Views/Masters/MasSpectacleMaster';
+import ImmunisationStatus from './Views/Masters/ImmunisationStatusMaster';
+import LiquorMaster from './Views/Masters/LiquorMaster';
+import CervixConsistencyMaster from './Views/Masters/CervixConsistencyMaster';
+import EarTmStatusMaster from './Views/Masters/EarTmStatusMaster';
+import EarCanalMaster from './Views/Masters/EarCanalMaster';
+import EarRinneMaster from './Views/Masters/EarRinneMaster';
+import EarWeberMaster from './Views/Masters/EarWeberMaster';
+import EntMasSeptum from './Views/Masters/EntMasSeptum';
+import EntMasMucosaMaster from './Views/Masters/EntMasMucosaMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -335,7 +352,23 @@ function App() {
                 <Route path="EntMasTonsilGrade" element={<EntMasTonsilGradeMaster />} />
                 <Route path="/ReceivingReport" element={<ReceivingReport/>} />
                 <Route path="/ReturnRegister" element={<ReturnRegister/>} />
-                <Route path="*" element={<PageNotFound />} />
+                <Route path="/BookingAppointmentHistory" element={<BookingAppointmentHistory/>} />
+                <Route path="/OrderTrackingReport" element={<OrderTrackingReport/>} />
+                <Route path="/PendingInvestigationsReport" element={<PendingInvestigationsReport/>} />
+                <Route path="/SampleRejectionReport" element={<SampleRejectionReport/>} />                <Route path="*" element={<PageNotFound />} />
+                <Route path="/RadiologyInvestigationMaster" element={<RadiologyInvestigationMaster/>} />
+                <Route path="/MembraneStatusMaster" element={<MembraneStatusMaster/>} />
+                <Route path="/LensTypeMaster" element={<LensTypeMaster/>} />
+                <Route path="/OpthMasSpectacleUse" element={<OpthMasSpectacleUse/>} />
+                <Route path="/ImmunisationStatus" element={<ImmunisationStatus/>} />
+                <Route path="/LiquorMaster" element={<LiquorMaster/>} />
+                <Route path="/CervixConsistencyMaster" element={<CervixConsistencyMaster/>} />
+                <Route path="/EarTmStatusMaster" element={<EarTmStatusMaster/>} />
+                <Route path="/EarCanalMaster" element={<EarCanalMaster/>} />
+                <Route path="/EarRinneMaster" element={<EarRinneMaster/>} />
+                <Route path="/EarWeberMaster" element={<EarWeberMaster/>} />
+                <Route path="/EntMasSeptum" element={<EntMasSeptum/>} />
+                <Route path="/EntMasMucosaMaster" element={<EntMasMucosaMaster/>} />
               </Route>
             </Route>
 

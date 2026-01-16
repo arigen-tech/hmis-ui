@@ -4,21 +4,25 @@ import Swal from "sweetalert2";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import { getRequest, postRequest } from "../../../service/apiService";
 
+import DatePicker from "../../../Components/DatePicker";
 import {
-  ALL_COUNTRY, ALL_DEPARTMENT,
+  ALL_COUNTRY,
+  ALL_DEPARTMENT,
   ALL_GENDER,
   ALL_RELATION,
   API_HOST,
-  DISTRICT_BY_STATE, DOCTOR_BY_SPECIALITY,
+  DISTRICT_BY_STATE,
+  DOCTOR_BY_SPECIALITY,
+  GET_AVAILABILITY_TOKENS,
   GET_DOCTOR_SESSION,
-  GET_SESSION, HOSPITAL,
+  GET_SESSION,
+  HOSPITAL,
   MAS_SERVICE_CATEGORY,
   PATIENT_IMAGE_UPLOAD,
   PATIENT_REGISTRATION,
-  STATE_BY_COUNTRY
+  STATE_BY_COUNTRY,
 } from "../../../config/apiConfig";
 import { DEPARTMENT_CODE_OPD } from "../../../config/constants";
-import DatePicker from "../../../Components/DatePicker";
 
 const PatientRegistration = () => {
   const navigate = useNavigate();
@@ -47,19 +51,32 @@ const PatientRegistration = () => {
   const [doctorDataMap, setDoctorDataMap] = useState({});
   const [session, setSession] = useState([]);
   const [isDuplicatePatient, setIsDuplicatePatient] = useState(false);
-  const [appointments, setAppointments] = useState([{
-    id: 0,
-    speciality: "",
-    selDoctorId: "",
-    selSession: "",
-    departmentName: "",
-    doctorName: "",
-    sessionName: "",
-    discount: 0,
-    netAmount: "0.00",
-    gst: "0.00",
-    totalAmount: "0.00"
-  }]);
+  const [availableTokens, setAvailableTokens] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  const [dateResetKey, setDateResetKey] = useState(0);
+  const [appointments, setAppointments] = useState([
+    {
+      id: 0,
+      speciality: "",
+      selDoctorId: "",
+      selSession: "",
+      selDate: null,
+      departmentName: "",
+      doctorName: "",
+      sessionName: "",
+      discount: 0,
+      netAmount: "0.00",
+      gst: "0.00",
+      totalAmount: "0.00",
+
+      tokenNo: null,
+      tokenStartTime: "",
+      tokenEndTime: "",
+      selectedTimeSlot: "",
+    },
+  ]);
   const [nextAppointmentId, setNextAppointmentId] = useState(1);
   const [formData, setFormData] = useState({
     imageurl: "",
@@ -132,29 +149,138 @@ const PatientRegistration = () => {
 
   const isFormValid = () => {
     // Required fields
-    const requiredFields = ["firstName", "gender", "relation", "dob", "mobileNo"];
+    const requiredFields = [
+      "firstName",
+      "gender",
+      "relation",
+      "dob",
+      "mobileNo",
+    ];
 
     for (let field of requiredFields) {
       if (!formData[field] || formData[field].trim() === "") {
         return false;
       }
     }
-    const hasValidAppointment = appointments.some(a =>
-      a.speciality && a.selDoctorId && a.selSession
+    const hasValidAppointment = appointments.some(
+      (a) => a.speciality && a.selDoctorId && a.selSession
     );
 
     if (!hasValidAppointment) {
       return false;
     }
+
+    const appointmentsWithDetails = appointments.filter(
+      (appt) => appt.speciality && appt.selDoctorId && appt.selSession
+    );
+
+    if (appointmentsWithDetails.length > 0) {
+      const allHaveTimeSlots = appointmentsWithDetails.every(
+        (appt) => appt.selectedTimeSlot && appt.selectedTimeSlot.trim() !== ""
+      );
+
+      if (!allHaveTimeSlots) {
+        // Don't show alert here, just return false
+        return false;
+      }
+    }
     return true;
   };
 
+  const createInstant = (dateStr, timeStr) => {
+    if (!dateStr || !timeStr) return null;
+
+    let formattedTime = timeStr;
+    if (formattedTime && formattedTime.split(":").length === 2) {
+      formattedTime = `${formattedTime}:00`;
+    }
+
+    return `${dateStr}T${formattedTime}Z`;
+  };
+
+  const fetchTokenAvailability = async (appointmentIndex = 0, dateOverride = null) => {
+    try {
+      setLoading(true);
+
+      const targetAppointment = appointments[appointmentIndex];
+      const selectedDate = dateOverride || targetAppointment.selDate;
+
+      // Add early return if already showing popup
+      if (Swal.isVisible()) {
+        return;
+      }
+
+      if (
+        !targetAppointment.speciality ||
+        !targetAppointment.selDoctorId ||
+        !targetAppointment.selSession ||
+        !selectedDate
+      ) {
+        return; // Silent return, don't show alert here
+      }
+
+      const params = new URLSearchParams({
+        deptId: targetAppointment.speciality,
+        doctorId: targetAppointment.selDoctorId,
+        appointmentDate: selectedDate,
+        sessionId: targetAppointment.selSession,
+      }).toString();
+
+      const url = `${GET_AVAILABILITY_TOKENS}?${params}`;
+      const data = await getRequest(url);
+
+      if (data.status === 200 && Array.isArray(data.response)) {
+        const availableTokens = data.response.filter(
+          (token) => token.available
+        );
+
+        if (availableTokens.length > 0) {
+          // Check if popup is already open
+          if (!Swal.isVisible()) {
+            showTokenPopup(
+              availableTokens,
+              targetAppointment.sessionName,
+              selectedDate,
+              appointmentIndex
+            );
+          }
+        } else {
+          // Only show info if popup is not already visible
+          if (!Swal.isVisible()) {
+            Swal.fire({
+              icon: "info",
+              title: "No Tokens Available",
+              text: "No available time slots for the selected criteria. Please try another date or session.",
+              timer: 3000,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching token availability:", error);
+      // Don't show error if already showing another alert
+      if (!Swal.isVisible()) {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "Failed to fetch token availability. Please try again.",
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   async function fetchGstConfiguration() {
     try {
       const url = `${MAS_SERVICE_CATEGORY}/getGstConfig/1`;
       const data = await getRequest(url);
-      if (data && data.status === 200 && data.response && typeof data.response.gstApplicable !== "undefined") {
+      if (
+        data &&
+        data.status === 200 &&
+        data.response &&
+        typeof data.response.gstApplicable !== "undefined"
+      ) {
         setGstConfig({
           gstApplicable: !!data.response.gstApplicable,
           gstPercent: Number(data.response.gstPercent) || 0,
@@ -170,7 +296,7 @@ const PatientRegistration = () => {
 
   const startCamera = async () => {
     try {
-      setIsCameraOn(true); // Ensure the video element is rendered before accessing ref
+      setIsCameraOn(true);
       setTimeout(async () => {
         stream = await navigator.mediaDevices.getUserMedia({ video: true });
         if (videoRef.current) {
@@ -184,9 +310,14 @@ const PatientRegistration = () => {
 
   async function fetchHospitalDetails() {
     try {
-      const data = await getRequest(`${HOSPITAL}/${sessionStorage.getItem('hospitalId')}`);
+      const data = await getRequest(
+        `${HOSPITAL}/${sessionStorage.getItem("hospitalId")}`
+      );
       if (data.status === 200) {
-        if (data.response.preConsultationAvailable == 'y' || data.response.preConsultationAvailable == 'Y') {
+        if (
+          data.response.preConsultationAvailable == "y" ||
+          data.response.preConsultationAvailable == "Y"
+        ) {
           setPreConsultationFlag(true);
         }
       } else {
@@ -204,24 +335,22 @@ const PatientRegistration = () => {
       const video = videoRef.current;
       const canvas = canvasRef.current;
 
-      // Set canvas dimensions to match video stream
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
 
       const context = canvas.getContext("2d");
-      context.drawImage(video, 0, 0, canvas.width, canvas.height)
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = canvas.toDataURL("image/png");
 
       setImage(imageData);
       stopCamera();
-      // //debugger
       confirmUpload(imageData);
     }
   };
 
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
-      videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
       setIsCameraOn(false);
     }
   };
@@ -245,29 +374,23 @@ const PatientRegistration = () => {
 
   const uploadImage = async (base64Image) => {
     try {
-      // Convert base64 to Blob
       const blob = await fetch(base64Image).then((res) => res.blob());
       const formData1 = new FormData();
       formData1.append("file", blob, "photo.png");
 
-      // Send the formData to the server
       const response = await fetch(`${API_HOST}${PATIENT_IMAGE_UPLOAD}`, {
         method: "POST",
         body: formData1,
       });
 
-      // Parse JSON response
       const data = await response.json();
 
       if (response.status === 200 && data.response) {
-        // Extracting the image path
         const extractedPath = data.response;
 
-        // Updating state with the extracted image path
         setImageURL(extractedPath);
         console.log("Uploaded Image URL:", extractedPath);
 
-        // Show success alert
         Swal.fire("Success!", "Image uploaded successfully!", "success");
       } else {
         Swal.fire("Error!", "Failed to upload image!", "error");
@@ -286,34 +409,32 @@ const PatientRegistration = () => {
     const today = new Date();
     const birthYear = today.getFullYear() - age;
 
-    // Default to today's month and day
-    return new Date(birthYear, today.getMonth(), today.getDate()).toISOString().split('T')[0];
+    return new Date(birthYear, today.getMonth(), today.getDate())
+      .toISOString()
+      .split("T")[0];
   }
 
   function checkBMI(a, b) {
-    //debugger
-    if (a === '' || b == '') {
+    if (a === "" || b == "") {
       return;
     }
     var c = b / 100;
     var d = c * c;
     var sub = a / d;
-    return (parseFloat(Math.round(sub * 100) / 100).toFixed(2));
+    return parseFloat(Math.round(sub * 100) / 100).toFixed(2);
   }
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
     const updatedFormData = { ...formData, [name]: value };
-    if (name == 'dob') {
+    if (name == "dob") {
       updatedFormData.age = calculateAgeFromDOB(value);
-    }
-    else if (name == 'age') {
-      updatedFormData.dob = calculateDOBFromAge(value)
-    }
-    else if (name == 'weight' && formData.height != undefined) {
+    } else if (name == "age") {
+      updatedFormData.dob = calculateDOBFromAge(value);
+    } else if (name == "weight" && formData.height != undefined) {
       updatedFormData.bmi = checkBMI(value, formData.height);
-    } else if (name == 'height' && formData.weight != undefined) {
+    } else if (name == "height" && formData.weight != undefined) {
       updatedFormData.bmi = checkBMI(formData.weight, value);
     }
 
@@ -371,12 +492,17 @@ const PatientRegistration = () => {
       "pulse",
       "bmi",
       "rr",
-      "spo2"
+      "spo2",
     ];
 
     if (numericFields.includes(name)) {
-      if (value != undefined && (value !== "" && (isNaN(value) || Number(value) < 0))) {
-        error = `${name.charAt(0).toUpperCase() + name.slice(1)} must be a non-negative number.`;
+      if (
+        value != undefined &&
+        value !== "" &&
+        (isNaN(value) || Number(value) < 0)
+      ) {
+        error = `${name.charAt(0).toUpperCase() + name.slice(1)
+          } must be a non-negative number.`;
       }
     }
 
@@ -392,29 +518,53 @@ const PatientRegistration = () => {
   };
 
   const handleAddChange = (e) => {
-    //debugger
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // useEffect(() => {
+  //   if (appointments.length === 0) {
+  //     setFormData((prev) => ({
+  //       ...prev,
+  //       speciality: "",
+  //       selDoctorId: "",
+  //       selSession: "",
+  //     }));
+  //     return;
+  //   }
+  //   const primary = appointments[0];
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     speciality: primary.speciality,
+  //     selDoctorId: primary.selDoctorId,
+  //     selSession: primary.selSession,
+  //   }));
+  // }, [appointments]);
+
   useEffect(() => {
-    if (appointments.length === 0) {
-      setFormData((prev) => ({
-        ...prev,
-        speciality: "",
-        selDoctorId: "",
-        selSession: ""
-      }));
-      return;
-    }
-    const primary = appointments[0];
-    setFormData((prev) => ({
-      ...prev,
-      speciality: primary.speciality,
-      selDoctorId: primary.selDoctorId,
-      selSession: primary.selSession
-    }));
-  }, [appointments]);
+    appointments.forEach((appointment, index) => {
+      if (
+        appointment.speciality &&
+        appointment.selDoctorId &&
+        appointment.selSession &&
+        appointment.selDate &&
+        !appointment.selectedTimeSlot
+      ) {
+        const timer = setTimeout(() => {
+          fetchTokenAvailability(index);
+        }, 500);
+
+        return () => clearTimeout(timer);
+      }
+    });
+  }, [
+    appointments
+      .map(
+        (app) =>
+          `${app.speciality}-${app.selDoctorId}-${app.selSession}-${app.selDate}`
+      )
+      .join(","),
+  ]);
 
   const addAppointmentRow = () => {
     setAppointments((prev) => [
@@ -424,14 +574,19 @@ const PatientRegistration = () => {
         speciality: "",
         selDoctorId: "",
         selSession: "",
+        selDate: null,
         departmentName: "",
         doctorName: "",
         sessionName: "",
         discount: 0,
         netAmount: "0.00",
         gst: "0.00",
-        totalAmount: "0.00"
-      }
+        totalAmount: "0.00",
+        tokenNo: null,
+        tokenStartTime: "",
+        tokenEndTime: "",
+        selectedTimeSlot: "",
+      },
     ]);
     setNextAppointmentId((prev) => prev + 1);
   };
@@ -449,15 +604,34 @@ const PatientRegistration = () => {
       return updated;
     });
   };
+  const isPastDate = (dateStr) => {
+    const selected = new Date(dateStr);
+    const today = new Date();
+
+    selected.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    return selected < today;
+  };
 
   const handleSpecialityChange = (id, value) => {
-    const selectedDepartment = departmentData.find(dept => dept.id == value);
-    const departmentName = selectedDepartment ? selectedDepartment.departmentName : "";
+    const selectedDepartment = departmentData.find((dept) => dept.id == value);
+    const departmentName = selectedDepartment
+      ? selectedDepartment.departmentName
+      : "";
 
     setAppointments((prev) =>
       prev.map((appointment) =>
         appointment.id === id
-          ? { ...appointment, speciality: value, selDoctorId: "", selSession: "", departmentName }
+          ? {
+            ...appointment,
+            speciality: value,
+            selDoctorId: "",
+            selSession: "",
+            departmentName,
+            selDate: null,
+            tokenNo: null,
+          }
           : appointment
       )
     );
@@ -472,35 +646,102 @@ const PatientRegistration = () => {
     }
   };
 
+  const onDateChange = async (index, date) => {
+    if (!date) return;
+
+    // 1. Convert Date Object to YYYY-MM-DD safely
+    let dateString = "";
+    if (date instanceof Date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      dateString = `${year}-${month}-${day}`;
+    } else {
+      dateString = date.split("T")[0];
+    }
+
+    // 2. Check if date is in past
+    if (isPastDate(dateString)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid Date",
+        text: "You cannot select a past date",
+        timer: 2000,
+      });
+      setDateResetKey((prev) => prev + 1);
+      return;
+    }
+
+    // 3. Get current appointment details BEFORE updating state
+    const currentAppointment = appointments[index];
+
+    // 4. First update the state with new date (clear any existing time slot)
+    handleAppointmentChange(index, "selDate", dateString);
+
+    // Clear time slot when date changes
+    if (currentAppointment.selectedTimeSlot) {
+      handleAppointmentChange(index, "selectedTimeSlot", "");
+    }
+
+    // 5. Then fetch tokens if all fields are selected
+    if (currentAppointment.speciality &&
+      currentAppointment.selDoctorId &&
+      currentAppointment.selSession) {
+      // Add a small delay to ensure state is updated
+      setTimeout(() => {
+        fetchTokenAvailability(index);
+      }, 300);
+    }
+  };
+
   const handleDoctorChange = (id, value, specialityId) => {
     const doctorOptions = doctorDataMap[id] || [];
-    const selectedDoctor = doctorOptions.find(doctor => doctor.userId == value);
-    const doctorName = selectedDoctor ? `${selectedDoctor.firstName} ${selectedDoctor.middleName || ''} ${selectedDoctor.lastName || ''}`.trim() : "";
+    const selectedDoctor = doctorOptions.find(
+      (doctor) => doctor.userId == value
+    );
+    const doctorName = selectedDoctor
+      ? `${selectedDoctor.firstName} ${selectedDoctor.middleName || ""} ${selectedDoctor.lastName || ""
+        }`.trim()
+      : "";
 
-
-    setAppointments(prev =>
-      prev.map(a =>
-        a.id === id ? { ...a, selDoctorId: value, selSession: "", doctorName } : a
+    setAppointments((prev) =>
+      prev.map((a) =>
+        a.id === id
+          ? {
+            ...a,
+            selDoctorId: value,
+            selSession: "",
+            doctorName,
+            selDate: null,
+            tokenNo: null,
+          }
+          : a
       )
     );
-
 
     checkDoctorValid(id, value, specialityId);
   };
 
-
   const handleSessionChange = (id, value, specialityId, doctorId) => {
+    const selectedSession = session.find((s) => s.id == value);
+    const sessionName = selectedSession ? selectedSession.sessionName : "";
 
-    setAppointments(prev =>
-      prev.map(a =>
-        a.id === id ? { ...a, selSession: value } : a
+    setAppointments((prev) =>
+      prev.map((a) =>
+        a.id === id
+          ? {
+            ...a,
+            selSession: value,
+            sessionName: sessionName,
+            selDate: null,
+            tokenNo: null,
+          }
+          : a
       )
     );
 
-    // Check session validity
     checkSessionValid(id, doctorId, specialityId, value);
   };
-
 
   async function checkDoctorValid(rowId, doctorId, deptId) {
     let date = new Date().toISOString().split("T")[0];
@@ -512,9 +753,8 @@ const PatientRegistration = () => {
     if (data.status !== 200) {
       Swal.fire(data.message);
 
-
-      setAppointments(prev =>
-        prev.map(a =>
+      setAppointments((prev) =>
+        prev.map((a) =>
           a.id === rowId ? { ...a, selDoctorId: "", selSession: "" } : a
         )
       );
@@ -531,16 +771,11 @@ const PatientRegistration = () => {
     if (data.status !== 200) {
       Swal.fire(data.message);
 
-
-      setAppointments(prev =>
-        prev.map(a =>
-          a.id === rowId ? { ...a, selSession: "" } : a
-        )
+      setAppointments((prev) =>
+        prev.map((a) => (a.id === rowId ? { ...a, selSession: "" } : a))
       );
     }
   }
-
-
 
   async function fetchGenderData() {
     setLoading(true);
@@ -558,9 +793,15 @@ const PatientRegistration = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  async function checkDuplicatePatient(firstName, dob, gender, mobile, relation) {
+  async function checkDuplicatePatient(
+    firstName,
+    dob,
+    gender,
+    mobile,
+    relation
+  ) {
     const params = new URLSearchParams({
       firstName,
       dob,
@@ -579,9 +820,19 @@ const PatientRegistration = () => {
     if (firstName && dob && gender && mobileNo && relation) {
       const timer = setTimeout(async () => {
         try {
-          const isDuplicate = await checkDuplicatePatient(firstName, dob, gender, mobileNo, relation);
+          const isDuplicate = await checkDuplicatePatient(
+            firstName,
+            dob,
+            gender,
+            mobileNo,
+            relation
+          );
           if (isDuplicate) {
-            Swal.fire("Duplicate Found!", "A patient with these details already exists.", "warning");
+            Swal.fire(
+              "Duplicate Found!",
+              "A patient with these details already exists.",
+              "warning"
+            );
             setIsDuplicatePatient(true);
           } else {
             setIsDuplicatePatient(false);
@@ -601,9 +852,8 @@ const PatientRegistration = () => {
     formData.dob,
     formData.gender,
     formData.mobileNo,
-    formData.relation
+    formData.relation,
   ]);
-
 
   async function fetchRelationData() {
     setLoading(true);
@@ -741,11 +991,40 @@ const PatientRegistration = () => {
   }
 
   function sendRegistrationRequest() {
+    if (!isFormValid()) {
+      // Check specifically for time slots
+      const appointmentsWithDetails = appointments.filter(
+        (appt) => appt.speciality && appt.selDoctorId && appt.selSession
+      );
+
+      const missingTimeSlots = appointmentsWithDetails.filter(
+        (appt) => !appt.selectedTimeSlot || appt.selectedTimeSlot.trim() === ""
+      );
+
+      if (missingTimeSlots.length > 0) {
+        Swal.fire({
+          icon: "warning",
+          title: "Missing Time Slots",
+          text: "Please select time slots for all appointments before registration.",
+          timer: 3000,
+        });
+        return;
+      }
+
+      Swal.fire({
+        icon: "warning",
+        title: "Incomplete Form",
+        text: "Please fill all required fields.",
+        timer: 3000,
+      });
+      return;
+    }
+
     console.log(formData);
     sendPatientData();
   }
   const validateVitalDetails = () => {
-    if (preConsultationFlag) return true; // Not required when true
+    if (preConsultationFlag) return true;
 
     const vitalFields = [
       "height",
@@ -753,7 +1032,7 @@ const PatientRegistration = () => {
       "temperature",
       "systolicBP",
       "diastolicBP",
-      "pulse"
+      "pulse",
     ];
 
     let valid = true;
@@ -770,9 +1049,14 @@ const PatientRegistration = () => {
     return valid;
   };
 
-
   const validateForm = () => {
-    const requiredFields = ["firstName", "gender", "relation", "dob", "mobileNo"];
+    const requiredFields = [
+      "firstName",
+      "gender",
+      "relation",
+      "dob",
+      "mobileNo",
+    ];
     const numericFields = [
       "height",
       "weight",
@@ -783,7 +1067,7 @@ const PatientRegistration = () => {
       "bmi",
       "rr",
       "spo2",
-      "age"
+      "age",
     ];
 
     let valid = true;
@@ -791,7 +1075,8 @@ const PatientRegistration = () => {
 
     requiredFields.forEach((field) => {
       if (!formData[field] || formData[field].toString().trim() === "") {
-        newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} is required.`;
+        newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)
+          } is required.`;
         valid = false;
       }
     });
@@ -825,13 +1110,18 @@ const PatientRegistration = () => {
         } else {
           // Validate numeric fields
           if (isNaN(value) || Number(value) < 0) {
-            newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} must be a non-negative number.`;
+            newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)
+              } must be a non-negative number.`;
             valid = false;
           }
         }
       }
-      if ((field === "age" || requiredFields.includes(field)) && Number(value) <= 0) {
-        newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} must be greater than 0.`;
+      if (
+        (field === "age" || requiredFields.includes(field)) &&
+        Number(value) <= 0
+      ) {
+        newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)
+          } must be greater than 0.`;
         valid = false;
       }
     });
@@ -840,22 +1130,91 @@ const PatientRegistration = () => {
     return valid;
   };
 
-  const visitList = appointments.map(appt => ({
-    id: 0,
-    tokenNo: 0,
-    visitStatus: "NEW",
-    visitDate: new Date(Date.now()).toJSON(),
-    departmentId: Number(appt.speciality),
-    doctorId: Number(appt.selDoctorId),
-    doctorName: appt.doctorName || "",
-    sessionId: Number(appt.selSession),
-    hospitalId: Number(sessionStorage.getItem('hospitalId')),
-    priority: 0,
-    billingStatus: "Pending",
-    patientId: 0,
-    iniDoctorId: 0
-  }));
+  const visitList = appointments
+    .filter(
+      (appt) =>
+        appt.speciality &&
+        appt.selDoctorId &&
+        appt.selSession &&
+        appt.tokenStartTime
+    )
+    .map((appt) => {
+      const dateStr = appt.selDate;
+      const dateOnly = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
 
+      const visitDateTime = createInstant(dateOnly, appt.tokenStartTime);
+      const startTime = createInstant(dateOnly, appt.tokenStartTime);
+      const endTime = createInstant(dateOnly, appt.tokenEndTime);
+
+      return {
+        id: 0,
+        tokenNo: appt.tokenNo || 0,
+        tokenStartTime: startTime,
+        tokenEndTime: endTime,
+        visitStatus: "NEW",
+        visitDate: visitDateTime,
+        departmentId: Number(appt.speciality),
+        doctorId: Number(appt.selDoctorId),
+        doctorName: appt.doctorName || "",
+        sessionId: Number(appt.selSession),
+        hospitalId: Number(sessionStorage.getItem("hospitalId")),
+        priority: 0,
+        billingStatus: "Pending",
+        patientId: 0,
+        iniDoctorId: 0,
+      };
+    });
+
+  useEffect(() => {
+    const hasInvalidAppointment = appointments.some(
+      (appt) =>
+        appt.selectedTimeSlot &&
+        (!appt.selDoctorId || !appt.selSession || !appt.selDate)
+    );
+
+    if (hasInvalidAppointment) {
+      setAppointments((prev) =>
+        prev.map((appt) => {
+          if (
+            appt.selectedTimeSlot &&
+            (!appt.selDoctorId || !appt.selSession || !appt.selDate)
+          ) {
+            return {
+              ...appt,
+              tokenNo: null,
+              tokenStartTime: "",
+              tokenEndTime: "",
+              selectedTimeSlot: "",
+            };
+          }
+          return appt;
+        })
+      );
+    }
+  }, [
+    appointments
+      .map(
+        (a) =>
+          `${a.selDoctorId}-${a.selSession}-${a.selDate}-${a.selectedTimeSlot}`
+      )
+      .join(","),
+  ]);
+
+  const clearTimeSlot = (appointmentIndex) => {
+    setAppointments((prev) =>
+      prev.map((app, index) =>
+        index === appointmentIndex
+          ? {
+            ...app,
+            tokenNo: null,
+            tokenStartTime: "",
+            tokenEndTime: "",
+            selectedTimeSlot: "",
+          }
+          : app
+      )
+    );
+  };
 
   const sendPatientData = async () => {
     if (validateForm() && validateVitalDetails()) {
@@ -864,9 +1223,9 @@ const PatientRegistration = () => {
           id: 0,
           uhidNo: "",
           patientStatus: "",
-          regDate: new Date(Date.now()).toJSON().split('.')[0].split('T')[0],
-          lastChgBy: sessionStorage.getItem('username'),
-          patientHospitalId: Number(sessionStorage.getItem('hospitalId')),
+          regDate: new Date(Date.now()).toJSON().split(".")[0].split("T")[0],
+          lastChgBy: sessionStorage.getItem("username"),
+          patientHospitalId: Number(sessionStorage.getItem("hospitalId")),
           patientFn: formData.firstName,
           patientMn: formData.middleName,
           patientLn: formData.lastName,
@@ -903,7 +1262,7 @@ const PatientRegistration = () => {
           nokStateId: formData.nokState,
           nokCountryId: formData.nokCountry,
           nokPincode: formData.nokPinCode,
-          nokRelationId: formData.nokRelation
+          nokRelationId: formData.nokRelation,
         },
         opdPatientDetail: {
           height: formData.height,
@@ -941,33 +1300,32 @@ const PatientRegistration = () => {
           hospitalId: 0,
           doctorId: 0,
           doctorId: 0,
-          lastChgBy: ""
+          lastChgBy: "",
         },
 
         visits: visitList,
       };
-      //debugger
       // Filter out invalid visits (doctor/session empty)
-      requestData.visits = visitList.filter(v =>
-        !isNaN(v.doctorId) && v.doctorId > 0 && !isNaN(v.departmentId)
+      requestData.visits = visitList.filter(
+        (v) => !isNaN(v.doctorId) && v.doctorId > 0 && !isNaN(v.departmentId)
       );
 
       if (requestData.visits.length === 0) {
-        requestData.visits = null; // or []
+        requestData.visits = null;
       }
-
 
       try {
         setLoading(true);
         const data = await postRequest(`${PATIENT_REGISTRATION}`, requestData);
 
         if (data.status === 200) {
-
           const resp = data.response?.opdBillingPatientResponse;
           const patientResp = data.response?.patient || data.response;
 
-          const visits = data.response?.patient?.visits || data.response?.visits || [];
-          const hasBillingStatusY = visits.length > 0 && visits[0]?.billingStatus === 'y';
+          const visits =
+            data.response?.patient?.visits || data.response?.visits || [];
+          const hasBillingStatusY =
+            visits.length > 0 && visits[0]?.billingStatus === "y";
 
           if (hasBillingStatusY) {
             // Direct redirect to PendingForBilling without showing dialog
@@ -983,9 +1341,7 @@ const PatientRegistration = () => {
               navigate("/PendingForBilling");
               window.location.reload();
             });
-
           } else if (resp) {
-            // Existing billing flow
             Swal.fire({
               title: "Patient Registered Successfully!",
               html: `
@@ -1012,16 +1368,17 @@ const PatientRegistration = () => {
                       address: resp.address,
                       appointments: resp.appointments,
                       details: resp.details,
-                      billingHeaderIds: (resp.appointments || []).map(a => a.billingHdId),
-                      registrationCost: resp.registrationCost
-                    }
-                  }
+                      billingHeaderIds: (resp.appointments || []).map(
+                        (a) => a.billingHdId
+                      ),
+                      registrationCost: resp.registrationCost,
+                    },
+                  },
                 });
               } else if (result.dismiss === Swal.DismissReason.cancel) {
                 window.location.reload();
               }
             });
-
           } else if (patientResp) {
             // Case: no billing response but patient saved
             const displayName =
@@ -1031,14 +1388,14 @@ const PatientRegistration = () => {
 
             Swal.fire({
               title: "Patient Registered Successfully!",
-              html: `<p><strong>${displayName || "Patient"}</strong> has been registered successfully.</p>`,
+              html: `<p><strong>${displayName || "Patient"
+                }</strong> has been registered successfully.</p>`,
               icon: "success",
               confirmButtonText: "OK",
               allowOutsideClick: false,
             }).then(() => {
               window.location.reload();
             });
-
           } else {
             // Fallback
             Swal.fire({
@@ -1047,15 +1404,14 @@ const PatientRegistration = () => {
               text: "Patient registered successfully.",
             }).then(() => window.location.reload());
           }
-
         } else {
           Swal.fire({
             icon: "error",
             title: "Registration Failed",
-            text: data.message || "Unexpected response received. Please try again.",
+            text:
+              data.message || "Unexpected response received. Please try again.",
           });
         }
-
       } catch (error) {
         console.error("Error:", error);
         Swal.fire({
@@ -1063,26 +1419,25 @@ const PatientRegistration = () => {
           title: "Registration Failed",
           text: "Something went wrong while registering the patient. Please try again.",
         });
-
       } finally {
         setLoading(false);
       }
-
     }
   };
+
   async function fetchDoctor(value, rowId) {
     try {
       const data = await getRequest(`${DOCTOR_BY_SPECIALITY}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setDoctorDataMap((prev) => ({
           ...prev,
-          [rowId]: data.response
+          [rowId]: data.response,
         }));
       } else {
         console.error("Unexpected API response format:", data);
         setDoctorDataMap((prev) => ({
           ...prev,
-          [rowId]: []
+          [rowId]: [],
         }));
       }
     } catch (error) {
@@ -1097,24 +1452,30 @@ const PatientRegistration = () => {
       return;
     }
     const today = new Date();
-    const value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    console.log('value', value); // "2025-12-05" जैसे
+    const value = `${today.getFullYear()}-${String(
+      today.getMonth() + 1
+    ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    console.log("value", value);
 
-    const data = await getRequest(`${GET_DOCTOR_SESSION}deptId=${deptId}&doctorId=${doctorId}&rosterDate=${value}&sessionId=${sessionId}`);
+    const data = await getRequest(
+      `${GET_DOCTOR_SESSION}deptId=${deptId}&doctorId=${doctorId}&rosterDate=${value}&sessionId=${sessionId}`
+    );
     if (data.status == 200) {
-      let sessionVal = [{ key: 0, value: '' }, { key: 1, value: '' }];
+      let sessionVal = [
+        { key: 0, value: "" },
+        { key: 1, value: "" },
+      ];
       if (data.response[0].rosterVal == "YY") {
-        sessionVal = [{ key: 0, value: 'Morning' }, { key: 1, value: 'Evening' }]
+        sessionVal = [
+          { key: 0, value: "Morning" },
+          { key: 1, value: "Evening" },
+        ];
+      } else if (data.response[0].rosterVal == "NY") {
+        sessionVal = [{ key: 0, value: "Evening" }];
+      } else if (data.response[0].rosterVal == "YN") {
+        sessionVal = [{ key: 0, value: "Morning" }];
       }
-      else if (data.response[0].rosterVal == "NY") {
-        sessionVal = [{ key: 0, value: 'Evening' }]
-      }
-      else if (data.response[0].rosterVal == "YN") {
-        sessionVal = [{ key: 0, value: 'Morning' }]
-      }
-      // setSession(sessionVal);
-    }
-    else {
+    } else {
       Swal.fire(data.message);
     }
   }
@@ -1127,14 +1488,11 @@ const PatientRegistration = () => {
     let months = today.getMonth() - birthDate.getMonth();
     let days = today.getDate() - birthDate.getDate();
 
-    // Adjust if the day difference is negative
     if (days < 0) {
       months--;
       const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
       days += prevMonth.getDate();
     }
-
-    // Adjust if the month difference is negative
     if (months < 0) {
       years--;
       months += 12;
@@ -1143,52 +1501,181 @@ const PatientRegistration = () => {
     return `${years}Y ${months}M ${days}D`;
   }
 
-  const showTokenPopup = () => {
+  const selectToken = async (
+    appointmentIndex,
+    tokenNo,
+    tokenStartTime,
+    tokenEndTime
+  ) => {
+    try {
+      const formatTime = (timeStr) => {
+        if (!timeStr) return "";
+        if (timeStr.length <= 5) return timeStr;
+        if (timeStr.includes(":")) {
+          const parts = timeStr.split(":");
+          return `${parts[0]}:${parts[1]}`;
+        }
+        return timeStr;
+      };
+
+      const formattedStartTime = formatTime(tokenStartTime);
+      const formattedEndTime = formatTime(tokenEndTime);
+
+      setAppointments((prev) =>
+        prev.map((app, index) =>
+          index === appointmentIndex
+            ? {
+              ...app,
+              tokenNo,
+              tokenStartTime: formattedStartTime,
+              tokenEndTime: formattedEndTime,
+              selectedTimeSlot: `${formattedStartTime} - ${formattedEndTime}`,
+            }
+            : app
+        )
+      );
+
+      Swal.fire({
+        icon: "success",
+        title: "Token Selected",
+        text: `Token ${formattedStartTime} to ${formattedEndTime} has been reserved.`,
+        timer: 1500,
+        showConfirmButton: false,
+      });
+
+      Swal.close();
+    } catch (error) {
+      console.error("Error selecting token:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to select token. Please try again.",
+      });
+    }
+  };
+
+  const handleAppointmentChange = (index, field, value) => {
+    setAppointments((prev) =>
+      prev.map((appt, i) => {
+        if (i === index) {
+          if (field === "selDate") {
+            const dateOnly = value.split("T")[0];
+            return {
+              ...appt,
+              [field]: dateOnly,
+              tokenNo: null,
+              tokenStartTime: "",
+              tokenEndTime: "",
+              selectedTimeSlot: "",
+            };
+          }
+          return { ...appt, [field]: value };
+        }
+        return appt;
+      })
+    );
+  };
+
+  const showTokenPopup = (
+    tokens = [],
+    sessionName,
+    appointmentDate,
+    appointmentIndex
+  ) => {
+    if (tokens.length === 0) {
+      Swal.fire({
+        icon: "info",
+        title: "No Tokens Available",
+        text: "No tokens are available for the selected session.",
+      });
+      return;
+    }
+    const formatTimeForDisplay = (timeStr) => {
+      if (!timeStr) return "";
+      if (timeStr.includes(":")) {
+        const parts = timeStr.split(":");
+        return `${parts[0]}:${parts[1]}`;
+      }
+      return timeStr;
+    };
+
     Swal.fire({
-      title: "Token Availability",
+      title: `Time Slots - Appointment ${appointmentIndex + 1}`,
       html: `
-      <div class="container-fluid">
-        <div class="text-center mb-3">
-          <h5 class="fw-bold">Available Time Slots</h5>
-        </div>
-        <div class="row">
-          <div class="col-md-6">
-            <div class="card border-0 shadow-sm">
-              <div class="card-body">
-                <h6 class="fw-bold mb-3 text-primary">Morning Session</h6>
-                <div class="d-grid gap-2">
-                  <button type="button" class="btn btn-outline-secondary">10:00 AM</button>
-                  <button type="button" class="btn btn-outline-secondary">10:15 AM</button>
-                  <button type="button" class="btn btn-outline-secondary">10:45 AM</button>
-                  <button type="button" class="btn btn-outline-secondary">11:15 AM</button>
+<div class="container-fluid">
+  <div class="text-center mb-2">
+    <h5 class="fw-bold mb-1">Available Time Slots</h5>
+    <p class="text-muted small">Date: ${appointmentDate} | Session: ${sessionName}</p>
+  </div>
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-3">
+          <h6 class="fw-bold mb-2 text-primary">${sessionName} Session</h6>
+          <div class="row row-cols-4 g-1" id="token-slots">
+            ${tokens
+          .map((token) => {
+            const displayStart = formatTimeForDisplay(token.startTime);
+            const displayEnd = formatTimeForDisplay(token.endTime);
+            return `
+                <div class="col">
+                  <button type="button" 
+                          class="btn ${token.available
+                ? "btn-outline-success"
+                : "btn-outline-secondary disabled"
+              } w-100 d-flex flex-column align-items-center justify-content-center p-1" 
+                          style="height: 65px; font-size: 0.75rem;"
+                          data-token-id="${token.tokenNo || ""}"
+                          data-token-starttime="${token.startTime || ""}"
+                          data-token-endtime="${token.endTime || ""}"
+                          ${!token.available ? "disabled" : ""}>
+                    <span class="fw-bold">${displayStart}</span>
+                    <span>${displayEnd}</span>
+                    ${!token.available
+                ? '<span class="badge bg-danger mt-0" style="font-size: 0.6rem;">Booked</span>'
+                : ""
+              }
+                  </button>
                 </div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-6">
-            <div class="card border-0 shadow-sm">
-              <div class="card-body">
-                <h6 class="fw-bold mb-3 text-primary">Afternoon Session</h6>
-                <div class="d-grid gap-2">
-                  <button type="button" class="btn btn-outline-secondary">11:30 AM</button>
-                  <button type="button" class="btn btn-outline-secondary">11:45 AM</button>
-                  <button type="button" class="btn btn-outline-secondary">12:00 PM</button>
-                  <button type="button" class="btn btn-outline-secondary">12:15 PM</button>
-                </div>
-              </div>
-            </div>
+              `;
+          })
+          .join("")}
           </div>
         </div>
       </div>
-    `,
+    </div>
+  </div>
+</div>
+`,
       showCloseButton: true,
       showConfirmButton: false,
-      width: 600,
-      padding: "1.5rem",
+      width: 550,
+      padding: "1rem",
+      didOpen: () => {
+        document.querySelectorAll(".btn-outline-success").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            const tokenNo = e.target
+              .closest("button")
+              .getAttribute("data-token-id");
+            const tokenStartTime = e.target
+              .closest("button")
+              .getAttribute("data-token-starttime");
+            const tokenEndTime = e.target
+              .closest("button")
+              .getAttribute("data-token-endtime");
+            selectToken(
+              appointmentIndex,
+              tokenNo,
+              tokenStartTime,
+              tokenEndTime
+            );
+          });
+        });
+      },
       customClass: {
-        container: 'swal2-bootstrap',
-        popup: 'border-0'
-      }
+        container: "swal2-bootstrap",
+        popup: "border-0",
+      },
     });
   };
 
@@ -1216,33 +1703,87 @@ const PatientRegistration = () => {
                     <div className="col-md-9">
                       <div className="row g-3">
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="firstName">First Name <span className="text-danger">*</span></label>
-                          <input type="text" className={`form-control ${errors.firstName ? 'is-invalid' : ''}`}
-                            id="firstName" name="firstName" value={formData.firstName} onChange={handleChange}
-                            placeholder="Enter First Name" required />
-                          {errors.firstName && <div className="invalid-feedback">{errors.firstName}</div>}
+                          <label className="form-label" htmlFor="firstName">
+                            First Name <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            className={`form-control ${errors.firstName ? "is-invalid" : ""
+                              }`}
+                            id="firstName"
+                            name="firstName"
+                            value={formData.firstName}
+                            onChange={handleChange}
+                            placeholder="Enter First Name"
+                            required
+                          />
+                          {errors.firstName && (
+                            <div className="invalid-feedback">
+                              {errors.firstName}
+                            </div>
+                          )}
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="middleName">Middle Name</label>
-                          <input type="text" id="middleName" value={formData.middleName} name="middleName"
-                            onChange={handleChange} className="form-control" placeholder="Enter Middle Name" />
+                          <label className="form-label" htmlFor="middleName">
+                            Middle Name
+                          </label>
+                          <input
+                            type="text"
+                            id="middleName"
+                            value={formData.middleName}
+                            name="middleName"
+                            onChange={handleChange}
+                            className="form-control"
+                            placeholder="Enter Middle Name"
+                          />
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="lastName">Last Name</label>
-                          <input type="text" id="lastName" value={formData.lastName} name="lastName"
-                            onChange={handleChange} className="form-control" placeholder="Enter Last Name" />
+                          <label className="form-label" htmlFor="lastName">
+                            Last Name
+                          </label>
+                          <input
+                            type="text"
+                            id="lastName"
+                            value={formData.lastName}
+                            name="lastName"
+                            onChange={handleChange}
+                            className="form-control"
+                            placeholder="Enter Last Name"
+                          />
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="mobileNo">Mobile No.<span className="text-danger">*</span></label>
-                          <input type="text" id="mobileNo"
-                            className={`form-control ${errors.mobileNo ? 'is-invalid' : ''}`} name="mobileNo"
-                            value={formData.mobileNo} onChange={handleChange} placeholder="Enter Mobile Number" required />
-                          {errors.mobileNo && <div className="invalid-feedback">{errors.mobileNo}</div>}
+                          <label className="form-label" htmlFor="mobileNo">
+                            Mobile No.<span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            id="mobileNo"
+                            className={`form-control ${errors.mobileNo ? "is-invalid" : ""
+                              }`}
+                            name="mobileNo"
+                            value={formData.mobileNo}
+                            onChange={handleChange}
+                            placeholder="Enter Mobile Number"
+                            required
+                          />
+                          {errors.mobileNo && (
+                            <div className="invalid-feedback">
+                              {errors.mobileNo}
+                            </div>
+                          )}
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="gender">Gender <span className="text-danger">*</span></label>
-                          <select className={`form-select ${errors.gender ? 'is-invalid' : ''}`} id="gender"
-                            name="gender" value={formData.gender} onChange={handleChange}>
+                          <label className="form-label" htmlFor="gender">
+                            Gender <span className="text-danger">*</span>
+                          </label>
+                          <select
+                            className={`form-select ${errors.gender ? "is-invalid" : ""
+                              }`}
+                            id="gender"
+                            name="gender"
+                            value={formData.gender}
+                            onChange={handleChange}
+                          >
                             <option value="">Select</option>
                             {genderData.map((gender) => (
                               <option key={gender.id} value={gender.id}>
@@ -1250,12 +1791,24 @@ const PatientRegistration = () => {
                               </option>
                             ))}
                           </select>
-                          {errors.gender && <div className="invalid-feedback">{errors.gender}</div>}
+                          {errors.gender && (
+                            <div className="invalid-feedback">
+                              {errors.gender}
+                            </div>
+                          )}
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="relation">Relation <span className="text-danger">*</span></label>
-                          <select className={`form-select ${errors.relation ? 'is-invalid' : ''}`} id="relation"
-                            name="relation" value={formData.relation} onChange={handleChange}>
+                          <label className="form-label" htmlFor="relation">
+                            Relation <span className="text-danger">*</span>
+                          </label>
+                          <select
+                            className={`form-select ${errors.relation ? "is-invalid" : ""
+                              }`}
+                            id="relation"
+                            name="relation"
+                            value={formData.relation}
+                            onChange={handleChange}
+                          >
                             <option value="">Select</option>
                             {relationData.map((relation) => (
                               <option key={relation.id} value={relation.id}>
@@ -1263,36 +1816,69 @@ const PatientRegistration = () => {
                               </option>
                             ))}
                           </select>
-                          {errors.relation && <div className="invalid-feedback">{errors.relation}</div>}
+                          {errors.relation && (
+                            <div className="invalid-feedback">
+                              {errors.relation}
+                            </div>
+                          )}
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="dob">DOB <span className="text-danger">*</span></label>
-                          <input type="date" id="dob" name="dob"
-                            className={`form-control ${errors.dob ? 'is-invalid' : ''}`} value={formData.dob}
-                            max={new Date().toISOString().split("T")[0]} onChange={handleChange}
-                            placeholder="Select Date of Birth" />
-                          {errors.dob && <div className="invalid-feedback">{errors.dob}</div>}
+                          <label className="form-label" htmlFor="dob">
+                            DOB <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            id="dob"
+                            name="dob"
+                            className={`form-control ${errors.dob ? "is-invalid" : ""
+                              }`}
+                            value={formData.dob}
+                            max={new Date().toISOString().split("T")[0]}
+                            onChange={handleChange}
+                            placeholder="Select Date of Birth"
+                          />
+                          {errors.dob && (
+                            <div className="invalid-feedback">{errors.dob}</div>
+                          )}
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="age">Age</label>
+                          <label className="form-label" htmlFor="age">
+                            Age
+                          </label>
                           <input
                             type="text" // <<== NOT number!
                             id="age"
                             name="age"
-                            className={`form-control ${errors.age ? "is-invalid" : ""}`}
+                            className={`form-control ${errors.age ? "is-invalid" : ""
+                              }`}
                             value={formData.age || ""}
                             onChange={handleChange}
                             placeholder="Enter Age"
                           />
 
-                          {errors.age && <div className="invalid-feedback">{errors.age}</div>}
+                          {errors.age && (
+                            <div className="invalid-feedback">{errors.age}</div>
+                          )}
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="email">Email </label>
-                          <input type="email" id="email" name="email"
-                            className={`form-control ${errors.email ? 'is-invalid' : ''}`} value={formData.email}
-                            onChange={handleChange} placeholder="Enter Email Address" />
-                          {errors.email && <div className="invalid-feedback">{errors.email}</div>}
+                          <label className="form-label" htmlFor="email">
+                            Email{" "}
+                          </label>
+                          <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            className={`form-control ${errors.email ? "is-invalid" : ""
+                              }`}
+                            value={formData.email}
+                            onChange={handleChange}
+                            placeholder="Enter Email Address"
+                          />
+                          {errors.email && (
+                            <div className="invalid-feedback">
+                              {errors.email}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1301,24 +1887,49 @@ const PatientRegistration = () => {
                       <div className="text-center">
                         <div className="card p-3 shadow">
                           {isCameraOn ? (
-                            <video ref={videoRef} autoPlay className="d-block mx-auto"
-                              style={{ width: "100%", height: "150px" }}></video>
+                            <video
+                              ref={videoRef}
+                              autoPlay
+                              className="d-block mx-auto"
+                              style={{ width: "100%", height: "150px" }}
+                            ></video>
                           ) : (
-                            <img src={image || "/default-profile.png"} alt="Profile" className="img-fluid border"
-                              style={{ width: "100%", height: "150px" }} />
+                            <img
+                              src={image || "/default-profile.png"}
+                              alt="Profile"
+                              className="img-fluid border"
+                              style={{ width: "100%", height: "150px" }}
+                            />
                           )}
-                          <canvas ref={canvasRef} width="300" height="150" style={{ display: "none" }}></canvas>
+                          <canvas
+                            ref={canvasRef}
+                            width="300"
+                            height="150"
+                            style={{ display: "none" }}
+                          ></canvas>
                           <div className="mt-2">
-                            <button type="button" className="btn btn-primary me-2 mb-2" onClick={startCamera}
-                              disabled={isCameraOn}>
+                            <button
+                              type="button"
+                              className="btn btn-primary me-2 mb-2"
+                              onClick={startCamera}
+                              disabled={isCameraOn}
+                            >
                               Start Camera
                             </button>
                             {isCameraOn && (
-                              <button type="button" className="btn btn-success me-2 mb-2" onClick={capturePhoto}>
+                              <button
+                                type="button"
+                                className="btn btn-success me-2 mb-2"
+                                onClick={capturePhoto}
+                              >
                                 Take Photo
                               </button>
                             )}
-                            <button type="button" className="btn btn-danger mb-2" onClick={clearPhoto}>
+                            <button
+                              type="button"
+                              className="btn btn-danger mb-2"
+                              onClick={clearPhoto}
+                            >
                               Clear Photo
                             </button>
                           </div>
@@ -1344,64 +1955,108 @@ const PatientRegistration = () => {
                   <div className="row g-3">
                     <div className="col-md-4">
                       <label className="form-label">Address 1</label>
-                      <input type="text" className="form-control" name="address1" value={formData.address1}
-                        onChange={handleChange} placeholder="Enter Address 1" />
+                      <input
+                        type="text"
+                        className="form-control"
+                        name="address1"
+                        value={formData.address1}
+                        onChange={handleChange}
+                        placeholder="Enter Address 1"
+                      />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Address 2</label>
-                      <input type="text" className="form-control" name="address2" value={formData.address2}
-                        onChange={handleChange} placeholder="Enter Address 2" />
+                      <input
+                        type="text"
+                        className="form-control"
+                        name="address2"
+                        value={formData.address2}
+                        onChange={handleChange}
+                        placeholder="Enter Address 2"
+                      />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Country</label>
-                      <select className="form-select" name="country" value={formData.country} onChange={(e) => {
-                        handleAddChange(e);
-                        fetchStates(e.target.value);
-                      }}>
+                      <select
+                        className="form-select"
+                        name="country"
+                        value={formData.country}
+                        onChange={(e) => {
+                          handleAddChange(e);
+                          fetchStates(e.target.value);
+                        }}
+                      >
                         <option value="">Select Country</option>
                         {countryData.map((country) => (
                           <option key={country.id} value={country.id}>
                             {country.countryName}
-                          </option>))}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">State</label>
-                      <select className="form-select" name="state" value={formData.state} onChange={(e) => {
-                        handleAddChange(e);
-                        fetchDistrict(e.target.value);
-                      }}>
+                      <select
+                        className="form-select"
+                        name="state"
+                        value={formData.state}
+                        onChange={(e) => {
+                          handleAddChange(e);
+                          fetchDistrict(e.target.value);
+                        }}
+                      >
                         <option value="">Select State</option>
                         {stateData.map((state) => (
                           <option key={state.id} value={state.id}>
                             {state.stateName}
-                          </option>))}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">District</label>
-                      <select className="form-select" name="district" value={formData.district} onChange={(e) => {
-                        handleAddChange(e);
-                      }}>
+                      <select
+                        className="form-select"
+                        name="district"
+                        value={formData.district}
+                        onChange={(e) => {
+                          handleAddChange(e);
+                        }}
+                      >
                         <option value="">Select District</option>
                         {districtData.map((district) => (
                           <option key={district.id} value={district.id}>
                             {district.districtName}
-                          </option>))}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">City</label>
-                      <input type="text" className="form-control" name="city" value={formData.city}
-                        onChange={handleChange} placeholder="Enter City" />
+                      <input
+                        type="text"
+                        className="form-control"
+                        name="city"
+                        value={formData.city}
+                        onChange={handleChange}
+                        placeholder="Enter City"
+                      />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Pin Code</label>
-                      <input type="text" className={`form-control ${errors.pinCode ? 'is-invalid' : ''}`} name="pinCode" value={formData.pinCode}
-                        onChange={handleChange} placeholder="Enter Pin Code" />
+                      <input
+                        type="text"
+                        className={`form-control ${errors.pinCode ? "is-invalid" : ""
+                          }`}
+                        name="pinCode"
+                        value={formData.pinCode}
+                        onChange={handleChange}
+                        placeholder="Enter Pin Code"
+                      />
                       {errors.pinCode && (
                         <div className="invalid-feedback">{errors.pinCode}</div>
-                      )}</div>
+                      )}
+                    </div>
                   </div>
                 </form>
               </div>
@@ -1421,94 +2076,158 @@ const PatientRegistration = () => {
                   <div className="row g-3">
                     <div className="col-md-4">
                       <label className="form-label">First Name</label>
-                      <input type="text" className="form-control" placeholder="Enter First Name" name="nokFirstName"
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Enter First Name"
+                        name="nokFirstName"
                         value={formData.nokFirstName}
-                        onChange={handleChange} />
-
+                        onChange={handleChange}
+                      />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Middle Name</label>
-                      <input type="text" className="form-control" placeholder="Enter Middle Name" name="nokMiddleName"
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Enter Middle Name"
+                        name="nokMiddleName"
                         value={formData.nokMiddleName}
-                        onChange={handleChange} />
+                        onChange={handleChange}
+                      />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Last Name</label>
-                      <input type="text" className="form-control" placeholder="Enter Last Name" name="nokLastName"
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Enter Last Name"
+                        name="nokLastName"
                         value={formData.nokLastName}
-                        onChange={handleChange} />
+                        onChange={handleChange}
+                      />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Email</label>
-                      <input type="email" className="form-control" placeholder="Enter Email" name="nokEmail"
+                      <input
+                        type="email"
+                        className="form-control"
+                        placeholder="Enter Email"
+                        name="nokEmail"
                         value={formData.nokEmail}
-                        onChange={handleChange} />
+                        onChange={handleChange}
+                      />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Mobile No.</label>
-                      <input type="text" className="form-control" placeholder="Enter Mobile Number" name="nokMobile"
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Enter Mobile Number"
+                        name="nokMobile"
                         value={formData.nokMobile}
-                        onChange={handleChange} />
+                        onChange={handleChange}
+                      />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Address 1</label>
-                      <input type="text" className="form-control" placeholder="Enter Address 1" name="nokAddress1" value={formData.nokAddress1}
-                        onChange={handleChange} />
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Enter Address 1"
+                        name="nokAddress1"
+                        value={formData.nokAddress1}
+                        onChange={handleChange}
+                      />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Address 2</label>
-                      <input type="text" className="form-control" placeholder="Enter Address 2" name="nokAddress2" value={formData.nokAddress2}
-                        onChange={handleChange} />
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Enter Address 2"
+                        name="nokAddress2"
+                        value={formData.nokAddress2}
+                        onChange={handleChange}
+                      />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Country</label>
-                      <select className="form-select" name="nokCountry" value={formData.nokCountry}
+                      <select
+                        className="form-select"
+                        name="nokCountry"
+                        value={formData.nokCountry}
                         onChange={(e) => {
                           handleAddChange(e);
                           fetchNokStates(e.target.value);
-                        }}>
+                        }}
+                      >
                         <option value="">Select Country</option>
                         {countryData.map((country) => (
                           <option key={country.id} value={country.id}>
                             {country.countryName}
-                          </option>))}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">State</label>
-                      <select className="form-select" name="nokState" value={formData.nokState}
+                      <select
+                        className="form-select"
+                        name="nokState"
+                        value={formData.nokState}
                         onChange={(e) => {
                           handleAddChange(e);
                           fetchNokDistrict(e.target.value);
-                        }}>
+                        }}
+                      >
                         <option value="">Select State</option>
                         {nokStateData.map((state) => (
                           <option key={state.id} value={state.id}>
                             {state.stateName}
-                          </option>))}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">District</label>
-                      <select className="form-select" name="nokDistrict" value={formData.nokDistrict} onChange={(e) => {
-                        handleAddChange(e)
-                      }}>
+                      <select
+                        className="form-select"
+                        name="nokDistrict"
+                        value={formData.nokDistrict}
+                        onChange={(e) => {
+                          handleAddChange(e);
+                        }}
+                      >
                         <option value="">Select District</option>
                         {nokDistrictData.map((district) => (
                           <option key={district.id} value={district.id}>
                             {district.districtName}
-                          </option>))}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">City</label>
-                      <input type="text" className="form-control" placeholder="Enter City" name="nokCity" value={formData.nokCity}
-                        onChange={handleChange} />
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Enter City"
+                        name="nokCity"
+                        value={formData.nokCity}
+                        onChange={handleChange}
+                      />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Pin Code</label>
-                      <input type="text" className="form-control" placeholder="Enter Pin Code" name="nokPinCode" value={formData.nokPinCode}
-                        onChange={handleChange} />
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Enter Pin Code"
+                        name="nokPinCode"
+                        value={formData.nokPinCode}
+                        onChange={handleChange}
+                      />
                     </div>
                   </div>
                 </form>
@@ -1528,15 +2247,36 @@ const PatientRegistration = () => {
                   <div className="row g-3">
                     <div className="col-md-4">
                       <label className="form-label">First Name</label>
-                      <input type="text" className="form-control" placeholder="Enter First Name" name="emergencyFirstName" value={formData.emergencyFirstName} onChange={handleChange} />
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Enter First Name"
+                        name="emergencyFirstName"
+                        value={formData.emergencyFirstName}
+                        onChange={handleChange}
+                      />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Last Name</label>
-                      <input type="text" className="form-control" placeholder="Enter Last Name" name="emergencyLastName" value={formData.emergencyLastName} onChange={handleChange} />
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Enter Last Name"
+                        name="emergencyLastName"
+                        value={formData.emergencyLastName}
+                        onChange={handleChange}
+                      />
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Mobile No.</label>
-                      <input type="text" className="form-control" placeholder="Enter Mobile Number" name="emergencyMobile" value={formData.emergencyMobile} onChange={handleChange} />
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Enter Mobile Number"
+                        name="emergencyMobile"
+                        value={formData.emergencyMobile}
+                        onChange={handleChange}
+                      />
                     </div>
                   </div>
                 </form>
@@ -1545,122 +2285,222 @@ const PatientRegistration = () => {
           </div>
         </div>
         {/* Vital Details Section */}
-        {!preConsultationFlag && (<>
+        {!preConsultationFlag && (
+          <>
+            <div className="row mb-3">
+              <div className="col-sm-12">
+                <div className="card shadow mb-3">
+                  <div className="card-header py-3   border-bottom-1">
+                    <h6 className="mb-0 fw-bold">Vital Details</h6>
+                  </div>
+                  <div className="card-body">
+                    <form className="vital">
+                      <div className="row g-3 align-items-center">
+                        {/* Patient Height */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">
+                            Height<span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            className={`form-control ${errors.height ? "is-invalid" : ""
+                              }`}
+                            min={0}
+                            placeholder="Height"
+                            name="height"
+                            value={formData.height}
+                            onChange={handleChange}
+                          />
+                          <span className="input-group-text">cm</span>
+                          {errors.height && (
+                            <div className="invalid-feedback d-block">
+                              {errors.height}
+                            </div>
+                          )}
+                        </div>
 
-          <div className="row mb-3">
-            <div className="col-sm-12">
-              <div className="card shadow mb-3">
-                <div className="card-header py-3   border-bottom-1">
-                  <h6 className="mb-0 fw-bold">Vital Details</h6>
-                </div>
-                <div className="card-body">
-                  <form className="vital">
-                    <div className="row g-3 align-items-center">
-                      {/* Patient Height */}
-                      <div className="col-md-4 d-flex">
-                        <label className="form-label me-2">Height<span className="text-danger">*</span></label>
-                        <input type="number" className={`form-control ${errors.height ? 'is-invalid' : ''}`} min={0}
-                          placeholder="Height" name="height" value={formData.height} onChange={handleChange} />
-                        <span className="input-group-text">cm</span>
-                        {errors.height && (
-                          <div className="invalid-feedback d-block">{errors.height}</div>
-                        )}
-                      </div>
+                        {/* Weight */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">
+                            Weight<span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            className={`form-control ${errors.weight ? "is-invalid" : ""
+                              }`}
+                            placeholder="Weight"
+                            name="weight"
+                            value={formData.weight}
+                            onChange={handleChange}
+                          />
+                          <span className="input-group-text">kg</span>
+                          {errors.weight && (
+                            <div className="invalid-feedback d-block">
+                              {errors.weight}
+                            </div>
+                          )}
+                        </div>
 
-                      {/* Weight */}
-                      <div className="col-md-4 d-flex">
-                        <label className="form-label me-2">Weight<span className="text-danger">*</span></label>
-                        <input type="number" min={0} className={`form-control ${errors.weight ? 'is-invalid' : ''}`}
-                          placeholder="Weight" name="weight" value={formData.weight} onChange={handleChange} />
-                        <span className="input-group-text">kg</span>
-                        {errors.weight && (
-                          <div className="invalid-feedback d-block">{errors.weight}</div>
-                        )}
-                      </div>
+                        {/* Temperature */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">
+                            Temperature<span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            className={`form-control ${errors.temperature ? "is-invalid" : ""
+                              }`}
+                            placeholder="Temperature"
+                            name="temperature"
+                            value={formData.temperature}
+                            onChange={handleChange}
+                          />
+                          <span className="input-group-text">°F</span>
+                          {errors.temperature && (
+                            <div className="invalid-feedback d-block">
+                              {errors.temperature}
+                            </div>
+                          )}
+                        </div>
 
-                      {/* Temperature */}
-                      <div className="col-md-4 d-flex">
-                        <label className="form-label me-2">Temperature<span className="text-danger">*</span></label>
-                        <input type="number" min={0}
-                          className={`form-control ${errors.temperature ? 'is-invalid' : ''}`}
-                          placeholder="Temperature" name="temperature" value={formData.temperature}
-                          onChange={handleChange} />
-                        <span className="input-group-text">°F</span>
-                        {errors.temperature && (
-                          <div className="invalid-feedback d-block">{errors.temperature}</div>
-                        )}
-                      </div>
+                        {/* BP (Systolic / Diastolic) */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">
+                            BP<span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            className={`form-control ${errors.systolicBP ? "is-invalid" : ""
+                              }`}
+                            placeholder="Systolic"
+                            name="systolicBP"
+                            value={formData.systolicBP}
+                            onChange={handleChange}
+                          />
+                          <span className="input-group-text">/</span>
+                          {errors.systolicBP && (
+                            <div className="invalid-feedback d-block">
+                              {errors.systolicBP}
+                            </div>
+                          )}
+                          <input
+                            type="number"
+                            min={0}
+                            className={`form-control ${errors.diastolicBP ? "is-invalid" : ""
+                              }`}
+                            placeholder="Diastolic"
+                            name="diastolicBP"
+                            value={formData.diastolicBP}
+                            onChange={handleChange}
+                          />
+                          <span className="input-group-text">mmHg</span>
+                          {errors.diastolicBP && (
+                            <div className="invalid-feedback d-block">
+                              {errors.diastolicBP}
+                            </div>
+                          )}
+                        </div>
 
-                      {/* BP (Systolic / Diastolic) */}
-                      <div className="col-md-4 d-flex">
-                        <label className="form-label me-2">BP<span className="text-danger">*</span></label>
-                        <input type="number" min={0} className={`form-control ${errors.systolicBP ? 'is-invalid' : ''}`}
-                          placeholder="Systolic" name="systolicBP" value={formData.systolicBP}
-                          onChange={handleChange} />
-                        <span className="input-group-text">/</span>
-                        {errors.systolicBP && (
-                          <div className="invalid-feedback d-block">{errors.systolicBP}</div>
-                        )}
-                        <input type="number" min={0}
-                          className={`form-control ${errors.diastolicBP ? 'is-invalid' : ''}`}
-                          placeholder="Diastolic" name="diastolicBP" value={formData.diastolicBP}
-                          onChange={handleChange} />
-                        <span className="input-group-text">mmHg</span>
-                        {errors.diastolicBP && (
-                          <div className="invalid-feedback d-block">{errors.diastolicBP}</div>
-                        )}
-                      </div>
+                        {/* Pulse */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">
+                            Pulse<span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            className={`form-control ${errors.pulse ? "is-invalid" : ""
+                              }`}
+                            placeholder="Pulse"
+                            name="pulse"
+                            value={formData.pulse}
+                            onChange={handleChange}
+                          />
+                          <span className="input-group-text">/min</span>
+                          {errors.pulse && (
+                            <div className="invalid-feedback d-block">
+                              {errors.pulse}
+                            </div>
+                          )}
+                        </div>
 
-                      {/* Pulse */}
-                      <div className="col-md-4 d-flex">
-                        <label className="form-label me-2">Pulse<span className="text-danger">*</span></label>
-                        <input type="number" min={0} className={`form-control ${errors.pulse ? 'is-invalid' : ''}`}
-                          placeholder="Pulse" name="pulse" value={formData.pulse} onChange={handleChange} />
-                        <span className="input-group-text">/min</span>
-                        {errors.pulse && (
-                          <div className="invalid-feedback d-block">{errors.pulse}</div>
-                        )}
-                      </div>
+                        {/* BMI */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">BMI</label>
+                          <input
+                            type="number"
+                            min={0}
+                            className={`form-control ${errors.bmi ? "is-invalid" : ""
+                              }`}
+                            placeholder="BMI"
+                            name="bmi"
+                            value={formData.bmi}
+                            onChange={handleChange}
+                          />
+                          <span className="input-group-text">kg/m²</span>
+                          {errors.bmi && (
+                            <div className="invalid-feedback d-block">
+                              {errors.bmi}
+                            </div>
+                          )}
+                        </div>
 
-                      {/* BMI */}
-                      <div className="col-md-4 d-flex">
-                        <label className="form-label me-2">BMI</label>
-                        <input type="number" min={0} className={`form-control ${errors.bmi ? 'is-invalid' : ''}`}
-                          placeholder="BMI" name="bmi" value={formData.bmi} onChange={handleChange} />
-                        <span className="input-group-text">kg/m²</span>
-                        {errors.bmi && (
-                          <div className="invalid-feedback d-block">{errors.bmi}</div>
-                        )}
-                      </div>
+                        {/* RR */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">
+                            RR<span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            className={`form-control ${errors.rr ? "is-invalid" : ""
+                              }`}
+                            placeholder="RR"
+                            name="rr"
+                            value={formData.rr}
+                            onChange={handleChange}
+                          />
+                          <span className="input-group-text">/min</span>
+                          {errors.rr && (
+                            <div className="invalid-feedback d-block">
+                              {errors.rr}
+                            </div>
+                          )}
+                        </div>
 
-                      {/* RR */}
-                      <div className="col-md-4 d-flex">
-                        <label className="form-label me-2">RR<span className="text-danger">*</span></label>
-                        <input type="number" min={0} className={`form-control ${errors.rr ? 'is-invalid' : ''}`}
-                          placeholder="RR" name="rr" value={formData.rr} onChange={handleChange} />
-                        <span className="input-group-text">/min</span>
-                        {errors.rr && (
-                          <div className="invalid-feedback d-block">{errors.rr}</div>
-                        )}
+                        {/* SpO2 */}
+                        <div className="col-md-4 d-flex">
+                          <label className="form-label me-2">
+                            SpO2<span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            className={`form-control ${errors.spo2 ? "is-invalid" : ""
+                              }`}
+                            placeholder="SpO2"
+                            name="spo2"
+                            value={formData.spo2}
+                            onChange={handleChange}
+                          />
+                          <span className="input-group-text">%</span>
+                          {errors.height && (
+                            <div className="invalid-feedback d-block">
+                              {errors.spo2}
+                            </div>
+                          )}
+                        </div>
                       </div>
-
-                      {/* SpO2 */}
-                      <div className="col-md-4 d-flex">
-                        <label className="form-label me-2">SpO2<span className="text-danger">*</span></label>
-                        <input type="number" min={0} className={`form-control ${errors.spo2 ? 'is-invalid' : ''}`}
-                          placeholder="SpO2" name="spo2" value={formData.spo2} onChange={handleChange} />
-                        <span className="input-group-text">%</span>
-                        {errors.height && (
-                          <div className="invalid-feedback d-block">{errors.spo2}</div>
-                        )}
-                      </div>
-                    </div>
-                  </form>
+                    </form>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </>)}
+          </>
+        )}
 
         {/* Appointment Details Section */}
         <div className="row mb-3">
@@ -1669,7 +2509,11 @@ const PatientRegistration = () => {
               <div className="card-header py-3   border-bottom-1 d-flex align-items-center justify-content-between">
                 <h6 className="mb-0 fw-bold">Appointment Details</h6>
                 <div className="d-flex gap-2">
-                  <button type="button" className="btn btn-sm btn-outline-primary" onClick={addAppointmentRow}>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary text-white  "
+                    onClick={addAppointmentRow}
+                  >
                     + Add
                   </button>
                 </div>
@@ -1679,14 +2523,21 @@ const PatientRegistration = () => {
                   {appointments.map((appointment, index) => {
                     const doctorOptions = doctorDataMap[appointment.id] || [];
                     return (
-                      <div className="row g-3 mb-3" key={`appointment-${appointment.id}`}>
+                      <div
+                        className="row g-3 mb-3"
+                        key={`appointment-${appointment.id}`}
+                      >
                         <div className="col-12 d-flex align-items-center justify-content-between">
-                          <h6 className="fw-bold text-muted mb-0">Appointment {index + 1}</h6>
+                          <h6 className="fw-bold text-muted mb-0">
+                            Appointment {index + 1}
+                          </h6>
                           {appointments.length > 1 && (
                             <button
                               type="button"
                               className="btn btn-sm btn-outline-danger"
-                              onClick={() => removeAppointmentRow(appointment.id)}
+                              onClick={() =>
+                                removeAppointmentRow(appointment.id)
+                              }
                             >
                               - Remove
                             </button>
@@ -1697,7 +2548,12 @@ const PatientRegistration = () => {
                           <select
                             className="form-select"
                             value={appointment.speciality}
-                            onChange={(e) => handleSpecialityChange(appointment.id, e.target.value)}
+                            onChange={(e) =>
+                              handleSpecialityChange(
+                                appointment.id,
+                                e.target.value
+                              )
+                            }
                           >
                             <option value="">Select Speciality</option>
                             {departmentData.map((department) => (
@@ -1713,13 +2569,18 @@ const PatientRegistration = () => {
                             className="form-select"
                             value={appointment.selDoctorId}
                             onChange={(e) =>
-                              handleDoctorChange(appointment.id, e.target.value, appointment.speciality)
+                              handleDoctorChange(
+                                appointment.id,
+                                e.target.value,
+                                appointment.speciality
+                              )
                             }
                           >
                             <option value="">Select Doctor</option>
                             {doctorOptions.map((doctor) => (
                               <option key={doctor.id} value={doctor.userId}>
-                                {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""} ${doctor.lastName ? doctor.lastName : ""}`}
+                                {`${doctor.firstName} ${doctor.middleName ? doctor.middleName : ""
+                                  } ${doctor.lastName ? doctor.lastName : ""}`}
                               </option>
                             ))}
                           </select>
@@ -1747,6 +2608,73 @@ const PatientRegistration = () => {
                             ))}
                           </select>
                         </div>
+                        <div className="col-md-4">
+                          <DatePicker
+                            key={dateResetKey + "-" + index}
+                            value={appointment.selDate || null}
+                            onChange={(date) => onDateChange(index, date)}
+                            placeholder="Select Date"
+                            className="form-control"
+                          />
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label">Time Slot</label>
+                          <div className="d-flex align-items-center">
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={appointment.selectedTimeSlot || ""}
+                              readOnly
+                              style={{
+                                backgroundColor: appointment.selectedTimeSlot
+                                  ? "#f0fff0"
+                                  : "#f8f9fa",
+                                cursor: "pointer",
+                              }}
+                              onClick={() => {
+                                if (appointment.selectedTimeSlot) {
+                                  Swal.fire({
+                                    title: "Change Time Slot?",
+                                    text: "Do you want to select a different time slot?",
+                                    icon: "question",
+                                    showCancelButton: true,
+                                    confirmButtonText: "Yes, change",
+                                    cancelButtonText: "Keep current",
+                                  }).then((result) => {
+                                    if (result.isConfirmed) {
+                                      clearTimeSlot(index);
+                                      if (
+                                        appointment.speciality &&
+                                        appointment.selDoctorId &&
+                                        appointment.selSession &&
+                                        appointment.selDate
+                                      ) {
+                                        fetchTokenAvailability(index);
+                                      }
+                                    }
+                                  });
+                                } else if (
+                                  appointment.speciality &&
+                                  appointment.selDoctorId &&
+                                  appointment.selSession &&
+                                  appointment.selDate
+                                ) {
+                                  fetchTokenAvailability(index);
+                                }
+                              }}
+                            />
+                            {appointment.selectedTimeSlot && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-danger ms-2"
+                                onClick={() => clearTimeSlot(index)}
+                                title="Clear time slot"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
@@ -1756,7 +2684,7 @@ const PatientRegistration = () => {
           </div>
         </div>
 
-        {/* NEW: Token Availability Section */}
+        {/* NEW: Token Availability Section
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
@@ -1780,7 +2708,7 @@ const PatientRegistration = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
         {/* Submit and Reset Buttons */}
         <div className="row mb-3">
           <div className="col-sm-12">
@@ -1796,7 +2724,9 @@ const PatientRegistration = () => {
                     >
                       Registration
                     </button>
-                    <button type="reset" className="btn btn-secondary">Reset</button>
+                    <button type="reset" className="btn btn-secondary">
+                      Reset
+                    </button>
                   </div>
                 </div>
               </div>

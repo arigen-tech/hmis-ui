@@ -3,6 +3,8 @@ import ReactDOM from "react-dom";
 import { OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
 import { getRequest, putRequest } from "../../../service/apiService";
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
+import { INVALID_ORDER_ID_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG } from '../../../config/constants';
 
 const PhysicalStockAdjustmentViewUpdate = () => {
   const [currentView, setCurrentView] = useState("list");
@@ -40,11 +42,17 @@ const PhysicalStockAdjustmentViewUpdate = () => {
   const [toDate, setToDate] = useState("2025-07-17");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("");
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isGeneratingForDownload, setIsGeneratingForDownload] = useState(false);
+  const [printingIds, setPrintingIds] = useState(new Set());
   const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
+  
+  // PDF Viewer states
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [pdfSelectedRecord, setPdfSelectedRecord] = useState(null);
 
-  const fatchDrugCodeOptions = async () => {
+  const fetchDrugCodeOptions = async () => {
     try {
       const response = await getRequest(`${MAS_DRUG_MAS}/getAll2/1`);
       if (response && response.response) {
@@ -55,7 +63,7 @@ const PhysicalStockAdjustmentViewUpdate = () => {
     }
   };
 
-  const fatchPhysicalStock = async () => {
+  const fetchPhysicalStock = async () => {
     try {
       const status = "s,p,r,a";
       const response = await getRequest(`${OPEN_BALANCE}/listPhysical/${status}/${hospitalId}/${departmentId}`);
@@ -68,8 +76,8 @@ const PhysicalStockAdjustmentViewUpdate = () => {
   };
 
   useEffect(() => {
-    fatchDrugCodeOptions();
-    fatchPhysicalStock();
+    fetchDrugCodeOptions();
+    fetchPhysicalStock();
   }, []);
 
   useEffect(() => {
@@ -184,6 +192,7 @@ const PhysicalStockAdjustmentViewUpdate = () => {
 
     setStockEntries(updatedEntries);
   };
+  
   const handleEditClick = async (record, e) => {
     e.stopPropagation();
     setSelectedRecord(record);
@@ -202,7 +211,7 @@ const PhysicalStockAdjustmentViewUpdate = () => {
       drugCode: entry.itemCode,
       stockId: entry.stockId,
       itemId: entry.itemId,
-      batchData: [], // Initialize with empty batchData
+      batchData: [],
     }));
 
     // Fetch batch data for each entry individually
@@ -234,6 +243,8 @@ const PhysicalStockAdjustmentViewUpdate = () => {
   const handleBackToList = () => {
     setCurrentView("list");
     setSelectedRecord(null);
+    setPdfUrl(null);
+    setPdfSelectedRecord(null);
   };
 
   const handleShowAll = () => {
@@ -357,19 +368,26 @@ const PhysicalStockAdjustmentViewUpdate = () => {
     });
   };
 
-  const generatereport = async (id) => {
+  // Check if record is being printed
+  const isPrinting = (recordId) => {
+    return printingIds.has(recordId);
+  };
 
-    if (!id) {
-      alert("Please select List");
+  // View PDF in modal
+  const handleViewReport = async (record) => {
+    const takingMId = record.takingMId;
+
+    if (!takingMId) {
+      showPopup(`${INVALID_ORDER_ID_ERR_MSG} for viewing report`, "error");
       return;
     }
 
-
-    setIsGeneratingPDF(true);
+    setIsGeneratingPdf(true);
+    setPdfUrl(null);
+    setPdfSelectedRecord(null);
 
     try {
-
-      const url = `${ALL_REPORTS}/stockTakingReport?takingMId=${id}`;
+      const url = `${ALL_REPORTS}/stockTakingReport?takingMId=${takingMId}&flag=D`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -385,18 +403,113 @@ const PhysicalStockAdjustmentViewUpdate = () => {
       const blob = await response.blob();
       const fileURL = window.URL.createObjectURL(blob);
 
+      // Set PDF URL and record details to trigger the viewer
+      setPdfUrl(fileURL);
+      setPdfSelectedRecord({
+        stockTakingNo: record.stockTakingNo,
+        departmentName: record.departmentName,
+        physicalDate: record.physicalDate,
+        createdBy: record.createdBy,
+      });
+
+    } catch (error) {
+      console.error("Error generating PDF", error);
+      showPopup("Error generating PDF report. Please try again.", "error");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  // Download PDF directly
+  const handleDownloadReport = async (record) => {
+    const takingMId = record.takingMId;
+
+    if (!takingMId) {
+      showPopup(`${INVALID_ORDER_ID_ERR_MSG} for downloading report`, "error");
+      return;
+    }
+
+    setIsGeneratingForDownload(true);
+
+    try {
+      const url = `${ALL_REPORTS}/stockTakingReport?takingMId=${takingMId}&flag=D`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      const blob = await response.blob();
+      const fileURL = window.URL.createObjectURL(blob);
+
+      // Create download link
       const link = document.createElement("a");
       link.href = fileURL;
-      link.setAttribute("download", "DrugExpiryReport.pdf");
+      link.setAttribute("download", `StockTakingReport_${record.stockTakingNo}_${new Date().toISOString().split('T')[0]}.pdf`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
+      // Also set PDF URL for viewing if needed
+      setPdfUrl(fileURL);
+      setPdfSelectedRecord({
+        stockTakingNo: record.stockTakingNo,
+        departmentName: record.departmentName,
+        physicalDate: record.physicalDate,
+        createdBy: record.createdBy,
+      });
+
     } catch (error) {
-      console.error("Error generating PDF", error);
-      alert("Error generating PDF report. Please try again.");
+      console.error("Error downloading PDF", error);
+      showPopup("Error downloading PDF report. Please try again.", "error");
     } finally {
-      setIsGeneratingPDF(false);
+      setIsGeneratingForDownload(false);
+    }
+  };
+
+  // Print PDF
+  const handlePrintReport = async (record) => {
+    const takingMId = record.takingMId;
+
+    if (!takingMId) {
+      showPopup(`${INVALID_ORDER_ID_ERR_MSG} for printing`, "error");
+      return;
+    }
+
+    // Add this record to printing set
+    setPrintingIds(prev => new Set(prev).add(takingMId));
+
+    try {
+      const url = `${ALL_REPORTS}/stockTakingReport?takingMId=${takingMId}&flag=P`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
+
+      if (response.status === 200) {
+        showPopup("Report sent to printer successfully!", "success");
+      } else {
+        showPopup(LAB_REPORT_PRINT_ERR_MSG, "error");
+      }
+    } catch (error) {
+      console.error("Error printing report", error);
+      showPopup(LAB_REPORT_PRINT_ERR_MSG, "error");
+    } finally {
+      // Remove this record from printing set
+      setPrintingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(takingMId);
+        return newSet;
+      });
     }
   };
 
@@ -419,6 +532,16 @@ const PhysicalStockAdjustmentViewUpdate = () => {
   if (currentView === "detail") {
     return (
       <div className="content-wrapper">
+        {pdfUrl && pdfSelectedRecord && (
+          <PdfViewer
+            pdfUrl={pdfUrl}
+            onClose={() => {
+              setPdfUrl(null);
+              setPdfSelectedRecord(null);
+            }}
+            name={`Stock Taking Report - ${pdfSelectedRecord?.stockTakingNo || ''} (${pdfSelectedRecord?.departmentName || 'Department'})`}
+          />
+        )}
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
@@ -474,27 +597,61 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                       readOnly
                     />
                   </div>
-                  <div className="col-md-3 mt-3">
+                  
+                  {/* Report Action Buttons - Updated with 3 separate buttons */}
+                  <div className="col-md-6 mt-3 gap-2 d-row d-flex">
                     <button
-                      onClick={() => generatereport(selectedRecord?.takingMId)}
-                      className="btn btn-success"
-                      disabled={isGeneratingPDF}
+                      className="btn btn-primary"
+                      onClick={() => handleViewReport(selectedRecord)}
+                      disabled={isGeneratingPdf}
                       type="button"
                     >
-                      {isGeneratingPDF ? (
+                      {isGeneratingPdf ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                           Generating...
                         </>
                       ) : (
-                        " Download Invoice"
+                        "View/Download"
                       )}
-
                     </button>
 
-
-
+                      <button
+                      type="button"
+                      className="btn btn-warning"
+                      onClick={() => handlePrintReport(selectedRecord)}
+                      disabled={isPrinting(selectedRecord?.takingMId)}
+                    >
+                      {isPrinting(selectedRecord?.takingMId) ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                          Printing...
+                        </>
+                      ) : (
+                        "Print"
+                      )}
+                    </button>
                   </div>
+                  
+                  {/* <div className="col-md-2 mt-3">
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleDownloadReport(selectedRecord)}
+                      disabled={isGeneratingForDownload}
+                      type="button"
+                    >
+                      {isGeneratingForDownload ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Downloading...
+                        </>
+                      ) : (
+                        "Download"
+                      )}
+                    </button>
+                  </div> */}
+                  
+                 
                 </div>
 
                 <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
@@ -974,12 +1131,11 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                 </table>
               </div>
               <Pagination
-                                            totalItems={filteredPhysicalStockData.length}
-                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                            currentPage={currentPage}
-                                            onPageChange={setCurrentPage}
-                                        />
-
+                totalItems={filteredPhysicalStockData.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
             </div>
           </div>
         </div>

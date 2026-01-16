@@ -6,6 +6,7 @@ import { MAS_DRUG_MAS, ALL_REPORTS, MAS_ITEM_SECTION, MAS_ITEM_CLASS, OPEN_BALAN
 import LoadingScreen from "../../../Components/Loading";
 import paths from "../../../assets/images/logoPath.jpeg";
 import axios from "axios";
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"; // Add this import
 
 const StockStatusReport = () => {
   const [sections, setSections] = useState([])
@@ -22,6 +23,10 @@ const StockStatusReport = () => {
   const [activeCodeDropdown, setActiveCodeDropdown] = useState(null);
   const [activeNameDropdown, setActiveNameDropdown] = useState(null);
 
+  // Add these states for PDF handling - separate states for each button
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   useEffect(() => {
     fetchItemSection();
@@ -55,10 +60,6 @@ const StockStatusReport = () => {
     }
   };
 
-
-
-
-
   const [filters, setFilters] = useState({
     class: "All",
     section: "All",
@@ -73,7 +74,6 @@ const StockStatusReport = () => {
   const [pageInput, setPageInput] = useState("")
   const itemsPerPage = 5
   const [reportGenerated, setReportGenerated] = useState(false);
-  const [isPrinting, setIsPrinting] = useState(false);
   const drugCodeInputRefs = useRef({})
   const drugNameInputRefs = useRef({})
 
@@ -139,7 +139,7 @@ const StockStatusReport = () => {
         const data = await getRequest(`${OPEN_BALANCE}/getAllStock/${reportType}/${hospitalId}/${departmentId}`);
         if (data.status === 200 && Array.isArray(data.response)) {
           setStocks(data.response);
-          showPopup("Report generated successfully!", "success");
+          //showPopup("Report generated successfully!", "success");
           setReportGenerated(true);
         } else {
           console.error("Unexpected API response format:", data);
@@ -153,6 +153,90 @@ const StockStatusReport = () => {
     };
 
     fetchStoreReportData();
+  };
+
+  // Function for view/download (flag="d")
+  const handleViewDownload = async () => {
+    if (stocks.length === 0) {
+      alert("Please generate report first");
+      return;
+    }
+    
+    setIsGeneratingPDF(true);
+    setPdfUrl(null);
+    
+    try {
+      const sectionId = filters.section !== "All" ? filters.section : 0;
+      const classId = filters.class !== "All" ? filters.class : 0;
+
+      const summaryUrl = `${ALL_REPORTS}/stockReportSummary?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${currentItemId || 0}&flag=d`;
+      const detailsUrl = `${ALL_REPORTS}/stockReportDetail?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${currentItemId || 0}&flag=d`;
+
+      const url = reportType === "summary" ? summaryUrl : detailsUrl;
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+          Authorization: `Bearer ${token}`
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      const blob = await response.blob();
+      const fileURL = window.URL.createObjectURL(blob);
+      setPdfUrl(fileURL);
+      
+    } catch (error) {
+      console.error("Error generating PDF", error);
+      showPopup("Report generation failed", "error")
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+  // Function for print (flag="p") - just fetch the URL, API should handle printing
+  const handlePrint = async () => {
+    if (stocks.length === 0) {
+      alert("Please generate report first");
+      return;
+    }
+    
+    setIsPrinting(true);
+    
+    try {
+      const sectionId = filters.section !== "All" ? filters.section : 0;
+      const classId = filters.class !== "All" ? filters.class : 0;
+
+      const summaryUrl = `${ALL_REPORTS}/stockReportSummary?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${currentItemId || 0}&flag=p`;
+      const detailsUrl = `${ALL_REPORTS}/stockReportDetail?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${currentItemId || 0}&flag=p`;
+
+      const url = reportType === "summary" ? summaryUrl : detailsUrl;
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+          Authorization: `Bearer ${token}`
+        },
+      });
+
+      if (response.ok) {
+        // API should handle printing automatically when flag="p"
+        // No need to open blob or print manually
+      } else {
+        throw new Error("Failed to send to printer");
+      }
+      
+    } catch (error) {
+      console.error("Error printing report", error);
+      showPopup("Report generation failed", "error")
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   const fatchDrugCodeOptions = async () => {
@@ -170,42 +254,6 @@ const StockStatusReport = () => {
   useEffect(() => {
     fatchDrugCodeOptions();
   }, []);
-
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handlePrint = async () => {
-    try {
-      setIsLoading(true);
-
-      const sectionId = filters.section !== "All" ? filters.section : 0;
-      const classId = filters.class !== "All" ? filters.class : 0;
-
-
-
-      const summaryUrl = `${ALL_REPORTS}/stockReportSummary?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${currentItemId || 0}`;
-
-      const detailsUrl = `${ALL_REPORTS}/stockReportDetail?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${currentItemId || 0}`;
-
-      const url = reportType === "summary" ? summaryUrl : detailsUrl;
-
-      const response = await axios.get(url, {
-        responseType: 'blob',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const file = new Blob([response.data], { type: 'application/pdf' });
-      const fileURL = URL.createObjectURL(file);
-      window.open(fileURL);
-
-    } catch (error) {
-      console.error("Error generating report:", error);
-      alert("Failed to generate report. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  }
 
   const handlePageNavigation = () => {
     const pageNumber = Number.parseInt(pageInput, 10)
@@ -263,11 +311,9 @@ const StockStatusReport = () => {
                 Stock Status Report
               </h4>
             </div>
-            {/* {loading && <LoadingScreen />} */}
             <div className="card-body">
               {/* Filters Section */}
               <div className="row mb-4">
-
                 <div className="col-md-7">
                   <label className="form-label">Section</label>
                   <select
@@ -300,7 +346,6 @@ const StockStatusReport = () => {
                       </option>
                     ))}
                   </select>
-
                 </div>
                 <div className="col-md-4">
                   <label className="form-label">Drug Code</label>
@@ -455,8 +500,6 @@ const StockStatusReport = () => {
                       ))}
                   </ul>
                 )}
-
-
               </div>
 
               {/* Report Type Selection */}
@@ -500,22 +543,45 @@ const StockStatusReport = () => {
                 <div className="col-md-6 d-flex justify-content-end align-items-end">
                   <button
                     type="button"
-                    className="btn btn-success me-2"
-
+                    className="btn btn-primary me-2"
                     onClick={handleGenerateReport}
                   >
-                    Generate Report
+                    Search
                   </button>
                   <button
                     type="button"
-                    className="btn btn-success me-2"
-                    onClick={handlePrint}
-                    disabled={stocks.length === 0}
+                    className="btn btn-primary me-2"
+                    onClick={handleViewDownload}
+                    disabled={isGeneratingPDF || stocks.length === 0}
                   >
-                    Print Report
+                    {isGeneratingPDF ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD
+                      </>
+                    )}
                   </button>
-
-
+                  <button
+                    type="button"
+                    className="btn btn-warning"
+                    onClick={handlePrint}
+                    disabled={isPrinting || stocks.length === 0}
+                  >
+                    {isPrinting ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Printing...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fa fa-print me-2"></i> PRINT
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -534,10 +600,10 @@ const StockStatusReport = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {(isPrinting ? filteredStockList : currentItems).length > 0 ? (
-                          (isPrinting ? filteredStockList : currentItems).map((item, index) => (
+                        {currentItems.length > 0 ? (
+                          currentItems.map((item, index) => (
                             <tr key={item.stockId}>
-                              <td>{isPrinting ? index + 1 : (currentPage - 1) * itemsPerPage + index + 1}</td>
+                              <td>{(currentPage - 1) * itemsPerPage + index + 1}</td>
                               <td>{item.itemCode}</td>
                               <td>{item.itemName}</td>
                               <td>{item.unitAu}</td>
@@ -552,7 +618,6 @@ const StockStatusReport = () => {
                           </tr>
                         )}
                       </tbody>
-
                     </table>
                   ) : (
                     <table className="table table-bordered table-hover align-middle">
@@ -571,10 +636,10 @@ const StockStatusReport = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {(isPrinting ? filteredStockList : currentItems)?.length > 0 ? (
-                          (isPrinting ? filteredStockList : currentItems).map((item, index) => (
+                        {currentItems?.length > 0 ? (
+                          currentItems.map((item, index) => (
                             <tr key={item.stockId}>
-                              <td>{isPrinting ? index + 1 : (currentPage - 1) * itemsPerPage + index + 1}</td>
+                              <td>{(currentPage - 1) * itemsPerPage + index + 1}</td>
                               <td>{item.itemCode}</td>
                               <td>{item.itemName}</td>
                               <td>{item.unitAu}</td>
@@ -594,7 +659,6 @@ const StockStatusReport = () => {
                           </tr>
                         )}
                       </tbody>
-
                     </table>
                   )}
                 </div>
@@ -648,6 +712,17 @@ const StockStatusReport = () => {
           </div>
         </div>
       </div>
+
+      {/* PDF Viewer Modal */}
+      {pdfUrl && (
+        <PdfViewer
+          pdfUrl={pdfUrl}
+          onClose={() => {
+            setPdfUrl(null);
+          }}
+          name={`Stock Status Report - ${reportType === 'summary' ? 'Summary' : 'Detail'}`}
+        />
+      )}
 
       {/* Popup Message */}
       {popupMessage && <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />}

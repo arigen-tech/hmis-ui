@@ -155,6 +155,23 @@ const validRoutes = [
   "/EntMasTonsilGrade",
   "/ReceivingReport",
   "/ReturnRegister",
+  "/BookingAppointmentHistory",
+  "/OrderTrackingReport",
+  "/PendingInvestigationsReport",
+  "/SampleRejectionReport",
+  "/RadiologyInvestigationMaster",
+  "/MembraneStatusMaster",
+  "/LensTypeMaster",
+  "/OpthMasSpectacleUse",
+  "/ImmunisationStatus",
+  "/LiquorMaster",
+  "/CervixConsistencyMaster",
+  "/EarTmStatusMaster",
+  "/EarCanalMaster",
+  "/EarRinneMaster",
+  "/EarWeberMaster",
+  "/EntMasSeptum",
+  "/EntMasMucosaMaster",
   
 ];
 

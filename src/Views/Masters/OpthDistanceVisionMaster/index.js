@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const OpthDistanceVisionMaster = () => {
   const [data, setData] = useState([]);
@@ -33,12 +34,12 @@ const OpthDistanceVisionMaster = () => {
   // ================= SAMPLE DATA =================
   useEffect(() => {
     const sample = [
-      { id: 1, value: "Distance Vision Test 1", description: "Distance vision check", status: "Y" },
-      { id: 2, value: "Distance Vision Test 2", description: "Distance vision check", status: "Y" },
-      { id: 3, value: "Distance Vision Test 3", description: "Distance vision check", status: "N" },
-      { id: 4, value: "Distance Vision Test 4", description: "Distance vision check", status: "Y" },
-      { id: 5, value: "Distance Vision Test 5", description: "Distance vision check", status: "Y" },
-      { id: 6, value: "Distance Vision Test 6", description: "Distance vision check", status: "Y" },
+      { id: 1, value: "Distance Vision Test 1",status: "Y" },
+      { id: 2, value: "Distance Vision Test 2",status: "Y" },
+      { id: 3, value: "Distance Vision Test 3", status: "N" },
+      { id: 4, value: "Distance Vision Test 4", status: "Y" },
+      { id: 5, value: "Distance Vision Test 5", status: "Y" },
+      { id: 6, value: "Distance Vision Test 6", status: "Y" },
     ];
     setData(sample);
   }, []);
@@ -48,12 +49,9 @@ const OpthDistanceVisionMaster = () => {
     rec.value.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-
-  const currentItems = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
+  const currentItems = filteredData.slice(indexOfFirst, indexOfLast)
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -73,9 +71,8 @@ const OpthDistanceVisionMaster = () => {
 
   const resetForm = () => {
     setFormData({
-      id: "",
       value: "",
-      description: "",
+      
     });
     setIsFormValid(false);
   };
@@ -141,26 +138,10 @@ const OpthDistanceVisionMaster = () => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
-  // ================= GO TO PAGE =================
-  const handlePageNavigation = () => {
-    const page = Number(pageInput);
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-    setPageInput("");
-  };
-
+ 
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-  };
-
-  const handlePrev = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
-  };
-
-  const handleNext = () => {
-    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
 
   // ================= UI =================
@@ -214,7 +195,6 @@ const OpthDistanceVisionMaster = () => {
                     <tr>
                       <th>ID</th>
                       <th>Value</th>
-                      <th>Description</th>
                       <th>Status</th>
                       <th>Edit</th>
                     </tr>
@@ -224,7 +204,7 @@ const OpthDistanceVisionMaster = () => {
                       <tr key={rec.id}>
                         <td>{rec.id}</td>
                         <td>{rec.value}</td>
-                        <td>{rec.description}</td>
+          
                         <td>
                           <div className="form-check form-switch">
                             <input
@@ -260,62 +240,23 @@ const OpthDistanceVisionMaster = () => {
               </div>
 
               {/* PAGINATION + PAGE INFO + GO BUTTON */}
-              <div className="d-flex justify-content-between align-items-center mt-3 flex-wrap">
-                <div>
-                  Total Records: {filteredData.length} | Page {currentPage} of {totalPages}
-                </div>
-
-               <nav>
-                  <ul className="pagination mb-0">
-                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                      <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)}>Prev</button>
-                    </li>
-                    {[...Array(totalPages).keys()].map((num) => (
-                      <li key={num} className={`page-item ${currentPage === num + 1 ? "active" : ""}`}>
-                        <button className="page-link" onClick={() => setCurrentPage(num + 1)}>
-                          {num + 1}
-                        </button>
-                      </li>
-                    ))}
-                    <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                      <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)}>Next</button>
-                    </li>
-                  </ul>
-                </nav>
-
-                <div className="d-flex align-items-center">
-                  <input
-                    type="number"
-                    min="1"
-                    max={totalPages}
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                    className="form-control form-control-sm me-2"
-                    style={{ width: "70px" }}
-                    placeholder="Go To Page"
-                  />
-                  <button className="btn btn-sm btn-primary" onClick={handlePageNavigation}>Go</button>
-                </div>
-              </div>
+             <Pagination
+               totalItems={filteredData.length}
+               itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+               currentPage={currentPage}
+               onPageChange={setCurrentPage}
+             /> 
             </>
           ) : (
             // FORM
             <form className="row" onSubmit={handleSave}>
-              <div className="form-group col-md-4">
-                <label>ID<span className="text-danger">*</span></label>
-                <input id="id" className="form-control" value={formData.id} onChange={handleInputChange} />
-              </div>
-
+              
               <div className="form-group col-md-4">
                 <label>Value <span className="text-danger">*</span></label>
                 <input id="value" className="form-control" value={formData.value} onChange={handleInputChange} />
               </div>
 
-              <div className="form-group col-md-4">
-                <label>Description</label>
-                <input id="description" className="form-control" value={formData.description} onChange={handleInputChange} />
-              </div>
-
+              
               <div className="form-group col-md-12 mt-4 d-flex justify-content-end">
                 <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                   Save
