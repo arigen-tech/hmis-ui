@@ -138,15 +138,6 @@ const LiquorMaster = () => {
     setShowForm(false);
     setIsFormValid(false);
   };
-
-  const handleGoToPage = () => {
-    const pageNumber = parseInt(pageInput, 10);
-    if (pageNumber >= 1 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
-      setPageInput("");
-    }
-  };
-
   if (loading) return <LoadingScreen />;
 
   return (

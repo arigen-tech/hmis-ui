@@ -141,14 +141,6 @@ const CervixConsistencyMaster = () => {
     setIsFormValid(false);
   };
 
-  const handleGoToPage = () => {
-    const pageNumber = parseInt(pageInput, 10);
-    if (pageNumber >= 1 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
-      setPageInput("");
-    }
-  };
-
   return (
     <div className="content-wrapper">
       <div className="card form-card">
