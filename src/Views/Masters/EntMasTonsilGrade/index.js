@@ -24,7 +24,6 @@ const EntMasTonsilGradeMaster = () => {
   const itemsPerPage = 4;
 
   const TONSILGRADE_CODE_MAX_LENGTH = 10;
-  const TONSILGRADE_NAME_MAX_LENGTH = 10;
 
 
 
