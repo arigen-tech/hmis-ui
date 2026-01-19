@@ -14,7 +14,7 @@ import {
   RESCHEDULE_APPOINTMENT,
 } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
-import {MISSING_MOBILE_NUMBER, NO_DATA_FOUND} from "../../../config/constants";
+import { CANCELLATION_ERROR, CANCELLATION_SUCCESS, CONFIRM_CANCELLATION_TITLE, CONFIRM_RESCHEDULE_TITLE, FETCH_APPOINTMENT_ERROR, FETCH_TOKENS_ERROR, INVALID_DATE_TITLE, INVALID_MOBILE_NUMBER, MISSING_MOBILE_NUMBER, NO_APPOINTMENTS_FOUND, NO_CANCELLATION_REASONS, NO_DATA_FOUND, NO_TIME_SLOT_SELECTED, NO_TIME_SLOTS, NO_TOKENS_AVAILABLE, NO_TOKENS_AVAILABLE_TEXT, PAST_DATE_WARNING, REASON_REQUIRED_TITLE, RESCHEDULE_ERROR, RESCHEDULE_SUCCESS, SELECT_CANCELLATION_REASON, SESSION_NOT_AVAILABLE, SESSION_NOT_AVAILABLE_TEXT } from "../../../config/constants";
 
 
 // Helper functions
@@ -173,7 +173,7 @@ const BookingAppointmentHistory = () => {
     }
 
     if (mobileNumber.trim() && !/^\d{10}$/.test(mobileNumber.trim())) {
-      showPopup("Please enter a valid 10-digit mobile number", "error");
+      showPopup(`${INVALID_MOBILE_NUMBER}`, "error");
       return;
     }
 
@@ -189,7 +189,7 @@ const BookingAppointmentHistory = () => {
         if (!appointments || appointments.length === 0) {
           setReportData([]);
           setShowReport(true);
-          showPopup("No appointments found for this mobile number", "info");
+          showPopup(`${NO_APPOINTMENTS_FOUND}`, "info");
           return;
         }
 
@@ -234,7 +234,7 @@ const BookingAppointmentHistory = () => {
       console.error("Error:", error);
       setReportData([]);
       setShowReport(true);
-      showPopup("Error fetching data. Please try again.", "error");
+      showPopup(`${FETCH_APPOINTMENT_ERROR}`, "error");
     } finally {
       setIsGenerating(false);
     }
@@ -250,8 +250,8 @@ const BookingAppointmentHistory = () => {
       if (res.status !== 200) {
         Swal.fire({
           icon: "warning",
-          title: "Session Not Available",
-          text: res.message || "This session is not available.",
+          title: `${SESSION_NOT_AVAILABLE}`,
+          text: res.message || `${SESSION_NOT_AVAILABLE_TEXT}`,
           timer: 2000,
         });
         return false;
@@ -306,8 +306,8 @@ const BookingAppointmentHistory = () => {
     if (selectedDate < today) {
       Swal.fire({
         icon: "warning",
-        title: "Invalid Date",
-        text: "You cannot select a past date",
+        title: `${INVALID_DATE_TITLE}`,
+        text: `${PAST_DATE_WARNING}`,
         timer: 2000,
       });
       return;
@@ -378,7 +378,7 @@ const BookingAppointmentHistory = () => {
         sessionId: newSession
       });
 
-      const res = await getRequest(`${GET_AVAILABILITY_TOKENS}?${params}`);
+      const res = await getRequest(`${GET_AVAILABILITY_TOKENS}/0?${params}`);
 
       if (res.status === 200 && Array.isArray(res.response)) {
         setAvailableTokens(res.response);
@@ -386,8 +386,8 @@ const BookingAppointmentHistory = () => {
       } else {
         Swal.fire({
           icon: "info",
-          title: "No Tokens Available",
-          text: res.message || "No tokens available for the selected criteria.",
+          title: `${NO_TOKENS_AVAILABLE}`,
+          text: res.message || `${NO_TOKENS_AVAILABLE_TEXT }`,
           timer: 2000,
         });
         setAvailableTokens([]);
@@ -398,7 +398,7 @@ const BookingAppointmentHistory = () => {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "Failed to fetch token availability. Please try again.",
+        text: `${FETCH_TOKENS_ERROR}`,
         timer: 2000,
       });
       setAvailableTokens([]);
@@ -424,7 +424,7 @@ const BookingAppointmentHistory = () => {
         sessionId: sessionId
       });
 
-      const res = await getRequest(`${GET_AVAILABILITY_TOKENS}?${params}`);
+      const res = await getRequest(`${GET_AVAILABILITY_TOKENS}/0?${params}`);
 
       if (res.status === 200 && Array.isArray(res.response)) {
         setAvailableTokens(res.response);
@@ -448,7 +448,7 @@ const BookingAppointmentHistory = () => {
         timer: 2000,
       });
       setAvailableTokens([]);
-      setShowTimeSlots(false);
+      setShowTimeSlots(false); 
     } finally {
       setLoadingTokens(false);
       setIsFetchingTokens(false);
@@ -474,14 +474,6 @@ const BookingAppointmentHistory = () => {
       tokenEndTime: token.endTime,
       timeSlot: slot
     });
-
-    Swal.fire({
-      icon: "success",
-      title: "Time Slot Selected",
-      text: `Time slot ${startHHMM} to ${endHHMM} has been selected.`,
-      timer: 1500,
-      showConfirmButton: false,
-    });
   };
 
   // Submit Reschedule
@@ -489,8 +481,8 @@ const BookingAppointmentHistory = () => {
     if (!selectedSlot && !selectedToken) {
       Swal.fire({
         icon: "warning",
-        title: "No Time Slot Selected",
-        text: "Please select a time slot first.",
+        title: `${NO_TIME_SLOT_SELECTED}`,
+        text: `{SELECT_TIME_SLOT_FIRST}`,
         timer: 2000,
       });
       return;
@@ -499,7 +491,7 @@ const BookingAppointmentHistory = () => {
     const slotToUse = selectedSlot || selectedToken;
 
     const result = await Swal.fire({
-      title: "Confirm Reschedule",
+      title: `${CONFIRM_RESCHEDULE_TITLE}`,
       html: `
         <p>Reschedule ${selectedPatient.patientName} to ${newDate} at ${slotToUse.slot}?</p>
         <p><strong>Current:</strong> ${selectedPatient.displayDate} at ${selectedPatient.displayTime}</p>
@@ -533,7 +525,7 @@ const BookingAppointmentHistory = () => {
           Swal.fire({
             icon: "success",
             title: "Success",
-            text: "Appointment rescheduled successfully.",
+            text: `${RESCHEDULE_SUCCESS}`,
             timer: 2000,
           });
           setShowReschedulePopup(false);
@@ -550,7 +542,7 @@ const BookingAppointmentHistory = () => {
         Swal.fire({
           icon: "error",
           title: "Error",
-          text: error.message || "Reschedule failed.",
+          text: error.message || `${RESCHEDULE_ERROR}`,
           timer: 2000,
         });
       }
@@ -562,8 +554,8 @@ const BookingAppointmentHistory = () => {
     if (!selectedReason) {
       Swal.fire({
         icon: "warning",
-        title: "Reason Required",
-        text: "Please select a cancellation reason.",
+        title: `${REASON_REQUIRED_TITLE}`,
+        text: `${SELECT_CANCELLATION_REASON}`,
         timer: 2000,
       });
       return;
@@ -578,7 +570,7 @@ const BookingAppointmentHistory = () => {
     const reasonName = selectedReasonObj?.reasonName || selectedReasonObj?.name || "Unknown";
 
     const result = await Swal.fire({
-      title: "Confirm Cancellation",
+      title: `${CONFIRM_CANCELLATION_TITLE}`,
       html: `
         <div class="text-start">
           <p>Cancel appointment for <strong>${patientToCancel.patientName}</strong>?</p>
@@ -610,7 +602,7 @@ const BookingAppointmentHistory = () => {
           Swal.fire({
             icon: "success",
             title: "Cancelled",
-            text: "Appointment cancelled successfully",
+            text: `${CANCELLATION_SUCCESS}`,
             timer: 2000,
           });
           setShowCancelPopup(false);
@@ -621,11 +613,11 @@ const BookingAppointmentHistory = () => {
           throw new Error(res.message || "Server error");
         }
       } catch (error) {
-        console.error("Cancellation failed:", error);
+        console.error(`${CANCELLATION_ERROR}`, error);
         Swal.fire({
           icon: "error",
           title: "Error",
-          text: error.message || "Cancellation failed",
+          text: error.message || `${CANCELLATION_ERROR}`,
           timer: 2000,
         });
       }
@@ -878,7 +870,7 @@ const BookingAppointmentHistory = () => {
                         </select>
                       </div>
 
-                      
+
                       {/* Date Selection */}
                       <div className="col-md-6">
                         <DatePicker
@@ -898,7 +890,7 @@ const BookingAppointmentHistory = () => {
                       </div>
 
                       {/* Selected Time Slot Display */}
-                      <div className="col-md-12">
+                      {/* <div className="col-md-12">
                         <label className="form-label">Selected Time Slot</label>
                         <input
                           type="text"
@@ -914,16 +906,16 @@ const BookingAppointmentHistory = () => {
                             fontWeight: selectedSlot || selectedToken ? "bold" : "normal",
                           }}
                         />
-                      </div>
+                      </div> */}
 
                       {/* Available Time Slots Section */}
                       {showTimeSlots && newSession && newDate && (
                         <div className="col-md-12 mt-3">
                           <div className="card">
                             <div className="card-header bg-light">
-                              <h6 className="mb-0 fw-bold">Available Time Slots</h6>
-                              <p className="mb-0 text-muted small">
-                                Date: {newDate.split('-').reverse().join('/')} | 
+                              <h5 className="mb-0 fw-bold">Available Time Slots</h5>
+                              <p class="h6" className="mb-0 text-muted small">
+                                Date: {newDate.split('-').reverse().join('/')} |
                                 Session: {sessions.find(s => String(s.id) === String(newSession))?.sessionName || "Selected Session"}
                               </p>
                             </div>
@@ -938,7 +930,7 @@ const BookingAppointmentHistory = () => {
                                   <p className="text-primary fw-bold small mb-2">
                                     {sessions.find(s => String(s.id) === String(newSession))?.sessionName || "Selected Session"} Session
                                   </p>
-                                  <div className="row row-cols-4 g-2 justify-content-center">
+                                  <div className="row row-cols-6 g-2 justify-content-right">
                                     {availableTokens.map((token, index) => {
                                       const isAvailable = token.available;
                                       const startTime = formatTimeToHHMM(token.startTime);
@@ -949,19 +941,25 @@ const BookingAppointmentHistory = () => {
                                         <div className="col" key={index}>
                                           <button
                                             type="button"
-                                            className={`btn ${isSelected ? "btn-success" : (isAvailable ? "btn-outline-success" : "btn-outline-secondary disabled")} 
-                                              w-100 d-flex flex-column align-items-center justify-content-center`}
+                                            className={`btn ${isSelected ? "btn-outline-badge" : (isAvailable ? "btn-outline-success" : "btn-outline-secondary disabled")} 
+    w-100 d-flex flex-column align-items-center justify-content-center`}
                                             style={{
                                               height: '60px',
                                               fontSize: '0.8rem',
-                                              borderRadius: '8px',
+                                              borderRadius: '6px',
                                               borderWidth: isSelected ? '2px' : '1.5px'
                                             }}
                                             onClick={() => isAvailable && handleTokenSelect(token)}
                                             disabled={!isAvailable}
                                           >
                                             <span className="fw-bold">{startTime}</span>
-                                            <span style={{ opacity: 0.8 }}>{endTime}</span>
+                                            <span style={{ opacity: 0.6 }}>{endTime}</span>
+
+                                            {!isAvailable && (
+                                              <span className="badge bg-danger mt-1" style={{ fontSize: '0.6rem' }}>
+                                                Booked
+                                              </span>
+                                            )}
                                           </button>
                                         </div>
                                       );
@@ -970,7 +968,7 @@ const BookingAppointmentHistory = () => {
                                 </div>
                               ) : (
                                 <div className="alert alert-info text-center py-2">
-                                  No time slots available for this session and date.
+                                  {NO_TIME_SLOTS}
                                 </div>
                               )}
                             </div>
@@ -1093,7 +1091,7 @@ const BookingAppointmentHistory = () => {
                       )}
                       {cancellationReasons.length === 0 && !loadingReasons && (
                         <div className="text-danger small mt-1">
-                          No cancellation reasons available. Please contact administrator.
+                         `${NO_CANCELLATION_REASONS }`
                         </div>
                       )}
                     </div>

@@ -37,6 +37,8 @@ const PatientRegistration = () => {
     fetchGstConfiguration();
   }, []);
 
+    
+
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [genderData, setGenderData] = useState([]);
@@ -198,14 +200,12 @@ const PatientRegistration = () => {
     return `${dateStr}T${formattedTime}Z`;
   };
 
-  const fetchTokenAvailability = async (appointmentIndex = 0, dateOverride = null) => {
+  const fetchTokenAvailability = async (appointmentIndex = 0, dateOverride ) => {
     try {
       setLoading(true);
 
       const targetAppointment = appointments[appointmentIndex];
-      const selectedDate = dateOverride || targetAppointment.selDate;
-
-      // Add early return if already showing popup
+      const selectedDate = dateOverride;
       if (Swal.isVisible()) {
         return;
       }
@@ -216,7 +216,7 @@ const PatientRegistration = () => {
         !targetAppointment.selSession ||
         !selectedDate
       ) {
-        return; // Silent return, don't show alert here
+        return;
       }
 
       const params = new URLSearchParams({
@@ -235,7 +235,6 @@ const PatientRegistration = () => {
         );
 
         if (availableTokens.length > 0) {
-          // Check if popup is already open
           if (!Swal.isVisible()) {
             showTokenPopup(
               availableTokens,
@@ -245,7 +244,6 @@ const PatientRegistration = () => {
             );
           }
         } else {
-          // Only show info if popup is not already visible
           if (!Swal.isVisible()) {
             Swal.fire({
               icon: "info",
@@ -258,7 +256,6 @@ const PatientRegistration = () => {
       }
     } catch (error) {
       console.error("Error fetching token availability:", error);
-      // Don't show error if already showing another alert
       if (!Swal.isVisible()) {
         Swal.fire({
           icon: "error",
@@ -522,25 +519,6 @@ const PatientRegistration = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // useEffect(() => {
-  //   if (appointments.length === 0) {
-  //     setFormData((prev) => ({
-  //       ...prev,
-  //       speciality: "",
-  //       selDoctorId: "",
-  //       selSession: "",
-  //     }));
-  //     return;
-  //   }
-  //   const primary = appointments[0];
-  //   setFormData((prev) => ({
-  //     ...prev,
-  //     speciality: primary.speciality,
-  //     selDoctorId: primary.selDoctorId,
-  //     selSession: primary.selSession,
-  //   }));
-  // }, [appointments]);
-
   useEffect(() => {
     appointments.forEach((appointment, index) => {
       if (
@@ -655,7 +633,7 @@ const PatientRegistration = () => {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, "0");
       const day = String(date.getDate()).padStart(2, "0");
-      dateString = `${year}-${month}-${day}`;
+      dateString = `${day}-${month}-${year}`;
     } else {
       dateString = date.split("T")[0];
     }
@@ -672,24 +650,19 @@ const PatientRegistration = () => {
       return;
     }
 
-    // 3. Get current appointment details BEFORE updating state
     const currentAppointment = appointments[index];
 
-    // 4. First update the state with new date (clear any existing time slot)
     handleAppointmentChange(index, "selDate", dateString);
 
-    // Clear time slot when date changes
     if (currentAppointment.selectedTimeSlot) {
       handleAppointmentChange(index, "selectedTimeSlot", "");
     }
 
-    // 5. Then fetch tokens if all fields are selected
     if (currentAppointment.speciality &&
       currentAppointment.selDoctorId &&
       currentAppointment.selSession) {
-      // Add a small delay to ensure state is updated
       setTimeout(() => {
-        fetchTokenAvailability(index);
+        fetchTokenAvailability(index,date);
       }, 300);
     }
   };
@@ -1130,6 +1103,13 @@ const PatientRegistration = () => {
     return valid;
   };
 
+   const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    if (dateStr.includes("-")) {
+      const [year, month, day] = dateStr.split("-");
+      return `${day}/${month}/${year}`;
+    }
+  }
   const visitList = appointments
     .filter(
       (appt) =>
@@ -1605,7 +1585,7 @@ const PatientRegistration = () => {
 <div class="container-fluid">
   <div class="text-center mb-2">
     <h5 class="fw-bold mb-1">Available Time Slots</h5>
-    <p class="text-muted small">Date: ${appointmentDate} | Session: ${sessionName}</p>
+    <p class="text-muted small">Date: ${formatDate(appointmentDate)} | Session: ${sessionName}</p>
   </div>
   <div class="row">
     <div class="col-12">
@@ -2631,48 +2611,7 @@ const PatientRegistration = () => {
                                   : "#f8f9fa",
                                 cursor: "pointer",
                               }}
-                              onClick={() => {
-                                if (appointment.selectedTimeSlot) {
-                                  Swal.fire({
-                                    title: "Change Time Slot?",
-                                    text: "Do you want to select a different time slot?",
-                                    icon: "question",
-                                    showCancelButton: true,
-                                    confirmButtonText: "Yes, change",
-                                    cancelButtonText: "Keep current",
-                                  }).then((result) => {
-                                    if (result.isConfirmed) {
-                                      clearTimeSlot(index);
-                                      if (
-                                        appointment.speciality &&
-                                        appointment.selDoctorId &&
-                                        appointment.selSession &&
-                                        appointment.selDate
-                                      ) {
-                                        fetchTokenAvailability(index);
-                                      }
-                                    }
-                                  });
-                                } else if (
-                                  appointment.speciality &&
-                                  appointment.selDoctorId &&
-                                  appointment.selSession &&
-                                  appointment.selDate
-                                ) {
-                                  fetchTokenAvailability(index);
-                                }
-                              }}
                             />
-                            {appointment.selectedTimeSlot && (
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-danger ms-2"
-                                onClick={() => clearTimeSlot(index)}
-                                title="Clear time slot"
-                              >
-                                ✕
-                              </button>
-                            )}
                           </div>
                         </div>
                       </div>
