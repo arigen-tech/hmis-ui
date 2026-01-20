@@ -136,7 +136,7 @@ const Investigationpricing = () => {
                         fetchInvestigationPriceDetails() // Refresh the list
                         resetForm()
                     } else {
-                        showPopup(FAIL_TO_SAVE_CHANGES, "error")
+                        showPopup(response.message||FAIL_TO_SAVE_CHANGES, "error")
                     }
                 })
                 .catch(error => {

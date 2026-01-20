@@ -138,6 +138,11 @@ export const LAB_BOOKING_SUCC_MSG="Lab booking registered successfully! Redirect
 export const LAB_REGISTER_SUCC_MSG="Lab booking registered successfully!";
 export const LAB_REG_FAIL_MSG="Registration failed";
 export const INVALID_PAGE="Invalid page !";
+export const DUPLICATE_PACKAGE_WARN_MSG= "This package is already added for this date.";
+export const DUPLICATE_INV_INCLUDE_PACKAGE="This investigation is already added or included in a package for this date."
+export const DUPLICATE_INV_PACKAGE_WARN_MSG="Duplicate found! Please remove the duplicate before proceeding.";
+export const COMMON_INV_IN_PACKAGES= "Cannot add package because it contains investigations that are already included in other selected packages.";
+export const DUPLICATE_PACKAGE_WRT_INV= "Cannot add package because it contains investigations that are already selected individually";
 
 
 //UpdateResultValidation
