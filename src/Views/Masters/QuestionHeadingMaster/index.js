@@ -5,7 +5,6 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_QUESTION_HEADING } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
 
 const QuestionHeadingMaster = () => {
@@ -28,7 +27,7 @@ const QuestionHeadingMaster = () => {
     newStatus: ""
   });
 
-  const MAX_CODE_LENGTH = 20;
+  const MAX_CODE_LENGTH = 8;
 
   // Date formatter
   const formatDate = (dateString) => {
@@ -64,6 +63,10 @@ const QuestionHeadingMaster = () => {
     (rec?.questionHeadingCode ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (rec?.questionHeadingName ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
+    const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+  };
 
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
@@ -137,12 +140,19 @@ const QuestionHeadingMaster = () => {
         await putRequest(`${MAS_QUESTION_HEADING}/update/${recordId}`, updateData);
         showPopup("Record updated successfully", "success");
       } else {
-        await postRequest(`${MAS_QUESTION_HEADING}/create`, {
+        const response =await postRequest(`${MAS_QUESTION_HEADING}/create`, {
           questionHeadingCode: trimmedCode,
           questionHeadingName: trimmedName,
           status: "y",
         });
-        showPopup("Record added successfully", "success");
+        if(response && response.response&&response.status===200 ){
+          console.log(response);
+          
+          showPopup("Record added successfully", "success");
+        }else{
+          showPopup("Save failed. Please try again.", "error");
+        }
+        
       }
 
       fetchData();
