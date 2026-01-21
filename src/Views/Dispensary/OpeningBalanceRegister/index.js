@@ -64,7 +64,7 @@ const OpeningBalanceRegister = () => {
       const formattedToDate = formatDate(toDate);
 
       // Use "d" flag for download/view
-      const url = `${ALL_REPORTS}/openingBalanceRegistryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&fromDate=${formattedFromDate}&toDate=${formattedToDate}&flag=d`;
+      const url = `${ALL_REPORTS}/openingBalanceRegistryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&fromDate=${fromDate}&toDate=${toDate}&flag=d`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -126,7 +126,7 @@ const OpeningBalanceRegister = () => {
       const formattedToDate = formatDate(toDate);
 
       // Use "p" flag for printing
-      const url = `${ALL_REPORTS}/openingBalanceRegistryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&fromDate=${formattedFromDate}&toDate=${formattedToDate}&flag=p`;
+      const url = `${ALL_REPORTS}/openingBalanceRegistryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&fromDate=${fromDate}&toDate=${toDate}&flag=p`;
 
       const response = await fetch(url, {
         method: "GET",

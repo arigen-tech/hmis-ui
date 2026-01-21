@@ -264,7 +264,7 @@ const DrugExpiry = () => {
         return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
       };
 
-      const url = `${ALL_REPORTS}/drugExpiryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&itemId=12956&fromDate=${formatDate(fromDate)}&toDate=${formatDate(toDate)}&flag=d`;
+      const url = `${ALL_REPORTS}/drugExpiryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&itemId=12956&fromDate=${fromDate}&toDate=${toDate}&flag=d`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -308,7 +308,7 @@ const DrugExpiry = () => {
         return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
       };
 
-      const url = `${ALL_REPORTS}/drugExpiryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&itemId=12956&fromDate=${formatDate(fromDate)}&toDate=${formatDate(toDate)}&flag=p`;
+      const url = `${ALL_REPORTS}/drugExpiryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&itemId=12956&fromDate=${fromDate}&toDate=${toDate}&flag=p`;
 
       const response = await fetch(url, {
         method: "GET",
