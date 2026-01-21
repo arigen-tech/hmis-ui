@@ -27,9 +27,7 @@ const ResultAmendmentReport = () => {
   const [reportData, setReportData] = useState([]);
   
   // Function to get today's date in YYYY-MM-DD format
-  const getTodayDate = () => {
-    return new Date().toISOString().split('T')[0];
-  };
+  const getTodayDate = () => new Date().toISOString().split('T')[0];
 
   // Function to calculate month difference between two dates
   const getMonthDifference = (date1, date2) => {
@@ -42,14 +40,27 @@ const ResultAmendmentReport = () => {
     return months;
   };
 
+  // Check if search buttons should be enabled
+  const isSearchButtonEnabled = () => {
+    // Check if any of the basic search fields are filled
+    const hasBasicSearchField = patientMobile || patientName;
+    
+    // If any date field is filled, both must be filled
+    if (fromDate || toDate) {
+      return fromDate && toDate;
+    }
+    
+    // If no dates are filled, need at least one basic search field (mobile or name)
+    // Investigation-only or Modality-only should NOT enable buttons
+    return hasBasicSearchField;
+  };
+
   // Popup function
   const showPopup = (message, type = "info") => {
     setPopupMessage({
       message,
       type,
-      onClose: () => {
-        setPopupMessage(null);
-      },
+      onClose: () => setPopupMessage(null),
     });
   };
 
@@ -89,7 +100,7 @@ const ResultAmendmentReport = () => {
   const fetchInvestigations = async () => {
     try {
       const response = await getRequest(`${MAS_INVESTIGATION}/mas-investigation/all`);
-      if (response && response.response) {
+      if (response?.response) {
         setInvestigationOptions(response.response.map(item => ({
           id: item.investigationId,
           name: item.investigationName
@@ -104,7 +115,7 @@ const ResultAmendmentReport = () => {
   const fetchModalities = async () => {
     try {
       const response = await getRequest("/master/sub-charge-code/getAll/1"); // flag=1 for active only
-      if (response && response.response) {
+      if (response?.response) {
         const filteredSubCharges = response.response.filter(item => item.mainChargeId === 12);
         setModalityOptions(filteredSubCharges.map(item => ({
           id: item.subId,
@@ -131,24 +142,18 @@ const ResultAmendmentReport = () => {
       setIsGenerating(true);
       
       const params = new URLSearchParams();
-      if (patientMobile) {
-        params.append('phnNum', patientMobile);
+      if (patientMobile) params.append('phnNum', patientMobile);
+      if (patientName) params.append('patientName', patientName);
+      if (selectedInvestigation?.id) params.append('investigationId', selectedInvestigation.id);
+      if (selectedModality?.id) params.append('subChargeCodeId', selectedModality.id);
+      if (fromDate && toDate) {
+        params.append('fromDate', fromDate);
+        params.append('toDate', toDate);
       }
-      if (patientName) {
-        params.append('patientName', patientName);
-      }
-      if (selectedInvestigation?.id) {
-        params.append('investigationId', selectedInvestigation.id);
-      }
-      if (selectedModality?.id) {
-        params.append('subChargeCodeId', selectedModality.id);
-      }
-      params.append('fromDate', fromDate);
-      params.append('toDate', toDate);
 
       const response = await getRequest(`/report/lab-amend-audit?${params.toString()}`);
       
-      if (response && response.response) {
+      if (response?.response) {
         const mappedData = response.response.map(item => ({
           amendId: item.amendId || "",
           sampleId: item.sampleId || "",
@@ -179,21 +184,13 @@ const ResultAmendmentReport = () => {
   };
 
   // Handle from date change
-  const handleFromDateChange = (e) => {
-    setFromDate(e.target.value);
-  };
+  const handleFromDateChange = (e) => setFromDate(e.target.value);
 
   // Handle to date change
   const handleToDateChange = (e) => {
     const selectedDate = e.target.value;
     const today = getTodayDate();
-    
-    // If user tries to select a date after today, set it to today
-    if (selectedDate > today) {
-      setToDate(today);
-    } else {
-      setToDate(selectedDate);
-    }
+    setToDate(selectedDate > today ? today : selectedDate);
   };
 
   // Handle investigation change
@@ -217,24 +214,42 @@ const ResultAmendmentReport = () => {
     setSelectedModality(modality);
   }
 
+  // Clear all search fields
+  const handleClearAll = () => {
+    setFromDate("");
+    setToDate("");
+    setPatientMobile("");
+    setPatientName("");
+    setInvestigation("");
+    setSelectedInvestigation(null);
+    setModality("");
+    setSelectedModality(null);
+    setShowReport(false);
+    setCurrentPage(1);
+  };
+
   // Handle view report
   const handleViewReport = () => {
-    if (!fromDate || !toDate) {
-      showPopup(SELECT_DATE_WARN_MSG, "Warning");
+    // Check if dates are partially filled
+    if ((fromDate && !toDate) || (!fromDate && toDate)) {
+      showPopup(SELECT_DATE_WARN_MSG, "warning");
       return;
     }
 
-    // Validate that from date is not after to date
-    if (new Date(fromDate) > new Date(toDate)) {
-      showPopup(INVALID_DATE_PICK_WARN_MSG, "Warning");
-      return;
-    }
+    // If both dates are provided, validate them
+    if (fromDate && toDate) {
+      // Validate that from date is not after to date
+      if (new Date(fromDate) > new Date(toDate)) {
+        showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
+        return;
+      }
 
-    // Validate that date range doesn't exceed MAX_MONTHS_BACK
-    const monthDiff = getMonthDifference(fromDate, toDate);
-    if (monthDiff > MAX_MONTHS_BACK) {
-      showPopup(`Date range cannot exceed ${MAX_MONTHS_BACK} months.`, "error");
-      return;
+      // Validate that date range doesn't exceed MAX_MONTHS_BACK
+      const monthDiff = getMonthDifference(fromDate, toDate);
+      if (monthDiff > MAX_MONTHS_BACK) {
+        showPopup(`Date range cannot exceed ${MAX_MONTHS_BACK} months.`, "error");
+        return;
+      }
     }
 
     fetchAmendAuditReport();
@@ -243,22 +258,26 @@ const ResultAmendmentReport = () => {
 
   // Handle print report
   const handlePrintReport = () => {
-    if (!fromDate || !toDate) {
-      showPopup(SELECT_DATE_WARN_MSG, "Warning");
+    // Check if dates are partially filled
+    if ((fromDate && !toDate) || (!fromDate && toDate)) {
+      showPopup(SELECT_DATE_WARN_MSG, "warning");
       return;
     }
 
-    // Validate that from date is not after to date
-    if (new Date(fromDate) > new Date(toDate)) {
-      showPopup(INVALID_DATE_PICK_WARN_MSG, "Warning");
-      return;
-    }
+    // If both dates are provided, validate them
+    if (fromDate && toDate) {
+      // Validate that from date is not after to date
+      if (new Date(fromDate) > new Date(toDate)) {
+        showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
+        return;
+      }
 
-    // Validate that date range doesn't exceed MAX_MONTHS_BACK
-    const monthDiff = getMonthDifference(fromDate, toDate);
-    if (monthDiff > MAX_MONTHS_BACK) {
-      showPopup(`Date range cannot exceed ${MAX_MONTHS_BACK} months.`, "error");
-      return;
+      // Validate that date range doesn't exceed MAX_MONTHS_BACK
+      const monthDiff = getMonthDifference(fromDate, toDate);
+      if (monthDiff > MAX_MONTHS_BACK) {
+        showPopup(`Date range cannot exceed ${MAX_MONTHS_BACK} months.`, "error");
+        return;
+      }
     }
 
     setIsGenerating(true);
@@ -268,12 +287,8 @@ const ResultAmendmentReport = () => {
     }, 1000);
   };
 
-  // Initialize with today's date as default for To Date
+  // Initialize
   useEffect(() => {
-    const today = getTodayDate();
-    setToDate(today);
-    
-    // Fetch dropdown options
     fetchInvestigations();
     fetchModalities();
   }, []);
@@ -289,33 +304,29 @@ const ResultAmendmentReport = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header">
-              <h4 className="card-title p-2 mb-0">
-                Result Amendment/Update Report
-              </h4>
+              <h4 className="card-title p-2 mb-0">Result Amendment/Update Report</h4>
             </div>
             <div className="card-body">
               <div className="row mb-4">
                 <div className="col-md-3">
-                  <label className="form-label fw-bold">From Date <span className="text-danger">*</span></label>
+                  <label className="form-label fw-bold">From Date</label>
                   <input
                     type="date"
                     className="form-control"
                     value={fromDate}
                     onChange={handleFromDateChange}
-                    max={getTodayDate()} // Cannot select future dates
-                    required
+                    max={getTodayDate()}
                   />
                 </div>
 
                 <div className="col-md-3">
-                  <label className="form-label fw-bold">To Date <span className="text-danger">*</span></label>
+                  <label className="form-label fw-bold">To Date</label>
                   <input
                     type="date"
                     className="form-control"
                     value={toDate}
                     onChange={handleToDateChange}
-                    max={getTodayDate()} // Cannot select future dates
-                    required
+                    max={getTodayDate()}
                   />
                 </div>
 
@@ -326,11 +337,8 @@ const ResultAmendmentReport = () => {
                     className="form-control"
                     value={patientMobile}
                     onChange={(e) => {
-                      // Remove all non-digit characters and limit to 10 digits
                       const value = e.target.value.replace(/\D/g, '');
-                      if (value.length <= 10) {
-                        setPatientMobile(value);
-                      }
+                      if (value.length <= 10) setPatientMobile(value);
                     }}
                     placeholder="Enter mobile number"
                     maxLength="10"
@@ -353,7 +361,6 @@ const ResultAmendmentReport = () => {
                   <input
                     type="text"
                     className="form-control mt-1"
-                    id="investigationName"
                     placeholder="Investigation Name"
                     value={investigation}
                     onChange={handleInvestigationChange}
@@ -397,28 +404,38 @@ const ResultAmendmentReport = () => {
 
               <div className="row">
                 <div className="col-12 d-flex justify-content-between">
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={handleViewReport}
-                    disabled={isGenerating}
-                  >
-                    {isGenerating ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Generating...
-                      </>
-                    ) : (
-                      "Search"
-                    )}
-                  </button>
+                  <div className="d-flex gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={handleViewReport}
+                      disabled={isGenerating || !isSearchButtonEnabled()}
+                    >
+                      {isGenerating ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Generating...
+                        </>
+                      ) : (
+                        "Search"
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleClearAll}
+                      disabled={isGenerating}
+                    >
+                      Clear All
+                    </button>
+                  </div>
                   
                   <div className="d-flex gap-2">
                     <button
                       type="button"
                       className="btn btn-warning"
                       onClick={handleViewReport}
-                      disabled={isGenerating}
+                      disabled={isGenerating || !isSearchButtonEnabled()}
                     >
                       {isGenerating ? (
                         <>
@@ -433,7 +450,7 @@ const ResultAmendmentReport = () => {
                       type="button"
                       className="btn btn-success"
                       onClick={handlePrintReport}
-                      disabled={isGenerating}
+                      disabled={isGenerating || !isSearchButtonEnabled()}
                     >
                       {isGenerating ? (
                         <>
@@ -459,12 +476,7 @@ const ResultAmendmentReport = () => {
                   <div className="col-12">
                     <div className="card">
                       <div className="card-header">
-                        <h5 className="card-title mb-0">
-                          Result Amendment/Update Report
-                          {/* <span className="ms-3 text-muted">
-                            ({formatDateForDisplay(fromDate)} to {formatDateForDisplay(toDate)})
-                          </span> */}
-                        </h5>
+                        <h5 className="card-title mb-0">Result Amendment/Update Report</h5>
                       </div>
                       <div className="card-body">
                         <div className="table-responsive">
@@ -506,7 +518,6 @@ const ResultAmendmentReport = () => {
                           </table>
                         </div>
                         
-                        {/* PAGINATION USING REUSABLE COMPONENT */}
                         {reportData.length > 0 && (
                           <Pagination
                             totalItems={reportData.length}
@@ -525,7 +536,6 @@ const ResultAmendmentReport = () => {
         </div>
       </div>
       
-      {/* Popup Component */}
       {popupMessage && (
         <Popup
           message={popupMessage.message}

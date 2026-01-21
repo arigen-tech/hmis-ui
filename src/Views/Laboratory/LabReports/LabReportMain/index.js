@@ -74,6 +74,16 @@ const LabReports = () => {
     return `${gender || ""} / ${age || ""}`.trim();
   };
 
+  // Check if search button should be enabled
+  const isSearchButtonEnabled = () => {
+    // If any date field is filled, both must be filled
+    if (fromDate || toDate) {
+      return fromDate && toDate;
+    }
+    // If no date fields are filled, search button is always enabled
+    return true;
+  };
+
   // Fetch lab reports from API
   const fetchLabReports = async () => {
     try {
@@ -84,12 +94,13 @@ const LabReports = () => {
       if (mobileNo) params.append('mobileNo', mobileNo);
       if (patientName) params.append('patientName', patientName);
 
-      // Dates are mandatory for API
-      const apiFromDate = fromDate || getTodayDate();
-      const apiToDate = toDate || getTodayDate();
-
-      params.append('fromDate', apiFromDate);
-      params.append('toDate', apiToDate);
+      // Only append dates if both are provided
+      if (fromDate && toDate) {
+        params.append('fromDate', fromDate);
+        params.append('toDate', toDate);
+      }
+      // If dates are not provided, don't send them to API
+      // The API should handle cases without dates based on its own logic
 
       // Make API call
       const response = await getRequest(`/report/lab-history/all?${params.toString()}`);
@@ -108,7 +119,9 @@ const LabReports = () => {
           result: item.result || "",
           range: item.range || "",
           enteredBy: item.resultEnteredBy || "",
-          validatedBy: item.resultValidatedBy || ""
+          validatedBy: item.resultValidatedBy || "",
+          // Add inRange field from API response
+          inRange: item.inRange // This should be true/false/null from API
         }));
 
         setLabData(mappedData);
@@ -136,22 +149,26 @@ const LabReports = () => {
 
   // Handle search (calls API)
   const handleSearch = () => {
-    if (!fromDate || !toDate) {
+    // Check if dates are partially filled
+    if ((fromDate && !toDate) || (!fromDate && toDate)) {
       showPopup(SELECT_DATE_WARN_MSG, "warning");
       return;
     }
 
-    // Validate that from date is not after to date
-    if (new Date(fromDate) > new Date(toDate)) {
-      showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
-      return;
-    }
+    // If both dates are provided, validate them
+    if (fromDate && toDate) {
+      // Validate that from date is not after to date
+      if (new Date(fromDate) > new Date(toDate)) {
+        showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
+        return;
+      }
 
-    // Validate that date range doesn't exceed MAX_MONTHS_BACK
-    const monthDiff = getMonthDifference(fromDate, toDate);
-    if (monthDiff > MAX_MONTHS_BACK) {
-      showPopup(`Date range cannot exceed ${MAX_MONTHS_BACK} months.`/* Current difference: ${monthDiff} months`*/, "error");
-      return;
+      // Validate that date range doesn't exceed MAX_MONTHS_BACK
+      const monthDiff = getMonthDifference(fromDate, toDate);
+      if (monthDiff > MAX_MONTHS_BACK) {
+        showPopup(`Date range cannot exceed ${MAX_MONTHS_BACK} months.`, "error");
+        return;
+      }
     }
 
     fetchLabReports();
@@ -163,14 +180,15 @@ const LabReports = () => {
     setMobileNo("")
     setPatientName("")
     setFromDate("")
-    setToDate(getTodayDate()) // Reset to today's date
+    setToDate("")
     setCurrentPage(1);
     setShowReport(false);
   }
 
   // Handle from date change
   const handleFromDateChange = (e) => {
-    setFromDate(e.target.value);
+    const value = e.target.value;
+    setFromDate(value);
   };
 
   // Handle to date change
@@ -194,6 +212,17 @@ const LabReports = () => {
   // Helper function to check if a record is printing
   const isPrinting = (recordId) => {
     return printingIds.has(recordId);
+  };
+
+  // Function to get result style based on inRange value
+  const getResultStyle = (inRange) => {
+    if (inRange === true) {
+      return { color: 'green', fontWeight: 'bold' };
+    } else if (inRange === false) {
+      return { color: 'red', fontWeight: 'bold' };
+    }
+    // Return empty style for null or undefined
+    return {};
   };
 
   // Generate lab report for viewing/downloading
@@ -289,11 +318,8 @@ const LabReports = () => {
     generateLabReport(record);
   }
 
-  // Initialize with today's date as default for To Date
-  useEffect(() => {
-    const today = getTodayDate();
-    setToDate(today);
-  }, []);
+  // Remove useEffect that sets default date
+  // No default initialization needed
 
   // Calculate current items for pagination
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
@@ -360,25 +386,23 @@ const LabReports = () => {
                   />
                 </div>
                 <div className="col-md-2">
-                  <label className="form-label">From Date <span className="text-danger">*</span></label>
+                  <label className="form-label">From Date</label>
                   <input
                     type="date"
                     className="form-control"
                     value={fromDate}
                     onChange={handleFromDateChange}
                     max={getTodayDate()} // Cannot select future dates
-                    required
                   />
                 </div>
                 <div className="col-md-2">
-                  <label className="form-label">To Date <span className="text-danger">*</span></label>
+                  <label className="form-label">To Date</label>
                   <input
                     type="date"
                     className="form-control"
                     value={toDate}
                     onChange={handleToDateChange}
                     max={getTodayDate()} // Cannot select future dates
-                    required
                   />
                 </div>
                 <div className="col-md-4 d-flex align-items-end">
@@ -386,7 +410,7 @@ const LabReports = () => {
                     type="button"
                     className="btn btn-primary me-2"
                     onClick={handleSearch}
-                    disabled={isGenerating}
+                    disabled={isGenerating || !isSearchButtonEnabled()}
                   >
                     {isGenerating ? (
                       <>
@@ -446,7 +470,9 @@ const LabReports = () => {
                               <td>{item.genderAge}</td>
                               <td>{item.investigationName}</td>
                               <td>{item.unit}</td>
-                              <td>{item.result}</td>
+                              <td style={getResultStyle(item.inRange)}>
+                                {item.result}
+                              </td>
                               <td>{item.range}</td>
                               <td>{item.enteredBy}</td>
                               <td>{item.validatedBy}</td>
