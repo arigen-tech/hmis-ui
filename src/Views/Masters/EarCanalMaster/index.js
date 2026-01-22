@@ -1,121 +1,167 @@
+
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import { MAS_EAR_CANAL } from "../../../config/apiConfig";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const EarCanalMaster = () => {
   const [data, setData] = useState([]);
-  const [loading] = useState(false);
-
-  const [confirmDialog, setConfirmDialog] = useState({
-    isOpen: false,
-    earCanalName: null,
-    newStatus: "",
-  });
-
-  const [formData, setFormData] = useState({
-    earCanalCode: "",
-    earCanalName: "",
-  });
-
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({ earCanalCondition: "" });
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-
-  // ================= PAGINATION =================
   const [currentPage, setCurrentPage] = useState(1);
-  const [goPage, setGoPage] = useState("");
-  const itemsPerPage = 5;
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    record: null,
+    newStatus: "",
+  });
 
-  // ================= SAMPLE DATA =================
+
+  //formatDate
+  const formatDate = (dateString) => {
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+
+  // Fetch data
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
+    try {
+      const { response } = await getRequest(`${MAS_EAR_CANAL}/getAll/${flag}`);
+      setData(response || []);
+    } catch (error) {
+      console.error("Fetch error:", error);
+      showPopup("Failed to fetch records", "error");
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    setData([
-      { earCanalCode: "EC1", earCanalName: "Normal", status: "Y" },
-      { earCanalCode: "EC2", earCanalName: "Blocked", status: "Y" },
-      { earCanalCode: "EC3", earCanalName: "Infected", status: "N" },
-      { earCanalCode: "EC4", earCanalName: "Inflamed", status: "Y" },
-      { earCanalCode: "EC5", earCanalName: "Injured", status: "N" },
-    ]);
+    fetchData();
   }, []);
 
   // ================= SEARCH =================
   const filteredData = data.filter((rec) =>
-    rec.earCanalName.toLowerCase().includes(searchQuery.toLowerCase())
+    (rec?.earCanalCondition ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
+  const currentItems = filteredData.slice(
+    (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
+    currentPage * DEFAULT_ITEMS_PER_PAGE
+  );
 
   // ================= FORM =================
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     const updated = { ...formData, [id]: value };
     setFormData(updated);
-    setIsFormValid(updated.earCanalCode && updated.earCanalName);
+    setIsFormValid(updated.earCanalCondition.trim() !== "");
   };
 
   const resetForm = () => {
-    setFormData({ earCanalCode: "", earCanalName: "" });
+    setFormData({ earCanalCondition: "" });
     setIsFormValid(false);
+    setEditingRecord(null);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
   };
 
   // ================= SAVE =================
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
 
-    if (editingRecord) {
-      setData(
-        data.map((rec) =>
-          rec.earCanalCode === editingRecord.earCanalCode
-            ? { ...rec, ...formData }
-            : rec
-        )
-      );
-      showPopup("Record updated successfully", "success");
-    } else {
-      setData([...data, { ...formData, status: "N" }]);
-      showPopup("Record added successfully", "success");
+    const newValue = formData.earCanalCondition.trim().toLowerCase();
+    const duplicate = data.find(
+      (rec) =>
+        rec.earCanalCondition?.trim().toLowerCase() === newValue &&
+        (!editingRecord || rec.id !== editingRecord.id)
+    );
+
+    if (duplicate) {
+      showPopup("Ear Canal condition already exists!", "error");
+      return;
     }
 
-    resetForm();
-    setEditingRecord(null);
-    setShowForm(false);
+    try {
+      if (editingRecord) {
+        await putRequest(`${MAS_EAR_CANAL}/update/${editingRecord.id}`, {
+          ...editingRecord,
+          earCanalCondition: formData.earCanalCondition.trim(),
+        });
+        showPopup("Record updated successfully", "success");
+      } else {
+        await postRequest(`${MAS_EAR_CANAL}/create`, {
+          earCanalCondition: formData.earCanalCondition.trim(),
+        });
+        showPopup("Record added successfully", "success");
+      }
+      fetchData();
+      handleCancel();
+    } catch (error) {
+      console.error("Save error:", error);
+      showPopup("Save failed", "error");
+    }
   };
 
   // ================= EDIT =================
   const handleEdit = (rec) => {
     setEditingRecord(rec);
-    setFormData(rec);
+    setFormData({ earCanalCondition: rec.earCanalCondition });
     setShowForm(true);
     setIsFormValid(true);
   };
 
   // ================= STATUS =================
-  const handleSwitchChange = (earCanalName, newStatus) => {
-    setConfirmDialog({ isOpen: true, earCanalName, newStatus });
+  const handleSwitchChange = (record) => {
+    const currentStatus = record.status?.toLowerCase() === "y";
+    const newStatus = currentStatus ? "n" : "y";
+
+    setConfirmDialog({
+      isOpen: true,
+      record,
+      newStatus
+    });
   };
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed) {
-      setData(
-        data.map((rec) =>
-          rec.earCanalName === confirmDialog.earCanalName
-            ? { ...rec, status: confirmDialog.newStatus }
-            : rec
-        )
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
+    }
+    if (!confirmDialog.record) return;
+
+    try {
+      setLoading(true);
+      await putRequest(
+        `${MAS_EAR_CANAL}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`
       );
       showPopup("Status updated successfully", "success");
+      fetchData();
+    } catch (error) {
+      console.error("Status update error:", error);
+      showPopup("Status update failed", "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
     }
-    setConfirmDialog({
-      isOpen: false,
-      earCanalName: null,
-      newStatus: "",
-    });
   };
 
   const showPopup = (message, type) => {
@@ -125,6 +171,11 @@ const EarCanalMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
+    fetchData();
+  };
+
+  const isActive = (status) => {
+    return (status || "").toLowerCase() === "y";
   };
 
   // ================= UI =================
@@ -140,7 +191,7 @@ const EarCanalMaster = () => {
                 type="text"
                 style={{ width: "220px" }}
                 className="form-control me-2"
-                placeholder="Search"
+                placeholder="Search Ear Canal Condition"
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -158,13 +209,13 @@ const EarCanalMaster = () => {
                   Add
                 </button>
                 <button className="btn btn-success flex-shrink-0" onClick={handleRefresh}>
-                  Show All
+                  Refresh
                 </button>
               </>
             ) : (
               <button
                 className="btn btn-secondary"
-                onClick={() => setShowForm(false)}
+                onClick={handleCancel}
               >
                 Back
               </button>
@@ -177,82 +228,94 @@ const EarCanalMaster = () => {
             <LoadingScreen />
           ) : !showForm ? (
             <>
-              <table className="table table-bordered table-hover">
-                <thead className="table-light">
-                  <tr>
-                    <th>Ear Canal Code</th>
-                    <th>Ear Canal Name</th>
-                    <th>Status</th>
-                    <th>Edit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentItems.map((rec, index) => (
-                    <tr key={index}>
-                      <td>{rec.earCanalCode}</td>
-                      <td>{rec.earCanalName}</td>
-                      <td>
-                        <div className="form-check form-switch">
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            checked={rec.status === "Y"}
-                            onChange={() =>
-                              handleSwitchChange(
-                                rec.earCanalName,
-                                rec.status === "Y" ? "N" : "Y"
-                              )
-                            }
-                          />
-                          <label className="form-check-label ms-2">
-                            {rec.status === "Y" ? "Active" : "Inactive"}
-                          </label>
-                        </div>
-                      </td>
-                      <td>
-                        <button
-                          className="btn btn-success btn-sm"
-                          disabled={rec.status !== "Y"}
-                          onClick={() => handleEdit(rec)}
-                        >
-                          <i className="fa fa-pencil"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {filteredData.length === 0 ? (
+                <div className="text-center py-4">
+                  <p>No records found {searchQuery && `for "${searchQuery}"`}</p>
+                </div>
+              ) : (
+                <>
+                  <table className="table table-bordered table-hover">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Ear Canal Condition</th>
+                        <th>Last Update Date</th>
+                        <th>Status</th>
+                        <th>Edit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentItems.map((rec) => (
+                        <tr key={rec.id}>
+                          <td>{rec.earCanalCondition}</td>
+                          <td>{formatDate(rec.lastUpdateDate)}</td>
+                          <td>
+                            <div className="form-check form-switch">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                checked={isActive(rec.status)}
+                                onChange={() => handleSwitchChange(rec)}
+                              />
+                              <label className="form-check-label ms-2">
+                                {isActive(rec.status) ? "Active" : "Inactive"}
+                              </label>
+                            </div>
+                          </td>
+                          <td>
+                            <button
+                              className="btn btn-success btn-sm"
+                              onClick={() => handleEdit(rec)}
+                              disabled={!isActive(rec.status)}
+                              title={!isActive(rec.status) ? "Cannot edit inactive records" : "Edit"}
+                            >
+                              <i className="fa fa-pencil"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
 
-              {/* PAGINATION */}
-              <Pagination
-                                totalItems={filteredData.length}
-                                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                currentPage={currentPage}
-                                onPageChange={setCurrentPage}
-                          />               
+                  {/* PAGINATION */}
+                  {filteredData.length > DEFAULT_ITEMS_PER_PAGE && (
+                    <Pagination
+                      totalItems={filteredData.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  )}
+                </>
+              )}
             </>
           ) : (
             <form onSubmit={handleSave} className="row g-3">
               <div className="col-md-5">
                 <label>
-                  Ear Canal Name <span className="text-danger">*</span>
+                  Ear Canal Condition <span className="text-danger">*</span>
                 </label>
                 <input
-                  id="earCanalName"
+                  id="earCanalCondition"
                   className="form-control"
-                  value={formData.earCanalName}
+                  value={formData.earCanalCondition}
                   onChange={handleInputChange}
+                  placeholder="Enter ear canal condition"
+                  autoFocus
                 />
               </div>
 
               <div className="col-12 text-end">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>
-                  Save
+                <button
+                  type="submit"
+                  className="btn btn-primary me-2"
+                  disabled={!isFormValid}
+                >
+                  {editingRecord ? "Update" : "Save"}
                 </button>
                 <button
                   type="button"
                   className="btn btn-danger"
-                  onClick={() => setShowForm(false)}
+                  onClick={handleCancel}
                 >
                   Cancel
                 </button>
@@ -263,13 +326,16 @@ const EarCanalMaster = () => {
           {popupMessage && <Popup {...popupMessage} />}
 
           {confirmDialog.isOpen && (
-            <div className="modal d-block">
+            <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
               <div className="modal-dialog">
                 <div className="modal-content">
+                  <div className="modal-header">
+                    <h5 className="modal-title">Confirm Status Change</h5>
+                  </div>
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}{" "}
-                    <strong>{confirmDialog.earCanalName}</strong>?
+                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    <strong>{confirmDialog.record?.earCanalCondition}</strong>?
                   </div>
                   <div className="modal-footer">
                     <button

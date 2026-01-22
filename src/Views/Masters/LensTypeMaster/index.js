@@ -1,49 +1,56 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import { MAS_OPTH_LENSTYPE } from "../../../config/apiConfig";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const LensTypeMaster = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const [formData, setFormData] = useState({ lensType: "" });
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
-
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   /* ---------- Pagination ---------- */
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageInput, setPageInput] = useState("");
+
+    const MAX_LENGTH = 8; 
+
   const itemsPerPage = 5;
 
-  const [formData, setFormData] = useState({
-    lens_type: "",
-  });
 
-  /* ---------- Confirm Status Dialog ---------- */
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
-    recordId: null,
-    newStatus: null,
+    record: null,
+    newStatus: "",
   });
 
-  /* ---------- Fetch Data ---------- */
-  const fetchData = async () => {
+
+  //formdate
+  const formatDate = (dateString) => {
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  // Fetch data
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const dummyData = [
-        { id: 1, lens_type: "Single Vision", status: "Y", last_updated_date: "2025-12-01 08:30:00" },
-        { id: 2, lens_type: "Bifocal", status: "Y", last_updated_date: "2025-12-02 09:15:00" },
-        { id: 3, lens_type: "Progressive", status: "N", last_updated_date: "2025-12-03 10:00:00" },
-        { id: 4, lens_type: "Photochromic", status: "Y", last_updated_date: "2025-12-04 10:45:00" },
-        { id: 5, lens_type: "Computer Lens", status: "Y", last_updated_date: "2025-12-05 11:30:00" },
-      ];
-      setData(dummyData);
-    } catch (err) {
-      showPopup("Failed to fetch data!", "error");
+      const { response } = await getRequest(`${MAS_OPTH_LENSTYPE}/getAll/${flag}`);
+      setData(response || []);
+    } catch {
+      showPopup("Failed to fetch records", "error");
+      setData([]);
     } finally {
       setLoading(false);
     }
@@ -53,19 +60,16 @@ const LensTypeMaster = () => {
     fetchData();
   }, []);
 
+
   /* ---------- Filter + Pagination ---------- */
   const filteredData = data.filter((rec) =>
-    rec.lens_type.toLowerCase().includes(searchQuery.toLowerCase())
+    (rec?.lensType ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
-  /* ---------- Popup ---------- */
-  const showPopup = (message, type) =>
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const currentItems = filteredData.slice(
+    (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
+    currentPage * DEFAULT_ITEMS_PER_PAGE
+  );
 
   /* ---------- Handlers ---------- */
   const handleSearchChange = (e) => {
@@ -73,101 +77,125 @@ const LensTypeMaster = () => {
     setCurrentPage(1);
   };
 
+
+  // ================= FORM =================
+  const handleInputChange = (e) => {
+    const { id, value } = e.target;
+    const updated = { ...formData, [id]: value };
+    setFormData(updated);
+    setIsFormValid(value.trim() !== "");
+  };
+
+  const resetForm = () => {
+    setFormData({ lensType: "" });
+    setEditingRecord(null);
+    setIsFormValid(false);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
+  };
+
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+
+    const newValue = formData.lensType.trim().toLowerCase();
+    const duplicate = data.find(
+      (rec) =>
+        rec.lensType?.trim().toLowerCase() === newValue &&
+        (!editingRecord || rec.id !== editingRecord.id)
+    );
+
+    if (duplicate) {
+      showPopup("lestType Value already exists!", "error");
+      return;
+    }
+
+    try {
+      if (editingRecord) {
+        await putRequest(`${MAS_OPTH_LENSTYPE}/update/${editingRecord.id}`, {
+          ...editingRecord,
+          lensType: formData.lensType.trim(),
+        });
+        showPopup("Record updated successfully", "success");
+      } else {
+        await postRequest(`${MAS_OPTH_LENSTYPE}/create`, {
+          lensType: formData.lensType.trim(),
+        });
+        showPopup("Record added successfully", "success");
+      }
+      fetchData();
+      handleCancel();
+    } catch {
+      showPopup("Save failed", "error");
+    }
+  };
+
+
+  const handleEdit = (rec) => {
+    setEditingRecord(rec);
+    setFormData({ lensType: rec.lensType || "" });
+    setIsFormValid(true);
+    setShowForm(true);
+  };
+
+  /* ---------- Status Change ---------- */
+  const handleSwitchChange = (rec) => {
+    setConfirmDialog({
+      isOpen: true,
+      record: rec,
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+    });
+  };
+
+
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
+    }
+    if (!confirmDialog.record) return;
+
+    try {
+      setLoading(true);
+      await putRequest(`${MAS_OPTH_LENSTYPE}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`);
+      showPopup("Status updated successfully", "success");
+      fetchData();
+    } catch {
+      showPopup("Status update failed", "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+    }
+  };
+
+
+
+  const showPopup = (message, type) => {
+    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  };
+
+
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
     fetchData();
   };
 
-  const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    const updated = { ...formData, [id]: value };
-    setFormData(updated);
-    setIsFormValid(updated.lens_type.trim() !== "");
-  };
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
-
-    const now = new Date().toISOString().replace("T", " ").split(".")[0];
-
-    if (editingRecord) {
-      setData(
-        data.map((rec) =>
-          rec.id === editingRecord.id
-            ? { ...rec, lens_type: formData.lens_type, last_updated_date: now }
-            : rec
-        )
-      );
-      showPopup("Record updated successfully!", "success");
-    } else {
-      setData([
-        ...data,
-        {
-          id: Date.now(),
-          lens_type: formData.lens_type,
-          status: "Y",
-          last_updated_date: now,
-        },
-      ]);
-      showPopup("New record added successfully!", "success");
-    }
-
-    resetForm();
-  };
-
-  const handleEdit = (rec) => {
-    setEditingRecord(rec);
-    setFormData({ lens_type: rec.lens_type });
-    setIsFormValid(true);
-    setShowForm(true);
-  };
-
-  /* ---------- Status Change ---------- */
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, recordId: id, newStatus });
-  };
-
-  const handleConfirmStatusChange = (confirmed) => {
-    if (confirmed && confirmDialog.recordId !== null) {
-      setData(
-        data.map((rec) =>
-          rec.id === confirmDialog.recordId
-            ? { ...rec, status: confirmDialog.newStatus }
-            : rec
-        )
-      );
-
-      const recordName =
-        data.find((rec) => rec.id === confirmDialog.recordId)?.lens_type || "";
-
-      showPopup(
-        `${recordName} ${
-          confirmDialog.newStatus === "Y" ? "Activated" : "Deactivated"
-        } successfully!`,
-        "success"
-      );
-    }
-    setConfirmDialog({ isOpen: false, recordId: null, newStatus: null });
-  };
-
-  const resetForm = () => {
-    setFormData({ lens_type: "" });
-    setEditingRecord(null);
-    setShowForm(false);
-    setIsFormValid(false);
-  };
   return (
     <div className="content-wrapper">
       <div className="card form-card">
         <div className="card-header d-flex justify-content-between align-items-center">
-          <h4 className="card-title">Lens Type Master</h4>
-
+          <h4>Lens Type Master</h4>
           <div className="d-flex align-items-center">
             {!showForm && (
               <input
                 type="text"
+                style={{ width: "220px" }}
                 className="form-control w-50 me-2"
                 placeholder="Search"
                 value={searchQuery}
@@ -177,7 +205,10 @@ const LensTypeMaster = () => {
 
             {!showForm ? (
               <>
-                <button className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                <button
+                  className="btn btn-success me-2"
+                  onClick={() => { resetForm(); setShowForm(true); }}
+                >
                   Add
                 </button>
                 <button className="btn btn-success" onClick={handleRefresh}>
@@ -185,99 +216,96 @@ const LensTypeMaster = () => {
                 </button>
               </>
             ) : (
-              <button className="btn btn-secondary" onClick={resetForm}>
+              <button className="btn btn-secondary" onClick={handleCancel}>
                 Back
               </button>
             )}
           </div>
         </div>
 
-        <div className="card-body">
-          {!showForm ? (
-            <>
-              <div className="table-responsive">
-                <table className="table table-bordered table-hover">
-                  <thead className="table-light">
-                    <tr>
-                      <th>ID</th>
-                      <th>Lens Type</th>
-                      <th>Last Update Date</th>
-                      <th>Status</th>
-                      <th>Edit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentItems.length ? (
-                      currentItems.map((rec) => (
-                        <tr key={rec.id}>
-                          <td>{rec.id}</td>
-                          <td>{rec.lens_type}</td>
-                          <td>{rec.last_updated_date}</td>
-                          <td>
-                            <div className="form-check form-switch">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                checked={rec.status === "Y"}
-                                onChange={() =>
-                                  handleSwitchChange(rec.id, rec.status === "Y" ? "N" : "Y")
-                                }
-                              />
-                              <label className="form-check-label">
-                                {rec.status === "Y" ? "Active" : "Inactive"}
-                              </label>
-                            </div>
-                          </td>
-                          <td>
-                            <button
-                              className="btn btn-success btn-sm"
-                              onClick={() => handleEdit(rec)}
-                              disabled={rec.status !== "Y"}
-                            >
-                              <i className="fa fa-pencil"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="5" className="text-center">
-                          No record found
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
 
-              {/* Pagination */}
-                  <Pagination
-                                totalItems={filteredData.length}
-                                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                currentPage={currentPage}
-                                onPageChange={setCurrentPage}
-                              /> 
-                           </>                     
+        <div className="card-body">
+          {loading ? (
+            <LoadingScreen />
+          ) : !showForm ? (
+            <>
+              <table className="table table-bordered table-hover">
+                <thead className="table-light">
+                  <tr>
+                    <th>Lens Type</th>
+                    <th>Last Update Date</th>
+                    <th>Status</th>
+                    <th>Edit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentItems.map((rec) => (
+                    <tr key={rec.id}>
+                      <td>{rec.lensType}</td>
+                      <td>{formatDate(rec.lastUpdateDate)}</td>
+                      <td>
+                        <div className="form-check form-switch">
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            checked={rec.status?.toLowerCase() === "y"}
+                            onChange={() => handleSwitchChange(rec)}
+                          />
+                          <label className="form-check-label ms-2">
+                            {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+                          </label>
+                        </div>
+                      </td>
+                      <td>
+                        <button
+                          className="btn btn-success btn-sm"
+                          onClick={() => handleEdit(rec)}
+                          disabled={rec.status?.toLowerCase() !== "y"}
+                        >
+                          <i className="fa fa-pencil"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {filteredData.length > 0 && (
+                <Pagination
+                  totalItems={filteredData.length}
+                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
+              )}
+            </>
           ) : (
-            <form className="row" onSubmit={handleSave}>
-              <div className="form-group col-md-6">
-                <label>
-                  Lens Type <span className="text-danger">*</span>
-                </label>
+            <form onSubmit={handleSave} className="row g-3">
+              <div className="col-md-5">
+                <label>lensType<span className="text-danger">*</span></label>
                 <input
-                  type="text"
-                  id="lens_type"
-                  className="form-control mt-1"
-                  value={formData.lens_type}
+                  id="lensType"
+                  className="form-control"
+                  value={formData.presentationValue}
                   onChange={handleInputChange}
+                  maxLength={MAX_LENGTH}
+                  autoFocus
                 />
               </div>
 
-              <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>
+              <div className="col-12 text-end">
+                <button
+                  type="submit"
+                  className="btn btn-primary me-2"
+                  disabled={!isFormValid}
+                >
                   Save
                 </button>
-                <button className="btn btn-danger" type="button" onClick={resetForm}>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={handleCancel}
+                >
                   Cancel
                 </button>
               </div>
@@ -287,35 +315,24 @@ const LensTypeMaster = () => {
           {popupMessage && <Popup {...popupMessage} />}
 
           {confirmDialog.isOpen && (
-            <div className="modal d-block" tabIndex="-1">
+            <div className="modal d-block">
               <div className="modal-dialog">
                 <div className="modal-content">
-                  <div className="modal-header">
-                    <h5 className="modal-title">Confirm Status Change</h5>
-                    <button
-                      type="button"
-                      className="btn-close"
-                      onClick={() => handleConfirmStatusChange(false)}
-                    ></button>
-                  </div>
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}{" "}
-                    <strong>
-                      {data.find((rec) => rec.id === confirmDialog.recordId)?.lens_type}
-                    </strong>
-                    ?
+                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    <strong>{confirmDialog.record?.lensType}</strong>?
                   </div>
                   <div className="modal-footer">
                     <button
                       className="btn btn-secondary"
-                      onClick={() => handleConfirmStatusChange(false)}
+                      onClick={() => handleConfirm(false)}
                     >
                       No
                     </button>
                     <button
                       className="btn btn-primary"
-                      onClick={() => handleConfirmStatusChange(true)}
+                      onClick={() => handleConfirm(true)}
                     >
                       Yes
                     </button>
@@ -325,9 +342,9 @@ const LensTypeMaster = () => {
             </div>
           )}
         </div>
+
       </div>
     </div>
   );
 };
-
 export default LensTypeMaster;

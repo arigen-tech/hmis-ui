@@ -244,7 +244,12 @@ export const MAS_OB_CONCEPTION = `${MASTERS}/obMasConception`;
 export const MAS_CERVIX_POSITION = `${MASTERS}/ObMasCervixPosition`;
 export const MAS_OPTH_COLOR_VISION = `${MASTERS}/opthMasColorVision`;
 export const MAS_OP_PELVIS_TYPE = `${MASTERS}/obMasPelvisType`;
-
+export const MAS_PRESENTATION = `${MASTERS}/obMasPresentation`;
+export const MAS_STERILISATION = `${MASTERS}/gynMasSterilisation`;
+export const MAS_STATION_PRESENTATION =`${MASTERS}/obMasStationPresenting`;
+export const MAS_OPTH_LENSTYPE =`${MASTERS}/opthMasLensType`;
+export const MAS_EAR_CANAL = `${MASTERS}/entMasEarCanal`;
+export const MAS_ENT_RINNE = `${MASTERS}/entMasRinne`;
 
 
 

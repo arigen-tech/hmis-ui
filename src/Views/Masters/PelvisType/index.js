@@ -90,8 +90,6 @@ const PelvisType = () => {
   };
 
 
-
-
   // ================= FORM =================
 
   const handleInputChange = (e) => {

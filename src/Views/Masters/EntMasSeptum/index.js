@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
-// Uncomment if using JSON file
-// import septumData from "../../../data/septumData.json";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const EntMasSeptum = () => {

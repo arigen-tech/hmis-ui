@@ -1,21 +1,23 @@
+
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import { MAS_STATION_PRESENTATION } from "../../../config/apiConfig";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const StationPresentingMaster = () => {
   const [data, setData] = useState([]);
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
-    stationPresentingName: null,
+    record: null, 
     newStatus: "",
   });
 
   const [formData, setFormData] = useState({
-    stationPresentingCode: "",
-    stationPresentingName: "",
+    stationValue: "",
   });
 
   const [showForm, setShowForm] = useState(false);
@@ -26,98 +28,143 @@ const StationPresentingMaster = () => {
 
   // ================= PAGINATION =================
   const [currentPage, setCurrentPage] = useState(1);
-  const [goPage, setGoPage] = useState("");
-  const itemsPerPage = 5;
 
-  // ================= SAMPLE DATA =================
- useEffect(() => {
-  setData([
-    { stationPresentingCode: "SP1", stationPresentingName: "High Station", status: "Y" },
-    { stationPresentingCode: "SP2", stationPresentingName: "Mid Station", status: "Y" },
-    { stationPresentingCode: "SP3", stationPresentingName: "Low Station", status: "N" },
-    { stationPresentingCode: "SP4", stationPresentingName: "Engaged Station", status: "Y" },
-    { stationPresentingCode: "SP5", stationPresentingName: "Floating Station", status: "N" },
-  ]);
-}, []);
+  const MAX_LENGTH = 8; 
+
+
+
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  // Fetch data
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
+    try {
+      const { response } = await getRequest(`${MAS_STATION_PRESENTATION}/getAll/${flag}`);
+      setData(response || []);
+    } catch (error) {
+      showPopup("Failed to fetch records", "error");
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   // ================= SEARCH =================
   const filteredData = data.filter((rec) =>
-    rec.stationPresentingName.toLowerCase().includes(searchQuery.toLowerCase())
+    (rec?.stationValue ?? "").toLowerCase().includes(searchQuery.toLowerCase()) 
   );
 
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
-  const currentItems = filteredData.slice(indexOfFirst, indexOfLast)
-
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
 
   // ================= FORM =================
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     const updated = { ...formData, [id]: value };
     setFormData(updated);
-    setIsFormValid(
-      updated.stationPresentingCode && updated.stationPresentingName
-    );
+    setIsFormValid(value.trim() !== ""); 
   };
 
   const resetForm = () => {
-    setFormData({ stationPresentingCode: "", stationPresentingName: "" });
+    setFormData({ stationValue: "" });
     setIsFormValid(false);
+    setEditingRecord(null);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
   };
 
   // ================= SAVE =================
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
 
-    if (editingRecord) {
-      setData(
-        data.map((rec) =>
-          rec.stationPresentingCode === editingRecord.stationPresentingCode
-            ? { ...rec, ...formData }
-            : rec
-        )
-      );
-      showPopup("Record updated successfully", "success");
-    } else {
-      setData([...data, { ...formData, status: "N" }]);
-      showPopup("Record added successfully", "success");
+    const newValue = formData.stationValue.trim().toLowerCase();
+    const duplicate = data.find(
+      (rec) =>
+        rec.stationValue?.trim().toLowerCase() === newValue &&
+        (!editingRecord || rec.id !== editingRecord.id)
+    );
+
+    if (duplicate) {
+      showPopup("Station Value already exists!", "error"); 
+      return;
     }
 
-    resetForm();
-    setEditingRecord(null);
-    setShowForm(false);
+    try {
+      if (editingRecord) {
+        await putRequest(`${MAS_STATION_PRESENTATION}/update/${editingRecord.id}`, {
+          ...editingRecord,
+          stationValue: formData.stationValue.trim(),
+        });
+        showPopup("Record updated successfully", "success");
+      } else {
+        await postRequest(`${MAS_STATION_PRESENTATION}/create`, {
+          stationValue: formData.stationValue.trim(),
+        });
+        showPopup("Record added successfully", "success");
+      }
+      fetchData();
+      handleCancel();
+    } catch (error) {
+      showPopup("Save failed", "error");
+    }
   };
 
   // ================= EDIT =================
   const handleEdit = (rec) => {
     setEditingRecord(rec);
-    setFormData(rec);
+    setFormData({ stationValue: rec.stationValue || "" }); 
     setShowForm(true);
     setIsFormValid(true);
   };
 
   // ================= STATUS =================
-  const handleSwitchChange = (stationPresentingName, newStatus) => {
-    setConfirmDialog({ isOpen: true, stationPresentingName, newStatus });
+  const handleSwitchChange = (rec) => {
+    setConfirmDialog({
+      isOpen: true,
+      record: rec, // Fixed: pass the entire record
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+    });
   };
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed) {
-      setData(
-        data.map((rec) =>
-          rec.stationPresentingName === confirmDialog.stationPresentingName
-            ? { ...rec, status: confirmDialog.newStatus }
-            : rec
-        )
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
+    }
+    
+    if (!confirmDialog.record) return;
+
+    try {
+      setLoading(true);
+      await putRequest(
+        `${MAS_STATION_PRESENTATION}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`
       );
       showPopup("Status updated successfully", "success");
+      fetchData();
+    } catch (error) {
+      showPopup("Status update failed", "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
     }
-    setConfirmDialog({
-      isOpen: false,
-      stationPresentingName: null,
-      newStatus: "",
-    });
   };
 
   const showPopup = (message, type) => {
@@ -127,9 +174,8 @@ const StationPresentingMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
+    fetchData(); // Added to refresh data
   };
-
-
 
   // ================= UI =================
   return (
@@ -155,7 +201,10 @@ const StationPresentingMaster = () => {
 
             {!showForm ? (
               <>
-                <button className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                <button 
+                  className="btn btn-success me-2" 
+                  onClick={() => { resetForm(); setShowForm(true); }}
+                >
                   Add
                 </button>
                 <button className="btn btn-success" onClick={handleRefresh}>
@@ -163,7 +212,7 @@ const StationPresentingMaster = () => {
                 </button>
               </>
             ) : (
-              <button className="btn btn-secondary" onClick={() => setShowForm(false)}>
+              <button className="btn btn-secondary" onClick={handleCancel}>
                 Back
               </button>
             )}
@@ -178,75 +227,89 @@ const StationPresentingMaster = () => {
               <table className="table table-bordered table-hover">
                 <thead className="table-light">
                   <tr>
-                    <th>Station Presenting Code</th>
-                    <th>Station Presenting Name</th>
+                    <th>Station Value</th> 
+                    <th>Last Update Date</th>
                     <th>Status</th>
                     <th>Edit</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {currentItems.map((rec, index) => (
-                    <tr key={index}>
-                      <td>{rec.stationPresentingCode}</td>
-                      <td>{rec.stationPresentingName}</td>
-                      <td>
-                        <div className="form-check form-switch">
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            checked={rec.status === "Y"}
-                            onChange={() =>
-                              handleSwitchChange(
-                                rec.stationPresentingName,
-                                rec.status === "Y" ? "N" : "Y"
-                              )
-                            }
-                          />
-                          <label className="form-check-label ms-2">
-                            {rec.status === "Y" ? "Active" : "Inactive"}
-                          </label>
-                        </div>
-                      </td>
-                      <td>
-                        <button
-                          className="btn btn-success btn-sm"
-                          disabled={rec.status !== "Y"}
-                          onClick={() => handleEdit(rec)}
-                        >
-                          <i className="fa fa-pencil"></i>
-                        </button>
+                  {currentItems.length > 0 ? (
+                    currentItems.map((rec) => (
+                      <tr key={rec.id}>
+                        <td>{rec.stationValue}</td>
+                        <td>{formatDate(rec.lastUpdateDate)}</td>
+                        <td>
+                          <div className="form-check form-switch">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              checked={rec.status?.toLowerCase() === "y"}
+                              onChange={() => handleSwitchChange(rec)}
+                            />
+                            <label className="form-check-label ms-2">
+                              {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+                            </label>
+                          </div>
+                        </td>
+                        <td>
+                          <button
+                            className="btn btn-success btn-sm"
+                            disabled={rec.status?.toLowerCase() !== "y"} 
+                            onClick={() => handleEdit(rec)}
+                          >
+                            <i className="fa fa-pencil"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="4" className="text-center">
+                        No records found
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
 
               {/* PAGINATION */}
-               <Pagination
-               totalItems={filteredData.length}
-               itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-               currentPage={currentPage}
-               onPageChange={setCurrentPage}
-             /> 
+              <Pagination
+                totalItems={filteredData.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
             </>
           ) : (
             <form onSubmit={handleSave} className="row g-3">
-
               <div className="col-md-5">
-                <label>Station Presenting Name <span className="text-danger">*</span></label>
+                <label>
+                  Station Presenting Name <span className="text-danger">*</span>
+                </label>
                 <input
-                  id="stationPresentingName"
+                  id="stationValue" // Fixed: Changed to stationValue to match state
                   className="form-control"
-                  value={formData.stationPresentingName}
+                  value={formData.stationValue}
                   onChange={handleInputChange}
+                  maxLength={MAX_LENGTH}
+                  autoFocus
                 />
               </div>
 
               <div className="col-12 text-end">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>
+                <button
+                  type="submit"
+                  className="btn btn-primary me-2"
+                  disabled={!isFormValid}
+                >
                   Save
                 </button>
-                <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={handleCancel}
+                >
                   Cancel
                 </button>
               </div>
@@ -256,19 +319,28 @@ const StationPresentingMaster = () => {
           {popupMessage && <Popup {...popupMessage} />}
 
           {confirmDialog.isOpen && (
-            <div className="modal d-block">
-              <div className="modal-dialog">
+            <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+              <div className="modal-dialog modal-dialog-centered">
                 <div className="modal-content">
+                  <div className="modal-header">
+                    <h5 className="modal-title">Confirm Status Change</h5>
+                  </div>
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}{" "}
-                    <strong>{confirmDialog.stationPresentingName}</strong>?
+                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    <strong>{confirmDialog.record?.stationValue}</strong>? {/* Fixed */}
                   </div>
                   <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => handleConfirm(false)}
+                    >
                       No
                     </button>
-                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleConfirm(true)}
+                    >
                       Yes
                     </button>
                   </div>
@@ -276,7 +348,6 @@ const StationPresentingMaster = () => {
               </div>
             </div>
           )}
-
         </div>
       </div>
     </div>
