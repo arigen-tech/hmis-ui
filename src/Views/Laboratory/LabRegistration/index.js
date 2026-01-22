@@ -2003,10 +2003,10 @@ const LabRegistration = () => {
                                             handleRowChange(index, "investigationIds", investigationIds)
                                             setActiveRowIndex(null)
 
-                                            showPopup(
-                                              `${item.packName} has been added successfully.`,
-                                              "success"
-                                            )
+                                            // showPopup(
+                                            //   `${item.packName} has been added successfully.`,
+                                            //   "success"
+                                            // )
                                           }}
                                         >
                                           <div>
