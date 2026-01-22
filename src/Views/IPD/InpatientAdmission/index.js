@@ -41,6 +41,15 @@ const InpatientAdmission = () => {
     bloodGroup: "",
     address: "",
     
+    // NEW: Patient Address Section (from image)
+    patientAddress1: "",
+    patientAddress2: "",
+    patientCountry: "",
+    patientState: "",
+    patientDistrict: "",
+    patientCity: "",
+    patientPinCode: "",
+    
     // Admission Details - UPDATED
     admissionDate: "",
     admissionTime: "",
@@ -135,6 +144,10 @@ const InpatientAdmission = () => {
   const [countryData, setCountryData] = useState([]);
   const [nokStateData, setNokStateData] = useState([]);
   const [nokDistrictData, setNokDistrictData] = useState([]);
+  
+  // NEW: Patient Address dropdown data
+  const [patientStateData, setPatientStateData] = useState([]);
+  const [patientDistrictData, setPatientDistrictData] = useState([]);
   
   // Master data states - NEW
   const [admissionCategories, setAdmissionCategories] = useState([]);
@@ -259,22 +272,6 @@ const InpatientAdmission = () => {
   // NEW: Fetch master data
   const fetchMasterData = async () => {
     try {
-      // Fetch admission categories from mas_admission_category
-      // const categoriesResponse = await getRequest(MAS_ADMISSION_CATEGORY);
-      // setAdmissionCategories(categoriesResponse || []);
-      
-      // Fetch admission types from mas_admission_type
-      // const typesResponse = await getRequest(MAS_ADMISSION_TYPE);
-      // setAdmissionTypes(typesResponse || []);
-      
-      // Fetch patient conditions from mas_patient_condition
-      // const conditionsResponse = await getRequest(MAS_PATIENT_CONDITION);
-      // setPatientConditions(conditionsResponse || []);
-      
-      // Fetch care levels from mas_care_level
-      // const careTypesResponse = await getRequest(MAS_CARE_LEVEL);
-      // setAdmissionCareTypes(careTypesResponse || []);
-      
       // Mock data for now
       setAdmissionCategories([
         { id: 1, admissionCategoryName: "IPD", status: "Active" },
@@ -308,14 +305,6 @@ const InpatientAdmission = () => {
   
   const fetchDropdownData = async () => {
     try {
-      // Fetch ward categories
-      // const categoriesResponse = await getRequest(`${WARD_API}/categories`);
-      // setWardCategories(categoriesResponse || []);
-      
-      // Fetch doctors
-      // const doctorsResponse = await getRequest(DOCTOR_API);
-      // setDoctors(doctorsResponse || []);
-      
       // Mock data for now
       setWardCategories([
         { id: 1, name: "General Ward", code: "GW" },
@@ -340,10 +329,6 @@ const InpatientAdmission = () => {
   
   const fetchCountryData = async () => {
     try {
-      // Fetch countries
-      // const response = await getRequest("/api/countries");
-      // setCountryData(response || []);
-      
       // Mock data
       setCountryData([
         { id: 1, countryName: "India" },
@@ -355,12 +340,55 @@ const InpatientAdmission = () => {
     }
   };
   
+  // NEW: Fetch patient states
+  const fetchPatientStates = async (countryId) => {
+    try {
+      // Mock data for India
+      if (countryId == 1) {
+        setPatientStateData([
+          { id: 1, stateName: "Maharashtra" },
+          { id: 2, stateName: "Delhi" },
+          { id: 3, stateName: "Karnataka" },
+          { id: 4, stateName: "Gujarat" },
+          { id: 5, stateName: "Tamil Nadu" },
+        ]);
+      } else {
+        setPatientStateData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching patient states:", error);
+    }
+  };
+  
+  // NEW: Fetch patient districts
+  const fetchPatientDistrict = async (stateId) => {
+    try {
+      // Mock data
+      if (stateId == 1) { // Maharashtra
+        setPatientDistrictData([
+          { id: 1, districtName: "Mumbai" },
+          { id: 2, districtName: "Pune" },
+          { id: 3, districtName: "Nagpur" },
+          { id: 4, districtName: "Nashik" },
+          { id: 5, districtName: "Aurangabad" },
+        ]);
+      } else if (stateId == 3) { // Karnataka
+        setPatientDistrictData([
+          { id: 6, districtName: "Bangalore" },
+          { id: 7, districtName: "Mysore" },
+          { id: 8, districtName: "Hubli" },
+          { id: 9, districtName: "Mangalore" },
+        ]);
+      } else {
+        setPatientDistrictData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching patient districts:", error);
+    }
+  };
+  
   const fetchNokStates = async (countryId) => {
     try {
-      // Fetch states for selected country
-      // const response = await getRequest(`/api/states/${countryId}`);
-      // setNokStateData(response || []);
-      
       // Mock data for India
       if (countryId == 1) {
         setNokStateData([
@@ -378,10 +406,6 @@ const InpatientAdmission = () => {
   
   const fetchNokDistrict = async (stateId) => {
     try {
-      // Fetch districts for selected state
-      // const response = await getRequest(`/api/districts/${stateId}`);
-      // setNokDistrictData(response || []);
-      
       // Mock data
       if (stateId == 1) {
         setNokDistrictData([
@@ -399,10 +423,6 @@ const InpatientAdmission = () => {
   
   const fetchWardsByCategory = async (categoryId) => {
     try {
-      // Fetch wards for selected category
-      // const response = await getRequest(`${WARD_API}/by-category/${categoryId}`);
-      // setWards(response || []);
-      
       // Mock data
       if (categoryId == 1) { // General Ward
         setWards([
@@ -439,10 +459,6 @@ const InpatientAdmission = () => {
   
   const fetchRoomsByWard = async (wardId) => {
     try {
-      // Fetch rooms for selected ward
-      // const response = await getRequest(`${ROOM_API}/by-ward/${wardId}`);
-      // setRooms(response || []);
-      
       // Mock data
       if (wardId == 1) { // General Ward - A
         setRooms([
@@ -477,10 +493,6 @@ const InpatientAdmission = () => {
   
   const fetchBedsByRoom = async (roomId) => {
     try {
-      // Fetch beds for selected room
-      // const response = await getRequest(`${BED_API}/by-room/${roomId}`);
-      // setBeds(response || []);
-      
       // Mock data
       if (roomId == 1) { // GW-Room-01
         setBeds([
@@ -720,7 +732,12 @@ const InpatientAdmission = () => {
       newErrors.emergencyMobile = "Please enter a valid 10-digit mobile number";
     }
     
-    // Pin code validation
+    // Pin code validation for patient address
+    if (formData.patientPinCode && !/^\d{6}$/.test(formData.patientPinCode)) {
+      newErrors.patientPinCode = "Please enter a valid 6-digit pin code";
+    }
+    
+    // Pin code validation for NOK
     if (formData.nokPinCode && !/^\d{6}$/.test(formData.nokPinCode)) {
       newErrors.nokPinCode = "Please enter a valid 6-digit pin code";
     }
@@ -785,6 +802,17 @@ const InpatientAdmission = () => {
           maritalStatus: formData.maritalStatus,
           nationality: formData.nationality,
           address: formData.address,
+        },
+        
+        // NEW: Patient Address Details
+        patientAddress: {
+          address1: formData.patientAddress1,
+          address2: formData.patientAddress2,
+          country: formData.patientCountry,
+          state: formData.patientState,
+          district: formData.patientDistrict,
+          city: formData.patientCity,
+          pinCode: formData.patientPinCode,
         },
         
         nokDetails: {
@@ -1004,6 +1032,121 @@ const InpatientAdmission = () => {
                           rows="3"
                           placeholder="Full address"
                         />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* NEW: Patient Address Section */}
+                <div className="card mb-4">
+                  <div className="card-header">
+                    <h5 className="mb-0 fw-bold">Patient Address</h5>
+                  </div>
+                  <div className="card-body">
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <label className="form-label fw-bold">Address 1</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          name="patientAddress1"
+                          value={formData.patientAddress1}
+                          onChange={handleChange}
+                          placeholder="Enter Address 1"
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-bold">Address 2</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          name="patientAddress2"
+                          value={formData.patientAddress2}
+                          onChange={handleChange}
+                          placeholder="Enter Address 2"
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">Country</label>
+                        <select
+                          className="form-select"
+                          name="patientCountry"
+                          value={formData.patientCountry}
+                          onChange={(e) => {
+                            handleChange(e);
+                            fetchPatientStates(e.target.value);
+                          }}
+                        >
+                          <option value="">Select Country</option>
+                          {countryData.map((country) => (
+                            <option key={country.id} value={country.id}>
+                              {country.countryName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">State</label>
+                        <select
+                          className="form-select"
+                          name="patientState"
+                          value={formData.patientState}
+                          onChange={(e) => {
+                            handleChange(e);
+                            fetchPatientDistrict(e.target.value);
+                          }}
+                        >
+                          <option value="">Select State</option>
+                          {patientStateData.map((state) => (
+                            <option key={state.id} value={state.id}>
+                              {state.stateName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">District</label>
+                        <select
+                          className="form-select"
+                          name="patientDistrict"
+                          value={formData.patientDistrict}
+                          onChange={handleChange}
+                        >
+                          <option value="">Select District</option>
+                          {patientDistrictData.map((district) => (
+                            <option key={district.id} value={district.id}>
+                              {district.districtName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">City</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          name="patientCity"
+                          value={formData.patientCity}
+                          onChange={handleChange}
+                          placeholder="Enter City"
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">Pin Code</label>
+                        <input
+                          type="text"
+                          className={`form-control ${errors.patientPinCode ? "is-invalid" : ""}`}
+                          name="patientPinCode"
+                          value={formData.patientPinCode}
+                          onChange={(e) => {
+                            if (/^\d*$/.test(e.target.value)) {
+                              handleChange(e);
+                            }
+                          }}
+                          maxLength={6}
+                          placeholder="Enter Pin Code"
+                        />
+                        {errors.patientPinCode && <div className="invalid-feedback">{errors.patientPinCode}</div>}
                       </div>
                     </div>
                   </div>
