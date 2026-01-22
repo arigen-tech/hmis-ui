@@ -1318,6 +1318,28 @@ const InpatientAdmission = () => {
                   </div>
                 </div>
                 
+                {/* NEW SECTION: Remarks Section */}
+                <div className="card mb-4">
+                  <div className="card-header">
+                    <h5 className="mb-0 fw-bold">Remarks</h5>
+                  </div>
+                  <div className="card-body">
+                    <div className="row g-3">
+                      <div className="col-md-12">
+                        <label className="form-label fw-bold">Admission Notes</label>
+                        <textarea
+                          className="form-control"
+                          name="admissionRemarks"
+                          value={formData.admissionRemarks}
+                          onChange={handleChange}
+                          rows="3"
+                          placeholder="Enter admission notes here..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
                 {/* Ward / Bed Details */}
                 <div className="card mb-4">
                   <div className="card-header">
