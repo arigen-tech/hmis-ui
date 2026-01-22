@@ -1501,7 +1501,51 @@ const UpdatePatientRegistration = () => {
     e.preventDefault();
   };
 
-  
+  // UPDATE YOUR renderPagination METHOD - Change all buttons to type="button"
+  const renderPagination = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    if (startPage > 1) {
+      pageNumbers.push(1);
+      if (startPage > 2) pageNumbers.push("...");
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) pageNumbers.push("...");
+      pageNumbers.push(totalPages);
+    }
+
+    return pageNumbers.map((number, index) => (
+      <li
+        key={index}
+        className={`page-item ${number === currentPage ? "active" : ""}`}
+      >
+        {typeof number === "number" ? (
+          <button
+            type="button"
+            className="page-link"
+            onClick={() => handlePageChange(number)}
+            disabled={loading}
+          >
+            {number}
+          </button>
+        ) : (
+          <span className="page-link disabled">{number}</span>
+        )}
+      </li>
+    ));
+  };
 
   const selectToken = async (
     appointmentIndex,
@@ -1558,6 +1602,17 @@ const UpdatePatientRegistration = () => {
     }
   };
 
+  // UPDATE YOUR handlePageNavigation METHOD
+  const handlePageNavigation = (e) => {
+    e.preventDefault();
+    const pageNumber = Number.parseInt(pageInput, 10);
+    if (pageNumber > 0 && pageNumber <= totalPages) {
+      handlePageChange(pageNumber);
+      setPageInput("");
+    } else {
+      Swal.fire("Invalid Page", "Please enter a valid page number.", "warning");
+    }
+  };
 
   if (loading) {
     return (
