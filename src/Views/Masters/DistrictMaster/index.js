@@ -155,6 +155,7 @@ const DistrictMaster = () => {
                 }
             }
 
+            
             setEditingDistrict(null);
             setFormData({ districtName: "", state: "", stateId: "" });
             setShowForm(false);

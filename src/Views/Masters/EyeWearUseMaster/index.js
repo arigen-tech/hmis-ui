@@ -115,7 +115,7 @@ const EyeWearUseMaster = () => {
     setIsFormValid(false);
   };
 
-  
+
   return (
     <div className="content-wrapper">
       <div className="card form-card">
