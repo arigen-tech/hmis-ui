@@ -169,6 +169,8 @@ import EarWeberMaster from './Views/Masters/EarWeberMaster';
 import EntMasSeptum from './Views/Masters/EntMasSeptum';
 import EntMasMucosaMaster from './Views/Masters/EntMasMucosaMaster';
 import NonDrugMaster from './Views/Stores/NondrugMaster';
+import PatientListForAdmission from './Views/IPD/PatientListForAdmission';
+import InpatientAdmission from './Views/IPD/InpatientAdmission';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -202,6 +204,8 @@ function App() {
                 <Route path="lab-payment-success" element={<LabPaymentSuccess/>} />
                 <Route path="opd-payment-success" element={<OpdPaymentSuccess/>} />
                 <Route path="ViewDownwload" element={<ViewDownwload/>} />
+                <Route path="InpatientAdmission" element={<InpatientAdmission/>} />
+
 
             {/* Protected Routes */}
             <Route element={<ProtectedRoute />}>
@@ -371,6 +375,7 @@ function App() {
                 <Route path="/EntMasSeptum" element={<EntMasSeptum/>} />
                 <Route path="/EntMasMucosaMaster" element={<EntMasMucosaMaster/>} />
                 <Route path="/NonDrugMaster" element={<NonDrugMaster/>} />
+                <Route path="/PatientListForAdmission" element={<PatientListForAdmission/>} />
               </Route>
             </Route>
 

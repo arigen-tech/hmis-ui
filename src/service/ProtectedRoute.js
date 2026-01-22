@@ -173,6 +173,8 @@ const validRoutes = [
   "/EntMasSeptum",
   "/EntMasMucosaMaster",
   "/NonDrugMaster",
+  "/PatientListForAdmission",
+  "/InpatientAdmission",
   
 ];
 
