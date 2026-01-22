@@ -111,11 +111,17 @@ const InpatientAdmission = () => {
     mlcCase: "No",
     policeIntimationRequired: "No",
     
-    // NEW: Financial Section
-    paymentType: "",
-    advanceCollected: "No",
-    advanceAmount: "",
-    paymentMode: "",
+    // NEW: Financial Section - UPDATED to array structure
+    financialDetails: [
+      {
+        id: 1,
+        paymentType: "",
+        advanceCollected: "No",
+        advanceAmount: "",
+        paymentMode: "",
+       
+      }
+    ],
     
     // NEW: Document Upload
     documents: [
@@ -218,12 +224,19 @@ const InpatientAdmission = () => {
     const hours12 = today.getHours() % 12 || 12;
     const formattedDateTime = `${formattedDate} ${hours12}:${today.getMinutes().toString().padStart(2, '0')} ${ampm}`;
     
+    // Set transaction date for financial details
+    const todayISO = today.toISOString().split('T')[0];
+    
     setFormData(prev => ({
       ...prev,
-      admissionDate: today.toISOString().split('T')[0],
+      admissionDate: todayISO,
       admissionTime: formattedTime,
       admissionDateTime: formattedDateTime,
-      consentDate: today.toISOString().split('T')[0],
+      consentDate: todayISO,
+      financialDetails: prev.financialDetails.map(item => ({
+        ...item,
+        transactionDate: todayISO
+      }))
     }));
     
     // Fetch all dropdown data
@@ -574,6 +587,63 @@ const InpatientAdmission = () => {
     }
   };
   
+  // NEW: Handle financial details changes
+  const handleFinancialChange = (index, field, value) => {
+    setFormData(prev => {
+      const newFinancialDetails = [...prev.financialDetails];
+      newFinancialDetails[index] = {
+        ...newFinancialDetails[index],
+        [field]: value
+      };
+      
+      // Clear advanceAmount and paymentMode if advanceCollected is "No"
+      if (field === "advanceCollected" && value === "No") {
+        newFinancialDetails[index].advanceAmount = "";
+        newFinancialDetails[index].paymentMode = "";
+      }
+      
+      return {
+        ...prev,
+        financialDetails: newFinancialDetails
+      };
+    });
+    
+    // Clear error for this field
+    if (errors[`financial_${index}_${field}`]) {
+      setErrors(prev => ({
+        ...prev,
+        [`financial_${index}_${field}`]: "",
+      }));
+    }
+  };
+  
+  // NEW: Add new financial details row
+  const addFinancialRow = () => {
+    setFormData(prev => ({
+      ...prev,
+      financialDetails: [
+        ...prev.financialDetails,
+        {
+          id: prev.financialDetails.length + 1,
+          paymentType: "",
+          advanceCollected: "No",
+          advanceAmount: "",
+          paymentMode: "",
+        }
+      ]
+    }));
+  };
+  
+  // NEW: Remove financial details row
+  const removeFinancialRow = (index) => {
+    if (formData.financialDetails.length > 1) {
+      setFormData(prev => ({
+        ...prev,
+        financialDetails: prev.financialDetails.filter((_, i) => i !== index)
+      }));
+    }
+  };
+  
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     
@@ -596,12 +666,6 @@ const InpatientAdmission = () => {
       // Clear consentTakenBy if admissionConsentTaken is "No"
       if (name === "admissionConsentTaken" && value === "No") {
         updated.consentTakenBy = "";
-      }
-      
-      // Clear advanceAmount if advanceCollected is "No"
-      if (name === "advanceCollected" && value === "No") {
-        updated.advanceAmount = "";
-        updated.paymentMode = "";
       }
       
       return updated;
@@ -710,18 +774,30 @@ const InpatientAdmission = () => {
       newErrors.consentTakenBy = "Consent taken by is required";
     }
     
-    // Validate advance amount if advance collected is Yes
-    if (formData.advanceCollected === "Yes") {
-      if (!formData.advanceAmount) {
-        newErrors.advanceAmount = "Advance amount is required";
-      } else if (isNaN(formData.advanceAmount) || Number(formData.advanceAmount) <= 0) {
-        newErrors.advanceAmount = "Please enter a valid advance amount";
+    // Validate financial details
+    formData.financialDetails.forEach((financial, index) => {
+      // Validate advance amount if advance collected is Yes
+      if (financial.advanceCollected === "Yes") {
+        if (!financial.advanceAmount) {
+          newErrors[`financial_${index}_advanceAmount`] = "Advance amount is required";
+        } else if (isNaN(financial.advanceAmount) || Number(financial.advanceAmount) <= 0) {
+          newErrors[`financial_${index}_advanceAmount`] = "Please enter a valid advance amount";
+        }
+        
+        if (!financial.paymentMode) {
+          newErrors[`financial_${index}_paymentMode`] = "Payment mode is required";
+        }
       }
       
-      if (!formData.paymentMode) {
-        newErrors.paymentMode = "Payment mode is required";
+      // Validate transaction date if provided
+      if (financial.transactionDate) {
+        const transactionDate = new Date(financial.transactionDate);
+        const today = new Date();
+        if (transactionDate > today) {
+          newErrors[`financial_${index}_transactionDate`] = "Transaction date cannot be in the future";
+        }
       }
-    }
+    });
     
     // Mobile number validation
     if (formData.nokMobile && !/^\d{10}$/.test(formData.nokMobile)) {
@@ -756,6 +832,14 @@ const InpatientAdmission = () => {
     
     try {
       setSaving(true);
+      
+      // Calculate total advance amount
+      const totalAdvanceAmount = formData.financialDetails.reduce((sum, financial) => {
+        if (financial.advanceCollected === "Yes" && financial.advanceAmount) {
+          return sum + Number(financial.advanceAmount);
+        }
+        return sum;
+      }, 0);
       
       // Prepare payload
       const payload = {
@@ -849,12 +933,8 @@ const InpatientAdmission = () => {
           policeIntimationRequired: formData.policeIntimationRequired,
         },
         
-        financialDetails: {
-          paymentType: formData.paymentType,
-          advanceCollected: formData.advanceCollected,
-          advanceAmount: formData.advanceAmount,
-          paymentMode: formData.paymentMode,
-        },
+        financialDetails: formData.financialDetails,
+        totalAdvanceAmount: totalAdvanceAmount,
         
         documents: formData.documents.map(doc => ({
           docType: doc.docType,
@@ -1677,75 +1757,108 @@ const InpatientAdmission = () => {
                   </div>
                 </div>
                 
-                {/* Financial Section (Optional) */}
+                {/* Financial Section with Add/Delete Functionality */}
                 <div className="card mb-4">
-                  <div className="card-header">
+                  <div className="card-header d-flex justify-content-between align-items-center">
                     <h5 className="mb-0 fw-bold">Financial Details</h5>
+                    <button 
+                      type="button" 
+                      className="btn btn-primary btn-sm"
+                      onClick={addFinancialRow}
+                    >
+                       + Add Financial Entry
+                    </button>
                   </div>
                   <div className="card-body">
-                    <div className="row g-3">
-                      <div className="col-md-3">
-                        <label className="form-label fw-bold">Payment Type</label>
-                        <select
-                          className="form-select"
-                          name="paymentType"
-                          value={formData.paymentType}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select Payment Type</option>
-                          {paymentTypeOptions.map(option => (
-                            <option key={option} value={option}>{option}</option>
+                    <div className="table-responsive">
+                      <table className="table table-bordered">
+                        <thead>
+                          <tr>
+                            <th width="50">S.No</th>
+                            <th width="150">Payment Type</th>
+                            <th width="150">Advance Collected</th>
+                            <th width="150">Advance Amount</th>
+                            <th width="150">Payment Mode</th>
+                            <th width="80">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formData.financialDetails.map((financial, index) => (
+                            <tr key={financial.id}>
+                              <td className="text-center">{index + 1}</td>
+                              <td>
+                                <select
+                                  className="form-select form-select-sm"
+                                  value={financial.paymentType}
+                                  onChange={(e) => handleFinancialChange(index, 'paymentType', e.target.value)}
+                                >
+                                  <option value="">Select Payment Type</option>
+                                  {paymentTypeOptions.map(option => (
+                                    <option key={option} value={option}>{option}</option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td>
+                                <select
+                                  className="form-select form-select-sm"
+                                  value={financial.advanceCollected}
+                                  onChange={(e) => handleFinancialChange(index, 'advanceCollected', e.target.value)}
+                                >
+                                  <option value="">Select</option>
+                                  {yesNoOptions.map(option => (
+                                    <option key={option} value={option}>{option}</option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td>
+                                <input
+                                  type="number"
+                                  className={`form-control form-control-sm ${errors[`financial_${index}_advanceAmount`] ? "is-invalid" : ""}`}
+                                  value={financial.advanceAmount}
+                                  onChange={(e) => handleFinancialChange(index, 'advanceAmount', e.target.value)}
+                                  placeholder="₹5,000"
+                                  min="0"
+                                  step="100"
+                                />
+                                {errors[`financial_${index}_advanceAmount`] && (
+                                  <div className="invalid-feedback d-block">{errors[`financial_${index}_advanceAmount`]}</div>
+                                )}
+                              </td>
+                              <td>
+                                <select
+                                  className={`form-select form-select-sm ${errors[`financial_${index}_paymentMode`] ? "is-invalid" : ""}`}
+                                  value={financial.paymentMode}
+                                  onChange={(e) => handleFinancialChange(index, 'paymentMode', e.target.value)}
+                                >
+                                  <option value="">Select Payment Mode</option>
+                                  {paymentModeOptions.map(option => (
+                                    <option key={option} value={option}>{option}</option>
+                                  ))}
+                                </select>
+                                {errors[`financial_${index}_paymentMode`] && (
+                                  <div className="invalid-feedback d-block">{errors[`financial_${index}_paymentMode`]}</div>
+                                )}
+                              </td>
+                              
+                              
+                              
+                              <td className="text-center">
+                                {formData.financialDetails.length > 1 && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-danger btn-sm"
+                                    onClick={() => removeFinancialRow(index)}
+                                  >
+                                    X
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
                           ))}
-                        </select>
-                      </div>
-                      
-                      <div className="col-md-3">
-                        <label className="form-label fw-bold">Advance Collected <span className="text-danger">*</span></label>
-                        <select
-                          className="form-select"
-                          name="advanceCollected"
-                          value={formData.advanceCollected}
-                          onChange={handleChange}
-                          required
-                        >
-                          <option value="">Select</option>
-                          {yesNoOptions.map(option => (
-                            <option key={option} value={option}>{option}</option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      <div className="col-md-3">
-                        <label className="form-label fw-bold">Advance Amount</label>
-                        <input
-                          type="number"
-                          className={`form-control ${errors.advanceAmount ? "is-invalid" : ""}`}
-                          name="advanceAmount"
-                          value={formData.advanceAmount}
-                          onChange={handleChange}
-                          placeholder="₹5,000"
-                          min="0"
-                          step="100"
-                        />
-                        {errors.advanceAmount && <div className="invalid-feedback">{errors.advanceAmount}</div>}
-                      </div>
-                      
-                      <div className="col-md-3">
-                        <label className="form-label fw-bold">Payment Mode</label>
-                        <select
-                          className={`form-select ${errors.paymentMode ? "is-invalid" : ""}`}
-                          name="paymentMode"
-                          value={formData.paymentMode}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select Payment Mode</option>
-                          {paymentModeOptions.map(option => (
-                            <option key={option} value={option}>{option}</option>
-                          ))}
-                        </select>
-                        {errors.paymentMode && <div className="invalid-feedback">{errors.paymentMode}</div>}
-                      </div>
+                        </tbody>
+                      </table>
                     </div>
+                    
                   </div>
                 </div>
                 
