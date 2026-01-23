@@ -1,69 +1,52 @@
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
-import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
-const DrugMaster = () => {
+const NonDrugMaster = () => {
     const [formData, setFormData] = useState({
-        drugCode: "",
-        drugName: "",
+        itemCode: "",
+        itemName: "",
         itemGroup: "",
-        section: "",
         itemType: "",
-        unitAU: "",
+        section: "",
         itemClass: "",
-        dispensingUnit: "",
         itemCategory: "",
-        dispensingQty: "",
-        reorderLevel: "",
-        reorderLevelStore: "",
-        hsnCode: "",
-        drugSchedule: "",
-        isGeneric: "",
-        facilityCode: "",
-        dangerousDrug: false,
+        unitAU: ""
     })
     const [popupMessage, setPopupMessage] = useState(null)
-    const [drugs, setDrugs] = useState([])
+    const [nonDrugs, setNonDrugs] = useState([])
     const [masStoreGroup, setMasStoreGroup] = useState([])
     const [masItemTypeData, setMasItemTypeData] = useState([]);
     const [itemSectionData, setItemSectionData] = useState([]);
     const [itemClassData, setItemClassData] = useState([]);
     const [serviceCategoryData, setServiceCategoryData] = useState([]);
     const [storeUnitData, setStoreUnitData] = useState([]);
-    const [hsnList, setHsnList] = useState([]);
-    const [drugScheduleData, setDrugScheduleData] = useState([]);
     const [process, setProcess] = useState(false)
     const [editEnabled, setEditEnabled] = useState(false)
 
     const [searchQuery, setSearchQuery] = useState("")
     const [currentPage, setCurrentPage] = useState(1)
     const [loading, setLoading] = useState(false);
-    const departmentId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
-    const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
 
-    const [editingDrug, setEditingDrug] = useState(null)
+    const [editingNonDrug, setEditingNonDrug] = useState(null)
     const [showForm, setShowForm] = useState(false)
     const [isFormValid, setIsFormValid] = useState(false)
 
-    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, drugId: null, newStatus: null, name: "" })
+    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, nonDrugId: null, newStatus: null, name: "" })
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value)
     }
 
     useEffect(() => {
-        fetchDrugMasterData();
-        fetchMasStoreGroup();
-        fetchStoreUnit();
-        fetchHsnData();
+        fetchNonDrugMasterData();
+        fetchMasterData();
     }, []);
 
     useEffect(() => {
         if (formData.itemGroup) {
-            fetchMasItemType(formData.itemGroup);
+            fetchItemTypesByGroup(formData.itemGroup);
         } else {
             setMasItemTypeData([]);
             setFormData(prev => ({ ...prev, itemType: "", section: "", itemClass: "", itemCategory: "" }));
@@ -72,7 +55,7 @@ const DrugMaster = () => {
 
     useEffect(() => {
         if (formData.itemType) {
-            fetchItemSectionData(formData.itemType);
+            fetchSectionsByItemType(formData.itemType);
         } else {
             setItemSectionData([]);
             setFormData(prev => ({ ...prev, section: "", itemClass: "", itemCategory: "" }));
@@ -81,8 +64,9 @@ const DrugMaster = () => {
 
     useEffect(() => {
         if (formData.section) {
-            fetchServiceCategoryData(formData.section);
-            fetchItemClassData(formData.section);
+            // Fetch categories and classes based on selected section
+            fetchCategoriesBySection(formData.section);
+            fetchClassesBySection(formData.section);
         } else {
             setServiceCategoryData([]);
             setItemClassData([]);
@@ -90,244 +74,217 @@ const DrugMaster = () => {
         }
     }, [formData.section]);
 
-    // Validate form whenever formData changes
     useEffect(() => {
         validateForm();
     }, [formData]);
 
     const validateForm = () => {
         const isValid = 
-            formData.drugCode?.trim() !== "" &&
-            formData.drugName?.trim() !== "" &&
+            formData.itemCode?.trim() !== "" &&
+            formData.itemName?.trim() !== "" &&
             formData.itemGroup !== "" &&
-            formData.section !== "" &&
             formData.itemType !== "" &&
+            formData.section !== "" &&
             formData.itemClass !== "" &&
-            formData.dispensingUnit !== "" &&
-            formData.unitAU !== "" &&
             formData.itemCategory !== "" &&
-            formData.reorderLevel !== "" &&
-            formData.facilityCode !== "";
+            formData.unitAU !== "";
         
         setIsFormValid(isValid);
     };
 
-    const fetchDrugMasterData = async () => {
+    const fetchNonDrugMasterData = async () => {
         setLoading(true);
         try {
-            const data = await getRequest(`/master/masStoreItemWithotStock/getAll/0`);
-            if (data.status === 200 && Array.isArray(data.response)) {
-                setDrugs(data.response);
-            } else {
-                console.error("Unexpected API response format:", data);
-                setDrugs([]);
-            }
+            const mockData = [
+                {
+                    id: 1,
+                    itemCode: "ND001",
+                    itemName: "Surgical Gloves",
+                    itemGroup: "Medical Supplies",
+                    unitAU: "Pair",
+                    section: "Surgical",
+                    itemClass: "Consumables",
+                    status: "y"
+                },
+                {
+                    id: 2,
+                    itemCode: "ND002",
+                    itemName: "Syringe 5ml",
+                    itemGroup: "Medical Supplies",
+                    unitAU: "Piece",
+                    section: "Pharmacy",
+                    itemClass: "Disposables",
+                    status: "y"
+                },
+                {
+                    id: 3,
+                    itemCode: "ND003",
+                    itemName: "Bandage Roll",
+                    itemGroup: "Medical Supplies",
+                    unitAU: "Roll",
+                    section: "Emergency",
+                    itemClass: "Wound Care",
+                    status: "y"
+                }
+            ];
+            setNonDrugs(mockData);
         } catch (error) {
-            console.error("Error fetching Service Category data:", error);
-            showPopup("Error fetching drug data", "error");
+            console.error("Error fetching non-drug data:", error);
+            showPopup("Error fetching non-drug data", "error");
         } finally {
             setLoading(false);
         }
     };
 
-    const fetchMasStoreGroup = async () => {
+    const fetchMasterData = async () => {
         try {
-            const data = await getRequest(`${MAS_STORE_GROUP}/getAll/1`);
-            if (data.status === 200 && Array.isArray(data.response)) {
-                setMasStoreGroup(data.response);
-            } else {
-                setMasStoreGroup([]);
-            }
+            const mockGroups = [
+                { id: 1, groupName: "Medical Supplies" },
+                { id: 2, groupName: "Surgical Instruments" },
+                { id: 3, groupName: "Lab Equipment" }
+            ];
+            setMasStoreGroup(mockGroups);
+
+            const mockUnits = [
+                { unitId: 1, unitName: "Piece" },
+                { unitId: 2, unitName: "Box" },
+                { unitId: 3, unitName: "Pack" },
+                { unitId: 4, unitName: "Pair" },
+                { unitId: 5, unitName: "Roll" }
+            ];
+            setStoreUnitData(mockUnits);
         } catch (error) {
-            console.error("Error fetching Store Item data:", error);
+            console.error("Error fetching master data:", error);
         }
     };
 
-    const fetchMasItemType = async (groupId) => {
+    const fetchItemTypesByGroup = async (groupId) => {
         try {
-            const data = await getRequest(`${MAS_ITEM_TYPE}/findByGroupId/${groupId}`);
-            if (data.status === 200 && Array.isArray(data.response)) {
-                setMasItemTypeData(data.response);
-            } else {
-                setMasItemTypeData([]);
-            }
+            const mockItemTypes = [
+                { id: 1, name: "Disposable" },
+                { id: 2, name: "Reusable" },
+                { id: 3, name: "Equipment" }
+            ];
+            setMasItemTypeData(mockItemTypes);
         } catch (error) {
-            console.error("Error fetching Item Types:", error);
+            console.error("Error fetching item types:", error);
         }
     };
 
-    const fetchItemSectionData = async (itemTypeId) => {
+    const fetchSectionsByItemType = async (itemTypeId) => {
         try {
-            const data = await getRequest(`${MAS_ITEM_SECTION}/findByItemType/${itemTypeId}`);
-            if (data.status === 200 && Array.isArray(data.response)) {
-                setItemSectionData(data.response);
-            } else {
-                setItemSectionData([]);
-            }
+            const mockSections = [
+                { sectionId: 1, sectionName: "Surgical" },
+                { sectionId: 2, sectionName: "Pharmacy" },
+                { sectionId: 3, sectionName: "Emergency" },
+                { sectionId: 4, sectionName: "Ward" }
+            ];
+            setItemSectionData(mockSections);
         } catch (error) {
-            console.error("Error fetching Sections:", error);
+            console.error("Error fetching sections:", error);
         }
     };
 
-    const fetchServiceCategoryData = async (sectionId) => {
+    const fetchCategoriesBySection = async (sectionId) => {
         try {
-            const data = await getRequest(`${MAS_ITEM_CATEGORY}/findBySectionId/${sectionId}`);
-            if (data.status === 200 && Array.isArray(data.response)) {
-                setServiceCategoryData(data.response);
-            } else {
-                setServiceCategoryData([]);
-            }
+            const mockCategories = [
+                { itemCategoryId: 1, itemCategoryName: "Consumables" },
+                { itemCategoryId: 2, itemCategoryName: "Disposables" },
+                { itemCategoryId: 3, itemCategoryName: "Wound Care" },
+                { itemCategoryId: 4, itemCategoryName: "Diagnostic" }
+            ];
+            setServiceCategoryData(mockCategories);
         } catch (error) {
-            console.error("Error fetching Categories:", error);
+            console.error("Error fetching categories:", error);
         }
     };
 
-    const fetchItemClassData = async (sectionId) => {
+    const fetchClassesBySection = async (sectionId) => {
         try {
-            const data = await getRequest(`${MAS_ITEM_CLASS}/getAllBySectionId/${sectionId}`);
-            if (data.status === 200 && Array.isArray(data.response)) {
-                setItemClassData(data.response);
-            } else {
-                setItemClassData([]);
-            }
+            const mockClasses = [
+                { itemClassId: 1, itemClassName: "Consumables" },
+                { itemClassId: 2, itemClassName: "Disposables" },
+                { itemClassId: 3, itemClassName: "Wound Care" },
+                { itemClassId: 4, itemClassName: "Diagnostic" }
+            ];
+            setItemClassData(mockClasses);
         } catch (error) {
-            console.error("Error fetching Item Classes:", error);
-        }
-    };
-
-    const fetchStoreUnit = async () => {
-        try {
-            const data = await getRequest(`${MAS_STORE_UNIT}/getAll/1`);
-            if (data.status === 200 && Array.isArray(data.response)) {
-                setStoreUnitData(data.response);
-            } else {
-                setStoreUnitData([]);
-                console.error("Unexpected API response format for store units:", data);
-            }
-        } catch (error) {
-            console.error("Error fetching store unit data:", error);
-            setStoreUnitData([]);
-        }
-    };
-
-    const fetchHsnData = async () => {
-        try {
-            const data = await getRequest(`${MAS_HSN}/getAll/1`);
-            if (data.status === 200 && Array.isArray(data.response)) {
-                setHsnList(data.response);
-            } else {
-                setHsnList([]);
-                console.error("Unexpected API response format for HSN codes:", data);
-            }
-        } catch (error) {
-            console.error("Error fetching HSN code data:", error);
-            setHsnList([]);
+            console.error("Error fetching item classes:", error);
         }
     };
 
     const handleInputChange = (e) => {
-        const { name, value, type, checked } = e.target
+        const { name, value } = e.target
         const updatedFormData = {
             ...formData,
-            [name]: type === "checkbox" ? checked : value,
+            [name]: value,
         }
         setFormData(updatedFormData)
     }
 
     const handleSwitchChange = (id, newStatus, name) => {
-        setConfirmDialog({ isOpen: true, drugId: id, newStatus, name })
+        setConfirmDialog({ isOpen: true, nonDrugId: id, newStatus, name })
     }
 
     const handleConfirm = async (confirmed) => {
-        if (confirmed && confirmDialog.drugId !== null) {
+        if (confirmed && confirmDialog.nonDrugId !== null) {
             try {
-                const response = await putRequest(
-                    `${MAS_DRUG_MAS}/status/${confirmDialog.drugId}?status=${confirmDialog.newStatus}`,
-                );
-                if (response.status === 200) {
-                    showPopup("Status updated successfully!", "success");
-                    await fetchDrugMasterData();
-                } else {
-                    showPopup(response.message || "Failed to update status.", "error");
-                }
+                showPopup("Status updated successfully!", "success");
+                await fetchNonDrugMasterData();
             } catch (error) {
                 console.error("Error updating status:", error);
                 showPopup("Error updating status.", "error");
             }
         }
-        setConfirmDialog({ isOpen: false, drugId: null, newStatus: null });
+        setConfirmDialog({ isOpen: false, nonDrugId: null, newStatus: null });
     }
 
-    const handleEdit = async (drug) => {
+    const handleEdit = async (nonDrug) => {
         try {
-            setEditingDrug(drug);
+            setEditingNonDrug(nonDrug);
             setEditEnabled(true);
             setShowForm(true);
 
-            // First set the form data with the drug's values
             setFormData({
-                drugCode: drug.pvmsNo || "",
-                drugName: drug.nomenclature || "",
-                itemGroup: drug.groupId?.toString() || "",
-                section: drug.sectionId?.toString() || "",
-                itemType: drug.itemTypeId?.toString() || "",
-                unitAU: drug.unitAU?.toString() || "",
-                itemClass: drug.itemClassId?.toString() || "",
-                dispensingUnit: drug.dispUnit?.toString() || "",
-                itemCategory: drug.masItemCategoryid?.toString() || "",
-                dispensingQty: drug.adispQty?.toString() || "",
-                reorderLevel: drug.reOrderLevelDispensary?.toString() || "",
-                reorderLevelStore: drug.reOrderLevelStore?.toString() || "",
-                hsnCode: drug.hsnCode || "",
-                drugSchedule: drug.masDrugScheduleRule || "",
-                isGeneric: drug.isGeneric || "",
-                facilityCode: drug.facilityCode || "",
-                dangerousDrug: drug.dangerousDrug || false,
+                itemCode: nonDrug.itemCode || "",
+                itemName: nonDrug.itemName || "",
+                itemGroup: nonDrug.itemGroup || "",
+                itemType: "",
+                section: nonDrug.section || "",
+                itemClass: nonDrug.itemClass || "",
+                itemCategory: "",
+                unitAU: nonDrug.unitAU || ""
             });
 
-            // Then fetch dependent data
-            if (drug.groupId) {
-                await fetchMasItemType(drug.groupId);
+            if (nonDrug.itemGroup) {
+                await fetchItemTypesByGroup(nonDrug.itemGroup);
             }
             
-            if (drug.itemTypeId) {
-                await fetchItemSectionData(drug.itemTypeId);
-            }
-            
-            if (drug.sectionId) {
+            if (nonDrug.section) {
                 await Promise.all([
-                    fetchServiceCategoryData(drug.sectionId),
-                    fetchItemClassData(drug.sectionId)
+                    fetchCategoriesBySection(nonDrug.section),
+                    fetchClassesBySection(nonDrug.section)
                 ]);
             }
         } catch (error) {
             console.error("Error in handleEdit:", error);
-            showPopup("Error loading drug data for editing", "error");
+            showPopup("Error loading non-drug data for editing", "error");
         }
     };
 
     const handleAdd = () => {
-        setEditingDrug(null);
+        setEditingNonDrug(null);
         setEditEnabled(false);
         setShowForm(true);
         setFormData({
-            drugCode: "",
-            drugName: "",
+            itemCode: "",
+            itemName: "",
             itemGroup: "",
-            section: "",
             itemType: "",
-            unitAU: "",
+            section: "",
             itemClass: "",
-            dispensingUnit: "",
             itemCategory: "",
-            dispensingQty: "",
-            reorderLevel: "",
-            reorderLevelStore: "",
-            hsnCode: "",
-            drugSchedule: "",
-            isGeneric: "",
-            facilityCode: "",
-            dangerousDrug: false,
+            unitAU: ""
         });
     }
 
@@ -343,85 +300,49 @@ const DrugMaster = () => {
 
         try {
             const payload = {
-                pvmsNo: formData.drugCode.trim(),
-                nomenclature: formData.drugName.trim(),
-                groupId: Number(formData.itemGroup),
-                itemTypeId: Number(formData.itemType),
-                dispUnit: formData.dispensingUnit,
-                unitAU: Number(formData.unitAU) || 0,
-                sectionId: Number(formData.section),
-                itemClassId: Number(formData.itemClass),
-                masItemCategoryId: Number(formData.itemCategory),
-                adispQty: Number(formData.dispensingQty) || 0,
-                reOrderLevelDispensary: Number(formData.reorderLevel) || 0,
-                reOrderLevelStore: Number(formData.reorderLevelStore) || 0,
-                hsnCode: formData.hsnCode || "",
-                masDrugScheduleRule: formData.drugSchedule || "",
-                isGeneric: formData.isGeneric || "",
-                facilityCode: formData.facilityCode,
-                dangerousDrug: formData.dangerousDrug,
+                itemCode: formData.itemCode.trim(),
+                itemName: formData.itemName.trim(),
+                itemGroup: formData.itemGroup,
+                itemType: formData.itemType,
+                section: formData.section,
+                itemClass: formData.itemClass,
+                itemCategory: formData.itemCategory,
+                unitAU: formData.unitAU,
                 status: "y"
             };
 
             console.log("Saving payload:", payload);
-            console.log("Is edit mode:", editEnabled);
-            console.log("Editing drug ID:", editingDrug?.itemId);
 
-            let response;
-            let url;
-
-            if (editingDrug && editEnabled) {
-                // UPDATE operation
-                url = `${MAS_DRUG_MAS}/update/${editingDrug.itemId}`;
-                console.log("Update URL:", url);
-                response = await putRequest(url, payload);
+            if (editingNonDrug && editEnabled) {
+                showPopup("Non-Drug updated successfully!", "success");
             } else {
-                // CREATE operation
-                url = `${MAS_DRUG_MAS}/create`;
-                console.log("Create URL:", url);
-                response = await postRequest(url, payload);
+                showPopup("Non-Drug added successfully!", "success");
             }
 
-            console.log("API Response:", response);
-
-            if (response.status === 200 || response.status === 201) {
-                showPopup(editEnabled ? "Drug updated successfully!" : "Drug added successfully!", "success");
-                resetForm();
-                await fetchDrugMasterData();
-            } else {
-                throw new Error(response.message || response.response?.message || "Failed to save drug");
-            }
+            resetForm();
+            await fetchNonDrugMasterData();
 
         } catch (error) {
-            console.error("Error saving drug:", error);
-            showPopup(error.message || "Failed to save drug. Please try again.", "error");
+            console.error("Error saving non-drug:", error);
+            showPopup("Failed to save non-drug. Please try again.", "error");
         } finally {
             setProcess(false);
         }
     };
 
     const resetForm = () => {
-        setEditingDrug(null);
+        setEditingNonDrug(null);
         setEditEnabled(false);
         setShowForm(false);
         setFormData({
-            drugCode: "",
-            drugName: "",
+            itemCode: "",
+            itemName: "",
             itemGroup: "",
-            section: "",
             itemType: "",
-            unitAU: "",
+            section: "",
             itemClass: "",
-            dispensingUnit: "",
             itemCategory: "",
-            dispensingQty: "",
-            reorderLevel: "",
-            reorderLevelStore: "",
-            hsnCode: "",
-            drugSchedule: "",
-            isGeneric: "",
-            facilityCode: "",
-            dangerousDrug: false,
+            unitAU: ""
         });
     };
 
@@ -432,7 +353,7 @@ const DrugMaster = () => {
     const handleRefresh = () => {
         setSearchQuery("");
         setCurrentPage(1);
-        fetchDrugMasterData();
+        fetchNonDrugMasterData();
     };
 
     const showPopup = (message, type = "info") => {
@@ -445,22 +366,22 @@ const DrugMaster = () => {
         })
     }
 
-    const filteredDrugs = drugs.filter((item) => {
+    const filteredNonDrugs = nonDrugs.filter((item) => {
         const q = (searchQuery || "").toLowerCase();
 
         return (
-            (item.pvmsNo || "").toLowerCase().includes(q) ||
-            (item.nomenclature || "").toLowerCase().includes(q) ||
-            (item.groupName || "").toLowerCase().includes(q) ||
-            (item.itemClassName || "").toLowerCase().includes(q) ||
-            (item.sectionName || "").toLowerCase().includes(q) ||
+            (item.itemCode || "").toLowerCase().includes(q) ||
+            (item.itemName || "").toLowerCase().includes(q) ||
+            (item.itemGroup || "").toLowerCase().includes(q) ||
+            (item.itemClass || "").toLowerCase().includes(q) ||
+            (item.section || "").toLowerCase().includes(q) ||
             (item.unitAU ? item.unitAU.toString().toLowerCase() : "").includes(q)
         );
     });
 
     const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
     const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    const currentItems = filteredDrugs.slice(indexOfFirst, indexOfLast);
+    const currentItems = filteredNonDrugs.slice(indexOfFirst, indexOfLast);
 
     return (
         <div className="content-wrapper">
@@ -468,7 +389,7 @@ const DrugMaster = () => {
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
                         <div className="card-header d-flex justify-content-between align-items-center">
-                            <h4 className="card-title p-2">Drug Master</h4>
+                            <h4 className="card-title p-2">Non-Drug Master</h4>
                             {loading && <LoadingScreen />}
 
                             <div className="d-flex justify-content-between align-items-center">
@@ -517,8 +438,8 @@ const DrugMaster = () => {
                                         <table className="table table-bordered table-hover align-middle">
                                             <thead className="table-light">
                                                 <tr>
-                                                    <th>Drug Code</th>
-                                                    <th>Drug Name</th>
+                                                    <th>Item Code</th>
+                                                    <th>Item Name</th>
                                                     <th>Item Group</th>
                                                     <th>Unit</th>
                                                     <th>Section</th>
@@ -530,25 +451,25 @@ const DrugMaster = () => {
                                             <tbody>
                                                 {currentItems.length > 0 ? (
                                                     currentItems.map((item) => (
-                                                        <tr key={item.itemId}>
-                                                            <td>{item.pvmsNo}</td>
-                                                            <td>{item.nomenclature}</td>
-                                                            <td>{item.groupName}</td>
+                                                        <tr key={item.id}>
+                                                            <td>{item.itemCode}</td>
+                                                            <td>{item.itemName}</td>
+                                                            <td>{item.itemGroup}</td>
                                                             <td>{item.unitAU}</td>
-                                                            <td>{item.sectionName}</td>
-                                                            <td>{item.itemClassName}</td>
+                                                            <td>{item.section}</td>
+                                                            <td>{item.itemClass}</td>
                                                             <td>
                                                                 <div className="form-check form-switch">
                                                                     <input
                                                                         className="form-check-input"
                                                                         type="checkbox"
                                                                         checked={item.status === "y"}
-                                                                        onChange={() => handleSwitchChange(item.itemId, item.status === "y" ? "n" : "y", item.nomenclature)}
-                                                                        id={`switch-${item.itemId}`}
+                                                                        onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y", item.itemName)}
+                                                                        id={`switch-${item.id}`}
                                                                     />
                                                                     <label
                                                                         className="form-check-label px-0"
-                                                                        htmlFor={`switch-${item.itemId}`}
+                                                                        htmlFor={`switch-${item.id}`}
                                                                     >
                                                                         {item.status === "y" ? "Active" : "Deactivated"}
                                                                     </label>
@@ -568,7 +489,7 @@ const DrugMaster = () => {
                                                 ) : (
                                                     <tr>
                                                         <td colSpan="8" className="text-center">
-                                                            No drugs found
+                                                            No non-drug items found
                                                         </td>
                                                     </tr>
                                                 )}
@@ -577,9 +498,9 @@ const DrugMaster = () => {
                                     </div>
                                     
                                     {/* PAGINATION USING REUSABLE COMPONENT */}
-                                    {filteredDrugs.length > 0 && (
+                                    {filteredNonDrugs.length > 0 && (
                                         <Pagination
-                                            totalItems={filteredDrugs.length}
+                                            totalItems={filteredNonDrugs.length}
                                             itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                                             currentPage={currentPage}
                                             onPageChange={setCurrentPage}
@@ -588,35 +509,33 @@ const DrugMaster = () => {
                                 </>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
-                                   
-
                                     <div className="row">
                                         <div className="form-group col-md-4 mt-3">
                                             <label>
-                                                Drug Code <span className="text-danger">*</span>
+                                                Item Code <span className="text-danger">*</span>
                                             </label>
                                             <input
                                                 type="text"
                                                 className="form-control"
-                                                name="drugCode"
-                                                placeholder="Drug Code"
+                                                name="itemCode"
+                                                placeholder="Item Code"
                                                 onChange={handleInputChange}
-                                                value={formData.drugCode}
+                                                value={formData.itemCode}
                                                 required
                                                 disabled={editEnabled}
                                             />
                                         </div>
                                         <div className="form-group col-md-8 mt-3">
                                             <label>
-                                                Drug Name <span className="text-danger">*</span>
+                                                Item Name <span className="text-danger">*</span>
                                             </label>
                                             <input
                                                 type="text"
                                                 className="form-control"
-                                                name="drugName"
-                                                placeholder="Drug Name"
+                                                name="itemName"
+                                                placeholder="Item Name"
                                                 onChange={handleInputChange}
-                                                value={formData.drugName}
+                                                value={formData.itemName}
                                                 required
                                             />
                                         </div>
@@ -632,7 +551,7 @@ const DrugMaster = () => {
                                                 onChange={handleInputChange}
                                                 required
                                             >
-                                                <option value="">Select Store Item</option>
+                                                <option value="">Select Item Group</option>
                                                 {masStoreGroup.map((item) => (
                                                     <option key={item.id} value={item.id}>
                                                         {item.groupName}
@@ -695,7 +614,7 @@ const DrugMaster = () => {
                                                 required
                                                 disabled={!formData.section}
                                             >
-                                                <option value=""> Select Item Class </option>
+                                                <option value="">Select Item Class</option>
                                                 {itemClassData.map((cls) => (
                                                     <option key={cls.itemClassId} value={cls.itemClassId}>
                                                         {cls.itemClassName}
@@ -716,7 +635,7 @@ const DrugMaster = () => {
                                                 required
                                                 disabled={!formData.section}
                                             >
-                                                <option value=""> Select Category </option>
+                                                <option value="">Select Category</option>
                                                 {serviceCategoryData.map((cat) => (
                                                     <option key={cat.itemCategoryId} value={cat.itemCategoryId}>
                                                         {cat.itemCategoryName}
@@ -736,155 +655,11 @@ const DrugMaster = () => {
                                                 onChange={handleInputChange}
                                                 required
                                             >
-                                                <option value="">Select Store Unit</option>
+                                                <option value="">Select Unit A/U</option>
                                                 {storeUnitData.map(unit => (
                                                     <option key={unit.unitId} value={unit.unitId}>{unit.unitName}</option>
                                                 ))}
                                             </select>
-                                        </div>
-
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>
-                                                Dispensing Unit <span className="text-danger">*</span>
-                                            </label>
-                                            <select
-                                                className="form-select"
-                                                name="dispensingUnit"
-                                                value={formData.dispensingUnit}
-                                                onChange={handleInputChange}
-                                                required
-                                            >
-                                                <option value="">Select Dispensing Unit</option>
-                                                {storeUnitData.map(unit => (
-                                                    <option key={unit.unitId} value={unit.unitId}>{unit.unitName}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>Dispensing Qty</label>
-                                            <input
-                                                type="number"
-                                                className="form-control"
-                                                placeholder="Dispensing Qty"
-                                                name="dispensingQty"
-                                                value={formData.dispensingQty}
-                                                onChange={handleInputChange}
-                                                min="0"
-                                            />
-                                        </div>
-
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>
-                                                Re-order Level-Dispensary <span className="text-danger">*</span>
-                                            </label>
-                                            <input
-                                                type="number"
-                                                className="form-control"
-                                                name="reorderLevel"
-                                                value={formData.reorderLevel}
-                                                onChange={handleInputChange}
-                                                required
-                                                min="0"
-                                            />
-                                        </div>
-
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>Re-order Level-Store</label>
-                                            <input
-                                                type="number"
-                                                className="form-control"
-                                                name="reorderLevelStore"
-                                                placeholder="Re-order Level-Store"
-                                                value={formData.reorderLevelStore}
-                                                onChange={handleInputChange}
-                                                min="0"
-                                            />
-                                        </div>
-
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>HSN Code</label>
-                                            <select
-                                                className="form-select"
-                                                name="hsnCode"
-                                                value={formData.hsnCode}
-                                                onChange={handleInputChange}
-                                            >
-                                                <option value="">Select HSN Code</option>
-                                                {hsnList.map((hsn) => (
-                                                    <option key={hsn.hsnCode} value={hsn.hsnCode}>
-                                                        {hsn.hsnCode}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>Drug Schedule</label>
-                                            <select
-                                                className="form-select"
-                                                name="drugSchedule"
-                                                value={formData.drugSchedule}
-                                                onChange={handleInputChange}
-                                            >
-                                                <option value="">Select Drug Schedule</option>
-                                                {drugScheduleData.map((schedule) => (
-                                                    <option key={schedule.scheduleId} value={schedule.scheduleName}>
-                                                        {schedule.scheduleName}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>Is Generic</label>
-                                            <select
-                                                className="form-select"
-                                                name="isGeneric"
-                                                value={formData.isGeneric}
-                                                onChange={handleInputChange}
-                                            >
-                                                <option value="">Select</option>
-                                                <option value="y">Yes</option>
-                                                <option value="n">No</option>
-                                            </select>
-                                        </div>
-
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>
-                                                Facility Code <span className="text-danger">*</span>
-                                            </label>
-                                            <select
-                                                className="form-select"
-                                                name="facilityCode"
-                                                value={formData.facilityCode}
-                                                onChange={handleInputChange}
-                                                required
-                                            >
-                                                <option value="">Select</option>
-                                                <option value="Primary">Primary</option>
-                                                <option value="Secondary">Secondary</option>
-                                                <option value="Tertiary">Tertiary</option>
-                                            </select>
-                                        </div>
-
-                                        <div className="form-group col-md-6 mt-3">
-                                            <label>Options</label>
-                                            <div className="form-control">
-                                                <div className="form-check">
-                                                    <input
-                                                        className="form-check-input"
-                                                        type="checkbox"
-                                                        id="dangerousDrug"
-                                                        name="dangerousDrug"
-                                                        checked={formData.dangerousDrug}
-                                                        onChange={handleInputChange}
-                                                    />
-                                                    <label className="form-check-label" htmlFor="dangerousDrug">
-                                                        Dangerous Drug
-                                                    </label>
-                                                </div>
-                                            </div>
                                         </div>
                                     </div>
 
@@ -955,4 +730,4 @@ const DrugMaster = () => {
     )
 }
 
-export default DrugMaster
+export default NonDrugMaster

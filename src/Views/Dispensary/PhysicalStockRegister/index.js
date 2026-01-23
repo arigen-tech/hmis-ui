@@ -62,7 +62,7 @@ const PhysicalStockTakingRegister = () => {
       const formattedToDate = formatDate(toDate);
 
       // Use "D" flag for download/view (as per your API)
-      const url = `${ALL_REPORTS}/stockTakingRegister?hospitalId=${hospitalId}&departmentId=${departmentId}&fromDate=${formattedFromDate}&toDate=${formattedToDate}&flag=D`;
+      const url = `${ALL_REPORTS}/stockTakingRegister?hospitalId=${hospitalId}&departmentId=${departmentId}&fromDate=${fromDate}&toDate=${toDate}&flag=D`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -124,7 +124,7 @@ const PhysicalStockTakingRegister = () => {
       const formattedToDate = formatDate(toDate);
 
       // Use "P" flag for printing (as per your API)
-      const url = `${ALL_REPORTS}/stockTakingRegister?hospitalId=${hospitalId}&departmentId=${departmentId}&fromDate=${formattedFromDate}&toDate=${formattedToDate}&flag=P`;
+      const url = `${ALL_REPORTS}/stockTakingRegister?hospitalId=${hospitalId}&departmentId=${departmentId}&fromDate=${fromDate}&toDate=${toDate}&flag=P`;
 
       const response = await fetch(url, {
         method: "GET",

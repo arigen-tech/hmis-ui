@@ -423,44 +423,6 @@ const OpeningBalanceApproval = () => {
     }
   };
 
-  const renderPagination = () => {
-    const pageNumbers = []
-    const maxVisiblePages = 5
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1)
-
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1)
-    }
-
-    if (startPage > 1) {
-      pageNumbers.push(1)
-      if (startPage > 2) pageNumbers.push("...")
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i)
-    }
-
-    if (endPage < totalPages) {
-      if (endPage < totalPages - 1) pageNumbers.push("...")
-      pageNumbers.push(totalPages)
-    }
-
-    return pageNumbers.map((number, index) => (
-      <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
-        {typeof number === "number" ? (
-          <button className="page-link" onClick={() => setCurrentPage(number)}>
-            {number}
-          </button>
-        ) : (
-          <span className="page-link disabled">{number}</span>
-        )}
-      </li>
-    ))
-  }
-
-
 
   const dropdownClickedRef = useRef(false)
   const [activeDrugCodeDropdown, setActiveDrugCodeDropdown] = useState(null)

@@ -154,16 +154,25 @@ const InvestigationRegister = () => {
 
     try {
       const params = new URLSearchParams();
-      params.append('fromDate', formatDateForAPI(fromDate));
-      params.append('toDate', formatDateForAPI(toDate));
+      params.append('fromDate',fromDate);
+      params.append('toDate', toDate);
       
       const selectedGender = genderList.find(g => g.genderName === gender);
-      params.append('genderId', selectedGender ? selectedGender.id : '');
-      params.append('investigationId', selectedInvestigation ? selectedInvestigation.investigationId : '');
-      params.append('fromAge', fromAge || '0');
-      params.append('toAge', toAge || '0');
+      if(selectedGender){
+              params.append('genderId',selectedGender.id);
+      }
+      if(selectedInvestigation){
+              params.append('investigationId', selectedInvestigation.investigationId);
+      }
+      if(fromAge){
+              params.append('fromAge', fromAge);
+      }
+      if(toAge ){
+              params.append('toAge', toAge);
+      }
       params.append('flag', 'D');
-
+      
+console.log("Final prams ::",params);
       const url = `${ALL_REPORTS}/labRegister?${params.toString()}`;
       const response = await fetch(url, {
         method: "GET",

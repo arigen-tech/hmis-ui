@@ -5,7 +5,7 @@ import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagin
 import Popup from "../../../../Components/popup";
 import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
 import { ALL_REPORTS } from "../../../../config/apiConfig";
-import { INVALID_DATE_PICK_WARN_MSG, SELECT_DATE_WARN_MSG, LAB_REPORT_GENERATION_ERR_MSG, INVALID_ORDER_ID_ERR_MSG, FUTURE_DATE_PICK_WARN_MSG, PAST_DATE_PICK_WARN_MSG, SELECT_FROM_DATE_FIRST_WARN_MSG, FETCH_ORDER_TRACKING_ERR_MSG, SELECT_FIELD_WARN_MSG } from "../../../../config/constants";
+import { INVALID_DATE_PICK_WARN_MSG, SELECT_DATE_WARN_MSG, LAB_REPORT_GENERATION_ERR_MSG, INVALID_ORDER_ID_ERR_MSG, FUTURE_DATE_PICK_WARN_MSG, PAST_DATE_PICK_WARN_MSG, SELECT_FROM_DATE_FIRST_WARN_MSG, FETCH_ORDER_TRACKING_ERR_MSG } from "../../../../config/constants";
 
 const OrderTrackingReport = () => {
     const [fromDate, setFromDate] = useState("");
@@ -20,38 +20,35 @@ const OrderTrackingReport = () => {
     const [popupMessage, setPopupMessage] = useState(null);
     const [reportData, setReportData] = useState([]);
 
-    // Add PDF viewing states
+    // PDF viewing states
     const [pdfUrl, setPdfUrl] = useState(null);
     const [selectedRecord, setSelectedRecord] = useState(null);
     
     // Track loading states for individual reports
     const [generatingPdfIds, setGeneratingPdfIds] = useState(new Set());
 
-    // Function to get today's date in YYYY-MM-DD format
-    const getTodayDate = () => {
-        return new Date().toISOString().split('T')[0];
+    // Get today's date in YYYY-MM-DD format
+    const getTodayDate = () => new Date().toISOString().split('T')[0];
+
+    // Check if search buttons should be enabled
+    const isSearchButtonEnabled = () => {
+        const hasBasicSearchField = patientName || mobileNo;
+        if (fromDate || toDate) {
+            return fromDate && toDate;
+        }
+        return hasBasicSearchField;
     };
 
-    // Function to get one week ago date
-    const getOneWeekAgoDate = () => {
-        const today = new Date();
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(today.getDate() - 7);
-        return oneWeekAgo.toISOString().split('T')[0];
-    };
-
-    // Popup function
+    // Show popup
     const showPopup = (message, type = "info") => {
         setPopupMessage({
             message,
             type,
-            onClose: () => {
-                setPopupMessage(null);
-            },
+            onClose: () => setPopupMessage(null),
         });
     };
 
-    // Format date for display (DD-MM-YYYY)
+    // Format date for display
     const formatDateForDisplay = (dateString) => {
         if (!dateString) return "";
         try {
@@ -103,15 +100,17 @@ const OrderTrackingReport = () => {
             return;
         }
 
-        // Validate 7-day limit
-        const fromDateObj = new Date(fromDate);
-        const toDateObj = new Date(selectedDate);
-        const diffTime = Math.abs(toDateObj - fromDateObj);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        // Validate 7-day limit only if both dates are selected
+        if (fromDate && selectedDate) {
+            const fromDateObj = new Date(fromDate);
+            const toDateObj = new Date(selectedDate);
+            const diffTime = Math.abs(toDateObj - fromDateObj);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        if (diffDays > 7) {
-            showPopup("Date range cannot exceed 7 days", "error");
-            return;
+            if (diffDays > 7) {
+                showPopup("Date range cannot exceed 7 days", "error");
+                return;
+            }
         }
 
         setToDate(selectedDate);
@@ -126,25 +125,8 @@ const OrderTrackingReport = () => {
         }
     };
 
-    // Check if at least one of patient name or mobile number is provided
-    const hasPatientInfo = () => {
-        return patientName.trim() !== "" || mobileNo.trim() !== "";
-    };
-
-    // Check if all required fields are filled for search
-    const canSearch = () => {
-        return fromDate && toDate && hasPatientInfo();
-    };
-
-    // Check if report can be viewed/printed
-    const canViewPrintReport = () => {
-        return fromDate && toDate && hasPatientInfo() && showReport;
-    };
-
-    // Helper function to check if a record is generating PDF
-    const isGeneratingPdf = (dgOrderHdId) => {
-        return generatingPdfIds.has(dgOrderHdId);
-    };
+    // Check if a record is generating PDF
+    const isGeneratingPdf = (dgOrderHdId) => generatingPdfIds.has(dgOrderHdId);
 
     // Generate lab report for viewing/downloading
     const generateLabReport = async (record) => {
@@ -155,35 +137,26 @@ const OrderTrackingReport = () => {
             return;
         }
 
-        // Add this record to generating set
         setGeneratingPdfIds(prev => new Set(prev).add(dgOrderHdId));
         setPdfUrl(null);
         setSelectedRecord(record);
 
         try {
-            // Use flag='d' for download/view
             const url = `${ALL_REPORTS}/labInvestigationReport?orderhd_id=${dgOrderHdId}&flag=d`;
-
             const response = await fetch(url, {
                 method: "GET",
-                headers: {
-                    Accept: "application/pdf",
-                },
+                headers: { Accept: "application/pdf" },
             });
 
-            if (!response.ok) {
-                throw new Error("Failed to generate PDF");
-            }
+            if (!response.ok) throw new Error("Failed to generate PDF");
 
             const blob = await response.blob();
             const fileURL = window.URL.createObjectURL(blob);
             setPdfUrl(fileURL);
-
         } catch (error) {
             console.error("Error generating PDF", error);
             showPopup(LAB_REPORT_GENERATION_ERR_MSG, "error");
         } finally {
-            // Remove this record from generating set
             setGeneratingPdfIds(prev => {
                 const newSet = new Set(prev);
                 newSet.delete(dgOrderHdId);
@@ -192,12 +165,8 @@ const OrderTrackingReport = () => {
         }
     };
 
-    
-
     // View report handler for individual records
-    const handleViewReport = (record) => {
-        generateLabReport(record);
-    }
+    const handleViewReport = (record) => generateLabReport(record);
 
     // Fetch order tracking report
     const fetchOrderTrackingReport = async () => {
@@ -205,18 +174,16 @@ const OrderTrackingReport = () => {
             setIsSearching(true);
             
             const params = new URLSearchParams();
-            if (patientName.trim()) {
-                params.append('patientName', patientName.trim());
+            if (patientName.trim()) params.append('patientName', patientName.trim());
+            if (mobileNo.trim()) params.append('mobileNo', mobileNo.trim());
+            if (fromDate && toDate) {
+                params.append('fromDate', fromDate);
+                params.append('toDate', toDate);
             }
-            if (mobileNo.trim()) {
-                params.append('mobileNo', mobileNo.trim());
-            }
-            params.append('fromDate', fromDate);
-            params.append('toDate', toDate);
 
             const response = await getRequest(`/report/order-track-report?${params.toString()}`);
             
-            if (response && response.response) {
+            if (response?.response) {
                 const mappedData = response.response.map(item => ({
                     dgOrderHdId: item.dgOrderHdId,
                     orderNo: item.orderNum || "",
@@ -248,33 +215,26 @@ const OrderTrackingReport = () => {
 
     // Handle search
     const handleSearch = () => {
-        // Validate required fields
-        if (!fromDate || !toDate) {
+        if ((fromDate && !toDate) || (!fromDate && toDate)) {
             showPopup(SELECT_DATE_WARN_MSG, "warning");
             return;
         }
 
-        // Validate that at least one of patient name or mobile number is provided
-        if (!hasPatientInfo()) {
-            showPopup(SELECT_FIELD_WARN_MSG, "warning");
-            return;
-        }
+        if (fromDate && toDate) {
+            if (new Date(fromDate) > new Date(toDate)) {
+                showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
+                return;
+            }
 
-        // Validate that from date is not after to date
-        if (new Date(fromDate) > new Date(toDate)) {
-            showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
-            return;
-        }
+            const fromDateObj = new Date(fromDate);
+            const toDateObj = new Date(toDate);
+            const diffTime = Math.abs(toDateObj - fromDateObj);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        // Validate 7-day limit
-        const fromDateObj = new Date(fromDate);
-        const toDateObj = new Date(toDate);
-        const diffTime = Math.abs(toDateObj - fromDateObj);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays > 7) {
-            showPopup("Date range cannot exceed 7 days", "error");
-            return;
+            if (diffDays > 7) {
+                showPopup("Date range cannot exceed 7 days", "error");
+                return;
+            }
         }
 
         fetchOrderTrackingReport();
@@ -283,36 +243,28 @@ const OrderTrackingReport = () => {
 
     // Handle view report (main button)
     const handleViewReportMain = () => {
-        // Validate required fields
-        if (!fromDate || !toDate) {
+        if ((fromDate && !toDate) || (!fromDate && toDate)) {
             showPopup(SELECT_DATE_WARN_MSG, "warning");
             return;
         }
 
-        // Validate that at least one of patient name or mobile number is provided
-        if (!hasPatientInfo()) {
-            showPopup(SELECT_FIELD_WARN_MSG, "warning");
-            return;
+        if (fromDate && toDate) {
+            if (new Date(fromDate) > new Date(toDate)) {
+                showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
+                return;
+            }
+
+            const fromDateObj = new Date(fromDate);
+            const toDateObj = new Date(toDate);
+            const diffTime = Math.abs(toDateObj - fromDateObj);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays > 7) {
+                showPopup("Date range cannot exceed 7 days", "error");
+                return;
+            }
         }
 
-        // Validate that from date is not after to date
-        if (new Date(fromDate) > new Date(toDate)) {
-            showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
-            return;
-        }
-
-        // Validate 7-day limit
-        const fromDateObj = new Date(fromDate);
-        const toDateObj = new Date(toDate);
-        const diffTime = Math.abs(toDateObj - fromDateObj);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays > 7) {
-            showPopup("Date range cannot exceed 7 days", "error");
-            return;
-        }
-
-        // Only fetch if we don't already have data
         if (!showReport || reportData.length === 0) {
             fetchOrderTrackingReport();
         }
@@ -321,42 +273,33 @@ const OrderTrackingReport = () => {
 
     // Handle print report (main button)
     const handlePrintReportMain = async () => {
-        // Validate required fields
-        if (!fromDate || !toDate) {
+        if ((fromDate && !toDate) || (!fromDate && toDate)) {
             showPopup(SELECT_DATE_WARN_MSG, "warning");
             return;
         }
 
-        // Validate that at least one of patient name or mobile number is provided
-        if (!hasPatientInfo()) {
-            showPopup(SELECT_FIELD_WARN_MSG, "warning");
-            return;
+        if (fromDate && toDate) {
+            if (new Date(fromDate) > new Date(toDate)) {
+                showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
+                return;
+            }
+
+            const fromDateObj = new Date(fromDate);
+            const toDateObj = new Date(toDate);
+            const diffTime = Math.abs(toDateObj - fromDateObj);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays > 7) {
+                showPopup("Date range cannot exceed 7 days", "error");
+                return;
+            }
         }
 
-        // Validate that from date is not after to date
-        if (new Date(fromDate) > new Date(toDate)) {
-            showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
-            return;
-        }
-
-        // Validate 7-day limit
-        const fromDateObj = new Date(fromDate);
-        const toDateObj = new Date(toDate);
-        const diffTime = Math.abs(toDateObj - fromDateObj);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays > 7) {
-            showPopup("Date range cannot exceed 7 days", "error");
-            return;
-        }
-
-        // If no report data exists, fetch it first
         if (!showReport || reportData.length === 0) {
             setIsGenerating(true);
             await fetchOrderTrackingReport();
         }
 
-        // Now print the report
         setIsPrinting(true);
         setTimeout(() => {
             showPopup("Order Tracking Report would be printed here", "info");
@@ -366,11 +309,8 @@ const OrderTrackingReport = () => {
 
     // Handle reset
     const handleReset = () => {
-        const today = getTodayDate();
-        const oneWeekAgo = getOneWeekAgoDate();
-        
-        setFromDate(oneWeekAgo);
-        setToDate(today);
+        setFromDate("");
+        setToDate("");
         setPatientName("");
         setMobileNo("");
         setShowReport(false);
@@ -380,13 +320,9 @@ const OrderTrackingReport = () => {
         setSelectedRecord(null);
     };
 
-    // Initialize with default dates
+    // Initialize with empty dates
     useEffect(() => {
-        const today = getTodayDate();
-        const oneWeekAgo = getOneWeekAgoDate();
-        
-        setFromDate(oneWeekAgo);
-        setToDate(today);
+        // No default dates set
     }, []);
 
     // Calculate pagination
@@ -396,7 +332,6 @@ const OrderTrackingReport = () => {
 
     return (
         <div className="content-wrapper">
-            {/* Add PDF Viewer Component */}
             {pdfUrl && selectedRecord && (
                 <PdfViewer
                     pdfUrl={pdfUrl}
@@ -417,40 +352,30 @@ const OrderTrackingReport = () => {
                         <div className="card-body">
                             <div className="row mb-4">
                                 <div className="col-md-3">
-                                    <label className="form-label fw-bold">
-                                        From Date <span className="text-danger">*</span>
-                                    </label>
+                                    <label className="form-label fw-bold">From Date</label>
                                     <input
                                         type="date"
                                         className="form-control"
                                         value={fromDate}
                                         max={getTodayDate()}
                                         onChange={handleFromDateChange}
-                                        required
                                     />
                                 </div>
 
                                 <div className="col-md-3">
-                                    <label className="form-label fw-bold">
-                                        To Date <span className="text-danger">*</span>
-                                    </label>
+                                    <label className="form-label fw-bold">To Date</label>
                                     <input
                                         type="date"
                                         className="form-control"
                                         value={toDate}
-                                        min={fromDate}
                                         max={getTodayDate()}
                                         onChange={handleToDateChange}
-                                        disabled={!fromDate}
                                         onFocus={handleToDateFocus}
-                                        required
                                     />
                                 </div>
 
                                 <div className="col-md-3">
-                                    <label className="form-label fw-bold">
-                                        Patient Name
-                                    </label>
+                                    <label className="form-label fw-bold">Patient Name</label>
                                     <input
                                         type="text"
                                         className="form-control"
@@ -461,24 +386,18 @@ const OrderTrackingReport = () => {
                                 </div>
 
                                 <div className="col-md-3">
-                                    <label className="form-label fw-bold">
-                                        Mobile No
-                                    </label>
+                                    <label className="form-label fw-bold">Mobile No</label>
                                     <input
                                         type="text"
                                         className="form-control"
                                         value={mobileNo}
                                         onChange={(e) => {
-                                            // Remove all non-digit characters and limit to 10 digits
                                             const value = e.target.value.replace(/\D/g, '');
-                                            if (value.length <= 10) {
-                                                setMobileNo(value);
-                                            }
+                                            if (value.length <= 10) setMobileNo(value);
                                         }}
                                         placeholder="Enter mobile number"
                                         maxLength="10"
                                     />
-                                    {/* <small className="text-muted">(Enter either Patient Name or Mobile No)</small> */}
                                 </div>
                             </div>
 
@@ -488,7 +407,7 @@ const OrderTrackingReport = () => {
                                         type="button"
                                         className="btn btn-primary"
                                         onClick={handleSearch}
-                                        disabled={isSearching || isPrinting || !canSearch()}
+                                        disabled={isSearching || isPrinting || !isSearchButtonEnabled()}
                                     >
                                         {isSearching ? (
                                             <>
@@ -505,7 +424,7 @@ const OrderTrackingReport = () => {
                                             type="button"
                                             className="btn btn-warning"
                                             onClick={handleViewReportMain}
-                                            disabled={isSearching || isPrinting || !canSearch()}
+                                            disabled={isSearching || isPrinting || !isSearchButtonEnabled()}
                                         >
                                             {isSearching ? (
                                                 <>
@@ -520,7 +439,7 @@ const OrderTrackingReport = () => {
                                             type="button"
                                             className="btn btn-success"
                                             onClick={handlePrintReportMain}
-                                            disabled={isPrinting || !canSearch()}
+                                            disabled={isPrinting || !isSearchButtonEnabled()}
                                         >
                                             {isPrinting ? (
                                                 <>
@@ -554,13 +473,8 @@ const OrderTrackingReport = () => {
                                     <div className="col-12">
                                         <div className="card">
                                             <div className="card-header">
-                                                <div className="d-flex justify-content-between align-items-center">
-                                                    <h5 className="card-title mb-0">
-                                                        ORDER TRACKING REPORT
-                                                    </h5>
-                                                </div>
+                                                <h5 className="card-title mb-0">ORDER TRACKING REPORT</h5>
                                             </div>
-
                                             <div className="card-body">
                                                 <div className="table-responsive">
                                                     <table className="table table-bordered table-hover">
@@ -591,23 +505,21 @@ const OrderTrackingReport = () => {
                                                                         <td>{row.investigationStatus}</td>
                                                                         <td>
                                                                             {row.report === "View / Download" ? (
-                                                                                <div className="d-flex gap-1">
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        className="btn btn-primary btn-sm"
-                                                                                        onClick={() => handleViewReport(row)}
-                                                                                        disabled={isGeneratingPdf(row.dgOrderHdId)}
-                                                                                    >
-                                                                                        {isGeneratingPdf(row.dgOrderHdId) ? (
-                                                                                            <>
-                                                                                                <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                                                                                                Generating...
-                                                                                            </>
-                                                                                        ) : (
-                                                                                            "View"
-                                                                                        )}
-                                                                                    </button>
-                                                                                </div>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    className="btn btn-primary btn-sm"
+                                                                                    onClick={() => handleViewReport(row)}
+                                                                                    disabled={isGeneratingPdf(row.dgOrderHdId)}
+                                                                                >
+                                                                                    {isGeneratingPdf(row.dgOrderHdId) ? (
+                                                                                        <>
+                                                                                            <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                                                                            Generating...
+                                                                                        </>
+                                                                                    ) : (
+                                                                                        "View"
+                                                                                    )}
+                                                                                </button>
                                                                             ) : (
                                                                                 <span>{row.report}</span>
                                                                             )}
@@ -625,7 +537,6 @@ const OrderTrackingReport = () => {
                                                     </table>
                                                 </div>
                                                 
-                                                {/* PAGINATION USING REUSABLE COMPONENT */}
                                                 {reportData.length > 0 && (
                                                     <Pagination
                                                         totalItems={reportData.length}

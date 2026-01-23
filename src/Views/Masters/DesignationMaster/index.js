@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+
+
 
 const DesignationMaster = () => {
     const [data, setData] = useState([]);
@@ -18,18 +22,16 @@ const DesignationMaster = () => {
         description: "",
         created_by: "",
     });
+    
 
-    useEffect(() => {
-        const dummy = [
-            { id: 1, designation_name: "Manager", description: "Department manager", status: "Y" },
-            { id: 2, designation_name: "Team Lead", description: "Tech lead", status: "Y" },
-            { id: 3, designation_name: "Developer", description: "Software developer", status: "Y" },
-            { id: 4, designation_name: "HR", description: "Human resources", status: "N" },
-            { id: 5, designation_name: "Designer", description: "UI/UX Designer", status: "Y" },
-            { id: 6, designation_name: "Tester", description: "QA Tester", status: "Y" },
-        ];
-        setData(dummy);
-    }, []);
+    
+
+
+
+
+
+
+
 
     const showPopup = (msg, type) => {
         setPopupMessage({ message: msg, type, onClose: () => setPopupMessage(null) });

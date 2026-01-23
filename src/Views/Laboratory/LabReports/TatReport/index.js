@@ -3,8 +3,16 @@ import { getRequest } from "../../../../service/apiService";
 import LoadingScreen from "../../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import Popup from "../../../../Components/popup";
-import { MAS_INVESTIGATION, MAX_MONTHS_BACK } from "../../../../config/apiConfig";
-import {FETCH_LAB_TAT_DETAILED_REPORT_ERR_MSG, FETCH_LAB_TAT_SUMMARY_REPORT_ERR_MSG, INVALID_DATE_PICK_WARN_MSG, SELECT_DATE_WARN_MSG} from "../../../../config/constants"
+import { MAS_INVESTIGATION, MAX_MONTHS_BACK, ALL_REPORTS } from "../../../../config/apiConfig";
+import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
+import {
+  FETCH_LAB_TAT_DETAILED_REPORT_ERR_MSG, 
+  FETCH_LAB_TAT_SUMMARY_REPORT_ERR_MSG, 
+  INVALID_DATE_PICK_WARN_MSG, 
+  SELECT_DATE_WARN_MSG,
+  LAB_REPORT_GENERATION_ERR_MSG,
+  LAB_REPORT_PRINT_ERR_MSG
+} from "../../../../config/constants"
 
 const TATReport = () => {
   
@@ -28,6 +36,11 @@ const TATReport = () => {
   const [detailedReportData, setDetailedReportData] = useState([]);
   const [summaryReportData, setSummaryReportData] = useState([]);
   
+  // Add PDF viewer state - SEPARATE LOADING STATES
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [isViewLoading, setIsViewLoading] = useState(false); // For VIEW/DOWNLOAD button
+  const [isPrintLoading, setIsPrintLoading] = useState(false); // For PRINT button
+  
   // Function to get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
     return new Date().toISOString().split('T')[0];
@@ -42,6 +55,16 @@ const TATReport = () => {
     months += d2.getMonth() - d1.getMonth();
     
     return months;
+  };
+
+  // Get hospitalId from sessionStorage
+  const getHospitalId = () => {
+    try {
+      return sessionStorage.getItem('hospitalId');
+    } catch (error) {
+      console.error("Error getting hospitalId from sessionStorage:", error);
+      return null;
+    }
   };
 
   // Popup function
@@ -107,7 +130,8 @@ const TATReport = () => {
     try {
       const response = await getRequest("/master/sub-charge-code/getAll/1"); // flag=1 for active only
       if (response && response.response) {
-        setModalityOptions(response.response.map(item => ({
+        const filterModality= response.response.filter(item => item.mainChargeId === 12);
+        setModalityOptions(filterModality.map(item => ({
           id: item.subId,
           name: item.subName,
           code: item.subCode
@@ -249,25 +273,32 @@ const TATReport = () => {
     setSelectedModality(modality);
   }
 
-  // Handle view report
-  const handleViewReport = () => {
+  // Validate date inputs
+  const validateDates = () => {
     if (!fromDate || !toDate) {
-      showPopup(SELECT_DATE_WARN_MSG, "Warning");
-      return;
+      showPopup(SELECT_DATE_WARN_MSG, "warning");
+      return false;
     }
 
     // Validate that from date is not after to date
     if (new Date(fromDate) > new Date(toDate)) {
-      showPopup(INVALID_DATE_PICK_WARN_MSG, "Warning");
-      return;
+      showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
+      return false;
     }
 
     // Validate that date range doesn't exceed MAX_MONTHS_BACK
     const monthDiff = getMonthDifference(fromDate, toDate);
     if (monthDiff > MAX_MONTHS_BACK) {
       showPopup(`Date range cannot exceed ${MAX_MONTHS_BACK} months.`, "error");
-      return;
+      return false;
     }
+
+    return true;
+  };
+
+  // Handle search (grid data)
+  const handleSearch = () => {
+    if (!validateDates()) return;
 
     if (reportType === "detailed") {
       fetchDetailedReport();
@@ -277,31 +308,89 @@ const TATReport = () => {
     setCurrentPage(1);
   };
 
+  // Generate PDF report for viewing/downloading
+  const generatePdfReport = async (flag = "D") => {
+    if (!validateDates()) return;
+
+    const hospitalId = getHospitalId();
+    if (!hospitalId) {
+      showPopup("Hospital ID not found. Please login again.", "error");
+      return;
+    }
+
+    // Set loading state based on flag
+    if (flag === "D") {
+      setIsViewLoading(true);
+    } else if (flag === "P") {
+      setIsPrintLoading(true);
+    }
+    
+    setPdfUrl(null);
+
+    try {
+      const params = new URLSearchParams();
+      params.append('fromDate', fromDate);
+      params.append('toDate', toDate);
+      params.append('hospitalId', hospitalId);
+      params.append('flag', flag);
+      
+      if (selectedInvestigation?.id) {
+        params.append('investigationId', selectedInvestigation.id);
+      }
+      if (selectedModality?.id) {
+        params.append('subChargeCodeId', selectedModality.id);
+      }
+
+      // Determine the endpoint based on report type
+      const endpoint = reportType === "detailed" 
+        ? `${ALL_REPORTS}/detailTat`
+        : `${ALL_REPORTS}/summaryTat`;
+
+      const url = `${endpoint}?${params.toString()}`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to generate PDF: ${response.statusText}`);
+      }
+
+      if (flag === "D") {
+        // For viewing/downloading
+        const blob = await response.blob();
+        const fileURL = window.URL.createObjectURL(blob);
+        setPdfUrl(fileURL);
+      } else if (flag === "P") {
+        // For printing
+        // showPopup("Report sent to printer successfully!", "success");
+      }
+
+    } catch (error) {
+      console.error("Error generating PDF", error);
+      const errorMsg = flag === "D" ? LAB_REPORT_GENERATION_ERR_MSG : LAB_REPORT_PRINT_ERR_MSG;
+      showPopup(errorMsg, "error");
+    } finally {
+      // Reset the specific loading state
+      if (flag === "D") {
+        setIsViewLoading(false);
+      } else if (flag === "P") {
+        setIsPrintLoading(false);
+      }
+    }
+  };
+
+  // Handle view report (opens PDF viewer)
+  const handleViewReport = () => {
+    generatePdfReport("D");
+  };
+
   // Handle print report
   const handlePrintReport = () => {
-    if (!fromDate || !toDate) {
-      showPopup(SELECT_DATE_WARN_MSG, "Warning");
-      return;
-    }
-
-    // Validate that from date is not after to date
-    if (new Date(fromDate) > new Date(toDate)) {
-      showPopup(INVALID_DATE_PICK_WARN_MSG, "Warning");
-      return;
-    }
-
-    // Validate that date range doesn't exceed MAX_MONTHS_BACK
-    const monthDiff = getMonthDifference(fromDate, toDate);
-    if (monthDiff > MAX_MONTHS_BACK) {
-      showPopup(`Date range cannot exceed ${MAX_MONTHS_BACK} months.`, "error");
-      return;
-    }
-
-    setIsGenerating(true);
-    setTimeout(() => {
-      showPopup(`${reportType === "detailed" ? "Detailed TAT" : "TAT Summary"} Report would be printed here`, "info");
-      setIsGenerating(false);
-    }, 1000);
+    generatePdfReport("P");
   };
 
   // Initialize with today's date as default for To Date
@@ -327,6 +416,26 @@ const TATReport = () => {
 
   return (
     <div className="content-wrapper">
+      {/* Add Popup Component */}
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
+
+      {/* Add PDF Viewer Component */}
+      {pdfUrl && (
+        <PdfViewer
+          pdfUrl={pdfUrl}
+          onClose={() => {
+            setPdfUrl(null);
+          }}
+          name={`${reportType === "detailed" ? "Detailed" : "Summary"} TAT Report - ${formatDateForDisplay(fromDate)} to ${formatDateForDisplay(toDate)}`}
+        />
+      )}
+
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -446,13 +555,13 @@ const TATReport = () => {
                   <button
                     type="button"
                     className="btn btn-primary"
-                    onClick={handleViewReport}
+                    onClick={handleSearch}
                     disabled={isGenerating}
                   >
                     {isGenerating ? (
                       <>
                         <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Generating...
+                        Searching...
                       </>
                     ) : (
                       "Search"
@@ -462,32 +571,36 @@ const TATReport = () => {
                   <div className="d-flex gap-2">
                     <button
                       type="button"
-                      className="btn btn-warning"
+                      className="btn btn-success"
                       onClick={handleViewReport}
-                      disabled={isGenerating}
+                      disabled={isGenerating || isViewLoading || !fromDate || !toDate}
                     >
-                      {isGenerating ? (
+                      {isViewLoading ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                           Generating...
                         </>
                       ) : (
-                        "View Report"
+                        <>
+                          <i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD
+                        </>
                       )}
                     </button>
                     <button
                       type="button"
-                      className="btn btn-success"
+                      className="btn btn-warning"
                       onClick={handlePrintReport}
-                      disabled={isGenerating}
+                      disabled={isGenerating || isPrintLoading || !fromDate || !toDate}
                     >
-                      {isGenerating ? (
+                      {isPrintLoading ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                           Printing...
                         </>
                       ) : (
-                        "Print Report"
+                        <>
+                          <i className="fa fa-print me-2"></i> PRINT
+                        </>
                       )}
                     </button>
                   </div>
@@ -507,9 +620,9 @@ const TATReport = () => {
                       <div className="card-header">
                         <h5 className="card-title mb-0">
                           {reportType === "detailed" ? "Detailed TAT Report" : "TAT Summary Report"}
-                          {/* <span className="ms-3 text-muted">
+                          <span className="ms-3 text-muted">
                             ({formatDateForDisplay(fromDate)} to {formatDateForDisplay(toDate)})
-                          </span> */}
+                          </span>
                         </h5>
                       </div>
                       <div className="card-body">
@@ -613,15 +726,6 @@ const TATReport = () => {
           </div>
         </div>
       </div>
-      
-      {/* Popup Component */}
-      {popupMessage && (
-        <Popup
-          message={popupMessage.message}
-          type={popupMessage.type}
-          onClose={popupMessage.onClose}
-        />
-      )}
     </div>
   );
 };

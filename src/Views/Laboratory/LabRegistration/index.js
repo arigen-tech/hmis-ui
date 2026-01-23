@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react"
 import placeholderImage from "../../../assets/images/placeholder.jpg"
 import { getRequest, postRequest } from "../../../service/apiService"
 import { useNavigate } from "react-router-dom"
-import Swal from "sweetalert2"
+import Popup from "../../../Components/popup" 
 import {
   API_HOST,
   MAS_COUNTRY,
@@ -17,18 +17,29 @@ import {
   MAS_PACKAGE_INVESTIGATION
 } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
-import { ADD_ROW_WARNING, DUPLICATE, DUPLICATE_PATIENT, ERROR, IMAGE_TEXT, IMAGE_TITLE, INVALID_DATE_TEXT, INVALID_DATE_TITLE, LAB_REG_SUCC_MSG, MISSING_FIELD, INV_PRICE_WARNING_MSG, REGISTRATION_ERR_MSG, SUCCESS, WARNING, PACKAGE_PRICE_WARNING_MSG, MISSING_MANDOTORY_FIELD_MSG, MISSING_MANDOTORY_FIELD, IMAGE_UPLOAD_SUCC_MSG, IMAGE_UPLOAD_FAIL_MSG, UNEXPECTED_ERROR } from "../../../config/constants"
-
+import {
+  ADD_ROW_WARNING,
+  DUPLICATE_PATIENT,
+  INVALID_DATE_TEXT,
+  LAB_REG_SUCC_MSG,
+  INV_PRICE_WARNING_MSG,
+  REGISTRATION_ERR_MSG,
+  PACKAGE_PRICE_WARNING_MSG,
+  MISSING_MANDOTORY_FIELD_MSG,
+  IMAGE_UPLOAD_SUCC_MSG,
+  IMAGE_UPLOAD_FAIL_MSG,
+  UNEXPECTED_ERROR,
+  IMAGE_TITLE,
+  IMAGE_TEXT,
+  DUPLICATE_PACKAGE_WARN_MSG,
+  DUPLICATE_INV_INCLUDE_PACKAGE,
+  DUPLICATE_INV_PACKAGE_WARN_MSG,
+  COMMON_INV_IN_PACKAGES,
+  DUPLICATE_PACKAGE_WRT_INV,
+  DUPLICATE_INV
+} from "../../../config/constants"
 
 const LabRegistration = () => {
-  useEffect(() => {
-    // Fetching initial data
-    fetchGenderData()
-    fetchRelationData()
-    fetchCountryData()
-    fetchGstConfiguration() // Add this line
-  }, [])
-
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [genderData, setGenderData] = useState([])
@@ -42,18 +53,17 @@ const LabRegistration = () => {
   const [activeRowIndex, setActiveRowIndex] = useState(null)
   const [investigationItems, setInvestigationItems] = useState([])
   const [packageItems, setPackageItems] = useState([])
-
-  const [isDuplicatePatient, setIsDuplicatePatient] = useState(false);
+  const [popupMessage, setPopupMessage] = useState(null)
+  const [isDuplicatePatient, setIsDuplicatePatient] = useState(false)
 
   const navigate = useNavigate()
 
   const [gstConfig, setGstConfig] = useState({
     gstApplicable: true,
-    gstPercent: 0, // default fallback
+    gstPercent: 0,
   })
 
   const [formData, setFormData] = useState({
-    // Personal details
     imageurl: undefined,
     firstName: undefined,
     middleName: undefined,
@@ -64,7 +74,6 @@ const LabRegistration = () => {
     dob: undefined,
     age: undefined,
     email: undefined,
-    // Patient address
     address1: undefined,
     address2: undefined,
     country: undefined,
@@ -72,7 +81,6 @@ const LabRegistration = () => {
     district: undefined,
     city: undefined,
     pinCode: undefined,
-    // NOK details
     nokFirstName: undefined,
     nokMiddleName: undefined,
     nokLastName: undefined,
@@ -85,17 +93,15 @@ const LabRegistration = () => {
     nokDistrict: undefined,
     nokCity: undefined,
     nokPinCode: undefined,
-    // Emergency contact
     emergencyFirstName: undefined,
     emergencyLastName: undefined,
     emergencyMobile: undefined,
-    // Lab specific fields
     type: "investigation",
     rows: [
       {
         id: 1,
         name: "",
-        date: new Date().toISOString().split('T')[0], // Initialize with today's date
+        date: new Date().toISOString().split('T')[0],
         originalAmount: 0,
         discountAmount: 0,
         netAmount: 0,
@@ -113,33 +119,138 @@ const LabRegistration = () => {
 
   const [checkedRows, setCheckedRows] = useState([true])
 
-  // Add this useEffect to synchronize dates when new rows are added
   useEffect(() => {
-    // If there's at least one row with a date, ensure all rows have the same date
-    const rowsWithDates = formData.rows.filter(row => row.date);
-    if (rowsWithDates.length > 0) {
-      const firstDate = rowsWithDates[0].date;
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Ensure the date is not in the past
-      const validDate = firstDate >= today ? firstDate : today;
-      
-      // Check if any row has a different date
-      const hasDifferentDate = formData.rows.some(row => row.date && row.date !== validDate);
-      
-      if (hasDifferentDate) {
-        setFormData(prev => ({
-          ...prev,
-          rows: prev.rows.map(row => ({
-            ...row,
-            date: validDate
-          }))
-        }));
-      }
-    }
-  }, [formData.rows.length]);
+    fetchGenderData()
+    fetchRelationData()
+    fetchCountryData()
+    fetchGstConfiguration()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  // Enhanced payment calculation function - FIXED
+  useEffect(() => {
+    const { firstName, dob, gender, mobileNo, relation } = formData
+
+    if (firstName && dob && gender && mobileNo && relation) {
+      const timer = setTimeout(async () => {
+        try {
+          const isDuplicate = await checkDuplicatePatient(firstName, dob, gender, mobileNo, relation)
+          if (isDuplicate) {
+            showPopup(DUPLICATE_PATIENT, "warning")
+            setIsDuplicatePatient(true)
+          } else {
+            setIsDuplicatePatient(false)
+          }
+        } catch (err) {
+          console.error("Duplicate check failed:", err)
+        }
+      }, 800)
+
+      return () => clearTimeout(timer)
+    } else {
+      setIsDuplicatePatient(false)
+    }
+  }, [formData.firstName, formData.dob, formData.gender, formData.mobileNo, formData.relation])
+
+  useEffect(() => {
+    console.log("GST Config changed:", gstConfig)
+  }, [gstConfig])
+
+  const showPopup = (message, type = "info", shouldRefreshData = false, onCloseCallback = null) => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null)
+        if (shouldRefreshData) {
+          // Handle any refresh logic if needed
+        }
+        if (onCloseCallback) {
+          onCloseCallback()
+        }
+      }
+    })
+  }
+
+  const showConfirmationPopup = (title, text, imageUrl, onConfirm) => {
+    const confirmUpload = () => {
+      onConfirm()
+      setPopupMessage(null)
+    }
+
+    setPopupMessage({
+      message: (
+        <div>
+          <h5>{title}</h5>
+          <p>{text}</p>
+          {imageUrl && (
+            <div className="text-center my-3">
+              <img
+                src={imageUrl}
+                alt="Preview"
+                style={{ maxWidth: "200px", maxHeight: "150px", border: "1px solid #ddd" }}
+              />
+            </div>
+          )}
+          <div className="d-flex justify-content-center gap-2 mt-3">
+            <button className="btn btn-primary" onClick={confirmUpload}>
+              Yes, Upload
+            </button>
+            <button className="btn btn-secondary" onClick={() => setPopupMessage(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ),
+      type: "custom",
+      onClose: () => setPopupMessage(null)
+    })
+  }
+
+  const isInvestigationInSelectedPackages = (investigationId, date) => {
+    return formData.rows.some((row, index) => {
+      if (!checkedRows[index]) return false
+      if (row.type === "package" && row.investigationIds && row.date === date) {
+        return row.investigationIds.includes(investigationId)
+      }
+      return false
+    })
+  }
+
+  const isPackageAlreadySelected = (packageId, date) => {
+    return formData.rows.some((row, index) => {
+      if (!checkedRows[index]) return false
+      return row.type === "package" && 
+             row.itemId === packageId && 
+             row.date === date
+    })
+  }
+
+  const isInvestigationAlreadySelected = (investigationId, date) => {
+    return formData.rows.some((row, index) => {
+      if (!checkedRows[index]) return false
+      return row.type === "investigation" &&
+        row.itemId === investigationId &&
+        row.date === date
+    })
+  }
+
+  const getInvestigationIdsFromPackage = async (packageId, packageName) => {
+    try {
+      const response = await getRequest(`${INVESTIGATION_PACKAGE_Mapping}/getAllPackageMap/1`)
+      if (response.status === 200 && Array.isArray(response.response)) {
+        const packageData = response.response.find(pkg =>
+          pkg.packageId === packageId || pkg.packName === packageName
+        )
+        if (packageData && packageData.investigations) {
+          return packageData.investigations.map(inv => inv.investigationId)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching package investigation details:", error)
+    }
+    return []
+  }
+
   const calculatePaymentBreakdown = () => {
     console.log("=== CALCULATING PAYMENT BREAKDOWN ===")
     console.log("Current GST Config:", gstConfig)
@@ -157,14 +268,11 @@ const LabRegistration = () => {
 
     const totalNetAmount = totalOriginalAmount - totalDiscountAmount
 
-    // Fix: Calculate GST on each item's net amount individually, then sum up
-    // This matches the backend logic exactly
     const totalGstAmount = checkedItems.reduce((total, item) => {
       const itemOriginalAmount = Number.parseFloat(item.originalAmount) || 0
       const itemDiscountAmount = Number.parseFloat(item.discountAmount) || 0
       const itemNetAmount = itemOriginalAmount - itemDiscountAmount
 
-      // Calculate GST on this item's net amount (after discount)
       const itemGstAmount = gstConfig.gstApplicable ? (itemNetAmount * gstConfig.gstPercent) / 100 : 0
       console.log(
         `Item GST Calculation - Original: ${itemOriginalAmount}, Discount: ${itemDiscountAmount}, Net: ${itemNetAmount}, GST%: ${gstConfig.gstPercent}, GST Amount: ${itemGstAmount}`,
@@ -175,7 +283,6 @@ const LabRegistration = () => {
     const finalAmount = totalNetAmount + totalGstAmount
 
     const breakdown = {
-      // Properties expected by your UI component
       totalOriginalAmount: totalOriginalAmount.toFixed(2),
       totalDiscountAmount: totalDiscountAmount.toFixed(2),
       totalNetAmount: totalNetAmount.toFixed(2),
@@ -184,7 +291,6 @@ const LabRegistration = () => {
       gstPercent: gstConfig.gstPercent,
       gstApplicable: gstConfig.gstApplicable,
       itemCount: checkedItems.length,
-      // Legacy properties (if needed elsewhere in your code)
       totalAmount: totalOriginalAmount.toFixed(2),
       baseAmountAfterDiscount: totalNetAmount.toFixed(2),
       taxAmount: totalGstAmount.toFixed(2),
@@ -238,24 +344,13 @@ const LabRegistration = () => {
   }
 
   const confirmUpload = (imageData) => {
-    Swal.fire({
-      title: IMAGE_TITLE,
-      text: IMAGE_TEXT,
-      imageUrl: imageData,
-      imageWidth: 200,
-      imageHeight: 150,
-      showCancelButton: true,
-      confirmButtonText: "Yes, Upload",
-      cancelButtonText: "Cancel",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        uploadImage(imageData)
-      }
+    showConfirmationPopup(IMAGE_TITLE, IMAGE_TEXT, imageData, () => {
+      uploadImage(imageData)
     })
   }
 
   const uploadImage = async (base64Image) => {
-    setLoading(true);
+    setLoading(true)
     try {
       const blob = await fetch(base64Image).then((res) => res.blob())
       const formData1 = new FormData()
@@ -271,15 +366,15 @@ const LabRegistration = () => {
         const extractedPath = data.response
         setImageURL(extractedPath)
         console.log("Uploaded Image URL:", extractedPath)
-        Swal.fire(SUCCESS,IMAGE_UPLOAD_SUCC_MSG, "success")
+        showPopup(IMAGE_UPLOAD_SUCC_MSG, "success")
       } else {
-        Swal.fire(ERROR, IMAGE_UPLOAD_FAIL_MSG, "error")
+        showPopup(IMAGE_UPLOAD_FAIL_MSG, "error")
       }
     } catch (error) {
       console.error("Upload error:", error)
-      Swal.fire(ERROR,UNEXPECTED_ERROR, "error")
+      showPopup(UNEXPECTED_ERROR, "error")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
@@ -290,27 +385,25 @@ const LabRegistration = () => {
   }
 
   function calculateAgeFromDOB(dob) {
-    const birthDate = new Date(dob);
-    const today = new Date();
+    const birthDate = new Date(dob)
+    const today = new Date()
 
-    let years = today.getFullYear() - birthDate.getFullYear();
-    let months = today.getMonth() - birthDate.getMonth();
-    let days = today.getDate() - birthDate.getDate();
+    let years = today.getFullYear() - birthDate.getFullYear()
+    let months = today.getMonth() - birthDate.getMonth()
+    let days = today.getDate() - birthDate.getDate()
 
-    // Adjust if the day difference is negative
     if (days < 0) {
-      months--;
-      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-      days += prevMonth.getDate();
+      months--
+      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0)
+      days += prevMonth.getDate()
     }
 
-    // Adjust if the month difference is negative
     if (months < 0) {
-      years--;
-      months += 12;
+      years--
+      months += 12
     }
 
-    return `${years}Y ${months}M ${days}D`;
+    return `${years}Y ${months}M ${days}D`
   }
 
   const handleChange = async (e) => {
@@ -409,29 +502,48 @@ const LabRegistration = () => {
     }
   }
 
-  // Function to handle date changes with validation
   const handleDateChange = (index, selectedDate) => {
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Validate that date is not in the past
+    const today = new Date().toISOString().split('T')[0]
+
     if (selectedDate < today) {
-      Swal.fire({
-        title: INVALID_DATE_TITLE,
-        text: INVALID_DATE_TEXT,
-        icon: 'warning',
-        confirmButtonText: 'OK'
-      });
-      return;
+      showPopup(INVALID_DATE_TEXT, "warning")
+      return
     }
-    
-    // Update all rows with the selected date
+
+    const currentRow = formData.rows[index]
+    let hasDuplicate = false
+
+    if (currentRow.itemId) {
+      if (currentRow.type === "package") {
+        hasDuplicate = formData.rows.some((row, i) => {
+          if (i === index || !checkedRows[i]) return false
+          return row.type === "package" &&
+            row.itemId === currentRow.itemId &&
+            row.date === selectedDate
+        })
+      } else if (currentRow.type === "investigation") {
+        hasDuplicate = formData.rows.some((row, i) => {
+          if (i === index || !checkedRows[i]) return false
+          if (row.type === "package" && row.investigationIds) {
+            return row.investigationIds.includes(currentRow.itemId) &&
+              row.date === selectedDate
+          }
+          return row.type === "investigation" &&
+            row.itemId === currentRow.itemId &&
+            row.date === selectedDate
+        })
+      }
+    }
+
     setFormData(prev => ({
       ...prev,
-      rows: prev.rows.map((row, i) => ({
-        ...row,
-        date: selectedDate
-      }))
-    }));
+      rows: prev.rows.map((row, i) => {
+        if (i === index) {
+          return { ...row, date: selectedDate }
+        }
+        return row
+      })
+    }))
   }
 
   const handleRowChange = (index, field, value) => {
@@ -455,20 +567,58 @@ const LabRegistration = () => {
   }
 
   const addRow = (e, type) => {
-    e.preventDefault();
-    const lastRow = formData.rows[formData.rows.length - 1];
-    
-    // Check if previous row has name
+    e.preventDefault()
+    const lastRow = formData.rows[formData.rows.length - 1]
+
     if (!lastRow.name) {
-      Swal.fire(MISSING_FIELD,ADD_ROW_WARNING, "warning");
-      return;
+      showPopup(ADD_ROW_WARNING, "warning")
+      return
     }
-    
-    // Get the current synchronized date from existing rows
-    const currentDate = formData.rows[0]?.date || new Date().toISOString().split('T')[0];
-    const today = new Date().toISOString().split('T')[0];
-    const defaultDate = currentDate >= today ? currentDate : today;
-    
+
+    if (lastRow.type === "package" && lastRow.itemId && lastRow.date) {
+      const isDuplicatePackage = formData.rows.slice(0, -1).some((row, i) => {
+        if (!checkedRows[i]) return false
+        return row.type === "package" &&
+          row.itemId === lastRow.itemId &&
+          row.date === lastRow.date
+      })
+
+      if (isDuplicatePackage) {
+        showPopup(
+         DUPLICATE_PACKAGE_WARN_MSG,
+          "warning"
+        )
+        handleRowChange(formData.rows.length - 1, "name", "")
+        handleRowChange(formData.rows.length - 1, "itemId", undefined)
+        handleRowChange(formData.rows.length - 1, "date", new Date().toISOString().split('T')[0])
+        return
+      }
+    } else if (lastRow.type === "investigation" && lastRow.itemId && lastRow.date) {
+      const isDuplicateInvestigation = formData.rows.slice(0, -1).some((row, i) => {
+        if (!checkedRows[i]) return false
+        if (row.type === "package" && row.investigationIds) {
+          return row.investigationIds.includes(lastRow.itemId) &&
+            row.date === lastRow.date
+        }
+        return row.type === "investigation" &&
+          row.itemId === lastRow.itemId &&
+          row.date === lastRow.date
+      })
+
+      if (isDuplicateInvestigation) {
+        showPopup(
+          DUPLICATE_INV_INCLUDE_PACKAGE,
+          "warning"
+        )
+        handleRowChange(formData.rows.length - 1, "name", "")
+        handleRowChange(formData.rows.length - 1, "itemId", undefined)
+        handleRowChange(formData.rows.length - 1, "date", new Date().toISOString().split('T')[0])
+        return
+      }
+    }
+
+    const defaultDate = new Date().toISOString().split('T')[0]
+
     setFormData((prev) => ({
       ...prev,
       rows: [
@@ -476,16 +626,17 @@ const LabRegistration = () => {
         {
           id: Date.now(),
           name: "",
-          date: defaultDate, // Use the synchronized date
+          date: defaultDate,
           originalAmount: 0,
           discountAmount: 0,
           netAmount: 0,
-          type: type // ✅ captures fresh type from button click
+          type: type,
+          investigationIds: type === "package" ? [] : undefined
         }
       ]
-    }));
-    setCheckedRows((prev) => [...prev, true]);
-  };
+    }))
+    setCheckedRows((prev) => [...prev, true])
+  }
 
   const removeRow = (index) => {
     setFormData((prev) => ({
@@ -495,16 +646,6 @@ const LabRegistration = () => {
     setCheckedRows((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const calculateTotalAmount = () => {
-    return formData.rows
-      .filter((_, index) => checkedRows[index])
-      .reduce((total, item) => {
-        return total + (Number.parseFloat(item.netAmount) || 0)
-      }, 0)
-      .toFixed(2)
-  }
-
-  // All your existing fetch functions
   async function fetchGenderData() {
     setLoading(true)
     try {
@@ -621,7 +762,6 @@ const LabRegistration = () => {
   }
 
   async function fetchInvestigationDetails(genderValue) {
-    setLoading(true);
     try {
       const selectedGender = genderData.find((gender) => gender.id === Number(genderValue))
       if (!selectedGender) {
@@ -641,13 +781,10 @@ const LabRegistration = () => {
     } catch (error) {
       console.error("Error fetching investigation details:", error)
       return []
-    } finally {
-      setLoading(false);
-    }
+    } 
   }
 
   async function fetchPackageInvestigationDetails(flag) {
-    // setLoading(true);
     try {
       const data = await getRequest(`${INVESTIGATION_PACKAGE_Mapping}/getAllPackageMap/${flag}`)
       if (data.status === 200 && Array.isArray(data.response)) {
@@ -660,13 +797,10 @@ const LabRegistration = () => {
     } catch (error) {
       console.error("Error fetching package investigation details:", error)
       return []
-    } finally {
-      // setLoading(false);
     }
   }
 
   async function fetchPackagePrice(packName) {
-    // setLoading(true);
     try {
       const data = await getRequest(`${MAS_PACKAGE_INVESTIGATION}/pricePack?packName=${packName}`)
       if (data.status === 200 && data.response) {
@@ -678,19 +812,17 @@ const LabRegistration = () => {
     } catch (error) {
       console.error("Error fetching package price:", error)
       return null
-    } finally {
-      // setLoading(false);
     }
   }
 
   async function fetchGstConfiguration() {
-    setLoading(true);
+    setLoading(true)
     try {
-      console.log("=== FETCHING GST CONFIGURATION ===");
+      console.log("=== FETCHING GST CONFIGURATION ===")
 
-      const data = await getRequest(`${MAS_SERVICE_CATEGORY}/getGstConfig/1`);
+      const data = await getRequest(`${MAS_SERVICE_CATEGORY}/getGstConfig/1`)
 
-      console.log("GST API Response:", JSON.stringify(data, null, 2));
+      console.log("GST API Response:", JSON.stringify(data, null, 2))
 
       if (
         data &&
@@ -701,25 +833,25 @@ const LabRegistration = () => {
         const gstConfiguration = {
           gstApplicable: !!data.response.gstApplicable,
           gstPercent: Number(data.response.gstPercent) || 0,
-        };
+        }
 
-        console.log("Setting GST Configuration:", gstConfiguration);
-        setGstConfig(gstConfiguration);
+        console.log("Setting GST Configuration:", gstConfiguration)
+        setGstConfig(gstConfiguration)
       } else {
-        console.warn("Invalid API response:", data);
+        console.warn("Invalid API response:", data)
         setGstConfig({
           gstApplicable: false,
           gstPercent: 0,
-        });
+        })
       }
     } catch (error) {
-      console.error("Error fetching GST configuration:", error);
+      console.error("Error fetching GST configuration:", error)
       setGstConfig({
         gstApplicable: false,
         gstPercent: 0,
-      });
+      })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
@@ -730,47 +862,11 @@ const LabRegistration = () => {
       gender,
       mobile,
       relation,
-    }).toString();
+    }).toString()
 
-    const result = await getRequest(`/patient/check-duplicate?${params}`);
-    return result === true;
+    const result = await getRequest(`/patient/check-duplicate?${params}`)
+    return result === true
   }
-
-  useEffect(() => {
-    const { firstName, dob, gender, mobileNo, relation } = formData;
-
-    if (firstName && dob && gender && mobileNo && relation) {
-      const timer = setTimeout(async () => {
-        try {
-          const isDuplicate = await checkDuplicatePatient(firstName, dob, gender, mobileNo, relation);
-          if (isDuplicate) {
-            Swal.fire(DUPLICATE, DUPLICATE_PATIENT, "warning");
-            setIsDuplicatePatient(true);
-          } else {
-            setIsDuplicatePatient(false);
-          }
-        } catch (err) {
-          console.error("Duplicate check failed:", err);
-        }
-      }, 800);
-
-      return () => clearTimeout(timer);
-    } else {
-      // If any field is cleared, reset duplicate flag
-      setIsDuplicatePatient(false);
-    }
-  }, [
-    formData.firstName,
-    formData.dob,
-    formData.gender,
-    formData.mobileNo,
-    formData.relation
-  ]);
-
-  // Add this useEffect after the existing useEffect
-  useEffect(() => {
-    console.log("GST Config changed:", gstConfig)
-  }, [gstConfig])
 
   const validateForm = () => {
     const requiredFields = ["firstName", "gender", "relation", "dob", "email", "mobileNo"]
@@ -809,7 +905,6 @@ const LabRegistration = () => {
       valid = false
     }
 
-    // Check if all rows have names and dates
     formData.rows.forEach((row, index) => {
       if (!row.name || row.name.trim() === "") {
         newErrors[`row_${index}_name`] = `Row ${index + 1}: Investigation/Package name is required.`
@@ -819,7 +914,7 @@ const LabRegistration = () => {
         newErrors[`row_${index}_date`] = `Row ${index + 1}: Date is required.`
         valid = false
       }
-    });
+    })
 
     if (!formData.paymentMode) {
       newErrors.paymentMode = "Payment mode is required."
@@ -831,21 +926,52 @@ const LabRegistration = () => {
   }
 
   const handleSubmit = async (shouldNavigateToPayment = false) => {
-    console.log("handleSubmit called with shouldNavigateToPayment:", shouldNavigateToPayment);
-    const isFormValid = shouldNavigateToPayment ? true : validateForm();
-    console.log("Form validation result:", isFormValid);
+    console.log("handleSubmit called with shouldNavigateToPayment:", shouldNavigateToPayment)
+    const isFormValid = shouldNavigateToPayment ? true : validateForm()
+    console.log("Form validation result:", isFormValid)
 
     if (isDuplicatePatient) {
-      Swal.fire(DUPLICATE, DUPLICATE_PATIENT, "warning");
-      return;
+      showPopup(DUPLICATE_PATIENT, "warning")
+      return
     }
 
     if (isFormValid) {
-      console.log("Form validation passed, proceeding with registration...");
+      console.log("Form validation passed, proceeding with registration...")
       try {
-        setLoading(true);
+        setLoading(true)
 
-        // ✅ Build patient object
+        const selectedRows = formData.rows.filter((row, index) => checkedRows[index])
+        const duplicateCheck = new Map()
+
+        for (const row of selectedRows) {
+          const key = `${row.type}_${row.itemId}_${row.date}`
+
+          if (row.type === "package" && row.investigationIds) {
+            for (const invId of row.investigationIds) {
+              const invKey = `investigation_${invId}_${row.date}`
+              if (duplicateCheck.has(invKey)) {
+                showPopup(
+                  DUPLICATE_INV_PACKAGE_WARN_MSG,
+                  "Warning"
+                )
+                setLoading(false)
+                return
+              }
+              duplicateCheck.set(invKey, row)
+            }
+          }
+
+          if (duplicateCheck.has(key)) {
+            showPopup(
+              DUPLICATE_INV_PACKAGE_WARN_MSG,
+              "Warning"
+            )
+            setLoading(false)
+            return
+          }
+          duplicateCheck.set(key, row)
+        }
+
         const patientRequest = {
           uhidNo: "",
           patientFn: formData.firstName,
@@ -884,93 +1010,77 @@ const LabRegistration = () => {
           regDate: new Date().toISOString().split("T")[0],
           lastChgBy: sessionStorage.getItem("username"),
           patientHospitalId: Number(sessionStorage.getItem("hospitalId")),
-        };
+        }
 
-        // ✅ Register patient
-        const patientResult = await postRequest("/patient/register", { patient: patientRequest });
-        const patientId = patientResult?.response?.patient?.id;
-        if (!patientId) throw new Error(patientResult.message || "Patient registration failed");
+        const patientResult = await postRequest("/patient/register", { patient: patientRequest })
+        const patientId = patientResult?.response?.patient?.id
+        if (!patientId) throw new Error(patientResult.message || "Patient registration failed")
 
-        // ✅ Validate checked rows
-        const hasCheckedItems = formData.rows.some((row, index) => checkedRows[index]);
-        if (!hasCheckedItems) throw new Error("Please select at least one investigation or package.");
+        const hasCheckedItems = formData.rows.some((row, index) => checkedRows[index])
+        if (!hasCheckedItems) throw new Error("Please select at least one investigation or package.")
 
-        // ✅ Check for any invalid rows with no itemId
-        const invalidRow = formData.rows.find((row, index) => checkedRows[index] && !row.itemId);
-        if (invalidRow) throw new Error("One or more selected rows have no valid investigation/package. Please select from dropdown.");
+        const invalidRow = formData.rows.find((row, index) => checkedRows[index] && !row.itemId)
+        if (invalidRow) throw new Error("One or more selected rows have no valid investigation/package. Please select from dropdown.")
 
-        // ✅ Calculate payment breakdown
-        const paymentBreakdown = calculatePaymentBreakdown();
-        const totalFinalAmount = parseFloat(paymentBreakdown.finalAmount);
+        const paymentBreakdown = calculatePaymentBreakdown()
+        const totalFinalAmount = parseFloat(paymentBreakdown.finalAmount)
 
-        // ✅ Build final lab request - SEND ALL ITEMS (both checked and unchecked)
         const labData = {
           patientId: patientId,
           labInvestigationReq: [],
-        };
+        }
 
-        // Send ALL rows with their respective check status
         formData.rows.forEach((row, index) => {
-          if (row.itemId) { // Only include rows that have valid itemId
+          if (row.itemId) {
             labData.labInvestigationReq.push({
               id: row.itemId,
               appointmentDate: row.date || new Date().toISOString().split('T')[0],
-              checkStatus: checkedRows[index] || false, // Send actual check status
+              checkStatus: checkedRows[index] || false,
               actualAmount: parseFloat(row.originalAmount) || 0,
               discountedAmount: parseFloat(row.discountAmount) || 0,
               type: row.type === "investigation" ? "i" : "p",
-            });
+            })
           }
-        });
+        })
 
-        console.log("FINAL LAB DATA:", labData);
+        console.log("FINAL LAB DATA:", labData)
 
-        // ✅ Call backend
-        const labResult = await postRequest("/lab/registration", labData);
+        const labResult = await postRequest("/lab/registration", labData)
         if (!labResult || labResult.status !== 200) {
-          throw new Error(labResult?.message || "Lab registration failed.");
+          throw new Error(labResult?.message || "Lab registration failed.")
         }
 
-        console.log("Lab registration successful:", labResult);
+        console.log("Lab registration successful:", labResult)
 
         if (shouldNavigateToPayment) {
-          Swal.fire({
-            title: SUCCESS,
-            text: LAB_REG_SUCC_MSG,
-            icon: "success",
-            confirmButtonText: "OK, Proceed",
-          }).then(() => {
+          showPopup(LAB_REG_SUCC_MSG, "success", false, () => {
             navigate("/payment", {
               state: {
                 amount: totalFinalAmount,
                 patientId,
                 labData: labResult,
                 selectedItems: {
-                  // Only send checked items to payment page
                   investigations: labData.labInvestigationReq.filter((i) => i.type === "i" && i.checkStatus),
                   packages: labData.labInvestigationReq.filter((i) => i.type === "p" && i.checkStatus),
                 },
                 paymentBreakdown,
               },
-            });
-          });
+            })
+          })
         } else {
-          Swal.fire(SUCCESS, LAB_REG_SUCC_MSG, "success").then(() => handleReset());
+          showPopup(LAB_REG_SUCC_MSG, "success", false, () => handleReset())
         }
       } catch (error) {
-        console.error("Registration error:", error);
-        Swal.fire(ERROR, error.message || REGISTRATION_ERR_MSG, "error");
+        console.error("Registration error:", error)
+        showPopup(error.message || REGISTRATION_ERR_MSG, "error")
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
     }
-  };
-
-  const isMobileNoMissing = !formData.mobileNo || formData.mobileNo.trim() === ""
+  }
 
   const handleReset = () => {
     setFormData({
-      // Personal details
       imageurl: undefined,
       firstName: undefined,
       middleName: undefined,
@@ -981,7 +1091,6 @@ const LabRegistration = () => {
       dob: undefined,
       age: undefined,
       email: undefined,
-      // Patient address
       address1: undefined,
       address2: undefined,
       country: undefined,
@@ -989,7 +1098,6 @@ const LabRegistration = () => {
       district: undefined,
       city: undefined,
       pinCode: undefined,
-      // NOK details
       nokFirstName: undefined,
       nokMiddleName: undefined,
       nokLastName: undefined,
@@ -1002,17 +1110,15 @@ const LabRegistration = () => {
       nokDistrict: undefined,
       nokCity: undefined,
       nokPinCode: undefined,
-      // Emergency contact
       emergencyFirstName: undefined,
       emergencyLastName: undefined,
       emergencyMobile: undefined,
-      // Lab specific fields
       type: "investigation",
       rows: [
         {
           id: 1,
           name: "",
-          date: new Date().toISOString().split('T')[0], // Reset to today's date
+          date: new Date().toISOString().split('T')[0],
           originalAmount: 0,
           discountAmount: 0,
           netAmount: 0,
@@ -1024,14 +1130,8 @@ const LabRegistration = () => {
     setErrors({})
     setImage(placeholderImage)
     setImageURL("")
+    setCheckedRows([true])
   }
-
-  const isAnyDateOrNameMissing = formData.rows.some(
-    (row) => !row.date || row.date.trim() === "" || !row.name || row.name.trim() === "",
-  )
-
-  // Get payment breakdown for display
-  const paymentBreakdown = calculatePaymentBreakdown()
 
   const getMissingMandatoryFields = () => {
     const missing = []
@@ -1047,11 +1147,21 @@ const LabRegistration = () => {
   }
 
   if (loading) {
-    return <LoadingScreen />;
+    return <LoadingScreen />
   }
+
+  const paymentBreakdown = calculatePaymentBreakdown()
 
   return (
     <div className="body d-flex py-3">
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
+
       <div className="container-xxl">
         <div className="row align-items-center">
           <div className="border-0 mb-4">
@@ -1065,7 +1175,7 @@ const LabRegistration = () => {
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header py-3   border-bottom-1">
+              <div className="card-header py-3 border-bottom-1">
                 <h6 className="mb-0 fw-bold">Personal Details</h6>
               </div>
               <div className="card-body">
@@ -1197,7 +1307,7 @@ const LabRegistration = () => {
                             Age
                           </label>
                           <input
-                            type="text" // <<== NOT number!
+                            type="text"
                             id="age"
                             name="age"
                             className={`form-control ${errors.age ? "is-invalid" : ""}`}
@@ -1205,7 +1315,6 @@ const LabRegistration = () => {
                             onChange={handleChange}
                             placeholder="Enter Age"
                           />
-
                           {errors.age && <div className="invalid-feedback">{errors.age}</div>}
                         </div>
                         <div className="col-md-4">
@@ -1276,7 +1385,7 @@ const LabRegistration = () => {
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header py-3   border-bottom-1">
+              <div className="card-header py-3 border-bottom-1">
                 <h6 className="mb-0 fw-bold">Patient Address</h6>
               </div>
               <div className="card-body">
@@ -1399,7 +1508,7 @@ const LabRegistration = () => {
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header py-3   border-bottom-1">
+              <div className="card-header py-3 border-bottom-1">
                 <h6 className="mb-0 fw-bold">NOK Details</h6>
               </div>
               <div className="card-body">
@@ -1582,7 +1691,7 @@ const LabRegistration = () => {
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header py-3   border-bottom-1">
+              <div className="card-header py-3 border-bottom-1">
                 <h6 className="mb-0 fw-bold">Emergency Contact Details</h6>
               </div>
               <div className="card-body">
@@ -1638,7 +1747,7 @@ const LabRegistration = () => {
         <div className="row mb-3">
           <div className="col-sm-12">
             <div className="card shadow mb-3">
-              <div className="card-header   border-bottom-1 py-3">
+              <div className="card-header border-bottom-1 py-3">
                 <h6 className="fw-bold mb-0">
                   {formData.type === "investigation" ? "Investigation Details" : "Package Details"}
                 </h6>
@@ -1752,20 +1861,38 @@ const LabRegistration = () => {
                                             className="list-group-item list-group-item-action"
                                             style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
                                             onClick={() => {
-                                              if (item.price === null || item.price === 0 || item.price === "0") {
-                                                Swal.fire(
-                                                  WARNING,
-                                                  INV_PRICE_WARNING_MSG,
+                                              const currentRowDate = row.date || new Date().toISOString().split('T')[0]
+                                              
+                                              if (isInvestigationInSelectedPackages(item.investigationId, currentRowDate)) {
+                                                showPopup(
+                                                  DUPLICATE_INV_INCLUDE_PACKAGE,
                                                   "warning"
-                                                );
+                                                )
+                                                return
+                                              }
+                                              
+                                              if (isInvestigationAlreadySelected(item.investigationId, currentRowDate)) {
+                                                showPopup(
+                                                  DUPLICATE_INV_INCLUDE_PACKAGE,
+                                                  "warning"
+                                                )
+                                                return
+                                              }
+                                              if (item.price === null || item.price === 0 || item.price === "0") {
+                                                showPopup(INV_PRICE_WARNING_MSG, "warning")
                                               } else {
-                                                handleRowChange(index, "name", item.investigationName);
-                                                handleRowChange(index, "itemId", item.investigationId);
-                                                handleRowChange(index, "originalAmount", displayPrice);
-                                                handleRowChange(index, "discountAmount", discountAmount);
-                                                handleRowChange(index, "netAmount", finalPrice);
-                                                handleRowChange(index, "type", formData.type); // ✅ FORCE type from radio!
-                                                setActiveRowIndex(null);
+                                                const hasDiscount = item.disc && item.disc > 0
+                                                const displayPrice = item.price || 0
+                                                const discountAmount = hasDiscount ? item.disc : 0
+                                                const finalPrice = hasDiscount ? displayPrice - discountAmount : displayPrice
+
+                                                handleRowChange(index, "name", item.investigationName)
+                                                handleRowChange(index, "itemId", item.investigationId)
+                                                handleRowChange(index, "originalAmount", displayPrice)
+                                                handleRowChange(index, "discountAmount", discountAmount)
+                                                handleRowChange(index, "netAmount", finalPrice)
+                                                handleRowChange(index, "type", formData.type)
+                                                setActiveRowIndex(null)
                                               }
                                             }}
                                           >
@@ -1800,27 +1927,78 @@ const LabRegistration = () => {
                                           className="list-group-item list-group-item-action"
                                           style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
                                           onClick={async () => {
-                                            const priceDetails = await fetchPackagePrice(item.packName);
-                                            if (!priceDetails || !priceDetails.actualCost) {
-                                              Swal.fire(
-                                                WARNING,
-                                                PACKAGE_PRICE_WARNING_MSG,
-                                                "warning"
-                                              );
-                                            } else {
-                                              handleRowChange(index, "name", item.packName);
-                                              handleRowChange(index, "itemId", item.id || priceDetails.packId);
-                                              handleRowChange(
-                                                index,
-                                                "originalAmount",
-                                                priceDetails.baseCost || priceDetails.actualCost
-                                              );
-                                              handleRowChange(index, "discountAmount", priceDetails.disc || 0);
-                                              handleRowChange(index, "netAmount", priceDetails.actualCost);
-                                              handleRowChange(index, "type", formData.type); // ✅ FORCE type from radio!
-                                              setActiveRowIndex(null);
-                                            }
-                                          }}
+  const currentRowDate = row.date || new Date().toISOString().split('T')[0];
+  
+  // Check for duplicate package
+  if (isPackageAlreadySelected(item.packageId, currentRowDate)) {
+    showPopup(DUPLICATE_PACKAGE_WARN_MSG, "warning");
+    return;
+  }
+
+  const priceDetails = await fetchPackagePrice(item.packName);
+  if (!priceDetails || !priceDetails.actualCost) {
+    showPopup(PACKAGE_PRICE_WARNING_MSG, "warning");
+    return;
+  }
+
+  const investigationIds = await getInvestigationIdsFromPackage(item.packageId, item.packName);
+
+  // Check if investigations in this package are already selected individually FOR THE SAME DATE
+  const alreadySelectedInvestigations = [];
+  investigationIds.forEach(invId => {
+    if (isInvestigationAlreadySelected(invId, currentRowDate)) {
+      const invItem = investigationItems.find(inv => inv.investigationId === invId);
+      if (invItem) {
+        alreadySelectedInvestigations.push(invItem.investigationName);
+      }
+    }
+  });
+
+  if (alreadySelectedInvestigations.length > 0) {
+    showPopup(
+      `${DUPLICATE_PACKAGE_WRT_INV}\n\nDuplicate investigations: ${alreadySelectedInvestigations.join(', ')}`,
+      "warning"
+    );
+    return;
+  }
+
+  // Check if investigations in this package are already in other packages FOR THE SAME DATE
+  const alreadyInOtherPackage = [];
+  investigationIds.forEach(invId => {
+    if (isInvestigationInSelectedPackages(invId, currentRowDate)) {
+      const containingPackage = formData.rows.find((row, idx) =>
+        checkedRows[idx] &&
+        row.type === "package" &&
+        row.investigationIds &&
+        row.investigationIds.includes(invId) &&
+        row.date === currentRowDate
+      );
+      if (containingPackage) {
+        const invItem = investigationItems.find(inv => inv.investigationId === invId);
+        if (invItem) {
+          alreadyInOtherPackage.push(`${invItem.investigationName} (in package: ${containingPackage.name})`);
+        }
+      }
+    }
+  });
+
+  if (alreadyInOtherPackage.length > 0) {
+    showPopup(
+      `${COMMON_INV_IN_PACKAGES}\n\nInvestigations already in packages: ${alreadyInOtherPackage.join(', ')}`,
+      "warning"
+    );
+    return;
+  }
+
+  handleRowChange(index, "name", item.packName);
+  handleRowChange(index, "itemId", item.packageId || priceDetails.packId);
+  handleRowChange(index, "originalAmount", priceDetails.baseCost || priceDetails.actualCost);
+  handleRowChange(index, "discountAmount", priceDetails.disc || 0);
+  handleRowChange(index, "netAmount", priceDetails.actualCost);
+  handleRowChange(index, "type", formData.type);
+  handleRowChange(index, "investigationIds", investigationIds);
+  setActiveRowIndex(null);
+}}
                                         >
                                           <div>
                                             <strong>{item.packName}</strong>
@@ -1900,7 +2078,6 @@ const LabRegistration = () => {
                     <button type="button" className="btn btn-primary me-2">
                       <i className="icofont-ticket me-1"></i> Apply Coupon
                     </button>
-
                   </div>
                 </div>
               </div>
@@ -1932,9 +2109,7 @@ const LabRegistration = () => {
                 </div>
               </div>
               <div className="card-body text-white">
-                {/* Summary Cards Grid */}
                 <div className="row g-3 mb-4">
-                  {/* Total Original Amount Card */}
                   <div className="col-md-3">
                     <div
                       className="card h-100"
@@ -1950,7 +2125,6 @@ const LabRegistration = () => {
                     </div>
                   </div>
 
-                  {/* Discount Card */}
                   <div className="col-md-3">
                     <div
                       className="card h-100"
@@ -1966,7 +2140,6 @@ const LabRegistration = () => {
                     </div>
                   </div>
 
-                  {/* Tax Card - only show if GST is applicable */}
                   {paymentBreakdown.gstApplicable && (
                     <div className="col-md-3">
                       <div
@@ -1984,7 +2157,6 @@ const LabRegistration = () => {
                     </div>
                   )}
 
-                  {/* Final Amount Card */}
                   <div className="col-md-3">
                     <div
                       className="card h-100"
@@ -2005,7 +2177,6 @@ const LabRegistration = () => {
                   </div>
                 </div>
 
-                {/* Detailed Breakdown */}
                 <div className="card" style={{ background: "rgba(255,255,255,0.95)", border: "none" }}>
                   <div className="card-body">
                     <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
@@ -2074,11 +2245,7 @@ const LabRegistration = () => {
                         const missingFields = getMissingMandatoryFields()
                         if (loading) return
                         if (missingFields.length > 0) {
-                          Swal.fire(
-                           MISSING_MANDOTORY_FIELD,
-                           MISSING_MANDOTORY_FIELD_MSG,
-                            "warning"
-                          )
+                          showPopup(MISSING_MANDOTORY_FIELD_MSG, "warning")
                           return
                         }
                         try {

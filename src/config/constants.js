@@ -138,6 +138,11 @@ export const LAB_BOOKING_SUCC_MSG="Lab booking registered successfully! Redirect
 export const LAB_REGISTER_SUCC_MSG="Lab booking registered successfully!";
 export const LAB_REG_FAIL_MSG="Registration failed";
 export const INVALID_PAGE="Invalid page !";
+export const DUPLICATE_PACKAGE_WARN_MSG= "This package is already added for this date.";
+export const DUPLICATE_INV_INCLUDE_PACKAGE="This investigation is already added or included in a package for this date."
+export const DUPLICATE_INV_PACKAGE_WARN_MSG="Duplicate found! Please remove the duplicate before proceeding.";
+export const COMMON_INV_IN_PACKAGES= "Cannot add package because it contains investigations that are already included in other selected packages.";
+export const DUPLICATE_PACKAGE_WRT_INV= "Cannot add package because it contains investigations that are already selected individually";
 
 
 //UpdateResultValidation
@@ -613,10 +618,6 @@ export const FETCH_LAB_TAT_DETAILED_REPORT_ERR_MSG = "Error fetching detail repo
 
 export const FETCH_AMEND_REPORT_ERR_MSG = "Error fetching result amendment report. Please try again.";
 
-//OPD Patient Appointment
-export const MISSING_MOBILE_NUMBER = "Please enter Mobile Number";
-export const NO_DATA_FOUND = "No data found";
-
 //Lab Order Tracking Report
 
 export const FUTURE_DATE_PICK_WARN_MSG = "Date cannot be in the future";
@@ -635,13 +636,38 @@ export const FETCH_PENDING_INVESTIGATIONS_ERR_MSG ="Failed to fetch incomplete i
 export const FETCH_SAMPLE_REJECT_ERR_MSG ="Failed to fetch sample rejection report. Please try again."
 
 
+//OPD Patient Appointment
 
 
+//reschedule and cancel appointment
+export const INVALID_MOBILE_NUMBER = "Please enter a valid 10-digit mobile number";
+export const FETCH_APPOINTMENT_ERROR = "Error fetching data. Please try again.";
+export const NO_APPOINTMENTS_FOUND = "No appointments found for this mobile number";
+export const SESSION_NOT_AVAILABLE = "Session Not Available";
+export const SESSION_NOT_AVAILABLE_TEXT = "This session is not available.";
+export const PAST_DATE_WARNING = "You cannot select a past date";
+export const NO_TOKENS_AVAILABLE = "No Tokens Available";
+export const NO_TOKENS_AVAILABLE_TEXT = "No tokens available for the selected criteria.";
+export const FETCH_TOKENS_ERROR = "Failed to fetch token availability. Please try again.";
+export const NO_TIME_SLOT_SELECTED = "No Time Slot Selected";
+export const SELECT_TIME_SLOT_FIRST = "Please select a time slot first.";
+export const CONFIRM_RESCHEDULE_TITLE = "Confirm Reschedule";
+export const RESCHEDULE_SUCCESS = "Appointment rescheduled successfully.";
+export const RESCHEDULE_ERROR = "Reschedule failed.";
+export const REASON_REQUIRED_TITLE = "Reason Required";
+export const SELECT_CANCELLATION_REASON = "Please select a cancellation reason.";
+export const CONFIRM_CANCELLATION_TITLE = "Confirm Cancellation";
+export const CANCELLATION_SUCCESS = "Appointment cancelled successfully";
+export const CANCELLATION_ERROR = "Cancellation failed";
+export const NO_CANCELLATION_REASONS = "No cancellation reasons available. Please contact administrator.";
+export const NO_VALID_TIME_SLOTS = "No time slots available for this session and date.";
 
+// Common validation messages
+export const REQUIRED_FIELD = "Please fill in all required fields";
+export const INVALID_INPUT = "Please enter valid information";
+export const FETCH_DATA_ERROR = "Failed to load data";
 
-
-
-
-
-
-
+// Already exists in your file but should be in same section:
+export const MISSING_MOBILE_NUMBER = "Please enter Mobile Number";
+export const NO_DATA_FOUND = "No data found";
+export const NO_TIME_SLOTS = "No time slots available for this session and date.";

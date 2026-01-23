@@ -193,6 +193,16 @@ const UpdatePatientRegistration = () => {
     setNextAppointmentId((prev) => prev + 1);
   };
 
+    const formatDateForDisplay = (dateString) => {
+    if (!dateString) return "";
+    try {
+      const [year, month, day] = dateString.split('-');
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      return dateString;
+    }
+  };
+
   const removeAppointmentRow = (id) => {
     if (appointments.length <= 1) {
       Swal.fire("Error", "At least one appointment row is required", "error");
@@ -1687,7 +1697,7 @@ const UpdatePatientRegistration = () => {
         sessionId: targetAppointment.selSession,
       }).toString();
 
-      const url = `${GET_AVAILABILITY_TOKENS}?${params}`;
+      const url = `${GET_AVAILABILITY_TOKENS}/0?${params}`;
       const data = await getRequest(url);
 
       if (data.status === 200 && Array.isArray(data.response)) {
@@ -1739,7 +1749,7 @@ const UpdatePatientRegistration = () => {
 <div class="container-fluid">
   <div class="text-center mb-2">
     <h5 class="fw-bold mb-1">Available Time Slots</h5>
-    <p class="text-muted small">Date: ${appointmentDate} | Session: ${sessionName}</p>
+    <p class="text-muted small">Date: ${formatDateForDisplay(appointmentDate)} | Session: ${sessionName}</p>
   </div>
   <div class="row">
     <div class="col-12">

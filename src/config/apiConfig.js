@@ -7,7 +7,7 @@ export const API_HOST = 'http://103.133.215.182:8081/hims';
 // export const API_HOST = 'http://localhost:8080';
 // export const API_HOST = 'http://103.133.215.182:8081/hims';
 
-// export const API_HOST = 'http://192.168.1.8:8080';
+//export const API_HOST = 'http://192.168.1.8:8080';
 
 
 
@@ -60,6 +60,7 @@ export const MAS_SPECIALITY_CENTER = `${MASTERS}/masSpecialty`;
 export const MAS_EMPLOYEE_TYPE = `${MASTERS}/employeeType`;
 export const CHECK_AVAILABILITY_TOKEN = `/doctor/checkAllAvailableTokens`;
 export const GET_ALL_REASONS = `${MASTERS}/cancel-payment-reason`;
+
 
 
 export const DG_UOM = `${MASTERS}/dgUom`;
@@ -235,11 +236,21 @@ export const MAS_TOOTH_CONDITION = `${MASTERS}/masToothCondition`;
 export const LAB_AMENDMENT_TYPE_API = `${MASTERS}/lab-amendment-type`;
 export const MAS_PATIENT_PREPARATION = `${MASTERS}/patient-preparation`;
 export const MAS_TONSIL_GRADE = `${MASTERS}/entMasTonsilGrade`;
+export const MAS_OB_TRIMESTER = `${MASTERS}/obMasTrimester`;
+export const MAS_QUESTION_HEADING =`${MASTERS}/masQuestionHeading`;
+
 export const BILLING = `${LAB}/billingStatus`;
 export const MAS_OB_CONCEPTION = `${MASTERS}/obMasConception`;
 export const MAS_CERVIX_POSITION = `${MASTERS}/ObMasCervixPosition`;
 export const MAS_OPTH_COLOR_VISION = `${MASTERS}/opthMasColorVision`;
 export const MAS_OP_PELVIS_TYPE = `${MASTERS}/obMasPelvisType`;
+export const MAS_PRESENTATION = `${MASTERS}/obMasPresentation`;
+export const MAS_STERILISATION = `${MASTERS}/gynMasSterilisation`;
+export const MAS_STATION_PRESENTATION =`${MASTERS}/obMasStationPresenting`;
+export const MAS_OPTH_LENSTYPE =`${MASTERS}/opthMasLensType`;
+export const MAS_EAR_CANAL = `${MASTERS}/entMasEarCanal`;
+export const MAS_ENT_RINNE = `${MASTERS}/entMasRinne`;
+
 
 
 // Constants for date validation for Lab report
