@@ -130,7 +130,8 @@ const TATReport = () => {
     try {
       const response = await getRequest("/master/sub-charge-code/getAll/1"); // flag=1 for active only
       if (response && response.response) {
-        setModalityOptions(response.response.map(item => ({
+        const filterModality= response.response.filter(item => item.mainChargeId === 12);
+        setModalityOptions(filterModality.map(item => ({
           id: item.subId,
           name: item.subName,
           code: item.subCode

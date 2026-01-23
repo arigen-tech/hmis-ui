@@ -2,9 +2,8 @@ import { useState, useRef, useEffect } from "react"
 import placeholderImage from "../../../assets/images/placeholder.jpg"
 import { getRequest, postRequest } from "../../../service/apiService"
 import { useNavigate } from "react-router-dom"
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";  
-
-import Swal from "sweetalert2"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import Popup from "../../../Components/popup"
 import {
   API_HOST,
   MAS_COUNTRY,
@@ -23,29 +22,24 @@ import LoadingScreen from "../../../Components/Loading"
 import {
   IMAGE_TITLE,
   IMAGE_TEXT,
-  SUCCESS,
   IMAGE_UPLOAD_SUCC_MSG,
-  ERROR,
   IMAGE_UPLOAD_FAIL_MSG,
   UNEXPECTED_ERROR,
-  MISSING_FIELD,
-  MISSING_MANDOTORY_FIELD,
   MISSING_MANDOTORY_FIELD_MSG,
-  INFO,
   PATIENT_NOT_FOUND_WARN_MSG,
-  DUPLICATE_FOUND,
   DUPLICATE_PATIENT,
   LAB_BOOKING_SUCC_MSG,
   LAB_REG_FAIL_MSG,
-  INVALID_PAGE_NO_WARN_MSG,
-  INVALID_PAGE,
   INV_PRICE_WARNING_MSG,
-  WARNING,
   LAB_REGISTER_SUCC_MSG,
   ADD_ROW_WARNING,
-  INVALID_DATE_TITLE,
   INVALID_DATE_TEXT,
   PACKAGE_PRICE_WARNING_MSG,
+  DUPLICATE_PACKAGE_WARN_MSG,
+  DUPLICATE_INV_INCLUDE_PACKAGE,
+  COMMON_INV_IN_PACKAGES,
+  DUPLICATE_PACKAGE_WRT_INV,
+  DUPLICATE_INV
 } from "../../../config/constants"
 
 const UpdateLabRegistration = () => {
@@ -64,6 +58,7 @@ const UpdateLabRegistration = () => {
   const [packageItems, setPackageItems] = useState([])
   const [isDuplicatePatient, setIsDuplicatePatient] = useState(false)
   const [showPatientDetails, setShowPatientDetails] = useState(false)
+  const [popupMessage, setPopupMessage] = useState(null)
   const navigate = useNavigate()
   const [gstConfig, setGstConfig] = useState({
     gstApplicable: true,
@@ -125,7 +120,7 @@ const UpdateLabRegistration = () => {
       {
         id: 1,
         name: "",
-        date: new Date().toISOString().split('T')[0], // Initialize with today's date
+        date: new Date().toISOString().split('T')[0],
         originalAmount: 0,
         discountAmount: 0,
         netAmount: 0,
@@ -143,31 +138,68 @@ const UpdateLabRegistration = () => {
   const [checkedRows, setCheckedRows] = useState([true])
   const [patients, setPatients] = useState([])
 
-  // Add this useEffect to synchronize dates when new rows are added
-  useEffect(() => {
-    // If there's at least one row with a date, ensure all rows have the same date
-    const rowsWithDates = formData.rows.filter(row => row.date);
-    if (rowsWithDates.length > 0) {
-      const firstDate = rowsWithDates[0].date;
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Ensure the date is not in the past
-      const validDate = firstDate >= today ? firstDate : today;
-      
-      // Check if any row has a different date
-      const hasDifferentDate = formData.rows.some(row => row.date && row.date !== validDate);
-      
-      if (hasDifferentDate) {
-        setFormData(prev => ({
-          ...prev,
-          rows: prev.rows.map(row => ({
-            ...row,
-            date: validDate
-          }))
-        }));
+  // Popup function
+  const showPopup = (message, type = "info", shouldRefreshData = false, onCloseCallback = null) => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null)
+        if (shouldRefreshData) {
+          // Handle any refresh logic if needed
+        }
+        if (onCloseCallback) {
+          onCloseCallback()
+        }
       }
+    })
+  }
+
+  // Duplicate validation functions
+  const isInvestigationInSelectedPackages = (investigationId, date) => {
+    return formData.rows.some((row, index) => {
+      if (!checkedRows[index]) return false
+      if (row.type === "package" && row.investigationIds && row.date === date) {
+        return row.investigationIds.includes(investigationId)
+      }
+      return false
+    })
+  }
+
+  const isPackageAlreadySelected = (packageId, date) => {
+    return formData.rows.some((row, index) => {
+      if (!checkedRows[index]) return false
+      return row.type === "package" &&
+        row.itemId === packageId &&
+        row.date === date
+    })
+  }
+
+  const isInvestigationAlreadySelected = (investigationId, date) => {
+    return formData.rows.some((row, index) => {
+      if (!checkedRows[index]) return false
+      return row.type === "investigation" &&
+        row.itemId === investigationId &&
+        row.date === date
+    })
+  }
+
+  const getInvestigationIdsFromPackage = async (packageId, packageName) => {
+    try {
+      const response = await getRequest(`${INVESTIGATION_PACKAGE_Mapping}/getAllPackageMap/1`)
+      if (response.status === 200 && Array.isArray(response.response)) {
+        const packageData = response.response.find(pkg =>
+          pkg.packageId === packageId || pkg.packName === packageName
+        )
+        if (packageData && packageData.investigations) {
+          return packageData.investigations.map(inv => inv.investigationId)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching package investigation details:", error)
     }
-  }, [formData.rows]); // Changed from [formData.rows.length] to [formData.rows]
+    return []
+  }
 
   // Fetching initial data
   useEffect(() => {
@@ -252,19 +284,33 @@ const UpdateLabRegistration = () => {
   }
 
   const confirmUpload = (imageData) => {
-    Swal.fire({
-      title: IMAGE_TITLE,
-      text: IMAGE_TEXT,
-      imageUrl: imageData,
-      imageWidth: 200,
-      imageHeight: 150,
-      showCancelButton: true,
-      confirmButtonText: "Yes, Upload",
-      cancelButtonText: "Cancel",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        uploadImage(imageData)
-      }
+    setPopupMessage({
+      message: (
+        <div>
+          <h5>{IMAGE_TITLE}</h5>
+          <p>{IMAGE_TEXT}</p>
+          <div className="text-center my-3">
+            <img
+              src={imageData}
+              alt="Preview"
+              style={{ maxWidth: "200px", maxHeight: "150px", border: "1px solid #ddd" }}
+            />
+          </div>
+          <div className="d-flex justify-content-center gap-2 mt-3">
+            <button className="btn btn-primary" onClick={() => {
+              uploadImage(imageData);
+              setPopupMessage(null);
+            }}>
+              Yes, Upload
+            </button>
+            <button className="btn btn-secondary" onClick={() => setPopupMessage(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ),
+      type: "custom",
+      onClose: () => setPopupMessage(null)
     })
   }
 
@@ -282,13 +328,13 @@ const UpdateLabRegistration = () => {
       if (response.status === 200 && data.response) {
         const extractedPath = data.response
         setImageURL(extractedPath)
-        Swal.fire(SUCCESS, IMAGE_UPLOAD_SUCC_MSG, "success")
+        showPopup(IMAGE_UPLOAD_SUCC_MSG, "success")
       } else {
-        Swal.fire(ERROR, IMAGE_UPLOAD_FAIL_MSG, "error")
+        showPopup(IMAGE_UPLOAD_FAIL_MSG, "error")
       }
     } catch (error) {
       console.error("Upload error:", error)
-      Swal.fire(ERROR, UNEXPECTED_ERROR, "error")
+      showPopup(UNEXPECTED_ERROR, "error")
     } finally {
       setLoading(false)
     }
@@ -321,25 +367,55 @@ const UpdateLabRegistration = () => {
   // Function to handle date changes with validation
   const handleDateChange = (index, selectedDate) => {
     const today = new Date().toISOString().split('T')[0];
-    
+
     // Validate that date is not in the past
     if (selectedDate < today) {
-      Swal.fire({
-        title: INVALID_DATE_TITLE,
-        text: INVALID_DATE_TEXT,
-        icon: 'warning',
-        confirmButtonText: 'OK'
-      });
+      showPopup(INVALID_DATE_TEXT, "warning");
       return;
     }
-    
-    // Update all rows with the selected date
+
+    const currentRow = formData.rows[index];
+    let hasDuplicate = false;
+
+    if (currentRow.itemId) {
+      if (currentRow.type === "package") {
+        hasDuplicate = formData.rows.some((row, i) => {
+          if (i === index || !checkedRows[i]) return false;
+          return row.type === "package" &&
+            row.itemId === currentRow.itemId &&
+            row.date === selectedDate;
+        });
+      } else if (currentRow.type === "investigation") {
+        hasDuplicate = formData.rows.some((row, i) => {
+          if (i === index || !checkedRows[i]) return false;
+          if (row.type === "package" && row.investigationIds) {
+            return row.investigationIds.includes(currentRow.itemId) &&
+              row.date === selectedDate;
+          }
+          return row.type === "investigation" &&
+            row.itemId === currentRow.itemId &&
+            row.date === selectedDate;
+        });
+      }
+    }
+
+    if (hasDuplicate) {
+      showPopup(
+        currentRow.type === "package" ? DUPLICATE_PACKAGE_WARN_MSG : DUPLICATE_INV_INCLUDE_PACKAGE,
+        "warning"
+      );
+      return;
+    }
+
+    // Update only the current row's date
     setFormData(prev => ({
       ...prev,
-      rows: prev.rows.map((row, i) => ({
-        ...row,
-        date: selectedDate
-      }))
+      rows: prev.rows.map((row, i) => {
+        if (i === index) {
+          return { ...row, date: selectedDate };
+        }
+        return row;
+      })
     }));
   }
 
@@ -470,18 +546,57 @@ const UpdateLabRegistration = () => {
   const addRow = (e, type) => {
     e.preventDefault();
     const lastRow = formData.rows[formData.rows.length - 1];
-    
+
     // Check if previous row has name
     if (!lastRow.name) {
-      Swal.fire(MISSING_FIELD, ADD_ROW_WARNING, "warning");
+      showPopup(ADD_ROW_WARNING, "warning");
       return;
     }
-    
-    // Get the current synchronized date from existing rows
-    const currentDate = formData.rows[0]?.date || new Date().toISOString().split('T')[0];
-    const today = new Date().toISOString().split('T')[0];
-    const defaultDate = currentDate >= today ? currentDate : today;
-    
+
+    // Check for duplicates in the last row before adding new row
+    if (lastRow.itemId && lastRow.date) {
+      let hasDuplicate = false;
+
+      if (lastRow.type === "package") {
+        hasDuplicate = formData.rows.slice(0, -1).some((row, i) => {
+          if (!checkedRows[i]) return false;
+          return row.type === "package" &&
+            row.itemId === lastRow.itemId &&
+            row.date === lastRow.date;
+        });
+
+        if (hasDuplicate) {
+          showPopup(DUPLICATE_PACKAGE_WARN_MSG, "warning");
+          handleRowChange(formData.rows.length - 1, "name", "");
+          handleRowChange(formData.rows.length - 1, "itemId", undefined);
+          handleRowChange(formData.rows.length - 1, "date", new Date().toISOString().split('T')[0]);
+          return;
+        }
+      } else if (lastRow.type === "investigation") {
+        hasDuplicate = formData.rows.slice(0, -1).some((row, i) => {
+          if (!checkedRows[i]) return false;
+          if (row.type === "package" && row.investigationIds) {
+            return row.investigationIds.includes(lastRow.itemId) &&
+              row.date === lastRow.date;
+          }
+          return row.type === "investigation" &&
+            row.itemId === lastRow.itemId &&
+            row.date === lastRow.date;
+        });
+
+        if (hasDuplicate) {
+          showPopup(DUPLICATE_INV_INCLUDE_PACKAGE, "warning");
+          handleRowChange(formData.rows.length - 1, "name", "");
+          handleRowChange(formData.rows.length - 1, "itemId", undefined);
+          handleRowChange(formData.rows.length - 1, "date", new Date().toISOString().split('T')[0]);
+          return;
+        }
+      }
+    }
+
+    // Get a default date (today's date)
+    const defaultDate = new Date().toISOString().split('T')[0];
+
     setFormData((prev) => ({
       ...prev,
       rows: [
@@ -489,11 +604,12 @@ const UpdateLabRegistration = () => {
         {
           id: Date.now(),
           name: "",
-          date: defaultDate, // Use the synchronized date
+          date: defaultDate,
           originalAmount: 0,
           discountAmount: 0,
           netAmount: 0,
-          type: type
+          type: type,
+          investigationIds: type === "package" ? [] : undefined
         }
       ]
     }));
@@ -507,16 +623,6 @@ const UpdateLabRegistration = () => {
     }))
     setCheckedRows((prev) => prev.filter((_, i) => i !== index))
   }
-
-  // Comment out or remove this unused function
-  // const calculateTotalAmount = () => {
-  //   return formData.rows
-  //     .filter((_, index) => checkedRows[index])
-  //     .reduce((total, item) => {
-  //       return total + (Number.parseFloat(item.netAmount) || 0)
-  //     }, 0)
-  //     .toFixed(2)
-  // }
 
   async function fetchGenderData() {
     setLoading(true)
@@ -743,11 +849,11 @@ const UpdateLabRegistration = () => {
         setPatients(data.response);
       } else {
         setPatients([]);
-        Swal.fire(INFO, PATIENT_NOT_FOUND_WARN_MSG, "info");
+        showPopup(PATIENT_NOT_FOUND_WARN_MSG, "info");
       }
     } catch (error) {
       console.error("Search error:", error);
-      Swal.fire(ERROR, PATIENT_NOT_FOUND_WARN_MSG, "error");
+      showPopup(PATIENT_NOT_FOUND_WARN_MSG, "error");
     } finally {
       setLoading(false);
       setCurrentPage(1); // Reset to first page after search
@@ -794,7 +900,7 @@ const UpdateLabRegistration = () => {
         {
           id: 1,
           name: "",
-          date: new Date().toISOString().split('T')[0], // Set to today's date
+          date: new Date().toISOString().split('T')[0],
           originalAmount: 0,
           discountAmount: 0,
           netAmount: 0,
@@ -872,7 +978,7 @@ const UpdateLabRegistration = () => {
         {
           id: 1,
           name: "",
-          date: new Date().toISOString().split('T')[0], // Reset to today's date
+          date: new Date().toISOString().split('T')[0],
           originalAmount: 0,
           discountAmount: 0,
           netAmount: 0,
@@ -889,14 +995,14 @@ const UpdateLabRegistration = () => {
     const today = new Date().toISOString().split('T')[0];
     let allDatesValid = true;
     let invalidRows = [];
-    
+
     formData.rows.forEach((row, index) => {
       if (row.date && row.date < today) {
         allDatesValid = false;
         invalidRows.push(index + 1);
       }
     });
-    
+
     return { allDatesValid, invalidRows };
   };
 
@@ -930,7 +1036,7 @@ const UpdateLabRegistration = () => {
       newErrors.rows = `At least one ${formData.type} is required.`
       valid = false
     }
-    
+
     // Check if all rows have names and dates
     formData.rows.forEach((row, index) => {
       if (!row.name || row.name.trim() === "") {
@@ -942,39 +1048,29 @@ const UpdateLabRegistration = () => {
         valid = false
       }
     });
-    
+
     setErrors(newErrors)
     return valid
   }
 
   const handleSubmit = async (shouldNavigateToPayment = false) => {
     console.log("handleSubmit called with shouldNavigateToPayment:", shouldNavigateToPayment);
-    
+
     // Validate dates first
     const dateValidation = validateDates();
     if (!dateValidation.allDatesValid) {
-      Swal.fire({
-        title: INVALID_DATE_TITLE,
-        text: `Rows ${dateValidation.invalidRows.join(', ')} have past dates. Please select valid dates.`,
-        icon: 'warning',
-        confirmButtonText: 'OK'
-      });
+      showPopup(`Rows ${dateValidation.invalidRows.join(', ')} have past dates. Please select valid dates.`, "warning");
       return;
     }
-    
-    // Rest of your existing handleSubmit code...
+
     const isFormValid = shouldNavigateToPayment ? true : validateForm();
     console.log("Form validation result:", isFormValid);
-    
+
     if (isDuplicatePatient) {
-      Swal.fire(
-        DUPLICATE_FOUND,
-        DUPLICATE_PATIENT,
-        "warning",
-      )
+      showPopup(DUPLICATE_PATIENT, "warning");
       return;
     }
-    
+
     if (isFormValid) {
       try {
         setLoading(true)
@@ -1015,12 +1111,7 @@ const UpdateLabRegistration = () => {
         }
 
         if (shouldNavigateToPayment) {
-          Swal.fire({
-            title: SUCCESS,
-            text: LAB_BOOKING_SUCC_MSG,
-            icon: "success",
-            confirmButtonText: "OK, Proceed",
-          }).then(() => {
+          showPopup(LAB_BOOKING_SUCC_MSG, "success", false, () => {
             navigate("/payment", {
               state: {
                 amount: totalFinalAmount,
@@ -1035,21 +1126,18 @@ const UpdateLabRegistration = () => {
             })
           })
         } else {
-          Swal.fire(SUCCESS, LAB_REGISTER_SUCC_MSG, "success").then(() => {
+          showPopup(LAB_REGISTER_SUCC_MSG, "success", false, () => {
             handleBackToList()
           })
         }
       } catch (error) {
         console.error("Registration error:", error)
-        Swal.fire(ERROR, LAB_REG_FAIL_MSG, "error")
+        showPopup(error.message || LAB_REG_FAIL_MSG, "error")
       } finally {
         setLoading(false)
       }
     }
   }
-
-  // Comment out or remove this unused variable
-  // const isMobileNoMissing = !formData.mobileNo || formData.mobileNo.trim() === ""
 
   const handleReset = () => {
     setSearchFormData({
@@ -1102,7 +1190,7 @@ const UpdateLabRegistration = () => {
         {
           id: 1,
           name: "",
-          date: new Date().toISOString().split('T')[0], // Reset to today's date
+          date: new Date().toISOString().split('T')[0],
           originalAmount: 0,
           discountAmount: 0,
           netAmount: 0,
@@ -1116,11 +1204,6 @@ const UpdateLabRegistration = () => {
     setImageURL("")
     setCheckedRows([true])
   }
-
-  // Comment out or remove this unused variable
-  // const isAnyDateOrNameMissing = formData.rows.some(
-  //   (row) => !row.date || row.date.trim() === "" || !row.name || row.name.trim() === "",
-  // )
 
   const paymentBreakdown = calculatePaymentBreakdown()
 
@@ -1148,16 +1231,27 @@ const UpdateLabRegistration = () => {
       mobile.includes(mobileQuery)
     );
   });
-const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
-    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
-    const currentItems = filteredPatients.slice(indexOfFirst, indexOfLast)
 
-  
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
+  const currentItems = filteredPatients.slice(indexOfFirst, indexOfLast)
 
-    // Show FORM VIEW when patient is selected
+  if (loading) {
+    return <LoadingScreen />
+  }
+
+  // Show FORM VIEW when patient is selected
   if (showPatientDetails) {
     return (
       <div className="body d-flex py-3">
+        {popupMessage && (
+          <Popup
+            message={popupMessage.message}
+            type={popupMessage.type}
+            onClose={popupMessage.onClose}
+          />
+        )}
+
         <div className="container-xxl">
           <div className="row align-items-center">
             <div className="border-0 mb-4">
@@ -1873,12 +1967,21 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
                                               style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
                                               onClick={() => {
                                                 if (item.price === null || item.price === 0 || item.price === "0") {
-                                                  Swal.fire(
-                                                    WARNING,
-                                                    INV_PRICE_WARNING_MSG,
-                                                    "warning",
-                                                  )
+                                                  showPopup(INV_PRICE_WARNING_MSG, "warning")
                                                 } else {
+                                                  const currentRowDate = row.date || new Date().toISOString().split('T')[0];
+
+                                                  // Check for duplicates
+                                                  if (isInvestigationInSelectedPackages(item.investigationId, currentRowDate)) {
+                                                    showPopup(DUPLICATE_INV_INCLUDE_PACKAGE, "warning");
+                                                    return;
+                                                  }
+
+                                                  if (isInvestigationAlreadySelected(item.investigationId, currentRowDate)) {
+                                                    showPopup(DUPLICATE_INV, "warning");
+                                                    return;
+                                                  }
+
                                                   handleRowChange(index, "name", item.investigationName)
                                                   handleRowChange(index, "itemId", item.investigationId)
                                                   handleRowChange(index, "originalAmount", displayPrice)
@@ -1922,24 +2025,67 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
                                             className="list-group-item list-group-item-action"
                                             style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
                                             onClick={async () => {
+                                              const currentRowDate = row.date || new Date().toISOString().split('T')[0];
+
+                                              // Check for duplicate package
+                                              if (isPackageAlreadySelected(item.packageId, currentRowDate)) {
+                                                showPopup(DUPLICATE_PACKAGE_WARN_MSG, "warning");
+                                                return;
+                                              }
+
                                               const priceDetails = await fetchPackagePrice(item.packName)
                                               if (!priceDetails || !priceDetails.actualCost) {
-                                                Swal.fire(
-                                                  WARNING,
-                                                  PACKAGE_PRICE_WARNING_MSG,
-                                                  "warning",
-                                                )
+                                                showPopup(PACKAGE_PRICE_WARNING_MSG, "warning")
                                               } else {
+                                                const investigationIds = await getInvestigationIdsFromPackage(item.packageId, item.packName)
+
+                                                // Check if investigations in this package are already selected individually
+                                                const alreadySelectedInvestigations = []
+                                                investigationIds.forEach(invId => {
+                                                  if (isInvestigationAlreadySelected(invId, currentRowDate)) {
+                                                    const invItem = investigationItems.find(inv => inv.investigationId === invId)
+                                                    if (invItem) {
+                                                      alreadySelectedInvestigations.push(invItem.investigationName)
+                                                    }
+                                                  }
+                                                })
+
+                                                if (alreadySelectedInvestigations.length > 0) {
+                                                  showPopup(DUPLICATE_PACKAGE_WRT_INV, "warning")
+                                                  return
+                                                }
+
+                                                // Check if investigations in this package are already in other packages
+                                                const alreadyInOtherPackage = []
+                                                investigationIds.forEach(invId => {
+                                                  if (isInvestigationInSelectedPackages(invId, currentRowDate)) {
+                                                    const containingPackage = formData.rows.find((row, idx) =>
+                                                      checkedRows[idx] &&
+                                                      row.type === "package" &&
+                                                      row.investigationIds &&
+                                                      row.investigationIds.includes(invId)
+                                                    )
+                                                    if (containingPackage) {
+                                                      const invItem = investigationItems.find(inv => inv.investigationId === invId)
+                                                      if (invItem) {
+                                                        alreadyInOtherPackage.push(`${invItem.investigationName} (in package: ${containingPackage.name})`)
+                                                      }
+                                                    }
+                                                  }
+                                                })
+
+                                                if (alreadyInOtherPackage.length > 0) {
+                                                  showPopup(COMMON_INV_IN_PACKAGES, "warning")
+                                                  return
+                                                }
+
                                                 handleRowChange(index, "name", item.packName)
-                                                handleRowChange(index, "itemId", item.id || priceDetails.packId)
-                                                handleRowChange(
-                                                  index,
-                                                  "originalAmount",
-                                                  priceDetails.baseCost || priceDetails.actualCost,
-                                                )
+                                                handleRowChange(index, "itemId", item.packageId || priceDetails.packId)
+                                                handleRowChange(index, "originalAmount", priceDetails.baseCost || priceDetails.actualCost)
                                                 handleRowChange(index, "discountAmount", priceDetails.disc || 0)
                                                 handleRowChange(index, "netAmount", priceDetails.actualCost)
                                                 handleRowChange(index, "type", formData.type)
+                                                handleRowChange(index, "investigationIds", investigationIds)
                                                 setActiveRowIndex(null)
                                               }
                                             }}
@@ -2183,14 +2329,11 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
                           const missingFields = getMissingMandatoryFields()
                           if (loading) return
                           if (missingFields.length > 0) {
-                            Swal.fire(
-                              MISSING_MANDOTORY_FIELD,
-                              MISSING_MANDOTORY_FIELD_MSG,
-                              "warning"
-                            )
+                            showPopup(MISSING_MANDOTORY_FIELD_MSG, "warning")
                             return
                           }
                           try {
+                            console.log("Pay Now button clicked")
                             await handleSubmit(true)
                           } catch (error) {
                             console.error("Error in payment flow:", error)
@@ -2230,6 +2373,14 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
   // Show SEARCH VIEW (default)
   return (
     <div className="body d-flex py-3">
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
+
       <div className="container-xxl">
         <div className="row align-items-center">
           <div className="border-0 mb-4">
@@ -2257,9 +2408,17 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
                         placeholder="Enter Mobile No."
                         name="mobileNo"
                         value={searchFormData.mobileNo}
-                        onChange={handleSearchChange}
+                        maxLength={10}
+                        inputMode="numeric"
+                        onChange={(e) => {
+                          // allow only digits
+                          const value = e.target.value.replace(/\D/g, "");
+                          e.target.value = value;
+                          handleSearchChange(e);
+                        }}
                       />
                     </div>
+
                     <div className="col-md-3">
                       <label className="form-label">Patient Name</label>
                       <input
@@ -2342,15 +2501,14 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
                       </div>
 
                       {/* Pagination */}
-                                 <>
-                                   <Pagination
-                                                  totalItems={filteredPatients.length}
-                                                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                                  currentPage={currentPage}
-                                                  onPageChange={setCurrentPage}
-                                                  /> 
-                                      </>          
-                    
+                      <>
+                        <Pagination
+                          totalItems={filteredPatients.length}
+                          itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                          currentPage={currentPage}
+                          onPageChange={setCurrentPage}
+                        />
+                      </>
                     </div>
                   )}
                 </form>

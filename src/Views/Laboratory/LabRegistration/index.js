@@ -1927,87 +1927,78 @@ const LabRegistration = () => {
                                           className="list-group-item list-group-item-action"
                                           style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
                                           onClick={async () => {
-                                            const currentRowDate = row.date || new Date().toISOString().split('T')[0]
-                                            
-                                            if (isPackageAlreadySelected(item.packageId, currentRowDate)) {
-                                              showPopup(
-                                                DUPLICATE_PACKAGE_WARN_MSG,
-                                                "warning"
-                                              )
-                                              return
-                                            }
+  const currentRowDate = row.date || new Date().toISOString().split('T')[0];
+  
+  // Check for duplicate package
+  if (isPackageAlreadySelected(item.packageId, currentRowDate)) {
+    showPopup(DUPLICATE_PACKAGE_WARN_MSG, "warning");
+    return;
+  }
 
-                                            const priceDetails = await fetchPackagePrice(item.packName)
-                                            if (!priceDetails || !priceDetails.actualCost) {
-                                              showPopup(PACKAGE_PRICE_WARNING_MSG, "warning")
-                                              return
-                                            }
+  const priceDetails = await fetchPackagePrice(item.packName);
+  if (!priceDetails || !priceDetails.actualCost) {
+    showPopup(PACKAGE_PRICE_WARNING_MSG, "warning");
+    return;
+  }
 
-                                            const investigationIds = await getInvestigationIdsFromPackage(item.packageId, item.packName)
+  const investigationIds = await getInvestigationIdsFromPackage(item.packageId, item.packName);
 
-                                            const alreadySelectedInvestigations = []
+  // Check if investigations in this package are already selected individually FOR THE SAME DATE
+  const alreadySelectedInvestigations = [];
+  investigationIds.forEach(invId => {
+    if (isInvestigationAlreadySelected(invId, currentRowDate)) {
+      const invItem = investigationItems.find(inv => inv.investigationId === invId);
+      if (invItem) {
+        alreadySelectedInvestigations.push(invItem.investigationName);
+      }
+    }
+  });
 
-                                            investigationIds.forEach(invId => {
-                                              if (isInvestigationAlreadySelected(invId)) {
-                                                const invItem = investigationItems.find(inv => inv.investigationId === invId)
-                                                if (invItem) {
-                                                  alreadySelectedInvestigations.push(invItem.investigationName)
-                                                }
-                                              }
-                                            })
+  if (alreadySelectedInvestigations.length > 0) {
+    showPopup(
+      `${DUPLICATE_PACKAGE_WRT_INV}\n\nDuplicate investigations: ${alreadySelectedInvestigations.join(', ')}`,
+      "warning"
+    );
+    return;
+  }
 
-                                            if (alreadySelectedInvestigations.length > 0) {
-                                              showPopup(
-                                                DUPLICATE_PACKAGE_WRT_INV,
-                                                "warning"
-                                              )
-                                              return
-                                            }
+  // Check if investigations in this package are already in other packages FOR THE SAME DATE
+  const alreadyInOtherPackage = [];
+  investigationIds.forEach(invId => {
+    if (isInvestigationInSelectedPackages(invId, currentRowDate)) {
+      const containingPackage = formData.rows.find((row, idx) =>
+        checkedRows[idx] &&
+        row.type === "package" &&
+        row.investigationIds &&
+        row.investigationIds.includes(invId) &&
+        row.date === currentRowDate
+      );
+      if (containingPackage) {
+        const invItem = investigationItems.find(inv => inv.investigationId === invId);
+        if (invItem) {
+          alreadyInOtherPackage.push(`${invItem.investigationName} (in package: ${containingPackage.name})`);
+        }
+      }
+    }
+  });
 
-                                            const alreadyInOtherPackage = []
-                                            investigationIds.forEach(invId => {
-                                              if (isInvestigationInSelectedPackages(invId)) {
-                                                const containingPackage = formData.rows.find((row, idx) =>
-                                                  checkedRows[idx] &&
-                                                  row.type === "package" &&
-                                                  row.investigationIds &&
-                                                  row.investigationIds.includes(invId)
-                                                )
-                                                if (containingPackage) {
-                                                  const invItem = investigationItems.find(inv => inv.investigationId === invId)
-                                                  if (invItem) {
-                                                    alreadyInOtherPackage.push(`${invItem.investigationName} (in package: ${containingPackage.name})`)
-                                                  }
-                                                }
-                                              }
-                                            })
+  if (alreadyInOtherPackage.length > 0) {
+    showPopup(
+      `${COMMON_INV_IN_PACKAGES}\n\nInvestigations already in packages: ${alreadyInOtherPackage.join(', ')}`,
+      "warning"
+    );
+    return;
+  }
 
-                                            if (alreadyInOtherPackage.length > 0) {
-                                              showPopup(
-                                                COMMON_INV_IN_PACKAGES,
-                                                "warning"
-                                              )
-                                              return
-                                            }
-
-                                            handleRowChange(index, "name", item.packName)
-                                            handleRowChange(index, "itemId", item.packageId || priceDetails.packId)
-                                            handleRowChange(
-                                              index,
-                                              "originalAmount",
-                                              priceDetails.baseCost || priceDetails.actualCost
-                                            )
-                                            handleRowChange(index, "discountAmount", priceDetails.disc || 0)
-                                            handleRowChange(index, "netAmount", priceDetails.actualCost)
-                                            handleRowChange(index, "type", formData.type)
-                                            handleRowChange(index, "investigationIds", investigationIds)
-                                            setActiveRowIndex(null)
-
-                                            // showPopup(
-                                            //   `${item.packName} has been added successfully.`,
-                                            //   "success"
-                                            // )
-                                          }}
+  handleRowChange(index, "name", item.packName);
+  handleRowChange(index, "itemId", item.packageId || priceDetails.packId);
+  handleRowChange(index, "originalAmount", priceDetails.baseCost || priceDetails.actualCost);
+  handleRowChange(index, "discountAmount", priceDetails.disc || 0);
+  handleRowChange(index, "netAmount", priceDetails.actualCost);
+  handleRowChange(index, "type", formData.type);
+  handleRowChange(index, "investigationIds", investigationIds);
+  setActiveRowIndex(null);
+}}
                                         >
                                           <div>
                                             <strong>{item.packName}</strong>
