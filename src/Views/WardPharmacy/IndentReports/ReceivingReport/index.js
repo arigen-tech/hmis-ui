@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import LoadingScreen from "../../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import Popup from "../../../../Components/popup";
+import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer"; // Import the PdfViewer component
+import { MAS_DRUG_MAS, ALL_REPORTS } from "../../../../config/apiConfig";
+import { getRequest } from "../../../../service/apiService";
 
 const ReceivingReport = () => {
     // State variables
@@ -9,6 +12,8 @@ const ReceivingReport = () => {
     const [toDate, setToDate] = useState("");
     const [itemName, setItemName] = useState("");
     const [selectedItem, setSelectedItem] = useState(null);
+    const [itemsList, setItemsList] = useState([]);
+    const [filteredItems, setFilteredItems] = useState([]);
     const [isItemDropdownVisible, setItemDropdownVisible] = useState(false);
     const [reportType, setReportType] = useState("itemwise");
     const [isGenerating, setIsGenerating] = useState(false);
@@ -17,24 +22,11 @@ const ReceivingReport = () => {
     const [popupMessage, setPopupMessage] = useState(null);
     const [generatedDate, setGeneratedDate] = useState("");
     const [reportRange, setReportRange] = useState("");
-
-    // Configuration
-    const MAX_MONTHS_BACK = 12;
-
-    // Mock data for items
-    const itemOptions = [
-        { id: 1, name: "Syringe 5ml", code: "SYR-5ML", uom: "Piece" },
-        { id: 2, name: "Paracetamol 500mg", code: "PAR-500", uom: "Tablet" },
-        { id: 3, name: "Gloves Surgical", code: "GLO-SUR", uom: "Pair" },
-        { id: 4, name: "Masks N95", code: "MSK-N95", uom: "Piece" },
-        { id: 5, name: "Bandage 10cm", code: "BND-10", uom: "Roll" },
-        { id: 6, name: "IV Cannula 18G", code: "IVC-18", uom: "Piece" },
-        { id: 7, name: "Alcohol Swab", code: "ALC-SWP", uom: "Packet" },
-        { id: 8, name: "Cotton Wool", code: "COT-WOL", uom: "Gram" },
-    ];
-
-    // Mock report data
-    const [reportData, setReportData] = useState([]);
+    const [isLoadingItems, setIsLoadingItems] = useState(false);
+    const [pdfUrl, setPdfUrl] = useState(null);
+    const [isPrinting, setIsPrinting] = useState(false);
+    const [searchTimeout, setSearchTimeout] = useState(null);
+    const [showPdfViewer, setShowPdfViewer] = useState(false);
 
     // Get today's date
     const getTodayDate = () => {
@@ -72,6 +64,58 @@ const ReceivingReport = () => {
             return dateString.split('T')[0];
         } catch (error) {
             return "";
+        }
+    };
+
+    // Format date for API (YYYY-MM-DD)
+    const formatDateForAPI = (dateString) => {
+        if (!dateString) return "";
+        try {
+            const date = new Date(dateString);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        } catch (error) {
+            console.error("Error formatting date:", error);
+            return dateString;
+        }
+    };
+
+    // Fetch all items for autocomplete
+    const fetchAllItems = async () => {
+        setIsLoadingItems(true);
+        try {
+            const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1`);
+            console.log("API Response:", response); // Debug log
+            
+            // Check different possible response structures
+            if (response && response.data) {
+                // If response has data property
+                const responseData = response.data;
+                if (responseData.success && responseData.data) {
+                    setItemsList(responseData.data || []);
+                } else if (Array.isArray(responseData)) {
+                    // If response.data is directly an array
+                    setItemsList(responseData || []);
+                } else if (responseData.response && Array.isArray(responseData.response)) {
+                    // If response has response property with array
+                    setItemsList(responseData.response || []);
+                }
+            } else if (Array.isArray(response)) {
+                // If response is directly an array
+                setItemsList(response || []);
+            } else if (response && response.response && Array.isArray(response.response)) {
+                // If response has response property
+                setItemsList(response.response || []);
+            }
+            
+            console.log("Items List:", itemsList); // Debug log
+        } catch (error) {
+            console.error("Error fetching items:", error);
+            showPopup("Failed to load items list", "error");
+        } finally {
+            setIsLoadingItems(false);
         }
     };
 
@@ -115,16 +159,56 @@ const ReceivingReport = () => {
         setToDate(selectedDate);
     };
 
-    // Handle item name change
+    // Handle item name change with debouncing
     const handleItemNameChange = (e) => {
-        setItemName(e.target.value);
-        setItemDropdownVisible(true);
+        const value = e.target.value;
+        setItemName(value);
+        
+        // Clear previous timeout
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+        
+        // Set new timeout for filtering
+        const timeout = setTimeout(() => {
+            if (value.trim()) {
+                const searchTerm = value.toLowerCase().trim();
+                const filtered = itemsList.filter(item => {
+                    // Check for different possible property names
+                    const name = item.nomenclature || item.itemName || item.name || "";
+                    const code = item.pvmsNo || item.itemCode || item.code || "";
+                    const category = item.masItemCategoryName || item.category || "";
+                    
+                    return (
+                        name.toLowerCase().includes(searchTerm) ||
+                        code.toLowerCase().includes(searchTerm) ||
+                        category.toLowerCase().includes(searchTerm)
+                    );
+                });
+                setFilteredItems(filtered);
+                setItemDropdownVisible(filtered.length > 0);
+            } else {
+                setFilteredItems([]);
+                setItemDropdownVisible(false);
+            }
+        }, 300);
+        
+        setSearchTimeout(timeout);
     };
 
     // Handle item selection
     const handleItemSelect = (item) => {
-        setItemName(item.name);
+        setItemName(item.nomenclature || item.itemName || item.name || "");
         setSelectedItem(item);
+        setItemDropdownVisible(false);
+        setFilteredItems([]);
+    };
+
+    // Clear search filter
+    const clearItemSearch = () => {
+        setItemName("");
+        setSelectedItem(null);
+        setFilteredItems([]);
         setItemDropdownVisible(false);
     };
 
@@ -140,7 +224,7 @@ const ReceivingReport = () => {
             return false;
         }
 
-        // For item-wise report, item name is mandatory
+        // For item-wise report, item selection is mandatory
         if (reportType === "itemwise" && !selectedItem) {
             showPopup("Please select an item for item-wise report", "error");
             return false;
@@ -149,91 +233,100 @@ const ReceivingReport = () => {
         return true;
     };
 
-    // Generate mock report data
-    const generateReportData = () => {
-        const mockData = [];
-
-        // Generate sample records
-        for (let i = 1; i <= 15; i++) {
-            const indentDate = new Date(2025, 0, i);
-            const receivedDate = new Date(2025, 0, i + 1);
-            
-            // For date-wise report, include different items
-            const itemIndex = i % itemOptions.length;
-            const item = itemOptions[itemIndex];
-
-            mockData.push({
-                indentNo: `IND-2025-00${i}`,
-                receivedDate: formatDateForDisplay(receivedDate.toISOString()),
-                indentDate: formatDateForDisplay(indentDate.toISOString()),
-                batchNo: `BATCH${String(i).padStart(3, '0')}`,
-                expiry: formatDateForDisplay(new Date(2026, 0, i).toISOString()),
-                brand: `Brand ${i}`,
-                manufacturer: `Manufacturer ${i}`,
-                qtyReq: Math.floor(Math.random() * 100) + 50,
-                issued: Math.floor(Math.random() * 100) + 40,
-                received: Math.floor(Math.random() * 90) + 30,
-                rejected: Math.floor(Math.random() * 10) + 1,
-                reason: i % 4 === 0 ? "Emergency Stock" : "Regular Replenishment",
-                // Add item name for date-wise report
-                itemName: item.name,
-                itemCode: item.code,
-                uom: item.uom
-            });
-        }
-
-        return mockData;
-    };
-
-    // Handle search
-    const handleSearch = () => {
+    // Generate report - View/Download
+    const generateReport = async (flag = "D") => {
         if (!validateForm()) {
             return;
         }
 
         setIsGenerating(true);
+        setPdfUrl(null);
+        setShowPdfViewer(false);
 
-        // Simulate API call
-        setTimeout(() => {
-            const mockData = generateReportData();
-            setReportData(mockData);
-            setGeneratedDate(new Date().toLocaleString());
-            setReportRange(`${formatDateForDisplay(fromDate)} to ${formatDateForDisplay(toDate)}`);
-            setShowReport(true);
+        try {
+            const formattedFromDate = formatDateForAPI(fromDate);
+            const formattedToDate = formatDateForAPI(toDate);
+            
+            let url = "";
+            let params = {
+                fromDate: formattedFromDate,
+                toDate: formattedToDate,
+                flag: flag
+            };
+
+            if (reportType === "itemwise") {
+                if (!selectedItem || !selectedItem.itemId) {
+                    showPopup("Please select a valid item", "error");
+                    setIsGenerating(false);
+                    return;
+                }
+                url = `${ALL_REPORTS}/itemWiseReceiving`;
+                params.itemId = selectedItem.itemId; // Use itemId from your response
+            } else {
+                url = `${ALL_REPORTS}/dateWiseReceiving`;
+            }
+
+            // Construct query string
+            const queryString = Object.keys(params)
+                .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+                .join('&');
+
+            const fullUrl = `${url}?${queryString}`;
+            console.log("API URL:", fullUrl); // Debug log
+
+            const response = await fetch(fullUrl, {
+                method: "GET",
+                headers: {
+                    Accept: "application/pdf",
+                },
+            });
+
+            if (flag === "D") {
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const fileURL = window.URL.createObjectURL(blob);
+                    setPdfUrl(fileURL);
+                    setShowPdfViewer(true); // Show the PDF viewer
+                    // showPopup("Report generated successfully!", "success");
+                } else {
+                    const errorText = await response.text();
+                    showPopup(`Failed to generate report: ${errorText}`, "error");
+                }
+            } else if (flag === "P") {
+                if (response.ok) {
+                    // showPopup("Report sent to printer successfully", "success");
+                } else {
+                    const errorText = await response.text();
+                    showPopup(`Failed to print report: ${errorText}`, "error");
+                }
+            }
+
+        } catch (error) {
+            console.error("Error generating report:", error);
+            showPopup("Failed to generate report. Please try again.", "error");
+        } finally {
             setIsGenerating(false);
-        }, 1000);
-    };
-
-    // Handle generate report
-    const handleGenerateReport = () => {
-        if (!showReport) {
-            showPopup("Please search first to generate report", "error");
-            return;
         }
-
-        setIsGenerating(true);
-        setTimeout(() => {
-            showPopup(`${reportType === "itemwise" ? "Item-wise" : "Date-wise"} Receiving Report generated successfully`, "success");
-            setIsGenerating(false);
-        }, 1000);
     };
 
-    // Handle view report
+    // Handle view report (PDF)
     const handleViewReport = () => {
-        if (!showReport) {
-            showPopup("Please search first to view report", "error");
-            return;
-        }
-        // In a real app, this would open the report in a new window or modal
-        showPopup("Report would be opened in a new window", "info");
+        generateReport("D");
+    };
+
+    // Handle print report
+    const handlePrintReport = () => {
+        generateReport("P");
     };
 
     // Handle reset
     const handleReset = () => {
         setItemName("");
         setSelectedItem(null);
+        setFilteredItems([]);
         setShowReport(false);
-        setReportData([]);
+        setPdfUrl(null);
+        setShowPdfViewer(false);
         setCurrentPage(1);
         
         // Reset dates to default (last 30 days)
@@ -245,7 +338,17 @@ const ReceivingReport = () => {
         setToDate(today);
     };
 
-    // Initialize dates
+    // Close PDF viewer
+    const handleClosePdf = () => {
+        setShowPdfViewer(false);
+        setPdfUrl(null);
+        // Clean up the blob URL to prevent memory leaks
+        if (pdfUrl) {
+            window.URL.revokeObjectURL(pdfUrl);
+        }
+    };
+
+    // Initialize dates and fetch items
     useEffect(() => {
         const today = getTodayDate();
         const defaultFromDate = new Date();
@@ -253,23 +356,44 @@ const ReceivingReport = () => {
         
         setFromDate(formatDateForInput(defaultFromDate.toISOString()));
         setToDate(today);
+        
+        // Fetch items for autocomplete
+        fetchAllItems();
+        
+        // Cleanup timeout
+        return () => {
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+        };
     }, []);
 
     // Reset when report type changes
     useEffect(() => {
         setCurrentPage(1);
         setShowReport(false);
-        setReportData([]);
+        setPdfUrl(null);
+        setShowPdfViewer(false);
         if (reportType === "datewise") {
             setItemName("");
             setSelectedItem(null);
+            setFilteredItems([]);
         }
     }, [reportType]);
 
-    // Calculate pagination
+    // Clean up blob URL on component unmount
+    useEffect(() => {
+        return () => {
+            if (pdfUrl) {
+                window.URL.revokeObjectURL(pdfUrl);
+            }
+        };
+    }, [pdfUrl]);
+
+    // Calculate pagination (if you have table data in the future)
     const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
     const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    const currentItems = reportData.slice(indexOfFirst, indexOfLast);
+    // const currentItems = reportData.slice(indexOfFirst, indexOfLast);
 
     return (
         <div className="content-wrapper">
@@ -315,46 +439,107 @@ const ReceivingReport = () => {
 
                                 {/* Item Name (Autocomplete) - Only for item-wise */}
                                 {reportType === "itemwise" && (
-                                    <div className="col-md-4 position-relative">
+                                    <div className="col-md-6 position-relative">
                                         <label className="form-label fw-bold">
                                             Item Name <span className="text-danger">*</span>
                                         </label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            placeholder="Search Item Name"
-                                            value={itemName}
-                                            onChange={handleItemNameChange}
-                                            onFocus={() => setItemDropdownVisible(true)}
-                                            onBlur={() => setTimeout(() => setItemDropdownVisible(false), 200)}
-                                            autoComplete="off"
-                                            required
-                                        />
-                                        {isItemDropdownVisible && itemName && (
-                                            <ul className="list-group position-absolute w-100 mt-1" style={{ zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
-                                                {itemOptions
-                                                    .filter((item) => item.name.toLowerCase().includes(itemName.toLowerCase()))
-                                                    .map((item) => (
-                                                        <li
-                                                            key={item.id}
-                                                            className="list-group-item list-group-item-action"
-                                                            onClick={() => handleItemSelect(item)}
-                                                            style={{ cursor: 'pointer' }}
-                                                        >
-                                                            <div>
-                                                                <strong>{item.name}</strong>
-                                                                <small className="text-muted ms-2">({item.code})</small>
-                                                            </div>
-                                                            <small className="text-muted">UOM: {item.uom}</small>
-                                                        </li>
-                                                    ))}
+                                        <div className="input-group">
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="Search by Item Name, PVMS No, or Category"
+                                                value={itemName}
+                                                onChange={handleItemNameChange}
+                                                onFocus={() => {
+                                                    if (itemName && filteredItems.length > 0) {
+                                                        setItemDropdownVisible(true);
+                                                    }
+                                                }}
+                                                onBlur={() => setTimeout(() => setItemDropdownVisible(false), 200)}
+                                                autoComplete="off"
+                                                required
+                                                disabled={isLoadingItems}
+                                            />
+                                            {itemName && (
+                                                <button
+                                                    className="btn btn-outline-secondary"
+                                                    type="button"
+                                                    onClick={clearItemSearch}
+                                                >
+                                                    <i className="fa fa-times"></i>
+                                                </button>
+                                            )}
+                                            {isLoadingItems && (
+                                                <span className="input-group-text">
+                                                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                                </span>
+                                            )}
+                                        </div>
+                                        
+                                        {isItemDropdownVisible && filteredItems.length > 0 && (
+                                            <ul className="list-group position-absolute w-100 mt-1" style={{ zIndex: 1000, maxHeight: '250px', overflowY: 'auto' }}>
+                                                {filteredItems.map((item) => (
+                                                    <li
+                                                        key={item.itemId || item.id}
+                                                        className="list-group-item list-group-item-action"
+                                                        onClick={() => handleItemSelect(item)}
+                                                        style={{ cursor: 'pointer' }}
+                                                    >
+                                                        <div>
+                                                            <strong>{item.nomenclature || item.itemName || item.name || "Unnamed Item"}</strong>
+                                                            <small className="text-muted ms-2">
+                                                                (PVMS: {item.pvmsNo || item.itemCode || "N/A"})
+                                                            </small>
+                                                        </div>
+                                                        <div className="d-flex justify-content-between mt-1">
+                                                            <small className="text-muted">
+                                                                ID: {item.itemId || item.id}
+                                                            </small>
+                                                            <small className="text-muted">
+                                                                Category: {item.masItemCategoryName || item.sectionName || "N/A"}
+                                                            </small>
+                                                        </div>
+                                                        <small className="text-muted d-block">
+                                                            Unit: {item.unitAuName || item.uom || "N/A"}
+                                                        </small>
+                                                    </li>
+                                                ))}
                                             </ul>
+                                        )}
+                                        
+                                        {isItemDropdownVisible && itemName && filteredItems.length === 0 && !isLoadingItems && (
+                                            <div className="position-absolute w-100 mt-1 border bg-white p-2" style={{ zIndex: 1000 }}>
+                                                <small className="text-muted">No items found matching "{itemName}"</small>
+                                            </div>
+                                        )}
+                                        
+                                        {selectedItem && (
+                                            <div className="alert alert-success mt-2 py-2">
+                                                <small className="d-block">
+                                                    <strong>Selected Item:</strong> {selectedItem.nomenclature || selectedItem.itemName || selectedItem.name}
+                                                </small>
+                                                <small className="d-block">
+                                                    <strong>PVMS No:</strong> {selectedItem.pvmsNo || selectedItem.itemCode}
+                                                </small>
+                                                <small className="d-block">
+                                                    <strong>Category:</strong> {selectedItem.masItemCategoryName || selectedItem.sectionName}
+                                                </small>
+                                            </div>
+                                        )}
+                                        
+                                        {isLoadingItems && (
+                                            <div className="mt-1">
+                                                <small className="text-info">
+                                                    <i className="fa fa-spinner fa-spin me-1"></i>
+                                                    Loading items...
+                                                </small>
+                                            </div>
                                         )}
                                     </div>
                                 )}
 
                                 {/* Date Range */}
-                                <div className="col-md-4">
+                                <div className={reportType === "itemwise" ? "col-md-3" : "col-md-4"}>
                                     <label className="form-label fw-bold">
                                         From Date <span className="text-danger">*</span>
                                     </label>
@@ -368,7 +553,7 @@ const ReceivingReport = () => {
                                     />
                                 </div>
 
-                                <div className="col-md-4">
+                                <div className={reportType === "itemwise" ? "col-md-3" : "col-md-4"}>
                                     <label className="form-label fw-bold">
                                         To Date <span className="text-danger">*</span>
                                     </label>
@@ -386,46 +571,35 @@ const ReceivingReport = () => {
                             {/* Action Buttons */}
                             <div className="row">
                                 <div className="col-12 d-flex justify-content-between gap-2">
-                                    <div>
-                                        <button 
-                                            className="btn btn-success"
-                                            onClick={handleSearch}
-                                            disabled={isGenerating}
-                                        >
-                                            {isGenerating ? (
-                                                <>
-                                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                                    Searching...
-                                                </>
-                                            ) : (
-                                                "Search"
-                                            )}
-                                        </button>
-                                    </div>
 
                                     <div className="d-flex gap-2">
                                         <button
                                             type="button"
                                             className="btn btn-success"
                                             onClick={handleViewReport}
-                                            disabled={!showReport || isGenerating}
+                                            disabled={isGenerating || isLoadingItems}
                                         >
-                                            View Report
+                                            {isGenerating ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                    Generating...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="fa fa-eye me-2"></i>
+                                                    View/Download PDF
+                                                </>
+                                            )}
                                         </button>
 
                                         <button
                                             type="button"
-                                            className="btn btn-primary"
-                                        >
-                                            Print Report
-                                        </button>
-                                        <button
-                                            type="button"
                                             className="btn btn-warning"
-                                            onClick={handleReset}
-                                            disabled={isGenerating}
+                                            onClick={handlePrintReport}
+                                            disabled={isGenerating || isLoadingItems}
                                         >
-                                            Reset
+                                            <i className="fa fa-print me-2"></i>
+                                            Print Report
                                         </button>
                                     </div>
                                 </div>
@@ -434,88 +608,18 @@ const ReceivingReport = () => {
                             {isGenerating && (
                                 <div className="text-center py-4">
                                     <LoadingScreen />
+                                    <p className="mt-2">Generating report...</p>
                                 </div>
                             )}
 
-                            {showReport && !isGenerating && reportData.length > 0 && (
-                                <div className="row mt-4">
-                                    <div className="col-12">
-                                        <div className="card">
-                                            <div className="card-header">
-                                                <div className="d-flex justify-content-between align-items-center">
-                                                    <h5 className="card-title mb-0">
-                                                        {reportType === "itemwise" ? "ITEM-WISE" : "DATE-WISE"}
-                                                    </h5>
-                                                   
-                                                </div>
-                                            </div>
-
-                                            <div className="card-body">
-                                                <div className="table-responsive">
-                                                    <table className="table table-bordered table-hover">
-                                                        <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
-                                                            <tr>
-                                                                <th>Indent No</th>
-                                                                <th>Received Date</th>
-                                                                <th>Indent Date</th>
-                                                                {reportType === "datewise" && <th>Item Name</th>}
-                                                                <th>Batch No</th>
-                                                                <th>Expiry</th>
-                                                                <th>Brand</th>
-                                                                <th>Manufacturer</th>
-                                                                <th style={{ textAlign: "right" }}>Qty Req</th>
-                                                                <th style={{ textAlign: "right" }}>Issued</th>
-                                                                <th style={{ textAlign: "right" }}>Received</th>
-                                                                <th style={{ textAlign: "right" }}>Rejected</th>
-                                                                <th>Reason</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {currentItems.map((row, index) => (
-                                                                <tr key={index}>
-                                                                    <td>{row.indentNo}</td>
-                                                                    <td>{row.receivedDate}</td>
-                                                                    <td>{row.indentDate}</td>
-                                                                    {reportType === "datewise" && <td>{row.itemName}</td>}
-                                                                    <td>{row.batchNo}</td>
-                                                                    <td>{row.expiry}</td>
-                                                                    <td>{row.brand}</td>
-                                                                    <td>{row.manufacturer}</td>
-                                                                    <td style={{ textAlign: "right" }}>{row.qtyReq}</td>
-                                                                    <td style={{ textAlign: "right" }}>{row.issued}</td>
-                                                                    <td style={{ textAlign: "right" }}>{row.received}</td>
-                                                                    <td style={{ textAlign: "right" }}>{row.rejected}</td>
-                                                                    <td>{row.reason}</td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-
-                                                {/* PAGINATION */}
-                                                {reportData.length > DEFAULT_ITEMS_PER_PAGE && (
-                                                    <Pagination
-                                                        totalItems={reportData.length}
-                                                        itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                                        currentPage={currentPage}
-                                                        onPageChange={setCurrentPage}
-                                                    />
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {showReport && !isGenerating && reportData.length === 0 && (
-                                <div className="row mt-4">
-                                    <div className="col-12">
-                                        <div className="alert alert-info">
-                                            No receiving records found for the selected criteria.
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                            {/* Debug info - Remove in production */}
+                            <div className="mt-3" style={{ display: 'none' }}>
+                                <small className="text-muted">
+                                    Items loaded: {itemsList.length} | 
+                                    Filtered: {filteredItems.length} | 
+                                    Selected: {selectedItem ? "Yes" : "No"}
+                                </small>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -527,6 +631,15 @@ const ReceivingReport = () => {
                     message={popupMessage.message}
                     type={popupMessage.type}
                     onClose={popupMessage.onClose}
+                />
+            )}
+
+            {/* PDF Viewer - Using the same component as LabPaymentSuccess */}
+            {showPdfViewer && pdfUrl && (
+                <PdfViewer
+                    pdfUrl={pdfUrl}
+                    onClose={handleClosePdf}
+                    name={`${reportType === "itemwise" ? "Item-wise" : "Date-wise"} Receiving Report  `}
                 />
             )}
         </div>
