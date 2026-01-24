@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import { MAS_SERVICE_CATEGORY } from "../../../config/apiConfig";
+import { MAS_SERVICE_CATEGORY, POLICY_API } from "../../../config/apiConfig";
 import { getRequest } from "../../../service/apiService";
-import {APPOINTMENT_NOT_FOUND_ERR_MSG, ERROR, MISSING_MANDOTORY_FIELD, MISSING_MANDOTORY_FIELD_MSG} from "../../../config/constants"
+import {
+  APPOINTMENT_NOT_FOUND_ERR_MSG,
+  ERROR,
+  MISSING_MANDOTORY_FIELD,
+  MISSING_MANDOTORY_FIELD_MSG,
+} from "../../../config/constants";
 
 const OPDBillingDetails = () => {
   const navigate = useNavigate();
@@ -12,6 +17,14 @@ const OPDBillingDetails = () => {
   const [gstConfig, setGstConfig] = useState({
     gstApplicable: false,
     gstPercent: 0,
+  });
+
+  const [policyInfo, setPolicyInfo] = useState({
+    policyName: "",
+    policyType: "",
+    eligibility: "",
+    discountApplied: "",
+    remarks: "",
   });
 
   const [formData, setFormData] = useState({
@@ -27,10 +40,12 @@ const OPDBillingDetails = () => {
     address: "",
     registrationCost: 0,
     billingHeaderIds: [],
+    billingPolicyId: "",
   });
 
   const [appointments, setAppointments] = useState([]);
   const [isFormValid, setIsFormValid] = useState(false);
+  const [appointmentPolicies, setAppointmentPolicies] = useState({});
 
   async function fetchGstConfiguration(optionalCategoryId) {
     try {
@@ -97,16 +112,16 @@ const OPDBillingDetails = () => {
 
     const topLevelRegCost = Number(data.registrationCost || 0);
 
-    // Build appointments array
-    const incomingAppointments = Array.isArray(data.appointments) && data.appointments.length > 0
-      ? data.appointments
-      : [];
+    const incomingAppointments =
+      Array.isArray(data.appointments) && data.appointments.length > 0
+        ? data.appointments
+        : [];
 
     // Get details array
     const details = Array.isArray(data.details) ? data.details : [];
 
     if (incomingAppointments.length === 0) {
-      Swal.fire(ERROR,APPOINTMENT_NOT_FOUND_ERR_MSG, "error");
+      Swal.fire(ERROR, APPOINTMENT_NOT_FOUND_ERR_MSG, "error");
       navigate("/PendingForBilling");
       return;
     }
@@ -119,17 +134,20 @@ const OPDBillingDetails = () => {
       const discount = Number(detail?.discount || 0);
       const taxAmount = Number(detail?.taxAmount || 0);
       const detailNetAmount = Number(detail?.netAmount || 0);
-      
+
       // Calculate registration cost: only for "New" visits
       let registrationCost = 0;
       if (visitType === "New") {
         if (incomingAppointments.length === 1) {
           registrationCost = topLevelRegCost;
         } else {
-          const newAppointmentsCount = incomingAppointments.filter(a => 
-            normalizeVisitType(a.visitType) === "New"
+          const newAppointmentsCount = incomingAppointments.filter(
+            (a) => normalizeVisitType(a.visitType) === "New",
           ).length;
-          registrationCost = newAppointmentsCount > 0 ? topLevelRegCost / newAppointmentsCount : 0;
+          registrationCost =
+            newAppointmentsCount > 0
+              ? topLevelRegCost / newAppointmentsCount
+              : 0;
         }
       }
 
@@ -157,12 +175,15 @@ const OPDBillingDetails = () => {
         netAmount, // totalAmount + registrationCost
 
         rawDetail: detail,
+
+        billingPolicyId: appt.billingPolicyId,
+        policyInfo: null,
+        isPolicyLoading: false,
       };
     });
 
     setAppointments(processedAppointments);
-
-    // Set patient form data
+    console.log(data);
     setFormData({
       patientName: data.patientName || "",
       mobileNo: data.mobileNo || "",
@@ -172,13 +193,96 @@ const OPDBillingDetails = () => {
       patientId: data.patientid || "",
       address: data.address || "",
       billingType: data.billingType || "Consultation Services",
-      billingHeaderIds: Array.isArray(data.billingHeaderIds) 
-        ? data.billingHeaderIds 
+      billingHeaderIds: Array.isArray(data.billingHeaderIds)
+        ? data.billingHeaderIds
         : [data.billingHdId || data.billinghdid].filter(Boolean),
       registrationCost: topLevelRegCost,
       patientUhid: data.patientUhid || "",
+      billingPolicyId: data.billingPolicyId,
+    });
+
+    processedAppointments.forEach((appointment, index) => {
+      if (appointment.billingPolicyId) {
+        fetchPolicyForAppointment(appointment.billingPolicyId, index);
+      }
     });
   }, [location.state, navigate]);
+
+  async function fetchPolicyForAppointment(policyId, appointmentIndex) {
+    try {
+      // Set loading state for this appointment
+      setAppointments((prev) =>
+        prev.map((appt, idx) =>
+          idx === appointmentIndex ? { ...appt, isPolicyLoading: true } : appt,
+        ),
+      );
+
+      const url = `${POLICY_API}/getById/${policyId}`;
+      const data = await getRequest(url);
+
+      if (data && data.status === 200) {
+        let policyData;
+
+        if (Array.isArray(data.response)) {
+          policyData = data.response[0] || data.response[1] || data.response;
+        } else if (typeof data.response === "object") {
+          policyData = data.response;
+        }
+
+        if (policyData) {
+          const policyInfo = {
+            policyName: policyData.policyCode || policyData.policyName || "N/A",
+            policyType:
+              policyData.applicableBillingType ||
+              policyData.policyType ||
+              "N/A",
+            eligibility:
+              policyData.followupDaysAllowed ||
+              policyData.eligibilityDays ||
+              "N/A",
+            discountApplied: policyData.discountPercentage
+              ? `${policyData.discountPercentage}%`
+              : policyData.discount || "0%",
+            remarks:
+              policyData.description || policyData.remarks || "No remarks",
+          };
+
+          // Update the specific appointment with policy info
+          setAppointments((prev) =>
+            prev.map((appt, idx) =>
+              idx === appointmentIndex
+                ? { ...appt, policyInfo, isPolicyLoading: false }
+                : appt,
+            ),
+          );
+        }
+      }
+    } catch (error) {
+      console.error(
+        `Error fetching policy for appointment ${appointmentIndex}:`,
+        error,
+      );
+
+      // Set error state for this appointment
+      setAppointments((prev) =>
+        prev.map((appt, idx) =>
+          idx === appointmentIndex
+            ? {
+                ...appt,
+                policyInfo: {
+                  policyName: "Error Loading Policy",
+                  policyType: "N/A",
+                  eligibility: "N/A",
+                  discountApplied: "0%",
+                  remarks: "Failed to load policy data",
+                },
+                isPolicyLoading: false,
+              }
+            : appt,
+        ),
+      );
+    }
+  }
 
   useEffect(() => {
     if (!appointments || appointments.length === 0 || !gstConfig) return;
@@ -189,11 +293,14 @@ const OPDBillingDetails = () => {
       const base = Number(appt.basePrice || 0);
       const discount = Number(appt.discount || 0);
       const taxFromDetail = appt.rawDetail?.taxAmount;
-      const gstAmount = (taxFromDetail !== undefined && taxFromDetail !== null && taxFromDetail > 0) 
-        ? Number(taxFromDetail) 
-        : (base * gstPercent) / 100;
+      const gstAmount =
+        taxFromDetail !== undefined &&
+        taxFromDetail !== null &&
+        taxFromDetail > 0
+          ? Number(taxFromDetail)
+          : 0;
       const reg = Number(appt.registrationCost || 0);
-      
+
       // Calculate total amount: base - discount + GST
       const totalAmount = Math.max(0, base - discount + gstAmount);
       // Calculate net amount: total + registration
@@ -215,8 +322,9 @@ const OPDBillingDetails = () => {
 
   useEffect(() => {
     const hasPatient = !!formData.patientName && !!formData.mobileNo;
-    const hasValidAppointments = appointments.length > 0 &&
-      appointments.every(a => a.visitDate && a.consultedDoctor);
+    const hasValidAppointments =
+      appointments.length > 0 &&
+      appointments.every((a) => a.visitDate && a.consultedDoctor);
     setIsFormValid(hasPatient && hasValidAppointments);
   }, [formData.patientName, formData.mobileNo, appointments]);
 
@@ -225,25 +333,59 @@ const OPDBillingDetails = () => {
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
+  const getEligibilityDisplay = (eligibilityValue) => {
+    if (!eligibilityValue && eligibilityValue !== 0) return "N/A";
+    const strValue = String(eligibilityValue).trim();
+    if (!isNaN(strValue) && strValue !== "") {
+      const numValue = Number(strValue);
+
+      if (Number.isInteger(numValue)) {
+        return `${numValue} Day${numValue !== 1 ? "s" : ""}`;
+      } else {
+        return `${numValue.toFixed(1)} Days`;
+      }
+    }
+    return strValue || "N/A";
+  };
+
   const handleSave = (e) => {
     e.preventDefault();
 
     if (!isFormValid) {
-      Swal.fire(MISSING_MANDOTORY_FIELD, MISSING_MANDOTORY_FIELD_MSG, "warning");
+      Swal.fire(
+        MISSING_MANDOTORY_FIELD,
+        MISSING_MANDOTORY_FIELD_MSG,
+        "warning",
+      );
       return;
     }
 
     // Calculate NET TOTAL (sum of all netAmount)
-    const netTotal = appointments.reduce((sum, a) => sum + Number(a.netAmount || 0), 0);
+    const netTotal = appointments.reduce(
+      (sum, a) => sum + Number(a.netAmount || 0),
+      0,
+    );
 
     // Calculate other totals for display
-    const totalBasePrice = appointments.reduce((sum, a) => sum + Number(a.basePrice || 0), 0);
-    const totalDiscount = appointments.reduce((sum, a) => sum + Number(a.discount || 0), 0);
-    const totalGST = appointments.reduce((sum, a) => sum + Number(a.gst || 0), 0);
-    const totalRegistration = appointments.reduce((sum, a) => sum + Number(a.registrationCost || 0), 0);
+    const totalBasePrice = appointments.reduce(
+      (sum, a) => sum + Number(a.basePrice || 0),
+      0,
+    );
+    const totalDiscount = appointments.reduce(
+      (sum, a) => sum + Number(a.discount || 0),
+      0,
+    );
+    const totalGST = appointments.reduce(
+      (sum, a) => sum + Number(a.gst || 0),
+      0,
+    );
+    const totalRegistration = appointments.reduce(
+      (sum, a) => sum + Number(a.registrationCost || 0),
+      0,
+    );
 
     Swal.fire({
-      title: 'Confirm Payment',
+      title: "Confirm Payment",
       html: `
         <div style="text-align: left;">
           <p><strong>Patient:</strong> ${formData.patientName}</p>
@@ -278,12 +420,12 @@ const OPDBillingDetails = () => {
           <p><small>Appointments: ${appointments.length}</small></p>
         </div>
       `,
-      icon: 'info',
+      icon: "info",
       showCancelButton: true,
       confirmButtonText: `Pay ₹${netTotal.toFixed(2)}`,
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#28a745',
-      width: '450px'
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#28a745",
+      width: "450px",
     }).then((result) => {
       if (result.isConfirmed) {
         navigate("/payment", {
@@ -292,7 +434,7 @@ const OPDBillingDetails = () => {
             amount: netTotal,
             patientId: formData.patientId,
             billingHeaderIds: formData.billingHeaderIds,
-            registrationCost:formData.registrationCost,
+            registrationCost: formData.registrationCost,
             opdData: {
               patient: formData,
               appointments,
@@ -309,12 +451,27 @@ const OPDBillingDetails = () => {
   };
 
   // Calculate totals for display
-  const totalBasePrice = appointments.reduce((sum, a) => sum + Number(a.basePrice || 0), 0);
-  const totalDiscount = appointments.reduce((sum, a) => sum + Number(a.discount || 0), 0);
+  const totalBasePrice = appointments.reduce(
+    (sum, a) => sum + Number(a.basePrice || 0),
+    0,
+  );
+  const totalDiscount = appointments.reduce(
+    (sum, a) => sum + Number(a.discount || 0),
+    0,
+  );
   const totalGST = appointments.reduce((sum, a) => sum + Number(a.gst || 0), 0);
-  const totalRegistration = appointments.reduce((sum, a) => sum + Number(a.registrationCost || 0), 0);
-  const totalAmount = appointments.reduce((sum, a) => sum + Number(a.totalAmount || 0), 0);
-  const grandTotal = appointments.reduce((sum, a) => sum + Number(a.netAmount || 0), 0);
+  const totalRegistration = appointments.reduce(
+    (sum, a) => sum + Number(a.registrationCost || 0),
+    0,
+  );
+  const totalAmount = appointments.reduce(
+    (sum, a) => sum + Number(a.totalAmount || 0),
+    0,
+  );
+  const grandTotal = appointments.reduce(
+    (sum, a) => sum + Number(a.netAmount || 0),
+    0,
+  );
 
   return (
     <div className="content-wrapper">
@@ -323,7 +480,11 @@ const OPDBillingDetails = () => {
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">OPD Billing Details</h4>
-              <button type="button" className="btn btn-secondary" onClick={handleBack}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleBack}
+              >
                 <i className="mdi mdi-arrow-left"></i> Back to Pending List
               </button>
             </div>
@@ -334,12 +495,16 @@ const OPDBillingDetails = () => {
                 <div className="col-12 mt-4">
                   <div className="card">
                     <div className="card-header  ">
-                      <h5 className="mb-0"><i className="mdi mdi-account"></i> Patient Details</h5>
+                      <h5 className="mb-0">
+                        <i className="mdi mdi-account"></i> Patient Details
+                      </h5>
                     </div>
                     <div className="card-body">
                       <div className="row">
                         <div className="form-group col-md-4 mt-3">
-                          <label>Patient Name <span className="text-danger">*</span></label>
+                          <label>
+                            Patient Name <span className="text-danger">*</span>
+                          </label>
                           <input
                             type="text"
                             className="form-control"
@@ -349,7 +514,9 @@ const OPDBillingDetails = () => {
                           />
                         </div>
                         <div className="form-group col-md-4 mt-3">
-                          <label>Mobile No. <span className="text-danger">*</span></label>
+                          <label>
+                            Mobile No. <span className="text-danger">*</span>
+                          </label>
                           <input
                             type="text"
                             className="form-control"
@@ -370,19 +537,43 @@ const OPDBillingDetails = () => {
                         </div>
                         <div className="form-group col-md-4 mt-3">
                           <label>Sex</label>
-                          <input type="text" className="form-control" id="sex" value={formData.sex} readOnly />
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="sex"
+                            value={formData.sex}
+                            readOnly
+                          />
                         </div>
                         <div className="form-group col-md-4 mt-3">
                           <label>Relation</label>
-                          <input type="text" className="form-control" id="relation" value={formData.relation} readOnly />
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="relation"
+                            value={formData.relation}
+                            readOnly
+                          />
                         </div>
                         <div className="form-group col-md-4 mt-3">
                           <label>Patient ID</label>
-                          <input type="text" className="form-control" id="patientId" value={formData.patientUhid} readOnly />
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="patientId"
+                            value={formData.patientUhid}
+                            readOnly
+                          />
                         </div>
                         <div className="form-group col-md-12 mt-3">
                           <label>Address</label>
-                          <textarea className="form-control" id="address" value={formData.address} rows="2" readOnly />
+                          <textarea
+                            className="form-control"
+                            id="address"
+                            value={formData.address}
+                            rows="2"
+                            readOnly
+                          />
                         </div>
                       </div>
                     </div>
@@ -391,48 +582,94 @@ const OPDBillingDetails = () => {
 
                 {/* Appointments */}
                 {appointments.map((appointment, index) => (
-                  <div className="col-12 mt-4" key={appointment.visitId || index}>
+                  <div
+                    className="col-12 mt-4"
+                    key={appointment.visitId || index}
+                  >
                     <div className="card">
                       <div className="card-header   d-flex justify-content-between align-items-center">
                         <h5 className="mb-0">
-                          <i className="mdi mdi-hospital-building"></i> OPD Visit
+                          <i className="mdi mdi-hospital-building"></i> OPD
+                          Visit
                           {appointments.length > 1 ? ` ${index + 1}` : ""}
-                          <span className="badge bg-primary ms-2">{appointment.visitType}</span>
+                          <span className="badge bg-primary ms-2">
+                            {appointment.visitType}
+                          </span>
                         </h5>
                       </div>
                       <div className="card-body">
                         <div className="row">
                           <div className="form-group col-md-3 mt-3">
                             <label>Visit Date</label>
-                            <input type="text" className="form-control" value={formatDateDDMMYYYY(appointment.visitDate)} readOnly />
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={formatDateDDMMYYYY(appointment.visitDate)}
+                              readOnly
+                            />
                           </div>
                           <div className="form-group col-md-3 mt-3">
                             <label>Doctor Name</label>
-                            <input type="text" className="form-control" value={appointment.consultedDoctor} readOnly />
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={appointment.consultedDoctor}
+                              readOnly
+                            />
                           </div>
                           <div className="form-group col-md-3 mt-3">
                             <label>Department</label>
-                            <input type="text" className="form-control" value={appointment.department} readOnly />
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={appointment.department}
+                              readOnly
+                            />
                           </div>
                           <div className="form-group col-md-3 mt-3">
                             <label>OPD Session</label>
-                            <input type="text" className="form-control" value={appointment.sessionName} readOnly />
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={appointment.sessionName}
+                              readOnly
+                            />
                           </div>
                           <div className="form-group col-md-3 mt-3">
                             <label>Visit Type</label>
-                            <input type="text" className="form-control" value={appointment.visitType} readOnly />
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={appointment.visitType}
+                              readOnly
+                            />
                           </div>
                           <div className="form-group col-md-3 mt-3">
                             <label>Token No</label>
-                            <input type="text" className="form-control" value={appointment.tokenNo || "N/A"} readOnly />
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={appointment.tokenNo || "N/A"}
+                              readOnly
+                            />
                           </div>
                           <div className="form-group col-md-3 mt-3">
                             <label>Room</label>
-                            <input type="text" className="form-control" value={appointment.room || "N/A"} readOnly />
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={appointment.room || "N/A"}
+                              readOnly
+                            />
                           </div>
                           <div className="form-group col-md-3 mt-3">
                             <label>Tariff Plan</label>
-                            <input type="text" className="form-control" value={appointment.tariffPlan} readOnly />
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={appointment.tariffPlan}
+                              readOnly
+                            />
                           </div>
                         </div>
                       </div>
@@ -441,9 +678,82 @@ const OPDBillingDetails = () => {
                     {/* Billing for this appointment */}
                     <div className="card mt-2">
                       <div className="card-header  ">
-                        <h5 className="mb-0"><i className="mdi mdi-currency-inr"></i> Billing Details</h5>
+                        <h5 className="mb-0">
+                          <i className="mdi mdi-currency-inr"></i> Billing
+                          Policies and Details
+                        </h5>
                       </div>
                       <div className="card-body">
+                        {appointment.isPolicyLoading ? (
+                          <div className="text-center py-3">
+                            <div
+                              className="spinner-border text-primary"
+                              role="status"
+                            >
+                              <span className="visually-hidden">
+                                Loading policy...
+                              </span>
+                            </div>
+                            <p className="mt-2">Loading policy details...</p>
+                          </div>
+                        ) : appointment.policyInfo ? (
+                          <>
+                            <div className="row">
+                              <div className="form-group col-md-4 mt-3">
+                                <label>Policy Name</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={appointment.policyInfo.policyName}
+                                  readOnly
+                                />
+                              </div>
+                              <div className="form-group col-md-4 mt-3">
+                                <label>Policy Type</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={appointment.policyInfo.policyType}
+                                  readOnly
+                                />
+                              </div>
+                              <div className="form-group col-md-4 mt-3">
+                                <label>Eligibility</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={getEligibilityDisplay(
+                                    appointment.policyInfo.eligibility,
+                                  )}
+                                  readOnly
+                                />
+                              </div>
+                              <div className="form-group col-md-4 mt-3">
+                                <label>Discount Applied</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={appointment.policyInfo.discountApplied}
+                                  readOnly
+                                />
+                              </div>
+                              <div className="form-group col-md-8 mt-3">
+                                <label>Remarks</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={appointment.policyInfo.remarks}
+                                  readOnly
+                                />
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="alert alert-warning">
+                            <i className="mdi mdi-alert"></i> No policy
+                            information available
+                          </div>
+                        )}
                         <div className="row">
                           <div className="form-group col-md-2 mt-3">
                             <label>Base Price</label>
@@ -491,7 +801,9 @@ const OPDBillingDetails = () => {
                             />
                           </div>
                           <div className="form-group col-md-2 mt-3">
-                            <label><strong>Net Amount</strong></label>
+                            <label>
+                              <strong>Net Amount</strong>
+                            </label>
                             <input
                               type="number"
                               className="form-control  "
@@ -509,7 +821,10 @@ const OPDBillingDetails = () => {
                 <div className="col-12 mt-4">
                   <div className="card border-primary">
                     <div className="card-header bg-primary text-white">
-                      <h5 className="mb-0"><i className="mdi mdi-calculator"></i> Grand Total Summary</h5>
+                      <h5 className="mb-0">
+                        <i className="mdi mdi-calculator"></i> Grand Total
+                        Summary
+                      </h5>
                     </div>
                     <div className="card-body">
                       <div className="row">
@@ -531,11 +846,15 @@ const OPDBillingDetails = () => {
                         </div>
                         <div className="col-md-2">
                           <strong>Registration Cost:</strong>
-                          <p className="mb-0">₹{totalRegistration.toFixed(2)}</p>
+                          <p className="mb-0">
+                            ₹{totalRegistration.toFixed(2)}
+                          </p>
                         </div>
                         <div className="col-md-2">
                           <strong className="text-primary">NET AMOUNT:</strong>
-                          <h4 className="mb-0 text-primary">₹{grandTotal.toFixed(2)}</h4>
+                          <h4 className="mb-0 text-primary">
+                            ₹{grandTotal.toFixed(2)}
+                          </h4>
                         </div>
                       </div>
                     </div>
@@ -544,15 +863,20 @@ const OPDBillingDetails = () => {
 
                 {/* Action Buttons */}
                 <div className="form-group col-md-12 d-flex justify-content-end mt-4">
-                  <button 
-                    type="submit" 
-                    className="btn btn-primary me-2" 
+                  <button
+                    type="submit"
+                    className="btn btn-primary me-2"
                     disabled={!isFormValid}
-                    style={{ minWidth: '200px' }}
+                    style={{ minWidth: "200px" }}
                   >
-                    <i className="mdi mdi-cash"></i> Pay Now - ₹{grandTotal.toFixed(2)}
+                    <i className="mdi mdi-cash"></i> Pay Now - ₹
+                    {grandTotal.toFixed(2)}
                   </button>
-                  <button type="button" className="btn btn-danger" onClick={handleBack}>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    onClick={handleBack}
+                  >
                     <i className="mdi mdi-close"></i> Cancel
                   </button>
                 </div>

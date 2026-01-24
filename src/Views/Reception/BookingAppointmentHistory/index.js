@@ -2,7 +2,9 @@ import { useEffect, useState, useCallback } from "react";
 import Swal from "sweetalert2";
 import DatePicker from "../../../Components/DatePicker";
 import LoadingScreen from "../../../Components/Loading";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import Pagination, {
+  DEFAULT_ITEMS_PER_PAGE,
+} from "../../../Components/Pagination";
 import Popup from "../../../Components/popup";
 import {
   GET_ALL_REASONS,
@@ -14,20 +16,43 @@ import {
   RESCHEDULE_APPOINTMENT,
 } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
-import { CANCELLATION_ERROR, CANCELLATION_SUCCESS, CONFIRM_CANCELLATION_TITLE, CONFIRM_RESCHEDULE_TITLE, FETCH_APPOINTMENT_ERROR, FETCH_TOKENS_ERROR, INVALID_DATE_TITLE, INVALID_MOBILE_NUMBER, MISSING_MOBILE_NUMBER, NO_APPOINTMENTS_FOUND, NO_CANCELLATION_REASONS, NO_DATA_FOUND, NO_TIME_SLOT_SELECTED, NO_TIME_SLOTS, NO_TOKENS_AVAILABLE, NO_TOKENS_AVAILABLE_TEXT, PAST_DATE_WARNING, REASON_REQUIRED_TITLE, RESCHEDULE_ERROR, RESCHEDULE_SUCCESS, SELECT_CANCELLATION_REASON, SESSION_NOT_AVAILABLE, SESSION_NOT_AVAILABLE_TEXT } from "../../../config/constants";
-
+import {
+  CANCELLATION_ERROR,
+  CANCELLATION_SUCCESS,
+  CONFIRM_CANCELLATION_TITLE,
+  CONFIRM_RESCHEDULE_TITLE,
+  FETCH_APPOINTMENT_ERROR,
+  FETCH_TOKENS_ERROR,
+  INVALID_DATE_TITLE,
+  INVALID_MOBILE_NUMBER,
+  MISSING_MOBILE_NUMBER,
+  NO_APPOINTMENTS_FOUND,
+  NO_CANCELLATION_REASONS,
+  NO_DATA_FOUND,
+  NO_TIME_SLOT_SELECTED,
+  NO_TIME_SLOTS,
+  NO_TOKENS_AVAILABLE,
+  NO_TOKENS_AVAILABLE_TEXT,
+  PAST_DATE_WARNING,
+  REASON_REQUIRED_TITLE,
+  RESCHEDULE_ERROR,
+  RESCHEDULE_SUCCESS,
+  SELECT_CANCELLATION_REASON,
+  SESSION_NOT_AVAILABLE,
+  SESSION_NOT_AVAILABLE_TEXT,
+} from "../../../config/constants";
 
 // Helper functions
 const formatTimeToHHMM = (timeString) => {
   if (!timeString) return "";
-  if (timeString.includes('T')) {
+  if (timeString.includes("T")) {
     const date = new Date(timeString);
     if (isNaN(date.getTime())) return "";
-    return date.toLocaleTimeString('en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
+    
+    // Use UTC methods instead of local time
+    const hours = date.getUTCHours().toString().padStart(2, '0');
+    const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
   }
   return timeString.substring(0, 5);
 };
@@ -45,13 +70,14 @@ const formatDateForDisplay = (dateString) => {
   if (!dateString) return "";
   try {
     const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, "0");
+    // Use UTC methods
+    const day = String(date.getUTCDate()).padStart(2, "0");
     const monthNames = [
       "Jan", "Feb", "Mar", "Apr", "May", "Jun",
       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
     ];
-    const month = monthNames[date.getMonth()];
-    const year = date.getFullYear();
+    const month = monthNames[date.getUTCMonth()];
+    const year = date.getUTCFullYear();
     return `${day}-${month}-${year}`;
   } catch (error) {
     return "";
@@ -137,7 +163,7 @@ const BookingAppointmentHistory = () => {
             reason &&
             (reason.status === "Y" ||
               reason.status === true ||
-              reason.status === 1)
+              reason.status === 1),
         );
 
         setCancellationReasons(activeReasons);
@@ -181,10 +207,16 @@ const BookingAppointmentHistory = () => {
     setShowReport(false);
 
     try {
-      const res = await getRequest(`${GET_APPOINTMENT_HISTORY}?flag=0&mobileNo=${mobileNumber}`);
+      const res = await getRequest(
+        `${GET_APPOINTMENT_HISTORY}?flag=0&mobileNo=${mobileNumber}`,
+      );
 
       if (res.status === 200) {
-        const appointments = res.response?.appointments || res.response?.data || res.response || [];
+        const appointments =
+          res.response?.appointments ||
+          res.response?.data ||
+          res.response ||
+          [];
 
         if (!appointments || appointments.length === 0) {
           setReportData([]);
@@ -193,35 +225,88 @@ const BookingAppointmentHistory = () => {
           return;
         }
 
-        // Transform data to match UI
-        const transformedData = appointments.map((appointment, index) => {
-          const appointmentSlot = formatAppointmentTime(
-            appointment.appointmentStartTime,
-            appointment.appointmentEndTime
-          );
+          const transformedData = appointments.map((appointment, index) => {
+            const sourceDateTime =
+              appointment.appointmentStartTime || appointment.appointmentDate;
 
-          return {
-            id: appointment.id || appointment.appointmentId || appointment.visitId || index + 1,
-            patientName: appointment.patientName || appointment.name || "Unknown",
-            mobileNumber: appointment.mobileNo || appointment.mobileNumber || appointment.phone || mobileNumber.trim(),
-            patientAge: appointment.age || appointment.patientAge || "N/A",
-            appointmentDate: appointment.appointmentDate ? formatDateForDisplay(appointment.appointmentDate) : "N/A",
-            doctorName: appointment.doctorName || "Unknown Doctor",
-            departmentName: appointment.departmentName || appointment.speciality || "N/A",
-            appointmentSlot: appointmentSlot,
-            originalDoctorId: appointment.doctorId || 0,
-            originalDepartmentId: appointment.departmentId || 0,
-            originalDate: appointment.appointmentDate ? appointment.appointmentDate.split("T")[0] : "",
-            originalSessionId: appointment.sessionId || 0,
-            visitId: appointment.visitId,
-            tokenNo: appointment.tokenNo,
-            doctorId: appointment.doctorId,
-            departmentId: appointment.departmentId,
-            displayDate: formatDateForDisplay(appointment.appointmentDate),
-            displayTime: appointmentSlot,
-            shortDate: appointment.appointmentDate?.split("T")[0]
-          };
-        });
+            const appointmentSlot = formatAppointmentTime(
+              appointment.appointmentStartTime,
+              appointment.appointmentEndTime,
+            );
+
+            let displayDate = "N/A";
+            let shortDate = "";
+
+            if (sourceDateTime) {
+              try {
+                const date = new Date(sourceDateTime);
+                if (!isNaN(date.getTime())) {
+                  const day = String(date.getUTCDate()).padStart(2, "0");
+                  const monthNames = [
+                    "Jan",
+                    "Feb",
+                    "Mar",
+                    "Apr",
+                    "May",
+                    "Jun",
+                    "Jul",
+                    "Aug",
+                    "Sep",
+                    "Oct",
+                    "Nov",
+                    "Dec",
+                  ];
+                  const month = monthNames[date.getUTCMonth()];
+                  const year = date.getUTCFullYear();
+                  displayDate = `${day}-${month}-${year}`;
+                  shortDate = date.toISOString().split("T")[0];
+                }
+              } catch (error) {
+                console.warn("Error parsing date:", error);
+              }
+            }
+
+            if (displayDate === "N/A" && appointment.appointmentDate) {
+              displayDate = formatDateForDisplay(appointment.appointmentDate);
+              if (appointment.appointmentDate.includes("T")) {
+                shortDate = appointment.appointmentDate.split("T")[0];
+              } else {
+                shortDate = appointment.appointmentDate;
+              }
+            }
+
+            return {
+              id:
+                appointment.id ||
+                appointment.appointmentId ||
+                appointment.visitId ||
+                index + 1,
+              patientName:
+                appointment.patientName || appointment.name || "Unknown",
+              mobileNumber:
+                appointment.mobileNo ||
+                appointment.mobileNumber ||
+                appointment.phone ||
+                mobileNumber.trim(),
+              patientAge: appointment.age || appointment.patientAge || "N/A",
+              appointmentDate: displayDate,
+              doctorName: appointment.doctorName || "Unknown Doctor",
+              departmentName:
+                appointment.departmentName || appointment.speciality || "N/A",
+              appointmentSlot: appointmentSlot,
+              originalDoctorId: appointment.doctorId || 0,
+              originalDepartmentId: appointment.departmentId || 0,
+              originalDate: shortDate,
+              originalSessionId: appointment.sessionId || 0,
+              visitId: appointment.visitId,
+              tokenNo: appointment.tokenNo,
+              doctorId: appointment.doctorId,
+              departmentId: appointment.departmentId,
+              displayDate: displayDate,
+              displayTime: appointmentSlot,
+              shortDate: shortDate,
+            };
+          });
 
         setReportData(transformedData);
         setShowReport(true);
@@ -245,7 +330,7 @@ const BookingAppointmentHistory = () => {
     if (!doctorId || !deptId || !sessionId) return true;
     try {
       const res = await getRequest(
-        `${GET_DOCTOR_SESSION}deptId=${deptId}&doctorId=${doctorId}&rosterDate=${new Date().toISOString().split("T")[0]}&sessionId=${sessionId}`
+        `${GET_DOCTOR_SESSION}deptId=${deptId}&doctorId=${doctorId}&rosterDate=${new Date().toISOString().split("T")[0]}&sessionId=${sessionId}`,
       );
       if (res.status !== 200) {
         Swal.fire({
@@ -276,7 +361,9 @@ const BookingAppointmentHistory = () => {
       session: patientData.originalSessionId || "",
       doctorName: patientData.doctorName,
       departmentName: patientData.departmentName,
-      sessionName: sessions.find((s) => s.id == patientData.originalSessionId)?.sessionName || "",
+      sessionName:
+        sessions.find((s) => s.id == patientData.originalSessionId)
+          ?.sessionName || "",
     });
 
     setNewDate(initialDate);
@@ -328,7 +415,6 @@ const BookingAppointmentHistory = () => {
     }
   };
 
-  // Handle Session Change in Reschedule
   const handleSessionChange = async (sessionId) => {
     if (!selectedPatient) return;
 
@@ -342,7 +428,7 @@ const BookingAppointmentHistory = () => {
     const valid = await checkSession(
       selectedPatient.doctorId,
       selectedPatient.departmentId,
-      sessionId
+      sessionId,
     );
 
     if (valid) {
@@ -351,12 +437,11 @@ const BookingAppointmentHistory = () => {
       setSelectedToken(null);
       setShowTimeSlots(false);
 
-      // Automatically fetch tokens if date is already selected
       if (newDate) {
         await fetchTokensForSession(sessionId);
       }
     } else {
-      setNewSession("");
+      setNewSession();
       setSelectedSlot(null);
       setSelectedToken(null);
       setShowTimeSlots(false);
@@ -375,7 +460,7 @@ const BookingAppointmentHistory = () => {
         deptId: selectedPatient.departmentId,
         doctorId: selectedPatient.doctorId,
         appointmentDate: date,
-        sessionId: newSession
+        sessionId: newSession,
       });
 
       const res = await getRequest(`${GET_AVAILABILITY_TOKENS}/0?${params}`);
@@ -387,7 +472,7 @@ const BookingAppointmentHistory = () => {
         Swal.fire({
           icon: "info",
           title: `${NO_TOKENS_AVAILABLE}`,
-          text: res.message || `${NO_TOKENS_AVAILABLE_TEXT }`,
+          text: res.message || `${NO_TOKENS_AVAILABLE_TEXT}`,
           timer: 2000,
         });
         setAvailableTokens([]);
@@ -421,7 +506,7 @@ const BookingAppointmentHistory = () => {
         deptId: selectedPatient.departmentId,
         doctorId: selectedPatient.doctorId,
         appointmentDate: newDate,
-        sessionId: sessionId
+        sessionId: sessionId,
       });
 
       const res = await getRequest(`${GET_AVAILABILITY_TOKENS}/0?${params}`);
@@ -448,7 +533,7 @@ const BookingAppointmentHistory = () => {
         timer: 2000,
       });
       setAvailableTokens([]);
-      setShowTimeSlots(false); 
+      setShowTimeSlots(false);
     } finally {
       setLoadingTokens(false);
       setIsFetchingTokens(false);
@@ -465,14 +550,14 @@ const BookingAppointmentHistory = () => {
       tokenNo: token.tokenNo,
       start: startHHMM,
       end: endHHMM,
-      slot
+      slot,
     });
 
     setSelectedToken({
       tokenNo: token.tokenNo,
       tokenStartTime: token.startTime,
       tokenEndTime: token.endTime,
-      timeSlot: slot
+      timeSlot: slot,
     });
   };
 
@@ -499,7 +584,7 @@ const BookingAppointmentHistory = () => {
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Yes, Reschedule",
-      cancelButtonText: "Cancel"
+      cancelButtonText: "Cancel",
     });
 
     if (result.isConfirmed) {
@@ -507,8 +592,12 @@ const BookingAppointmentHistory = () => {
       try {
         // Correctly create ISO strings for the backend
         const appointmentDateInstant = new Date(newDate).toISOString();
-        const startTimeInstant = new Date(`${newDate}T${slotToUse.start}:00`).toISOString();
-        const endTimeInstant = new Date(`${newDate}T${slotToUse.end}:00`).toISOString();
+        const startTimeInstant = new Date(
+          `${newDate}T${slotToUse.start}:00`,
+        ).toISOString();
+        const endTimeInstant = new Date(
+          `${newDate}T${slotToUse.end}:00`,
+        ).toISOString();
 
         const reschedulePayload = {
           visitId: selectedPatient.visitId,
@@ -516,10 +605,13 @@ const BookingAppointmentHistory = () => {
           sessionId: parseInt(newSession, 10),
           visitDate: appointmentDateInstant,
           appointmentStartTime: startTimeInstant,
-          appointmentEndTime: endTimeInstant
+          appointmentEndTime: endTimeInstant,
         };
 
-        const res = await postRequest(RESCHEDULE_APPOINTMENT, reschedulePayload);
+        const res = await postRequest(
+          RESCHEDULE_APPOINTMENT,
+          reschedulePayload,
+        );
 
         if (res.status === 200) {
           Swal.fire({
@@ -562,12 +654,13 @@ const BookingAppointmentHistory = () => {
     }
 
     // Get the full reason object
-    const selectedReasonObj = cancellationReasons.find(r => {
+    const selectedReasonObj = cancellationReasons.find((r) => {
       const reasonId = r.id || r.reasonId || r.reasonCode;
       return String(reasonId) === String(selectedReason);
     });
 
-    const reasonName = selectedReasonObj?.reasonName || selectedReasonObj?.name || "Unknown";
+    const reasonName =
+      selectedReasonObj?.reasonName || selectedReasonObj?.name || "Unknown";
 
     const result = await Swal.fire({
       title: `${CONFIRM_CANCELLATION_TITLE}`,
@@ -592,8 +685,6 @@ const BookingAppointmentHistory = () => {
         const cancelRequest = {
           visitId: patientToCancel.visitId,
           cancelReasonId: parseInt(selectedReason, 10),
-          cancelledBy: "SYSTEM",
-          cancelledDateTime: new Date().toISOString(),
         };
 
         const res = await postRequest(CANCEL_APPOINTMENT, cancelRequest);
@@ -696,7 +787,12 @@ const BookingAppointmentHistory = () => {
                       <div className="card-body">
                         <div className="table-responsive">
                           <table className="table table-bordered table-hover">
-                            <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
+                            <thead
+                              style={{
+                                backgroundColor: "#9db4c0",
+                                color: "black",
+                              }}
+                            >
                               <tr>
                                 <th>Patient Name</th>
                                 <th>Mobile Number</th>
@@ -803,10 +899,12 @@ const BookingAppointmentHistory = () => {
                     <div className="row">
                       <div className="col-md-6">
                         <p>
-                          <strong>Patient:</strong> {selectedPatient.patientName}
+                          <strong>Patient:</strong>{" "}
+                          {selectedPatient.patientName}
                         </p>
                         <p>
-                          <strong>Mobile:</strong> {selectedPatient.mobileNumber}
+                          <strong>Mobile:</strong>{" "}
+                          {selectedPatient.mobileNumber}
                         </p>
                         <p>
                           <strong>Age:</strong> {selectedPatient.patientAge}
@@ -814,10 +912,12 @@ const BookingAppointmentHistory = () => {
                       </div>
                       <div className="col-md-6">
                         <p>
-                          <strong>Current Date:</strong> {selectedPatient.appointmentDate}
+                          <strong>Current Date:</strong>{" "}
+                          {selectedPatient.appointmentDate}
                         </p>
                         <p>
-                          <strong>Current Slot:</strong> {selectedPatient.appointmentSlot}
+                          <strong>Current Slot:</strong>{" "}
+                          {selectedPatient.appointmentSlot}
                         </p>
                       </div>
                     </div>
@@ -870,7 +970,6 @@ const BookingAppointmentHistory = () => {
                         </select>
                       </div>
 
-
                       {/* Date Selection */}
                       <div className="col-md-6">
                         <DatePicker
@@ -913,10 +1012,15 @@ const BookingAppointmentHistory = () => {
                         <div className="col-md-12 mt-3">
                           <div className="card">
                             <div className="card-header bg-light">
-                              <h5 className="mb-0 fw-bold">Available Time Slots</h5>
+                              <h5 className="mb-0 fw-bold">
+                                Available Time Slots
+                              </h5>
                               <p class="h6" className="mb-0 text-muted small">
-                                Date: {newDate.split('-').reverse().join('/')} |
-                                Session: {sessions.find(s => String(s.id) === String(newSession))?.sessionName || "Selected Session"}
+                                Date: {newDate.split("-").reverse().join("/")} |
+                                Session:{" "}
+                                {sessions.find(
+                                  (s) => String(s.id) === String(newSession),
+                                )?.sessionName || "Selected Session"}
                               </p>
                             </div>
                             <div className="card-body">
@@ -928,35 +1032,56 @@ const BookingAppointmentHistory = () => {
                               ) : availableTokens.length > 0 ? (
                                 <div>
                                   <p className="text-primary fw-bold small mb-2">
-                                    {sessions.find(s => String(s.id) === String(newSession))?.sessionName || "Selected Session"} Session
+                                    {sessions.find(
+                                      (s) =>
+                                        String(s.id) === String(newSession),
+                                    )?.sessionName || "Selected Session"}{" "}
+                                    Session
                                   </p>
                                   <div className="row row-cols-6 g-2 justify-content-right">
                                     {availableTokens.map((token, index) => {
                                       const isAvailable = token.available;
-                                      const startTime = formatTimeToHHMM(token.startTime);
-                                      const endTime = formatTimeToHHMM(token.endTime);
-                                      const isSelected = selectedSlot?.tokenNo === token.tokenNo;
+                                      const startTime = formatTimeToHHMM(
+                                        token.startTime,
+                                      );
+                                      const endTime = formatTimeToHHMM(
+                                        token.endTime,
+                                      );
+                                      const isSelected =
+                                        selectedSlot?.tokenNo === token.tokenNo;
 
                                       return (
                                         <div className="col" key={index}>
                                           <button
                                             type="button"
-                                            className={`btn ${isSelected ? "btn-outline-badge" : (isAvailable ? "btn-outline-success" : "btn-outline-secondary disabled")} 
+                                            className={`btn ${isSelected ? "btn-outline-badge" : isAvailable ? "btn-outline-success" : "btn-outline-secondary disabled"} 
     w-100 d-flex flex-column align-items-center justify-content-center`}
                                             style={{
-                                              height: '60px',
-                                              fontSize: '0.8rem',
-                                              borderRadius: '6px',
-                                              borderWidth: isSelected ? '2px' : '1.5px'
+                                              height: "60px",
+                                              fontSize: "0.8rem",
+                                              borderRadius: "6px",
+                                              borderWidth: isSelected
+                                                ? "2px"
+                                                : "1.5px",
                                             }}
-                                            onClick={() => isAvailable && handleTokenSelect(token)}
+                                            onClick={() =>
+                                              isAvailable &&
+                                              handleTokenSelect(token)
+                                            }
                                             disabled={!isAvailable}
                                           >
-                                            <span className="fw-bold">{startTime}</span>
-                                            <span style={{ opacity: 0.6 }}>{endTime}</span>
+                                            <span className="fw-bold">
+                                              {startTime}
+                                            </span>
+                                            <span style={{ opacity: 0.6 }}>
+                                              {endTime}
+                                            </span>
 
                                             {!isAvailable && (
-                                              <span className="badge bg-danger mt-1" style={{ fontSize: '0.6rem' }}>
+                                              <span
+                                                className="badge bg-danger mt-1"
+                                                style={{ fontSize: "0.6rem" }}
+                                              >
                                                 Booked
                                               </span>
                                             )}
@@ -998,7 +1123,9 @@ const BookingAppointmentHistory = () => {
                   type="button"
                   className="btn btn-primary"
                   onClick={submitReschedule}
-                  disabled={(!selectedSlot && !selectedToken) || isFetchingTokens}
+                  disabled={
+                    (!selectedSlot && !selectedToken) || isFetchingTokens
+                  }
                 >
                   Confirm Reschedule
                 </button>
@@ -1038,19 +1165,23 @@ const BookingAppointmentHistory = () => {
                     <div className="row">
                       <div className="col-md-12 mb-3">
                         <p>
-                          <strong>Patient:</strong> {patientToCancel.patientName}
+                          <strong>Patient:</strong>{" "}
+                          {patientToCancel.patientName}
                         </p>
                         <p>
-                          <strong>Date:</strong> {patientToCancel.appointmentDate}
+                          <strong>Date:</strong>{" "}
+                          {patientToCancel.appointmentDate}
                         </p>
                         <p>
-                          <strong>Time Slot:</strong> {patientToCancel.appointmentSlot}
+                          <strong>Time Slot:</strong>{" "}
+                          {patientToCancel.appointmentSlot}
                         </p>
                         <p>
                           <strong>Doctor:</strong> {patientToCancel.doctorName}
                         </p>
                         <p>
-                          <strong>Department:</strong> {patientToCancel.departmentName}
+                          <strong>Department:</strong>{" "}
+                          {patientToCancel.departmentName}
                         </p>
                       </div>
                     </div>
@@ -1079,7 +1210,8 @@ const BookingAppointmentHistory = () => {
                         >
                           <option value="">-- Select Reason --</option>
                           {cancellationReasons.map((reason) => {
-                            const reasonId = reason.id || reason.reasonId || reason.reasonCode;
+                            const reasonId =
+                              reason.id || reason.reasonId || reason.reasonCode;
                             const reasonName = reason.reasonName || reason.name;
                             return (
                               <option key={reasonId} value={reasonId}>
@@ -1091,7 +1223,7 @@ const BookingAppointmentHistory = () => {
                       )}
                       {cancellationReasons.length === 0 && !loadingReasons && (
                         <div className="text-danger small mt-1">
-                         `${NO_CANCELLATION_REASONS }`
+                          `${NO_CANCELLATION_REASONS}`
                         </div>
                       )}
                     </div>
