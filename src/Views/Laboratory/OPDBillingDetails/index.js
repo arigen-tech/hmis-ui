@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { MAS_SERVICE_CATEGORY, POLICY_API } from "../../../config/apiConfig";
-import { getRequest } from "../../../service/apiService";
+import { getRequest, postRequest } from "../../../service/apiService";
 import {
   APPOINTMENT_NOT_FOUND_ERR_MSG,
   ERROR,
+  SUCCESS,
   MISSING_MANDOTORY_FIELD,
   MISSING_MANDOTORY_FIELD_MSG,
 } from "../../../config/constants";
@@ -46,6 +47,12 @@ const OPDBillingDetails = () => {
   const [appointments, setAppointments] = useState([]);
   const [isFormValid, setIsFormValid] = useState(false);
   const [appointmentPolicies, setAppointmentPolicies] = useState({});
+  const [loading, setLoading] = useState(false);
+  const generateFreePaymentReference = () => {
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 1000);
+    return `FREE${timestamp}${random}`;
+  };
 
   async function fetchGstConfiguration(optionalCategoryId) {
     try {
@@ -348,24 +355,7 @@ const OPDBillingDetails = () => {
     return strValue || "N/A";
   };
 
-  const handleSave = (e) => {
-    e.preventDefault();
-
-    if (!isFormValid) {
-      Swal.fire(
-        MISSING_MANDOTORY_FIELD,
-        MISSING_MANDOTORY_FIELD_MSG,
-        "warning",
-      );
-      return;
-    }
-
-    // Calculate NET TOTAL (sum of all netAmount)
-    const netTotal = appointments.reduce(
-      (sum, a) => sum + Number(a.netAmount || 0),
-      0,
-    );
-
+  const showPaymentConfirmation = (billingHeaderIds, netTotal) => {
     // Calculate other totals for display
     const totalBasePrice = appointments.reduce(
       (sum, a) => sum + Number(a.basePrice || 0),
@@ -387,39 +377,39 @@ const OPDBillingDetails = () => {
     Swal.fire({
       title: "Confirm Payment",
       html: `
-        <div style="text-align: left;">
-          <p><strong>Patient:</strong> ${formData.patientName}</p>
-          <p><strong>Mobile:</strong> ${formData.mobileNo}</p>
-          <hr style="margin: 10px 0;" />
-          <p><strong>Payment Summary:</strong></p>
-          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-            <tr>
-              <td style="padding: 4px 0;">Base Price:</td>
-              <td style="text-align: right; padding: 4px 0;">₹${totalBasePrice.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td style="padding: 4px 0;">Discount:</td>
-              <td style="text-align: right; padding: 4px 0;">- ₹${totalDiscount.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td style="padding: 4px 0;">GST:</td>
-              <td style="text-align: right; padding: 4px 0;">+ ₹${totalGST.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td style="padding: 4px 0;">Registration:</td>
-              <td style="text-align: right; padding: 4px 0;">+ ₹${totalRegistration.toFixed(2)}</td>
-            </tr>
-            <tr style="border-top: 1px solid #ddd; font-weight: bold;">
-              <td style="padding: 8px 0; color: #dc3545;">NET AMOUNT:</td>
-              <td style="text-align: right; padding: 8px 0; color: #dc3545; font-size: 16px;">
-                ₹${netTotal.toFixed(2)}
-              </td>
-            </tr>
-          </table>
-          <hr style="margin: 10px 0;" />
-          <p><small>Appointments: ${appointments.length}</small></p>
-        </div>
-      `,
+      <div style="text-align: left;">
+        <p><strong>Patient:</strong> ${formData.patientName}</p>
+        <p><strong>Mobile:</strong> ${formData.mobileNo}</p>
+        <hr style="margin: 10px 0;" />
+        <p><strong>Payment Summary:</strong></p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr>
+            <td style="padding: 4px 0;">Base Price:</td>
+            <td style="text-align: right; padding: 4px 0;">₹${totalBasePrice.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 0;">Discount:</td>
+            <td style="text-align: right; padding: 4px 0;">- ₹${totalDiscount.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 0;">GST:</td>
+            <td style="text-align: right; padding: 4px 0;">+ ₹${totalGST.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 0;">Registration:</td>
+            <td style="text-align: right; padding: 4px 0;">+ ₹${totalRegistration.toFixed(2)}</td>
+          </tr>
+          <tr style="border-top: 1px solid #ddd; font-weight: bold;">
+            <td style="padding: 8px 0; color: #dc3545;">NET AMOUNT:</td>
+            <td style="text-align: right; padding: 8px 0; color: #dc3545; font-size: 16px;">
+              ₹${netTotal.toFixed(2)}
+            </td>
+          </tr>
+        </table>
+        <hr style="margin: 10px 0;" />
+        <p><small>Appointments: ${appointments.length}</small></p>
+      </div>
+    `,
       icon: "info",
       showCancelButton: true,
       confirmButtonText: `Pay ₹${netTotal.toFixed(2)}`,
@@ -433,7 +423,7 @@ const OPDBillingDetails = () => {
             billingType: formData.billingType,
             amount: netTotal,
             patientId: formData.patientId,
-            billingHeaderIds: formData.billingHeaderIds,
+            billingHeaderIds: billingHeaderIds,
             registrationCost: formData.registrationCost,
             opdData: {
               patient: formData,
@@ -444,6 +434,115 @@ const OPDBillingDetails = () => {
         });
       }
     });
+  };
+
+  const navigateToSuccessPage = (response, request) => {
+    navigate("/opd-payment-success", {
+      state: {
+        billingType: "Consultation Services",
+        amount: request.amount,
+        paymentMethod: request.mode,
+        paymentReferenceNo: request.paymentReferenceNo,
+        patientId: formData.patientId,
+        billNo: response?.response?.billNo,
+        paymentStatus: response?.response?.paymentStatus,
+        paymentResponse: response,
+      },
+    });
+  };
+
+  const handleZeroAmountPayment = async (billingHeaderIds, netTotal) => {
+    try {
+      setLoading(true);
+      Swal.fire({
+        title: "Generating Bill",
+        text: "Please wait while we generate the bill...",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      // Build payment request for zero amount
+      const paymentRequest = {
+        billingType: "Consultation Services",
+        billHeaderIds: billingHeaderIds,
+        opdBillPayments: appointments
+          .map((appt) => ({
+            billHeaderId: Number(appt.billingHdId),
+            netAmount: Number(appt.netAmount || 0),
+          }))
+          .filter((p) => p.billHeaderId),
+        amount: 0,
+        mode: "free", // or "cash"
+        paymentReferenceNo: generateFreePaymentReference(),
+        isPaymentUpdate: true,
+        shouldNotCreateNewBilling: true,
+        useExistingBillingHeader: true,
+        patientId: Number(formData.patientId),
+        registrationCost: Number(formData.registrationCost || 0),
+      };
+
+      const response = await postRequest(
+        "/patient/updatepaymentstatus",
+        paymentRequest,
+      );
+
+      Swal.close();
+
+      if (response?.status === 200 && response?.response?.msg === "Success") {
+        navigateToSuccessPage(response, paymentRequest);
+      } else {
+        throw new Error(response?.response?.msg || "Failed to generate bill");
+      }
+    } catch (error) {
+      Swal.fire(
+        "Error",
+        error.message || "Failed to generate bill. Please try again.",
+        "error",
+      );
+      console.error("Zero amount payment error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+
+    if (!isFormValid) {
+      Swal.fire(
+        MISSING_MANDOTORY_FIELD,
+        MISSING_MANDOTORY_FIELD_MSG,
+        "warning",
+      );
+      return;
+    }
+
+    // Calculate NET TOTAL (sum of all netAmount)
+    const netTotal = appointments.reduce(
+      (sum, a) => sum + Number(a.netAmount || 0),
+      0,
+    );
+
+    // Collect all billing header IDs from appointments
+    const billingHeaderIds = appointments
+      .map((a) => a.billingHdId)
+      .filter((id) => id != null);
+
+    if (billingHeaderIds.length === 0) {
+      Swal.fire("Error", "No billing header IDs found", "error");
+      return;
+    }
+
+    // Check if amount is zero
+    if (netTotal === 0) {
+      // For zero amount, directly call API and navigate to success
+      await handleZeroAmountPayment(billingHeaderIds, netTotal);
+    } else {
+      // For non-zero amount, show payment confirmation
+      showPaymentConfirmation(billingHeaderIds, netTotal);
+    }
   };
 
   const handleBack = () => {
@@ -863,15 +962,40 @@ const OPDBillingDetails = () => {
 
                 {/* Action Buttons */}
                 <div className="form-group col-md-12 d-flex justify-content-end mt-4">
-                  <button
-                    type="submit"
-                    className="btn btn-primary me-2"
-                    disabled={!isFormValid}
-                    style={{ minWidth: "200px" }}
-                  >
-                    <i className="mdi mdi-cash"></i> Pay Now - ₹
-                    {grandTotal.toFixed(2)}
-                  </button>
+                  {grandTotal === 0 ? (
+                    <button
+                      type="button"
+                      className="btn btn-success me-2"
+                      onClick={handleSave}
+                      disabled={!isFormValid || loading} // Add loading state
+                      style={{ minWidth: "200px" }}
+                    >
+                      {loading ? (
+                        <>
+                          <span
+                            className="spinner-border spinner-border-sm me-2"
+                            role="status"
+                          ></span>
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <i className="mdi mdi-file-check"></i> Generate Bill
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      type="button" // Change from submit to button
+                      className="btn btn-primary me-2"
+                      onClick={handleSave}
+                      disabled={!isFormValid}
+                      style={{ minWidth: "200px" }}
+                    >
+                      <i className="mdi mdi-cash"></i> Pay Now - ₹
+                      {grandTotal.toFixed(2)}
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="btn btn-danger"
