@@ -1,120 +1,164 @@
+
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import { MAS_GYN_FLOW } from "../../../config/apiConfig";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const MenstrualFlowMaster = () => {
   const [data, setData] = useState([]);
-  const [loading] = useState(false);
-
-  const [confirmDialog, setConfirmDialog] = useState({
-    isOpen: false,
-    menstrualFlowName: null,
-    newStatus: "",
-  });
-
-  const [formData, setFormData] = useState({
-    menstrualFlowCode: "",
-    menstrualFlowName: "",
-  });
-
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({ flowValue: "" });
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-
-  // ================= PAGINATION =================
   const [currentPage, setCurrentPage] = useState(1);
-  const [goPage, setGoPage] = useState("");
-  const itemsPerPage = 5;
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    record: null,
+    newStatus: "",
+  });
 
-  // ================= SAMPLE DATA =================
+  const MAX_LENGTH = 8;
+
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  // Fetch data
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
+    try {
+      const { response } = await getRequest(`${MAS_GYN_FLOW}/getAll/${flag}`);
+      setData(response || []);
+    } catch {
+      showPopup("Failed to fetch records", "error");
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    setData([
-      { menstrualFlowCode: "MF1", menstrualFlowName: "Scanty", status: "Y" },
-      { menstrualFlowCode: "MF2", menstrualFlowName: "Normal", status: "Y" },
-      { menstrualFlowCode: "MF3", menstrualFlowName: "Heavy", status: "N" },
-      { menstrualFlowCode: "MF4", menstrualFlowName: "Very Heavy", status: "Y" },
-      { menstrualFlowCode: "MF5", menstrualFlowName: "Irregular", status: "N" },
-    ]);
+    fetchData();
   }, []);
 
   // ================= SEARCH =================
   const filteredData = data.filter((rec) =>
-    rec.menstrualFlowName.toLowerCase().includes(searchQuery.toLowerCase())
+    (rec?.flowValue ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
-const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
-  const currentItems = filteredData.slice(indexOfFirst, indexOfLast)
- 
+
+  const currentItems = filteredData.slice(
+    (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
+    currentPage * DEFAULT_ITEMS_PER_PAGE
+  );
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+  };
 
   // ================= FORM =================
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     const updated = { ...formData, [id]: value };
     setFormData(updated);
-    setIsFormValid(updated.menstrualFlowCode && updated.menstrualFlowName);
+    setIsFormValid(value.trim() !== "");
   };
 
   const resetForm = () => {
-    setFormData({ menstrualFlowCode: "", menstrualFlowName: "" });
+    setFormData({ flowValue: "" });
     setIsFormValid(false);
+    setEditingRecord(null);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
   };
 
   // ================= SAVE =================
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
 
-    if (editingRecord) {
-      setData(
-        data.map((rec) =>
-          rec.menstrualFlowCode === editingRecord.menstrualFlowCode
-            ? { ...rec, ...formData }
-            : rec
-        )
-      );
-      showPopup("Record updated successfully", "success");
-    } else {
-      setData([...data, { ...formData, status: "N" }]);
-      showPopup("Record added successfully", "success");
+    const newValue = formData.flowValue.trim().toLowerCase();
+    const duplicate = data.find(
+      (rec) =>
+        rec.flowValue?.trim().toLowerCase() === newValue &&
+        (!editingRecord || rec.id !== editingRecord.id)
+    );
+
+    if (duplicate) {
+      showPopup("Flow Value already exists!", "error");
+      return;
     }
 
-    resetForm();
-    setEditingRecord(null);
-    setShowForm(false);
+    try {
+      if (editingRecord) {
+        await putRequest(`${MAS_GYN_FLOW}/update/${editingRecord.id}`, {
+          ...editingRecord,
+          flowValue: formData.flowValue.trim(),
+        });
+        showPopup("Record updated successfully", "success");
+      } else {
+        await postRequest(`${MAS_GYN_FLOW}/create`, {
+          flowValue: formData.flowValue.trim(),
+        });
+        showPopup("Record added successfully", "success");
+      }
+      fetchData();
+      handleCancel();
+    } catch {
+      showPopup("Save failed", "error");
+    }
   };
 
   // ================= EDIT =================
   const handleEdit = (rec) => {
     setEditingRecord(rec);
-    setFormData(rec);
+    setFormData({ flowValue: rec.flowValue || "" });
     setShowForm(true);
     setIsFormValid(true);
   };
 
   // ================= STATUS =================
-  const handleSwitchChange = (menstrualFlowName, newStatus) => {
-    setConfirmDialog({ isOpen: true, menstrualFlowName, newStatus });
+  const handleSwitchChange = (rec) => {
+    setConfirmDialog({
+      isOpen: true,
+      record: rec,
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+    });
   };
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed) {
-      setData(
-        data.map((rec) =>
-          rec.menstrualFlowName === confirmDialog.menstrualFlowName
-            ? { ...rec, status: confirmDialog.newStatus }
-            : rec
-        )
-      );
-      showPopup("Status updated successfully", "success");
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
     }
-    setConfirmDialog({
-      isOpen: false,
-      menstrualFlowName: null,
-      newStatus: "",
-    });
+    if (!confirmDialog.record) return;
+
+    try {
+      setLoading(true);
+      await putRequest(`${MAS_GYN_FLOW}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`);
+      showPopup("Status updated successfully", "success");
+      fetchData();
+    } catch {
+      showPopup("Status update failed", "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+    }
   };
 
   const showPopup = (message, type) => {
@@ -124,6 +168,7 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
+    fetchData();
   };
 
   // ================= UI =================
@@ -132,19 +177,14 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
       <div className="card form-card">
         <div className="card-header d-flex justify-content-between align-items-center">
           <h4>Menstrual Flow Master</h4>
-
           <div className="d-flex">
             {!showForm && (
               <input
-                type="text"
                 style={{ width: "220px" }}
                 className="form-control me-2"
                 placeholder="Search"
                 value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
+                onChange={handleSearchChange}
               />
             )}
 
@@ -152,7 +192,7 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
               <>
                 <button
                   className="btn btn-success me-2"
-                  onClick={() => setShowForm(true)}
+                  onClick={() => { resetForm(); setShowForm(true); }}
                 >
                   Add
                 </button>
@@ -161,10 +201,7 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
                 </button>
               </>
             ) : (
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShowForm(false)}
-              >
+              <button className="btn btn-secondary" onClick={handleCancel}>
                 Back
               </button>
             )}
@@ -179,40 +216,35 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
               <table className="table table-bordered table-hover">
                 <thead className="table-light">
                   <tr>
-                    <th>Menstrual Flow Code</th>
-                    <th>Menstrual Flow Name</th>
+                    <th>Flow Value</th>
+                    <th>Last Update Date</th>
                     <th>Status</th>
                     <th>Edit</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {currentItems.map((rec, index) => (
-                    <tr key={index}>
-                      <td>{rec.menstrualFlowCode}</td>
-                      <td>{rec.menstrualFlowName}</td>
+                  {currentItems.map((rec) => (
+                    <tr key={rec.id}>
+                      <td>{rec.flowValue}</td>
+                      <td>{formatDate(rec.lastUpdateDate)}</td>
                       <td>
                         <div className="form-check form-switch">
                           <input
                             className="form-check-input"
                             type="checkbox"
-                            checked={rec.status === "Y"}
-                            onChange={() =>
-                              handleSwitchChange(
-                                rec.menstrualFlowName,
-                                rec.status === "Y" ? "N" : "Y"
-                              )
-                            }
+                            checked={rec.status?.toLowerCase() === "y"}
+                            onChange={() => handleSwitchChange(rec)}
                           />
                           <label className="form-check-label ms-2">
-                            {rec.status === "Y" ? "Active" : "Inactive"}
+                            {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                           </label>
                         </div>
                       </td>
                       <td>
                         <button
                           className="btn btn-success btn-sm"
-                          disabled={rec.status !== "Y"}
                           onClick={() => handleEdit(rec)}
+                          disabled={rec.status?.toLowerCase() !== "y"}
                         >
                           <i className="fa fa-pencil"></i>
                         </button>
@@ -223,30 +255,32 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
               </table>
 
               {/* PAGINATION */}
-              <Pagination
-               totalItems={filteredData.length}
-               itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-               currentPage={currentPage}
-               onPageChange={setCurrentPage}
-             /> 
+              {filteredData.length > 0 && (
+                <Pagination
+                  totalItems={filteredData.length}
+                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
+              )}
             </>
           ) : (
             <form onSubmit={handleSave} className="row g-3">
-            
               <div className="col-md-5">
-                <label>
-                  Menstrual Flow Name <span className="text-danger">*</span>
-                </label>
+                <label>Flow Value<span className="text-danger">*</span></label>
                 <input
-                  id="menstrualFlowName"
+                  id="flowValue"
                   className="form-control"
-                  value={formData.menstrualFlowName}
+                  value={formData.flowValue}
                   onChange={handleInputChange}
+                  maxLength={MAX_LENGTH}
+                  autoFocus
                 />
               </div>
 
               <div className="col-12 text-end">
                 <button
+                  type="submit"
                   className="btn btn-primary me-2"
                   disabled={!isFormValid}
                 >
@@ -255,7 +289,7 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
                 <button
                   type="button"
                   className="btn btn-danger"
-                  onClick={() => setShowForm(false)}
+                  onClick={handleCancel}
                 >
                   Cancel
                 </button>
@@ -271,24 +305,12 @@ const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "Y"
-                      ? "activate"
-                      : "deactivate"}{" "}
-                    <strong>{confirmDialog.menstrualFlowName}</strong>?
+                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    <strong>{confirmDialog.record?.flowValue}</strong>?
                   </div>
                   <div className="modal-footer">
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => handleConfirm(false)}
-                    >
-                      No
-                    </button>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => handleConfirm(true)}
-                    >
-                      Yes
-                    </button>
+                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
+                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes </button>
                   </div>
                 </div>
               </div>
