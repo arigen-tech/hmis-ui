@@ -175,6 +175,8 @@ const validRoutes = [
   "/NonDrugMaster",
   "/PatientListForAdmission",
   "/InpatientAdmission",
+  "/ItemStockLedgerReport",
+
   
 ];
 

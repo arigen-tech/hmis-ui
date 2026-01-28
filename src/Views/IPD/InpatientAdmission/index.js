@@ -1766,7 +1766,7 @@ const InpatientAdmission = () => {
                       className="btn btn-primary btn-sm"
                       onClick={addFinancialRow}
                     >
-                       + Add Financial Entry
+                       + Add Financial Details
                     </button>
                   </div>
                   <div className="card-body">
