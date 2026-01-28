@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import DatePicker from "../../../Components/DatePicker";
+import { useNavigate } from "react-router-dom";
 import {
   ALL_COUNTRY,
   ALL_DEPARTMENT,
@@ -26,6 +27,7 @@ import { DEPARTMENT_CODE_OPD } from "../../../config/constants";
 import { getRequest, postRequest } from "../../../service/apiService";
 
 const UpdatePatientRegistration = () => {
+  const navigate = useNavigate();
   async function fetchHospitalDetails() {
     try {
       const data = await getRequest(
@@ -750,6 +752,7 @@ const UpdatePatientRegistration = () => {
               sessionName: appt.sessionName || "",
               visitId: appt.appointmentId || null,
               tokenNo: appt.tokenNo || null,
+              visitType:appt.visitType||null,
               tokenStartTime: startTime,
               tokenEndTime: endTime,
               selectedTimeSlot:
@@ -1302,9 +1305,7 @@ const UpdatePatientRegistration = () => {
       patientGenderId: extractId(patientDetailForm.patientGender),
       patientEmailId: patientDetailForm.patientEmailId || "",
       patientMobileNumber: patientDetailForm.patientMobileNumber || "",
-      patientImage: smartTruncate(
-        imageURL || patientDetailForm.patientImage || "",
-      ),
+      patientImage: smartTruncate(imageURL || patientDetailForm.patientImage || "",),
       fileName: "",
       patientRelationId: extractId(patientDetailForm.patientRelation),
       patientMaritalStatusId: null,
@@ -1402,7 +1403,7 @@ const UpdatePatientRegistration = () => {
               billingStatus: "Pending",
               patientId: toNumber(patientDetailForm.id),
               iniDoctorId: toNumber(appt.selDoctorId),
-              visitType: "F",
+              visitType: appt.visitType||"F",
               lastChgBy: username,
             };
           })
@@ -1439,14 +1440,117 @@ const UpdatePatientRegistration = () => {
           ? "Patient updated and appointments scheduled successfully!"
           : "Patient information updated successfully!";
 
-        await Swal.fire({
-          icon: "success",
-          title: "Success",
-          text: message,
-          confirmButtonText: "OK",
-        });
+        const resp = response.response?.opdBillingPatientResponse;
+        const patientResp = response.response?.patient || response.response;
 
-        handleReset();
+        // Get visit information
+        const visits = patientResp?.visits || [];
+        const hasBillingStatusY =
+          visits.length > 0 && visits[0]?.billingStatus === "y";
+
+        // Handle different scenarios like in registration page
+        if (hasBillingStatusY) {
+          // Direct redirect to PendingForBilling
+          Swal.fire({
+            title: "Patient Updated Successfully!",
+            html: `<p>Patient has been updated successfully.</p>
+                 <p>Redirecting to pending billing...</p>`,
+            icon: "success",
+            showConfirmButton: false,
+            timer: 1000,
+            allowOutsideClick: false,
+          }).then(() => {
+            navigate("/PendingForBilling");
+            window.location.reload();
+          });
+        } else if (resp) {
+          // Show success dialog with option to go to billing
+          Swal.fire({
+            title: "Patient Updated Successfully!",
+            html: `
+            <p><strong>${resp.patientName}</strong> has been updated successfully.</p>
+            ${appointmentFlag ? `<p>Appointments have been scheduled.</p>` : ""}
+            <p>Do you want to proceed to billing?</p>
+          `,
+            icon: "success",
+            showCancelButton: true,
+            confirmButtonText: "Proceed to Billing",
+            cancelButtonText: "Close",
+            allowOutsideClick: false,
+          }).then((result) => {
+            if (result.isConfirmed) {
+              // Navigate to OPD billing details with patient data
+              navigate("/OPDBillingDetails", {
+                state: {
+                  billingData: {
+                    patientUhid: patientResp.uhidNo || patientDetailForm.uhidNo,
+                    patientId: resp.patientid || patientDetailForm.id,
+                    patientName:
+                      resp.patientName ||
+                      `${patientDetailForm.patientFn || ""} ${patientDetailForm.patientLn || ""}`.trim(),
+                    mobileNo:
+                      resp.mobileNo || patientDetailForm.patientMobileNumber,
+                    age: resp.age || patientDetailForm.patientAge,
+                    sex:
+                      resp.sex ||
+                      genderData.find(
+                        (g) => g.id === patientDetailForm.patientGender?.id,
+                      )?.genderName ||
+                      "",
+                    relation:
+                      resp.relation ||
+                      relationData.find(
+                        (r) => r.id === patientDetailForm.patientRelation?.id,
+                      )?.relationName ||
+                      "",
+                    address: resp.address || patientDetailForm.patientAddress1,
+                    appointments:
+                      resp.appointments ||
+                      appointments.map((appt) => ({
+                        departmentName: appt.departmentName,
+                        doctorName: appt.doctorName,
+                        sessionName: appt.sessionName,
+                        visitDate: appt.selDate,
+                        timeSlot: appt.selectedTimeSlot,
+                      })),
+                    details: resp.details || {},
+                    billingHeaderIds: (resp.appointments || []).map(
+                      (a) => a.billingHdId,
+                    ),
+                    registrationCost: resp.registrationCost || "0.00",
+                  },
+                },
+              });
+            } else if (result.dismiss === Swal.DismissReason.cancel) {
+              // Reset form and go back to search
+              handleReset();
+            }
+          });
+        } else if (patientResp) {
+          // Case: no billing response but patient saved (update without appointments)
+          const displayName =
+            patientResp.patientName ||
+            `${patientDetailForm.patientFn || ""} ${patientDetailForm.patientLn || ""}`.trim();
+
+          Swal.fire({
+            title: "Patient Updated Successfully!",
+            html: `<p><strong>${displayName || "Patient"}</strong> has been updated successfully.</p>`,
+            icon: "success",
+            confirmButtonText: "OK",
+            allowOutsideClick: false,
+          }).then(() => {
+            handleReset(); // Go back to search
+          });
+        } else {
+          // Fallback success message
+          Swal.fire({
+            icon: "success",
+            title: "Update Successful",
+            text: "Patient information updated successfully.",
+          }).then(() => {
+            handleReset(); // Go back to search
+          });
+        }
       } else {
         console.error("Backend error response:", response);
         throw new Error(response.message || response.detail || "Update failed");
@@ -1462,7 +1566,7 @@ const UpdatePatientRegistration = () => {
             icon: "error",
             title: "Data Too Long",
             html: `The field <strong>${fieldName}</strong> contains too much data.<br/>
-                   Please shorten the value and try again.`,
+                 Please shorten the value and try again.`,
             confirmButtonText: "OK",
           });
         } else {
