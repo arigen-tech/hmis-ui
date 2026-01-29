@@ -31,7 +31,7 @@ const OpeningBalanceApproval = () => {
   const fetchOpenBalance = async () => {
     try {
       setLoading(true);
-      const status = "a";
+      const status = "p";
       const response = await getRequest(`${OPEN_BALANCE}/list/${status}/${hospitalId}/${departmentId}`);
 
       if (response && Array.isArray(response)) {
