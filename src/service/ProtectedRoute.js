@@ -177,7 +177,9 @@ const validRoutes = [
   "/InpatientAdmission",
   "/ItemStockLedgerReport",
 
-  
+  "/BagTypeMaster",
+  "/BloodCollectionTypeMaster",
+  "/BloodDonationStatusMaster",
 ];
 
 const NotAuthorized = () => {

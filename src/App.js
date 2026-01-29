@@ -172,6 +172,9 @@ import NonDrugMaster from './Views/Stores/NondrugMaster';
 import PatientListForAdmission from './Views/IPD/PatientListForAdmission';
 import InpatientAdmission from './Views/IPD/InpatientAdmission';
 import ItemStockLedgerReport from './Views/Stores/StockLedgerReport';
+import BagTypeMaster from './Views/Masters/BagTypeMaster';
+import BloodCollectionTypeMaster from  './Views/Masters/BloodCollectionTypeMater';
+import BloodDonationStatusMaster from './Views/Masters/BloodDonationStatusMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -379,6 +382,9 @@ function App() {
                 <Route path="InpatientAdmission" element={<InpatientAdmission/>} />
                 <Route path="/ItemStockLedgerReport" element={<ItemStockLedgerReport/>} />
 
+                <Route path="/BagTypeMaster" element={<BagTypeMaster />} />
+                <Route path="/BloodCollectionTypeMaster" element={<BloodCollectionTypeMaster />} />
+                <Route path="/BloodDonationStatusMaster" element={<BloodDonationStatusMaster />} />
               </Route>
             </Route>
 
