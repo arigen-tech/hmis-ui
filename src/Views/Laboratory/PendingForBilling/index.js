@@ -141,25 +141,14 @@ const PendingForBilling = () => {
         return "/RadiologyBillingDetails"
       }
 
-      // Default fallback
       return "/LabBillingDetails"
     }
 
     const route = getNavigationRoute(patientData.billingType)
 
-    // Pass the complete data structure
     navigate(route, {
       state: {
         billingData: patientData.fullData,
-        // billingData: {
-        //   ...patientData.fullData,
-        //   // Add normalized fields for easier access
-        //   normalizedVisitType: patientData.visitType,
-        //   normalizedDoctor: patientData.consultedDoctor,
-        //   normalizedDepartment: patientData.department,
-        //   billingHeaderIds:
-        //     patientData.appointments?.map(a => a.billingHdId).filter(id => id) || []
-        // },
       },
     })
   }

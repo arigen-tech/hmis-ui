@@ -1,10 +1,9 @@
+  export const API_HOST = 'http://103.133.215.182:8081/hims';
 
-export const API_HOST = 'http://103.133.215.182:8081/hims';
-
+ //export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://192.168.1.8:8080';
 
 //export const API_HOST = 'http://localhost:8080';
-// export const API_HOST = 'http://localhost:8080';
 // export const API_HOST = 'http://103.133.215.182:8081/hims';
 
 //export const API_HOST = 'http://192.168.1.8:8080';
@@ -155,8 +154,9 @@ export const SET_VITALS=`/patient/saveVitalDetails`;
 export const GET_WAITING_LIST=`/patient/getWaitingList`;
 export const GET_AVAILABILITY_TOKENS = `/doctor/checkAllAvailableTokens`;
 export const GET_APPOINTMENT_HISTORY = `/mobileController/getAppointmentHistory`;
-export const CANCEL_APPOINTMENT = "/patient/cancel-appointment";
-export const RESCHEDULE_APPOINTMENT = "/patient/reschedule_Appointment"
+export const CANCEL_APPOINTMENT = `/patient/cancel_appointment`;
+export const RESCHEDULE_APPOINTMENT = `/patient/reschedule_Appointment`;
+export const POLICY_API = `${MASTERS}/billingPolicy`
 
 
 
@@ -250,7 +250,9 @@ export const MAS_STATION_PRESENTATION =`${MASTERS}/obMasStationPresenting`;
 export const MAS_OPTH_LENSTYPE =`${MASTERS}/opthMasLensType`;
 export const MAS_EAR_CANAL = `${MASTERS}/entMasEarCanal`;
 export const MAS_ENT_RINNE = `${MASTERS}/entMasRinne`;
-
+export const MAS_OPTH_NEAR_VISION =`${MASTERS}/opthMasNearVision`;
+export const MAS_OB_CONSANGUINITY =`${MASTERS}/obMasConsanguinity`;
+export const MAS_GYN_FLOW =`${MASTERS}/gynMasFlow`;
 
 
 // Constants for date validation for Lab report

@@ -3,31 +3,25 @@ import Popup from "../../../Components/popup";
 import { getRequest } from "../../../service/apiService";
 import Pagination from "../../../Components/Pagination";
 import LoadingScreen from "../../../Components/Loading";
-
-// You'll need to configure these API endpoints
-// import { PATIENT_ADMISSION_LIST } from "../../../config/apiConfig";
+import { useNavigate } from "react-router-dom";
 
 const PatientListForAdmission = () => {
-    // State for patient data
     const [patientList, setPatientList] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const navigate = useNavigate();
 
-    // Search parameters state
     const [searchParams, setSearchParams] = useState({
         mobileNo: "",
         patientName: "",
         admissionAdviseDate: ""
     });
 
-    // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
-    // Popup state
     const [popupMessage, setPopupMessage] = useState(null);
 
-    // Static dropdown options
     const admissionTypeOptions = [
         { value: "", label: "All Types" },
         { value: "Planned", label: "Planned" },
@@ -50,7 +44,6 @@ const PatientListForAdmission = () => {
         { value: "Private", label: "Private Room" }
     ];
 
-    // Mock data for initial display (replace with API call)
     const mockPatientData = [
         {
             id: 1,
@@ -118,17 +111,13 @@ const PatientListForAdmission = () => {
         }
     ];
 
-    // Fetch patient data (replace with actual API call)
     const fetchPatientData = async () => {
         try {
             setLoading(true);
             setError(null);
 
-            // Simulate API call
             await new Promise(resolve => setTimeout(resolve, 1000));
 
-            // For now, use mock data
-            // Replace with: const response = await getRequest(PATIENT_ADMISSION_LIST);
             setPatientList(mockPatientData);
 
         } catch (err) {
@@ -140,12 +129,10 @@ const PatientListForAdmission = () => {
         }
     };
 
-    // Initialize data
     useEffect(() => {
         fetchPatientData();
     }, []);
 
-    // Popup handler
     const showPopup = (message, type = "info") => {
         setPopupMessage({
             message,
@@ -156,7 +143,6 @@ const PatientListForAdmission = () => {
         });
     };
 
-    // Handle search input changes
     const handleSearchChange = (e) => {
         const { name, value } = e.target;
         setSearchParams(prev => ({
@@ -165,16 +151,13 @@ const PatientListForAdmission = () => {
         }));
     };
 
-    // Handle search form submission
     const handleSearch = (e) => {
         e.preventDefault();
-        setCurrentPage(1); // Reset to first page on new search
-        // In real implementation, you would call API with search params
+        setCurrentPage(1);
         console.log("Searching with:", searchParams);
         showPopup("Search applied", "success");
     };
 
-    // Handle reset search
     const handleResetSearch = () => {
         setSearchParams({
             mobileNo: "",
@@ -182,12 +165,10 @@ const PatientListForAdmission = () => {
             admissionAdviseDate: ""
         });
         setCurrentPage(1);
-        // Refresh data to show all patients
         fetchPatientData();
         showPopup("Search filters cleared", "info");
     };
 
-    // Format date for display
     const formatDate = (dateString) => {
         if (!dateString) return "";
         try {
@@ -198,7 +179,6 @@ const PatientListForAdmission = () => {
         }
     };
 
-    // Filter patients based on search criteria
     const filteredPatients = patientList.filter(patient => {
         const matchesMobile = searchParams.mobileNo === "" ||
             patient.mobileNo.includes(searchParams.mobileNo);
@@ -212,34 +192,31 @@ const PatientListForAdmission = () => {
         return matchesMobile && matchesName && matchesDate;
     });
 
-    // Pagination calculations
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const currentPatients = filteredPatients.slice(indexOfFirstItem, indexOfLastItem);
     const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
 
-    // Handle patient admission action
     const handleAdmitPatient = (patientId) => {
         console.log("Admitting patient:", patientId);
         showPopup(`Patient admission initiated for ID: ${patientId}`, "success");
-        // Implement admission logic here
     };
 
-    // Handle cancel admission action
     const handleCancelAdmission = (patientId) => {
         console.log("Cancelling admission for:", patientId);
         showPopup(`Admission cancelled for ID: ${patientId}`, "warning");
-        // Implement cancellation logic here
     };
 
-    // Render loading state
+    const handleNewAdmission = () => {
+        navigate("/InpatientAdmission");
+    };
+
     if (loading) {
         return <LoadingScreen />;
     }
 
     return (
         <div className="content-wrapper">
-            {/* Popup Component */}
             {popupMessage && (
                 <Popup
                     message={popupMessage.message}
@@ -251,13 +228,17 @@ const PatientListForAdmission = () => {
             <div className="row">
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
-                        {/* Header Section */}
-                        <div className="card-header">
+                        <div className="card-header d-flex justify-content-between align-items-center">
                             <h4 className="card-title p-2 mb-0">Patient List for Admission</h4>
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleNewAdmission}
+                            >
+                                <i className="mdi mdi-plus me-1"></i> New Admission
+                            </button>
                         </div>
 
                         <div className="card-body">
-                            {/* Error Display */}
                             {error && (
                                 <div className="alert alert-danger" role="alert">
                                     <i className="mdi mdi-alert-circle"></i> {error}
@@ -271,12 +252,9 @@ const PatientListForAdmission = () => {
                                 </div>
                             )}
 
-                            {/* Search Section */}
                             <div className=" mb-4">
-
                                 <form onSubmit={handleSearch}>
                                     <div className="row g-3 align-items-end">
-                                        {/* Mobile Number Search */}
                                         <div className="col-md-3">
                                             <label className="form-label fw-bold">Mobile No.</label>
                                             <input
@@ -290,7 +268,6 @@ const PatientListForAdmission = () => {
                                             />
                                         </div>
 
-                                        {/* Patient Name Search */}
                                         <div className="col-md-3">
                                             <label className="form-label fw-bold">Patient Name</label>
                                             <input
@@ -303,7 +280,6 @@ const PatientListForAdmission = () => {
                                             />
                                         </div>
 
-                                        {/* Admission Advise Date Search */}
                                         <div className="col-md-3">
                                             <label className="form-label fw-bold">Admission Advise Date</label>
                                             <input
@@ -315,7 +291,6 @@ const PatientListForAdmission = () => {
                                             />
                                         </div>
 
-                                        {/* Action Buttons */}
                                         <div className="col-md-3 d-flex align-items-end gap-2">
                                             <button
                                                 type="submit"
@@ -335,9 +310,6 @@ const PatientListForAdmission = () => {
                                 </form>
                             </div>
 
-
-
-                            {/* Patient Table */}
                             {filteredPatients.length === 0 ? (
                                 <div className="alert alert-info" role="alert">
                                     <i className="mdi mdi-information-outline"></i> No patients found matching your search criteria.
@@ -367,7 +339,6 @@ const PatientListForAdmission = () => {
                                                     <td>{indexOfFirstItem + index + 1}</td>
                                                     <td>
                                                         <div className="d-flex align-items-center">
-
                                                             <div>
                                                                 <strong>{patient.patientName}</strong>
                                                             </div>
@@ -423,7 +394,6 @@ const PatientListForAdmission = () => {
                                 </div>
                             )}
 
-                            {/* Pagination */}
                             {filteredPatients.length > 0 && (
                                 <Pagination
                                     totalItems={filteredPatients.length}
