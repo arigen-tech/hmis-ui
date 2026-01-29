@@ -172,6 +172,11 @@ import NonDrugMaster from './Views/Stores/NondrugMaster';
 import PatientListForAdmission from './Views/IPD/PatientListForAdmission';
 import InpatientAdmission from './Views/IPD/InpatientAdmission';
 import ItemStockLedgerReport from './Views/Stores/StockLedgerReport';
+import BagTypeMaster from './Views/Masters/BagTypeMaster';
+import BloodCollectionTypeMaster from  './Views/Masters/BloodCollectionTypeMater';
+import BloodDonationStatusMaster from './Views/Masters/BloodDonationStatusMaster';
+import AppointmentSummaryReport from './Views/Reception/AppointmentSummaryReport';
+import DailyCancellationReport from './Views/Reception/DailyCancellationReport';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -376,9 +381,14 @@ function App() {
                 <Route path="/EntMasMucosaMaster" element={<EntMasMucosaMaster/>} />
                 <Route path="/NonDrugMaster" element={<NonDrugMaster/>} />
                 <Route path="/PatientListForAdmission" element={<PatientListForAdmission/>} />
-                <Route path="InpatientAdmission" element={<InpatientAdmission/>} />
+                <Route path="/InpatientAdmission" element={<InpatientAdmission/>} />
                 <Route path="/ItemStockLedgerReport" element={<ItemStockLedgerReport/>} />
+                <Route path="/AppointmentSummaryReport" element={<AppointmentSummaryReport/>} />
+                <Route path="/DailyCancellationReport" element={<DailyCancellationReport/>} />
 
+                <Route path="/BagTypeMaster" element={<BagTypeMaster />} />
+                <Route path="/BloodCollectionTypeMaster" element={<BloodCollectionTypeMaster />} />
+                <Route path="/BloodDonationStatusMaster" element={<BloodDonationStatusMaster />} />
               </Route>
             </Route>
 

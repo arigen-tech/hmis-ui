@@ -176,8 +176,12 @@ const validRoutes = [
   "/PatientListForAdmission",
   "/InpatientAdmission",
   "/ItemStockLedgerReport",
+  "/AppointmentSummaryReport",
+  "/DailyCancellationReport",
 
-  
+  "/BagTypeMaster",
+  "/BloodCollectionTypeMaster",
+  "/BloodDonationStatusMaster",
 ];
 
 const NotAuthorized = () => {
