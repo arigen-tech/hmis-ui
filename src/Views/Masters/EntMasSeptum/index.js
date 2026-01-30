@@ -1,60 +1,49 @@
+
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import { MAS_ENT_SEPTUM } from "../../../config/apiConfig";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+
 
 const EntMasSeptum = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({ septumStatus: "" });
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageInput, setPageInput] = useState("");
-
-  const itemsPerPage = 5;
-
-  const [formData, setFormData] = useState({
-    septum_status: "",
-    status: "Y",
-  });
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
-    recordId: null,
-    newStatus: null,
+    record: null,
+    newStatus: "",
   });
 
-  /* ================= LOAD DATA ================= */
-  const fetchData = async () => {
-    try {
-      setLoading(true);
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
-      const dummyData = [
-        {
-          id: 1,
-          septum_status: "Normal",
-          status: "Y",
-          last_update_date: "2025-12-01 08:30:00",
-        },
-        {
-          id: 2,
-          septum_status: "Deviated",
-          status: "Y",
-          last_update_date: "2025-12-02 09:15:00",
-        },
-        {
-          id: 3,
-          septum_status: "Perforated",
-          status: "N",
-          last_update_date: "2025-12-03 10:00:00",
-        },
-      ];
-      setData(dummyData);
-    } catch (err) {
-      showPopup("Failed to fetch data!", "error");
+  // Fetch data
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
+    try {
+      const { response } = await getRequest(`${MAS_ENT_SEPTUM}/getAll/${flag}`);
+      setData(response || []);
+    } catch {
+      showPopup("Failed to fetch records", "error");
+      setData([]);
     } finally {
       setLoading(false);
     }
@@ -66,23 +55,112 @@ const EntMasSeptum = () => {
 
   /* ================= FILTER + PAGINATION ================= */
   const filteredData = data.filter((rec) =>
-    rec.septum_status.toLowerCase().includes(searchQuery.toLowerCase())
+    (rec?.septumStatus ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
-
-  /* ================= POPUP ================= */
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
-  };
+  const currentItems = filteredData.slice(
+    (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
+    currentPage * DEFAULT_ITEMS_PER_PAGE
+  );
 
   /* ================= HANDLERS ================= */
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
+  };
+
+  const handleInputChange = (e) => {
+    const { id, value } = e.target;
+    const updated = { ...formData, [id]: value };
+    setFormData(updated);
+    setIsFormValid(updated.septumStatus.trim() !== "");
+  };
+
+  const resetForm = () => {
+    setFormData({ septumStatus: "" });
+    setIsFormValid(false);
+    setEditingRecord(null);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+
+    const newValue = formData.septumStatus.trim().toLowerCase();
+    const duplicate = data.find(
+      (rec) =>
+        rec.septumStatus?.trim().toLowerCase() === newValue &&
+        (!editingRecord || rec.id !== editingRecord.id)
+    );
+
+    if (duplicate) {
+      showPopup("Septum Status already exists!", "error");
+      return;
+    }
+
+    try {
+      if (editingRecord) {
+        await putRequest(`${MAS_ENT_SEPTUM}/update/${editingRecord.id}`, {
+          septumStatus: formData.septumStatus.trim(),
+        });
+        showPopup("Record updated successfully", "success");
+      } else {
+        await postRequest(`${MAS_ENT_SEPTUM}/create`, {
+          septumStatus: formData.septumStatus.trim(),
+        });
+        showPopup("Record added successfully", "success");
+      }
+      fetchData();
+      handleCancel();
+    } catch {
+      showPopup("Save failed", "error");
+    }
+  };
+
+  const handleEdit = (rec) => {
+    setEditingRecord(rec);
+    setFormData({ septumStatus: rec.septumStatus || "" });
+    setIsFormValid(true);
+    setShowForm(true);
+  };
+
+  const handleSwitchChange = (rec) => {
+    setConfirmDialog({
+      isOpen: true,
+      record: rec,
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+    });
+  };
+
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
+    }
+    if (!confirmDialog.record) return;
+
+    try {
+      setLoading(true);
+      await putRequest(
+        `${MAS_ENT_SEPTUM}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`
+      );
+      showPopup("Status updated successfully", "success");
+      fetchData();
+    } catch {
+      showPopup("Status update failed", "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+    }
+  };
+
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
   const handleRefresh = () => {
@@ -91,88 +169,19 @@ const EntMasSeptum = () => {
     fetchData();
   };
 
-  const handleInputChange = (e) => {
-    const { id, value, type, checked } = e.target;
-    const updated = {
-      ...formData,
-      [id]: type === "checkbox" ? (checked ? "Y" : "N") : value,
-    };
-    setFormData(updated);
-    setIsFormValid(updated.septum_status.trim() !== "");
-  };
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
-
-    const now = new Date().toISOString().replace("T", " ").split(".")[0];
-
-    if (editingRecord) {
-      setData(
-        data.map((rec) =>
-          rec.id === editingRecord.id
-            ? { ...rec, ...formData, last_update_date: now }
-            : rec
-        )
-      );
-      showPopup("Record updated successfully!", "success");
-    } else {
-      setData([
-        ...data,
-        { id: Date.now(), ...formData, last_update_date: now },
-      ]);
-      showPopup("New record added successfully!", "success");
-    }
-    resetForm();
-  };
-
-  const handleEdit = (rec) => {
-    setEditingRecord(rec);
-    setFormData({ septum_status: rec.septum_status, status: rec.status });
-    setIsFormValid(true);
-    setShowForm(true);
-  };
-
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, recordId: id, newStatus });
-  };
-
-  const handleConfirmStatusChange = (confirmed) => {
-    if (confirmed) {
-      setData(
-        data.map((rec) =>
-          rec.id === confirmDialog.recordId
-            ? { ...rec, status: confirmDialog.newStatus }
-            : rec
-        )
-      );
-      showPopup("Status updated successfully!", "success");
-    }
-    setConfirmDialog({ isOpen: false, recordId: null, newStatus: null });
-  };
-
-  const resetForm = () => {
-    setFormData({
-      septum_status: "",
-      status: "Y",
-    });
-    setEditingRecord(null);
-    setShowForm(false);
-    setIsFormValid(false);
-  };
-
+  
   return (
     <div className="content-wrapper">
       <div className="card form-card">
         <div className="card-header d-flex justify-content-between align-items-center">
-          <h4 className="card-title"> Septum Master</h4>
-
-          <div className="d-flex align-items-center">
+          <h4>Septum Master</h4>
+          <div className="d-flex">
             {!showForm && (
               <input
-                type="text"
-                className="form-control w-50 me-2"
-                placeholder="Search Septum Status"
+                style={{ width: "220px" }}
+                className="form-control me-2"
+                placeholder="Search"
                 value={searchQuery}
                 onChange={handleSearchChange}
               />
@@ -182,11 +191,11 @@ const EntMasSeptum = () => {
               <>
                 <button
                   className="btn btn-success me-2"
-                  onClick={() => setShowForm(true)}
+                  onClick={() => { resetForm(); setShowForm(true); }}
                 >
                   Add
                 </button>
-                <button className="btn btn-success" onClick={handleRefresh}>
+                <button className="btn btn-success " onClick={handleRefresh}>
                   Show All
                 </button>
               </>
@@ -205,76 +214,68 @@ const EntMasSeptum = () => {
                 <table className="table table-bordered table-hover">
                   <thead className="table-light">
                     <tr>
-                      <th>ID</th>
                       <th>Septum Status</th>
-                      <th>Last Update</th>
+                      <th>Last Update Date</th>
                       <th>Status</th>
                       <th>Edit</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {currentItems.length ? (
-                      currentItems.map((rec) => (
-                        <tr key={rec.id}>
-                          <td>{rec.id}</td>
-                          <td>{rec.septum_status}</td>
-                          <td>{rec.last_update_date}</td>
-                          <td>
-                            <div className="form-check form-switch">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                checked={rec.status === "Y"}
-                                onChange={() =>
-                                  handleSwitchChange(
-                                    rec.id,
-                                    rec.status === "Y" ? "N" : "Y"
-                                  )
-                                }
-                              />
-                            </div>
-                          </td>
-                          <td>
-                            <button
-                              className="btn btn-success btn-sm"
-                              onClick={() => handleEdit(rec)}
-                              disabled={rec.status !== "Y"}
-                            >
-                              Edit
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : ( <tr><td colSpan="5" className="text-center">No record found</td></tr> )}
+                    {currentItems.map((rec) => (
+                      <tr key={rec.id}>
+                        <td>{rec.septumStatus}</td>
+                        <td>{formatDate(rec.lastUpdateDate)}</td>
+                        <td>
+                          <div className="form-check form-switch">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              checked={rec.status?.toLowerCase() === "y"}
+                              onChange={() => handleSwitchChange(rec)}
+                            />
+                            <label className="form-check-label ms-2">
+                              {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+                            </label>
+                          </div>
+                        </td>
+                        <td>
+                          <button
+                            className="btn btn-success btn-sm"
+                            onClick={() => handleEdit(rec)}
+                            disabled={rec.status?.toLowerCase() !== "y"}
+                          >
+                            <i className="fa fa-pencil"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
 
-              {/* PAGINATION */}
-                           <Pagination
-                                             totalItems={filteredData.length}
-                                             itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                             currentPage={currentPage}
-                                             onPageChange={setCurrentPage}
-                                       />    
+              <Pagination
+                totalItems={filteredData.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
             </>
           ) : (
             <form className="row" onSubmit={handleSave}>
               <div className="form-group col-md-6">
                 <label>Septum Status</label>
                 <input
-                  type="text"
-                  id="septum_status"
-                  className="form-control mt-1"
-                  value={formData.septum_status}
+                  id="septumStatus"
+                  className="form-control"
+                  value={formData.septumStatus}
                   onChange={handleInputChange}
                 />
               </div>
-              <div className="form-group col-md-12 mt-3 text-end">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>
+              <div className="col-12 text-end mt-3">
+                <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                   Save
                 </button>
-                <button className="btn btn-danger" type="button" onClick={resetForm}>
+                <button type="button" className="btn btn-danger" onClick={handleCancel}>
                   Cancel
                 </button>
               </div>
@@ -289,16 +290,22 @@ const EntMasSeptum = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}?
+                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}?
                   </div>
                   <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={() => handleConfirmStatusChange(false)}>No</button>
-                    <button className="btn btn-primary" onClick={() => handleConfirmStatusChange(true)}>Yes</button>
+                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                      No
+                    </button>
+                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                      Yes
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
           )}
+
+          {loading && <LoadingScreen />}
         </div>
       </div>
     </div>

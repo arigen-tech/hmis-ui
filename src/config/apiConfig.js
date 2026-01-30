@@ -256,6 +256,7 @@ export const MAS_GYN_FLOW =`${MASTERS}/gynMasFlow`;
 export const MAS_ENT_SEPTUM =`${MASTERS}/entMasSeptum`;
 export const MAS_OB_PVLIQUOR=`{MASTERS}/ObMasPvLiquor`;
 export const MAS_ENT_MUCOSA=`{MASTERS}/entMasMucosa`;
+export const MAS_OB_PVMEMBRANE =`{MASTERS}/ObMasPvMembrane`;
 
 // Constants for date validation for Lab report
   export const MAX_MONTHS_BACK = 4; // 4 months maximum back date
