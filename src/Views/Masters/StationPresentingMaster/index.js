@@ -5,6 +5,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_STATION_PRESENTATION } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {FETCH_STATION_PRESENTING,DUPLICATE_STATION_PRESENTING,UPDATE_STATION_PRESENTING,ADD_STATION_PRESENTING,FAIL_STATION_PRESENTING,FAIL_UPDATE_STATION_PRESENTING} from  "../../../config/constants";
 
 const StationPresentingMaster = () => {
   const [data, setData] = useState([]);
@@ -51,7 +52,7 @@ const StationPresentingMaster = () => {
       const { response } = await getRequest(`${MAS_STATION_PRESENTATION}/getAll/${flag}`);
       setData(response || []);
     } catch (error) {
-      showPopup("Failed to fetch records", "error");
+      showPopup(FETCH_STATION_PRESENTING, "error");
       setData([]);
     } finally {
       setLoading(false);
@@ -103,7 +104,7 @@ const StationPresentingMaster = () => {
     );
 
     if (duplicate) {
-      showPopup("Station Value already exists!", "error"); 
+      showPopup(DUPLICATE_STATION_PRESENTING, "error"); 
       return;
     }
 
@@ -113,17 +114,17 @@ const StationPresentingMaster = () => {
           ...editingRecord,
           stationValue: formData.stationValue.trim(),
         });
-        showPopup("Record updated successfully", "success");
+        showPopup(UPDATE_STATION_PRESENTING, "success");
       } else {
         await postRequest(`${MAS_STATION_PRESENTATION}/create`, {
           stationValue: formData.stationValue.trim(),
         });
-        showPopup("Record added successfully", "success");
+        showPopup(ADD_STATION_PRESENTING, "success");
       }
       fetchData();
       handleCancel();
     } catch (error) {
-      showPopup("Save failed", "error");
+      showPopup(FAIL_STATION_PRESENTING, "error");
     }
   };
 
@@ -157,10 +158,10 @@ const StationPresentingMaster = () => {
       await putRequest(
         `${MAS_STATION_PRESENTATION}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`
       );
-      showPopup("Status updated successfully", "success");
+      showPopup(UPDATE_STATION_PRESENTING, "success");
       fetchData();
     } catch (error) {
-      showPopup("Status update failed", "error");
+      showPopup(FAIL_UPDATE_STATION_PRESENTING, "error");
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });

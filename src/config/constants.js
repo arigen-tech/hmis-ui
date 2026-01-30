@@ -671,3 +671,92 @@ export const FETCH_DATA_ERROR = "Failed to load data";
 export const MISSING_MOBILE_NUMBER = "Please enter Mobile Number";
 export const NO_DATA_FOUND = "No data found";
 export const NO_TIME_SLOTS = "No time slots available for this session and date.";
+
+
+
+
+// EntMasSeptum Master
+export const FETCH_ENT_MAS_SEPTUM = "Failed to fetch records";
+export const DUPLICATE_ENT_MAS_SEPTUM = "Septum Status already exists";
+export const UPDATE_ENT_MAS_SEPTUM = "Record updated successfully";
+export const ADD_ENT_MAS_SEPTUM = "Record added successfully";
+export const FAIL_ENT_MAS_SEPTUM = "Save failed";
+export const STATUS_FAIL_UPDATED ="Status update failed";
+
+
+//TrimesterMaster
+export const FETCH_TRIME_STER = "Failed to fetch records";
+export const DUPLICATE_TRIME_STER ="trimesterValue Type already exists";
+export const UPDATE_TRIME_STER = "Record updated successfully";
+export const ADD_TRIME_STER = "Record added successfully";
+export const FAIL_TRIME_STER = "Save failed";
+export const FAIL_UPDATE_TRIME_STER ="Status update failed";
+
+
+//SterilisationMaster;
+export const FETCH_STERILI_SATION = "Failed to fetch records";
+export const DUPLICATE_STERILI_SATION = "Sterilisation Type already exists";
+export const UPDATE_STERILI_SATION = "Record updated successfully";
+export const ADD_STERILI_SATION = "Record added successfully";
+export const FAIL_STERILI_SATION = "Save failed";
+export const FAIL_UPDATE_STERILI_SATION = "Status update failed";
+
+
+//StationPresentingMaster;
+export const FETCH_STATION_PRESENTING = "Failed to fetch records";
+export const DUPLICATE_STATION_PRESENTING = "Station Value already exists";
+export const UPDATE_STATION_PRESENTING = "Record updated successfully";
+export const ADD_STATION_PRESENTING = "Record added successfully";
+export const FAIL_STATION_PRESENTING = "Save failed";
+export const FAIL_UPDATE_STATION_PRESENTING = "Status update failed";
+
+
+//QuestionHeadingMaster
+
+export const FETCH_QUESTION_HEADING = "Failed to fetch records";
+export const DUPLICATE_QUESTION_HEADING = "Question Heading Code already exists";
+export const  INVALID_QUESTION_HEADING   = "Invalid record ID";
+export const UPDATE_QUESTION_HEADING = "Record updated successfully";
+export const ADD_QUESTION_HEADING  = "Record added successfully";
+export const  FAIL_QUESTION_HEADING = "Save failed. Please try again";
+
+
+//PresentationMaster
+export const FETCH_PRESENTATION = "Failed to fetch records";
+export const DUPLICATE_PRESENTATION = "Presentation Value already exists";
+export const UPDATE_PRESENTATION = "Record updated successfully";
+export const Fail_PRESENTATION = "Save failed";
+export const UPDATE_FAIL_PRESENTATION = "Status update failed";
+
+
+//PelvisType;
+export const FETCH_PELVISTYPE = "Failed to fetch records";
+export const DUPLICATE_PELVISTYPE = "Pelvis Type already exists";
+export const UPDATE_PELVISTYPE = "Record updated successfully";
+export const FAIL_PELVISTYPE = "Save failed";
+export const UPDATE_FAIL_PRLVISTYPE = "Status update failed";
+
+
+//OpthNearVisionMaster
+export const FETCH_OPTHNEAR = "Failed to fetch records";
+export const DUPLICATE_OPTHNEAR = "Value already exists";
+export const UPDATE_OPTHNEAR = "Record updated successfully";
+export const ADD_OPTHNEAR = "Record added successfully";
+export const FAIL_OPTHNEAR = "Save failed";
+export const UPDATE_FAIL_OPTHNEAR = "Status update failed";
+
+//OpthColorVisionMaster;
+export const FETCH_OPTH_COLOR = "Failed to fetch records";
+export const DUPLICATE_OPTH_COLOR = "Color value already exists";
+export const UPDATE_OPTH_COLOR = "Record updated successfully";
+export const  FAIL_OPTH_COLOR = "Save failed";
+export const UPDATE_STATUS_OPTH_COLOR = "Status update failed"
+
+
+//ObConsanguinityMaster
+export const FETH_OB_CONSAN = "Failed to fetch records";
+export const DUPLICATE_OB_CONSAN ="ObConsanguinity already exists";
+export const UPDATE_OB_CONSAN = "Status updated successfully";
+export const ADD_OB_CONSAN = "Record added successfully";
+export const FAIL_OB_CONSAN = "Save failed";
+export const UPDATE_FAIL = "Status update failed";

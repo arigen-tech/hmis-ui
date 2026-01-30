@@ -5,6 +5,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_ENT_SEPTUM } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {FETCH_ENT_MAS_SEPTUM, DUPLICATE_ENT_MAS_SEPTUM, UPDATE_ENT_MAS_SEPTUM,ADD_ENT_MAS_SEPTUM,FAIL_ENT_MAS_SEPTUM,STATUS_FAIL_UPDATED} from "../../../config/constants";
 
 
 const EntMasSeptum = () => {
@@ -42,7 +43,7 @@ const EntMasSeptum = () => {
       const { response } = await getRequest(`${MAS_ENT_SEPTUM}/getAll/${flag}`);
       setData(response || []);
     } catch {
-      showPopup("Failed to fetch records", "error");
+      showPopup(FETCH_ENT_MAS_SEPTUM, "error");
       setData([]);
     } finally {
       setLoading(false);
@@ -99,7 +100,7 @@ const EntMasSeptum = () => {
     );
 
     if (duplicate) {
-      showPopup("Septum Status already exists!", "error");
+      showPopup(DUPLICATE_ENT_MAS_SEPTUM, "error");
       return;
     }
 
@@ -108,17 +109,17 @@ const EntMasSeptum = () => {
         await putRequest(`${MAS_ENT_SEPTUM}/update/${editingRecord.id}`, {
           septumStatus: formData.septumStatus.trim(),
         });
-        showPopup("Record updated successfully", "success");
+        showPopup(UPDATE_ENT_MAS_SEPTUM, "success");
       } else {
         await postRequest(`${MAS_ENT_SEPTUM}/create`, {
           septumStatus: formData.septumStatus.trim(),
         });
-        showPopup("Record added successfully", "success");
+        showPopup(ADD_ENT_MAS_SEPTUM, "success");
       }
       fetchData();
       handleCancel();
     } catch {
-      showPopup("Save failed", "error");
+      showPopup(FAIL_ENT_MAS_SEPTUM, "error");
     }
   };
 
@@ -149,10 +150,10 @@ const EntMasSeptum = () => {
       await putRequest(
         `${MAS_ENT_SEPTUM}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`
       );
-      showPopup("Status updated successfully", "success");
+      showPopup(UPDATE_ENT_MAS_SEPTUM, "success");
       fetchData();
     } catch {
-      showPopup("Status update failed", "error");
+      showPopup(STATUS_FAIL_UPDATED, "error");
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
