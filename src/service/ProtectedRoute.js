@@ -178,7 +178,7 @@ const validRoutes = [
   "/ItemStockLedgerReport",
   "/AppointmentSummaryReport",
   "/DailyCancellationReport",
-
+  "/CommonStatusMaster",
   "/BagTypeMaster",
   "/BloodCollectionTypeMaster",
   "/BloodDonationStatusMaster",

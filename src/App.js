@@ -177,6 +177,7 @@ import BloodCollectionTypeMaster from  './Views/Masters/BloodCollectionTypeMater
 import BloodDonationStatusMaster from './Views/Masters/BloodDonationStatusMaster';
 import AppointmentSummaryReport from './Views/Reception/AppointmentSummaryReport';
 import DailyCancellationReport from './Views/Reception/DailyCancellationReport';
+import CommonStatusMaster from './Views/Masters/CommonStatusMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -385,6 +386,7 @@ function App() {
                 <Route path="/ItemStockLedgerReport" element={<ItemStockLedgerReport/>} />
                 <Route path="/AppointmentSummaryReport" element={<AppointmentSummaryReport/>} />
                 <Route path="/DailyCancellationReport" element={<DailyCancellationReport/>} />
+                <Route path="/CommonStatusMaster" element={<CommonStatusMaster />} />
 
                 <Route path="/BagTypeMaster" element={<BagTypeMaster />} />
                 <Route path="/BloodCollectionTypeMaster" element={<BloodCollectionTypeMaster />} />
