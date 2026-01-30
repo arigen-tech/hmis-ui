@@ -754,9 +754,27 @@ export const UPDATE_STATUS_OPTH_COLOR = "Status update failed"
 
 
 //ObConsanguinityMaster
-export const FETH_OB_CONSAN = "Failed to fetch records";
+export const FETCH_OB_CONSAN = "Failed to fetch records";
 export const DUPLICATE_OB_CONSAN ="ObConsanguinity already exists";
 export const UPDATE_OB_CONSAN = "Status updated successfully";
 export const ADD_OB_CONSAN = "Record added successfully";
 export const FAIL_OB_CONSAN = "Save failed";
 export const UPDATE_FAIL = "Status update failed";
+
+
+//ObConceptionMaster
+export const FETCH_OB_CONCEPTION = "Failed to fetch records";
+export const DUPLICATE_OB_CONCEPTION = "Conception with the same code or name  already exists";
+export const UPDATE_OB_CONCEPTION = "Record updated successfully";
+export const ADD_OB_CONCEPTION = "Record added successfully";
+export const FAIL_UPDATE_OB_CONCEPTION = "Failed to update status";
+export const FAIL_SOMTHING_OB_CONCEPTION = "Something went wrong while saving the record";
+
+
+//MenstrualFlowMaster;
+export const FETCH_MENSTRUAL ="Failed to fetch records";
+export const DUPLICATE_MENSTRUAL = "Flow Value already exists";
+export const UPDATE_MENSTRUAL ="Record updated successfully";
+export const ADD_MENSTRUAL = "Record added successfully";
+export const FAIL_MENSTRUAL = "Save failed";
+export const UPDATE_FAIL_MENSTRUAL = "Status update failed";

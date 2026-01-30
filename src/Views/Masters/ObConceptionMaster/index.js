@@ -4,6 +4,7 @@ import { MAS_OB_CONCEPTION } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {FETCH_OB_CONCEPTION,DUPLICATE_OB_CONCEPTION,UPDATE_OB_CONCEPTION,ADD_OB_CONCEPTION,FAIL_UPDATE_OB_CONCEPTION,FAIL_SOMTHING_OB_CONCEPTION} from "../../../config/constants";
 
 
 
@@ -73,7 +74,7 @@ const ObConceptionMaster = () => {
       }
     } catch (error) {
       console.error(error);
-      showPopup("Failed to fetch records", "error");
+      showPopup(FETCH_OB_CONCEPTION, "error");
     }
   };
 
@@ -138,7 +139,7 @@ const ObConceptionMaster = () => {
     );
 
     if (duplicate) {
-      showPopup("Conception with the same code or name  already exists!", "error");
+      showPopup(DUPLICATE_OB_CONCEPTION, "error");
       return;
     }
 
@@ -151,7 +152,7 @@ const ObConceptionMaster = () => {
           description: formData.description || "",
           status: editingRecord.status,
         });
-        showPopup("Record updated successfully", "success");
+        showPopup(UPDATE_OB_CONCEPTION, "success");
       } else {
         // CREATE
         await postRequest(`${MAS_OB_CONCEPTION}/create`, {
@@ -159,7 +160,7 @@ const ObConceptionMaster = () => {
           description: formData.description || "",
           status: "Y",
         });
-        showPopup("Record added successfully", "success");
+        showPopup(ADD_OB_CONCEPTION, "success");
       }
 
       fetchData();
@@ -167,7 +168,7 @@ const ObConceptionMaster = () => {
       setEditingRecord(null);
       setShowForm(false);
     } catch (error) {
-      showPopup("Something went wrong while saving the record", "error");
+      showPopup(FAIL_SOMTHING_OB_CONCEPTION, "error");
     }
   };
 
@@ -202,10 +203,10 @@ const ObConceptionMaster = () => {
         `${MAS_OB_CONCEPTION}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
       );
 
-      showPopup("Status updated successfully", "success");
+      showPopup(UPDATE_OB_CONCEPTION, "success");
       fetchData();
     } catch (error) {
-      showPopup("Failed to update status", "error");
+      showPopup(FAIL_UPDATE_OB_CONCEPTION , "error");
     }
     setConfirmDialog({
       isOpen: false, id: null,  newStatus: "", statusName: "",});
