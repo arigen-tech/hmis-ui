@@ -778,3 +778,12 @@ export const UPDATE_MENSTRUAL ="Record updated successfully";
 export const ADD_MENSTRUAL = "Record added successfully";
 export const FAIL_MENSTRUAL = "Save failed";
 export const UPDATE_FAIL_MENSTRUAL = "Status update failed";
+
+
+// eartmstatus Master
+
+export const FETCH_DATA_ERR_MSG = "Failed to fetch data!";
+export const DUPLICATE_TM_STATUS = "TM Status already exists!";
+export const UPDATE_TM_STATUS_SUCC_MSG = "TM Status updated successfully!";
+export const ADD_TM_STATUS_SUCC_MSG = "TM Status added successfully!";
+

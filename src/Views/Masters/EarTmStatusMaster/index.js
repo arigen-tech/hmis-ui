@@ -1,8 +1,17 @@
-
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
+import axios from "axios";
+import { API_HOST, ENT_MAS_TM_STATUS } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {
+  FETCH_DATA_ERR_MSG,
+  DUPLICATE_TM_STATUS,
+  UPDATE_TM_STATUS_SUCC_MSG,
+  ADD_TM_STATUS_SUCC_MSG,
+  FAIL_TO_SAVE_CHANGES
+} from "../../../config/constants";
 
 const EarTmStatusMaster = () => {
   const [data, setData] = useState([]);
@@ -13,57 +22,56 @@ const EarTmStatusMaster = () => {
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageInput, setPageInput] = useState("");
-  const itemsPerPage = 5;
-
-  const [formData, setFormData] = useState({
-    use_name: "",
-    created_by: "",
-    last_updated_by: "",
-    status: "Y",
-  });
-
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, recordId: null, newStatus: null });
 
-  const fetchData = async () => {
+  const [formData, setFormData] = useState({
+    tmStatus: "",
+    status: "y",
+  });
+
+  const TM_STATUS_MAX_LENGTH = 50;
+
+  useEffect(() => {
+    fetchData(0);
+  }, []);
+
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const dummyData = [
-        { id: 1, use_name: "Intact", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-12-01 08:30:00" },
-        { id: 2, use_name: "Perforated", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-12-02 09:15:00" },
-        { id: 3, use_name: "Scarred", status: "N", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-12-03 10:00:00" },
-        { id: 4, use_name: "Retracted", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-12-04 10:45:00" },
-        { id: 5, use_name: "Bulging", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-12-05 11:30:00" },
-        { id: 6, use_name: "Otoscopy Others", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-12-06 12:00:00" },
-      ];
-      setData(dummyData);
+      const response = await getRequest(`${ENT_MAS_TM_STATUS}/getAll/${flag}`);
+      if (response && response.response) {
+        setData(response.response);
+      }
     } catch (err) {
-      console.error(err);
-      showPopup("Failed to fetch data!", "error");
+      console.error("Error fetching TM Status data:", err);
+      showPopup(FETCH_DATA_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
-
-  const filteredData = data.filter((rec) =>
-    rec.use_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
- const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
-
   const showPopup = (message, type = "info") => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+      },
+    });
   };
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
   };
+
+  const filteredData = data.filter((rec) =>
+    rec.tmStatus.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
 
   const handleRefresh = () => {
     setSearchQuery("");
@@ -72,41 +80,69 @@ const EarTmStatusMaster = () => {
   };
 
   const handleInputChange = (e) => {
-    const { id, value, type, checked } = e.target;
-    let updated = { ...formData };
-    if (type === "checkbox") updated[id] = checked ? "Y" : "N";
-    else updated[id] = value;
-    setFormData(updated);
-    setIsFormValid(updated.use_name.trim() !== "");
+    const { id, value } = e.target;
+    const updatedData = { ...formData, [id]: value };
+    setFormData(updatedData);
+    setIsFormValid(updatedData.tmStatus.trim() !== "");
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    const now = new Date().toISOString().replace("T", " ").split(".")[0];
-
-    if (editingRecord) {
-      setData(
-        data.map((rec) =>
-          rec.id === editingRecord.id
-            ? { ...rec, ...formData, last_update_date: now }
-            : rec
-        )
+    
+    setLoading(true);
+    try {
+      // Check for duplicate
+      const isDuplicate = data.some(
+        (record) =>
+          record.id !== (editingRecord ? editingRecord.id : null) &&
+          record.tmStatus === formData.tmStatus
       );
-      showPopup("Record updated successfully!", "success");
-    } else {
-      setData([
-        ...data,
-        { id: Date.now(), ...formData, last_update_date: now },
-      ]);
-      showPopup("New record added successfully!", "success");
+
+      if (isDuplicate) {
+        showPopup(DUPLICATE_TM_STATUS, "error");
+        setLoading(false);
+        return;
+      }
+
+      if (editingRecord) {
+        // Update existing record
+        const response = await putRequest(`${ENT_MAS_TM_STATUS}/update/${editingRecord.id}`, {
+          tmStatus: formData.tmStatus,
+          status: editingRecord.status, // Keep existing status when editing
+        });
+
+        if (response && response.status === 200) {
+          fetchData();
+          showPopup(UPDATE_TM_STATUS_SUCC_MSG, "success");
+        }
+      } else {
+        // Add new record
+        const response = await postRequest(`${ENT_MAS_TM_STATUS}/create`, {
+          tmStatus: formData.tmStatus,
+          status: "y",
+        });
+
+        if (response && response.status === 200 || response && response.status === 201) {
+          fetchData();
+          showPopup(ADD_TM_STATUS_SUCC_MSG, "success");
+        }
+      }
+
+      resetForm();
+    } catch (err) {
+      console.error("Error saving TM Status:", err);
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
+      setLoading(false);
     }
-    resetForm();
   };
 
   const handleEdit = (rec) => {
     setEditingRecord(rec);
-    setFormData({ ...rec });
+    setFormData({
+      tmStatus: rec.tmStatus,
+      status: rec.status,
+    });
     setIsFormValid(true);
     setShowForm(true);
   };
@@ -115,37 +151,56 @@ const EarTmStatusMaster = () => {
     setConfirmDialog({ isOpen: true, recordId: id, newStatus });
   };
 
-  const handleConfirmStatusChange = (confirmed) => {
+  const handleConfirmStatusChange = async (confirmed) => {
     if (confirmed && confirmDialog.recordId !== null) {
-      setData(
-        data.map((rec) =>
-          rec.id === confirmDialog.recordId
-            ? { ...rec, status: confirmDialog.newStatus }
-            : rec
-        )
-      );
-
-      showPopup(
-        confirmDialog.newStatus === "Y"
-          ? "Activated successfully!"
-          : "Deactivated successfully!",
-        "success"
-      );
+      setLoading(true);
+      try {
+        const response = await putRequest(
+          `${ENT_MAS_TM_STATUS}/status/${confirmDialog.recordId}?status=${confirmDialog.newStatus}`
+        );
+        if (response && response.status === 200) {
+          fetchData();
+          showPopup(
+            `TM Status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            "success"
+          );
+        }
+      } catch (err) {
+        console.error("Error updating status:", err);
+        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        setLoading(false);
+      }
     }
     setConfirmDialog({ isOpen: false, recordId: null, newStatus: null });
   };
 
+  // Function to format date to show only date (without time)
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = new Date(dateString);
+      // Format as YYYY-MM-DD
+      return date.toISOString().split('T')[0];
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return 'Invalid Date';
+    }
+  };
+
   const resetForm = () => {
     setFormData({
-      use_name: "",
-      created_by: "",
-      last_updated_by: "",
-      status: "Y",
+      tmStatus: "",
+      status: "y",
     });
     setEditingRecord(null);
     setShowForm(false);
     setIsFormValid(false);
   };
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <div className="content-wrapper">
@@ -153,50 +208,65 @@ const EarTmStatusMaster = () => {
         <div className="card-header d-flex justify-content-between align-items-center">
           <h4 className="card-title">Ear Tympanic Membrane Status Master</h4>
           <div className="d-flex align-items-center">
-            {!showForm && (
-              <input
-                type="text"
-                className="form-control w-50 me-2"
-                placeholder="Search by Name"
-                value={searchQuery}
-                onChange={handleSearchChange}
-              />
-            )}
             {!showForm ? (
-              <>
-                <button
-                  className="btn btn-success me-2"
-                  onClick={() => setShowForm(true)}
-                >
-                  Add
-                </button>
-                <button
-                  className="btn btn-success flex-shrink-0"
-                  onClick={handleRefresh}
-                >
-                  Show All
-                </button>
-              </>
+              <form className="d-inline-block searchform me-4" role="search">
+                <div className="input-group searchinput">
+                  <input
+                    type="search"
+                    className="form-control"
+                    placeholder="Search TM Status"
+                    aria-label="Search"
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                  />
+                  <span className="input-group-text" id="search-icon">
+                    <i className="fa fa-search"></i>
+                  </span>
+                </div>
+              </form>
             ) : (
-              <button
-                className="btn btn-secondary"
-                onClick={resetForm}
-              >
-                Back
-              </button>
+              <></>
             )}
+            <div className="d-flex align-items-center">
+              {!showForm ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-success me-2"
+                    onClick={() => {
+                      setEditingRecord(null);
+                      setFormData({ tmStatus: "", status: "y" });
+                      setIsFormValid(false);
+                      setShowForm(true);
+                    }}
+                  >
+                    <i className="mdi mdi-plus"></i> Add
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-success me-2 flex-shrink-0"
+                    onClick={handleRefresh}
+                  >
+                    <i className="mdi mdi-refresh"></i> Show All
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="btn btn-secondary" onClick={resetForm}>
+                  <i className="mdi mdi-arrow-left"></i> Back
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="card-body">
           {!showForm ? (
             <>
-              <div className="table-responsive">
-                <table className="table table-bordered table-hover">
+              <div className="table-responsive packagelist">
+                <table className="table table-bordered table-hover align-middle">
                   <thead className="table-light">
                     <tr>
-                      <th>ID</th>
-                      <th>Name</th>
+                      <th>TM Status</th>
                       <th>Last Update Date</th>
                       <th>Status</th>
                       <th>Edit</th>
@@ -206,34 +276,30 @@ const EarTmStatusMaster = () => {
                     {currentItems.length ? (
                       currentItems.map((rec) => (
                         <tr key={rec.id}>
-                          <td>{rec.id}</td>
-                          <td>{rec.use_name}</td>
-                          <td>{rec.last_update_date}</td>
+                          <td>{rec.tmStatus}</td>
+                          <td>{formatDate(rec.lastUpdateDate)}</td>
                           <td>
                             <div className="form-check form-switch">
                               <input
                                 className="form-check-input"
                                 type="checkbox"
-                                checked={rec.status === "Y"}
-                                onChange={() =>
-                                  handleSwitchChange(
-                                    rec.id,
-                                    rec.status === "Y" ? "N" : "Y"
-                                  )
-                                }
+                                checked={rec.status === "y"}
+                                onChange={() => handleSwitchChange(rec.id, rec.status === "y" ? "n" : "y")}
+                                id={`switch-${rec.id}`}
                               />
-                              <label className="form-check-label">
-                                {rec.status === "Y"
-                                  ? "Active"
-                                  : "Inactive"}
+                              <label
+                                className="form-check-label px-0"
+                                htmlFor={`switch-${rec.id}`}
+                              >
+                                {rec.status === "y" ? "Active" : "Deactivated"}
                               </label>
                             </div>
                           </td>
                           <td>
                             <button
-                              className="btn btn-success btn-sm"
+                              className="btn btn-sm btn-success me-2"
                               onClick={() => handleEdit(rec)}
-                              disabled={rec.status !== "Y"}
+                              disabled={rec.status !== "y"}
                             >
                               <i className="fa fa-pencil"></i>
                             </button>
@@ -242,10 +308,7 @@ const EarTmStatusMaster = () => {
                       ))
                     ) : (
                       <tr>
-                        <td
-                          colSpan="5"
-                          className="text-center"
-                        >
+                        <td colSpan="4" className="text-center">
                           No record found
                         </td>
                       </tr>
@@ -254,32 +317,38 @@ const EarTmStatusMaster = () => {
                 </table>
               </div>
 
-               {/* PAGINATION */}
-                           <Pagination
-                                             totalItems={filteredData.length}
-                                             itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                             currentPage={currentPage}
-                                             onPageChange={setCurrentPage}
-                                       />    
+              {/* PAGINATION */}
+              {filteredData.length > 0 && (
+                <Pagination
+                  totalItems={filteredData.length}
+                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
+              )}
             </>
           ) : (
             <form className="row" onSubmit={handleSave}>
               <div className="form-group col-md-4">
                 <label>
-                  Name <span className="text-danger"></span>
+                  TM Status <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
-                  id="use_name"
+                  id="tmStatus"
                   className="form-control mt-1"
-                  value={formData.use_name}
+                  placeholder="Enter TM Status"
+                  value={formData.tmStatus}
                   onChange={handleInputChange}
+                  maxLength={TM_STATUS_MAX_LENGTH}
+                  required
                 />
               </div>
 
               <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
                 <button
                   className="btn btn-primary me-2"
+                  type="submit"
                   disabled={!isFormValid}
                 >
                   Save
@@ -298,53 +367,29 @@ const EarTmStatusMaster = () => {
           {popupMessage && <Popup {...popupMessage} />}
 
           {confirmDialog.isOpen && (
-            <div className="modal d-block" tabIndex="-1">
-              <div className="modal-dialog">
+            <div className="modal d-block" tabIndex="-1" role="dialog">
+              <div className="modal-dialog" role="document">
                 <div className="modal-content">
                   <div className="modal-header">
-                    <h5 className="modal-title">
-                      Confirm Status Change
-                    </h5>
-                    <button
-                      type="button"
-                      className="btn-close"
-                      onClick={() =>
-                        handleConfirmStatusChange(false)
-                      }
-                    ></button>
+                    <h5 className="modal-title">Confirm Status Change</h5>
+                    <button type="button" className="close" onClick={() => handleConfirmStatusChange(false)}>
+                      <span>&times;</span>
+                    </button>
                   </div>
                   <div className="modal-body">
                     <p>
-                      Are you sure you want to{" "}
-                      {confirmDialog.newStatus === "Y"
-                        ? "activate"
-                        : "deactivate"}{" "}
+                      Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
                       <strong>
-                        {
-                          data.find(
-                            (rec) =>
-                              rec.id === confirmDialog.recordId
-                          )?.use_name
-                        }
+                        {data.find((rec) => rec.id === confirmDialog.recordId)?.tmStatus}
                       </strong>
                       ?
                     </p>
                   </div>
                   <div className="modal-footer">
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() =>
-                        handleConfirmStatusChange(false)
-                      }
-                    >
+                    <button type="button" className="btn btn-secondary" onClick={() => handleConfirmStatusChange(false)}>
                       No
                     </button>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() =>
-                        handleConfirmStatusChange(true)
-                      }
-                    >
+                    <button type="button" className="btn btn-primary" onClick={() => handleConfirmStatusChange(true)}>
                       Yes
                     </button>
                   </div>
