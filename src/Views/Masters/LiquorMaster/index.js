@@ -5,6 +5,9 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_OB_PVLIQUOR } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {FETCH_LIQUOR,DUPLICATE_LIQUOR,UPDATE_LIQUOR,ADD_LIQUOR,FAIL_LIQUOR,UPDATE_FAIL_LIQUOR,} from "../../../config/constants";
+
+
 
 const LiquorMaster = () => {
   const [data, setData] = useState([]);
@@ -44,7 +47,7 @@ const LiquorMaster = () => {
       const { response } = await getRequest(`${MAS_OB_PVLIQUOR}/getAll/${flag}`);
       setData(response || []);
     } catch {
-      showPopup("Failed to fetch records", "error");
+      showPopup(FETCH_LIQUOR, "error");
       setData([]);
     } finally {
       setLoading(false);
@@ -96,7 +99,7 @@ const LiquorMaster = () => {
     );
 
     if (duplicate) {
-      showPopup("Liquor Value already exists!", "error");
+      showPopup(DUPLICATE_LIQUOR , "error");
       return;
     }
 
@@ -106,17 +109,17 @@ const LiquorMaster = () => {
           ...editingRecord,
           liquorValue: formData.liquorValue.trim(),
         });
-        showPopup("Record updated successfully", "success");
+        showPopup(UPDATE_LIQUOR, "success");
       } else {
         await postRequest(`${MAS_OB_PVLIQUOR}/create`, {
           liquorValue: formData.liquorValue.trim(),
         });
-        showPopup("Record added successfully", "success");
+        showPopup(ADD_LIQUOR, "success");
       }
       fetchData();
       handleCancel();
     } catch {
-      showPopup("Save failed", "error");
+      showPopup(FAIL_LIQUOR, "error");
     }
   };
 
@@ -145,10 +148,10 @@ const LiquorMaster = () => {
     try {
       setLoading(true);
       await putRequest(`${MAS_OB_PVLIQUOR}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`);
-      showPopup("Status updated successfully", "success");
+      showPopup(UPDATE_LIQUOR, "success");
       fetchData();
     } catch {
-      showPopup("Status update failed", "error");
+      showPopup(UPDATE_FAIL_LIQUOR, "error");
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });

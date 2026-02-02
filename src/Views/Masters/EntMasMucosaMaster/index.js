@@ -5,6 +5,8 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_ENT_MUCOSA } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {FETCH_ENTMASMUCOSA,DUPLICATE_ENTMASMUCOSA,UPDATE_ENTMASMUCOSA,ADD_ENTMASMUCOSA,FAIL_ENTMASMUCOSA,UPDATE_FAIL_ENTMASMUCOSA} from "../../../config/constants";
+
 
 const EntMasMucosaMaster = () => {
   const [data, setData] = useState([]);
@@ -45,7 +47,7 @@ const EntMasMucosaMaster = () => {
       const { response } = await getRequest(`${MAS_ENT_MUCOSA}/getAll/${flag}`);
       setData(response || []);
     } catch {
-      showPopup("Failed to fetch records", "error");
+      showPopup(FETCH_ENTMASMUCOSA, "error");
       setData([]);
     } finally {
       setLoading(false);
@@ -99,7 +101,7 @@ const EntMasMucosaMaster = () => {
     );
 
     if (duplicate) {
-      showPopup("Mucosa Status already exists!", "error");
+      showPopup(DUPLICATE_ENTMASMUCOSA, "error");
       return;
     }
 
@@ -109,17 +111,17 @@ const EntMasMucosaMaster = () => {
           ...editingRecord,
           mucosaStatus: formData.mucosaStatus.trim(),
         });
-        showPopup("Record updated successfully", "success");
+        showPopup(UPDATE_ENTMASMUCOSA, "success");
       } else {
         await postRequest(`${MAS_ENT_MUCOSA}/create`, {
           mucosaStatus: formData.mucosaStatus.trim(),
         });
-        showPopup("Record added successfully", "success");
+        showPopup(ADD_ENTMASMUCOSA, "success");
       }
       fetchData();
       handleCancel();
     } catch {
-      showPopup("Save failed", "error");
+      showPopup(FAIL_ENTMASMUCOSA , "error");
     }
   };
 
@@ -148,10 +150,10 @@ const EntMasMucosaMaster = () => {
     try {
       setLoading(true);
       await putRequest(`${MAS_ENT_MUCOSA}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`);
-      showPopup("Status updated successfully", "success");
+      showPopup(UPDATE_ENTMASMUCOSA, "success");
       fetchData();
     } catch {
-      showPopup("Status update failed", "error");
+      showPopup(UPDATE_FAIL_ENTMASMUCOSA, "error");
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });

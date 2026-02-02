@@ -4,6 +4,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_OPTH_LENSTYPE } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {FETCH_LENSTYPE,UPLICATE_LENSTYPE,UPDATE_LENSTYPE,ADD_LENSTYPE,FAIL_LENSTYPE,UPDATE_FAIL_LENSTYPE,} from "../../../config/constants";
 
 const LensTypeMaster = () => {
   const [data, setData] = useState([]);
@@ -49,7 +50,7 @@ const LensTypeMaster = () => {
       const { response } = await getRequest(`${MAS_OPTH_LENSTYPE}/getAll/${flag}`);
       setData(response || []);
     } catch {
-      showPopup("Failed to fetch records", "error");
+      showPopup(FETCH_LENSTYPE, "error");
       setData([]);
     } finally {
       setLoading(false);
@@ -110,7 +111,7 @@ const LensTypeMaster = () => {
     );
 
     if (duplicate) {
-      showPopup("lestType Value already exists!", "error");
+      showPopup(UPLICATE_LENSTYPE, "error");
       return;
     }
 
@@ -120,17 +121,17 @@ const LensTypeMaster = () => {
           ...editingRecord,
           lensType: formData.lensType.trim(),
         });
-        showPopup("Record updated successfully", "success");
+        showPopup(UPDATE_LENSTYPE, "success");
       } else {
         await postRequest(`${MAS_OPTH_LENSTYPE}/create`, {
           lensType: formData.lensType.trim(),
         });
-        showPopup("Record added successfully", "success");
+        showPopup(ADD_LENSTYPE, "success");
       }
       fetchData();
       handleCancel();
     } catch {
-      showPopup("Save failed", "error");
+      showPopup(FAIL_LENSTYPE, "error");
     }
   };
 
@@ -165,7 +166,7 @@ const LensTypeMaster = () => {
       showPopup("Status updated successfully", "success");
       fetchData();
     } catch {
-      showPopup("Status update failed", "error");
+      showPopup(UPDATE_FAIL_LENSTYPE, "error");
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });

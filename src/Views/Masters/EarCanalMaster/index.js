@@ -5,6 +5,10 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_EAR_CANAL } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { FETCH_EARCANAL,DUPLICATE_EARCANAL,UPDATE_EARCANAL,ADD_EARCANAL,FAIL_EARCANAL,UPDATE_FAIL_EARCANAL} from  "../../../config/constants";
+
+
+
 
 const EarCanalMaster = () => {
   const [data, setData] = useState([]);
@@ -43,7 +47,7 @@ const EarCanalMaster = () => {
       setData(response || []);
     } catch (error) {
       console.error("Fetch error:", error);
-      showPopup("Failed to fetch records", "error");
+      showPopup(FETCH_EARCANAL, "error");
       setData([]);
     } finally {
       setLoading(false);
@@ -96,7 +100,7 @@ const EarCanalMaster = () => {
     );
 
     if (duplicate) {
-      showPopup("Ear Canal condition already exists!", "error");
+      showPopup(DUPLICATE_EARCANAL, "error");
       return;
     }
 
@@ -106,18 +110,18 @@ const EarCanalMaster = () => {
           ...editingRecord,
           earCanalCondition: formData.earCanalCondition.trim(),
         });
-        showPopup("Record updated successfully", "success");
+        showPopup(UPDATE_EARCANAL, "success");
       } else {
         await postRequest(`${MAS_EAR_CANAL}/create`, {
           earCanalCondition: formData.earCanalCondition.trim(),
         });
-        showPopup("Record added successfully", "success");
+        showPopup(ADD_EARCANAL, "success");
       }
       fetchData();
       handleCancel();
     } catch (error) {
       console.error("Save error:", error);
-      showPopup("Save failed", "error");
+      showPopup(FAIL_EARCANAL, "error");
     }
   };
 
@@ -153,11 +157,11 @@ const EarCanalMaster = () => {
       await putRequest(
         `${MAS_EAR_CANAL}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`
       );
-      showPopup("Status updated successfully", "success");
+      showPopup(UPDATE_EARCANAL, "success");
       fetchData();
     } catch (error) {
       console.error("Status update error:", error);
-      showPopup("Status update failed", "error");
+      showPopup(UPDATE_FAIL_EARCANAL, "error");
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });

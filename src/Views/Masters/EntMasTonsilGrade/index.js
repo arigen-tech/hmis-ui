@@ -6,6 +6,8 @@ import { API_HOST, MAS_TONSIL_GRADE } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {FETCH_ENTMAS,DUPLICATE_ENTMAS,UPDATE_ENTMAS,ADD_ENTMAS,FAIL_ENTMAS,UPDATE_FAIL_ENTMAS,} from "../../../config/constants";
+
 
 
 
@@ -44,7 +46,7 @@ const EntMasTonsilGradeMaster = () => {
       }
     } catch (err) {
       console.error(err);
-      showPopup("Failed to fetch records", "error");
+      showPopup(FETCH_ENTMAS, "error");
     } finally {
       setLoading(false);
     }
@@ -94,7 +96,7 @@ const EntMasTonsilGradeMaster = () => {
     );
 
     if (duplicate) {
-      showPopup("Tonsil Grade   with the same code or name already exists!", "error");
+      showPopup(DUPLICATE_ENTMAS, "error");
       return;
     }
 
@@ -107,19 +109,19 @@ const EntMasTonsilGradeMaster = () => {
           tonsilGrade: formData.tonsilGrade,
           status: formData.status,
         });
-        showPopup("Record updated successfully!", "success");
+        showPopup(UPDATE_ENTMAS, "success");
       } else {
         await postRequest(`${MAS_TONSIL_GRADE}/create`, {
           tonsilGrade: formData.tonsilGrade,
           status: formData.status,
         });
-        showPopup("New record added successfully!", "success");
+        showPopup(ADD_ENTMAS, "success");
       }
       fetchRecords();
       resetForm();
     } catch (err) {
       console.error(err);
-      showPopup("Failed to save record!", "error");
+      showPopup(FAIL_ENTMAS, "error");
     } finally {
       setLoading(false);
     }
@@ -154,7 +156,7 @@ const EntMasTonsilGradeMaster = () => {
       fetchRecords();
     } catch (err) {
       console.error(err);
-      showPopup("Failed to update status", "error");
+      showPopup(UPDATE_FAIL_ENTMAS, "error");
     } finally {
       setConfirmDialog({ isOpen: false, recordId: null, newStatus: null });
     }

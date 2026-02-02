@@ -780,9 +780,62 @@ export const FAIL_MENSTRUAL = "Save failed";
 export const UPDATE_FAIL_MENSTRUAL = "Status update failed";
 
 //MembraneStatusMaster
-export const FETCH_MENBRANE = "Failed to fetch records";
+export const FETCH_MEMBRANE = "Failed to fetch records";
 export const DUPLICATE_MEMBRANE = "Septum Status already exists";
 export const UPDATE_MEMBRANE = "Record updated successfully";
 export const ADD_MEMBRANE = "Record added successfully";
 export const FAIL_MEMBRANE = "Save failed";
 export const UPDATE_FAIL_MEMBRANE = "Status update failed";
+
+
+//LiquorMaster;
+export const FETCH_LIQUOR = "Failed to fetch records";
+export const DUPLICATE_LIQUOR = "Liquor Value already exists";
+export const UPDATE_LIQUOR = "Record updated successfully";
+export const ADD_LIQUOR = "Record added successfully";
+export const  FAIL_LIQUOR  = "Save failed";
+export const UPDATE_FAIL_LIQUOR = "Status update failed";
+
+
+//lensTypeMaster
+export const FETCH_LENSTYPE = "Failed to fetch records";
+export const DUPLICATE_LENSTYPE = "lestType Value already exists";
+export const UPDATE_LENSTYPE = "Record updated successfully";
+export const ADD_LENSTYPE = "Record added successfully";
+export const FAIL_LENSTYPE = "Save failed";
+export const UPDATE_FAIL_LENSTYPE = "Status update failed";
+
+//EntMasTonsilGradeMaster;
+export const FETCH_ENTMAS = "Failed to fetch records";
+export const DUPLICATE_ENTMAS = "Tonsil Grade   with the same code or name already exists";
+export const UPDATE_ENTMAS = "Record updated successfully";
+export const ADD_ENTMAS = "New record added successfully";
+export const  FAIL_ENTMAS = "Failed to save record";
+export const UPDATE_FAIL_ENTMAS = "Failed to update status";
+
+
+
+//EntMasMucosaMaster;
+export const FETCH_ENTMASMUCOSA = "Failed to fetch records";
+export const DUPLICATE_ENTMASMUCOSA = "Mucosa Status already exists";
+export const UPDATE_ENTMASMUCOSA = "Record updated successfully";
+export const ADD_ENTMASMUCOSA = "Record added successfully";
+export const FAIL_ENTMASMUCOSA = "Save failed";
+export const UPDATE_FAIL_ENTMASMUCOSA = "Status update failed";
+
+
+//EarRinneMaster;
+export const FETCH_EAR  = "Failed to fetch records";
+export const DUPLICATE_EAR = "Rinne Result already exists";
+export const UPDATE_EAR = "Record updated successfully";
+export const ADD_EAR = "Record added successfully";
+export const  FAIL_EAR = "Save failed";
+export const  UPDATE_FAIL_EAR = "Status update failed";
+
+//EarCanalMaster;
+export const FETCH_EARCANAL = "Failed to fetch records";
+export const DUPLICATE_EARCANAL = "Ear Canal condition already exists";
+export const UPDATE_EARCANAL = "Record updated successfully";
+export const ADD_EARCANAL = "Record added successfully";
+export const FAIL_EARCANAL = "Save failed";
+export const UPDATE_FAIL_EARCANAL = "Status update failed";
