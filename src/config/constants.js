@@ -845,3 +845,11 @@ export const FETCH_DATA_ERR_MSG = "Failed to fetch records";
 export const DUPLICATE_TM_STATUS = "TM Status already exists";
 export const UPDATE_TM_STATUS_SUCC_MSG = "Record updated successfully";
 export const ADD_TM_STATUS_SUCC_MSG = "Record added successfully";
+
+
+//CervixPosition
+export const FETCH_CERVIX = "Failed to fetch records";
+export const DUPLICATE_CERVIX = "cervix Position with the same code or name  already exists";
+export const UPDATE_CERVIX = "Record updated successfully";
+export const ADD_CERVIX = "Record added successfully";
+
