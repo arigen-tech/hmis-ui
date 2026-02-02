@@ -4,7 +4,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_OPTH_LENSTYPE } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {FETCH_LENSTYPE,UPLICATE_LENSTYPE,UPDATE_LENSTYPE,ADD_LENSTYPE,FAIL_LENSTYPE,UPDATE_FAIL_LENSTYPE,} from "../../../config/constants";
+import {FETCH_LENSTYPE,DUPLICATE_LENSTYPE,UPDATE_LENSTYPE,ADD_LENSTYPE,FAIL_LENSTYPE,UPDATE_FAIL_LENSTYPE,} from "../../../config/constants";
 
 const LensTypeMaster = () => {
   const [data, setData] = useState([]);
@@ -111,7 +111,7 @@ const LensTypeMaster = () => {
     );
 
     if (duplicate) {
-      showPopup(UPLICATE_LENSTYPE, "error");
+      showPopup(DUPLICATE_LENSTYPE, "error");
       return;
     }
 

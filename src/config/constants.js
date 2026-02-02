@@ -839,3 +839,9 @@ export const UPDATE_EARCANAL = "Record updated successfully";
 export const ADD_EARCANAL = "Record added successfully";
 export const FAIL_EARCANAL = "Save failed";
 export const UPDATE_FAIL_EARCANAL = "Status update failed";
+
+//EarTmStatusMaster;
+export const FETCH_DATA_ERR_MSG = "Failed to fetch records";
+export const DUPLICATE_TM_STATUS = "TM Status already exists";
+export const UPDATE_TM_STATUS_SUCC_MSG = "Record updated successfully";
+export const ADD_TM_STATUS_SUCC_MSG = "Record added successfully";
