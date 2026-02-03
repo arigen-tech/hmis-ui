@@ -180,6 +180,9 @@ import DailyCancellationReport from './Views/Reception/DailyCancellationReport';
 import CommonStatusMaster from './Views/Masters/CommonStatusMaster';
 import WardManagement from './Views/Masters/WardManagementMaster';
 import WardManagementDashboard from './Views/IPD/WardManagement';
+import PatientRegistrationRadiologyBooking from './Views/Radiology/ PatientRegistrationRadiologyBooking';
+import RadiologyBookingRegisteredPatient from './Views/Radiology/Follow-up Radiology Booking-';
+
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -394,6 +397,8 @@ function App() {
                 <Route path="/BloodCollectionTypeMaster" element={<BloodCollectionTypeMaster />} />
                 <Route path="/BloodDonationStatusMaster" element={<BloodDonationStatusMaster />} />
                 <Route path="/WardManagement" element={<WardManagementDashboard/>} />
+                <Route path="/PatientRegistrationRadiologyBooking" element={<PatientRegistrationRadiologyBooking/>} />
+                <Route path="/RadiologyBookingRegisteredPatient" element={<RadiologyBookingRegisteredPatient/>} />
               </Route>
             </Route>
 

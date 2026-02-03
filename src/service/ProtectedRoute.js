@@ -183,6 +183,8 @@ const validRoutes = [
   "/BloodCollectionTypeMaster",
   "/BloodDonationStatusMaster",
   "/WardManagement",
+  "/PatientRegistrationRadiologyBooking",
+  "/RadiologyBookingRegisteredPatient",
 ];
 
 const NotAuthorized = () => {
