@@ -1,9 +1,20 @@
-import { useEffect, useState } from "react"
-import LoadingScreen from "../../../Components/Loading"
-import Popup from "../../../Components/popup"
-import { MAS_COUNTRY, MAS_DISTRICT, MAS_HOSPITAL, MAS_STATE } from "../../../config/apiConfig"
-import { getRequest, postRequest, putRequest } from "../../../service/apiService"
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+import { useEffect, useState } from "react";
+import LoadingScreen from "../../../Components/Loading";
+import Popup from "../../../Components/popup";
+import {
+  MAS_COUNTRY,
+  MAS_DISTRICT,
+  MAS_HOSPITAL,
+  MAS_STATE,
+} from "../../../config/apiConfig";
+import {
+  getRequest,
+  postRequest,
+  putRequest,
+} from "../../../service/apiService";
+import Pagination, {
+  DEFAULT_ITEMS_PER_PAGE,
+} from "../../../Components/Pagination";
 import {
   FETCH_HOSPITAL_ERR_MSG,
   DUPLICATE_HOSPITAL,
@@ -11,15 +22,19 @@ import {
   ADD_HOSPITAL_SUCC_MSG,
   FAIL_TO_SAVE_CHANGES,
   FAIL_TO_UPDATE_STS,
-  FAILED_TO_LOAD_SELECTED_COUNTRY
-} from "../../../config/constants"
+  FAILED_TO_LOAD_SELECTED_COUNTRY,
+} from "../../../config/constants";
 
 const HospitalMaster = () => {
-  const [hospitals, setHospitals] = useState([])
-  const [countries, setCountries] = useState([])
-  const [states, setStates] = useState([])
-  const [districts, setDistricts] = useState([])
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, hospitalId: null, newStatus: false })
+  const [hospitals, setHospitals] = useState([]);
+  const [countries, setCountries] = useState([]);
+  const [states, setStates] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    hospitalId: null,
+    newStatus: false,
+  });
   const [formData, setFormData] = useState({
     hospitalCode: "",
     hospitalName: "",
@@ -38,123 +53,137 @@ const HospitalMaster = () => {
     regCostApplicable: "",
     appCostApplicable: "",
     preConsultationAvailable: "",
-  })
-  const [searchQuery, setSearchQuery] = useState("")
-  const [showForm, setShowForm] = useState(false)
-  const [isFormValid, setIsFormValid] = useState(false)
-  const [editingHospital, setEditingHospital] = useState(null)
-  const [popupMessage, setPopupMessage] = useState(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [loading, setLoading] = useState(true)
-  const [filteredStates, setFilteredStates] = useState([])
-  const [filteredDistricts, setFilteredDistricts] = useState([])
+    latitude: "",
+    longitude: "",
+    executive1Contact: "",
+    executive2Contact: "",
+  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [editingHospital, setEditingHospital] = useState(null);
+  const [popupMessage, setPopupMessage] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [filteredStates, setFilteredStates] = useState([]);
+  const [filteredDistricts, setFilteredDistricts] = useState([]);
 
-  const HOSPITAL_CODE_MAX_LENGTH = 8
-  const HOSPITAL_NAME_MAX_LENGTH = 30
-  const ADDRESS_MAX_LENGTH = 50
-  const PINCODE_MAX_LENGTH = 10
-  const CONTACT_NUMBER_MAX_LENGTH = 10
-  const EMAIL_MAX_LENGTH = 50
+  const HOSPITAL_CODE_MAX_LENGTH = 8;
+  const HOSPITAL_NAME_MAX_LENGTH = 30;
+  const ADDRESS_MAX_LENGTH = 50;
+  const PINCODE_MAX_LENGTH = 10;
+  const CONTACT_NUMBER_MAX_LENGTH = 10;
+  const EMAIL_MAX_LENGTH = 50;
+  const LAT_LONG_MAX_LENGTH = 20;
+  const EXECUTIVE_CONTACT_MAX_LENGTH = 15;
 
   useEffect(() => {
-    fetchHospitals(0)
-    fetchCountries(1)
-  }, [])
+    fetchHospitals(0);
+    fetchCountries(1);
+  }, []);
 
   const fetchHospitals = async (flag = 0) => {
     try {
-      setLoading(true)
-      const response = await getRequest(`${MAS_HOSPITAL}/getAll/${flag}`)
+      setLoading(true);
+      const response = await getRequest(`${MAS_HOSPITAL}/getAll/${flag}`);
       if (response && response.response) {
-        setHospitals(response.response)
+        setHospitals(response.response);
       }
     } catch (err) {
-      console.error("Error fetching hospitals:", err)
-      showPopup(FETCH_HOSPITAL_ERR_MSG, "error")
+      console.error("Error fetching hospitals:", err);
+      showPopup(FETCH_HOSPITAL_ERR_MSG, "error");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchCountries = async (flag = 1) => {
     try {
-      const response = await getRequest(`${MAS_COUNTRY}/getAll/${flag}`)
+      const response = await getRequest(`${MAS_COUNTRY}/getAll/${flag}`);
       if (response && response.response) {
-        setCountries(response.response)
+        setCountries(response.response);
       }
     } catch (err) {
-      console.error("Error fetching countries:", err)
-      showPopup(FETCH_HOSPITAL_ERR_MSG, "error")
+      console.error("Error fetching countries:", err);
+      showPopup(FETCH_HOSPITAL_ERR_MSG, "error");
     }
-  }
+  };
 
   const fetchStatesByCountryId = async (countryId) => {
     try {
-      setLoading(true)
-      const response = await getRequest(`${MAS_STATE}/getByCountryId/${countryId}`)
+      setLoading(true);
+      const response = await getRequest(
+        `${MAS_STATE}/getByCountryId/${countryId}`,
+      );
       if (response && response.response) {
-        setFilteredStates(response.response)
+        setFilteredStates(response.response);
       } else {
-        console.error("Unexpected API response format:", response)
-        setFilteredStates([])
+        console.error("Unexpected API response format:", response);
+        setFilteredStates([]);
       }
     } catch (err) {
-      console.error("Error fetching states by country:", err)
-      showPopup(FAILED_TO_LOAD_SELECTED_COUNTRY, "error")
-      setFilteredStates([])
+      console.error("Error fetching states by country:", err);
+      showPopup(FAILED_TO_LOAD_SELECTED_COUNTRY, "error");
+      setFilteredStates([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchDistrictsByStateId = async (stateId) => {
     try {
-      setLoading(true)
-      const response = await getRequest(`${MAS_DISTRICT}/getByState/${stateId}`)
+      setLoading(true);
+      const response = await getRequest(
+        `${MAS_DISTRICT}/getByState/${stateId}`,
+      );
       if (response && response.response) {
-        setFilteredDistricts(response.response)
+        setFilteredDistricts(response.response);
       } else {
-        console.error("Unexpected API response format:", response)
-        setFilteredDistricts([])
+        console.error("Unexpected API response format:", response);
+        setFilteredDistricts([]);
       }
     } catch (err) {
-      console.error("Error fetching districts by state:", err)
-      showPopup("Failed to load districts for selected state", "error")
-      setFilteredDistricts([])
+      console.error("Error fetching districts by state:", err);
+      showPopup("Failed to load districts for selected state", "error");
+      setFilteredDistricts([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value)
-  }
+    setSearchQuery(e.target.value);
+  };
 
   useEffect(() => {
-    setCurrentPage(1)
-  }, [searchQuery])
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const handleRefresh = () => {
-    setSearchQuery("")
-    setCurrentPage(1)
-    fetchHospitals()
-  }
+    setSearchQuery("");
+    setCurrentPage(1);
+    fetchHospitals();
+  };
 
-  const filteredHospitals = hospitals.filter(hospital =>
-    hospital.hospitalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    hospital.hospitalCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    hospital.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    hospital.stateName.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredHospitals = hospitals.filter(
+    (hospital) =>
+      hospital.hospitalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      hospital.hospitalCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      hospital.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      hospital.stateName.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
 
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
-  const currentItems = filteredHospitals.slice(indexOfFirst, indexOfLast)
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredHospitals.slice(indexOfFirst, indexOfLast);
 
   const handleCountryChange = (e) => {
-    const selectedIndex = e.target.selectedIndex
-    const selectedOption = e.target.options[selectedIndex]
-    const countryId = Number.parseInt(selectedOption.getAttribute("data-id"), 10)
+    const selectedIndex = e.target.selectedIndex;
+    const selectedOption = e.target.options[selectedIndex];
+    const countryId = Number.parseInt(
+      selectedOption.getAttribute("data-id"),
+      10,
+    );
 
     setFormData((prev) => ({
       ...prev,
@@ -164,17 +193,17 @@ const HospitalMaster = () => {
       stateId: "",
       district: "",
       districtId: "",
-    }))
+    }));
 
     if (!isNaN(countryId)) {
-      fetchStatesByCountryId(countryId)
+      fetchStatesByCountryId(countryId);
     }
-  }
+  };
 
   const handleStateChange = (e) => {
-    const selectedIndex = e.target.selectedIndex
-    const selectedOption = e.target.options[selectedIndex]
-    const stateId = Number.parseInt(selectedOption.getAttribute("data-id"), 10)
+    const selectedIndex = e.target.selectedIndex;
+    const selectedOption = e.target.options[selectedIndex];
+    const stateId = Number.parseInt(selectedOption.getAttribute("data-id"), 10);
 
     setFormData((prev) => ({
       ...prev,
@@ -182,33 +211,36 @@ const HospitalMaster = () => {
       stateId: isNaN(stateId) ? null : stateId,
       district: "",
       districtId: "",
-    }))
+    }));
 
     if (!isNaN(stateId)) {
-      fetchDistrictsByStateId(stateId)
+      fetchDistrictsByStateId(stateId);
     }
-  }
+  };
 
   const handleDistrictChange = (e) => {
-    const selectedIndex = e.target.selectedIndex
-    const selectedOption = e.target.options[selectedIndex]
-    const districtId = Number.parseInt(selectedOption.getAttribute("data-id"), 10)
+    const selectedIndex = e.target.selectedIndex;
+    const selectedOption = e.target.options[selectedIndex];
+    const districtId = Number.parseInt(
+      selectedOption.getAttribute("data-id"),
+      10,
+    );
 
     setFormData((prev) => ({
       ...prev,
       district: e.target.value,
       districtId: isNaN(districtId) ? null : districtId,
-    }))
-  }
+    }));
+  };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
 
     setFormData((prevData) => {
       const updatedFormData = {
         ...prevData,
         [name]: value,
-      }
+      };
 
       const isValid =
         (updatedFormData.hospitalCode || "").trim() !== "" &&
@@ -219,19 +251,20 @@ const HospitalMaster = () => {
         (updatedFormData.city || "").trim() !== "" &&
         (updatedFormData.regCostApplicable || "").trim() !== "" &&
         (updatedFormData.appCostApplicable || "").trim() !== "" &&
-        (updatedFormData.preConsultationAvailable || "").trim() !== ""
+        (updatedFormData.preConsultationAvailable || "").trim() !== "";
 
-      setIsFormValid(isValid)
-      return updatedFormData
-    })
-  }
+      setIsFormValid(isValid);
+      return updatedFormData;
+    });
+  };
 
   const handleEdit = (hospital) => {
-    const regCostValue = hospital.regCostApplicable === "y" ? "Yes" : "No"
-    const appCostValue = hospital.appCostApplicable === "y" ? "Yes" : "No"
-    const preConsultationValue = hospital.preConsultationAvailable === "y" ? "Yes" : "No"
+    const regCostValue = hospital.regCostApplicable === "y" ? "Yes" : "No";
+    const appCostValue = hospital.appCostApplicable === "y" ? "Yes" : "No";
+    const preConsultationValue =
+      hospital.preConsultationAvailable === "y" ? "Yes" : "No";
 
-    setEditingHospital(hospital)
+    setEditingHospital(hospital);
 
     setFormData({
       hospitalCode: hospital.hospitalCode,
@@ -251,25 +284,29 @@ const HospitalMaster = () => {
       regCostApplicable: regCostValue,
       appCostApplicable: appCostValue,
       preConsultationAvailable: preConsultationValue,
-    })
+      latitude: hospital.latitude || "",
+      longitude: hospital.longitude || "",
+      executive1Contact: hospital.executive1Contact || "",
+      executive2Contact: hospital.executive2Contact || "",
+    });
 
     if (hospital.countryId) {
-      fetchStatesByCountryId(hospital.countryId)
+      fetchStatesByCountryId(hospital.countryId);
     }
     if (hospital.stateId) {
-      fetchDistrictsByStateId(hospital.stateId)
+      fetchDistrictsByStateId(hospital.stateId);
     }
 
-    setIsFormValid(true)
-    setShowForm(true)
-  }
+    setIsFormValid(true);
+    setShowForm(true);
+  };
 
   const handleSave = async (e) => {
-    e.preventDefault()
-    if (!isFormValid) return
+    e.preventDefault();
+    if (!isFormValid) return;
 
     try {
-      setLoading(true)
+      setLoading(true);
 
       const isDuplicate = hospitals.some(
         (hospital) =>
@@ -277,42 +314,52 @@ const HospitalMaster = () => {
           (hospital.hospitalCode === formData.hospitalCode ||
             hospital.hospitalName === formData.hospitalName ||
             hospital.email === formData.email),
-      )
+      );
 
       if (isDuplicate) {
-        showPopup(DUPLICATE_HOSPITAL, "error")
-        setLoading(false)
-        return
+        showPopup(DUPLICATE_HOSPITAL, "error");
+        setLoading(false);
+        return;
       }
 
-      const regCostValue = formData.regCostApplicable === "Yes" ? "y" : "n"
-      const appCostValue = formData.appCostApplicable === "Yes" ? "y" : "n"
-      const preConsultationValue = formData.preConsultationAvailable === "Yes" ? "y" : "n"
+      const regCostValue = formData.regCostApplicable === "Yes" ? "y" : "n";
+      const appCostValue = formData.appCostApplicable === "Yes" ? "y" : "n";
+      const preConsultationValue =
+        formData.preConsultationAvailable === "Yes" ? "y" : "n";
 
       if (editingHospital) {
-        const response = await putRequest(`${MAS_HOSPITAL}/updateById/${editingHospital.id}`, {
-          hospitalCode: formData.hospitalCode,
-          hospitalName: formData.hospitalName,
-          address: formData.address,
-          countryId: formData.countryId,
-          stateId: formData.stateId,
-          districtId: formData.districtId,
-          city: formData.city,
-          pincode: formData.pincode,
-          contactNumber1: formData.contactNumber1,
-          contactNumber2: formData.contactNumber2,
-          email: formData.email,
-          regCostApplicable: regCostValue,
-          appCostApplicable: appCostValue,
-          preConsultationAvailable: preConsultationValue,
-          status: editingHospital.status,
-        })
+        const response = await putRequest(
+          `${MAS_HOSPITAL}/updateById/${editingHospital.id}`,
+          {
+            hospitalCode: formData.hospitalCode,
+            hospitalName: formData.hospitalName,
+            address: formData.address,
+            countryId: formData.countryId,
+            stateId: formData.stateId,
+            districtId: formData.districtId,
+            city: formData.city,
+            pincode: formData.pincode,
+            contactNumber1: formData.contactNumber1,
+            contactNumber2: formData.contactNumber2,
+            email: formData.email,
+            regCostApplicable: regCostValue,
+            appCostApplicable: appCostValue,
+            preConsultationAvailable: preConsultationValue,
+            status: editingHospital.status,
+            latitude: formData.latitude,
+            longitude: formData.longitude,
+            executive1Contact: formData.executive1Contact,
+            executive2Contact: formData.executive2Contact,
+          },
+        );
 
         if (response && response.response) {
           setHospitals((prevData) =>
-            prevData.map((hospital) => (hospital.id === editingHospital.id ? response.response : hospital)),
-          )
-          showPopup(UPDATE_HOSPITAL_SUCC_MSG, "success")
+            prevData.map((hospital) =>
+              hospital.id === editingHospital.id ? response.response : hospital,
+            ),
+          );
+          showPopup(UPDATE_HOSPITAL_SUCC_MSG, "success");
         }
       } else {
         const response = await postRequest(`${MAS_HOSPITAL}/create`, {
@@ -331,15 +378,19 @@ const HospitalMaster = () => {
           appCostApplicable: appCostValue,
           preConsultationAvailable: preConsultationValue,
           status: "y",
-        })
+          latitude: formData.latitude,
+          longitude: formData.longitude,
+          executive1Contact: formData.executive1Contact,
+          executive2Contact: formData.executive2Contact,
+        });
 
         if (response && response.response) {
-          setHospitals([...hospitals, response.response])
-          showPopup(ADD_HOSPITAL_SUCC_MSG, "success")
+          setHospitals([...hospitals, response.response]);
+          showPopup(ADD_HOSPITAL_SUCC_MSG, "success");
         }
       }
 
-      setEditingHospital(null)
+      setEditingHospital(null);
       setFormData({
         hospitalCode: "",
         hospitalName: "",
@@ -358,58 +409,66 @@ const HospitalMaster = () => {
         regCostApplicable: "",
         appCostApplicable: "",
         preConsultationAvailable: "",
-      })
-      setShowForm(false)
-      fetchHospitals()
+        latitude: "",
+        longitude: "",
+        executive1Contact: "",
+        executive2Contact: "",
+      });
+      setShowForm(false);
+      fetchHospitals();
     } catch (err) {
-      console.error("Error saving hospital:", err)
-      showPopup(FAIL_TO_SAVE_CHANGES, "error")
+      console.error("Error saving hospital:", err);
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null)
+        setPopupMessage(null);
       },
-    })
-  }
+    });
+  };
 
   const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, hospitalId: id, newStatus })
-  }
+    setConfirmDialog({ isOpen: true, hospitalId: id, newStatus });
+  };
 
   const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.hospitalId !== null) {
       try {
-        setLoading(true)
-        const status = confirmDialog.newStatus
-        const response = await putRequest(`${MAS_HOSPITAL}/status/${confirmDialog.hospitalId}?status=${status}`)
+        setLoading(true);
+        const status = confirmDialog.newStatus;
+        const response = await putRequest(
+          `${MAS_HOSPITAL}/status/${confirmDialog.hospitalId}?status=${status}`,
+        );
 
         if (response && response.status === 200) {
           setHospitals((prevData) =>
             prevData.map((hospital) =>
-              hospital.id === confirmDialog.hospitalId ? { ...hospital, status: confirmDialog.newStatus } : hospital,
+              hospital.id === confirmDialog.hospitalId
+                ? { ...hospital, status: confirmDialog.newStatus }
+                : hospital,
             ),
-          )
+          );
           showPopup(
             `Hospital ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
             "success",
-          )
+          );
         }
       } catch (err) {
-        console.error("Error updating hospital status:", err)
-        showPopup(FAIL_TO_UPDATE_STS, "error")
+        console.error("Error updating hospital status:", err);
+        showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-    setConfirmDialog({ isOpen: false, hospitalId: null, newStatus: null })
-  }
+    setConfirmDialog({ isOpen: false, hospitalId: null, newStatus: null });
+  };
 
   return (
     <div className="content-wrapper">
@@ -420,7 +479,10 @@ const HospitalMaster = () => {
               <h4 className="card-title">Hospital Master</h4>
               <div className="d-flex justify-content-between align-items-center">
                 {!showForm ? (
-                  <form className="d-inline-block searchform me-4" role="search">
+                  <form
+                    className="d-inline-block searchform me-4"
+                    role="search"
+                  >
                     <div className="input-group searchinput">
                       <input
                         type="search"
@@ -465,6 +527,10 @@ const HospitalMaster = () => {
                             regCostApplicable: "",
                             appCostApplicable: "",
                             preConsultationAvailable: "",
+                            latitude: "",
+                            longitude: "",
+                            executive1Contact: "",
+                            executive2Contact: "",
                           });
                           setIsFormValid(false);
                           setShowForm(true);
@@ -479,12 +545,20 @@ const HospitalMaster = () => {
                       >
                         <i className="mdi mdi-refresh"></i> Show All
                       </button>
-                      <button type="button" className="btn btn-success d-flex align-items-center">
-                        <i className="mdi mdi-file-export d-sm-inlined-sm-inline ms-1"></i> Generate Report
+                      <button
+                        type="button"
+                        className="btn btn-success d-flex align-items-center"
+                      >
+                        <i className="mdi mdi-file-export d-sm-inlined-sm-inline ms-1"></i>{" "}
+                        Generate Report
                       </button>
                     </>
                   ) : (
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setShowForm(false)}
+                    >
                       <i className="mdi mdi-arrow-left"></i> Back
                     </button>
                   )}
@@ -519,20 +593,42 @@ const HospitalMaster = () => {
                               <td>{hospital.hospitalName}</td>
                               <td>{hospital.stateName}</td>
                               <td>{hospital.city}</td>
-                              <td>{hospital.regCostApplicable === "y" ? "Yes" : "No"}</td>
-                              <td>{hospital.appCostApplicable === "y" ? "Yes" : "No"}</td>
-                              <td>{hospital.preConsultationAvailable === "y" ? "Yes" : "No"}</td>
+                              <td>
+                                {hospital.regCostApplicable === "y"
+                                  ? "Yes"
+                                  : "No"}
+                              </td>
+                              <td>
+                                {hospital.appCostApplicable === "y"
+                                  ? "Yes"
+                                  : "No"}
+                              </td>
+                              <td>
+                                {hospital.preConsultationAvailable === "y"
+                                  ? "Yes"
+                                  : "No"}
+                              </td>
                               <td>
                                 <div className="form-check form-switch">
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
                                     checked={hospital.status === "y"}
-                                    onChange={() => handleSwitchChange(hospital.id, hospital.status === "y" ? "n" : "y")}
+                                    onChange={() =>
+                                      handleSwitchChange(
+                                        hospital.id,
+                                        hospital.status === "y" ? "n" : "y",
+                                      )
+                                    }
                                     id={`switch-${hospital.id}`}
                                   />
-                                  <label className="form-check-label px-0" htmlFor={`switch-${hospital.id}`}>
-                                    {hospital.status === "y" ? "Active" : "Deactivated"}
+                                  <label
+                                    className="form-check-label px-0"
+                                    htmlFor={`switch-${hospital.id}`}
+                                  >
+                                    {hospital.status === "y"
+                                      ? "Active"
+                                      : "Deactivated"}
                                   </label>
                                 </div>
                               </td>
@@ -634,7 +730,11 @@ const HospitalMaster = () => {
                         >
                           <option value="">Select Country</option>
                           {countries.map((country) => (
-                            <option key={country.id} value={country.countryName} data-id={country.id}>
+                            <option
+                              key={country.id}
+                              value={country.countryName}
+                              data-id={country.id}
+                            >
                               {country.countryName}
                             </option>
                           ))}
@@ -656,7 +756,11 @@ const HospitalMaster = () => {
                         >
                           <option value="">Select State</option>
                           {filteredStates.map((state) => (
-                            <option key={state.id} value={state.stateName} data-id={state.id}>
+                            <option
+                              key={state.id}
+                              value={state.stateName}
+                              data-id={state.id}
+                            >
                               {state.stateName}
                             </option>
                           ))}
@@ -677,7 +781,11 @@ const HospitalMaster = () => {
                         >
                           <option value="">Select District</option>
                           {filteredDistricts.map((district) => (
-                            <option key={district.id} value={district.districtName} data-id={district.id}>
+                            <option
+                              key={district.id}
+                              value={district.districtName}
+                              data-id={district.id}
+                            >
                               {district.districtName}
                             </option>
                           ))}
@@ -727,7 +835,9 @@ const HospitalMaster = () => {
                           onChange={handleInputChange}
                           placeholder="Enter contact number"
                           maxLength={CONTACT_NUMBER_MAX_LENGTH}
-                          onInput={(e) => (e.target.value = e.target.value.replace(/\D/g, ""))}
+                          onInput={(e) =>
+                            (e.target.value = e.target.value.replace(/\D/g, ""))
+                          }
                         />
                       </div>
                       <div className="col-md-6">
@@ -743,7 +853,9 @@ const HospitalMaster = () => {
                           onChange={handleInputChange}
                           placeholder="Enter alternate contact number"
                           maxLength={CONTACT_NUMBER_MAX_LENGTH}
-                          onInput={(e) => (e.target.value = e.target.value.replace(/\D/g, ""))}
+                          onInput={(e) =>
+                            (e.target.value = e.target.value.replace(/\D/g, ""))
+                          }
                         />
                       </div>
                       <div className="col-md-6">
@@ -763,8 +875,12 @@ const HospitalMaster = () => {
                       </div>
                       {/* Registration Cost */}
                       <div className="col-md-6">
-                        <label htmlFor="regCostApplicable" className="form-label">
-                          Registration Cost <span className="text-danger">*</span>
+                        <label
+                          htmlFor="regCostApplicable"
+                          className="form-label"
+                        >
+                          Registration Cost{" "}
+                          <span className="text-danger">*</span>
                         </label>
                         <select
                           className="form-control"
@@ -781,8 +897,12 @@ const HospitalMaster = () => {
                       </div>
 
                       <div className="col-md-6">
-                        <label htmlFor="appCostApplicable" className="form-label">
-                          Appointment Cost <span className="text-danger">*</span>
+                        <label
+                          htmlFor="appCostApplicable"
+                          className="form-label"
+                        >
+                          Appointment Cost{" "}
+                          <span className="text-danger">*</span>
                         </label>
                         <select
                           className="form-control"
@@ -798,8 +918,12 @@ const HospitalMaster = () => {
                         </select>
                       </div>
                       <div className="col-md-6">
-                        <label htmlFor="preConsultationAvailable" className="form-label">
-                          Pre-Consultation Available <span className="text-danger">*</span>
+                        <label
+                          htmlFor="preConsultationAvailable"
+                          className="form-label"
+                        >
+                          Pre-Consultation Available{" "}
+                          <span className="text-danger">*</span>
                         </label>
                         <select
                           className="form-control"
@@ -814,12 +938,94 @@ const HospitalMaster = () => {
                           <option value="No">No</option>
                         </select>
                       </div>
+                      <div className="col-md-6">
+                        <label htmlFor="latitude" className="form-label">
+                          Latitude
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="latitude"
+                          name="latitude"
+                          value={formData.latitude}
+                          onChange={handleInputChange}
+                          placeholder="Enter latitude"
+                          maxLength={LAT_LONG_MAX_LENGTH}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label htmlFor="longitude" className="form-label">
+                          Longitude
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="longitude"
+                          name="longitude"
+                          value={formData.longitude}
+                          onChange={handleInputChange}
+                          placeholder="Enter longitude"
+                          maxLength={LAT_LONG_MAX_LENGTH}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label
+                          htmlFor="executive1Contact"
+                          className="form-label"
+                        >
+                          Executive 1 Contact
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="executive1Contact"
+                          name="executive1Contact"
+                          value={formData.executive1Contact}
+                          onChange={handleInputChange}
+                          placeholder="Enter executive 1 contact"
+                          maxLength={EXECUTIVE_CONTACT_MAX_LENGTH}
+                          onInput={(e) =>
+                            (e.target.value = e.target.value.replace(/\D/g, ""))
+                          }
+                        />
+                      </div>
+
+                      {/* Executive 2 Contact */}
+                      <div className="col-md-6">
+                        <label
+                          htmlFor="executive2Contact"
+                          className="form-label"
+                        >
+                          Executive 2 Contact
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="executive2Contact"
+                          name="executive2Contact"
+                          value={formData.executive2Contact}
+                          onChange={handleInputChange}
+                          placeholder="Enter executive 2 contact"
+                          maxLength={EXECUTIVE_CONTACT_MAX_LENGTH}
+                          onInput={(e) =>
+                            (e.target.value = e.target.value.replace(/\D/g, ""))
+                          }
+                        />
+                      </div>
                     </div>
                     <div className="d-flex justify-content-end mt-4">
-                      <button type="button" className="btn btn-secondary me-2" onClick={() => setShowForm(false)}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary me-2"
+                        onClick={() => setShowForm(false)}
+                      >
                         Cancel
                       </button>
-                      <button type="submit" className="btn btn-success" disabled={!isFormValid}>
+                      <button
+                        type="submit"
+                        className="btn btn-success"
+                        disabled={!isFormValid}
+                      >
                         {editingHospital ? "Update" : "Save"}
                       </button>
                     </div>
@@ -830,31 +1036,54 @@ const HospitalMaster = () => {
           </div>
         </div>
       </div>
-      {popupMessage && <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />}
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
       {confirmDialog.isOpen && (
         <div className="modal d-block" tabIndex="-1" role="dialog">
           <div className="modal-dialog" role="document">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Confirm Status Change</h5>
-                <button type="button" className="close" onClick={() => handleConfirm(false)}>
+                <button
+                  type="button"
+                  className="close"
+                  onClick={() => handleConfirm(false)}
+                >
                   <span>&times;</span>
                 </button>
               </div>
               <div className="modal-body">
                 <p>
-                  Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                  Are you sure you want to{" "}
+                  {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
                   <strong>
-                    {hospitals.find((hospital) => hospital.id === confirmDialog.hospitalId)?.hospitalName}
+                    {
+                      hospitals.find(
+                        (hospital) => hospital.id === confirmDialog.hospitalId,
+                      )?.hospitalName
+                    }
                   </strong>
                   ?
                 </p>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => handleConfirm(false)}
+                >
                   No
                 </button>
-                <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => handleConfirm(true)}
+                >
                   Yes
                 </button>
               </div>
@@ -863,7 +1092,7 @@ const HospitalMaster = () => {
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default HospitalMaster
+export default HospitalMaster;

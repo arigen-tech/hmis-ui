@@ -1283,7 +1283,6 @@ const PatientRegistration = () => {
           departmentId: 0,
           hospitalId: 0,
           doctorId: 0,
-          doctorId: 0,
           lastChgBy: "",
         },
 

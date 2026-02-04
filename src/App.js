@@ -178,9 +178,7 @@ import BloodDonationStatusMaster from './Views/Masters/BloodDonationStatusMaster
 import AppointmentSummaryReport from './Views/Reception/AppointmentSummaryReport';
 import DailyCancellationReport from './Views/Reception/DailyCancellationReport';
 import CommonStatusMaster from './Views/Masters/CommonStatusMaster';
-import BloodCompatibilityMaster from './Views/Masters/BloodCompatibilityMaster';
-import BloodFailureReasonMaster from './Views/Masters/BloodFailureReasonMaster';
-import BloodComponentMaster from './Views/Masters/BloodComponentMaster';
+
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -392,9 +390,6 @@ function App() {
                 <Route path="/BagTypeMaster" element={<BagTypeMaster />} />
                 <Route path="/BloodCollectionTypeMaster" element={<BloodCollectionTypeMaster />} />
                 <Route path="/BloodDonationStatusMaster" element={<BloodDonationStatusMaster />} />
-                <Route path="/BloodCompatibilityMaster" element={<BloodCompatibilityMaster />} />
-                <Route path="/BloodFailureReasonMaster" element={<BloodFailureReasonMaster />} />
-                <Route path="/BloodComponentMaster" element={<BloodComponentMaster />} />
               </Route>
             </Route>
 

@@ -185,6 +185,9 @@ const validRoutes = [
   "/BloodCompatibilityMaster",
   "/BloodFailureReasonMaster",
   "/BloodComponentMaster",
+  "/WardManagement",
+  "/PatientRegistrationRadiologyBooking",
+  "/RadiologyBookingRegisteredPatient",
 ];
 
 const NotAuthorized = () => {
