@@ -182,6 +182,9 @@ const validRoutes = [
   "/BagTypeMaster",
   "/BloodCollectionTypeMaster",
   "/BloodDonationStatusMaster",
+  "/BloodCompatibilityMaster",
+  "/BloodFailureReasonMaster",
+  "/BloodComponentMaster",
 ];
 
 const NotAuthorized = () => {
@@ -191,7 +194,7 @@ const NotAuthorized = () => {
     <div className="text-center mt-5 text-danger">
       <h1 className="display-1 fw-bold mb-4">403</h1>
       <h2>You Are Not Authorized To Access This Page</h2>
-      <button 
+      <button
         className="btn btn-primary mt-3"
         onClick={() => navigate('/dashboard')}
       >
