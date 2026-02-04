@@ -4,7 +4,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_CERVIX_POSITION } from "../../../config/apiConfig";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-
+import {FETCH_CERVIX,DUPLICATE_CERVIX,UPDATE_CERVIX,ADD_CERVIX} from "../../../config/constants";
 
 
 const CervixPosition = () => {
@@ -76,7 +76,7 @@ const CervixPosition = () => {
       }
     } catch (error) {
       console.log(error);
-      showPopup("Failed to fetch records", "error");
+      showPopup(FETCH_CERVIX, "error");
     } finally {
       setLoading(false);
     }
@@ -127,7 +127,7 @@ const CervixPosition = () => {
     );
 
     if (duplicate) {
-      showPopup("cervix Position with the same code or name  already exists!", "error");
+      showPopup(DUPLICATE_CERVIX, "error");
       return;
     }
 
@@ -139,14 +139,14 @@ const CervixPosition = () => {
           status: editingRecord.status,
         });
 
-        showPopup("Record updated successfully", "success");
+        showPopup(UPDATE_CERVIX, "success");
       } else {
         await postRequest(`${MAS_CERVIX_POSITION}/create`, {
           cervixPosition: formData.cervixPosition,
           status: "Y",
         });
 
-        showPopup("Record added successfully", "success");
+        showPopup(ADD_CERVIX, "success");
       }
       fetchData();
       resetForm();
@@ -181,7 +181,7 @@ const CervixPosition = () => {
             : rec
         )
       );
-      showPopup("Status updated successfully", "success");
+      showPopup(UPDATE_CERVIX, "success");
     }
     setConfirmDialog({
       isOpen: false,

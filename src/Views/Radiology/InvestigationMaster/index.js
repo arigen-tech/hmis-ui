@@ -1,16 +1,32 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import Popup from "../../../Components/popup"
-import Pagination from "../../../Components/Pagination"
-import MasPreparationModel from "../../Masters/InvestigationMaster/Masprep/masprep"
+import LoadingScreen from "../../../Components/Loading"
+import { getRequest, postRequest, putRequest } from "../../../service/apiService"
+import {
+  MAS_INVESTIGATION,
+  MAS_DG_SAMPLE,
+  DG_UOM,
+  MAS_MAIN_CHARGE_CODE,
+  MAS_SUB_CHARGE_CODE,
+  DG_MAS_COLLECTION,
+  DG_MAS_INVESTIGATION_CATEGORY,
+  DG_MAS_INVESTIGATION_METHODOLOGY,
+} from "../../../config/apiConfig"
+import { ADD_INV_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DROP_DOWN_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, MISSING_MANDOTORY_FIELD_MSG, SELECT_INV_ERR_MSG, UPDATE_INV_SUCC_MSG } from "../../../config/constants"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+
+// Import the Preparation Modal component
+import MasPreparationModel from "./Masprep/masprep"
 
 const RadiologyInvestigationMaster = () => {
   const [investigations, setInvestigations] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedInvestigation, setSelectedInvestigation] = useState(null)
   const [showPreparationModal, setShowPreparationModal] = useState(false)
-  
+
   const [formData, setFormData] = useState({
     investigationName: "",
     departmentId: "",
@@ -18,124 +34,144 @@ const RadiologyInvestigationMaster = () => {
     modalityId: "",
     modalityName: "",
     contrastRequired: "Select",
-    resultType: "Select",
+    sampleId: "",
+    sampleName: "",
+    containerId: "",
+    containerName: "",
+    categoryId:"",
+    categoryName:"",
+    methodId:"",
+    methodName:"",
+    uomId: "",
+    uomName: "",
+    Type: "Select",
+    minimumValue: "",
+    maximumValue: "",
+    genderApplicable: "Select",
+    loincCode: "",
+    flag: "Select",
+    confidential: false,
+    pandemic: false,
+    pandemicCases: "",
+    status: "n",
+    interpretation:"",
     preparationRequired: "",
     turnaroundTime: "",
     estimatedDays: "",
-    confidential: false,
-    status: "n",
   })
-  
-  const [dropdownOptions, setDropdownOptions] = useState({
-    departments: [],
-    modalities: [],
-  })
-  
-  const [popupMessage, setPopupMessage] = useState(null)
+  const [subInvestigations, setSubInvestigations] = useState([])
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     investigationId: null,
     newStatus: null,
   })
+  const [dropdownOptions, setDropdownOptions] = useState({
+    departments: [],
+    modalities: [],
+    samples: [],
+    containers: [],
+    uoms: [],
+    categories:[],
+    methodologies:[],
+  })
+  const [popupMessage, setPopupMessage] = useState(null)
 
-  // Mock data for dropdowns
-  const mockDepartments = [
-    { id: 1, name: "Radiology" },
-    { id: 2, name: "CT Scan" },
-    { id: 3, name: "MRI" },
-    { id: 4, name: "X-Ray" },
-    { id: 5, name: "Ultrasound" },
-  ]
+  const navigate = useNavigate()
 
-  const mockModalities = [
-    { id: 1, name: "CT" },
-    { id: 2, name: "MRI" },
-    { id: 3, name: "X-Ray" },
-    { id: 4, name: "Ultrasound" },
-    { id: 5, name: "Mammography" },
-  ]
+  // Gender mapping functions
+  const mapGenderToDisplay = (genderCode) => {
+    const genderMap = {
+      'c': 'Common',
+      'f': 'Female',
+      'm': 'Male',
+    }
+    return genderMap[genderCode?.toLowerCase()] || "Select"
+  }
 
-  // Mock data for table - INCLUDING PATIENT READY
-  const mockInvestigations = [
-    {
-      id: 1,
-      investigationName: "CT Brain",
-      modalityName: "CT",
-      contrastRequired: "No",
-      turnaroundTime: "2",
-      estimatedDays: "1",
-      patientReady: "Same Day",
-      status: "y"
-    },
-    {
-      id: 2,
-      investigationName: "MRI Spine",
-      modalityName: "MRI",
-      contrastRequired: "Yes",
-      turnaroundTime: "24",
-      estimatedDays: "2",
-      patientReady: "Next Day",
-      status: "y"
-    },
-    {
-      id: 3,
-      investigationName: "X-Ray Chest",
-      modalityName: "X-Ray",
-      contrastRequired: "No",
-      turnaroundTime: "1",
-      estimatedDays: "1",
-      patientReady: "Same Day",
-      status: "n"
-    },
-    {
-      id: 4,
-      investigationName: "Ultrasound Abdomen",
-      modalityName: "Ultrasound",
-      contrastRequired: "No",
-      turnaroundTime: "4",
-      estimatedDays: "1",
-      patientReady: "Same Day",
-      status: "y"
-    },
-    {
-      id: 5,
-      investigationName: "CT Angiography",
-      modalityName: "CT",
-      contrastRequired: "Yes",
-      turnaroundTime: "6",
-      estimatedDays: "2",
-      patientReady: "2 Days",
-      status: "y"
-    },
-    {
-      id: 6,
-      investigationName: "MRI Brain with Contrast",
-      modalityName: "MRI",
-      contrastRequired: "Yes",
-      turnaroundTime: "12",
-      estimatedDays: "2",
-      patientReady: "Next Day",
-      status: "y"
-    },
-    {
-      id: 7,
-      investigationName: "Mammography",
-      modalityName: "Mammography",
-      contrastRequired: "No",
-      turnaroundTime: "3",
-      estimatedDays: "1",
-      patientReady: "Same Day",
-      status: "y"
-    },
-  ]
+  const mapGenderToCode = (genderDisplay) => {
+    const genderMap = {
+      'Male': 'm',
+      'Female': 'f',
+      'Common': 'c'
+    }
+    return genderMap[genderDisplay] || null
+  }
 
-  // Initialize with mock data
-  useState(() => {
-    setDropdownOptions({
-      departments: mockDepartments,
-      modalities: mockModalities,
-    })
-    setInvestigations(mockInvestigations)
+  // Fetch all required data on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+
+        // Fetch all data in parallel
+        const [investigationsRes, departmentsRes, modalitiesRes, samplesRes, containersRes, uomsRes,methodologiesRes,categoriesRes] =
+            await Promise.all([
+              getRequest(`${MAS_INVESTIGATION}/getAll/0`),
+              getRequest(`${MAS_MAIN_CHARGE_CODE}/getAll/1`),
+              getRequest(`${MAS_SUB_CHARGE_CODE}/getAll/1`),
+              getRequest(`${MAS_DG_SAMPLE}/getAll/1`),
+              getRequest(`${DG_MAS_COLLECTION}/getAll/1`),
+              getRequest(`${DG_UOM}/getAll/1`),
+              getRequest(`${DG_MAS_INVESTIGATION_METHODOLOGY}/findAll`),
+              getRequest(`${DG_MAS_INVESTIGATION_CATEGORY}/findAll`),
+            ])
+
+        // Set investigations data
+        if (investigationsRes && investigationsRes.response) {
+          setInvestigations(
+              investigationsRes.response.map((item) => ({
+                ...item,
+                id: item.investigationId, // Add id for consistency
+              })),
+          )
+        }
+
+        setDropdownOptions({
+          departments:
+              departmentsRes?.response?.map((dept) => ({
+                id: dept.chargecodeId,
+                name: dept.chargecodeName,
+              })) || [],
+          modalities:
+              modalitiesRes?.response?.map((mod) => ({
+                id: mod.subId,
+                name: mod.subName,
+              })) || [],
+          samples:
+              samplesRes?.response?.map((sample) => ({
+                id: sample.Id || sample.id || sample.sampleId,
+                name: sample.sampleDescription || sample.name || sample.sampleName,
+              })) || [],
+          containers:
+              containersRes?.response?.map((cont) => ({
+                id: cont.collectionId || cont.id,
+                name: cont.collectionName || cont.name,
+              })) || [],
+          uoms:
+              uomsRes?.response?.map((uom) => ({
+                id: uom.id,
+                name: uom.name,
+              })) || [],
+          methodologies:
+              methodologiesRes?.response?.map((method) => ({
+                id: method.methodId,
+                name: method.methodName,
+              })) || [],
+          categories:
+              categoriesRes?.response?.map((category) => ({
+                id: category.categoryId,
+                name: category.categoryName,
+              })) || [],
+        })
+      } catch (error) {
+        console.error("Error fetching data:", error)
+        showPopup(FETCH_DROP_DOWN_ERR_MSG, "error")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
   }, [])
 
   const showPopup = (message, type = "info") => {
@@ -150,18 +186,69 @@ const RadiologyInvestigationMaster = () => {
     setSearchQuery(e.target.value)
   }
 
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
   const handleRefresh = () => {
     setSearchQuery("")
     setCurrentPage(1)
   }
 
+  const handleSearch = () => {
+    // Search functionality - filtering happens automatically in the filteredInvestigations
+    // This function can be used for any additional search logic if needed
+  }
+
+  const getSelectedOption = (prefix, value) => {
+    const optionsMap = {
+      department: dropdownOptions.departments,
+      modality: dropdownOptions.modalities,
+      sample: dropdownOptions.samples,
+      container: dropdownOptions.containers,
+      uom: dropdownOptions.uoms,
+      methodology: dropdownOptions.methodologies,
+      category: dropdownOptions.categories,
+    }
+
+    const options = optionsMap[prefix] || []
+
+    // Safely handle undefined or null values
+    if (!value && value !== 0) {
+      return null
+    }
+
+    return options.find((option) => {
+      if (!option || !option.id) return false
+      return option.id.toString() === value.toString()
+    })
+  }
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
+    debugger;
+    // For dropdowns that need to update both ID and name
+    if (name.endsWith("Id")) {
+      const prefix = name.replace("Id", "")
+      const selectedOption = getSelectedOption(prefix, value)
 
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
-    })
+      setFormData({
+        ...formData,
+        [name]: value,
+        [`${prefix}Name`]: selectedOption ? selectedOption.name : "",
+      })
+    }else if(name === "resultType"){
+      formData.investigationType=value.toString().slice(0,1).toLowerCase();
+      setFormData({
+        ...formData,
+        [name]: type === "checkbox" ? checked : value,
+      })
+    } else {
+      setFormData({
+        ...formData,
+        [name]: type === "checkbox" ? checked : value,
+      })
+    }
   }
 
   const handleReset = () => {
@@ -171,505 +258,932 @@ const RadiologyInvestigationMaster = () => {
       departmentName: "",
       modalityId: "",
       modalityName: "",
-      contrastRequired: "Select",
+      sampleId: "",
+      sampleName: "",
+      containerId: "",
+      containerName: "",
+      categoryId:"",
+      categoryName:"",
+      methodId:"",
+      methodName:"",
+      uomId: "",
+      uomName: "",
       resultType: "Select",
+      minimumValue: "",
+      maximumValue: "",
+      genderApplicable: "Select",
+      loincCode: "",
+      flag: "Select",
+      confidential: false,
+      pandemic: false,
+      pandemicCases: "",
+      status: "n",
+      interpretation:"",
       preparationRequired: "",
       turnaroundTime: "",
       estimatedDays: "",
-      confidential: false,
-      status: "n",
     })
     setSelectedInvestigation(null)
+    setSubInvestigations([])
   }
 
   const handleStatusToggle = (id) => {
-    const investigation = investigations.find((item) => item.id === id)
+    const investigation = investigations.find((item) => item.investigationId === id)
     if (investigation) {
       const newStatus = investigation.status === "y" ? "n" : "y"
       setConfirmDialog({ isOpen: true, investigationId: id, newStatus })
     }
   }
 
-  const handleConfirm = (confirmed) => {
+  const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.investigationId !== null) {
-      // Update local state only
-      const updatedInvestigations = investigations.map((item) => {
-        if (item.id === confirmDialog.investigationId) {
-          return { ...item, status: confirmDialog.newStatus }
+      try {
+        setLoading(true)
+
+        // Call API to update status
+        const response = await putRequest(`${MAS_INVESTIGATION}/change-status/${confirmDialog.investigationId}?status=${confirmDialog.newStatus}`)
+
+        if (response && response.status === 200) {
+          // Update local state
+          const updatedInvestigations = investigations.map((item) => {
+            if (item.investigationId === confirmDialog.investigationId) {
+              return { ...item, status: confirmDialog.newStatus }
+            }
+            return item
+          })
+
+          setInvestigations(updatedInvestigations)
+
+          // Update the selected investigation and form data if it's currently selected
+          if (selectedInvestigation && selectedInvestigation.investigationId === confirmDialog.investigationId) {
+            setSelectedInvestigation({ ...selectedInvestigation, status: confirmDialog.newStatus })
+            setFormData({ ...formData, status: confirmDialog.newStatus })
+          }
+
+          showPopup(
+              `Investigation ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+              "success",
+          )
+        } else {
+          throw new Error(response?.message || "Failed to update status")
         }
-        return item
-      })
-
-      setInvestigations(updatedInvestigations)
-
-      // Update the selected investigation and form data if it's currently selected
-      if (selectedInvestigation && selectedInvestigation.id === confirmDialog.investigationId) {
-        setSelectedInvestigation({ ...selectedInvestigation, status: confirmDialog.newStatus })
-        setFormData({ ...formData, status: confirmDialog.newStatus })
+      } catch (error) {
+        console.error("Error updating status:", error)
+        showPopup(FAIL_TO_UPDATE_STS, "error")
+      } finally {
+        setLoading(false)
       }
-
-      showPopup(
-        `Investigation ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-        "success",
-      )
     }
     setConfirmDialog({ isOpen: false, investigationId: null, newStatus: null })
   }
 
   const handleRowClick = (investigation) => {
+    const mapInvestigationTypeToResultType = (investigationType) => {
+      const typeMap = {
+        m: "Multiple",
+        r: "Range",
+        s: "Single",
+      }
+      return typeMap[investigationType?.toLowerCase()] || "Select"
+    }
+
+    // Extract preparation details from the investigation
+    const prepText = investigation.preparationText || ""
+
     setSelectedInvestigation(investigation)
     setFormData({
+      contrastRequired: investigation.contrastRequired|| "Select",
       investigationName: investigation.investigationName || "",
-      departmentId: investigation.departmentId || "",
-      departmentName: investigation.departmentName || "",
-      modalityId: investigation.modalityId || "",
-      modalityName: investigation.modalityName || "",
-      contrastRequired: investigation.contrastRequired || "Select",
-      resultType: investigation.resultType || "Select",
-      preparationRequired: investigation.preparationRequired || "",
-      turnaroundTime: investigation.turnaroundTime || "",
-      estimatedDays: investigation.estimatedDays || "",
-      confidential: investigation.confidential === true || false,
+      departmentId: investigation.mainChargeCodeId || "",
+      departmentName: investigation.mainChargeCodeName || "",
+      modalityId: investigation.subChargeCodeId || "",
+      modalityName: investigation.subChargeCodeName || "",
+      sampleId: investigation.sampleId || "",
+      sampleName: investigation.sampleName || "",
+      containerId: investigation.collectionId || "",
+      containerName: investigation.collectionName || "",
+      methodId: investigation.methodId || '',
+      methodName: investigation.methodName || '',
+      categoryId: investigation.categoryId || '',
+      categoryName: investigation.categoryName || '',
+      uomId: investigation.uomId || "",
+      uomName: investigation.uomName || "",
+      investigationType:investigation.investigationType,
+      resultType: mapInvestigationTypeToResultType(investigation.investigationType) || "Select",
+      minimumValue: investigation.minNormalValue || "",
+      maximumValue: investigation.maxNormalValue || "",
+      genderApplicable: mapGenderToDisplay(investigation.genderApplicable) || "Select",
+      loincCode: investigation.hicCode || "",
+      flag: "Select",
+      confidential: investigation.confidential === "y" || false,
+      pandemic: false,
+      pandemicCases: "",
       status: investigation.status || "n",
+      interpretation: investigation.interpretation,
+      preparationRequired: prepText,
+      turnaroundTime: investigation.tatHours || "",
+      estimatedDays: investigation.estimatedDays || "",
     })
+
+    // Store sub-investigation data
+    setSubInvestigations(investigation.subInvestigationResponseList || [])
   }
 
+  // Open preparation modal
   const handleOpenPreparationModal = () => {
     setShowPreparationModal(true)
   }
 
+  // Handle preparation modal close
   const handleClosePreparationModal = () => {
     setShowPreparationModal(false)
   }
 
+  // Handle preparation modal OK button
   const handlePreparationOk = (data) => {
+    // data is an array of selected items
     if (data && Array.isArray(data)) {
+      // Concatenate all selected preparation texts with line breaks
       const concatenatedText = data.map(item => item.preparationText).join('\n')
+
       setFormData(prev => ({
         ...prev,
         preparationRequired: concatenatedText,
       }))
     }
+
     setShowPreparationModal(false)
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validateForm()) {
       return
     }
 
-    setLoading(true)
-    
-    // Simulate API call delay
-    setTimeout(() => {
-      if (selectedInvestigation) {
-        showPopup("Investigation updated successfully!", "success")
-      } else {
-        showPopup("Investigation created successfully!", "success")
-        handleReset()
+    try {
+      setLoading(true)
+
+      // Map gender to code before sending to API
+      const genderCode = mapGenderToCode(formData.genderApplicable)
+      debugger;
+      // Prepare the common request payload with correct API field names
+      const commonPayload = {
+        investigationName: formData.investigationName,
+        investigationType:formData.investigationType,
+        mainChargeCodeId: Number.parseInt(formData.departmentId) || 0,
+        subChargeCodeId: Number.parseInt(formData.modalityId) || 0,
+        multipleResults: formData.resultType === "Multiple" ? "y" : "n",
+        hicCode: formData.loincCode,
+        confidential: formData.confidential ? "y" : "n",
+        status: formData.status,
+        contrastRequired:formData.contrastRequired,
+        preparationRequired: formData.preparationRequired || null,
+        estimatedDays: formData.estimatedDays || null,
+        tatHours: formData.turnaroundTime || null,
+        appearInDischargeSummary: selectedInvestigation?.appearInDischargeSummary || null,
+        testOrderNo: selectedInvestigation?.testOrderNo || null,
+        numericOrString: selectedInvestigation?.numericOrString || null,
       }
+
+      let response
+
+      if (selectedInvestigation) {
+        // Update existing investigation
+        response = await putRequest(
+            `${MAS_INVESTIGATION}/update-single-investigation/${selectedInvestigation.investigationId}`,
+            commonPayload
+        )
+      } else {
+        debugger;
+        // Create new investigation
+        response = await postRequest(`${MAS_INVESTIGATION}/create-investigation`, commonPayload)
+      }
+
+      if (response && response.status === 200) {
+        // Refresh the investigations list
+        const investigationsRes = await getRequest(`${MAS_INVESTIGATION}/getAll/0`)
+        if (investigationsRes && investigationsRes.response) {
+          setInvestigations(
+              investigationsRes.response.map((item) => ({
+                ...item,
+                id: item.investigationId,
+              })),
+          )
+        }
+
+        if (selectedInvestigation) {
+          showPopup(UPDATE_INV_SUCC_MSG, "success")
+        } else {
+          showPopup(ADD_INV_SUCC_MSG, "success")
+          handleReset() // Reset form after successful creation
+        }
+      } else {
+        throw new Error(response?.message || `Failed to ${selectedInvestigation ? "update" : "create"} investigation`)
+      }
+    } catch (error) {
+      console.error("Error saving investigation:", error)
+      showPopup(FAIL_TO_SAVE_CHANGES, "error")
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }
 
   const validateForm = () => {
     if (!formData.investigationName.trim()) {
-      showPopup("Investigation Name is required", "error")
+      showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
       return false
     }
     if (!formData.departmentId) {
-      showPopup("Department is required", "error")
+      showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
       return false
     }
     if (!formData.modalityId) {
-      showPopup("Modality is required", "error")
+      showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
       return false
     }
     if (formData.contrastRequired === "Select") {
       showPopup("Contrast Required is required", "error")
       return false
     }
+    // if (!formData.sampleId) {
+    //   showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
+    //   return false
+    // }
+    // if (!formData.containerId) {
+    //   showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
+    //   return false
+    // }
+    // Make UOM required only for Single and Range result types, optional for Multiple
+    // if (formData.resultType !== "Multiple") {
+    //   showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
+    //   return false
+    // }
     if (formData.resultType === "Select") {
-      showPopup("Result Type is required", "error")
+      showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
       return false
     }
+    // if (formData.genderApplicable === "Select") {
+    //   showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
+    //   return false
+    // }
+    // if (!formData.methodId) {
+    //   showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
+    //   return false
+    // }
+    // if (!formData.categoryId) {
+    //   showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
+    //   return false
+    // }
     return true
   }
 
+  const handleNavigateToSubInvestigations = () => {
+    if (!selectedInvestigation) {
+      showPopup(SELECT_INV_ERR_MSG, "error")
+      return
+    }
+
+    navigate("/investigation-multiple-results", {
+      state: {
+        investigationId: selectedInvestigation.investigationId,
+        investigationName: selectedInvestigation.investigationName,
+        subInvestigations: subInvestigations,
+        mainChargeCodeId: formData.departmentId,
+        subChargeCodeId: formData.modalityId,
+        sampleId: formData.sampleId,
+        uomId: formData.uomId,
+        collectionId: formData.containerId,
+        methodId: formData.methodId,
+        categoryId: formData.categoryId,
+        genderApplicable: formData.genderApplicable,
+        interpretation: formData.interpretation,
+        preparationRequired: formData.preparationRequired,
+        estimatedDays: formData.estimatedDays,
+        turnaroundTime: formData.turnaroundTime,
+      }
+    })
+  }
+
   const filteredInvestigations = investigations.filter(
-    (item) =>
-      item.investigationName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.modalityName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.contrastRequired?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.patientReady?.toLowerCase().includes(searchQuery.toLowerCase()),
+      (item) =>
+          item.investigationName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.subChargeCodeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.sampleName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.uomName?.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
-  const indexOfLast = currentPage * 10 // DEFAULT_ITEMS_PER_PAGE
-  const indexOfFirst = indexOfLast - 10
-  const currentItems = filteredInvestigations.slice(indexOfFirst, indexOfLast)
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredInvestigations.slice(indexOfFirst, indexOfLast);
+
+  if (loading && investigations.length === 0) {
+    return <LoadingScreen message="Loading investigation data..." />
+  }
 
   return (
-    <div className="content-wrapper">
-      {popupMessage && <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />}
-      {loading && <div className="loading-overlay">Loading...</div>}
+      <div className="content-wrapper">
+        {popupMessage && <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />}
+        {loading && <LoadingScreen overlay />}
 
-      <div className="row">
-        <div className="col-12 grid-margin stretch-card">
-          <div className="card form-card">
-            <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title">Radiology Investigation Master</h4>
-              <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search "
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
+        <div className="row">
+          <div className="col-12 grid-margin stretch-card">
+            <div className="card form-card">
+              <div className="card-header d-flex justify-content-between align-items-center">
+                <h4 className="card-title">Radiology Investigation Master</h4>
+                <div className="d-flex justify-content-between align-items-center">
+                  <form className="d-inline-block searchform me-4" role="search">
+                    <div className="input-group searchinput">
+                      <input
+                          type="search"
+                          className="form-control"
+                          placeholder="Search "
+                          aria-label="Search"
+                          value={searchQuery}
+                          onChange={handleSearchChange}
+                      />
+                      <span className="input-group-text" id="search-icon">
                       <i className="fa fa-search"></i>
                     </span>
-                  </div>
-                </form>
+                    </div>
+                  </form>
 
-                <div className="d-flex align-items-center">
-                  <button
-                    type="button"
-                    className="btn btn-success me-2"
-                    onClick={() => {}}
-                  >
-                    <i className="mdi mdi-magnify"></i> Search
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-success me-2 flex-shrink-0"
-                    onClick={handleRefresh}
-                  >
-                    <i className="mdi mdi-refresh"></i> Show All
-                  </button>
-                  <button type="button" className="btn btn-success d-flex align-items-center">
-                    <i className="mdi mdi-file-export d-sm-inlined-sm-inline ms-1"></i> Generate Report
-                  </button>
+                  <div className="d-flex align-items-center">
+                    <button
+                        type="button"
+                        className="btn btn-success me-2"
+                        onClick={handleSearch}
+                    >
+                      <i className="mdi mdi-magnify"></i> Search
+                    </button>
+                    <button
+                        type="button"
+                        className="btn btn-success me-2 flex-shrink-0"
+                        onClick={handleRefresh}
+                    >
+                      <i className="mdi mdi-refresh"></i> Show All
+                    </button>
+                    <button type="button" className="btn btn-success d-flex align-items-center">
+                      <i className="mdi mdi-file-export d-sm-inlined-sm-inline ms-1"></i> Generate Report
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="card-body">
-              <div className="table-responsive packagelist">
-                <table className="table table-bordered table-hover align-middle">
-                  <thead className="table-light">
+
+              <div className="card-body">
+                <div className="table-responsive packagelist">
+                  <table className="table table-bordered table-hover align-middle">
+                    <thead className="table-light">
                     <tr>
                       <th>Investigation Name</th>
                       <th>Modality</th>
                       <th>Contrast Required</th>
                       <th>Turnaround Time (hrs)</th>
-                      <th>Patient Ready</th>
+                      <th>Report Ready</th>
                       <th>Status</th>
                     </tr>
-                  </thead>
-                  <tbody>
+                    </thead>
+                    <tbody>
                     {currentItems.length > 0 ? (
-                      currentItems.map((item) => (
-                        <tr
-                          key={item.id}
-                          onClick={() => handleRowClick(item)}
-                          className={
-                            selectedInvestigation && selectedInvestigation.id === item.id
-                              ? "table-primary"
-                              : ""
-                          }
-                          style={{ cursor: "pointer" }}
-                        >
-                          <td>{item.investigationName}</td>
-                          <td>{item.modalityName || "-"}</td>
-                          <td>{item.contrastRequired || "-"}</td>
-                          <td>{item.turnaroundTime || "-"}</td>
-                          <td>{item.patientReady || "-"}</td>
-                          <td onClick={(e) => e.stopPropagation()}>
-                            <div className="form-check form-switch">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                checked={item.status === "y"}
-                                onChange={() => handleStatusToggle(item.id)}
-                                id={`switch-${item.id}`}
-                              />
-                              <label className="form-check-label" htmlFor={`switch-${item.id}`}>
-                                {item.status === "y" ? "Active" : "Deactivated"}
-                              </label>
-                            </div>
+                        currentItems.map((item) => (
+                            <tr
+                                key={item.investigationId}
+                                onClick={() => handleRowClick(item)}
+                                className={
+                                  selectedInvestigation && selectedInvestigation.investigationId === item.investigationId
+                                      ? "table-primary"
+                                      : ""
+                                }
+                                style={{ cursor: "pointer" }}
+                            >
+                              <td>{item.investigationName}</td>
+                              <td>{item.subChargeCodeName || "-"}</td>
+                              <td>{item.contrastRequired || "-"}</td>
+                              <td>{item.tatHours || "-"}</td>
+                              <td>{item.estimatedDays || "-"}</td>
+                              <td onClick={(e) => e.stopPropagation()}>
+                                <div className="form-check form-switch">
+                                  <input
+                                      className="form-check-input"
+                                      type="checkbox"
+                                      checked={item.status === "y"}
+                                      onChange={() => handleStatusToggle(item.investigationId)}
+                                      id={`switch-${item.investigationId}`}
+                                  />
+                                  <label className="form-check-label" htmlFor={`switch-${item.investigationId}`}>
+                                    {item.status === "y" ? "Active" : "Deactivated"}
+                                  </label>
+                                </div>
+                              </td>
+                            </tr>
+                        ))
+                    ) : (
+                        <tr>
+                          <td colSpan="6" className="text-center py-4">
+                            {loading ? "Loading..." : "No investigations found"}
                           </td>
                         </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="6" className="text-center py-4">
-                          {loading ? "Loading..." : "No investigations found"}
-                        </td>
-                      </tr>
                     )}
-                  </tbody>
-                </table>
-              </div>
+                    </tbody>
+                  </table>
+                </div>
 
-              {/* Form Section */}
-              <div className="row mb-3 mt-3">
-                <div className="col-sm-12">
-                  <div className="card shadow mb-3">
-                    <div className="card-body">
-                      <div className="row g-3 align-items-center">
-                        <div className="col-md-4">
-                          <div className="mb-2">
-                            <label className="form-label fw-bold mb-1">
-                              Investigation Name<span className="text-danger">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              name="investigationName"
-                              value={formData.investigationName}
-                              onChange={handleInputChange}
-                            />
-                          </div>
-                        </div>
-                        <div className="col-md-4">
-                          <div className="mb-2">
-                            <label className="form-label fw-bold mb-1">
-                              Department<span className="text-danger">*</span>
-                            </label>
-                            <select
-                              className="form-select"
-                              name="departmentId"
-                              value={formData.departmentId}
-                              onChange={handleInputChange}
-                            >
-                              <option value="">Select Department</option>
-                              {dropdownOptions.departments.map((dept) => (
-                                <option key={dept.id} value={dept.id}>
-                                  {dept.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                        <div className="col-md-4">
-                          <div className="mb-2">
-                            <label className="form-label fw-bold mb-1">
-                              Modality<span className="text-danger">*</span>
-                            </label>
-                            <select
-                              className="form-select"
-                              name="modalityId"
-                              value={formData.modalityId}
-                              onChange={handleInputChange}
-                            >
-                              <option value="">Select Modality</option>
-                              {dropdownOptions.modalities.map((mod) => (
-                                <option key={mod.id} value={mod.id}>
-                                  {mod.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
 
-                        <div className="col-md-4">
-                          <div className="mb-2">
-                            <label className="form-label fw-bold mb-1">
-                              Contrast Required<span className="text-danger">*</span>
-                            </label>
-                            <select
-                              className="form-select"
-                              name="contrastRequired"
-                              value={formData.contrastRequired}
-                              onChange={handleInputChange}
-                            >
-                              <option value="Select">Select</option>
-                              <option value="Yes">Yes</option>
-                              <option value="No">No</option>
-                              <option value="Conditional">Conditional</option>
-                            </select>
-                          </div>
-                        </div>
 
-                        <div className="col-md-4">
-                          <div className="mb-2">
-                            <label className="form-label fw-bold mb-1">
-                              Result Type<span className="text-danger">*</span>
-                            </label>
-                            <select
-                              className="form-select"
-                              name="resultType"
-                              value={formData.resultType}
-                              onChange={handleInputChange}
-                            >
-                              <option value="Select">Select</option>
-                              <option value="Single">Single</option>
-                              <option value="Multiple">Multiple</option>
-                              <option value="Range">Range</option>
-                              <option value="Template">Template</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className="col-md-4">
-                          <div className="mb-2">
-                            <label className="form-label fw-bold mb-1">
-                              Preparation Required
-                            </label>
-                            <div className="d-flex align-items-center gap-2">
-                              <textarea
-                                className="form-control"
-                                name="preparationRequired"
-                                value={formData.preparationRequired}
-                                onChange={handleInputChange}
-                                placeholder="Select from preparation list"
-                                rows="2"
+                {/* Form Section */}
+                <div className="row mb-3 mt-3">
+                  <div className="col-sm-12">
+                    <div className="card shadow mb-3">
+                      <div className="card-body">
+                        <div className="row g-3 align-items-center">
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label fw-bold mb-1">
+                                Investigation Name<span className="text-danger">*</span>
+                              </label>
+                              <input
+                                  type="text"
+                                  className="form-control"
+                                  name="investigationName"
+                                  value={formData.investigationName}
+                                  onChange={handleInputChange}
                               />
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-primary"
-                                onClick={handleOpenPreparationModal}
-                                title="Select Preparation"
-                              >
-                                <i className="icofont-search"></i>
-                              </button>
                             </div>
                           </div>
-                        </div>
-
-                        <div className="col-md-4">
-                          <div className="mb-2">
-                            <label className="form-label fw-bold mb-1">
-                              Turnaround Time (hours)
-                            </label>
-                            <input
-                              type="number"
-                              className="form-control"
-                              name="turnaroundTime"
-                              value={formData.turnaroundTime}
-                              onChange={handleInputChange}
-                              placeholder="Enter hours"
-                              min="0"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="col-md-4">
-                          <div className="mb-2">
-                            <label className="form-label fw-bold mb-1">
-                              Estimated Days (days)
-                            </label>
-                            <input
-                              type="number"
-                              className="form-control"
-                              name="estimatedDays"
-                              value={formData.estimatedDays}
-                              onChange={handleInputChange}
-                              placeholder="Enter days"
-                              min="0"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="col-md-4">
-                          <div className="mb-2">
-                            <label className="form-label mb-1">Options</label>
-                            <div className="form-control d-flex align-items-center">
-                              <div className="form-check">
-                                <input
-                                  className="form-check-input"
-                                  type="checkbox"
-                                  id="confidential"
-                                  name="confidential"
-                                  checked={formData.confidential}
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label fw-bold mb-1">
+                                Department<span className="text-danger">*</span>
+                              </label>
+                              <select
+                                  className="form-select"
+                                  name="departmentId"
+                                  value={formData.departmentId}
                                   onChange={handleInputChange}
-                                />
-                                <label className="form-check-label" htmlFor="confidential">
-                                  Confidential
-                                </label>
+                              >
+                                <option value="">Select Department</option>
+                                {dropdownOptions.departments.map((dept) => (
+                                    <option key={dept.id} value={dept.id}>
+                                      {dept.name}
+                                    </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label fw-bold mb-1">
+                                Modality<span className="text-danger">*</span>
+                              </label>
+                              <select
+                                  className="form-select"
+                                  name="modalityId"
+                                  value={formData.modalityId}
+                                  onChange={handleInputChange}
+                              >
+                                <option value="">Select Modality</option>
+                                {dropdownOptions.modalities.map((mod) => (
+                                    <option key={mod.id} value={mod.id}>
+                                      {mod.name}
+                                    </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label fw-bold mb-1">
+                                Contrast Required<span className="text-danger">*</span>
+                              </label>
+                              <select
+                                  className="form-select"
+                                  name="contrastRequired"
+                                  value={formData.contrastRequired}
+                                  onChange={handleInputChange}
+                              >
+                                <option value="Select">Select</option>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                                <option value="Conditional">Conditional</option>
+                              </select>
+                            </div>
+                          </div>
+                          {/*
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label fw-bold mb-1">
+                                Sample<span className="text-danger">*</span>
+                              </label>
+                              <select
+                                  className="form-select"
+                                  name="sampleId"
+                                  value={formData.sampleId}
+                                  onChange={handleInputChange}
+                              >
+                                <option value="">Select Sample</option>
+                                {dropdownOptions.samples.map((sample) => (
+                                    <option key={sample.id} value={sample.id}>
+                                      {sample.name}
+                                    </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label fw-bold mb-1">
+                                Container<span className="text-danger">*</span>
+                              </label>
+                              <select
+                                  className="form-select"
+                                  name="containerId"
+                                  value={formData.containerId}
+                                  onChange={handleInputChange}
+                              >
+                                <option value="">Select Container</option>
+                                {dropdownOptions.containers.map((cont) => (
+                                    <option key={cont.id} value={cont.id}>
+                                      {cont.name}
+                                    </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label fw-bold mb-1">
+                                Methodology <span className="text-danger">*</span>
+                              </label>
+                              <select
+                                  className="form-select"
+                                  name="methodId"
+                                  value={formData.methodId}
+                                  onChange={handleInputChange}
+                              >
+                                <option value="">Select Methodology </option>
+                                {dropdownOptions.methodologies.map((cont)=>(
+                                    <option key={cont.id} value={cont.id}>
+                                      {cont.name}
+                                    </option>
+                                ))}
+
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label fw-bold mb-1">
+                                Category <span className="text-danger">*</span>
+                              </label>
+                              <select
+                                  className="form-select"
+                                  name="categoryId"
+                                  value={formData.categoryId}
+                                  onChange={handleInputChange}
+                              >
+                                <option value="">Select Category </option>
+                                {dropdownOptions.categories.map((cont)=>(
+                                    <option key={cont.id} value={cont.id}>
+                                      {cont.name}
+                                    </option>
+                                ))}
+
+                              </select>
+                            </div>
+                          </div>
+
+
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label fw-bold mb-1">
+                                UOM
+                                {formData.resultType !== "Multiple" && <span className="text-danger">*</span>}
+                                {formData.resultType === "Multiple" && <span className="text-muted"> (Optional)</span>}
+                              </label>
+                              <select
+                                  className="form-select"
+                                  name="uomId"
+                                  value={formData.uomId}
+                                  onChange={handleInputChange}
+                              >
+                                <option value="">Select UOM</option>
+                                {dropdownOptions.uoms.map((uom) => (
+                                    <option key={uom.id} value={uom.id}>
+                                      {uom.name}
+                                    </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+*/}
+
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label fw-bold mb-1">
+                                Result Type<span className="text-danger">*</span>
+                              </label>
+                              <div className="d-flex align-items-center">
+                                <select
+                                    className="form-select flex-grow-1"
+                                    name="resultType"
+                                    value={formData.resultType}
+                                    onChange={handleInputChange}
+                                >
+                                  <option value="Select">Select</option>
+                                  <option value="Multiple">Multiple</option>
+                                  <option value="Single">Single</option>
+                                  <option value="Range">Range</option>
+                                </select>
+                                {selectedInvestigation && formData.resultType === "Multiple" && (
+                                    <button
+                                        type="button"
+                                        className="btn btn-success ms-2"
+                                        onClick={handleNavigateToSubInvestigations}
+                                    >
+                                      Add
+                                    </button>
+                                )}
                               </div>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="col-12 text-end mt-2 mb-3">
-                          <button className="btn btn-success me-2" onClick={handleSubmit} disabled={loading}>
-                            {loading ? "Saving..." : selectedInvestigation ? "Update" : "Save"}
-                          </button>
-                          <button className="btn btn-secondary" onClick={handleReset} disabled={loading}>
-                            Reset
-                          </button>
+                          {/*
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label mb-1">Minimum Value</label>
+                              <input
+                                  type="text"
+                                  className="form-control"
+                                  placeholder="Minimum Value"
+                                  name="minimumValue"
+                                  value={formData.minimumValue}
+                                  onChange={handleInputChange}
+                              />
+                            </div>
+                          </div>
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label mb-1">Maximum Value</label>
+                              <input
+                                  type="text"
+                                  className="form-control"
+                                  placeholder="Maximum Value"
+                                  name="maximumValue"
+                                  value={formData.maximumValue}
+                                  onChange={handleInputChange}
+                              />
+                            </div>
+                          </div>
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label fw-bold mb-1">
+                                Gender Applicable<span className="text-danger">*</span>
+                              </label>
+                              <select
+                                  className="form-select"
+                                  name="genderApplicable"
+                                  value={formData.genderApplicable}
+                                  onChange={handleInputChange}
+                              >
+                                <option value="Select">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Common">Common</option>
+                              </select>
+                            </div>
+                          </div>*/}
+
+
+                          {/* Preparation Required Section - After Gender Applicable */}
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label fw-bold mb-1">
+                                Preparation Required
+                              </label>
+                              <div className="d-flex align-items-center gap-2">
+                              <textarea
+                                  className="form-control"
+                                  name="preparationRequired"
+                                  value={formData.preparationRequired}
+                                  onChange={handleInputChange}
+                                  placeholder="Select from preparation list"
+                                  rows="2"
+                              />
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-primary"
+                                    onClick={handleOpenPreparationModal}
+                                    title="Select Preparation"
+                                >
+                                  <i className="icofont-search"></i>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label fw-bold mb-1">
+                                Turnaround Time (hours)
+                              </label>
+                              <input
+                                  type="number"
+                                  className="form-control"
+                                  name="turnaroundTime"
+                                  value={formData.turnaroundTime}
+                                  onChange={handleInputChange}
+                                  placeholder="Enter hours"
+                                  min="0"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label fw-bold mb-1">
+                                Estimated Days (days)
+                              </label>
+                              <input
+                                  type="number"
+                                  className="form-control"
+                                  name="estimatedDays"
+                                  value={formData.estimatedDays}
+                                  onChange={handleInputChange}
+                                  placeholder="Enter days"
+                                  min="0"
+                              />
+                            </div>
+                          </div>
+                          {/*
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label mb-1">LOINC Code</label>
+                              <input
+                                  type="text"
+                                  className="form-control"
+                                  placeholder="LOINC Code"
+                                  name="loincCode"
+                                  value={formData.loincCode}
+                                  onChange={handleInputChange}
+                              />
+                            </div>
+                          </div>
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label fw-bold mb-1">Flag</label>
+                              <select
+                                  className="form-select"
+                                  name="flag"
+                                  value={formData.flag}
+                                  onChange={handleInputChange}
+                              >
+                                <option value="Select">Select</option>
+                                <option value="Critical">External</option>
+                                <option value="Normal">Internal</option>
+                              </select>
+                            </div>
+                          </div>*/}
+
+                          <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label mb-1">Options</label>
+                              <div className="form-control d-flex align-items-center">
+                                <div className="form-check me-4">
+                                  <input
+                                      className="form-check-input"
+                                      type="checkbox"
+                                      id="confidential"
+                                      name="confidential"
+                                      checked={formData.confidential}
+                                      onChange={handleInputChange}
+                                  />
+                                  <label className="form-check-label" htmlFor="confidential">
+                                    Confidential
+                                  </label>
+                                </div>
+                                {/*<div className="form-check">
+                                  <input
+                                      className="form-check-input"
+                                      type="checkbox"
+                                      id="pandemic"
+                                      name="pandemic"
+                                      checked={formData.pandemic}
+                                      onChange={handleInputChange}
+                                  />
+                                  <label className="form-check-label" htmlFor="pandemic">
+                                    Pandemic
+                                  </label>
+                                </div>*/}
+                              </div>
+                            </div>
+                          </div>
+                          {/* <div className="col-md-4">
+                            <div className="mb-2">
+                              <label className="form-label mb-1">Pandemic Cases</label>
+                              <input
+                                  type="text"
+                                  className="form-control"
+                                  placeholder="Pandemic Cases"
+                                  name="pandemicCases"
+                                  value={formData.pandemicCases}
+                                  onChange={handleInputChange}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="col-md-8 mt-4">
+                            <label className="form-label mb-2 fw-bold">
+                              Interpretation
+                            </label>
+                            <textarea
+                                type="text"
+                                name="interpretation"
+                                className="form-control"
+                                placeholder="Enter Interpretation"
+                                rows="3"
+                                value={formData.interpretation}
+                                onChange={handleInputChange}
+                            />
+                          </div>*/}
+
+
+                          <div className="col-12 text-end mt-2 mb-3">
+                            <button className="btn btn-success me-2" onClick={handleSubmit} disabled={loading}>
+                              {loading ? "Saving..." : selectedInvestigation ? "Update" : "Save"}
+                            </button>
+                            <button className="btn btn-secondary" onClick={handleReset} disabled={loading}>
+                              Reset
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Confirmation Modal */}
+                {confirmDialog.isOpen && (
+                    <div
+                        className="modal d-block"
+                        tabIndex="-1"
+                        role="dialog"
+                        style={{backgroundColor: "rgba(0,0,0,0.5)"}}
+                    >
+                      <div className="modal-dialog" role="document">
+                        <div className="modal-content">
+                          <div className="modal-header">
+                            <h5 className="modal-title">Confirm Status Change</h5>
+                            <button type="button" className="btn-close" onClick={() => handleConfirm(false)}></button>
+                          </div>
+                          <div className="modal-body">
+                            <p>
+                            Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                              <strong>
+                                {
+                                  investigations.find((item) => item.investigationId === confirmDialog.investigationId)
+                                      ?.investigationName
+                                }
+                              </strong>
+                              ?
+                            </p>
+                          </div>
+                          <div className="modal-footer">
+                            <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                              Cancel
+                            </button>
+                            <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                              Confirm
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                )}
+
+                {/* PAGINATION USING REUSABLE COMPONENT */}
+                {filteredInvestigations.length > 0 && (
+                    <Pagination
+                        totalItems={filteredInvestigations.length}
+                        itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                        currentPage={currentPage}
+                        onPageChange={setCurrentPage}
+                    />
+                )}
               </div>
-
-              {/* Confirmation Modal */}
-              {confirmDialog.isOpen && (
-                <div
-                  className="modal d-block"
-                  tabIndex="-1"
-                  role="dialog"
-                  style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-                >
-                  <div className="modal-dialog" role="document">
-                    <div className="modal-content">
-                      <div className="modal-header">
-                        <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)}></button>
-                      </div>
-                      <div className="modal-body">
-                        <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                          <strong>
-                            {
-                              investigations.find((item) => item.id === confirmDialog.investigationId)
-                                ?.investigationName
-                            }
-                          </strong>
-                          ?
-                        </p>
-                      </div>
-                      <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
-                          Cancel
-                        </button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
-                          Confirm
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* PAGINATION */}
-              {filteredInvestigations.length > 0 && (
-                <Pagination
-                  totalItems={filteredInvestigations.length}
-                  itemsPerPage={10}
-                  currentPage={currentPage}
-                  onPageChange={setCurrentPage}
-                />
-              )}
             </div>
           </div>
         </div>
-      </div>
 
-      <MasPreparationModel
-        show={showPreparationModal}
-        onClose={handleClosePreparationModal}
-        onOk={handlePreparationOk}
-        selectedItems={[]}
-      />
-    </div>
+        {/* Preparation Required Modal */}
+        <MasPreparationModel
+            show={showPreparationModal}
+            onClose={handleClosePreparationModal}
+            onOk={handlePreparationOk}
+            selectedItems={[]}
+        />
+      </div>
   )
 }
 

@@ -1,158 +1,175 @@
+
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import { MAS_OPTH_NEAR_VISION } from "../../../config/apiConfig";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {FETCH_OPTHNEAR,DUPLICATE_OPTHNEAR,UPDATE_OPTHNEAR,ADD_OPTHNEAR,FAIL_OPTHNEAR,UPDATE_FAIL_OPTHNEAR,} from "../../../config/constants";
+
+
 
 const OpthNearVisionMaster = () => {
   const [data, setData] = useState([]);
-  const [confirmDialog, setConfirmDialog] = useState({
-    isOpen: false,
-    id: null,
-    newStatus: "",
-    visionTestName: ""
-  });
-
-  const [loading] = useState(false);
-
-  const [formData, setFormData] = useState({
-    id: "",
-    value: "",
-    description: "",
-  });
-
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({ nearValue: "" });
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-
-  // ================= PAGINATION =================
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageInput, setPageInput] = useState("");
-  const itemsPerPage = 5;
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    record: null,
+    newStatus: "",
+    visionTestName: "",
+  });
 
-  // ================= SAMPLE DATA =================
+
+
+const MAX_LENGTH = 8;
+
+
+  const formatDate = (dateString) => {
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const { response } = await getRequest(`${MAS_OPTH_NEAR_VISION}/getAll/0`);
+      setData(response || []);
+    } catch {
+      showPopup(FETCH_OPTHNEAR, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const sample = [
-      { id: 1, value: "Near Vision Test 1", status: "Y" },
-      { id: 2, value: "Near Vision Test 2",  status: "Y" },
-      { id: 3, value: "Near Vision Test 3", status: "N" },
-      { id: 4, value: "Near Vision Test 4", status: "Y" },
-      { id: 5, value: "Near Vision Test 5", status: "Y" },
-      { id: 6, value: "Near Vision Test 6", status: "Y" },
-    ];
-    setData(sample);
+    fetchData();
   }, []);
 
-  // ================= SEARCH =================
   const filteredData = data.filter((rec) =>
-    rec.value.toLowerCase().includes(searchQuery.toLowerCase())
+    (rec.nearValue ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
- const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
-  const currentItems = filteredData.slice(indexOfFirst, indexOfLast)
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
   };
 
-  // ================= FORM =================
   const handleInputChange = (e) => {
     const { id, value } = e.target;
-    const updated = { ...formData, [id]: value };
-    setFormData(updated);
-    setIsFormValid(
-      updated.id.toString().trim() !== "" &&
-      updated.value.trim() !== ""
-    );
+    setFormData({ ...formData, [id]: value });
+    setIsFormValid(value.trim() !== "");
   };
 
   const resetForm = () => {
-    setFormData({
-      id: "",
-      value: "",
-      description: "",
-    });
+    setFormData({ nearValue: "" });
     setIsFormValid(false);
+    setEditingRecord(null);
   };
 
-  // ================= SAVE =================
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
-
-    if (editingRecord) {
-      setData(
-        data.map((rec) =>
-          rec.id === editingRecord.id
-            ? { ...rec, ...formData }
-            : rec
-        )
-      );
-      showPopup("Record updated successfully", "success");
-    } else {
-      setData([
-        ...data,
-        {
-          ...formData,
-          status: "Y",
-        },
-      ]);
-      showPopup("Record added successfully", "success");
-    }
-
+  const handleCancel = () => {
     resetForm();
-    setEditingRecord(null);
     setShowForm(false);
   };
 
-  // ================= EDIT =================
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+
+    const newValue = formData.nearValue.trim().toLowerCase();
+    const duplicate = data.find(
+      (rec) =>
+        rec.nearValue?.trim().toLowerCase() === newValue &&
+        (!editingRecord || rec.id !== editingRecord.id)
+    );
+
+    if (duplicate) {
+      showPopup(DUPLICATE_OPTHNEAR, "error");
+      return;
+    }
+
+    try {
+      if (editingRecord) {
+        await putRequest(`${MAS_OPTH_NEAR_VISION}/update/${editingRecord.id}`, {
+          ...editingRecord,
+          nearValue: formData.nearValue.trim(),
+        });
+        showPopup(UPDATE_OPTHNEAR, "success");
+      } else {
+        await postRequest(`${MAS_OPTH_NEAR_VISION}/create`, {
+          nearValue: formData.nearValue.trim(),
+        });
+        showPopup(ADD_OPTHNEAR, "success");
+      }
+      await fetchData();
+      handleCancel();
+    } catch {
+      showPopup(FAIL_OPTHNEAR, "error");
+    }
+  };
+
   const handleEdit = (rec) => {
     setEditingRecord(rec);
-    setFormData(rec);
-    setShowForm(true);
+    setFormData({ nearValue: rec.nearValue });
     setIsFormValid(true);
+    setShowForm(true);
   };
 
-  // ================= STATUS =================
-  const handleSwitchChange = (id, newStatus, visionTestName) => {
-    setConfirmDialog({ isOpen: true, id, newStatus, visionTestName });
+  const handleSwitchChange = (rec) => {
+    setConfirmDialog({
+      isOpen: true,
+      record: rec,
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+      visionTestName: rec.nearValue,
+    });
   };
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed) {
-      setData(
-        data.map((rec) =>
-          rec.id === confirmDialog.id
-            ? { ...rec, status: confirmDialog.newStatus }
-            : rec
-        )
-      );
-      showPopup("Status updated successfully", "success");
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "", visionTestName: "" });
+      return;
     }
-    setConfirmDialog({ isOpen: false, id: null, newStatus: "", visionTestName: "" });
+    try {
+      setLoading(true);
+      await putRequest(`${MAS_OPTH_NEAR_VISION}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`);
+      showPopup(UPDATE_OPTHNEAR, "success");
+      fetchData();
+    } catch {
+      showPopup(UPDATE_FAIL_OPTHNEAR, "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "", visionTestName: "" });
+    }
   };
 
   const showPopup = (message, type) => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
-  
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
+    fetchData();
   };
 
-    
-
-  // ================= UI =================
   return (
     <div className="content-wrapper">
       <div className="card form-card">
-
-        {/* HEADER */}
         <div className="card-header d-flex justify-content-between align-items-center">
           <h4>Opth Near Vision Master</h4>
           <div className="d-flex">
@@ -165,12 +182,11 @@ const OpthNearVisionMaster = () => {
                 onChange={handleSearchChange}
               />
             )}
-
             {!showForm ? (
               <>
                 <button
                   className="btn btn-success me-2"
-                  onClick={() => { resetForm(); setShowForm(true); setEditingRecord(null); }}
+                  onClick={() => { resetForm(); setShowForm(true); }}
                 >
                   Add
                 </button>
@@ -179,14 +195,13 @@ const OpthNearVisionMaster = () => {
                 </button>
               </>
             ) : (
-              <button className="btn btn-secondary" onClick={() => setShowForm(false)}>
+              <button className="btn btn-secondary" onClick={handleCancel}>
                 Back
               </button>
             )}
           </div>
         </div>
 
-        {/* BODY */}
         <div className="card-body">
           {loading ? (
             <LoadingScreen />
@@ -196,8 +211,8 @@ const OpthNearVisionMaster = () => {
                 <table className="table table-bordered table-hover">
                   <thead className="table-light">
                     <tr>
-                      <th>ID</th>
                       <th>Value</th>
+                      <th>Last Update Date</th>
                       <th>Status</th>
                       <th>Edit</th>
                     </tr>
@@ -205,25 +220,18 @@ const OpthNearVisionMaster = () => {
                   <tbody>
                     {currentItems.map((rec) => (
                       <tr key={rec.id}>
-                        <td>{rec.id}</td>
-                        <td>{rec.value}</td>
-                
+                        <td>{rec.nearValue}</td>
+                        <td>{formatDate(rec.lastUpdateDate)}</td>
                         <td>
                           <div className="form-check form-switch">
                             <input
                               className="form-check-input"
                               type="checkbox"
-                              checked={rec.status === "Y"}
-                              onChange={() =>
-                                handleSwitchChange(
-                                  rec.id,
-                                  rec.status === "Y" ? "N" : "Y",
-                                  rec.value
-                                )
-                              }
+                              checked={rec.status?.toLowerCase() === "y"}
+                              onChange={() => handleSwitchChange(rec)}
                             />
                             <label className="form-check-label">
-                              {rec.status === "Y" ? "Active" : "Inactive"}
+                              {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                             </label>
                           </div>
                         </td>
@@ -231,7 +239,7 @@ const OpthNearVisionMaster = () => {
                           <button
                             className="btn btn-success btn-sm"
                             onClick={() => handleEdit(rec)}
-                            disabled={rec.status !== "Y"}
+                            disabled={rec.status?.toLowerCase() !== "y"}
                           >
                             <i className="fa fa-pencil"></i>
                           </button>
@@ -242,30 +250,32 @@ const OpthNearVisionMaster = () => {
                 </table>
               </div>
 
-              {/* PAGINATION + PAGE INFO + GO BUTTON */}
-             <Pagination
-               totalItems={filteredData.length}
-               itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-               currentPage={currentPage}
-               onPageChange={setCurrentPage}
-             /> 
+              <Pagination
+                totalItems={filteredData.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
             </>
           ) : (
-            // FORM
             <form className="row" onSubmit={handleSave}>
-              
-              <div className="form-group col-md-4">
+              <div className="col-md-5">
                 <label>Value <span className="text-danger">*</span></label>
-                <input id="value" className="form-control" value={formData.value} onChange={handleInputChange} />
+                <input
+                  id="nearValue"
+                  className="form-control"
+                  value={formData.nearValue}
+                  onChange={handleInputChange}
+                  maxLength={MAX_LENGTH}
+                  autoFocus
+                />
               </div>
 
-          
-
-              <div className="form-group col-md-12 mt-4 d-flex justify-content-end">
+              <div className="col-12 text-end mt-3">
                 <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                   Save
                 </button>
-                <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
+                <button type="button" className="btn btn-danger" onClick={handleCancel}>
                   Cancel
                 </button>
               </div>
@@ -279,18 +289,22 @@ const OpthNearVisionMaster = () => {
               <div className="modal-dialog">
                 <div className="modal-content">
                   <div className="modal-body">
-                    Are you sure you want to {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}{" "}
+                    Are you sure you want to{" "}
+                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.visionTestName}</strong>?
                   </div>
                   <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
+                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                      No
+                    </button>
+                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                      Yes
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
           )}
-
         </div>
       </div>
     </div>

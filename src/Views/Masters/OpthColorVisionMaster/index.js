@@ -5,6 +5,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_OPTH_COLOR_VISION } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {FETCH_OPTH_COLOR,DUPLICATE_OPTH_COLOR,UPDATE_OPTH_COLOR,FAIL_OPTH_COLOR,UPDATE_STATUS_OPTH_COLOR}  from "../../../config/constants"
 
 const OpthColorVisionMaster = () => {
   const [data, setData] = useState([]);
@@ -45,7 +46,7 @@ const OpthColorVisionMaster = () => {
       const { response } = await getRequest(`${MAS_OPTH_COLOR_VISION}/getAll/${flag}`);
       setData(response || []);
     } catch {
-      showPopup("Failed to fetch records", "error");
+      showPopup(FETCH_OPTH_COLOR, "error");
       setData([]);
     } finally {
       setLoading(false);
@@ -99,7 +100,7 @@ const OpthColorVisionMaster = () => {
     );
 
     if (duplicate) {
-      showPopup("Color value already exists!", "error");
+      showPopup(DUPLICATE_OPTH_COLOR, "error");
       return;
     }
 
@@ -109,18 +110,18 @@ const OpthColorVisionMaster = () => {
           ...editingRecord,
           colorValue: formData.colorValue.trim(),
         });
-        showPopup("Record updated successfully", "success");
+        showPopup(UPDATE_OPTH_COLOR, "success");
       } else {
         await postRequest(`${MAS_OPTH_COLOR_VISION}/create`, {
           colorValue: formData.colorValue.trim(),
           status: "Y",
         });
-        showPopup("Record added successfully", "success");
+        showPopup(UPDATE_OPTH_COLOR, "success");
       }
       fetchData();
       handleCancel();
     } catch {
-      showPopup("Save failed", "error");
+      showPopup(FAIL_OPTH_COLOR, "error");
     }
   };
 
@@ -148,10 +149,10 @@ const OpthColorVisionMaster = () => {
     try {
       setLoading(true);
       await putRequest(`${MAS_OPTH_COLOR_VISION}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`);
-      showPopup("Status updated successfully", "success");
+      showPopup(UPDATE_OPTH_COLOR, "success");
       fetchData();
     } catch {
-      showPopup("Status update failed", "error");
+      showPopup(UPDATE_STATUS_OPTH_COLOR, "error");
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });

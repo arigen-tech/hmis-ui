@@ -4,6 +4,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_OB_TRIMESTER } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {FETCH_TRIME_STER,DUPLICATE_TRIME_STER,UPDATE_TRIME_STER, ADD_TRIME_STER,FAIL_TRIME_STER,FAIL_UPDATE_TRIME_STER} from "../../../config/constants";
 
 
 const TrimesterMaster = () => {
@@ -51,7 +52,7 @@ const TrimesterMaster = () => {
       const { response } = await getRequest(`${MAS_OB_TRIMESTER}/getAll/${flag}`);
       setData(response || []);
     } catch {
-      showPopup("Failed to fetch records", "error");
+      showPopup(FETCH_TRIME_STER, "error");
       setData([]);
     } finally {
       setLoading(false);
@@ -116,7 +117,7 @@ const TrimesterMaster = () => {
     );
 
     if (duplicate) {
-      showPopup("trimesterValue Type already exists!", "error");
+      showPopup(DUPLICATE_TRIME_STER, "error");
       return;
     }
 
@@ -126,18 +127,18 @@ const TrimesterMaster = () => {
           ...editingRecord,
           trimesterValue: formData.trimesterValue.trim(),
         });
-        showPopup("Record updated successfully", "success");
+        showPopup("UPDATE_TRIME_STER", "success");
       } else {
         await postRequest(`${MAS_OB_TRIMESTER}/create`, {
           trimesterValue: formData.trimesterValue.trim(),
           status: "y",
         });
-        showPopup("Record added successfully", "success");
+        showPopup(ADD_TRIME_STER, "success");
       }
       fetchData();
       handleCancel();
     } catch {
-      showPopup("Save failed", "error");
+      showPopup(FAIL_TRIME_STER, "error");
     }
   };
 
@@ -170,10 +171,10 @@ const TrimesterMaster = () => {
       setLoading(true);
       await putRequest(`${MAS_OB_TRIMESTER}/status/${confirmDialog.reccord.id}?status=${confirmDialog.newStatus}`
       );
-      showPopup("Status updated successfully", "success");
+      showPopup(UPDATE_TRIME_STER, "success");
       fetchData();
     } catch {
-      showPopup("Status update failed", "error");
+      showPopup(FAIL_UPDATE_TRIME_STER, "error");
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, reccord: null, newStatus: "" });

@@ -4,7 +4,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_OP_PELVIS_TYPE } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-
+import {FETCH_PELVISTYPE,DUPLICATE_PELVISTYPE,UPDATE_PELVISTYPE,FAIL_PELVISTYPE,UPDATE_FAIL_PRLVISTYPE} from "../../../config/constants";
 
 const PelvisType = () => {
   const [data, setData] = useState([]);
@@ -54,7 +54,7 @@ const PelvisType = () => {
       const { response } = await getRequest(`${MAS_OP_PELVIS_TYPE}/getAll/${flag}`);
       setData(response || []);
     } catch {
-      showPopup("Failed to fetch records", "error");
+      showPopup(FETCH_PELVISTYPE, "error");
       setData([]);
     } finally {
       setLoading(false);
@@ -127,7 +127,7 @@ const PelvisType = () => {
     );
 
     if (duplicate) {
-      showPopup("Pelvis Type already exists!", "error");
+      showPopup(DUPLICATE_PELVISTYPE, "error");
       return;
     }
 
@@ -138,18 +138,18 @@ const PelvisType = () => {
           ...editingRecord,
           pelvisType: formData.pelvisType.trim(),
         });
-        showPopup("Record updated successfully", "success");
+        showPopup(UPDATE_PELVISTYPE, "success");
       } else {
         await postRequest(`${MAS_OP_PELVIS_TYPE}/create`, {
           pelvisType: formData.pelvisType.trim(),
           status: "Y",
         });
-        showPopup("Record added successfully", "success");
+        showPopup(UPDATE_PELVISTYPE, "success");
       }
       fetchData();
       handleCancel();
     } catch {
-      showPopup("Save failed", "error");
+      showPopup(FAIL_PELVISTYPE, "error");
     }
   };
 
@@ -182,10 +182,10 @@ const PelvisType = () => {
     try {
       setLoading(true);
       await putRequest(`${MAS_OP_PELVIS_TYPE}/status/${confirmDialog.reccord.id}?status=${confirmDialog.newStatus}`);
-      showPopup("Status updated successfully", "success");
+      showPopup(UPDATE_PELVISTYPE, "success");
       fetchData();
     } catch {
-      showPopup("Status update failed", "error");
+      showPopup(UPDATE_FAIL_PRLVISTYPE, "error");
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });

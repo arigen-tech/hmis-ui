@@ -1179,8 +1179,8 @@ const UpdatePatientRegistration = () => {
       return;
     }
 
-    const hospitalId = Number(sessionStorage.getItem("hospitalId") || 12);
-    const username = sessionStorage.getItem("username") || "system";
+    const hospitalId = Number(sessionStorage.getItem("hospitalId"));
+    const username = sessionStorage.getItem("username");
     const currentDate = new Date().toISOString();
     const currentDateOnly = new Date().toISOString().split("T")[0];
 

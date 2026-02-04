@@ -5,6 +5,10 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_GYN_FLOW } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {FETCH_MENSTRUAL,DUPLICATE_MENSTRUAL,UPDATE_MENSTRUAL,ADD_MENSTRUAL,FAIL_MENSTRUAL,UPDATE_FAIL_MENSTRUAL} from "../../../config/constants";
+
+
+
 
 const MenstrualFlowMaster = () => {
   const [data, setData] = useState([]);
@@ -42,7 +46,7 @@ const MenstrualFlowMaster = () => {
       const { response } = await getRequest(`${MAS_GYN_FLOW}/getAll/${flag}`);
       setData(response || []);
     } catch {
-      showPopup("Failed to fetch records", "error");
+      showPopup(FETCH_MENSTRUAL, "error");
       setData([]);
     } finally {
       setLoading(false);
@@ -100,7 +104,7 @@ const MenstrualFlowMaster = () => {
     );
 
     if (duplicate) {
-      showPopup("Flow Value already exists!", "error");
+      showPopup(DUPLICATE_MENSTRUAL, "error");
       return;
     }
 
@@ -110,17 +114,17 @@ const MenstrualFlowMaster = () => {
           ...editingRecord,
           flowValue: formData.flowValue.trim(),
         });
-        showPopup("Record updated successfully", "success");
+        showPopup(UPDATE_MENSTRUAL, "success");
       } else {
-        await postRequest(`${MAS_GYN_FLOW}/create`, {
+        await postRequest(`${MAS_GYN_FLOW}/create`, { 
           flowValue: formData.flowValue.trim(),
         });
-        showPopup("Record added successfully", "success");
+        showPopup(ADD_MENSTRUAL, "success");
       }
       fetchData();
       handleCancel();
     } catch {
-      showPopup("Save failed", "error");
+      showPopup(FAIL_MENSTRUAL, "error");
     }
   };
 
@@ -151,10 +155,10 @@ const MenstrualFlowMaster = () => {
     try {
       setLoading(true);
       await putRequest(`${MAS_GYN_FLOW}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`);
-      showPopup("Status updated successfully", "success");
+      showPopup(UPDATE_MENSTRUAL, "success");
       fetchData();
     } catch {
-      showPopup("Status update failed", "error");
+      showPopup(UPDATE_FAIL_MENSTRUAL, "error");
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });

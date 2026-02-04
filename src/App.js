@@ -106,14 +106,14 @@ import ProcedureTypeMaster from './Views/Masters/ProcedureTypeMaster';
 import MealTypeMaster from './Views/Masters/MealTypeMaster';
 import DietTypeMaster from './Views/Masters/DietTypeMaster';
 import DietPreferenceMaster from './Views/Masters/DietPreferenceMaster';
-import DietScheduleMaster from './Views/Masters/DietScheduleMaster'; 
+import DietScheduleMaster from './Views/Masters/DietScheduleMaster';
 import ItemReceivingMainScreen from './Views/WardPharmacy/ItemReceivingMainScreen';
-import AdmissionStatusMaster from './Views/Masters/AdmissionStatusMaster'; 
+import AdmissionStatusMaster from './Views/Masters/AdmissionStatusMaster';
 import IntakeItemMaster from './Views/Masters/IntakeItemMaster';
 import PatientacuityMaster from './Views/Masters/PatientacuityMaster';
 import OutputTypeMaster from './Views/Masters/OutputTypeMaster';
 import IntakeTypeMaster from './Views/Masters/IntakeTypeMaster';
-import InpatientMaster from  './Views/Masters/InpatientMaster';
+import InpatientMaster from './Views/Masters/InpatientMaster';
 import SpecialityMaster from './Views/Masters/SpecialityMaster';
 import ViewDownwload from './Views/Laboratory/ViewDownload';
 import ItemIssueRegister from './Views/WardPharmacy/IndentIssueReport';
@@ -126,9 +126,9 @@ import ToothConditionMaster from './Views/Masters/ToothConditionMaster';
 import SpectacleUseMaster from './Views/Masters/SpectacleUseMaster';
 import EyeWearUseMaster from './Views/Masters/EyeWearUseMaster';
 import BookedStatusMaster from './Views/Masters/BookedStatusMaster';
-import OpthColorVisionMaster from './Views/Masters/OpthColorVisionMaster'; 
+import OpthColorVisionMaster from './Views/Masters/OpthColorVisionMaster';
 import OpthDistanceVisionMaster from './Views/Masters/OpthDistanceVisionMaster';
-import OpthNearVisionMaster from './Views/Masters/OpthNearVisionMaster'; 
+import OpthNearVisionMaster from './Views/Masters/OpthNearVisionMaster';
 import PatientPreparationMaster from './Views/Masters/PatientPreparationMaster';
 import LabResultAmendment from './Views/Masters/LabResultAmendment';
 import ObConceptionMaster from './Views/Masters/ObConceptionMaster';
@@ -172,6 +172,12 @@ import NonDrugMaster from './Views/Stores/NondrugMaster';
 import PatientListForAdmission from './Views/IPD/PatientListForAdmission';
 import InpatientAdmission from './Views/IPD/InpatientAdmission';
 import ItemStockLedgerReport from './Views/Stores/StockLedgerReport';
+import BagTypeMaster from './Views/Masters/BagTypeMaster';
+import BloodCollectionTypeMaster from './Views/Masters/BloodCollectionTypeMater';
+import BloodDonationStatusMaster from './Views/Masters/BloodDonationStatusMaster';
+import AppointmentSummaryReport from './Views/Reception/AppointmentSummaryReport';
+import DailyCancellationReport from './Views/Reception/DailyCancellationReport';
+import CommonStatusMaster from './Views/Masters/CommonStatusMaster';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -179,7 +185,7 @@ const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotF
 
 
 
-const Layout =  React.lazy(() => import('./Views/layout/index'));
+const Layout = React.lazy(() => import('./Views/layout/index'));
 const Dashboard = React.lazy(() => import('./Views/Dashboard/index'));
 const Login = React.lazy(() => import('./Views/Login/index'));
 const AddDoctor = React.lazy(() => import('./Views/Doctors/AddDoctor/index'));
@@ -200,11 +206,11 @@ function App() {
           <Routes>
             {/* Public Route */}
             <Route path="/" element={<Login />} />
-                <Route path="investigation-multiple-results" element={<InvestigationMasterResult/>} />
-                <Route path="payment" element={<PaymentPage />} />
-                <Route path="lab-payment-success" element={<LabPaymentSuccess/>} />
-                <Route path="opd-payment-success" element={<OpdPaymentSuccess/>} />
-                <Route path="ViewDownwload" element={<ViewDownwload/>} />
+            <Route path="investigation-multiple-results" element={<InvestigationMasterResult />} />
+            <Route path="payment" element={<PaymentPage />} />
+            <Route path="lab-payment-success" element={<LabPaymentSuccess />} />
+            <Route path="opd-payment-success" element={<OpdPaymentSuccess />} />
+            <Route path="ViewDownwload" element={<ViewDownwload />} />
 
 
             {/* Protected Routes */}
@@ -250,135 +256,140 @@ function App() {
                 <Route path="mainchargecode" element={<Mainchargecode />} />
                 <Route path="subchargecode" element={<Subchargecode />} />
                 <Route path="labregistration" element={<Labregistration />} />
-                <Route path="uommaster" element={<UOMMaster/>} />
-                <Route path='samplecollectionmaster' element={<SampleCollectionMaster/>} />
-                <Route path="investigationpricing" element={<InvestigationPricingMaster/>} />
-                <Route path="opdpreconsultation" element={<OpdPreconsultation/>} />
-                <Route path="investigationmaster" element={<InvestigationMaster/>} />
-                <Route path="Drugmaster" element={<Drugmaster/>} />
-                <Route path="OpeningBalanceEntry" element={<OpeningBalanceEntry/>} />
-                <Route path="OpeningBalanceApprovalList" element={<OpeningBalanceApprovalList/>} />
-                <Route path="OPDServiceMaster" element={<OPDServiceMaster/>} />
-                <Route path="ServiceCategory" element={<ServiceCategoryMaster/>} />
-                <Route path="ItemSection" element={<ItemSection/>} />
-                <Route path="HSNMaster" element={<HSNMaster/>} />
-                <Route path="view-and-update" element={<ViewAndUpdate/>}/>
-                <Route path="PackageMaster" element={<PackageMaster/>} />
-                <Route path="PackageInvestigationMaster" element={<PackageInvestigationMaster/>} />
+                <Route path="uommaster" element={<UOMMaster />} />
+                <Route path='samplecollectionmaster' element={<SampleCollectionMaster />} />
+                <Route path="investigationpricing" element={<InvestigationPricingMaster />} />
+                <Route path="opdpreconsultation" element={<OpdPreconsultation />} />
+                <Route path="investigationmaster" element={<InvestigationMaster />} />
+                <Route path="Drugmaster" element={<Drugmaster />} />
+                <Route path="OpeningBalanceEntry" element={<OpeningBalanceEntry />} />
+                <Route path="OpeningBalanceApprovalList" element={<OpeningBalanceApprovalList />} />
+                <Route path="OPDServiceMaster" element={<OPDServiceMaster />} />
+                <Route path="ServiceCategory" element={<ServiceCategoryMaster />} />
+                <Route path="ItemSection" element={<ItemSection />} />
+                <Route path="HSNMaster" element={<HSNMaster />} />
+                <Route path="view-and-update" element={<ViewAndUpdate />} />
+                <Route path="PackageMaster" element={<PackageMaster />} />
+                <Route path="PackageInvestigationMaster" element={<PackageInvestigationMaster />} />
                 <Route path="PendingForBilling" element={<PendingForBilling />} />
                 <Route path="OPDBillingDetails" element={<OPDBillingDetails />} />
-                <Route path="LabBillingDetails" element={<LabBillingDetails/>} />
-                <Route path="StockStatusReport" element={<StockStatusReport/>} />
+                <Route path="LabBillingDetails" element={<LabBillingDetails />} />
+                <Route path="StockStatusReport" element={<StockStatusReport />} />
                 {/* <Route path="OPDWaitingList" element={<OpdWaitingList />} /> */}
-                <Route path="UpdateLabRegistration" element={<UpdateLabRegistration/>} />
-                <Route path="UpdateUnitRate" element={<UpdateUnitRate/>} />
+                <Route path="UpdateLabRegistration" element={<UpdateLabRegistration />} />
+                <Route path="UpdateUnitRate" element={<UpdateUnitRate />} />
                 <Route path="DrugExpiry" element={<DrugExpiry />} />
-                <Route path="PendingSampleCollection" element={<PendingSampleCollection/>} />
-                <Route path="PhysicalStockAdjustment" element={<PhysicalStockAdjustment/>} />
-                <Route path="PhysicalStockAdjustmentViewUpdate" element={<PhysicalStockAdjustmentViewUpdate/>}/>
-                <Route path="PhysicalStockAdjustmentApproval" element={<PhysicalStockAdjustmentApproval/>} />
-                <Route path="SampleValidation" element={<SampleValidation/>} />
-                <Route path="PendingForSampleCollection" element={<PendingForSampleCollection/>} />
-                <Route path="PendingForResultEntry" element={<PendingForResultEntry/>} />
-                <Route path="PhysicalStockTakingRegister" element={<PhysicalStockTakingRegister/>} />
-                <Route path="OpeningBalanceRegister" element={<OpeningBalanceRegister/>} />
-                <Route path="OpdWaitingList" element={<GeneralMedicineWaitingList/>} />
-                <Route path="SampleMaster" element={<SampleMaster/>} />
-                <Route path="PatientwiseBilldatails" element={<PatientwiseBilldatails/>} />
-                <Route path="ResultValidation" element={<ResultValidation/>} />
-                <Route path="UpdateResultValidation" element={<UpdateResultValidation/>} />
+                <Route path="PendingSampleCollection" element={<PendingSampleCollection />} />
+                <Route path="PhysicalStockAdjustment" element={<PhysicalStockAdjustment />} />
+                <Route path="PhysicalStockAdjustmentViewUpdate" element={<PhysicalStockAdjustmentViewUpdate />} />
+                <Route path="PhysicalStockAdjustmentApproval" element={<PhysicalStockAdjustmentApproval />} />
+                <Route path="SampleValidation" element={<SampleValidation />} />
+                <Route path="PendingForSampleCollection" element={<PendingForSampleCollection />} />
+                <Route path="PendingForResultEntry" element={<PendingForResultEntry />} />
+                <Route path="PhysicalStockTakingRegister" element={<PhysicalStockTakingRegister />} />
+                <Route path="OpeningBalanceRegister" element={<OpeningBalanceRegister />} />
+                <Route path="OpdWaitingList" element={<GeneralMedicineWaitingList />} />
+                <Route path="SampleMaster" element={<SampleMaster />} />
+                <Route path="PatientwiseBilldatails" element={<PatientwiseBilldatails />} />
+                <Route path="ResultValidation" element={<ResultValidation />} />
+                <Route path="UpdateResultValidation" element={<UpdateResultValidation />} />
                 <Route path="OpdRecallPatient" element={<OpdRRecallPatient />} />
-                <Route path="CreateIndent" element={<IndentCreation/>} />
-                <Route path="ViewUpdateIndent" element={<ViewUpdateIndent/>} />
-                <Route path="PendingIndentApproval" element={<PendingIndent/>} />
-                <Route path="InvestigationMethodologyMaster" element={<InvestigationMethodology/>} />
-                <Route path="TrackIndent" element={<TrackIndent/>} />
-                <Route path="InvestigationCategoryMaster" element={<InvestigationCategoryMaster/>} />
-                <Route path="IndentIssue" element={<IndentIssue/>} />
-                <Route path="IndentApproval" element={<IndentApproval/>} />
-                <Route path="TokenDisplay" element={<PatientWaitingList/>} />
-                <Route path="MedicineIssueRegister" element={<ItemIssueRegister/>} />
-                <Route path="IssueReferenceReport" element={<IssueReferenceReport/>} />
-                <Route path="CareLevelMaster" element={<CareLevelMaster/>} />
-                <Route path="WardCategoryMaster" element={<WardCategoryMaster/>} />
-                <Route path="WardManagementMaster" element={<WardManagementMaster/>} />
-                <Route path="RoomCategoryMaster"element={<RoomCategoryMaster/>}/>
-                <Route path="RoomMasterScreen"element={<RoomMasterScreen/>}/>
-                <Route path="BedManagement"element={<BedManagement/>}/>
-                <Route path="BedStatusMaster"element={<BedStatusMaster/>}/>
-                <Route path="FamilyHistoryMaster" element={<FamilyHistoryMaster/>} />
-                <Route path="/ProcedureMaster" element={<ProcedureMaster/>} />
-                <Route path="/ProcedureTypeMaster" element={<ProcedureTypeMaster/>} />
-                <Route path="/BedTypeMaster" element={<BedTypeMaster/>} />
-                <Route path="/PatientAdmission" element={<PatientAdmission/>} />
-                <Route path="/MealTypeMaster" element={<MealTypeMaster/>} />
-                <Route path="/DietTypeMaster" element={<DietTypeMaster/>} />
-                <Route path="/DietPreferenceMaster" element={<DietPreferenceMaster/>} />
-                <Route path="/DietScheduleMaster" element={<DietScheduleMaster/>} />
-                <Route path="ItemReceivingMainScreen" element={<ItemReceivingMainScreen/>} />
-                <Route path="/AdmissionStatusMaster" element={<AdmissionStatusMaster/>} />
-                <Route path ="/IntakeItemMaster" element={<IntakeItemMaster/>} />
-                <Route path="/PatientacuityMaster" element={<PatientacuityMaster/>} />
-                <Route path="/OutputTypeMaster" element={<OutputTypeMaster/>} />
-                <Route path="/IntakeTypeMaster" element={<IntakeTypeMaster/>} />
-                <Route path="/InpatientMaster" element={<InpatientMaster/>} />
-                <Route path="/SpecialityMaster" element={<SpecialityMaster/>} />
-                <Route path="/BillingPolicyMaster" element={<BillingPolicyMaster/>} />
-                <Route path="/DesignationMaster" element={<DesignationMaster/>} />
-                <Route path="/OPDQuestionnaireMaster" element={<OPDQuestionnaireMaster/>} />
-                <Route path="/OptionValueMaster" element={<OptionValueMaster/>} />
-                <Route path="/QuestionHeadingMaster" element={<QuestionHeadingMaster/>} />
-                <Route path="/ToothConditionMaster" element={<ToothConditionMaster/>} />
-                <Route path="/SpectacleUseMaster" element={<SpectacleUseMaster/>} />
-                <Route path="/EyeWearUseMaster" element={<EyeWearUseMaster/>} />
-                <Route path="/BookedStatusMaster" element={<BookedStatusMaster/>} />
-                <Route path="/OpthColorVisionMaster" element={<OpthColorVisionMaster/>} />
-                <Route path="/OpthDistanceVisionMaster" element={<OpthDistanceVisionMaster/>} />
-                <Route path="/OpthNearVisionMaster" element={<OpthNearVisionMaster/>} />
-                <Route path="/PatientPreparationMaster" element={<PatientPreparationMaster/>} />
-                <Route path="/ObConceptionMaster" element={<ObConceptionMaster/>} />
-                <Route path="/ObConsanguinityMaster" element={<ObConsanguinityMaster/>} />
-                <Route path="/PresentationMaster" element={<PresentationMaster/>} />
-                <Route path="/TrimesterMaster" element={<TrimesterMaster/>} />
-                <Route path="/CervixPosition" element={<CervixPosition/>} />
-                <Route path="/PelvisType" element={<PelvisType/>} />
-                <Route path="/StationPresentingMaster" element={<StationPresentingMaster/>} />
-                <Route path="/SterilisationMaster" element={<SterilisationMaster/>} />
-                <Route path="/SmearResultMaster" element={<SmearResultMaster/>} />
-                <Route path="/MenstrualFlowMaster" element={<MenstrualFlowMaster/>} />
-                <Route path="/MenstrualPatternMaster" element={<MenstrualPatternMaster/>} />
-                <Route path="/MenarcheMaster" element={<MenarcheMaster/>} />
-                <Route path="/LabResultAmendment" element={<LabResultAmendment/>} />
-                <Route path="/ItemFacility" element={<ItemFacility/>} />
-                <Route path="/LabReports" element={<LabReports/>} />
-                <Route path="/InvestigationRegister" element={<InvestigationRegister/>} />
-                <Route path="/TATReport" element={<TATReport/>} />
-                <Route path="/ResultAmendmentReport" element={<ResultAmendmentReport/>} />
+                <Route path="CreateIndent" element={<IndentCreation />} />
+                <Route path="ViewUpdateIndent" element={<ViewUpdateIndent />} />
+                <Route path="PendingIndentApproval" element={<PendingIndent />} />
+                <Route path="InvestigationMethodologyMaster" element={<InvestigationMethodology />} />
+                <Route path="TrackIndent" element={<TrackIndent />} />
+                <Route path="InvestigationCategoryMaster" element={<InvestigationCategoryMaster />} />
+                <Route path="IndentIssue" element={<IndentIssue />} />
+                <Route path="IndentApproval" element={<IndentApproval />} />
+                <Route path="TokenDisplay" element={<PatientWaitingList />} />
+                <Route path="MedicineIssueRegister" element={<ItemIssueRegister />} />
+                <Route path="IssueReferenceReport" element={<IssueReferenceReport />} />
+                <Route path="CareLevelMaster" element={<CareLevelMaster />} />
+                <Route path="WardCategoryMaster" element={<WardCategoryMaster />} />
+                <Route path="WardManagementMaster" element={<WardManagementMaster />} />
+                <Route path="RoomCategoryMaster" element={<RoomCategoryMaster />} />
+                <Route path="RoomMasterScreen" element={<RoomMasterScreen />} />
+                <Route path="BedManagement" element={<BedManagement />} />
+                <Route path="BedStatusMaster" element={<BedStatusMaster />} />
+                <Route path="FamilyHistoryMaster" element={<FamilyHistoryMaster />} />
+                <Route path="/ProcedureMaster" element={<ProcedureMaster />} />
+                <Route path="/ProcedureTypeMaster" element={<ProcedureTypeMaster />} />
+                <Route path="/BedTypeMaster" element={<BedTypeMaster />} />
+                <Route path="/PatientAdmission" element={<PatientAdmission />} />
+                <Route path="/MealTypeMaster" element={<MealTypeMaster />} />
+                <Route path="/DietTypeMaster" element={<DietTypeMaster />} />
+                <Route path="/DietPreferenceMaster" element={<DietPreferenceMaster />} />
+                <Route path="/DietScheduleMaster" element={<DietScheduleMaster />} />
+                <Route path="ItemReceivingMainScreen" element={<ItemReceivingMainScreen />} />
+                <Route path="/AdmissionStatusMaster" element={<AdmissionStatusMaster />} />
+                <Route path="/IntakeItemMaster" element={<IntakeItemMaster />} />
+                <Route path="/PatientacuityMaster" element={<PatientacuityMaster />} />
+                <Route path="/OutputTypeMaster" element={<OutputTypeMaster />} />
+                <Route path="/IntakeTypeMaster" element={<IntakeTypeMaster />} />
+                <Route path="/InpatientMaster" element={<InpatientMaster />} />
+                <Route path="/SpecialityMaster" element={<SpecialityMaster />} />
+                <Route path="/BillingPolicyMaster" element={<BillingPolicyMaster />} />
+                <Route path="/DesignationMaster" element={<DesignationMaster />} />
+                <Route path="/OPDQuestionnaireMaster" element={<OPDQuestionnaireMaster />} />
+                <Route path="/OptionValueMaster" element={<OptionValueMaster />} />
+                <Route path="/QuestionHeadingMaster" element={<QuestionHeadingMaster />} />
+                <Route path="/ToothConditionMaster" element={<ToothConditionMaster />} />
+                <Route path="/SpectacleUseMaster" element={<SpectacleUseMaster />} />
+                <Route path="/EyeWearUseMaster" element={<EyeWearUseMaster />} />
+                <Route path="/BookedStatusMaster" element={<BookedStatusMaster />} />
+                <Route path="/OpthColorVisionMaster" element={<OpthColorVisionMaster />} />
+                <Route path="/OpthDistanceVisionMaster" element={<OpthDistanceVisionMaster />} />
+                <Route path="/OpthNearVisionMaster" element={<OpthNearVisionMaster />} />
+                <Route path="/PatientPreparationMaster" element={<PatientPreparationMaster />} />
+                <Route path="/ObConceptionMaster" element={<ObConceptionMaster />} />
+                <Route path="/ObConsanguinityMaster" element={<ObConsanguinityMaster />} />
+                <Route path="/PresentationMaster" element={<PresentationMaster />} />
+                <Route path="/TrimesterMaster" element={<TrimesterMaster />} />
+                <Route path="/CervixPosition" element={<CervixPosition />} />
+                <Route path="/PelvisType" element={<PelvisType />} />
+                <Route path="/StationPresentingMaster" element={<StationPresentingMaster />} />
+                <Route path="/SterilisationMaster" element={<SterilisationMaster />} />
+                <Route path="/SmearResultMaster" element={<SmearResultMaster />} />
+                <Route path="/MenstrualFlowMaster" element={<MenstrualFlowMaster />} />
+                <Route path="/MenstrualPatternMaster" element={<MenstrualPatternMaster />} />
+                <Route path="/MenarcheMaster" element={<MenarcheMaster />} />
+                <Route path="/LabResultAmendment" element={<LabResultAmendment />} />
+                <Route path="/ItemFacility" element={<ItemFacility />} />
+                <Route path="/LabReports" element={<LabReports />} />
+                <Route path="/InvestigationRegister" element={<InvestigationRegister />} />
+                <Route path="/TATReport" element={<TATReport />} />
+                <Route path="/ResultAmendmentReport" element={<ResultAmendmentReport />} />
                 <Route path="EntMasTonsilGrade" element={<EntMasTonsilGradeMaster />} />
-                <Route path="/ReceivingReport" element={<ReceivingReport/>} />
-                <Route path="/ReturnRegister" element={<ReturnRegister/>} />
-                <Route path="/BookingAppointmentHistory" element={<BookingAppointmentHistory/>} />
-                <Route path="/OrderTrackingReport" element={<OrderTrackingReport/>} />
-                <Route path="/PendingInvestigationsReport" element={<PendingInvestigationsReport/>} />
-                <Route path="/SampleRejectionReport" element={<SampleRejectionReport/>} />                <Route path="*" element={<PageNotFound />} />
-                <Route path="/RadiologyInvestigationMaster" element={<RadiologyInvestigationMaster/>} />
-                <Route path="/MembraneStatusMaster" element={<MembraneStatusMaster/>} />
-                <Route path="/LensTypeMaster" element={<LensTypeMaster/>} />
-                <Route path="/OpthMasSpectacleUse" element={<OpthMasSpectacleUse/>} />
-                <Route path="/ImmunisationStatus" element={<ImmunisationStatus/>} />
-                <Route path="/LiquorMaster" element={<LiquorMaster/>} />
-                <Route path="/CervixConsistencyMaster" element={<CervixConsistencyMaster/>} />
-                <Route path="/EarTmStatusMaster" element={<EarTmStatusMaster/>} />
-                <Route path="/EarCanalMaster" element={<EarCanalMaster/>} />
-                <Route path="/EarRinneMaster" element={<EarRinneMaster/>} />
-                <Route path="/EarWeberMaster" element={<EarWeberMaster/>} />
-                <Route path="/EntMasSeptum" element={<EntMasSeptum/>} />
-                <Route path="/EntMasMucosaMaster" element={<EntMasMucosaMaster/>} />
-                <Route path="/NonDrugMaster" element={<NonDrugMaster/>} />
-                <Route path="/PatientListForAdmission" element={<PatientListForAdmission/>} />
-                <Route path="InpatientAdmission" element={<InpatientAdmission/>} />
-                <Route path="/ItemStockLedgerReport" element={<ItemStockLedgerReport/>} />
-
+                <Route path="/ReceivingReport" element={<ReceivingReport />} />
+                <Route path="/ReturnRegister" element={<ReturnRegister />} />
+                <Route path="/BookingAppointmentHistory" element={<BookingAppointmentHistory />} />
+                <Route path="/OrderTrackingReport" element={<OrderTrackingReport />} />
+                <Route path="/PendingInvestigationsReport" element={<PendingInvestigationsReport />} />
+                <Route path="/SampleRejectionReport" element={<SampleRejectionReport />} />                <Route path="*" element={<PageNotFound />} />
+                <Route path="/RadiologyInvestigationMaster" element={<RadiologyInvestigationMaster />} />
+                <Route path="/MembraneStatusMaster" element={<MembraneStatusMaster />} />
+                <Route path="/LensTypeMaster" element={<LensTypeMaster />} />
+                <Route path="/OpthMasSpectacleUse" element={<OpthMasSpectacleUse />} />
+                <Route path="/ImmunisationStatus" element={<ImmunisationStatus />} />
+                <Route path="/LiquorMaster" element={<LiquorMaster />} />
+                <Route path="/CervixConsistencyMaster" element={<CervixConsistencyMaster />} />
+                <Route path="/EarTmStatusMaster" element={<EarTmStatusMaster />} />
+                <Route path="/EarCanalMaster" element={<EarCanalMaster />} />
+                <Route path="/EarRinneMaster" element={<EarRinneMaster />} />
+                <Route path="/EarWeberMaster" element={<EarWeberMaster />} />
+                <Route path="/EntMasSeptum" element={<EntMasSeptum />} />
+                <Route path="/EntMasMucosaMaster" element={<EntMasMucosaMaster />} />
+                <Route path="/NonDrugMaster" element={<NonDrugMaster />} />
+                <Route path="/PatientListForAdmission" element={<PatientListForAdmission />} />
+                <Route path="/InpatientAdmission" element={<InpatientAdmission />} />
+                <Route path="/ItemStockLedgerReport" element={<ItemStockLedgerReport />} />
+                <Route path="/AppointmentSummaryReport" element={<AppointmentSummaryReport />} />
+                <Route path="/DailyCancellationReport" element={<DailyCancellationReport />} />
+                <Route path="/CommonStatusMaster" element={<CommonStatusMaster />} />
+                <Route path="/BagTypeMaster" element={<BagTypeMaster />} />
+                <Route path="/BloodCollectionTypeMaster" element={<BloodCollectionTypeMaster />} />
+                <Route path="/BloodDonationStatusMaster" element={<BloodDonationStatusMaster />} />
               </Route>
             </Route>
 

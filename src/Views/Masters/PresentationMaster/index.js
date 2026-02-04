@@ -5,6 +5,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_PRESENTATION } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {FETCH_PRESENTATION,DUPLICATE_PRESENTATION,UPDATE_PRESENTATION,Fail_PRESENTATION,UPDATE_FAIL_PRESENTATION} from "../../../config/constants";
 
 
 const PresentationMaster = () => {
@@ -24,7 +25,7 @@ const PresentationMaster = () => {
   });
 
 
-  const MAX_LENGTH = 8; 
+  const MAX_LENGTH = 8;
 
   // Format date
   const formatDate = (dateString) => {
@@ -44,7 +45,7 @@ const PresentationMaster = () => {
       const { response } = await getRequest(`${MAS_PRESENTATION}/getAll/${flag}`);
       setData(response || []);
     } catch {
-      showPopup("Failed to fetch records", "error");
+      showPopup(FETCH_PRESENTATION, "error");
       setData([]);
     } finally {
       setLoading(false);
@@ -102,7 +103,7 @@ const PresentationMaster = () => {
     );
 
     if (duplicate) {
-      showPopup("Presentation Value already exists!", "error");
+      showPopup(DUPLICATE_PRESENTATION, "error");
       return;
     }
 
@@ -112,17 +113,17 @@ const PresentationMaster = () => {
           ...editingRecord,
           presentationValue: formData.presentationValue.trim(),
         });
-        showPopup("Record updated successfully", "success");
+        showPopup(UPDATE_PRESENTATION, "success");
       } else {
         await postRequest(`${MAS_PRESENTATION}/create`, {
           presentationValue: formData.presentationValue.trim(),
         });
-        showPopup("Record added successfully", "success");
+        showPopup(UPDATE_PRESENTATION, "success");
       }
       fetchData();
       handleCancel();
     } catch {
-      showPopup("Save failed", "error");
+      showPopup(Fail_PRESENTATION, "error");
     }
   };
 
@@ -138,7 +139,7 @@ const PresentationMaster = () => {
   const handleSwitchChange = (rec) => {
     setConfirmDialog({
       isOpen: true,
-      record: rec, 
+      record: rec,
       newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
     });
   };
@@ -153,10 +154,10 @@ const PresentationMaster = () => {
     try {
       setLoading(true);
       await putRequest(`${MAS_PRESENTATION}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`);
-      showPopup("Status updated successfully", "success");
+      showPopup(UPDATE_PRESENTATION, "success");
       fetchData();
     } catch {
-      showPopup("Status update failed", "error");
+      showPopup(UPDATE_FAIL_PRESENTATION, "error");
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
@@ -173,8 +174,6 @@ const PresentationMaster = () => {
     fetchData();
   };
 
-  
-
   // ================= UI =================
   return (
     <div className="content-wrapper">
@@ -184,7 +183,6 @@ const PresentationMaster = () => {
           <div className="d-flex">
             {!showForm && (
               <input
-                type="text"
                 style={{ width: "220px" }}
                 className="form-control me-2"
                 placeholder="Search"
@@ -259,7 +257,6 @@ const PresentationMaster = () => {
                 </tbody>
               </table>
 
-              {/* PAGINATION */}
               {filteredData.length > 0 && (
                 <Pagination
                   totalItems={filteredData.length}

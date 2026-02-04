@@ -1,44 +1,54 @@
+
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import { MAS_OB_PVLIQUOR } from "../../../config/apiConfig";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {FETCH_LIQUOR,DUPLICATE_LIQUOR,UPDATE_LIQUOR,ADD_LIQUOR,FAIL_LIQUOR,UPDATE_FAIL_LIQUOR,} from "../../../config/constants";
+
+
 
 const LiquorMaster = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
-
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
-
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageInput, setPageInput] = useState("");
-  const itemsPerPage = 5;
-
-  const [formData, setFormData] = useState({
-    liquor_value: "",
+  
+  const [formData, setFormData] = useState({ 
+    liquorValue: "" 
   });
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
-    recordId: null,
-    newStatus: null,
+    record: null,
+    newStatus: "",
   });
 
-  const fetchData = async () => {
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  // Fetch data
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const dummyData = [
-        { id: 1, liquor_value: "Clear", status: "Y", last_updated_date: "2025-12-01 08:30:00" },
-        { id: 2, liquor_value: "Bloody", status: "Y", last_updated_date: "2025-12-02 09:15:00" },
-        { id: 3, liquor_value: "Turbid", status: "N", last_updated_date: "2025-12-03 10:00:00" },
-      ];
-      setData(dummyData);
-    } catch (err) {
-      showPopup("Failed to fetch data!", "error");
+      const { response } = await getRequest(`${MAS_OB_PVLIQUOR}/getAll/${flag}`);
+      setData(response || []);
+    } catch {
+      showPopup(FETCH_LIQUOR, "error");
+      setData([]);
     } finally {
       setLoading(false);
     }
@@ -48,17 +58,107 @@ const LiquorMaster = () => {
     fetchData();
   }, []);
 
+  /* ================= FILTER + PAGINATION ================= */
   const filteredData = data.filter((rec) =>
-    rec.liquor_value.toLowerCase().includes(searchQuery.toLowerCase())
+    (rec?.liquorValue ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
-    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
-    const currentItems = filteredData.slice(indexOfFirst, indexOfLast)
+  const currentItems = filteredData.slice(
+    (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
+    currentPage * DEFAULT_ITEMS_PER_PAGE
+  );
 
-  const showPopup = (message, type) =>
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  /* ================= FORM HANDLERS ================= */
+  const handleInputChange = (e) => {
+    const { id, value } = e.target;
+    const updated = { ...formData, [id]: value };
+    setFormData(updated);
+    setIsFormValid(value.trim() !== "");
+  };
 
+  const resetForm = () => {
+    setFormData({ liquorValue: "" });
+    setIsFormValid(false);
+    setEditingRecord(null);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+
+    const newValue = formData.liquorValue.trim().toLowerCase();
+    const duplicate = data.find(
+      (rec) =>
+        rec.liquorValue?.trim().toLowerCase() === newValue &&
+        (!editingRecord || rec.id !== editingRecord.id)
+    );
+
+    if (duplicate) {
+      showPopup(DUPLICATE_LIQUOR , "error");
+      return;
+    }
+
+    try {
+      if (editingRecord) {
+        await putRequest(`${MAS_OB_PVLIQUOR}/update/${editingRecord.id}`, {
+          ...editingRecord,
+          liquorValue: formData.liquorValue.trim(),
+        });
+        showPopup(UPDATE_LIQUOR, "success");
+      } else {
+        await postRequest(`${MAS_OB_PVLIQUOR}/create`, {
+          liquorValue: formData.liquorValue.trim(),
+        });
+        showPopup(ADD_LIQUOR, "success");
+      }
+      fetchData();
+      handleCancel();
+    } catch {
+      showPopup(FAIL_LIQUOR, "error");
+    }
+  };
+
+  const handleEdit = (rec) => {
+    setEditingRecord(rec);
+    setFormData({ liquorValue: rec.liquorValue || "" });
+    setIsFormValid(true);
+    setShowForm(true);
+  };
+
+  const handleSwitchChange = (rec) => {
+    setConfirmDialog({
+      isOpen: true,
+      record: rec,
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+    });
+  };
+
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
+    }
+    if (!confirmDialog.record) return;
+
+    try {
+      setLoading(true);
+      await putRequest(`${MAS_OB_PVLIQUOR}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`);
+      showPopup(UPDATE_LIQUOR, "success");
+      fetchData();
+    } catch {
+      showPopup(UPDATE_FAIL_LIQUOR, "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+    }
+  };
+
+  /* ================= SEARCH & NAVIGATION ================= */
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
@@ -70,75 +170,13 @@ const LiquorMaster = () => {
     fetchData();
   };
 
-  const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    const updated = { ...formData, [id]: value };
-    setFormData(updated);
-    setIsFormValid(updated.liquor_value.trim() !== "");
+  const showPopup = (message, type) => {
+    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
-
-    const now = new Date().toISOString().replace("T", " ").split(".")[0];
-
-    if (editingRecord) {
-      setData(
-        data.map((rec) =>
-          rec.id === editingRecord.id
-            ? { ...rec, liquor_value: formData.liquor_value, last_updated_date: now }
-            : rec
-        )
-      );
-      showPopup("Record updated successfully!", "success");
-    } else {
-      setData([
-        ...data,
-        { id: Date.now(), liquor_value: formData.liquor_value, status: "Y", last_updated_date: now },
-      ]);
-      showPopup("New record added successfully!", "success");
-    }
-
-    resetForm();
-  };
-
-  const handleEdit = (rec) => {
-    setEditingRecord(rec);
-    setFormData({ liquor_value: rec.liquor_value });
-    setIsFormValid(true);
-    setShowForm(true);
-  };
-
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, recordId: id, newStatus });
-  };
-
-  const handleConfirmStatusChange = (confirmed) => {
-    if (confirmed) {
-      setData(
-        data.map((rec) =>
-          rec.id === confirmDialog.recordId ? { ...rec, status: confirmDialog.newStatus } : rec
-        )
-      );
-
-      const recordName = data.find((rec) => rec.id === confirmDialog.recordId)?.liquor_value;
-
-      showPopup(
-        `${recordName} ${confirmDialog.newStatus === "Y" ? "Activated" : "Deactivated"} successfully!`,
-        "success"
-      );
-    }
-    setConfirmDialog({ isOpen: false, recordId: null, newStatus: null });
-  };
-
-  const resetForm = () => {
-    setFormData({ liquor_value: "" });
-    setEditingRecord(null);
-    setShowForm(false);
-    setIsFormValid(false);
-  };
-  if (loading) return <LoadingScreen />;
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <div className="content-wrapper">
@@ -149,7 +187,7 @@ const LiquorMaster = () => {
           <div className="d-flex align-items-center">
             {!showForm && (
               <input
-                type="text"
+                style={{ width: "220px" }}
                 className="form-control me-2"
                 placeholder="Search"
                 value={searchQuery}
@@ -162,12 +200,12 @@ const LiquorMaster = () => {
                 <button className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                   Add
                 </button>
-                <button className="btn btn-success me-2" onClick={handleRefresh}>
+                <button className="btn btn-success flex-shrink-0" onClick={handleRefresh}>
                   Show All
                 </button>
               </>
             ) : (
-              <button className="btn btn-secondary" onClick={resetForm}>
+              <button className="btn btn-secondary" onClick={handleCancel}>
                 Back
               </button>
             )}
@@ -181,32 +219,29 @@ const LiquorMaster = () => {
                 <table className="table table-bordered table-hover">
                   <thead className="table-light">
                     <tr>
-                      <th>ID</th>
                       <th>Liquor Value</th>
                       <th>Last Update Date</th>
                       <th>Status</th>
                       <th>Edit</th>
                     </tr>
                   </thead>
+
                   <tbody>
-                    {currentItems.length ? (
+                    {currentItems.length > 0 ? (
                       currentItems.map((rec) => (
                         <tr key={rec.id}>
-                          <td>{rec.id}</td>
-                          <td>{rec.liquor_value}</td>
-                          <td>{rec.last_updated_date}</td>
+                          <td>{rec.liquorValue}</td>
+                          <td>{formatDate(rec.lastUpdateDate)}</td>
                           <td>
                             <div className="form-check form-switch">
                               <input
                                 className="form-check-input"
                                 type="checkbox"
-                                checked={rec.status === "Y"}
-                                onChange={() =>
-                                  handleSwitchChange(rec.id, rec.status === "Y" ? "N" : "Y")
-                                }
+                                checked={rec.status?.toLowerCase() === "y"}
+                                onChange={() => handleSwitchChange(rec)}
                               />
-                              <label className="form-check-label">
-                                {rec.status === "Y" ? "Active" : "Inactive"}
+                              <label className="form-check-label ms-2">
+                                {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                               </label>
                             </div>
                           </td>
@@ -214,7 +249,7 @@ const LiquorMaster = () => {
                             <button
                               className="btn btn-success btn-sm"
                               onClick={() => handleEdit(rec)}
-                              disabled={rec.status !== "Y"}
+                              disabled={rec.status?.toLowerCase() !== "y"}
                             >
                               <i className="fa fa-pencil"></i>
                             </button>
@@ -223,7 +258,7 @@ const LiquorMaster = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="5" className="text-center">
+                        <td colSpan="4" className="text-center">
                           No record found
                         </td>
                       </tr>
@@ -232,35 +267,41 @@ const LiquorMaster = () => {
                 </table>
               </div>
 
-                {/* PAGINATION */}
-             <Pagination
-               totalItems={filteredData.length}
-               itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-               currentPage={currentPage}
-               onPageChange={setCurrentPage}
-             /> 
-          
+              {/* PAGINATION */}
+              <Pagination
+                totalItems={filteredData.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
             </>
           ) : (
             <form className="row" onSubmit={handleSave}>
               <div className="form-group col-md-6">
-                <label>
-                  Liquor Value <span className="text-danger">*</span>
-                </label>
+                <label htmlFor="liquorValue">Liquor Value</label>
                 <input
                   type="text"
-                  id="liquor_value"
+                  id="liquorValue"
                   className="form-control mt-1"
-                  value={formData.liquor_value}
+                  value={formData.liquorValue}
                   onChange={handleInputChange}
+                  required
                 />
               </div>
 
               <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>
+                <button
+                  className="btn btn-primary me-2"
+                  type="submit"
+                  disabled={!isFormValid}
+                >
                   Save
                 </button>
-                <button className="btn btn-danger" type="button" onClick={resetForm}>
+                <button
+                  className="btn btn-danger"
+                  type="button"
+                  onClick={handleCancel}
+                >
                   Cancel
                 </button>
               </div>
@@ -270,36 +311,19 @@ const LiquorMaster = () => {
           {popupMessage && <Popup {...popupMessage} />}
 
           {confirmDialog.isOpen && (
-            <div className="modal d-block" tabIndex="-1">
+            <div className="modal d-block">
               <div className="modal-dialog">
                 <div className="modal-content">
-                  <div className="modal-header">
-                    <h5 className="modal-title">Confirm Status Change</h5>
-                    <button
-                      type="button"
-                      className="btn-close"
-                      onClick={() => handleConfirmStatusChange(false)}
-                    ></button>
-                  </div>
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}{" "}
-                    <strong>
-                      {data.find((rec) => rec.id === confirmDialog.recordId)?.liquor_value}
-                    </strong>
-                    ?
+                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    <strong>{confirmDialog.record?.liquorValue}</strong>?
                   </div>
                   <div className="modal-footer">
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => handleConfirmStatusChange(false)}
-                    >
+                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
                       No
                     </button>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => handleConfirmStatusChange(true)}
-                    >
+                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
                       Yes
                     </button>
                   </div>

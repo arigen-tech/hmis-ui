@@ -5,6 +5,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_QUESTION_HEADING } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { FETCH_QUESTION_HEADING, DUPLICATE_QUESTION_HEADING, INVALID_QUESTION_HEADING, UPDATE_QUESTION_HEADING, ADD_QUESTION_HEADING, FAIL_QUESTION_HEADING } from "../../../config/constants";
 
 
 const QuestionHeadingMaster = () => {
@@ -47,7 +48,7 @@ const QuestionHeadingMaster = () => {
       const { response } = await getRequest(`${MAS_QUESTION_HEADING}/getAll/${flag}`);
       setData(response || []);
     } catch {
-      showPopup("Failed to fetch records", "error");
+      showPopup(FETCH_QUESTION_HEADING, "error");
       setData([]);
     } finally {
       setLoading(false);
@@ -63,7 +64,7 @@ const QuestionHeadingMaster = () => {
     (rec?.questionHeadingCode ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (rec?.questionHeadingName ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
-    const handleSearchChange = (e) => {
+  const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
   };
@@ -119,7 +120,7 @@ const QuestionHeadingMaster = () => {
     });
 
     if (duplicate) {
-      showPopup("Question Heading Code already exists!", "error");
+      showPopup(DUPLICATE_QUESTION_HEADING, "error");
       return;
     }
 
@@ -128,7 +129,7 @@ const QuestionHeadingMaster = () => {
         const recordId = editingRecord.id || editingRecord.questionHeadingId || editingRecord._id;
 
         if (!recordId) {
-          showPopup("Invalid record ID", "error");
+          showPopup(INVALID_QUESTION_HEADING, "error");
           return;
         }
 
@@ -138,21 +139,21 @@ const QuestionHeadingMaster = () => {
         };
 
         await putRequest(`${MAS_QUESTION_HEADING}/update/${recordId}`, updateData);
-        showPopup("Record updated successfully", "success");
+        showPopup(UPDATE_QUESTION_HEADING, "success");
       } else {
-        const response =await postRequest(`${MAS_QUESTION_HEADING}/create`, {
+        const response = await postRequest(`${MAS_QUESTION_HEADING}/create`, {
           questionHeadingCode: trimmedCode,
           questionHeadingName: trimmedName,
           status: "y",
         });
-        if(response && response.response&&response.status===200 ){
+        if (response && response.response && response.status === 200) {
           console.log(response);
-          
-          showPopup("Record added successfully", "success");
-        }else{
-          showPopup("Save failed. Please try again.", "error");
+
+          showPopup(ADD_QUESTION_HEADING, "success");
+        } else {
+          showPopup(FAIL_QUESTION_HEADING, "error");
         }
-        
+
       }
 
       fetchData();
@@ -160,7 +161,7 @@ const QuestionHeadingMaster = () => {
 
     } catch (err) {
       console.error("Save error:", err);
-      showPopup("Save failed. Please try again.", "error");
+      showPopup(FAIL_QUESTION_HEADING, "error");
     }
   };
 
@@ -190,27 +191,27 @@ const QuestionHeadingMaster = () => {
     }
 
     const { record, newStatus } = confirmDialog;
-    
+
     const recordId = record?.id || record?.questionHeadingId || record?._id;
-    
+
     if (!recordId) {
-      showPopup("Invalid record ID", "error");
+      showPopup(INVALID_QUESTION_HEADING, "error");
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
       return;
     }
 
     try {
       setLoading(true);
-      
+
       await putRequest(`${MAS_QUESTION_HEADING}/status/${recordId}?status=${newStatus}`);
-      
+
       showPopup(`Status ${newStatus === "y" ? "activated" : "deactivated"} successfully`, "success");
-      
+
       fetchData();
-      
+
     } catch (error) {
       console.error("Status update error:", error);
-      showPopup("Status update failed", "error");
+      showPopup(UPDATE_QUESTION_HEADING, "error");
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
@@ -231,7 +232,7 @@ const QuestionHeadingMaster = () => {
   return (
     <div className="content-wrapper">
       {loading && <LoadingScreen />}
-      
+
       <div className="card form-card">
         <div className="card-header d-flex justify-content-between align-items-center">
           <h4>Question Heading Master</h4>
@@ -289,8 +290,8 @@ const QuestionHeadingMaster = () => {
                               onChange={() => handleSwitchChange(rec)}
                               id={`switch-${rec.id || rec.questionHeadingId}`}
                             />
-                            <label 
-                              className="form-check-label ms-2" 
+                            <label
+                              className="form-check-label ms-2"
                               htmlFor={`switch-${rec.id || rec.questionHeadingId}`}
                             >
                               {rec.status === "y" ? "Active" : "Inactive"}
@@ -318,11 +319,11 @@ const QuestionHeadingMaster = () => {
 
               {/* PAGINATION */}
               <Pagination
-               totalItems={filteredData.length}
-               itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-               currentPage={currentPage}
-               onPageChange={setCurrentPage}
-             /> 
+                totalItems={filteredData.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
             </>
           )}
 

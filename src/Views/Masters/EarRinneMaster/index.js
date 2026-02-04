@@ -5,6 +5,8 @@ import LoadingScreen from "../../../Components/Loading";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import { MAS_ENT_RINNE } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {FETCH_EAR,DUPLICATE_EAR,UPDATE_EAR,ADD_EAR,FAIL_EAR,UPDATE_FAIL_EAR} from  "../../../config/constants";
+
 
 const EarRinneMaster = () => {
   const [data, setData] = useState([]);
@@ -42,7 +44,7 @@ const EarRinneMaster = () => {
       const { response } = await getRequest(`${MAS_ENT_RINNE}/getAll/${flag}`);
       setData(response || []);
     } catch {
-      showPopup("Failed to fetch records", "error");
+      showPopup(FETCH_EAR, "error");
       setData([]);
     } finally {
       setLoading(false);
@@ -100,7 +102,7 @@ const EarRinneMaster = () => {
     );
 
     if (duplicate) {
-      showPopup("Rinne Result already exists!", "error");
+      showPopup(DUPLICATE_EAR, "error");
       return;
     }
 
@@ -110,17 +112,17 @@ const EarRinneMaster = () => {
           ...editingRecord,
           rinneResult: formData.rinneResult.trim(),
         });
-        showPopup("Record updated successfully", "success");
+        showPopup(UPDATE_EAR, "success");
       } else {
         await postRequest(`${MAS_ENT_RINNE}/create`, {
           rinneResult: formData.rinneResult.trim(),
         });
-        showPopup("Record added successfully", "success");
+        showPopup(ADD_EAR, "success");
       }
       fetchData();
       handleCancel();
     } catch {
-      showPopup("Save failed", "error");
+      showPopup(FAIL_EAR, "error");
     }
   };
 
@@ -151,10 +153,10 @@ const EarRinneMaster = () => {
     try {
       setLoading(true);
       await putRequest(`${MAS_ENT_RINNE}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`);
-      showPopup("Status updated successfully", "success");
+      showPopup(UPDATE_EAR, "success");
       fetchData();
     } catch {
-      showPopup("Status update failed", "error");
+      showPopup(UPDATE_FAIL_EAR, "error");
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });

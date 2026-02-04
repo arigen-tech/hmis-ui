@@ -5,6 +5,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_STERILISATION } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {FETCH_STERILI_SATION,DUPLICATE_STERILI_SATION,UPDATE_STERILI_SATION,ADD_STERILI_SATION,FAIL_STERILI_SATION,FAIL_UPDATE_STERILI_SATION} from "../../../config/constants"
 
 const SterilisationMaster = () => {
   const [data, setData] = useState([]);
@@ -44,7 +45,7 @@ const SterilisationMaster = () => {
       const { response } = await getRequest(`${MAS_STERILISATION}/getAll/${flag}`);
       setData(response || []);
     } catch (error) {
-      showPopup("Failed to fetch records", "error");
+      showPopup(FETCH_STERILI_SATION, "error");
       setData([]);
     } finally {
       setLoading(false);
@@ -102,7 +103,7 @@ const SterilisationMaster = () => {
     );
 
     if (duplicate) {
-      showPopup("Sterilisation Type already exists!", "error"); // Fixed message
+      showPopup(DUPLICATE_STERILI_SATION, "error"); 
       return;
     }
 
@@ -112,17 +113,17 @@ const SterilisationMaster = () => {
           ...editingRecord,
           sterilisationType: formData.sterilisationType.trim(),
         });
-        showPopup("Record updated successfully", "success");
+        showPopup(UPDATE_STERILI_SATION, "success");
       } else {
         await postRequest(`${MAS_STERILISATION}/create`, {
           sterilisationType: formData.sterilisationType.trim(),
         });
-        showPopup("Record added successfully", "success");
+        showPopup(ADD_STERILI_SATION, "success");
       }
       fetchData();
       handleCancel();
     } catch (error) {
-      showPopup("Save failed", "error");
+      showPopup(FAIL_STERILI_SATION, "error");
     }
   };
 
@@ -155,10 +156,10 @@ const SterilisationMaster = () => {
       await putRequest(
         `${MAS_STERILISATION}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`
       );
-      showPopup("Status updated successfully", "success");
+      showPopup(UPDATE_STERILI_SATION, "success");
       fetchData();
     } catch (error) {
-      showPopup("Status update failed", "error");
+      showPopup(FAIL_UPDATE_STERILI_SATION, "error");
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
@@ -172,7 +173,7 @@ const SterilisationMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    fetchData(); // Added to refresh data
+    fetchData(); 
   };
 
   // ================= UI =================
