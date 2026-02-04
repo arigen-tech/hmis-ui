@@ -255,9 +255,9 @@ export const MAS_OPTH_NEAR_VISION =`${MASTERS}/opthMasNearVision`;
 export const MAS_OB_CONSANGUINITY =`${MASTERS}/obMasConsanguinity`;
 export const MAS_GYN_FLOW =`${MASTERS}/gynMasFlow`;
 export const MAS_ENT_SEPTUM =`${MASTERS}/entMasSeptum`;
-export const MAS_OB_PVLIQUOR=`{MASTERS}/ObMasPvLiquor`;
-export const MAS_ENT_MUCOSA=`{MASTERS}/entMasMucosa`;
-export const MAS_OB_PVMEMBRANE =`{MASTERS}/ObMasPvMembrane`;
+export const MAS_OB_PVLIQUOR=`${MASTERS}/ObMasPvLiquor`;
+export const MAS_ENT_MUCOSA=`${MASTERS}/entMasMucosa`;
+export const MAS_OB_PVMEMBRANE =`${MASTERS}/ObMasPvMembrane`;
 export const MAS_COMMON_STATUS =`${MASTERS}/mas-common-status`;
 export const ENT_MAS_TM_STATUS =`${MASTERS}/entMasTmStatus`;
 
