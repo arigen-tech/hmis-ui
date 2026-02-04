@@ -858,3 +858,21 @@ export const ADD_CERVIX = "Record added successfully";
 export const DUPLICATE_IMMUNISATION = "Immunisation value already exists!";
 export const UPDATE_IMMUNISATION_SUCC_MSG = "Immunisation status updated successfully!";
 export const ADD_IMMUNISATION_SUCC_MSG = "Immunisation status added successfully!";
+
+//SmearResultMaster
+export const FETCH_SMEARRESULT ="Fail to fetch records";
+export const DUPLICATE_SMEARRESULT = "sumerresult with the same code or name  already exists";
+export const UPDATE_SMEARRESULT = "Record updated successfully";
+export const ADD_SMEARRESULT = "Record added successfully";
+export const FAIL_SMEARRESULT = "Save failed";
+export const UPDATE_FAIL_SMEARRESULT = "Status update failed";
+
+
+
+// //EarWeberMaster
+export const FETCH_EARWEB = "Fail to fetch records";
+export const DUPLICATE_EARWEB = "EarWeberMaster with the same code or name  already exists";
+export const UPDATE_EARWEB = "Record updated successfully";
+export const ADD_EARWEB = "Record added successfully";
+export const FAIL_EARWEB = "Save failed";
+export const UPDATE_FAIL_EARWEB = "Status update failed";

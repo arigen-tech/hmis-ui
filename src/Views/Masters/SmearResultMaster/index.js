@@ -1,22 +1,24 @@
+
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import { MAS_GYN_POPSMEAR } from "../../../config/apiConfig";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-
+import { FETCH_SMEARRESULT, DUPLICATE_SMEARRESULT, UPDATE_SMEARRESULT, ADD_SMEARRESULT, FAIL_SMEARRESULT, UPDATE_FAIL_SMEARRESULT } from "../../../config/constants";
 
 const SmearResultMaster = () => {
   const [data, setData] = useState([]);
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
-    smearResultName: null,
+    record: null, 
     newStatus: "",
   });
 
   const [formData, setFormData] = useState({
-    smearResultCode: "",
-    smearResultName: "",
+    papResult: "",  
   });
 
   const [showForm, setShowForm] = useState(false);
@@ -24,99 +26,147 @@ const SmearResultMaster = () => {
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-
-  // ================= PAGINATION =================
   const [currentPage, setCurrentPage] = useState(1);
-  const [goPage, setGoPage] = useState("");
-  const itemsPerPage = 5;
+  const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
-  // ================= SAMPLE DATA =================
+  const MAX_LENGTH = 8;
+  
+
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  // Fetch data
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
+    try {
+      const { response } = await getRequest(`${MAS_GYN_POPSMEAR}/getAll/${flag}`);
+      setData(response || []);
+    } catch {
+      showPopup(FETCH_SMEARRESULT, "error");
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    setData([
-      { smearResultCode: "SR1", smearResultName: "Normal", status: "Y" },
-      { smearResultCode: "SR2", smearResultName: "Inflammatory", status: "Y" },
-      { smearResultCode: "SR3", smearResultName: "ASCUS", status: "N" },
-      { smearResultCode: "SR4", smearResultName: "LSIL", status: "Y" },
-      { smearResultCode: "SR5", smearResultName: "HSIL", status: "N" },
-    ]);
+    fetchData();
   }, []);
 
   // ================= SEARCH =================
   const filteredData = data.filter((rec) =>
-    rec.smearResultName.toLowerCase().includes(searchQuery.toLowerCase())
+    (rec?.papResult ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
-  const currentItems = filteredData.slice(indexOfFirst, indexOfLast)
+  const currentItems = filteredData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+  };
 
   // ================= FORM =================
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     const updated = { ...formData, [id]: value };
     setFormData(updated);
-    setIsFormValid(updated.smearResultCode && updated.smearResultName);
+    setIsFormValid(value.trim() !== "");
   };
 
   const resetForm = () => {
-    setFormData({ smearResultCode: "", smearResultName: "" });
+    setFormData({ papResult: "" });
+    setEditingRecord(null);
     setIsFormValid(false);
   };
 
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
+  };
+
   // ================= SAVE =================
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
 
-    if (editingRecord) {
-      setData(
-        data.map((rec) =>
-          rec.smearResultCode === editingRecord.smearResultCode
-            ? { ...rec, ...formData }
-            : rec
-        )
-      );
-      showPopup("Record updated successfully", "success");
-    } else {
-      setData([...data, { ...formData, status: "N" }]);
-      showPopup("Record added successfully", "success");
+    const newValue = formData.papResult.trim().toLowerCase();
+    const duplicate = data.find(
+      (rec) =>
+        rec.papResult?.trim().toLowerCase() === newValue &&
+        (!editingRecord || rec.id !== editingRecord.id)
+    );
+
+    if (duplicate) {
+      showPopup(DUPLICATE_SMEARRESULT, "error");
+      return;
     }
 
-    resetForm();
-    setEditingRecord(null);
-    setShowForm(false);
+    try {
+      if (editingRecord) {
+        await putRequest(`${MAS_GYN_POPSMEAR}/update/${editingRecord.id}`, {
+          ...editingRecord,
+          papResult: formData.papResult.trim(),
+        });
+        showPopup(UPDATE_SMEARRESULT, "success");
+      } else {
+        await postRequest(`${MAS_GYN_POPSMEAR}/create`, {
+          papResult: formData.papResult.trim(),
+        });
+        showPopup(ADD_SMEARRESULT, "success");
+      }
+      fetchData();
+      handleCancel();
+    } catch {
+      showPopup(FAIL_SMEARRESULT, "error");
+    }
   };
 
   // ================= EDIT =================
   const handleEdit = (rec) => {
     setEditingRecord(rec);
-    setFormData(rec);
+    setFormData({ papResult: rec.papResult });  
     setShowForm(true);
     setIsFormValid(true);
   };
 
   // ================= STATUS =================
-  const handleSwitchChange = (smearResultName, newStatus) => {
-    setConfirmDialog({ isOpen: true, smearResultName, newStatus });
+  const handleSwitchChange = (rec) => {
+    setConfirmDialog({
+      isOpen: true,
+      record: rec,
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+    });
   };
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed) {
-      setData(
-        data.map((rec) =>
-          rec.smearResultName === confirmDialog.smearResultName
-            ? { ...rec, status: confirmDialog.newStatus }
-            : rec
-        )
-      );
-      showPopup("Status updated successfully", "success");
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
     }
-    setConfirmDialog({
-      isOpen: false,
-      smearResultName: null,
-      newStatus: "",
-    });
+    if (!confirmDialog.record) return;
+
+    try {
+      setLoading(true);
+      await putRequest(`${MAS_GYN_POPSMEAR}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`);
+      showPopup(UPDATE_SMEARRESULT, "success");
+      fetchData();
+    } catch {
+      showPopup(UPDATE_FAIL_SMEARRESULT, "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+    }
   };
 
   const showPopup = (message, type) => {
@@ -126,9 +176,8 @@ const SmearResultMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
+    fetchData();
   };
-
-  
 
   // ================= UI =================
   return (
@@ -145,10 +194,7 @@ const SmearResultMaster = () => {
                 className="form-control me-2"
                 placeholder="Search"
                 value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
+                onChange={handleSearchChange}
               />
             )}
 
@@ -156,19 +202,19 @@ const SmearResultMaster = () => {
               <>
                 <button
                   className="btn btn-success me-2"
-                  onClick={() => setShowForm(true)}
+                  onClick={() => {
+                    resetForm();
+                    setShowForm(true);
+                  }}
                 >
                   Add
                 </button>
-                <button className="btn btn-success" onClick={handleRefresh}>
-                  Show All
+                <button className="btn btn-secondary" onClick={handleRefresh}>
+                  Refresh
                 </button>
               </>
             ) : (
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShowForm(false)}
-              >
+              <button className="btn btn-secondary" onClick={handleCancel}>
                 Back
               </button>
             )}
@@ -183,39 +229,34 @@ const SmearResultMaster = () => {
               <table className="table table-bordered table-hover">
                 <thead className="table-light">
                   <tr>
-                    <th>Smear Result Code</th>
-                    <th>Smear Result Name</th>
+                    <th>Smear Result</th>  
+                    <th>Last Update Date</th>
                     <th>Status</th>
                     <th>Edit</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {currentItems.map((rec, index) => (
-                    <tr key={index}>
-                      <td>{rec.smearResultCode}</td>
-                      <td>{rec.smearResultName}</td>
+                  {currentItems.map((rec) => (
+                    <tr key={rec.id}>
+                      <td>{rec.papResult}</td>
+                      <td>{formatDate(rec.lastUpdateDate)}</td>
                       <td>
                         <div className="form-check form-switch">
                           <input
                             className="form-check-input"
                             type="checkbox"
-                            checked={rec.status === "Y"}
-                            onChange={() =>
-                              handleSwitchChange(
-                                rec.smearResultName,
-                                rec.status === "Y" ? "N" : "Y"
-                              )
-                            }
+                            checked={rec.status?.toLowerCase() === "y"}
+                            onChange={() => handleSwitchChange(rec)}
                           />
                           <label className="form-check-label ms-2">
-                            {rec.status === "Y" ? "Active" : "Inactive"}
+                            {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}  
                           </label>
                         </div>
                       </td>
                       <td>
                         <button
                           className="btn btn-success btn-sm"
-                          disabled={rec.status !== "Y"}
+                          disabled={rec.status?.toLowerCase() !== "y"} 
                           onClick={() => handleEdit(rec)}
                         >
                           <i className="fa fa-pencil"></i>
@@ -227,37 +268,41 @@ const SmearResultMaster = () => {
               </table>
 
               {/* PAGINATION */}
-               <Pagination
-               totalItems={filteredData.length}
-               itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-               currentPage={currentPage}
-               onPageChange={setCurrentPage}
-             /> 
-
+              <Pagination
+                totalItems={filteredData.length}
+                itemsPerPage={itemsPerPage}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
             </>
           ) : (
             <form onSubmit={handleSave} className="row g-3">
-              
               <div className="col-md-5">
                 <label>
-                  Smear Result Name <span className="text-danger">*</span>
+                  Smear Result <span className="text-danger">*</span>
                 </label>
                 <input
-                  id="smearResultName"
+                  id="papResult"  
                   className="form-control"
-                  value={formData.smearResultName}
+                  value={formData.papResult}
                   onChange={handleInputChange}
+                  maxLength={MAX_LENGTH}
+                  autoFocus
                 />
               </div>
 
               <div className="col-12 text-end">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>
+                <button
+                  type="submit"
+                  className="btn btn-primary me-2"
+                  disabled={!isFormValid}
+                >
                   Save
                 </button>
                 <button
                   type="button"
                   className="btn btn-danger"
-                  onClick={() => setShowForm(false)}
+                  onClick={handleCancel}
                 >
                   Cancel
                 </button>
@@ -268,13 +313,16 @@ const SmearResultMaster = () => {
           {popupMessage && <Popup {...popupMessage} />}
 
           {confirmDialog.isOpen && (
-            <div className="modal d-block">
-              <div className="modal-dialog">
+            <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+              <div className="modal-dialog modal-dialog-centered">
                 <div className="modal-content">
+                  <div className="modal-header">
+                    <h5 className="modal-title">Confirm Status Change</h5>
+                  </div>
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}{" "}
-                    <strong>{confirmDialog.smearResultName}</strong>?
+                    {confirmDialog.newStatus === "y" ? "deactivate" : "activate"}{" "}
+                    <strong>{confirmDialog.record?.papResult}</strong>? 
                   </div>
                   <div className="modal-footer">
                     <button

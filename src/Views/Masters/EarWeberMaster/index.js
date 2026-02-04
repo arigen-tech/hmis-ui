@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import { MAS_ENT_WEBER } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import { FETCH_EARWEB, DUPLICATE_EARWEB, UPDATE_EARWEB, ADD_EARWEB, FAIL_TO_UPDATE_STS, UPDATE_FAIL_EARWEB } from "../../../config/constants";
+
 
 const EarWeberMaster = () => {
   const [data, setData] = useState([]);
@@ -13,56 +17,38 @@ const EarWeberMaster = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("");
-
-  const itemsPerPage = 5;
-
-  const [formData, setFormData] = useState({
-    weber_result: "",
-    created_by: "",
-    last_updated_by: "",
-    status: "Y",
-  });
+  const [formData, setFormData] = useState({ weberResult: "" });
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
-    recordId: null,
-    newStatus: null,
+    record: null,
+    newStatus: "",
   });
 
-  /* ================= FETCH DATA ================= */
-  const fetchData = async () => {
+
+  const itemsPerPage = 5;
+
+
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  // Fetch data
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const dummyData = [
-        {
-          id: 1,
-          weber_result: "Left Lateralized",
-          status: "Y",
-          created_by: "Admin",
-          last_updated_by: "Admin",
-          last_update_date: "2025-12-01 08:30:00",
-        },
-        {
-          id: 2,
-          weber_result: "Right Lateralized",
-          status: "Y",
-          created_by: "Admin",
-          last_updated_by: "Admin",
-          last_update_date: "2025-12-02 09:15:00",
-        },
-        {
-          id: 3,
-          weber_result: "Central",
-          status: "N",
-          created_by: "Admin",
-          last_updated_by: "Admin",
-          last_update_date: "2025-12-03 10:00:00",
-        },
-      ];
-      setData(dummyData);
-    } catch (err) {
-      console.error(err);
-      showPopup("Failed to fetch data!", "error");
+      const { response } = await getRequest(`${MAS_ENT_WEBER}/getAll/${flag}`);
+      setData(response || []);
+    } catch {
+      showPopup(FETCH_EARWEB, "error");
+      setData([]);
     } finally {
       setLoading(false);
     }
@@ -72,24 +58,116 @@ const EarWeberMaster = () => {
     fetchData();
   }, []);
 
+
+
   /* ================= FILTER + PAGINATION ================= */
   const filteredData = data.filter((rec) =>
-    rec.weber_result.toLowerCase().includes(searchQuery.toLowerCase())
+    (rec?.weberResult ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
-  /* ================= POPUP ================= */
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
-  };
+  const currentItems = filteredData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   /* ================= HANDLERS ================= */
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
+  };
+
+  const handleInputChange = (e) => {
+    const { id, value } = e.target;
+    const updated = { ...formData, [id]: value };
+    setFormData(updated);
+    setIsFormValid(value.trim() !== "");
+  };
+
+  const resetForm = () => {
+    setFormData({ weberResult: "" });
+    setEditingRecord(null);
+    setIsFormValid(false);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+
+    const newValue = formData.weberResult.trim().toLowerCase();
+    const duplicate = data.find(
+      (rec) =>
+        rec.weberResult?.trim().toLowerCase() === newValue &&
+        (!editingRecord || rec.id !== editingRecord.id)
+    );
+
+    if (duplicate) {
+      showPopup(DUPLICATE_EARWEB, "error");
+      return;
+    }
+
+    try {
+      if (editingRecord) {
+        await putRequest(`${MAS_ENT_WEBER}/update/${editingRecord.id}`, {
+          ...editingRecord,
+          weberResult: formData.weberResult.trim(),
+        });
+        showPopup(UPDATE_EARWEB, "success");
+      } else {
+        await postRequest(`${MAS_ENT_WEBER}/create`, {
+          weberResult: formData.weberResult.trim(),
+        });
+        showPopup(ADD_EARWEB, "success");
+      }
+      fetchData();
+      handleCancel();
+    } catch {
+      showPopup(FAIL_TO_UPDATE_STS, "error");
+    }
+  };
+
+
+  const handleEdit = (rec) => {
+    setEditingRecord(rec);
+    setFormData({ weberResult: rec.weberResult || "" });
+    setIsFormValid(true);
+    setShowForm(true);
+  };
+
+  const handleSwitchChange = (rec) => {
+    setConfirmDialog({
+      isOpen: true,
+      record: rec,
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+    });
+  };
+
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
+    }
+    if (!confirmDialog.record) return;
+
+    try {
+      setLoading(true);
+      await putRequest(`${MAS_ENT_WEBER}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`);
+      showPopup(UPDATE_EARWEB, "success");
+      fetchData();
+    } catch {
+      showPopup(UPDATE_FAIL_EARWEB, "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+    }
+  };
+
+  const showPopup = (message, type) => {
+    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
   const handleRefresh = () => {
@@ -98,85 +176,7 @@ const EarWeberMaster = () => {
     fetchData();
   };
 
-  const handleInputChange = (e) => {
-    const { id, value, type, checked } = e.target;
-    let updated = { ...formData };
 
-    if (type === "checkbox") updated[id] = checked ? "Y" : "N";
-    else updated[id] = value;
-
-    setFormData(updated);
-    setIsFormValid(updated.weber_result.trim() !== "");
-  };
-
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
-
-    const now = new Date().toISOString().replace("T", " ").split(".")[0];
-
-    if (editingRecord) {
-      setData(
-        data.map((rec) =>
-          rec.id === editingRecord.id
-            ? { ...rec, ...formData, last_update_date: now }
-            : rec
-        )
-      );
-      showPopup("Record updated successfully!", "success");
-    } else {
-      setData([
-        ...data,
-        { id: Date.now(), ...formData, last_update_date: now },
-      ]);
-      showPopup("New record added successfully!", "success");
-    }
-
-    resetForm();
-  };
-
-  const handleEdit = (rec) => {
-    setEditingRecord(rec);
-    setFormData({ ...rec });
-    setIsFormValid(true);
-    setShowForm(true);
-  };
-
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, recordId: id, newStatus });
-  };
-
-  const handleConfirmStatusChange = (confirmed) => {
-    if (confirmed && confirmDialog.recordId !== null) {
-      setData(
-        data.map((rec) =>
-          rec.id === confirmDialog.recordId
-            ? { ...rec, status: confirmDialog.newStatus }
-            : rec
-        )
-      );
-
-      showPopup(
-        confirmDialog.newStatus === "Y"
-          ? "Activated successfully!"
-          : "Deactivated successfully!",
-        "success"
-      );
-    }
-    setConfirmDialog({ isOpen: false, recordId: null, newStatus: null });
-  };
-
-  const resetForm = () => {
-    setFormData({
-      weber_result: "",
-      created_by: "",
-      last_updated_by: "",
-      status: "Y",
-    });
-    setEditingRecord(null);
-    setShowForm(false);
-    setIsFormValid(false);
-  };
   return (
     <div className="content-wrapper">
       <div className="card form-card">
@@ -185,29 +185,29 @@ const EarWeberMaster = () => {
 
           <div className="d-flex align-items-center">
             {!showForm && (
-              <input
-                type="text"
-                className="form-control w-50 me-2"
-                placeholder="Search Weber Result"
+               <input
+                style={{ width: "220px" }}
+                className="form-control me-2"
+                placeholder="Search"
                 value={searchQuery}
                 onChange={handleSearchChange}
               />
             )}
 
-             {!showForm ? (
+            {!showForm ? (
               <>
                 <button
                   className="btn btn-success me-2"
-                  onClick={() => setShowForm(true)}
+                  onClick={() => { resetForm(); setShowForm(true); }}
                 >
                   Add
                 </button>
-                <button className="btn btn-success flex-shrink-0" onClick={handleRefresh}>
+                <button className="btn btn-success" onClick={handleRefresh}>
                   Show All
                 </button>
               </>
             ) : (
-              <button className="btn btn-secondary" onClick={resetForm}>
+              <button className="btn btn-secondary" onClick={handleCancel}>
                 Back
               </button>
             )}
@@ -221,7 +221,6 @@ const EarWeberMaster = () => {
                 <table className="table table-bordered table-hover">
                   <thead className="table-light">
                     <tr>
-                      <th>ID</th>
                       <th>Weber Result</th>
                       <th>Last Update Date</th>
                       <th>Status</th>
@@ -232,21 +231,15 @@ const EarWeberMaster = () => {
                     {currentItems.length ? (
                       currentItems.map((rec) => (
                         <tr key={rec.id}>
-                          <td>{rec.id}</td>
-                          <td>{rec.weber_result}</td>
-                          <td>{rec.last_update_date}</td>
+                          <td>{rec.weberResult}</td>
+                          <td>{formatDate(rec.lastUpdateDate)}</td>
                           <td>
                             <div className="form-check form-switch">
                               <input
                                 className="form-check-input"
                                 type="checkbox"
-                                checked={rec.status === "Y"}
-                                onChange={() =>
-                                  handleSwitchChange(
-                                    rec.id,
-                                    rec.status === "Y" ? "N" : "Y"
-                                  )
-                                }
+                                checked={rec.status === "y"}
+                                onChange={() => handleSwitchChange(rec)}
                               />
                             </div>
                           </td>
@@ -254,13 +247,14 @@ const EarWeberMaster = () => {
                             <button
                               className="btn btn-success btn-sm"
                               onClick={() => handleEdit(rec)}
-                              disabled={rec.status !== "Y"}
+                              disabled={rec.status !== "y"}
                             >
                               <i className="fa fa-pencil"></i>
                             </button>
                           </td>
                         </tr>
                       ))
+
                     ) : (
                       <tr>
                         <td colSpan="5" className="text-center">
@@ -273,22 +267,22 @@ const EarWeberMaster = () => {
               </div>
 
               {/* PAGINATION */}
-                           <Pagination
-                                             totalItems={filteredData.length}
-                                             itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                             currentPage={currentPage}
-                                             onPageChange={setCurrentPage}
-                                           />     
-                         </>
+              <Pagination
+                totalItems={filteredData.length}
+                itemsPerPage={itemsPerPage}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
+            </>
           ) : (
             <form className="row" onSubmit={handleSave}>
               <div className="form-group col-md-4">
                 <label>Weber Result</label>
                 <input
                   type="text"
-                  id="weber_result"
+                  id="weberResult"
                   className="form-control mt-1"
-                  value={formData.weber_result}
+                  value={formData.weberResult}
                   onChange={handleInputChange}
                 />
               </div>
@@ -315,25 +309,21 @@ const EarWeberMaster = () => {
                   </div>
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}{" "}
-                    <strong>
-                      {
-                        data.find((r) => r.id === confirmDialog.recordId)
-                          ?.weber_result
-                      }
-                    </strong>
+                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                   <strong>{confirmDialog.record.weberResult}</strong>
+
                     ?
                   </div>
                   <div className="modal-footer">
                     <button
                       className="btn btn-secondary"
-                      onClick={() => handleConfirmStatusChange(false)}
+                      onClick={() => handleConfirm(false)}
                     >
                       No
                     </button>
                     <button
                       className="btn btn-primary"
-                      onClick={() => handleConfirmStatusChange(true)}
+                      onClick={() => handleConfirm(true)}
                     >
                       Yes
                     </button>

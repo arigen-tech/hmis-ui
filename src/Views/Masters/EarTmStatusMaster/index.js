@@ -174,7 +174,6 @@ const EarTmStatusMaster = () => {
     setConfirmDialog({ isOpen: false, recordId: null, newStatus: null });
   };
 
-  // Function to format date to show only date (without time)
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     
@@ -305,8 +304,7 @@ const EarTmStatusMaster = () => {
                             </button>
                           </td>
                         </tr>
-                      ))
-                    ) : (
+                      ))) : (
                       <tr>
                         <td colSpan="4" className="text-center">
                           No record found
