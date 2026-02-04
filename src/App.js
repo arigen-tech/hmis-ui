@@ -178,14 +178,10 @@ import BloodDonationStatusMaster from './Views/Masters/BloodDonationStatusMaster
 import AppointmentSummaryReport from './Views/Reception/AppointmentSummaryReport';
 import DailyCancellationReport from './Views/Reception/DailyCancellationReport';
 import CommonStatusMaster from './Views/Masters/CommonStatusMaster';
-import WardManagement from './Views/Masters/WardManagementMaster';
 import BloodDonationHDR from './Views/Masters/BloodDonationHDR';
 import BloodInventoryStatus from './Views/Masters/BloodInventoryStatus';
 import BloodTestMaster from './Views/Masters/BloodTestMaster';
 import CrossMatchType from './Views/Masters/CrossMatchType';
-import WardManagementDashboard from './Views/IPD/WardManagement';
-import PatientRegistrationRadiologyBooking from './Views/Radiology/ PatientRegistrationRadiologyBooking';
-import RadiologyBookingRegisteredPatient from './Views/Radiology/Follow-up Radiology Booking-';
 
 
 
