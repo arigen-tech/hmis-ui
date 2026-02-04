@@ -853,3 +853,8 @@ export const DUPLICATE_CERVIX = "cervix Position with the same code or name  alr
 export const UPDATE_CERVIX = "Record updated successfully";
 export const ADD_CERVIX = "Record added successfully";
 
+
+//immunisedStatusMaster
+export const DUPLICATE_IMMUNISATION = "Immunisation value already exists!";
+export const UPDATE_IMMUNISATION_SUCC_MSG = "Immunisation status updated successfully!";
+export const ADD_IMMUNISATION_SUCC_MSG = "Immunisation status added successfully!";
