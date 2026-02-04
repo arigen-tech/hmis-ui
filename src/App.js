@@ -178,6 +178,12 @@ import BloodDonationStatusMaster from './Views/Masters/BloodDonationStatusMaster
 import AppointmentSummaryReport from './Views/Reception/AppointmentSummaryReport';
 import DailyCancellationReport from './Views/Reception/DailyCancellationReport';
 import CommonStatusMaster from './Views/Masters/CommonStatusMaster';
+import BloodDonationHDR from './Views/Masters/BloodDonationHDR';
+import BloodInventoryStatus from './Views/Masters/BloodInventoryStatus';
+import BloodTestMaster from './Views/Masters/BloodTestMaster';
+import CrossMatchType from './Views/Masters/CrossMatchType';
+
+import WardManagement from './Views/IPD/WardManagement';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -387,9 +393,14 @@ function App() {
                 <Route path="/AppointmentSummaryReport" element={<AppointmentSummaryReport />} />
                 <Route path="/DailyCancellationReport" element={<DailyCancellationReport />} />
                 <Route path="/CommonStatusMaster" element={<CommonStatusMaster />} />
+                <Route path="/BloodDonationHDR" element={<BloodDonationHDR />} />
+                <Route path="/BloodInventoryStatus" element={<BloodInventoryStatus />} />
+                <Route path="/BloodTestMaster" element={<BloodTestMaster />} />
+                <Route path="/CrossMatchType" element={<CrossMatchType />} />
                 <Route path="/BagTypeMaster" element={<BagTypeMaster />} />
                 <Route path="/BloodCollectionTypeMaster" element={<BloodCollectionTypeMaster />} />
                 <Route path="/BloodDonationStatusMaster" element={<BloodDonationStatusMaster />} />
+                <Route path="/WardManagement" element={<WardManagement/>} />
               </Route>
             </Route>
 
