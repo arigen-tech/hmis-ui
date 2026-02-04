@@ -183,6 +183,7 @@ import BloodInventoryStatus from './Views/Masters/BloodInventoryStatus';
 import BloodTestMaster from './Views/Masters/BloodTestMaster';
 import CrossMatchType from './Views/Masters/CrossMatchType';
 
+import WardManagement from './Views/IPD/WardManagement';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -399,6 +400,7 @@ function App() {
                 <Route path="/BagTypeMaster" element={<BagTypeMaster />} />
                 <Route path="/BloodCollectionTypeMaster" element={<BloodCollectionTypeMaster />} />
                 <Route path="/BloodDonationStatusMaster" element={<BloodDonationStatusMaster />} />
+                <Route path="/WardManagement" element={<WardManagement/>} />
               </Route>
             </Route>
 
