@@ -259,6 +259,7 @@ export const MAS_OB_PVLIQUOR=`{MASTERS}/ObMasPvLiquor`;
 export const MAS_ENT_MUCOSA=`{MASTERS}/entMasMucosa`;
 export const MAS_OB_PVMEMBRANE =`{MASTERS}/ObMasPvMembrane`;
 export const MAS_COMMON_STATUS =`${MASTERS}/mas-common-status`;
+export const ENT_MAS_TM_STATUS =`${MASTERS}/entMasTmStatus`;
 
 // Constants for date validation for Lab report
   export const MAX_MONTHS_BACK = 4; // 4 months maximum back date
