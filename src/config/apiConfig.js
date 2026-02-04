@@ -3,7 +3,8 @@
 //  export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://192.168.1.8:8080';
 
-//export const API_HOST = 'http://localhost:8080';
+// export const API_HOST = 'http://localhost:8080';
+// export const API_HOST = 'http://localhost:8080';
 // export const API_HOST = 'http://103.133.215.182:8081/hims';
 
 //export const API_HOST = 'http://192.168.1.8:8080';
@@ -257,8 +258,7 @@ export const MAS_ENT_SEPTUM =`${MASTERS}/entMasSeptum`;
 export const MAS_OB_PVLIQUOR=`{MASTERS}/ObMasPvLiquor`;
 export const MAS_ENT_MUCOSA=`{MASTERS}/entMasMucosa`;
 export const MAS_OB_PVMEMBRANE =`{MASTERS}/ObMasPvMembrane`;
-export const ENT_MAS_TM_STATUS =`${MASTERS}/entMasTmStatus`;
-
+export const MAS_COMMON_STATUS =`${MASTERS}/mas-common-status`;
 
 // Constants for date validation for Lab report
   export const MAX_MONTHS_BACK = 4; // 4 months maximum back date
