@@ -661,7 +661,7 @@ export const CANCELLATION_SUCCESS = "Appointment cancelled successfully";
 export const CANCELLATION_ERROR = "Cancellation failed";
 export const NO_CANCELLATION_REASONS = "No cancellation reasons available. Please contact administrator.";
 export const NO_VALID_TIME_SLOTS = "No time slots available for this session and date.";
-
+export const TOKEN_FETCH_FAILED= "Failed to fetch token availability. Please try again."
 // Common validation messages
 export const REQUIRED_FIELD = "Please fill in all required fields";
 export const INVALID_INPUT = "Please enter valid information";
