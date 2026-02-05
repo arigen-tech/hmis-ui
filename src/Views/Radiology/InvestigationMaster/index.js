@@ -17,7 +17,7 @@ import { ADD_INV_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DROP_
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
 // Import the Preparation Modal component
-import MasPreparationModel from "./Masprep/masprep"
+import RadiologyMasPreparationModel from "./Masprep/masprep"
 
 const RadiologyInvestigationMaster = () => {
   const [investigations, setInvestigations] = useState([])
@@ -119,7 +119,7 @@ const RadiologyInvestigationMaster = () => {
         // Set investigations data
         if (investigationsRes && investigationsRes.response) {
           setInvestigations(
-              investigationsRes.response.map((item) => ({
+              investigationsRes.response.filter(item => item.mainChargeCodeName === "Radiology").map((item) => ({
                 ...item,
                 id: item.investigationId, // Add id for consistency
               })),
@@ -1177,7 +1177,7 @@ const RadiologyInvestigationMaster = () => {
         </div>
 
         {/* Preparation Required Modal */}
-        <MasPreparationModel
+        <RadiologyMasPreparationModel
             show={showPreparationModal}
             onClose={handleClosePreparationModal}
             onOk={handlePreparationOk}
