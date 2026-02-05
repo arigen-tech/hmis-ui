@@ -683,6 +683,15 @@ const InvestigationMaster = () => {
                     )}
                   </tbody>
                 </table>
+                {/* PAGINATION USING REUSABLE COMPONENT */}
+                {filteredInvestigations.length > 0 && (
+                    <Pagination
+                        totalItems={filteredInvestigations.length}
+                        itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                        currentPage={currentPage}
+                        onPageChange={setCurrentPage}
+                    />
+                )}
               </div>
 
              
@@ -1143,15 +1152,7 @@ const InvestigationMaster = () => {
                 </div>
               )}
 
-               {/* PAGINATION USING REUSABLE COMPONENT */}
-              {filteredInvestigations.length > 0 && (
-                <Pagination
-                  totalItems={filteredInvestigations.length}
-                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                  currentPage={currentPage}
-                  onPageChange={setCurrentPage}
-                />
-              )}
+
             </div>
           </div>
         </div>

@@ -184,6 +184,8 @@ import BloodTestMaster from './Views/Masters/BloodTestMaster';
 import CrossMatchType from './Views/Masters/CrossMatchType';
 
 import WardManagement from './Views/IPD/WardManagement';
+import PatientRegistrationRadiologyBooking from './Views/Radiology/ PatientRegistrationRadiologyBooking';
+import RadiologyBookingRegisteredPatient from './Views/Radiology/Follow-up Radiology Booking-';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -401,6 +403,9 @@ function App() {
                 <Route path="/BloodCollectionTypeMaster" element={<BloodCollectionTypeMaster />} />
                 <Route path="/BloodDonationStatusMaster" element={<BloodDonationStatusMaster />} />
                 <Route path="/WardManagement" element={<WardManagement/>} />
+                <Route path="/PatientRegistrationRadiologyBooking" element={<PatientRegistrationRadiologyBooking/>} />
+                <Route path="/RadiologyBookingRegisteredPatient" element={<RadiologyBookingRegisteredPatient/>} />
+
               </Route>
             </Route>
 

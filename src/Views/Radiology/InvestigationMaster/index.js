@@ -253,6 +253,7 @@ const RadiologyInvestigationMaster = () => {
 
   const handleReset = () => {
     setFormData({
+      contrastRequired: "Select",
       investigationName: "",
       departmentId: "",
       departmentName: "",
@@ -437,6 +438,7 @@ const RadiologyInvestigationMaster = () => {
         confidential: formData.confidential ? "y" : "n",
         status: formData.status,
         contrastRequired:formData.contrastRequired,
+        genderApplicable:formData.genderApplicable.slice(0,1).toLowerCase(),
         preparationRequired: formData.preparationRequired || null,
         estimatedDays: formData.estimatedDays || null,
         tatHours: formData.turnaroundTime || null,
@@ -522,10 +524,10 @@ const RadiologyInvestigationMaster = () => {
       showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
       return false
     }
-    // if (formData.genderApplicable === "Select") {
-    //   showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
-    //   return false
-    // }
+    if (formData.genderApplicable === "Select") {
+      showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
+      return false
+    }
     // if (!formData.methodId) {
     //   showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
     //   return false
@@ -685,6 +687,15 @@ const RadiologyInvestigationMaster = () => {
                     )}
                     </tbody>
                   </table>
+                  {/* PAGINATION USING REUSABLE COMPONENT */}
+                  {filteredInvestigations.length > 0 && (
+                      <Pagination
+                          totalItems={filteredInvestigations.length}
+                          itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                          currentPage={currentPage}
+                          onPageChange={setCurrentPage}
+                      />
+                  )}
                 </div>
 
 
@@ -935,7 +946,7 @@ const RadiologyInvestigationMaster = () => {
                                   onChange={handleInputChange}
                               />
                             </div>
-                          </div>
+                          </div>*/}
                           <div className="col-md-4">
                             <div className="mb-2">
                               <label className="form-label fw-bold mb-1">
@@ -953,7 +964,7 @@ const RadiologyInvestigationMaster = () => {
                                 <option value="Common">Common</option>
                               </select>
                             </div>
-                          </div>*/}
+                          </div>
 
 
                           {/* Preparation Required Section - After Gender Applicable */}
@@ -1162,15 +1173,7 @@ const RadiologyInvestigationMaster = () => {
                     </div>
                 )}
 
-                {/* PAGINATION USING REUSABLE COMPONENT */}
-                {filteredInvestigations.length > 0 && (
-                    <Pagination
-                        totalItems={filteredInvestigations.length}
-                        itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                        currentPage={currentPage}
-                        onPageChange={setCurrentPage}
-                    />
-                )}
+
               </div>
             </div>
           </div>
