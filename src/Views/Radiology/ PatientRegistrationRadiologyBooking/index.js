@@ -14,7 +14,8 @@ import {
   MAS_INVESTIGATION,
   INVESTIGATION_PACKAGE_Mapping,
   MAS_SERVICE_CATEGORY,
-  MAS_PACKAGE_INVESTIGATION
+  MAS_PACKAGE_INVESTIGATION,
+  REGISTER_AND_ADD_RADIOLOGY_INVESTIGATION
 } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import {
@@ -770,7 +771,7 @@ const  PatientRegistrationRadiologyBooking = () => {
       }
 
       const genderApplicable = selectedGender.genderCode.toLowerCase()
-      const data = await getRequest(`${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}`)
+      const data = await getRequest(`${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}&radioFlag=true`)
 
       if (data.status === 200 && Array.isArray(data.response)) {
         return data.response
@@ -950,6 +951,7 @@ const  PatientRegistrationRadiologyBooking = () => {
             for (const invId of row.investigationIds) {
               const invKey = `investigation_${invId}_${row.date}`
               if (duplicateCheck.has(invKey)) {
+                debugger;
                 showPopup(
                   DUPLICATE_INV_PACKAGE_WARN_MSG,
                   "Warning"
@@ -962,6 +964,7 @@ const  PatientRegistrationRadiologyBooking = () => {
           }
 
           if (duplicateCheck.has(key)) {
+            debugger;
             showPopup(
               DUPLICATE_INV_PACKAGE_WARN_MSG,
               "Warning"
@@ -1012,9 +1015,9 @@ const  PatientRegistrationRadiologyBooking = () => {
           patientHospitalId: Number(sessionStorage.getItem("hospitalId")),
         }
 
-        const patientResult = await postRequest("/patient/register", { patient: patientRequest })
-        const patientId = patientResult?.response?.patient?.id
-        if (!patientId) throw new Error(patientResult.message || "Patient registration failed")
+        // const patientResult = await postRequest("/patient/register", { patient: patientRequest })
+        // const patientId = patientResult?.response?.patient?.id
+        // if (!patientId) throw new Error(patientResult.message || "Patient registration failed")
 
         const hasCheckedItems = formData.rows.some((row, index) => checkedRows[index])
         if (!hasCheckedItems) throw new Error("Please select at least one investigation or package.")
@@ -1026,13 +1029,13 @@ const  PatientRegistrationRadiologyBooking = () => {
         const totalFinalAmount = parseFloat(paymentBreakdown.finalAmount)
 
         const labData = {
-          patientId: patientId,
-          labInvestigationReq: [],
+          patient: patientRequest,
+          radInvestigationReq: [],
         }
 
         formData.rows.forEach((row, index) => {
           if (row.itemId) {
-            labData.labInvestigationReq.push({
+            labData.radInvestigationReq.push({
               id: row.itemId,
               appointmentDate: row.date || new Date().toISOString().split('T')[0],
               checkStatus: checkedRows[index] || false,
@@ -1044,14 +1047,14 @@ const  PatientRegistrationRadiologyBooking = () => {
         })
 
         console.log("FINAL LAB DATA:", labData)
-
-        const labResult = await postRequest("/lab/registration", labData)
+        const labResult = await postRequest(`${REGISTER_AND_ADD_RADIOLOGY_INVESTIGATION}`, labData)
         if (!labResult || labResult.status !== 200) {
           throw new Error(labResult?.message || "Radiology registration failed.")
         }
 
         console.log("Radiology registration successful:", labResult)
-
+        debugger;
+        let patientId=labResult.response.patientId;
         if (shouldNavigateToPayment) {
           showPopup(LAB_REG_SUCC_MSG, "success", false, () => {
             navigate("/payment", {
@@ -1060,8 +1063,8 @@ const  PatientRegistrationRadiologyBooking = () => {
                 patientId,
                 labData: labResult,
                 selectedItems: {
-                  investigations: labData.labInvestigationReq.filter((i) => i.type === "i" && i.checkStatus),
-                  packages: labData.labInvestigationReq.filter((i) => i.type === "p" && i.checkStatus),
+                  investigations: labData.radInvestigationReq.filter((i) => i.type === "i" && i.checkStatus),
+                  packages: labData.radInvestigationReq.filter((i) => i.type === "p" && i.checkStatus),
                 },
                 paymentBreakdown,
               },
@@ -1816,7 +1819,7 @@ const  PatientRegistrationRadiologyBooking = () => {
                                 type="text"
                                 className="form-control"
                                 value={row.name}
-                                autoComplete="off"
+                                autoComplete="on"
                                 placeholder={formData.type === "investigation" ? "Investigation Name" : "Package Name"}
                                 onChange={(e) => {
                                   handleRowChange(index, "name", e.target.value)
