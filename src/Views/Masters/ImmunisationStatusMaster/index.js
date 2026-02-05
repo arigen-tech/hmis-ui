@@ -1,256 +1,362 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
+import axios from "axios";
+import { API_HOST, OB_MAS_IMMUNISED_STATUS } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-
+import {
+  FETCH_DATA_ERR_MSG,
+  DUPLICATE_IMMUNISATION,
+  UPDATE_IMMUNISATION_SUCC_MSG,
+  ADD_IMMUNISATION_SUCC_MSG,
+  FAIL_TO_SAVE_CHANGES
+} from "../../../config/constants";
 
 const ImmunisationStatus = () => {
   const [data, setData] = useState([]);
-  const [loading] = useState(false);
-
-  const [confirmDialog, setConfirmDialog] = useState({
-    isOpen: false,
-    immunisation: null,
-    newStatus: "",
-  });
-
-  const [formData, setFormData] = useState({
-    id: "",
-    immunisation: "",
-  });
-
+  const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-
-  // ================= PAGINATION =================
   const [currentPage, setCurrentPage] = useState(1);
-  const [goPage, setGoPage] = useState("");
-  const itemsPerPage = 5;
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, recordId: null, newStatus: null });
 
-  // ================= SAMPLE DATA =================
+  const [formData, setFormData] = useState({
+    immunisationValue: "",
+    status: "y",
+  });
+
+  const IMMUNISATION_MAX_LENGTH = 100;
+
   useEffect(() => {
-    setData([
-      { id: "1", immunisation: "First dose", status: "Y" },
-      { id: "2", immunisation: "Second dose", status: "Y" },
-      { id: "3", immunisation: "Third dose", status: "Y" },
-      { id: "4", immunisation: "Booster dose", status: "N" },
-    ]);
+    fetchData(0);
   }, []);
 
-  // ================= SEARCH =================
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
+    try {
+      const response = await getRequest(`${OB_MAS_IMMUNISED_STATUS}/getAll/${flag}`);
+      if (response && response.response) {
+        setData(response.response);
+      }
+    } catch (err) {
+      console.error("Error fetching Immunisation Status data:", err);
+      showPopup(FETCH_DATA_ERR_MSG, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+      },
+    });
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+  };
+
   const filteredData = data.filter((rec) =>
-    rec.immunisation.toLowerCase().includes(searchQuery.toLowerCase())
+    rec.immunisationValue.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-   const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
-
-  // ================= FORM =================
-  const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    const updated = { ...formData, [id]: value };
-    setFormData(updated);
-    setIsFormValid(updated.id && updated.immunisation);
-  };
-
-  const resetForm = () => {
-    setFormData({ id: "", immunisation: "" });
-    setIsFormValid(false);
-  };
-
-  // ================= SAVE =================
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
-
-    if (editingRecord) {
-      setData(
-        data.map((rec) =>
-          rec.id === editingRecord.id ? { ...rec, ...formData } : rec
-        )
-      );
-      showPopup("Record updated successfully", "success");
-    } else {
-      setData([...data, { ...formData, status: "N" }]);
-      showPopup("Record added successfully", "success");
-    }
-
-    resetForm();
-    setEditingRecord(null);
-    setShowForm(false);
-  };
-
-  // ================= EDIT =================
-  const handleEdit = (rec) => {
-    setEditingRecord(rec);
-    setFormData(rec);
-    setShowForm(true);
-    setIsFormValid(true);
-  };
-
-  // ================= STATUS =================
-  const handleSwitchChange = (immunisation, newStatus) => {
-    setConfirmDialog({ isOpen: true, immunisation, newStatus });
-  };
-
-  const handleConfirm = (confirmed) => {
-    if (confirmed) {
-      setData(
-        data.map((rec) =>
-          rec.immunisation === confirmDialog.immunisation
-            ? { ...rec, status: confirmDialog.newStatus }
-            : rec
-        )
-      );
-      showPopup("Status updated successfully", "success");
-    }
-    setConfirmDialog({ isOpen: false, immunisation: null, newStatus: "" });
-  };
-
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
-  };
 
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
+    fetchData();
   };
 
-  // ================= UI =================
+  const handleInputChange = (e) => {
+    const { id, value } = e.target;
+    const updatedData = { ...formData, [id]: value };
+    setFormData(updatedData);
+    setIsFormValid(updatedData.immunisationValue.trim() !== "");
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+    
+    setLoading(true);
+    try {
+      // Check for duplicate
+      const isDuplicate = data.some(
+        (record) =>
+          record.id !== (editingRecord ? editingRecord.id : null) &&
+          record.immunisationValue === formData.immunisationValue
+      );
+
+      if (isDuplicate) {
+        showPopup(DUPLICATE_IMMUNISATION, "error");
+        setLoading(false);
+        return;
+      }
+
+      if (editingRecord) {
+        // Update existing record
+        const response = await putRequest(`${OB_MAS_IMMUNISED_STATUS}/update/${editingRecord.id}`, {
+          immunisationValue: formData.immunisationValue,
+          status: editingRecord.status, // Keep existing status when editing
+        });
+
+        if (response && response.status === 200) {
+          fetchData();
+          showPopup(UPDATE_IMMUNISATION_SUCC_MSG, "success");
+        }
+      } else {
+        // Add new record
+        const response = await postRequest(`${OB_MAS_IMMUNISED_STATUS}/create`, {
+          immunisationValue: formData.immunisationValue,
+          status: "y",
+        });
+
+        if (response && response.status === 200 || response && response.status === 201) {
+          fetchData();
+          showPopup(ADD_IMMUNISATION_SUCC_MSG, "success");
+        }
+      }
+
+      resetForm();
+    } catch (err) {
+      console.error("Error saving Immunisation Status:", err);
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
+      setLoading(false);
+    }
+  };
+
+  const handleEdit = (rec) => {
+    setEditingRecord(rec);
+    setFormData({
+      immunisationValue: rec.immunisationValue,
+      status: rec.status,
+    });
+    setIsFormValid(true);
+    setShowForm(true);
+  };
+
+  const handleSwitchChange = (id, newStatus) => {
+    setConfirmDialog({ isOpen: true, recordId: id, newStatus });
+  };
+
+  const handleConfirmStatusChange = async (confirmed) => {
+    if (confirmed && confirmDialog.recordId !== null) {
+      setLoading(true);
+      try {
+        const response = await putRequest(
+          `${OB_MAS_IMMUNISED_STATUS}/status/${confirmDialog.recordId}?status=${confirmDialog.newStatus}`
+        );
+        if (response && response.status === 200) {
+          fetchData();
+          showPopup(
+            `Immunisation Status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            "success"
+          );
+        }
+      } catch (err) {
+        console.error("Error updating status:", err);
+        showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
+        setLoading(false);
+      }
+    }
+    setConfirmDialog({ isOpen: false, recordId: null, newStatus: null });
+  };
+
+  // Function to format date to show only date (without time)
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = new Date(dateString);
+      // Format as YYYY-MM-DD
+      return date.toISOString().split('T')[0];
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return 'Invalid Date';
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      immunisationValue: "",
+      status: "y",
+    });
+    setEditingRecord(null);
+    setShowForm(false);
+    setIsFormValid(false);
+  };
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
   return (
     <div className="content-wrapper">
       <div className="card form-card">
         <div className="card-header d-flex justify-content-between align-items-center">
-          <h4>Immunisation Status</h4>
-
-          <div className="d-flex">
-            {!showForm && (
-              <input
-                type="text"
-                style={{ width: "220px" }}
-                className="form-control me-2"
-                placeholder="Search"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            )}
-
+          <h4 className="card-title">Immunisation Status Master</h4>
+          <div className="d-flex align-items-center">
             {!showForm ? (
-              <>
-                <button
-                  className="btn btn-success me-2"
-                  onClick={() => {
-                    resetForm();
-                    setEditingRecord(null);
-                    setShowForm(true);
-                  }}
-                >
-                  Add
-                </button>
-                <button className="btn btn-success" onClick={handleRefresh}>
-                  Show All
-                </button>
-              </>
+              <form className="d-inline-block searchform me-4" role="search">
+                <div className="input-group searchinput">
+                  <input
+                    type="search"
+                    className="form-control"
+                    placeholder="Search Immunisation Status"
+                    aria-label="Search"
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                  />
+                  <span className="input-group-text" id="search-icon">
+                    <i className="fa fa-search"></i>
+                  </span>
+                </div>
+              </form>
             ) : (
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShowForm(false)}
-              >
-                Back
-              </button>
+              <></>
             )}
+            <div className="d-flex align-items-center">
+              {!showForm ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-success me-2"
+                    onClick={() => {
+                      setEditingRecord(null);
+                      setFormData({ immunisationValue: "", status: "y" });
+                      setIsFormValid(false);
+                      setShowForm(true);
+                    }}
+                  >
+                    <i className="mdi mdi-plus"></i> Add
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-success me-2 flex-shrink-0"
+                    onClick={handleRefresh}
+                  >
+                    <i className="mdi mdi-refresh"></i> Show All
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="btn btn-secondary" onClick={resetForm}>
+                  <i className="mdi mdi-arrow-left"></i> Back
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="card-body">
-          {loading ? (
-            <LoadingScreen />
-          ) : !showForm ? (
+          {!showForm ? (
             <>
-              <table className="table table-bordered table-hover">
-                <thead className="table-light">
-                  <tr>
-                    <th>ID</th>
-                    <th>Immunisation</th>
-                    <th>Status</th>
-                    <th>Edit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentItems.map((rec, index) => (
-                    <tr key={index}>
-                      <td>{rec.id}</td>
-                      <td>{rec.immunisation}</td>
-                      <td>
-                        <div className="form-check form-switch">
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            checked={rec.status === "Y"}
-                            onChange={() =>
-                              handleSwitchChange(
-                                rec.immunisation,
-                                rec.status === "Y" ? "N" : "Y"
-                              )
-                            }
-                          />
-                          <label className="form-check-label ms-2">
-                            {rec.status === "Y" ? "Active" : "Inactive"}
-                          </label>
-                        </div>
-                      </td>
-                      <td>
-                        <button
-                          className="btn btn-success btn-sm"
-                          disabled={rec.status !== "Y"}
-                          onClick={() => handleEdit(rec)}
-                        >
-                          <i className="fa fa-pencil"></i>
-                        </button>
-                      </td>
+              <div className="table-responsive packagelist">
+                <table className="table table-bordered table-hover align-middle">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Immunisation Value</th>
+                      <th>Last Update Date</th>
+                      <th>Status</th>
+                      <th>Edit</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {currentItems.length ? (
+                      currentItems.map((rec) => (
+                        <tr key={rec.id}>
+                          <td>{rec.immunisationValue}</td>
+                          <td>{formatDate(rec.lastUpdateDate)}</td>
+                          <td>
+                            <div className="form-check form-switch">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                checked={rec.status === "y"}
+                                onChange={() => handleSwitchChange(rec.id, rec.status === "y" ? "n" : "y")}
+                                id={`switch-${rec.id}`}
+                              />
+                              <label
+                                className="form-check-label px-0"
+                                htmlFor={`switch-${rec.id}`}
+                              >
+                                {rec.status === "y" ? "Active" : "Deactivated"}
+                              </label>
+                            </div>
+                          </td>
+                          <td>
+                            <button
+                              className="btn btn-sm btn-success me-2"
+                              onClick={() => handleEdit(rec)}
+                              disabled={rec.status !== "y"}
+                            >
+                              <i className="fa fa-pencil"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="4" className="text-center">
+                          No record found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
               {/* PAGINATION */}
-              <Pagination
-                                totalItems={filteredData.length}
-                                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                currentPage={currentPage}
-                                onPageChange={setCurrentPage}
-                              />     
+              {filteredData.length > 0 && (
+                <Pagination
+                  totalItems={filteredData.length}
+                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
+              )}
             </>
           ) : (
-            <form onSubmit={handleSave} className="row g-3">
-              <div className="col-md-5">
+            <form className="row" onSubmit={handleSave}>
+              <div className="form-group col-md-4">
                 <label>
-                  Immunisation <span className="text-danger">*</span>
+                  Immunisation Value <span className="text-danger">*</span>
                 </label>
                 <input
-                  id="immunisation"
-                  className="form-control"
-                  value={formData.immunisation}
+                  type="text"
+                  id="immunisationValue"
+                  className="form-control mt-1"
+                  placeholder="Enter Immunisation Value"
+                  value={formData.immunisationValue}
                   onChange={handleInputChange}
+                  maxLength={IMMUNISATION_MAX_LENGTH}
+                  required
                 />
               </div>
 
-              <div className="col-12 text-end">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>
+              <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
+                <button
+                  className="btn btn-primary me-2"
+                  type="submit"
+                  disabled={!isFormValid}
+                >
                   Save
                 </button>
                 <button
-                  type="button"
                   className="btn btn-danger"
-                  onClick={() => setShowForm(false)}
+                  type="button"
+                  onClick={resetForm}
                 >
                   Cancel
                 </button>
@@ -261,27 +367,29 @@ const ImmunisationStatus = () => {
           {popupMessage && <Popup {...popupMessage} />}
 
           {confirmDialog.isOpen && (
-            <div className="modal d-block">
-              <div className="modal-dialog">
+            <div className="modal d-block" tabIndex="-1" role="dialog">
+              <div className="modal-dialog" role="document">
                 <div className="modal-content">
+                  <div className="modal-header">
+                    <h5 className="modal-title">Confirm Status Change</h5>
+                    <button type="button" className="close" onClick={() => handleConfirmStatusChange(false)}>
+                      <span>&times;</span>
+                    </button>
+                  </div>
                   <div className="modal-body">
-                    Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "Y"
-                      ? "activate"
-                      : "deactivate"}{" "}
-                    <strong>{confirmDialog.immunisation}</strong>?
+                    <p>
+                      Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                      <strong>
+                        {data.find((rec) => rec.id === confirmDialog.recordId)?.immunisationValue}
+                      </strong>
+                      ?
+                    </p>
                   </div>
                   <div className="modal-footer">
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => handleConfirm(false)}
-                    >
+                    <button type="button" className="btn btn-secondary" onClick={() => handleConfirmStatusChange(false)}>
                       No
                     </button>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => handleConfirm(true)}
-                    >
+                    <button type="button" className="btn btn-primary" onClick={() => handleConfirmStatusChange(true)}>
                       Yes
                     </button>
                   </div>

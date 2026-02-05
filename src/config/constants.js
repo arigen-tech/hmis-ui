@@ -661,7 +661,7 @@ export const CANCELLATION_SUCCESS = "Appointment cancelled successfully";
 export const CANCELLATION_ERROR = "Cancellation failed";
 export const NO_CANCELLATION_REASONS = "No cancellation reasons available. Please contact administrator.";
 export const NO_VALID_TIME_SLOTS = "No time slots available for this session and date.";
-
+export const TOKEN_FETCH_FAILED= "Failed to fetch token availability. Please try again."
 // Common validation messages
 export const REQUIRED_FIELD = "Please fill in all required fields";
 export const INVALID_INPUT = "Please enter valid information";
@@ -853,3 +853,26 @@ export const DUPLICATE_CERVIX = "cervix Position with the same code or name  alr
 export const UPDATE_CERVIX = "Record updated successfully";
 export const ADD_CERVIX = "Record added successfully";
 
+
+//immunisedStatusMaster
+export const DUPLICATE_IMMUNISATION = "Immunisation value already exists!";
+export const UPDATE_IMMUNISATION_SUCC_MSG = "Immunisation status updated successfully!";
+export const ADD_IMMUNISATION_SUCC_MSG = "Immunisation status added successfully!";
+
+//SmearResultMaster
+export const FETCH_SMEARRESULT ="Fail to fetch records";
+export const DUPLICATE_SMEARRESULT = "sumerresult with the same code or name  already exists";
+export const UPDATE_SMEARRESULT = "Record updated successfully";
+export const ADD_SMEARRESULT = "Record added successfully";
+export const FAIL_SMEARRESULT = "Save failed";
+export const UPDATE_FAIL_SMEARRESULT = "Status update failed";
+
+
+
+// //EarWeberMaster
+export const FETCH_EARWEB = "Fail to fetch records";
+export const DUPLICATE_EARWEB = "EarWeberMaster with the same code or name  already exists";
+export const UPDATE_EARWEB = "Record updated successfully";
+export const ADD_EARWEB = "Record added successfully";
+export const FAIL_EARWEB = "Save failed";
+export const UPDATE_FAIL_EARWEB = "Status update failed";

@@ -227,6 +227,18 @@ const PatientRegistration = () => {
       const url = `${GET_AVAILABILITY_TOKENS}/0?${params}`;
       const data = await getRequest(url);
 
+      if (data.status === 400) {
+        if (!Swal.isVisible()) {
+          Swal.fire({
+            icon: "warning",
+            title: "Not Available",
+            text:
+              data.message,
+            timer: 4000,
+          });
+        }
+      }
+
       if (data.status === 200 && Array.isArray(data.response)) {
         const availableTokens = data.response;
 
