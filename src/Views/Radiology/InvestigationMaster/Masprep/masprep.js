@@ -3,7 +3,7 @@ import LoadingScreen from "../../../../Components/Loading";
 import { getRequest } from "../../../../service/apiService";
 import { MAS_PATIENT_PREPARATION } from "../../../../config/apiConfig";
 
-const MasPreparationModel = ({ show, onOk, onClose, selectedItems }) => {
+const RadiologyMasPreparationModel = ({ show, onOk, onClose, selectedItems }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedPreparations, setSelectedPreparations] = useState([]);
@@ -17,9 +17,11 @@ const MasPreparationModel = ({ show, onOk, onClose, selectedItems }) => {
             
             if (response && response.response) {
                 // Map the API response to include only preparationId and preparationName
-                const formatted = response.response.map(item => ({
+                const formatted = response.response.filter(item => item.applicableTo === "RADIOLOGY").map(item => ({
                     id: item.preparationId,
                     name: item.preparationName,
+                    instructions:item.instructions,
+                    applicableTo:item.applicableTo
                 }));
                 setData(formatted);
             } else {
@@ -79,7 +81,7 @@ const MasPreparationModel = ({ show, onOk, onClose, selectedItems }) => {
                     <div className="modal-content">
 
                         <div className="modal-header">
-                            <h5 className="modal-title fw-bold">Select Preparation Required</h5>
+                            <h5 className="modal-title fw-bold">Select Radiology Preparation Required</h5>
                             <button className="btn-close" onClick={onClose}></button>
                         </div>
 
@@ -93,6 +95,7 @@ const MasPreparationModel = ({ show, onOk, onClose, selectedItems }) => {
                                                 <tr>
                                                     <th style={{ width: "50px", textAlign: "center" }}>Select</th>
                                                     <th>Preparation Name</th>
+                                                    <th>Instruction</th>
                                                 </tr>
                                             </thead>
 
@@ -108,6 +111,7 @@ const MasPreparationModel = ({ show, onOk, onClose, selectedItems }) => {
                                                                 />
                                                             </td>
                                                             <td>{item.name}</td>
+                                                            <td>{item.instructions}</td>
                                                         </tr>
                                                     ))
                                                 ) : (
@@ -147,4 +151,4 @@ const MasPreparationModel = ({ show, onOk, onClose, selectedItems }) => {
     );
 };
 
-export default MasPreparationModel;
+export default RadiologyMasPreparationModel;

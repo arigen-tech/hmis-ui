@@ -1,6 +1,6 @@
  export const API_HOST = 'http://103.133.215.182:8081/hims';
 
-//  export const API_HOST = 'http://localhost:8080';
+ // export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://192.168.1.8:8080';
 
 // export const API_HOST = 'http://localhost:8080';
@@ -102,6 +102,7 @@ export const LAB_REPORT_API=`${ALL_REPORTS}/labReport`;
 
 
 export const DEPARTMENT = `/department`;
+
 export const ALL_DEPARTMENT = `${MASTERS}/department/getAll`;
 export const DOCTOR = `/users`;
 export const SESSION = `/opd-session`;
@@ -191,6 +192,10 @@ export const Store_Internal_Indent = `/storeInternalIndent`
 export const PATIENT_FOLLOW_UP_DETAILS = "/patient/getFullDetails";
 
 
+export const RADIOLOGY = `/radiology`;
+export const REGISTER_AND_ADD_RADIOLOGY_INVESTIGATION = `${RADIOLOGY}/registerWithInv`;
+
+
 
 export const ITEM_CLASS = {
   TABLET: 1,
@@ -266,4 +271,6 @@ export const MAS_ENT_WEBER = `${MASTERS}/entMasWeber`;
 // Constants for date validation for Lab report
   export const MAX_MONTHS_BACK = 4; // 4 months maximum back date
   export const MAX_DAYS_BACK = MAX_MONTHS_BACK * 30;
+
+
 
