@@ -190,6 +190,10 @@ import RadiologyBookingRegisteredPatient from './Views/Radiology/Follow-up Radio
 import DonorInformation from './Views/BloodBank/DonorRegistration';
 import DonorRegistration from './Views/BloodBank/DonorRegistration';
 import DonorRegistrationViewUpdate from './Views/BloodBank/DonorViewUpdate';
+import USGInvestigation from './Views/Radiology/USGInvestigation';
+import MRIInvestigation from './Views/Radiology/MRIInvestigation';
+import CTInvestigation from './Views/Radiology/CTInvestigation';
+import PETInvestigation from './Views/Radiology/PETInvestigation';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -410,11 +414,12 @@ function App() {
                 <Route path="/PatientRegistrationRadiologyBooking" element={<PatientRegistrationRadiologyBooking/>} />
                 <Route path="/RadiologyBookingRegisteredPatient" element={<RadiologyBookingRegisteredPatient/>} />
                 <Route path="/DonorRegistration" element={<DonorRegistration/>} />
-<<<<<<< HEAD
                 <Route path="/XRAYInvestigation" element={<XRAYInvestigation/>} />
-=======
                 <Route path="/DonorViewUpdate" element={<DonorRegistrationViewUpdate/>} />
->>>>>>> 6ade402f71a7c9cf774b1013c4f4afc02158df05
+                <Route path="/USGInvestigation" element={<USGInvestigation/>} />
+                <Route path="/MRIInvestigation" element={<MRIInvestigation/>} />
+                <Route path="/CTInvestigation" element={<CTInvestigation/>} />
+                <Route path="/PETInvestigation" element={<PETInvestigation/>} />
               </Route>
             </Route>
 
