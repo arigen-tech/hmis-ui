@@ -182,6 +182,7 @@ import BloodDonationHDR from './Views/Masters/BloodDonationHDR';
 import BloodInventoryStatus from './Views/Masters/BloodInventoryStatus';
 import BloodTestMaster from './Views/Masters/BloodTestMaster';
 import CrossMatchType from './Views/Masters/CrossMatchType';
+import XRAYInvestigation from './Views/Radiology/XRAYInvestigation';
 
 import WardManagement from './Views/IPD/WardManagement';
 import PatientRegistrationRadiologyBooking from './Views/Radiology/ PatientRegistrationRadiologyBooking';
@@ -408,6 +409,7 @@ function App() {
                 <Route path="/PatientRegistrationRadiologyBooking" element={<PatientRegistrationRadiologyBooking/>} />
                 <Route path="/RadiologyBookingRegisteredPatient" element={<RadiologyBookingRegisteredPatient/>} />
                 <Route path="/DonorRegistration" element={<DonorRegistration/>} />
+                <Route path="/XRAYInvestigation" element={<XRAYInvestigation/>} />
               </Route>
             </Route>
 
