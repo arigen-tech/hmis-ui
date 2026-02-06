@@ -7,6 +7,7 @@ const XRAYInvestigation = () => {
   const [xrayData, setXrayData] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
@@ -16,55 +17,36 @@ const XRAYInvestigation = () => {
   });
 
   const [popupMessage, setPopupMessage] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [editingRecord, setEditingRecord] = useState(null);
-  const [isFormValid, setIsFormValid] = useState(false);
 
-  const [formData, setFormData] = useState({
-    uhid: "",
-    patientName: "",
-    age: "",
-    gender: "",
-    modality: "",
-    investigationName: "",
-    orderDate: "",
-    orderTime: "",
-    department: ""
-  });
-
-  const [loading, setLoading] = useState(true);
-  const MAX_LENGTH = 100;
-
-  /* -------- SAMPLE XRAY DATA -------- */
+  /* ---------------- SAMPLE DATA ---------------- */
   useEffect(() => {
-    setLoading(true);
     setTimeout(() => {
       setXrayData([
         {
           id: 1,
-          accessionNo:"Acc-260112-001",
+          accessionNo: "Acc-260112-001",
           uhid: "U12345",
           patientName: "John Doe",
           age: "35",
           gender: "Male",
           modality: "X-Ray",
           investigationName: "Chest X-Ray",
-          orderDate: "10/01/2026",
-          orderTime: "10:30 AM",
+          orderDate: "2026-01-10",
+          orderTime: "10:30",
           department: "Radiology",
           status: "y"
         },
         {
-         accessionNo:"Acc-260112-002",
           id: 2,
+          accessionNo: "Acc-260112-002",
           uhid: "U67890",
           patientName: "Jane Smith",
           age: "28",
           gender: "Female",
           modality: "CT",
           investigationName: "CT Brain",
-          orderDate: "12/01/2026",
-          orderTime: "11:00 AM",
+          orderDate: "2026-01-12",
+          orderTime: "11:00",
           department: "Radiology",
           status: "n"
         }
@@ -73,10 +55,11 @@ const XRAYInvestigation = () => {
     }, 600);
   }, []);
 
-  /* -------- SEARCH -------- */
+  /* ---------------- SEARCH ---------------- */
   const filteredData = xrayData.filter(item =>
-    item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.uhid.toLowerCase().includes(searchQuery.toLowerCase())
+    item.accessionNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.uhid.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.patientName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   useEffect(() => {
@@ -87,40 +70,12 @@ const XRAYInvestigation = () => {
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
 
-  /* -------- HANDLERS -------- */
+  /* ---------------- POPUP ---------------- */
   const showPopup = (message, type = "success") => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
-  const handleEdit = (record) => {
-    setEditingRecord(record);
-    setFormData({ ...record });
-    setIsFormValid(true);
-    setShowForm(true);
-  };
-
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
-
-    if (editingRecord) {
-      setXrayData(prev =>
-        prev.map(item =>
-          item.id === editingRecord.id ? { ...formData } : item
-        )
-      );
-      showPopup("XRAY Investigation updated successfully");
-    } else {
-      setXrayData(prev => [
-        ...prev,
-        { ...formData, id: Date.now(), status: "y" }
-      ]);
-      showPopup("XRAY Investigation added successfully");
-    }
-
-    handleBack();
-  };
-
+  /* ---------------- STATUS CHANGE ---------------- */
   const handleSwitchChange = (id, newStatus, investigationName) => {
     setConfirmDialog({ isOpen: true, id, newStatus, investigationName });
   };
@@ -129,46 +84,30 @@ const XRAYInvestigation = () => {
     if (confirmed) {
       setXrayData(prev =>
         prev.map(item =>
-          item.id === confirmDialog.id ? { ...item, status: confirmDialog.newStatus } : item
+          item.id === confirmDialog.id
+            ? { ...item, status: confirmDialog.newStatus }
+            : item
         )
       );
       showPopup(
-        `XRAY Investigation ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"}`
+        `XRAY Investigation ${
+          confirmDialog.newStatus === "y" ? "Activated" : "Deactivated"
+        } Successfully`
       );
     }
     setConfirmDialog({ isOpen: false, id: null, newStatus: "", investigationName: "" });
   };
 
-  const handleInputChange = (e) => {
-  const { name, value } = e.target;
-  setFormData(prev => ({ ...prev, [name]: value }));
-
-  // Validate all fields
-  setIsFormValid(
-    Object.values({ ...formData, [name]: value }).every(
-      v => (v + "").trim() !== ""  // safe trim
-    )
-  );
-};
-
-  const handleBack = () => {
-    setShowForm(false);
-    setEditingRecord(null);
-    setFormData({
-      uhid: "",
-      patientName: "",
-      age: "",
-      gender: "",
-      modality: "",
-      investigationName: "",
-      orderDate: "",
-      orderTime: "",
-      department: ""
-    });
-    setIsFormValid(false);
+  /* ---------------- ACTION HANDLERS ---------------- */
+  const handleView = (row) => {
+    showPopup(`Viewing ${row.investigationName}`, "info");
   };
 
-  /* -------- UI -------- */
+  const handleEdit = (row) => {
+    showPopup(`Editing ${row.investigationName}`, "success");
+  };
+
+  /* ---------------- UI ---------------- */
   return (
     <div className="content-wrapper">
       <div className="card form-card">
@@ -176,93 +115,96 @@ const XRAYInvestigation = () => {
           <h4 className="card-title">XRAY Investigation</h4>
 
           <div className="d-flex gap-2">
-            {!showForm && (
-              <input
-                type="search"
-                className="form-control"
-                placeholder="Search by UHID or Patient Name"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ width: "250px" }}
-              />
-            )}
-
-            {!showForm ? (
-              <>
-                <button className="btn btn-success" onClick={() => setShowForm(true)}>Add</button>
-                <button className="btn btn-success" onClick={() => setSearchQuery("")}>Show All</button>
-              </>
-            ) : (
-              <button className="btn btn-secondary" onClick={handleBack}>Back</button>
-            )}
+            <input
+              type="search"
+              className="form-control"
+              placeholder="Search by Accession No / UHID / Patient Name"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: "300px" }}
+            />
+            <button className="btn btn-success" onClick={() => setSearchQuery("")}>
+              Show All
+            </button>
           </div>
         </div>
 
         <div className="card-body">
           {loading ? (
             <LoadingScreen />
-          ) : !showForm ? (
+          ) : (
             <>
-              <table className="table table-bordered table-hover">
-                <thead>
+              <table className="table table-bordered table-hover align-middle">
+                <thead className="table-light">
                   <tr>
-                    <th>Accession NO</th>
+                    <th>Accession No</th>
                     <th>UHID</th>
                     <th>Patient Name</th>
                     <th>Age</th>
                     <th>Gender</th>
                     <th>Modality</th>
-                    <th>Investigation Name</th>
+                    <th>Investigation</th>
                     <th>Order Date</th>
                     <th>Order Time</th>
                     <th>Department</th>
                     <th>Status</th>
-                    <th>Actions</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {currentItems.map(item => (
-                    <tr key={item.id}>
+                  {currentItems.length > 0 ? (
+                    currentItems.map(item => (
+                      <tr key={item.id}>
                         <td>{item.accessionNo}</td>
-                      <td>{item.uhid}</td>
-                      <td>{item.patientName}</td>
-                      <td>{item.age}</td>
-                      <td>{item.gender}</td>
-                      <td>{item.modality}</td>
-                      <td>{item.investigationName}</td>
-                      <td>{item.orderDate}</td>
-                      <td>{item.orderTime}</td>
-                      <td>{item.department}</td>
-                      <td>
-                        <div className="form-check form-switch">
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            checked={item.status === "y"}
-                            onChange={() =>
-                              handleSwitchChange(
-                                item.id,
-                                item.status === "y" ? "n" : "y",
-                                item.investigationName
-                              )
-                            }
-                          />
-                          <label className="form-check-label ms-2">
-                            {item.status === "y" ? "Active" : "Inactive"}
-                          </label>
-                        </div>
-                      </td>
-                      <td>
-                        <button
-                          className="btn btn-sm btn-success"
-                          onClick={() => handleEdit(item)}
-                          disabled={item.status !== "y"}
-                        >
-                          <i className="fa fa-pencil"></i>
-                        </button>
+                        <td>{item.uhid}</td>
+                        <td>{item.patientName}</td>
+                        <td>{item.age}</td>
+                        <td>{item.gender}</td>
+                        <td>{item.modality}</td>
+                        <td>{item.investigationName}</td>
+                        <td>{item.orderDate}</td>
+                        <td>{item.orderTime}</td>
+                        <td>{item.department}</td>
+
+                        {/* STATUS */}
+                        <td>
+                          <div className="form-check form-switch">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              checked={item.status === "y"}
+                              onChange={() =>
+                                handleSwitchChange(
+                                  item.id,
+                                  item.status === "y" ? "n" : "y",
+                                  item.investigationName
+                                )
+                              }
+                            />
+                            <span className="ms-2">
+                              {item.status === "y" ? "Active" : "Inactive"}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* ACTION */}
+                       <td>
+  <td>
+  <span>Completed</span>
+</td>
+
+</td>
+
+               </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="12" className="text-center">
+                        No records found
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
 
@@ -273,168 +215,6 @@ const XRAYInvestigation = () => {
                 onPageChange={setCurrentPage}
               />
             </>
-          ) : (
-            <form onSubmit={handleSave}>
-              <div className="row g-3">
- <div className="form-group col-md-4">
-  <label>
-    Accession No <span className="text-danger">*</span>
-  </label>
-  <input
-    type="text"
-    className="form-control"
-    name="accessionNo"
-    value={formData.accessionNo}
-    onChange={handleInputChange}
-    maxLength={MAX_LENGTH}
-    required
-  />
-</div>
-
-  {/* UHID */}
-  <div className="form-group col-md-4">
-    <label>
-      UHID <span className="text-danger">*</span>
-    </label>
-    <input
-      type="text"
-      className="form-control"
-      name="uhid"
-      value={formData.uhid}
-      onChange={handleInputChange}
-      maxLength={MAX_LENGTH}
-      required
-    />
-  </div>
-
-  {/* Patient Name */}
-  <div className="form-group col-md-4">
-    <label>
-      Patient Name <span className="text-danger">*</span>
-    </label>
-    <input
-      type="text"
-      className="form-control"
-      name="patientName"
-      value={formData.patientName}
-      onChange={handleInputChange}
-      maxLength={MAX_LENGTH}
-      required
-    />
-  </div>
-
-  {/* Age */}
-  <div className="form-group col-md-4">
-    <label>
-      Age <span className="text-danger">*</span>
-    </label>
-    <input
-      type="number"
-      className="form-control"
-      name="age"
-      value={formData.age}
-      onChange={handleInputChange}
-      required
-    />
-  </div>
-
-  {/* Gender */}
-  <div className="form-group col-md-4">
-    <label>
-      Gender <span className="text-danger">*</span>
-    </label>
-    <input
-      type="text"
-      className="form-control"
-      name="gender"
-      value={formData.gender}
-      onChange={handleInputChange}
-      required
-    />
-  </div>
-
-  {/* Modality */}
-  <div className="form-group col-md-4">
-    <label>
-      Modality <span className="text-danger">*</span>
-    </label>
-    <input
-      type="text"
-      className="form-control"
-      name="modality"
-      value={formData.modality}
-      onChange={handleInputChange}
-      required
-    />
-  </div>
-
-  {/* Investigation Name */}
-  <div className="form-group col-md-4">
-    <label>
-      Investigation Name <span className="text-danger">*</span>
-    </label>
-    <input
-      type="text"
-      className="form-control"
-      name="investigationName"
-      value={formData.investigationName}
-      onChange={handleInputChange}
-      maxLength={MAX_LENGTH}
-      required
-    />
-  </div>
-
-  {/* Order Date */}
-  <div className="form-group col-md-4">
-    <label>
-      Order Date <span className="text-danger">*</span>
-    </label>
-    <input
-      type="date"
-      className="form-control"
-      name="orderDate"
-      value={formData.orderDate}
-      onChange={handleInputChange}
-      required
-    />
-  </div>
-
-   {/* Order Time */}
-     <div className="form-group col-md-4">
-    <label>
-     Order Time <span className="text-danger">*</span>
-     </label>
-   <input
-     type="time"
-      className="form-control"
-      name="orderTime"
-      value={formData.orderTime}
-      onChange={handleInputChange}
-      required
-    />
-  </div>
-
-  {/* Department */}
-  <div className="form-group col-md-4">
-    <label>
-      Department <span className="text-danger">*</span>
-    </label>
-    <input
-      type="text"
-      className="form-control"
-      name="department"
-      value={formData.department}
-      onChange={handleInputChange}
-      maxLength={MAX_LENGTH}
-      required
-    />
-  </div>
-</div>
-              <div className="mt-3 text-end">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>Save</button>
-                <button className="btn btn-danger" type="button" onClick={handleBack}>Cancel</button>
-              </div>
-            </form>
           )}
 
           {popupMessage && <Popup {...popupMessage} />}
@@ -447,12 +227,19 @@ const XRAYInvestigation = () => {
                     <h5>Confirm Status Change</h5>
                   </div>
                   <div className="modal-body">
-                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    Are you sure you want to{" "}
+                    <strong>
+                      {confirmDialog.newStatus === "y" ? "Activate" : "Deactivate"}
+                    </strong>{" "}
                     <strong>{confirmDialog.investigationName}</strong>?
                   </div>
                   <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
+                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                      No
+                    </button>
+                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                      Yes
+                    </button>
                   </div>
                 </div>
               </div>
