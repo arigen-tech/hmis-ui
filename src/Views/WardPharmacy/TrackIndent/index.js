@@ -20,7 +20,9 @@ const TrackIndent = () => {
   const [isSearchMode, setIsSearchMode] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
   const [userSessionData, setUserSessionData] = useState(null)
-  const [statusMap,setStatusMap]=useState(null)
+  const [statusMap, setStatusMap] = useState(null)
+  const [isInitialLoadDone, setIsInitialLoadDone] = useState(false)
+
 
   // Fetch departments list and initial indent data
   useEffect(() => {
@@ -28,7 +30,7 @@ const TrackIndent = () => {
     // Get user data from session storage
     const userData = getUserDataFromSession()
     setUserSessionData(userData)
-    
+
     if (userData && userData.departmentId === 1) {
       // If departmentId is 1, fetch all departments for dropdown
       fetchDepartments()
@@ -41,9 +43,14 @@ const TrackIndent = () => {
         })
       }
     }
-    
-    fetchIndentData(0) // Initial load with page 0
   }, [])
+
+  useEffect(() => {
+    if (isInitialLoadDone && statusMap) {
+      fetchIndentData(0)
+    }
+  }, [isInitialLoadDone, statusMap])
+
 
   // Get user data from session storage
   const getUserDataFromSession = () => {
@@ -51,14 +58,14 @@ const TrackIndent = () => {
       // Get departmentId and departmentName directly from sessionStorage
       const departmentId = sessionStorage.getItem('departmentId')
       const departmentName = sessionStorage.getItem('departmentName')
-      
+
       if (departmentId && departmentName) {
         return {
           departmentId: parseInt(departmentId),
           departmentName: departmentName
         }
       }
-      
+
       // Fallback: try to get from a user object if stored differently
       const userDataStr = sessionStorage.getItem('userData')
       if (userDataStr) {
@@ -68,7 +75,7 @@ const TrackIndent = () => {
           departmentName: userData.departmentName || ''
         }
       }
-      
+
       return null
     } catch (error) {
       console.error("Error getting user data from session:", error)
@@ -83,36 +90,34 @@ const TrackIndent = () => {
     }
   }, [currentPage])
 
-   const fetchStatusMap = async () => {
+  const fetchStatusMap = async () => {
     try {
-      // Call the new endpoint with status=y parameter
       const response = await getRequest("/indent/status-map")
-      
-      if (response && response.response && Array.isArray(response.response)) {
-        // Map the response to extract department names and IDs
-        const statusList = response.response.map(status => ({
-          statusId: status.commonStatusId,
-          statusCode: status.statusCode,
-          statusName: status.statusName
-        }))
-        setStatusMap(statusList)
+
+      if (response?.response?.length) {
+        const map = {}
+        response.response.forEach(status => {
+          map[status.statusCode] = status.statusName
+        })
+        setStatusMap(map)
+        setIsInitialLoadDone(true)
       } else {
-        // Fallback to empty array if API fails
-        console.error("Invalid status response:", response)
-        setStatusMap([])
+        setStatusMap({})
       }
+      
     } catch (error) {
       console.error("Error fetching status:", error)
-      setStatusMap([])
+      setStatusMap({})
     }
   }
+
 
   // Fetch departments from API using the new endpoint
   const fetchDepartments = async () => {
     try {
       // Call the new endpoint with status=y parameter
       const response = await getRequest("/master/indent-department/getAll?status=y")
-      
+
       if (response && response.response && Array.isArray(response.response)) {
         // Map the response to extract department names and IDs
         const departmentList = response.response.map(dept => ({
@@ -135,15 +140,15 @@ const TrackIndent = () => {
   const fetchIndentData = async (page = 0) => {
     try {
       setLoading(true)
-      
+
       // If user has a specific department and it's not admin (departmentId !== 1),
       // filter by their department
       let url = `/indent/tracking?page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}`
-      
+
       if (userSessionData && userSessionData.departmentId && userSessionData.departmentId !== 1) {
         url += `&fromDepartmentId=${userSessionData.departmentId}`
       }
-      
+
       const response = await getRequest(url)
 
       if (response && response.response) {
@@ -170,37 +175,37 @@ const TrackIndent = () => {
   const searchWithFilters = async (page = 0) => {
     try {
       setSearchLoading(true)
-      
+
       // Build search parameters according to controller
       const params = {
         page: page,
         size: DEFAULT_ITEMS_PER_PAGE
       }
-      
+
       // Add fromDepartmentId if selected
       if (selectedDepartment && selectedDepartment.deptId) {
         params.fromDepartmentId = selectedDepartment.deptId
       }
-      
+
       // Add fromDate if provided
       if (fromDate) {
         params.fromDate = fromDate
       }
-      
+
       // Add toDate if provided
       if (toDate) {
         params.toDate = toDate
       }
-      
+
       // Build query string
       const queryParams = Object.entries(params)
         .filter(([key, value]) => value !== undefined && value !== null && value !== '')
         .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
         .join('&')
-      
+
       // Call search API endpoint
       const response = await getRequest(`/indent/tracking/search?${queryParams}`)
-      
+
       if (response && response.response) {
         const mappedData = mapApiData(response.response.content)
         setIndentData(mappedData)
@@ -228,14 +233,14 @@ const TrackIndent = () => {
     // 1. Department is selected (for admin users)
     // 2. From date is provided
     // 3. To date is provided
-    
-    const hasDepartment = userSessionData?.departmentId === 1 
+
+    const hasDepartment = userSessionData?.departmentId === 1
       ? (selectedDepartment && selectedDepartment.deptId)
       : true // Non-admin users always have their department
-    
+
     const hasFromDate = fromDate !== ""
     const hasToDate = toDate !== ""
-    
+
     return hasDepartment || hasFromDate || hasToDate
   }
 
@@ -251,7 +256,7 @@ const TrackIndent = () => {
       issuedDate: item.issueDate,
       receivedDate: item.receivedDate,
       returnDate: item.returnDate,
-      status: getStatusDisplayName(item.statusName),
+      status: statusMap?.[item.statusName],
       statusCode: item.statusName,
       items: item.indentTResponses ? item.indentTResponses.map(child => ({
         id: child.indentTId,
@@ -266,20 +271,7 @@ const TrackIndent = () => {
     }))
   }
 
-  // Helper function to convert status code to display name
-  const getStatusDisplayName = (statusCode) => {
-    const statusMap = {
-      'S':'Saved(Draft)',
-      'Y':'Submited',
-      'FI': 'Fully Issued from the issue dept',
-      'AA': 'Approved at Issue Dept',
-      'RR':'Rejected at Issue Dept',
-      'A':'Approved',
-      'R': 'Rejected',
-      'RC': 'Received'
-    }
-    return statusMap[statusCode] || statusCode
-  }
+
 
   // Handle search button click
   const handleSearch = () => {
@@ -288,26 +280,26 @@ const TrackIndent = () => {
       alert("Please select at least one search criteria (Department or Date)")
       return
     }
-    
+
     if (fromDate && toDate) {
       const from = new Date(fromDate)
       const to = new Date(toDate)
-      
+
       // Validate date range
       if (from > to) {
         alert("From Date cannot be greater than To Date")
         return
       }
-      
+
       const diffTime = Math.abs(to - from)
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      
+
       if (diffDays > 365) {
         alert("Date range cannot be more than 1 year")
         return
       }
     }
-    
+
     setCurrentPage(0)
     searchWithFilters(0)
   }
@@ -323,7 +315,7 @@ const TrackIndent = () => {
         deptName: userSessionData.departmentName
       })
     }
-    
+
     setFromDate("")
     setToDate("")
     setCurrentPage(0)
@@ -335,7 +327,7 @@ const TrackIndent = () => {
   const handlePageChange = (page) => {
     const newPage = page - 1
     setCurrentPage(newPage)
-    
+
     if (isSearchMode) {
       searchWithFilters(newPage)
     } else {
@@ -368,7 +360,7 @@ const TrackIndent = () => {
   const handleRowClick = async (record, e) => {
     e.stopPropagation()
     setLoading(true)
-    
+
     // Fetch batch details for items with received quantity
     if (record.items && record.items.length > 0) {
       const itemsWithBatchDetails = await Promise.all(
@@ -380,7 +372,7 @@ const TrackIndent = () => {
           return item
         })
       )
-      
+
       setSelectedIndent({
         ...record,
         items: itemsWithBatchDetails
@@ -388,7 +380,7 @@ const TrackIndent = () => {
     } else {
       setSelectedIndent(record)
     }
-    
+
     setCurrentView("detail")
     setLoading(false)
   }
@@ -450,7 +442,7 @@ const TrackIndent = () => {
   if (currentView === "detail") {
     return (
       <div className="content-wrapper">
-        {loading && <LoadingScreen/>}
+        {loading && <LoadingScreen />}
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
@@ -729,7 +721,8 @@ const TrackIndent = () => {
   // List View with Search Filters
   return (
     <div className="content-wrapper">
-      {(loading || searchLoading) && <LoadingScreen/>}
+      {(loading || searchLoading || !isInitialLoadDone) && <LoadingScreen />}
+
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -765,7 +758,7 @@ const TrackIndent = () => {
                     />
                   )}
                 </div>
-                
+
                 {/* From Date */}
                 <div className="col-md-2">
                   <label className="form-label fw-bold">From Date</label>
@@ -777,7 +770,7 @@ const TrackIndent = () => {
                     max={new Date().toISOString().split('T')[0]}
                   />
                 </div>
-                
+
                 {/* To Date */}
                 <div className="col-md-2">
                   <label className="form-label fw-bold">To Date</label>
@@ -789,27 +782,27 @@ const TrackIndent = () => {
                     max={new Date().toISOString().split('T')[0]}
                   />
                 </div>
-                
+
                 {/* Search and Show All Buttons */}
                 <div className="col-md-2 d-flex align-items-end">
-                  <button 
-                    type="button" 
-                    className="btn btn-primary me-2" 
+                  <button
+                    type="button"
+                    className="btn btn-primary me-2"
                     onClick={handleSearch}
                     disabled={searchLoading || !isSearchEnabled()}
                   >
                     {searchLoading ? "Searching..." : "Search"}
                   </button>
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary" 
+                  <button
+                    type="button"
+                    className="btn btn-secondary flex-shrink-0"
                     onClick={handleShowAll}
                     disabled={loading}
                   >
                     Show All
                   </button>
                 </div>
-                
+
                 {/* Total Records */}
                 <div className="col-md-3 d-flex justify-content-end align-items-end">
                   <span className="fw-bold">Total Records: {totalElements}</span>
@@ -862,8 +855,8 @@ const TrackIndent = () => {
                             {item.status}
                           </td>
                           <td>
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               className="btn btn-success btn-sm text-nowrap"
                               onClick={() => handleIndentReport(item.indentNo)}
                             >
@@ -872,8 +865,8 @@ const TrackIndent = () => {
                           </td>
                           <td>
                             {canShowIssueReport(item) ? (
-                              <button 
-                                type="button" 
+                              <button
+                                type="button"
                                 className="btn btn-success btn-sm"
                                 onClick={() => handleIssueReport(item.indentNo)}
                               >
@@ -885,8 +878,8 @@ const TrackIndent = () => {
                           </td>
                           <td>
                             {canShowReceivingReport(item) ? (
-                              <button 
-                                type="button" 
+                              <button
+                                type="button"
                                 className="btn btn-success btn-sm text-nowrap"
                                 onClick={() => handleReceivingReport(item.indentNo)}
                               >
@@ -898,8 +891,8 @@ const TrackIndent = () => {
                           </td>
                           <td>
                             {canShowReturnReport(item) ? (
-                              <button 
-                                type="button" 
+                              <button
+                                type="button"
                                 className="btn btn-success btn-sm text-nowrap"
                                 onClick={() => handleReturnReport(item.indentNo)}
                               >
