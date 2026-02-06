@@ -188,6 +188,7 @@ import PatientRegistrationRadiologyBooking from './Views/Radiology/ PatientRegis
 import RadiologyBookingRegisteredPatient from './Views/Radiology/Follow-up Radiology Booking-';
 import DonorInformation from './Views/BloodBank/DonorRegistration';
 import DonorRegistration from './Views/BloodBank/DonorRegistration';
+import DonorRegistrationViewUpdate from './Views/BloodBank/DonorViewUpdate';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -408,6 +409,7 @@ function App() {
                 <Route path="/PatientRegistrationRadiologyBooking" element={<PatientRegistrationRadiologyBooking/>} />
                 <Route path="/RadiologyBookingRegisteredPatient" element={<RadiologyBookingRegisteredPatient/>} />
                 <Route path="/DonorRegistration" element={<DonorRegistration/>} />
+                <Route path="/DonorViewUpdate" element={<DonorRegistrationViewUpdate/>} />
               </Route>
             </Route>
 

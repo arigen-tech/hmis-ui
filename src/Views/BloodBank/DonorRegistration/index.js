@@ -35,7 +35,10 @@ const DonorRegistration = () => {
     height: "",
     bloodPressure: "",
     pulse: "",
-    temperature: ""
+    temperature: "",
+    screenResult: "",
+    deferralType: "",
+    deferralReason: ""
   })
 
   const showPopup = (message, type = "info", onCloseCallback = null) => {
@@ -53,17 +56,38 @@ const DonorRegistration = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    const updatedForm = { ...formData, [name]: value }
+
+    // If screen result changes to "pass", clear deferral fields
+    if (name === "screenResult") {
+      if (value === "pass") {
+        updatedForm.deferralType = ""
+        updatedForm.deferralReason = ""
+      }
+    }
+
+    setFormData(updatedForm)
 
     let error = ""
     
     // Required field validation
     const requiredFields = ['firstName', 'lastName', 'mobileNo', 'gender', 'relation', 'dob', 'bloodGroup', 
                            'address1', 'country', 'state', 'district', 'city', 'pinCode', 
-                           'hemoglobin', 'weight', 'height', 'bloodPressure', 'pulse', 'temperature']
+                           'hemoglobin', 'weight', 'height', 'bloodPressure', 'pulse', 'temperature',
+                           'screenResult']
     
     if (requiredFields.includes(name) && !value.trim()) {
       error = "This field is required"
+    }
+
+    // If screen result is "fail", deferral fields become required
+    if (formData.screenResult === "fail") {
+      if (name === "deferralType" && !value.trim()) {
+        error = "Deferral Type is required when screen fails"
+      }
+      if (name === "deferralReason" && !value.trim()) {
+        error = "Deferral Reason is required when screen fails"
+      }
     }
 
     // Specific validations
@@ -206,6 +230,21 @@ const DonorRegistration = () => {
     if (!formData.pulse.trim()) newErrors.pulse = "Pulse is required"
     if (!formData.temperature.trim()) newErrors.temperature = "Temperature is required"
 
+    // Screen Result validation
+    if (!formData.screenResult) {
+      newErrors.screenResult = "Screen Result is required"
+    }
+
+    // Deferral fields validation when screen fails
+    if (formData.screenResult === "fail") {
+      if (!formData.deferralType.trim()) {
+        newErrors.deferralType = "Deferral Type is required when screen fails"
+      }
+      if (!formData.deferralReason.trim()) {
+        newErrors.deferralReason = "Deferral Reason is required when screen fails"
+      }
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -241,6 +280,9 @@ const DonorRegistration = () => {
         bloodPressure: formData.bloodPressure,
         pulse: parseInt(formData.pulse),
         temperature: parseFloat(formData.temperature),
+        screenResult: formData.screenResult,
+        deferralType: formData.deferralType || "",
+        deferralReason: formData.deferralReason || "",
         regDate: new Date().toISOString().split("T")[0]
       }
 
@@ -281,7 +323,10 @@ const DonorRegistration = () => {
       height: "",
       bloodPressure: "",
       pulse: "",
-      temperature: ""
+      temperature: "",
+      screenResult: "",
+      deferralType: "",
+      deferralReason: ""
     })
     setErrors({})
     setStateData([])
@@ -302,10 +347,10 @@ const DonorRegistration = () => {
         />
       )}
 
-      <div className="container-xxl">
+      <div className="container-fluid">
         <div className="row align-items-center">
           <div className="border-0 mb-4">
-            <div className="card-header py-3 no-bg bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
+            <div className="card-header  py-3 no-bg bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
               <h3 className="fw-bold mb-0">Donor Information</h3>
             </div>
           </div>
@@ -631,6 +676,106 @@ const DonorRegistration = () => {
                       step="0.1"
                     />
                     {errors.temperature && <div className="invalid-feedback">{errors.temperature}</div>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Screening Result Section */}
+        <div className="row mb-3">
+          <div className="col-sm-12">
+            <div className="card shadow mb-3">
+              <div className="card-header py-3 border-bottom-1">
+                <h6 className="mb-0 fw-bold">Screening Result</h6>
+              </div>
+              <div className="card-body">
+                <div className="row g-3">
+                  <div className="col-md-4">
+                    <label className="form-label">Screen Result <span className="text-danger">*</span></label>
+                    <div>
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="screenResult"
+                          id="screenPass"
+                          value="pass"
+                          checked={formData.screenResult === "pass"}
+                          onChange={handleChange}
+                        />
+                        <label className="form-check-label" htmlFor="screenPass">
+                          Pass
+                        </label>
+                      </div>
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="screenResult"
+                          id="screenFail"
+                          value="fail"
+                          checked={formData.screenResult === "fail"}
+                          onChange={handleChange}
+                        />
+                        <label className="form-check-label" htmlFor="screenFail">
+                          Fail
+                        </label>
+                      </div>
+                    </div>
+                    {errors.screenResult && <div className="text-danger small mt-1">{errors.screenResult}</div>}
+                  </div>
+
+                  <div className="col-md-4">
+                    <label className="form-label">Deferral Type</label>
+                    <div>
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="deferralType"
+                          id="deferralTemporary"
+                          value="temporary"
+                          checked={formData.deferralType === "temporary"}
+                          onChange={handleChange}
+                          disabled={formData.screenResult === "pass"}
+                        />
+                        <label className="form-check-label" htmlFor="deferralTemporary">
+                          Temporary
+                        </label>
+                      </div>
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="deferralType"
+                          id="deferralPermanent"
+                          value="permanent"
+                          checked={formData.deferralType === "permanent"}
+                          onChange={handleChange}
+                          disabled={formData.screenResult === "pass"}
+                        />
+                        <label className="form-check-label" htmlFor="deferralPermanent">
+                          Permanent
+                        </label>
+                      </div>
+                    </div>
+                    {errors.deferralType && <div className="text-danger small mt-1">{errors.deferralType}</div>}
+                  </div>
+
+                  <div className="col-md-4">
+                    <label className="form-label">Deferral Reason</label>
+                    <textarea
+                      className={`form-control ${errors.deferralReason ? "is-invalid" : ""}`}
+                      name="deferralReason"
+                      value={formData.deferralReason}
+                      onChange={handleChange}
+                      placeholder="Enter deferral reason"
+                      rows="2"
+                      disabled={formData.screenResult === "pass"}
+                    />
+                    {errors.deferralReason && <div className="invalid-feedback">{errors.deferralReason}</div>}
                   </div>
                 </div>
               </div>
