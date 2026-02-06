@@ -193,7 +193,12 @@ const validRoutes = [
   "/BloodTestMaster",
   "/CrossMatchType",
   "/DonorRegistration",
+  "/XRAYInvestigation",
   "/DonorViewUpdate",
+  "/USGInvestigation",
+  "/MRIInvestigation",
+  "/CTInvestigation",
+  "/PETInvestigation"
 
 ];
 
