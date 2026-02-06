@@ -1490,17 +1490,31 @@ const ViewSearchEmployee = () => {
       );
     }
 
-    if (completeEmployeeData.languageIds?.length) {
-      newFormData.languages = completeEmployeeData.languageIds.map(
+    if (completeEmployeeData.languages?.length) {
+      console.log("Processing languages:", completeEmployeeData.languages);
+      newFormData.languages = completeEmployeeData.languages.map(
         (lang, index) => {
-          console.log(`Language ${index}:`, lang);
+          const languageInfo = languageData.find(
+            (l) =>
+              String(l.id) === String(lang.languageId) ||
+              String(l.languageId) === String(lang.languageId),
+          );
+          console.log(`Language ${index}:`, {
+            fromAPI: lang,
+            foundInLanguageData: languageInfo,
+          });
+
           return {
             languageId: index + 1,
-            languageName: lang.languageName || "",
+            languageName: languageInfo
+              ? languageInfo.language || languageInfo.languageName
+              : "",
             languageIdValue: lang.languageId ? lang.languageId.toString() : "",
           };
         },
       );
+
+      console.log("Processed languages for form:", newFormData.languages);
     } else {
       newFormData.languages = [
         { languageId: 1, languageName: "", languageIdValue: "" },
@@ -1679,6 +1693,16 @@ const ViewSearchEmployee = () => {
     setFilteredEmployees(employees);
     setSearchMobile("");
     setSearchName("");
+  };
+
+  const getLanguageNameById = (languageId) => {
+    if (!languageId) return "";
+    const language = languageData.find(
+      (lang) =>
+        String(lang.id) === String(languageId) ||
+        String(lang.languageId) === String(languageId),
+    );
+    return language ? language.language || language.languageName : "";
   };
 
   const filteredTotalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
@@ -3369,14 +3393,18 @@ const ViewSearchEmployee = () => {
                                     const selectedLang = languageData.find(
                                       (lang) =>
                                         lang.language === value ||
-                                        lang.languageName === value,
+                                        lang.languageName === value ||
+                                        String(lang.id) === String(value) ||
+                                        String(lang.languageId) ===
+                                          String(value),
                                     );
 
                                     if (selectedLang) {
                                       handleLanguageChange(
                                         index,
                                         "languageName",
-                                        value,
+                                        selectedLang.language ||
+                                          selectedLang.languageName,
                                         selectedLang,
                                       );
                                     }
@@ -3393,7 +3421,7 @@ const ViewSearchEmployee = () => {
                                 <option value="">Select Language</option>
                                 {languageData.map((lang) => (
                                   <option
-                                    key={lang.id}
+                                    key={lang.id || lang.languageId}
                                     value={lang.language || lang.languageName}
                                   >
                                     {lang.language || lang.languageName}
