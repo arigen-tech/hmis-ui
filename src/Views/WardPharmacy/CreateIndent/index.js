@@ -765,7 +765,7 @@ const IndentCreation = () => {
                     <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
                       <tr>
                         <th style={{ width: "300px", minWidth: "300px" }}>
-                          Drug Name / Drug Code
+                          Item Name / Item Code
                         </th>
                         <th style={{ width: "70px", minWidth: "70px" }}>
                           A/U
@@ -813,7 +813,7 @@ const IndentCreation = () => {
                                   }
                                 }}
                                 onFocus={(e) => handleDrugInputFocus(e, index)}
-                                placeholder="Enter drug name or code"
+                                placeholder="Enter item name or code"
                                 style={{ borderRadius: "4px", minWidth: "280px" }}
                               />
                               {errors[`drug_${index}`] && (
