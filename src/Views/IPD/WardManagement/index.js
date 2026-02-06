@@ -439,39 +439,39 @@ const WardManagement = () => {
             </div>
             <div className="card-body">
               {/* Summary Stats at Top */}
-              <div className="row mb-4">
+              <div className="row ">
                 <div className="col-12">
-                  <div className="alert alert-info p-3">
+                  <div className=" alert-primary p-1 rounded">
                     <div className="d-flex justify-content-around flex-wrap">
-                      <div className="text-center px-3">
+                      <div className="text-center px-3 py-1">
                         <div className="fw-bold fs-4">{stats.vacantBeds}</div>
                         <div className="small">Vacant Beds</div>
                       </div>
-                      <div className="text-center px-3">
+                      <div className="text-center px-3 py-1">
                         <div className="fw-bold fs-4">{stats.reportedToWard}</div>
                         <div className="small">Reported to Ward</div>
                       </div>
-                      <div className="text-center px-3">
+                      <div className="text-center px-3 py-1">
                         <div className="fw-bold fs-4">{stats.transferPending}</div>
                         <div className="small">Transfer Pending</div>
                       </div>
-                      <div className="text-center px-3">
+                      <div className="text-center px-3 py-1">
                         <div className="fw-bold fs-4">{stats.inOperationTheater}</div>
                         <div className="small">In Operation Theater</div>
                       </div>
-                      <div className="text-center px-3">
+                      <div className="text-center px-3 py-1">
                         <div className="fw-bold fs-4">{stats.inLaborRoom}</div>
                         <div className="small">In Labor Room</div>
                       </div>
-                      <div className="text-center px-3">
+                      <div className="text-center px-3 py-1">
                         <div className="fw-bold fs-4">{stats.readyForDischarge}</div>
                         <div className="small">Ready for Discharge</div>
                       </div>
-                      <div className="text-center px-3">
+                      <div className="text-center px-3 py-1">
                         <div className="fw-bold fs-4">{stats.notReported}</div>
                         <div className="small">Not Reported</div>
                       </div>
-                      <div className="text-center px-3">
+                      <div className="text-center px-3 py-1">
                         <div className="fw-bold fs-4">{stats.totalBeds}</div>
                         <div className="small">Total Beds</div>
                       </div>
@@ -483,7 +483,7 @@ const WardManagement = () => {
               {/* Main Content Area */}
               {!selectedPatient ? (
                 /* Patient Cards Grid - 5 boxes per row (shown when no patient is selected) */
-                <div className="cards-grid-container">
+                <div className="cards-grid-container mt-2">
                   <div className="row g-2">
                     {patientData.map((patient) => (
                       <div key={patient.id} className="col-xxl col-xl col-lg col-md col-sm-6 col-6">
@@ -601,22 +601,22 @@ const WardManagement = () => {
                 </div>
               ) : (
                 /* Patient Details with Patient List Sidebar (shown when patient is selected) */
-                <div className="row">
+                <div className="row mt-2">
                   {/* Patient List Sidebar */}
                   {!isPatientListCollapsed ? (
-                    <div className="col-md-3">
-                      <div className="card mb-3">
-                        <div className="card-header bg-light d-flex justify-content-between align-items-center">
-                          <h6 className="mb-0">Patient List</h6>
-                          {/* Arrow button ONLY */}
+                    <div className="col-md-2">
+                      <div className="card mb-3 h-100">
+                        <div className="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                          <h6 className="mb-0" style={{ fontSize: "0.9rem" }}>Patient list </h6>
                           <button
-                            className="arrow icofont-rounded-down ms-auto text-end fs-5 collapse-arrow border-0 bg-transparent"
+                            className="arrow icofont-rounded-down ms-auto text-end fs-6 collapse-arrow border-0 bg-transparent"
                             type="button"
                             aria-expanded={!isPatientListCollapsed}
                             onClick={() => setIsPatientListCollapsed(true)}
                             style={{
                               transform: 'rotate(0deg)',
-                              transition: 'transform 0.3s ease'
+                              transition: 'transform 0.3s ease',
+                              padding: '0.1rem'
                             }}
                           ></button>
                         </div>
@@ -626,27 +626,34 @@ const WardManagement = () => {
                             {patientData.map((patient) => (
                               <button
                                 key={patient.id}
-                                className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${selectedPatient?.id === patient.id ? 'active' : ''}`}
+                                className={`list-group-item list-group-item-action ${selectedPatient?.id === patient.id ? 'active' : ''}`}
                                 onClick={() => handlePatientSelect(patient)}
                                 style={{
                                   borderLeft: `4px solid ${getBorderColor(patient.status)}`,
-                                  cursor: 'pointer'
+                                  cursor: 'pointer',
                                 }}
                               >
-                                <div>
-                                  <div className="fw-bold" style={{ fontSize: "0.85rem" }}>
+                                <div className="d-flex flex-column">
+                                  <div className="fw-bold mb-1" style={{ fontSize: "0.75rem", lineHeight: "1.1" }}>
                                     {patient.patientName}
                                   </div>
-                                  <div className="text-muted" style={{ fontSize: "0.75rem" }}>
-                                    {patient.bedNo}
+                                  <div className="d-flex flex-column">
+                                    <div className="text-muted" style={{ fontSize: "0.65rem" }}>
+                                      {patient.bedNo}
+                                    </div>
+                                    <div className="mt-1">
+                                      <span 
+                                        className={`badge ${patient.status === 'LR' ? 'bg-pink' : `bg-${getStatusBadgeColor(patient.status)}`}`}
+                                        style={{ 
+                                          fontSize: "0.6rem",
+                                          padding: "0.15em 0.4em"
+                                        }}
+                                      >
+                                        {patient.status}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
-                                <span 
-                                  className={`badge ${patient.status === 'LR' ? 'bg-pink' : `bg-${getStatusBadgeColor(patient.status)}`}`}
-                                  style={{ fontSize: "0.65rem" }}
-                                >
-                                  {patient.status}
-                                </span>
                               </button>
                             ))}
                           </div>
@@ -654,45 +661,47 @@ const WardManagement = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="col-auto d-flex align-items-start">
-                      <button
-                        className="collapse-toggle-collapsed arrow icofont-rounded-down ms-0 fs-5 border-0 bg-transparent"
-                        type="button"
-                        aria-expanded={false}
-                        onClick={() => setIsPatientListCollapsed(false)}
-                        style={{
-                          transform: 'rotate(90deg)',
-                          transition: 'transform 0.3s ease',
-                          marginTop: '0.5rem'
-                        }}
-                        title="Show Patient List"
-                      ></button>
+                    <div className="col-auto d-flex align-items-start ">
+                      <div className="d-flex align-items-center bg-light border mb-1">
+                        <span className="me-2 fw-bold" style={{ fontSize: "0.7rem", whiteSpace: "nowrap" }}>Patient List</span>
+                        <button
+                          className="collapse-toggle-collapsed arrow icofont-rounded-down ms-0 fs-6 border-0 bg-transparent"
+                          type="button"
+                          aria-expanded={false}
+                          onClick={() => setIsPatientListCollapsed(false)}
+                          style={{
+                            transform: 'rotate(90deg)',
+                            transition: 'transform 0.3s ease'
+                          }}
+                          title="Show Patient List"
+                        ></button>
+                      </div>
                     </div>
                   )}
                   {/* Patient Details */}
-                  <div className={isPatientListCollapsed ? "col-md-12" : "col-md-9"}>
-                    <div className="card mb-3">
+                  <div className={isPatientListCollapsed ? "col-md-12" : "col-md-10"}>
+                    <div className="card ">
                       <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                         <h5 className="mb-0">Patient Details - {selectedPatient.patientName}</h5>
                         <div className="d-flex gap-2">
-                          <span className={`badge bg-${getStatusBadgeColor(selectedPatient.status)}`}>
+                          <span className={`badge bg-${getStatusBadgeColor(selectedPatient.status)} align-items-center text-white py-2`}>
                             {selectedPatient.status} - {getStatusLabel(selectedPatient.status)}
                           </span>
                           <button className="btn btn-light btn-sm" onClick={handleBackToCards}>
-                            <i className="fa fa-arrow-left me-1"></i> Back to Cards
+                            <i className="fa fa-arrow-left me-1"></i> Nursing Home
                           </button>
                         </div>
                       </div>
 
                       <div className="card-body">
                         {/* Case Sheet Tabs Bar */}
-                        <div className="card mb-3">
+                        <div className="card mb-1">
                           <div className="card-body p-2">
                             <div className="d-flex flex-wrap gap-1">
                               {caseSheetTabs.map((tab) => (
                                 <button
                                   key={tab}
-                                  className={`btn btn-sm ${activeTab === tab ? 'btn-primary' : 'btn-outline-primary'} px-3 py-2`}
+                                  className={`btn btn-sm ${activeTab === tab ? 'btn-primary' : 'btn-outline-primary'} `}
                                   onClick={() => setActiveTab(tab)}
                                   style={{ fontSize: "0.85rem", whiteSpace: "nowrap" }}
                                 >
@@ -705,29 +714,29 @@ const WardManagement = () => {
 
                         <div className="row">
                           <div className="col-md-6">
-                            <div className="row mb-3">
+                            <div className="row mb-1">
                               <div className="col-4 fw-bold">Bed No:</div>
                               <div className="col-8">{selectedPatient.bedNo}</div>
                             </div>
-                            <div className="row mb-3">
+                            <div className="row  mb-1">
                               <div className="col-4 fw-bold">Patient:</div>
                               <div className="col-8">{selectedPatient.patientName} ({selectedPatient.ageGender})</div>
                             </div>
-                            <div className="row mb-3">
+                            <div className="row mb-1">
                               <div className="col-4 fw-bold">Admission:</div>
                               <div className="col-8">{selectedPatient.admissionNo} - {selectedPatient.admissionDate}</div>
                             </div>
                           </div>
                           <div className="col-md-6">
-                            <div className="row mb-3">
+                            <div className="row mb-1">
                               <div className="col-4 fw-bold">Doctor:</div>
                               <div className="col-8">{selectedPatient.doctorName}</div>
                             </div>
-                            <div className="row mb-3">
+                            <div className="row mb-1">
                               <div className="col-4 fw-bold">Ward:</div>
                               <div className="col-8">{selectedPatient.ward}</div>
                             </div>
-                            <div className="row mb-3">
+                            <div className="row mb-1">
                               <div className="col-4 fw-bold">From:</div>
                               <div className="col-8">{selectedPatient.from || "Direct Admission"}</div>
                             </div>
@@ -735,7 +744,7 @@ const WardManagement = () => {
                         </div>
 
                         {/* Tab Content */}
-                        <div className="card mt-3">
+                        <div className="card mt-1">
                           <div className="card-header bg-light">
                             <h6 className="mb-0">{activeTab}</h6>
                           </div>
@@ -924,7 +933,7 @@ const WardManagement = () => {
         
         /* Custom scrollbar for patient list */
         .card-body::-webkit-scrollbar {
-          width: 6px;
+          width: 4px;
         }
         
         .card-body::-webkit-scrollbar-track {
@@ -933,7 +942,7 @@ const WardManagement = () => {
         
         .card-body::-webkit-scrollbar-thumb {
           background: #888;
-          border-radius: 3px;
+          border-radius: 2px;
         }
         
         .card-body::-webkit-scrollbar-thumb:hover {
@@ -951,10 +960,17 @@ const WardManagement = () => {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          width: 36px;
-          height: 36px;
+          width: 24px;
+          height: 24px;
           border-radius: 4px;
           cursor: pointer;
+        }
+        
+        /* Arrow icon styles */
+        .icofont-rounded-down::before {
+          content: "▼";
+          font-family: Arial, sans-serif;
+          font-size: 12px;
         }
       `}</style>
     </div>

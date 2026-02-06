@@ -16,10 +16,9 @@ import {
   EMPLOYEE_REGISTRATION,
   MAS_DESIGNATION,
   MAS_SPECIALITY_CENTER,
+  MAS_LANGUAGES,
 } from "../../../../config/apiConfig";
-import {
-  getRequest,
-} from "../../../../service/apiService";
+import { getRequest } from "../../../../service/apiService";
 import Popup from "../../../../Components/popup";
 import validateUploadedFile from "../../../../Components/FileSize";
 
@@ -52,6 +51,7 @@ const EmployeeRegistration = () => {
     departmentId: "",
     designationId: "",
     totalExperience: "",
+    languages: [{ languageId: 1, languageName: "", languageIdValue: "" }],
 
     qualification: [
       {
@@ -102,6 +102,7 @@ const EmployeeRegistration = () => {
   const [designationData, setDesignationData] = useState([]);
   const [designationLoading, setDesignationLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [languageData, setLanguageData] = useState([]);
 
   const [countryIds, setCountryIds] = useState("");
   const [stateIds, setStateIds] = useState("");
@@ -131,6 +132,7 @@ const EmployeeRegistration = () => {
     fetchEmployeeTypeData();
     fetchEmploymentTypeData();
     fetchSpecialtyCenterData();
+    fetchLanguageData();
   }, []);
 
   const showPopup = (message, type = "info") => {
@@ -233,6 +235,32 @@ const EmployeeRegistration = () => {
       }
     } catch (error) {
       console.error("Error fetching state data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchLanguageData = async () => {
+    setLoading(true);
+    try {
+      const data = await getRequest(`${MAS_LANGUAGES}/getAll/1`);
+      console.log("Language Data:", data);
+
+      if (data && data.status === 200 && Array.isArray(data.response)) {
+        const formattedLanguages = data.response.map((lang) => ({
+          id: lang.id,
+          languageName: lang.language,
+          language: lang.language,
+        }));
+        setLanguageData(formattedLanguages);
+        console.log("Languages loaded:", formattedLanguages.length);
+      } else {
+        console.error("Unexpected API response format:", data);
+        setLanguageData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching languages:", error);
+      showPopup("Failed to load languages", "error");
     } finally {
       setLoading(false);
     }
@@ -410,9 +438,6 @@ const EmployeeRegistration = () => {
         })
       : [];
 
-
-
-
   const handleCountryChange = (countryCode, id) => {
     setFormData((prevState) => ({
       ...prevState,
@@ -421,6 +446,13 @@ const EmployeeRegistration = () => {
       districtId: "",
     }));
     fetchStateData(countryCode);
+  };
+
+  const removeLanguageRow = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      languages: prev.languages.filter((_, i) => i !== index),
+    }));
   };
 
   const handleStateChange = (stateCode, id) => {
@@ -436,6 +468,28 @@ const EmployeeRegistration = () => {
     setFormData((prevState) => ({
       ...prevState,
       districtId: districtId,
+    }));
+  };
+
+  const handleLanguageChange = (
+    index,
+    field,
+    value,
+    selectedLanguage = null,
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      languages: prev.languages.map((item, i) =>
+        i === index
+          ? {
+              ...item,
+              [field]: value,
+              ...(field === "languageName" && selectedLanguage
+                ? { languageIdValue: selectedLanguage }
+                : {}),
+            }
+          : item,
+      ),
     }));
   };
 
@@ -502,7 +556,6 @@ const EmployeeRegistration = () => {
       identificationType: idTypeId,
     }));
   };
-
 
   const handleInputMobileChange = (e) => {
     const { id, value } = e.target;
@@ -616,6 +669,20 @@ const EmployeeRegistration = () => {
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const addLanguageRow = () => {
+    setFormData((prev) => ({
+      ...prev,
+      languages: [
+        ...prev.languages,
+        {
+          languageId: prev.languages.length + 1,
+          languageName: "",
+          languageIdValue: "",
+        },
+      ],
+    }));
   };
 
   const addEducationRow = (e) => {
@@ -1030,6 +1097,34 @@ const EmployeeRegistration = () => {
       newErrors.specialtyInterest = specialtyInterestErrors;
     }
 
+    // Language Validation
+    const languageErrors = [];
+    formData.languages.forEach((language, index) => {
+      const langErrors = {};
+
+      if (
+        !language.languageName ||
+        language.languageName.toString().trim() === ""
+      ) {
+        langErrors.languageName = "Language is required";
+      }
+
+      // Also validate that we have the language ID
+      if (
+        !language.languageIdValue ||
+        language.languageIdValue.toString().trim() === ""
+      ) {
+        langErrors.languageIdValue = "Language ID is required";
+      }
+
+      if (Object.keys(langErrors).length > 0) {
+        languageErrors[index] = langErrors;
+      }
+    });
+    if (languageErrors.length > 0) {
+      newErrors.languages = languageErrors;
+    }
+
     // Awards & Distinctions Validation
     const awardsErrors = [];
     formData.awardsDistinction.forEach((award, index) => {
@@ -1098,7 +1193,6 @@ const EmployeeRegistration = () => {
 
       return false;
     }
-
 
     // Validate phone number format
     if (formData.mobileNo.length !== 10) {
@@ -1185,6 +1279,16 @@ const EmployeeRegistration = () => {
       requiredFields.push("departmentId");
     }
 
+    const languagesValid =
+      formData.languages.length > 0 &&
+      formData.languages.every(
+        (lang) =>
+          lang.languageName &&
+          lang.languageName.trim() !== "" &&
+          lang.languageIdValue &&
+          lang.languageIdValue.toString().trim() !== "",
+      );
+
     const basicFieldsValid = requiredFields.every(
       (field) => formData[field] && formData[field].toString().trim() !== "",
     );
@@ -1238,6 +1342,7 @@ const EmployeeRegistration = () => {
       specialtyCenterValid &&
       workExperienceValid &&
       membershipValid &&
+      languagesValid &&
       specialtyInterestValid &&
       awardsValid &&
       documentsValid
@@ -1298,12 +1403,6 @@ const EmployeeRegistration = () => {
       formData.designationId.toString(),
     );
 
-    // // ADD DEPARTMENT
-    // if (formData.departmentId) {
-    //     formDataToSend.append('departmentId', formData.departmentId.toString());
-    // }
-
-    // 2. Files
     if (formData.profilePicName && formData.profilePicName instanceof File) {
       formDataToSend.append("profilePicName", formData.profilePicName);
     }
@@ -1344,6 +1443,20 @@ const EmployeeRegistration = () => {
         );
       }
       // Don't send empty filePath
+    });
+
+    formData.languages.forEach((language, index) => {
+      if (language.languageIdValue) {
+        formDataToSend.append(
+          `languages[${index}].languageId`,
+          language.languageIdValue.toString(),
+        );
+      }
+
+      formDataToSend.append(
+        `languages[${index}].languageName`,
+        language.languageName || "",
+      );
     });
 
     // 4. Document Array - Add ID field
@@ -2827,7 +2940,141 @@ const EmployeeRegistration = () => {
               </div>
             </div>
           </div>
+          {/* Language Known Section */}
+          {/* Language Known Section */}
+          {/* Language Known Section */}
+          <div className="row mb-3">
+            <div className="col-sm-12">
+              <div className="card shadow mb-3">
+                <div className="card-header border-bottom-1 py-3">
+                  <h6 className="fw-bold mb-0">
+                    Language Known <span className="text-danger">*</span>
+                  </h6>
+                  {errors.languages && (
+                    <small className="text-danger">
+                      Please select all languages
+                    </small>
+                  )}
+                </div>
+                <div className="card-body">
+                  <table className="table table-bordered">
+                    <thead>
+                      <tr>
+                        <th>S.No</th>
+                        <th>
+                          Language <span className="text-danger">*</span>
+                        </th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {formData.languages.map((row, index) => (
+                        <tr key={index}>
+                          <td>{index + 1}</td>
+                          <td>
+                            <select
+                              className={`form-select ${hasError("languages", index, "languageName") ? "is-invalid" : ""}`}
+                              value={row.languageName}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value) {
+                                  // Find the selected language from languageData
+                                  const selectedLang = languageData.find(
+                                    (lang) =>
+                                      lang.language === value ||
+                                      lang.languageName === value,
+                                  );
 
+                                  if (selectedLang) {
+                                    // Update both languageName AND languageIdValue
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      languages: prev.languages.map(
+                                        (item, i) =>
+                                          i === index
+                                            ? {
+                                                ...item,
+                                                languageName: value,
+                                                languageIdValue:
+                                                  selectedLang.id.toString(),
+                                              }
+                                            : item,
+                                      ),
+                                    }));
+                                  }
+                                } else {
+                                  // Clear both fields if empty selection
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    languages: prev.languages.map((item, i) =>
+                                      i === index
+                                        ? {
+                                            ...item,
+                                            languageName: "",
+                                            languageIdValue: "",
+                                          }
+                                        : item,
+                                    ),
+                                  }));
+                                }
+                              }}
+                            >
+                              <option value="">Select Language</option>
+                              {languageData.map((lang) => (
+                                <option
+                                  key={lang.id}
+                                  value={lang.language || lang.languageName}
+                                >
+                                  {lang.language || lang.languageName}
+                                </option>
+                              ))}
+                            </select>
+                            {hasError("languages", index, "languageName") && (
+                              <div className="invalid-feedback">
+                                {getErrorMessage(
+                                  "languages",
+                                  index,
+                                  "languageName",
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            {formData.languages.length > 1 ? (
+                              <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={() => removeLanguageRow(index)}
+                                title="Remove language"
+                              >
+                                <i className="icofont-close"></i>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn btn-secondary"
+                                disabled
+                                title="At least one language is required"
+                              >
+                                <i className="icofont-close"></i>
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <button
+                    type="button"
+                    className="btn btn-success"
+                    onClick={addLanguageRow}
+                  >
+                    <i className="icofont-plus me-1"></i> Add Language
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
           {/* Work Experience */}
           <div className="row mb-3">
             <div className="col-sm-12">

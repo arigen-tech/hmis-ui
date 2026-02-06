@@ -619,29 +619,23 @@ const UpdatePatientRegistration = () => {
 
   const uploadImage = async (base64Image) => {
     try {
-      // Convert base64 to Blob
       const blob = await fetch(base64Image).then((res) => res.blob());
       const formData1 = new FormData();
       formData1.append("file", blob, "photo.png");
 
-      // Send the formData to the server
       const response = await fetch(`${API_HOST}${PATIENT_IMAGE_UPLOAD}`, {
         method: "POST",
         body: formData1,
       });
 
-      // Parse JSON response
       const data = await response.json();
 
       if (response.status === 200 && data.response) {
-        // Extracting the image path
         const extractedPath = data.response;
 
-        // Updating state with the extracted image path
         setImageURL(extractedPath);
         console.log("Uploaded Image URL:", extractedPath);
 
-        // Show success alert
         Swal.fire("Success!", "Image uploaded successfully!", "success");
       } else {
         Swal.fire("Error!", "Failed to upload image!", "error");
@@ -677,7 +671,6 @@ const UpdatePatientRegistration = () => {
         const nok = data.nok || {};
         const emergency = data.emergency || {};
 
-        // Map the patient data to your form structure
         const mappedPatientData = {
           id: patientId,
           uhidNo: patient.uhidNo || "",
@@ -714,10 +707,8 @@ const UpdatePatientRegistration = () => {
           emerMobile: emergency.mobileNo || "",
         };
 
-        // Update the patient detail form with mapped data
         setPatientDetailForm(mappedPatientData);
 
-        // Handle appointments if exists
         if (data.appointments && data.appointments.length > 0) {
           const mappedAppointments = data.appointments.map((appt, index) => {
             const extractDate = (dateString) => {
@@ -764,7 +755,6 @@ const UpdatePatientRegistration = () => {
           setNextAppointmentId(mappedAppointments.length);
           setAppointmentFlag(true);
 
-          // Fetch doctor data for each appointment
           mappedAppointments.forEach(async (appt) => {
             if (appt.speciality) {
               try {

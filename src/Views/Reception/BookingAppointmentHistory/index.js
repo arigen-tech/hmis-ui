@@ -42,19 +42,26 @@ import {
   SESSION_NOT_AVAILABLE_TEXT,
 } from "../../../config/constants";
 
-// Helper functions
 const formatTimeToHHMM = (timeString) => {
   if (!timeString) return "";
+  
   if (timeString.includes("T")) {
-    const date = new Date(timeString);
-    if (isNaN(date.getTime())) return "";
-    
-    // Use UTC methods instead of local time
-    const hours = date.getUTCHours().toString().padStart(2, '0');
-    const minutes = date.getUTCMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
+    const timeMatch = timeString.match(/T(\d{2}:\d{2}):/);
+    if (timeMatch && timeMatch[1]) {
+      return timeMatch[1];
+    }
   }
   return timeString.substring(0, 5);
+};
+
+const toInstant = (dateStr, timeStr) => {
+  if (!dateStr || !timeStr) return null;
+  const dateOnly = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+  let timeWithSeconds = timeStr;
+  if (timeStr.split(":").length === 2) {
+    timeWithSeconds = `${timeStr}:00`;
+  }
+  return `${dateOnly}T${timeWithSeconds}Z`;
 };
 
 const formatAppointmentTime = (start, end) => {
@@ -591,13 +598,9 @@ const BookingAppointmentHistory = () => {
       Swal.showLoading();
       try {
         // Correctly create ISO strings for the backend
-        const appointmentDateInstant = new Date(newDate).toISOString();
-        const startTimeInstant = new Date(
-          `${newDate}T${slotToUse.start}:00`,
-        ).toISOString();
-        const endTimeInstant = new Date(
-          `${newDate}T${slotToUse.end}:00`,
-        ).toISOString();
+        const appointmentDateInstant = `${newDate}T00:00:00Z`;
+        const startTimeInstant = `${newDate}T${slotToUse.start}:00Z`;
+        const endTimeInstant = `${newDate}T${slotToUse.end}:00Z`;
 
         const reschedulePayload = {
           visitId: selectedPatient.visitId,
