@@ -186,6 +186,8 @@ import CrossMatchType from './Views/Masters/CrossMatchType';
 import WardManagement from './Views/IPD/WardManagement';
 import PatientRegistrationRadiologyBooking from './Views/Radiology/ PatientRegistrationRadiologyBooking';
 import RadiologyBookingRegisteredPatient from './Views/Radiology/Follow-up Radiology Booking-';
+import DonorInformation from './Views/BloodBank/DonorRegistration';
+import DonorRegistration from './Views/BloodBank/DonorRegistration';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -405,7 +407,7 @@ function App() {
                 <Route path="/WardManagement" element={<WardManagement/>} />
                 <Route path="/PatientRegistrationRadiologyBooking" element={<PatientRegistrationRadiologyBooking/>} />
                 <Route path="/RadiologyBookingRegisteredPatient" element={<RadiologyBookingRegisteredPatient/>} />
-
+                <Route path="/DonorRegistration" element={<DonorRegistration/>} />
               </Route>
             </Route>
 
