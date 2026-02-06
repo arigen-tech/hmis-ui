@@ -636,7 +636,6 @@ const PatientRegistration = () => {
   const onDateChange = async (index, date) => {
     if (!date) return;
 
-    // 1. Convert Date Object to YYYY-MM-DD safely
     let dateString = "";
     if (date instanceof Date) {
       const year = date.getFullYear();
@@ -647,13 +646,12 @@ const PatientRegistration = () => {
       dateString = date.split("T")[0];
     }
 
-    // 2. Check if date is in past
     if (isPastDate(dateString)) {
       Swal.fire({
         icon: "warning",
         title: "Invalid Date",
         text: "You cannot select a past date",
-        timer: 2000,
+        timer: 4000,
       });
       setDateResetKey((prev) => prev + 1);
       return;
@@ -704,7 +702,7 @@ const PatientRegistration = () => {
       ),
     );
 
-    checkDoctorValid(id, value, specialityId);
+    //checkDoctorValid(id, value, specialityId);
   };
 
   const handleSessionChange = (id, value, specialityId, doctorId) => {
@@ -725,7 +723,7 @@ const PatientRegistration = () => {
       ),
     );
 
-    checkSessionValid(id, doctorId, specialityId, value);
+ //   checkSessionValid(id, doctorId, specialityId, value);
   };
 
   async function checkDoctorValid(rowId, doctorId, deptId) {
@@ -829,7 +827,6 @@ const PatientRegistration = () => {
 
       return () => clearTimeout(timer);
     } else {
-      // If any field is cleared, reset duplicate flag
       setIsDuplicatePatient(false);
     }
   }, [
