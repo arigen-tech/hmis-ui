@@ -199,7 +199,7 @@ const validRoutes = [
   "/MRIInvestigation",
   "/CTInvestigation",
   "/PETInvestigation"
-
+  
 ];
 
 const NotAuthorized = () => {

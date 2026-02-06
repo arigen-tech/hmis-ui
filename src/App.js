@@ -183,7 +183,6 @@ import BloodInventoryStatus from './Views/Masters/BloodInventoryStatus';
 import BloodTestMaster from './Views/Masters/BloodTestMaster';
 import CrossMatchType from './Views/Masters/CrossMatchType';
 import XRAYInvestigation from './Views/Radiology/XRAYInvestigation';
-
 import WardManagement from './Views/IPD/WardManagement';
 import PatientRegistrationRadiologyBooking from './Views/Radiology/ PatientRegistrationRadiologyBooking';
 import RadiologyBookingRegisteredPatient from './Views/Radiology/Follow-up Radiology Booking-';
