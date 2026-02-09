@@ -325,78 +325,75 @@ const WardManagement = () => {
     setSelectedPatient(null)
   }
 
-  // NEW: Get complete box background color based on status
+  // Bright vibrant colors for each status
   const getBoxBackgroundColor = (status) => {
     switch (status) {
       case "VACANT":
-        return "#d4edda" // Light Green
+        return "#a8e6a3" // Bright Green (keeping it green as requested)
       case "NRW":
-        return "#f8d7da" // Light Red
+        return "#ff6b6b" // Bright Red
       case "RW":
-        return "#fff3cd" // Light Orange
+        return "#4d96ff" // Bright Blue
       case "TP":
-        return "#d1ecf1" // Light Sky Blue
+        return "#ffa500" // Bright Orange
       case "OT":
-        return "#cce5ff" // Light Blue
+        return "#36b5ff" // Bright Sky Blue
       case "LR":
-        return "#f8d7e6" // Light Pink
+        return "#ff6bc9" // Bright Pink
       case "RD":
-        return "#fff3cd" // Light Yellow (same as RW)
+        return "#fff176" // Bright Yellow
       default:
-        return "#f8f9fa" // Default Light Gray
+        return "#f8f9fa"
     }
   }
 
-  // NEW: Get text color based on status (for better contrast)
   const getTextColor = (status) => {
-    return "#212529" // Dark color for all for better readability
+    return "#212529"
   }
 
-  // NEW: Get border color based on status
   const getBorderColor = (status) => {
     switch (status) {
       case "VACANT":
-        return "#28a745" // Green
+        return "#2e7d32" // Dark Green
       case "NRW":
-        return "#dc3545" // Red
+        return "#c62828" // Dark Red
       case "RW":
-        return "#fd7e14" // Orange
+        return "#1565c0" // Dark Blue
       case "TP":
-        return "#17a2b8" // Sky Blue
+        return "#ef6c00" // Dark Orange
       case "OT":
-        return "#007bff" // Blue
+        return "#0277bd" // Dark Sky Blue
       case "LR":
-        return "#e83e8c" // Pink
+        return "#ad1457" // Dark Pink
       case "RD":
-        return "#ffc107" // Yellow
+        return "#f9a825" // Dark Yellow
       default:
-        return "#6c757d" // Gray
+        return "#6c757d"
     }
   }
 
-  // NEW: Get status badge color
+  // Updated badge colors to match vibrant backgrounds
   const getStatusBadgeColor = (status) => {
     switch (status) {
       case "VACANT":
-        return "success" // Green
+        return "success"
       case "NRW":
-        return "danger" // Red
+        return "danger"
       case "RW":
-        return "warning" // Orange
+        return "primary"
       case "TP":
-        return "info" // Sky Blue
+        return "warning"
       case "OT":
-        return "primary" // Blue
+        return "info"
       case "LR":
-        return "pink" // Will use custom class
+        return "pink"
       case "RD":
-        return "warning" // Yellow (same as RW)
+        return "warning"
       default:
         return "secondary"
     }
   }
 
-  // NEW: Get status label text
   const getStatusLabel = (status) => {
     switch (status) {
       case "VACANT":
@@ -434,7 +431,6 @@ const WardManagement = () => {
             <div className="card-header">
               <div className="d-flex justify-content-between align-items-center">
                 <h4 className="card-title p-2 mb-0">WARD MANAGEMENT</h4>
-
               </div>
             </div>
             <div className="card-body">
@@ -586,7 +582,7 @@ const WardManagement = () => {
                             <span
                               className={`badge ${patient.status === 'LR' ? 'bg-pink' : `bg-${getStatusBadgeColor(patient.status)}`} text-white`}
                               style={{
-                                backgroundColor: patient.status === 'LR' ? '#e83e8c' : '',
+                                backgroundColor: patient.status === 'LR' ? getBorderColor(patient.status) : '',
                                 fontSize: '0.6rem',
                                 padding: '0.2em 0.5em'
                               }}
@@ -804,8 +800,8 @@ const WardManagement = () => {
                                 style={{
                                   width: "20px",
                                   height: "20px",
-                                  backgroundColor: "#d4edda",
-                                  border: "2px solid #28a745",
+                                  backgroundColor: "#a8e6a3",
+                                  border: "2px solid #2e7d32",
                                   borderRadius: "4px"
                                 }}
                               ></div>
@@ -816,8 +812,8 @@ const WardManagement = () => {
                                 style={{
                                   width: "20px",
                                   height: "20px",
-                                  backgroundColor: "#f8d7da",
-                                  border: "2px solid #dc3545",
+                                  backgroundColor: "#ff6b6b",
+                                  border: "2px solid #c62828",
                                   borderRadius: "4px"
                                 }}
                               ></div>
@@ -828,24 +824,24 @@ const WardManagement = () => {
                                 style={{
                                   width: "20px",
                                   height: "20px",
-                                  backgroundColor: "#fff3cd",
-                                  border: "2px solid #fd7e14",
+                                  backgroundColor: "#4d96ff",
+                                  border: "2px solid #1565c0",
                                   borderRadius: "4px"
                                 }}
                               ></div>
-                              <span><strong>RW</strong> - Reported to Ward (Orange)</span>
+                              <span><strong>RW</strong> - Blue</span>
                             </div>
                             <div className="d-flex align-items-center gap-3 mb-2">
                               <div
                                 style={{
                                   width: "20px",
                                   height: "20px",
-                                  backgroundColor: "#d1ecf1",
-                                  border: "2px solid #17a2b8",
+                                  backgroundColor: "#ffa500",
+                                  border: "2px solid #ef6c00",
                                   borderRadius: "4px"
                                 }}
                               ></div>
-                              <span><strong>TP</strong> - Transferred Patient (Sky Blue)</span>
+                              <span><strong>TP</strong> - Orange</span>
                             </div>
                           </div>
                           <div className="col-md-6">
@@ -854,49 +850,38 @@ const WardManagement = () => {
                                 style={{
                                   width: "20px",
                                   height: "20px",
-                                  backgroundColor: "#cce5ff",
-                                  border: "2px solid #007bff",
+                                  backgroundColor: "#36b5ff",
+                                  border: "2px solid #0277bd",
                                   borderRadius: "4px"
                                 }}
                               ></div>
-                              <span><strong>OT</strong> - In Operation Theater (Blue)</span>
+                              <span><strong>OT</strong> - Sky Blue</span>
                             </div>
                             <div className="d-flex align-items-center gap-3 mb-2">
                               <div
                                 style={{
                                   width: "20px",
                                   height: "20px",
-                                  backgroundColor: "#f8d7e6",
-                                  border: "2px solid #e83e8c",
+                                  backgroundColor: "#ff6bc9",
+                                  border: "2px solid #ad1457",
                                   borderRadius: "4px"
                                 }}
                               ></div>
-                              <span><strong>LR</strong> - In Labor Room (Pink)</span>
+                              <span><strong>LR</strong> - Pink</span>
                             </div>
                             <div className="d-flex align-items-center gap-3 mb-2">
                               <div
                                 style={{
                                   width: "20px",
                                   height: "20px",
-                                  backgroundColor: "#fff3cd",
-                                  border: "2px solid #ffc107",
+                                  backgroundColor: "#fff176",
+                                  border: "2px solid #f9a825",
                                   borderRadius: "4px"
                                 }}
                               ></div>
-                              <span><strong>RD</strong> - Ready for Discharge (Yellow)</span>
+                              <span><strong>RD</strong> - Yellow</span>
                             </div>
-                            <div className="d-flex align-items-center gap-3 mb-2">
-                              <div
-                                style={{
-                                  width: "20px",
-                                  height: "20px",
-                                  backgroundColor: "#f8f9fa",
-                                  border: "2px solid #6c757d",
-                                  borderRadius: "4px"
-                                }}
-                              ></div>
-                              <span><strong>SELECTED</strong> - Dark Border</span>
-                            </div>
+                            
                           </div>
                         </div>
                       </div>
@@ -912,7 +897,7 @@ const WardManagement = () => {
       {/* Add custom CSS for pink badge */}
       <style jsx>{`
         .bg-pink {
-          background-color: #e83e8c !important;
+          background-color: #ad1457 !important;
         }
         
         /* Ensure 5 boxes per row on larger screens */
