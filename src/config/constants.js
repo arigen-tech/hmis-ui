@@ -672,6 +672,9 @@ export const MISSING_MOBILE_NUMBER = "Please enter Mobile Number";
 export const NO_DATA_FOUND = "No data found";
 export const NO_TIME_SLOTS = "No time slots available for this session and date.";
 
+//appointment Setup 
+export const APPOINTMENT_REQUIRED_FIELDS="Please fill all required fields properly for selected time slots.";
+
 
 
 
