@@ -39,7 +39,12 @@ import {
   RESCHEDULE_SUCCESS,
   SELECT_CANCELLATION_REASON,
   SESSION_NOT_AVAILABLE,
-  SESSION_NOT_AVAILABLE_TEXT,
+  SESSION_NOT_AVAILABLE_TEXT,INVALID_RESPONSE_FORMAT_LOG,
+  FETCH_SESSIONS_ERROR_LOG,
+  FETCH_CANCELLATION_REASONS_ERROR_LOG,
+  FETCH_TOKEN_AVAILABILITY_ERROR_LOG,
+  NO_TOKENS_AVAILABLE_CRITERIA_MSG,
+  FETCH_TOKEN_AVAILABILITY_ERROR,
 } from "../../../config/constants";
 
 const formatTimeToHHMM = (timeString) => {
@@ -143,11 +148,11 @@ const BookingAppointmentHistory = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setSessions(data.response);
       } else {
-        console.error("Invalid response format:", data);
+        console.error(INVALID_RESPONSE_FORMAT_LOG, data);
         setSessions([]);
       }
     } catch (error) {
-      console.error("Error fetching sessions:", error);
+      console.error(FETCH_SESSIONS_ERROR_LOG, error);
       setSessions([]);
     }
   };
@@ -179,7 +184,7 @@ const BookingAppointmentHistory = () => {
         setCancellationReasons([]);
       }
     } catch (error) {
-      console.error("Error fetching cancellation reasons:", error);
+      console.error(FETCH_CANCELLATION_REASONS_ERROR_LOG, error);
       setCancellationReasons([]);
     } finally {
       setLoadingReasons(false);
@@ -486,7 +491,7 @@ const BookingAppointmentHistory = () => {
         setShowTimeSlots(false);
       }
     } catch (error) {
-      console.error("Error fetching token availability:", error);
+      console.error(FETCH_TOKEN_AVAILABILITY_ERROR_LOG, error);
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -525,18 +530,18 @@ const BookingAppointmentHistory = () => {
         Swal.fire({
           icon: "info",
           title: "No Tokens Available",
-          text: res.message || "No tokens available for the selected criteria.",
+          text: res.message || NO_TOKENS_AVAILABLE_CRITERIA_MSG,
           timer: 2000,
         });
         setAvailableTokens([]);
         setShowTimeSlots(false);
       }
     } catch (error) {
-      console.error("Error fetching token availability:", error);
+      console.error(FETCH_TOKEN_AVAILABILITY_ERROR_LOG, error);
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "Failed to fetch token availability. Please try again.",
+        text: FETCH_TOKEN_AVAILABILITY_ERROR,
         timer: 2000,
       });
       setAvailableTokens([]);

@@ -23,7 +23,15 @@ import {
   PATIENT_SEARCH,
   STATE_BY_COUNTRY,
 } from "../../../config/apiConfig";
-import { DEPARTMENT_CODE_OPD } from "../../../config/constants";
+import { DEPARTMENT_CODE_OPD,IMAGE_TITLE,IMAGE_TEXT,IMAGE_UPLOAD_SUCC_MSG,IMAGE_UPLOAD_FAIL_MSG,
+  PAST_DATE_WARNING,INVALID_PAGE_NO_WARN_MSG,UNEXPECTED_API_RESPONSE_ERR,FETCH_DATA_ERROR,
+  AT_LEAST_ONE_APPOINTMENT_REQUIRED,INVALID_MOBILE_NUMBER_MSG,INVALID_EMAIL_FORMAT_MSG,NO_PATIENTS_FOUND_MSG,
+  SEARCH_PATIENTS_ERROR_LOG,SEARCH_PATIENTS_FAILED_MSG,CAMERA_ACCESS_ERROR_LOG,SOMETHING_WENT_WRONG_MSG,FILE_UPLOAD_ERROR_LOG,
+UPLOADED_IMAGE_URL_LOG,UNABLE_TO_LOAD_PATIENT_DETAILS,SELECT_PATIENT_TO_UPDATE_ERROR,ADD_AT_LEAST_ONE_APPOINTMENT_ERROR,
+CHECK_REQUIRED_FIELDS_ERROR,FINAL_REQUEST_READY_LOG,PATIENT_UPDATE_SUCCESS,PATIENT_UPDATE_WITH_APPOINTMENT_SUCCESS,
+PATIENT_UPDATED_SUCCESS_TITLE,BACKEND_ERROR_RESPONSE_LOG,MAX_LENGTH_EXCEEDED_ERROR_TEXT,FAILED_TO_UPDATE_PATIENT_ERROR,
+FETCH_TOKEN_AVAILABILITY_ERROR,SELECT_TOKEN_ERROR_LOG,NO_TOKENS_AVAILABLE,SELECT_SPECIALITY_DOCTOR_SESSION_MSG,
+SELECT_TOKEN_ERROR_TEXT,FETCH_TOKEN_AVAILABILITY_ERROR_LOG,NO_TOKENS_AVAILABLE_TEXT,NO_TOKENS_AVAILABLE_INFO,} from "../../../config/constants";
 import { getRequest, postRequest } from "../../../service/apiService";
 
 const UpdatePatientRegistration = () => {
@@ -41,10 +49,10 @@ const UpdatePatientRegistration = () => {
           setPreConsultationFlag(true);
         }
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -56,11 +64,11 @@ const UpdatePatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setStateData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setStateData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -72,11 +80,11 @@ const UpdatePatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setDistrictData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setStateData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -207,7 +215,7 @@ const UpdatePatientRegistration = () => {
 
   const removeAppointmentRow = (id) => {
     if (appointments.length <= 1) {
-      Swal.fire("Error", "At least one appointment row is required", "error");
+      Swal.fire("Error", AT_LEAST_ONE_APPOINTMENT_REQUIRED, "error");
       return;
     }
 
@@ -460,13 +468,14 @@ const UpdatePatientRegistration = () => {
     if (name === "patientEmailId" && value) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(value)) {
-        error = "Invalid email format.";
+        error = INVALID_EMAIL_FORMAT_MSG;
+
       }
     }
 
     if (name === "patientMobileNumber") {
       if (value && !/^\d{10}$/.test(value)) {
-        error = "Mobile number must be exactly 10 digits.";
+        error = INVALID_MOBILE_NUMBER_MSG;
       }
     }
 
@@ -510,11 +519,11 @@ const UpdatePatientRegistration = () => {
       } else {
         setPatients([]);
         setSearchPerformed(false);
-        Swal.fire("Info", "No patients found matching your criteria", "info");
+        Swal.fire("Info",NO_PATIENTS_FOUND_MSG, "info");
       }
     } catch (error) {
-      console.error("Error searching patients:", error);
-      Swal.fire("Error", "Failed to search patients", "error");
+      console.error(SEARCH_PATIENTS_ERROR_LOG, error);
+      Swal.fire("Error",SEARCH_PATIENTS_FAILED_MSG, "error");
       setSearchPerformed(false);
     } finally {
       setLoading(false);
@@ -577,7 +586,7 @@ const UpdatePatientRegistration = () => {
         }
       }, 100);
     } catch (error) {
-      console.error("Error accessing camera:", error);
+      console.error(CAMERA_ACCESS_ERROR_LOG, error);
     }
   };
 
@@ -602,8 +611,8 @@ const UpdatePatientRegistration = () => {
 
   const confirmUpload = (imageData) => {
     Swal.fire({
-      title: "Confirm Upload",
-      text: "Do you want to upload this photo?",
+      title: IMAGE_TITLE,
+      text: IMAGE_TEXT,
       imageUrl: imageData,
       imageWidth: 200,
       imageHeight: 150,
@@ -634,15 +643,15 @@ const UpdatePatientRegistration = () => {
         const extractedPath = data.response;
 
         setImageURL(extractedPath);
-        console.log("Uploaded Image URL:", extractedPath);
+        console.log(UPLOADED_IMAGE_URL_LOG, extractedPath);
 
-        Swal.fire("Success!", "Image uploaded successfully!", "success");
+        Swal.fire("Success!", IMAGE_UPLOAD_SUCC_MSG, "success");
       } else {
-        Swal.fire("Error!", "Failed to upload image!", "error");
+        Swal.fire("Error!",IMAGE_UPLOAD_FAIL_MSG, "error");
       }
     } catch (error) {
-      console.error("Upload error:", error);
-      Swal.fire("Error!", "Something went wrong!", "error");
+      console.error(FILE_UPLOAD_ERROR_LOG, error);
+      Swal.fire("Error!", SOMETHING_WENT_WRONG_MSG, "error");
     }
   };
 
@@ -801,13 +810,13 @@ const UpdatePatientRegistration = () => {
       } else {
         Swal.fire(
           "Error",
-          response.message || "Unable to load patient details",
+          response.message || UNABLE_TO_LOAD_PATIENT_DETAILS,
           "error",
         );
       }
     } catch (err) {
       console.error(err);
-      Swal.fire("Error", "Unable to load patient details", "error");
+      Swal.fire("Error",UNABLE_TO_LOAD_PATIENT_DETAILS, "error");
     }
   };
 
@@ -819,11 +828,11 @@ const UpdatePatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setGenderData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setGenderData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -837,11 +846,11 @@ const UpdatePatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setRelationData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setRelationData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -855,11 +864,11 @@ const UpdatePatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setCountryData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setCountryData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -871,11 +880,11 @@ const UpdatePatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setStateData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setStateData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -887,11 +896,11 @@ const UpdatePatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setSession(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setSession([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -903,11 +912,11 @@ const UpdatePatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setDistrictData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setDistrictData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -919,11 +928,11 @@ const UpdatePatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokStateData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setNokStateData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -935,11 +944,11 @@ const UpdatePatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokStateData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setNokStateData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -951,11 +960,11 @@ const UpdatePatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokDistrictData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setNokDistrictData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -967,11 +976,11 @@ const UpdatePatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokDistrictData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setNokDistrictData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -986,11 +995,11 @@ const UpdatePatientRegistration = () => {
         );
         setDepartmentData(filteredDepartments);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setDepartmentData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -1005,7 +1014,7 @@ const UpdatePatientRegistration = () => {
     console.log("Patient Detail Form:", patientDetailForm);
 
     if (!patientDetailForm.id) {
-      Swal.fire("Error", "Please select a patient to update", "error");
+      Swal.fire("Error",SELECT_PATIENT_TO_UPDATE_ERROR, "error");
       return;
     }
 
@@ -1017,7 +1026,7 @@ const UpdatePatientRegistration = () => {
       if (validAppointments.length === 0) {
         Swal.fire(
           "Error",
-          "Please add at least one valid appointment",
+          ADD_AT_LEAST_ONE_APPOINTMENT_ERROR,
           "error",
         );
         return;
@@ -1037,11 +1046,11 @@ const UpdatePatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setDoctorData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setDoctorData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -1163,7 +1172,7 @@ const UpdatePatientRegistration = () => {
     if (!validateForm()) {
       Swal.fire(
         "Validation Error",
-        "Please check all required fields",
+       CHECK_REQUIRED_FIELDS_ERROR,
         "error",
       );
       return;
@@ -1409,7 +1418,7 @@ const UpdatePatientRegistration = () => {
       },
     });
 
-    console.log("Final request ready for sending:", finalRequest);
+    console.log(FINAL_REQUEST_READY_LOG, finalRequest);
 
     try {
       Swal.fire({
@@ -1427,8 +1436,8 @@ const UpdatePatientRegistration = () => {
 
       if (response.status === 200) {
         const message = appointmentFlag
-          ? "Patient updated and appointments scheduled successfully!"
-          : "Patient information updated successfully!";
+          ? PATIENT_UPDATE_WITH_APPOINTMENT_SUCCESS
+          : PATIENT_UPDATE_SUCCESS;
 
         const resp = response.response?.opdBillingPatientResponse;
         const patientResp = response.response?.patient || response.response;
@@ -1442,7 +1451,7 @@ const UpdatePatientRegistration = () => {
         if (hasBillingStatusY) {
           // Direct redirect to PendingForBilling
           Swal.fire({
-            title: "Patient Updated Successfully!",
+            title:PATIENT_UPDATED_SUCCESS_TITLE,
             html: `<p>Patient has been updated successfully.</p>
                  <p>Redirecting to pending billing...</p>`,
             icon: "success",
@@ -1456,7 +1465,7 @@ const UpdatePatientRegistration = () => {
         } else if (resp) {
           // Show success dialog with option to go to billing
           Swal.fire({
-            title: "Patient Updated Successfully!",
+            title:PATIENT_UPDATED_SUCCESS_TITLE,
             html: `
             <p><strong>${resp.patientName}</strong> has been updated successfully.</p>
             ${appointmentFlag ? `<p>Appointments have been scheduled.</p>` : ""}
@@ -1523,7 +1532,7 @@ const UpdatePatientRegistration = () => {
             `${patientDetailForm.patientFn || ""} ${patientDetailForm.patientLn || ""}`.trim();
 
           Swal.fire({
-            title: "Patient Updated Successfully!",
+            title:PATIENT_UPDATED_SUCCESS_TITLE,
             html: `<p><strong>${displayName || "Patient"}</strong> has been updated successfully.</p>`,
             icon: "success",
             confirmButtonText: "OK",
@@ -1536,13 +1545,13 @@ const UpdatePatientRegistration = () => {
           Swal.fire({
             icon: "success",
             title: "Update Successful",
-            text: "Patient information updated successfully.",
+            text: PATIENT_UPDATE_SUCCESS,
           }).then(() => {
             handleReset(); // Go back to search
           });
         }
       } else {
-        console.error("Backend error response:", response);
+        console.error(BACKEND_ERROR_RESPONSE_LOG, response);
         throw new Error(response.message || response.detail || "Update failed");
       }
     } catch (error) {
@@ -1563,7 +1572,7 @@ const UpdatePatientRegistration = () => {
           Swal.fire({
             icon: "error",
             title: "Data Too Long",
-            text: "Some data exceeds the maximum allowed length. Please check particularly long text fields.",
+            text: MAX_LENGTH_EXCEEDED_ERROR_TEXT,
             confirmButtonText: "OK",
           });
         }
@@ -1571,7 +1580,7 @@ const UpdatePatientRegistration = () => {
         Swal.fire({
           icon: "error",
           title: "Update Failed",
-          text: error.message || "Failed to update patient. Please try again.",
+          text: error.message || FAILED_TO_UPDATE_PATIENT_ERROR,
           confirmButtonText: "OK",
         });
       }
@@ -1701,11 +1710,11 @@ const UpdatePatientRegistration = () => {
 
       Swal.close();
     } catch (error) {
-      console.error("Error selecting token:", error);
+      console.error(SELECT_TOKEN_ERROR_LOG, error);
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "Failed to select token. Please try again.",
+        text: SELECT_TOKEN_ERROR_TEXT,
       });
     }
   };
@@ -1718,7 +1727,7 @@ const UpdatePatientRegistration = () => {
       handlePageChange(pageNumber);
       setPageInput("");
     } else {
-      Swal.fire("Invalid Page", "Please enter a valid page number.", "warning");
+      Swal.fire("Invalid Page",INVALID_PAGE_NO_WARN_MSG, "warning");
     }
   };
 
@@ -1754,7 +1763,7 @@ const UpdatePatientRegistration = () => {
       Swal.fire({
         icon: "warning",
         title: "Invalid Date",
-        text: "You cannot select a past date",
+        text: PAST_DATE_WARNING,
         timer: 2000,
       });
       setDateResetKey((prev) => prev + 1);
@@ -1798,7 +1807,7 @@ const UpdatePatientRegistration = () => {
         Swal.fire({
           icon: "warning",
           title: "Incomplete Details",
-          text: "Please select Speciality, Doctor, and Session first.",
+          text: SELECT_SPECIALITY_DOCTOR_SESSION_MSG,
         });
         return;
       }
@@ -1824,18 +1833,18 @@ const UpdatePatientRegistration = () => {
       } else {
         Swal.fire({
           icon: "error",
-          title: "No Tokens Available",
+          title: NO_TOKENS_AVAILABLE,
           text:
-            data.message || "No tokens available for the selected criteria.",
+            data.message || NO_TOKENS_AVAILABLE_TEXT,
         });
         setAvailableTokens([]);
       }
     } catch (error) {
-      console.error("Error fetching token availability:", error);
+      console.error(FETCH_TOKEN_AVAILABILITY_ERROR_LOG, error);
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "Failed to fetch token availability. Please try again.",
+        text: FETCH_TOKEN_AVAILABILITY_ERROR,
       });
     } finally {
       setLoading(false);
@@ -1852,7 +1861,7 @@ const UpdatePatientRegistration = () => {
       Swal.fire({
         icon: "info",
         title: "No Tokens Available",
-        text: "No tokens are available for the selected session.",
+        text: NO_TOKENS_AVAILABLE_INFO,
       });
       return;
     }
