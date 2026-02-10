@@ -305,6 +305,7 @@ const AppointmentSetup = () => {
       updatedDayConfig.totalOnlineToken = "0";
       updatedDayConfig.startTime = "";
       updatedDayConfig.endTime = "";
+      updatedDayConfig.opdLocation="";
     }
 
     if (
