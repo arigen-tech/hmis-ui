@@ -34,6 +34,7 @@ const XRAYInvestigation = () => {
           orderDate: "2026-01-10",
           orderTime: "10:30",
           department: "Radiology",
+          contactNo: "+91-9876543210",
           status: "y"
         },
         {
@@ -48,7 +49,23 @@ const XRAYInvestigation = () => {
           orderDate: "2026-01-12",
           orderTime: "11:00",
           department: "Radiology",
+          contactNo: "+91-9876543211",
           status: "n"
+        },
+        {
+          id: 3,
+          accessionNo: "Acc-260112-003",
+          uhid: "U13579",
+          patientName: "Robert Johnson",
+          age: "45",
+          gender: "Male",
+          modality: "MRI",
+          investigationName: "MRI Spine",
+          orderDate: "2026-01-13",
+          orderTime: "14:15",
+          department: "Radiology",
+          contactNo: "+91-9876543212",
+          status: "y"
         }
       ]);
       setLoading(false);
@@ -59,7 +76,8 @@ const XRAYInvestigation = () => {
   const filteredData = xrayData.filter(item =>
     item.accessionNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.uhid.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.patientName.toLowerCase().includes(searchQuery.toLowerCase())
+    item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.contactNo.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   useEffect(() => {
@@ -90,8 +108,7 @@ const XRAYInvestigation = () => {
         )
       );
       showPopup(
-        `XRAY Investigation ${
-          confirmDialog.newStatus === "y" ? "Activated" : "Deactivated"
+        `XRAY Investigation ${confirmDialog.newStatus === "y" ? "Activated" : "Deactivated"
         } Successfully`
       );
     }
@@ -99,12 +116,15 @@ const XRAYInvestigation = () => {
   };
 
   /* ---------------- ACTION HANDLERS ---------------- */
-  const handleView = (row) => {
-    showPopup(`Viewing ${row.investigationName}`, "info");
+  const handleCompleted = (row) => {
+    showPopup(`Marked as Completed for ${row.patientName} (${row.accessionNo})`, "success");
+    // Add your completed logic here
+    // You can update the status or add a completed flag
   };
 
-  const handleEdit = (row) => {
-    showPopup(`Editing ${row.investigationName}`, "success");
+  const handleCancel = (row) => {
+    showPopup(`Cancelling investigation for ${row.patientName} (${row.accessionNo})`, "warning");
+    // Add your cancel logic here
   };
 
   /* ---------------- UI ---------------- */
@@ -113,20 +133,6 @@ const XRAYInvestigation = () => {
       <div className="card form-card">
         <div className="card-header d-flex justify-content-between align-items-center">
           <h4 className="card-title">XRAY Investigation</h4>
-
-          <div className="d-flex gap-2">
-            <input
-              type="search"
-              className="form-control"
-              placeholder="Search by Accession No / UHID / Patient Name"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ width: "300px" }}
-            />
-            <button className="btn btn-success" onClick={() => setSearchQuery("")}>
-              Show All
-            </button>
-          </div>
         </div>
 
         <div className="card-body">
@@ -134,79 +140,134 @@ const XRAYInvestigation = () => {
             <LoadingScreen />
           ) : (
             <>
-              <table className="table table-bordered table-hover align-middle">
-                <thead className="table-light">
-                  <tr>
-                    <th>Accession No</th>
-                    <th>UHID</th>
-                    <th>Patient Name</th>
-                    <th>Age</th>
-                    <th>Gender</th>
-                    <th>Modality</th>
-                    <th>Investigation</th>
-                    <th>Order Date</th>
-                    <th>Order Time</th>
-                    <th>Department</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
+              {/* Search Field inside table header */}
+              <div className="mb-3">
+                <div className="row align-items-center">
+                  <div className="col-md-4">
+                    <input
+                      type="search"
+                      className="form-control"
+                      placeholder="Search by Accession No / UHID / Patient Name / Contact No"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setSearchQuery("")}
+                    >
+                      Clear Search
+                    </button>
+                  </div>
+                  <div className="col-md-6 text-end">
+                    <span className="text-muted">
+                      Showing {currentItems.length} of {filteredData.length} records
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-                <tbody>
-                  {currentItems.length > 0 ? (
-                    currentItems.map(item => (
-                      <tr key={item.id}>
-                        <td>{item.accessionNo}</td>
-                        <td>{item.uhid}</td>
-                        <td>{item.patientName}</td>
-                        <td>{item.age}</td>
-                        <td>{item.gender}</td>
-                        <td>{item.modality}</td>
-                        <td>{item.investigationName}</td>
-                        <td>{item.orderDate}</td>
-                        <td>{item.orderTime}</td>
-                        <td>{item.department}</td>
-
-                        {/* STATUS */}
-                        <td>
-                          <div className="form-check form-switch">
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              checked={item.status === "y"}
-                              onChange={() =>
-                                handleSwitchChange(
-                                  item.id,
-                                  item.status === "y" ? "n" : "y",
-                                  item.investigationName
-                                )
-                              }
-                            />
-                            <span className="ms-2">
-                              {item.status === "y" ? "Active" : "Inactive"}
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* ACTION */}
-                       <td>
-  <td>
-  <span>Completed</span>
-</td>
-
-</td>
-
-               </tr>
-                    ))
-                  ) : (
+              <div className="table-responsive">
+                <table className="table table-bordered table-hover align-middle">
+                  <thead className="table-light">
                     <tr>
-                      <td colSpan="12" className="text-center">
-                        No records found
-                      </td>
+                      <th>Accession No</th>
+                      <th>UHID</th>
+                      <th>Patient Name</th>
+                      <th>Age</th>
+                      <th>Gender</th>
+                      <th>Contact No</th>
+                      <th>Modality</th>
+                      <th>Investigation</th>
+                      <th>Order Date</th>
+                      <th>Order Time</th>
+                      <th>Department</th>
+                      <th>Status</th>
+                      <th>Action</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+
+                  <tbody>
+                    {currentItems.length > 0 ? (
+                      currentItems.map(item => (
+                        <tr key={item.id}>
+                          <td>{item.accessionNo}</td>
+                          <td>{item.uhid}</td>
+                          <td>{item.patientName}</td>
+                          <td>{item.age}</td>
+                          <td>{item.gender}</td>
+                          <td>{item.contactNo}</td>
+                          <td>{item.modality}</td>
+                          <td>{item.investigationName}</td>
+                          <td>{item.orderDate}</td>
+                          <td>{item.orderTime}</td>
+                          <td>{item.department}</td>
+
+                          {/* STATUS */}
+                          <td>
+                            <div className="form-check form-switch">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                checked={item.status === "y"}
+                                onChange={() =>
+                                  handleSwitchChange(
+                                    item.id,
+                                    item.status === "y" ? "n" : "y",
+                                    item.investigationName
+                                  )
+                                }
+                              />
+                              <span className="ms-2">
+                                {item.status === "y" ? "Active" : "Inactive"}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* ACTIONS - Only Completed and Cancel buttons */}
+                          <td>
+                            <div className="btn-group" role="group">
+                              <button
+                                className="btn btn-sm btn-success me-1"
+                                onClick={() => handleCompleted(item)}
+                                title="Mark as Completed"
+                              >
+                                Completed
+                              </button>
+
+                              <button
+                                className="btn btn-sm btn-danger"
+                                onClick={() => handleCancel(item)}
+                                title="Cancel Investigation"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+
+
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="13" className="text-center text-muted py-4">
+                          <i className="fas fa-search fa-2x mb-3"></i>
+                          <p>No records found matching your search</p>
+                          {searchQuery && (
+                            <button
+                              className="btn btn-sm btn-outline-secondary mt-2"
+                              onClick={() => setSearchQuery("")}
+                            >
+                              Clear Search
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
               <Pagination
                 totalItems={filteredData.length}
@@ -220,24 +281,37 @@ const XRAYInvestigation = () => {
           {popupMessage && <Popup {...popupMessage} />}
 
           {confirmDialog.isOpen && (
-            <div className="modal d-block">
-              <div className="modal-dialog">
+            <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+              <div className="modal-dialog modal-dialog-centered">
                 <div className="modal-content">
                   <div className="modal-header">
-                    <h5>Confirm Status Change</h5>
+                    <h5 className="modal-title">Confirm Status Change</h5>
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={() => handleConfirm(false)}
+                    ></button>
                   </div>
                   <div className="modal-body">
-                    Are you sure you want to{" "}
-                    <strong>
-                      {confirmDialog.newStatus === "y" ? "Activate" : "Deactivate"}
-                    </strong>{" "}
-                    <strong>{confirmDialog.investigationName}</strong>?
+                    <p>
+                      Are you sure you want to{" "}
+                      <strong>
+                        {confirmDialog.newStatus === "y" ? "Activate" : "Deactivate"}
+                      </strong>{" "}
+                      <strong>"{confirmDialog.investigationName}"</strong>?
+                    </p>
                   </div>
                   <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => handleConfirm(false)}
+                    >
                       No
                     </button>
-                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleConfirm(true)}
+                    >
                       Yes
                     </button>
                   </div>
