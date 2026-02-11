@@ -22,7 +22,16 @@ import {
   PATIENT_REGISTRATION,
   STATE_BY_COUNTRY,
 } from "../../../config/apiConfig";
-import { DEPARTMENT_CODE_OPD } from "../../../config/constants";
+import { DEPARTMENT_CODE_OPD,NO_TIME_SLOTS_AVAILABLE_MSG,FETCH_TOKEN_AVAILABILITY_ERROR_LOG,
+FETCH_TOKEN_AVAILABILITY_ERROR,CAMERA_ACCESS_ERROR_LOG,UNEXPECTED_API_RESPONSE_ERR,FETCH_DATA_ERROR,
+IMAGE_TEXT,IMAGE_TITLE,IMAGE_UPLOAD_FAIL_MSG,IMAGE_UPLOAD_SUCC_MSG,UNEXPECTED_ERROR,UNEXPECTED_RESPONSE_MSG,
+FILE_UPLOAD_ERROR_LOG,PAST_DATE_WARNING,DUPLICATE_PATIENT,DUPLICATE_CHECK_FAILED_LOG,SELECT_TOKEN_ERROR_TEXT,
+SELECT_TIME_SLOTS_BEFORE_REGISTRATION_MSG,INCOMPLETE_FORM_TITLE,INCOMPLETE_FORM_MSG,PATIENT_REGISTERED_SUCCESS_TITLE,
+PATIENT_REGISTRATION_FAILED_MSG,NO_TOKENS_SELECTED_SESSION_MSG,NO_TOKENS_AVAILABLE,SELECT_TOKEN_ERROR_LOG,
+INVALID_EMAIL_FORMAT_MSG,INVALID_MOBILE_NUMBER_MSG,PIN_CODE_INVALID_MSG,MOBILE_NUMBER_INVALID_MSG,UPLOADED_IMAGE_URL_LOG,
+DOB_REQUIRED_ERROR,AGE_FORMAT_ERROR,FIRST_NAME_REQUIRED_ERROR,GENDER_REQUIRED_ERROR,INVALID_DATE_TITLE,
+RELATION_REQUIRED_ERROR,MOBILE_REQUIRED_ERROR,AGE_NEGATIVE_ERROR,MISSING_TIME_SLOTS_TITLE,NOT_AVAILABLE_TITLE,
+  } from "../../../config/constants";
 
 const PatientRegistration = () => {
   const navigate = useNavigate();
@@ -231,7 +240,7 @@ const PatientRegistration = () => {
         if (!Swal.isVisible()) {
           Swal.fire({
             icon: "warning",
-            title: "Not Available",
+            title: NOT_AVAILABLE_TITLE,
             text:
               data.message,
             timer: 4000,
@@ -255,20 +264,20 @@ const PatientRegistration = () => {
           if (!Swal.isVisible()) {
             Swal.fire({
               icon: "info",
-              title: "No Tokens Available",
-              text: "No available time slots for the selected criteria. Please try another date or session.",
+              title: NO_TOKENS_AVAILABLE,
+              text: NO_TIME_SLOTS_AVAILABLE_MSG,
               timer: 3000,
             });
           }
         }
       }
     } catch (error) {
-      console.error("Error fetching token availability:", error);
+      console.error(FETCH_TOKEN_AVAILABILITY_ERROR_LOG, error);
       if (!Swal.isVisible()) {
         Swal.fire({
           icon: "error",
           title: "Error",
-          text: "Failed to fetch token availability. Please try again.",
+          text: FETCH_TOKEN_AVAILABILITY_ERROR,
         });
       }
     } finally {
@@ -309,7 +318,7 @@ const PatientRegistration = () => {
         }
       }, 100);
     } catch (error) {
-      console.error("Error accessing camera:", error);
+      console.error(CAMERA_ACCESS_ERROR_LOG, error);
     }
   };
 
@@ -326,10 +335,10 @@ const PatientRegistration = () => {
           setPreConsultationFlag(true);
         }
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -362,8 +371,8 @@ const PatientRegistration = () => {
 
   const confirmUpload = (imageData) => {
     Swal.fire({
-      title: "Confirm Upload",
-      text: "Do you want to upload this photo?",
+      title: IMAGE_TITLE,
+      text: IMAGE_TEXT,
       imageUrl: imageData,
       imageWidth: 200,
       imageHeight: 150,
@@ -394,15 +403,15 @@ const PatientRegistration = () => {
         const extractedPath = data.response;
 
         setImageURL(extractedPath);
-        console.log("Uploaded Image URL:", extractedPath);
+        console.log(UPLOADED_IMAGE_URL_LOG, extractedPath);
 
-        Swal.fire("Success!", "Image uploaded successfully!", "success");
+        Swal.fire("Success!",IMAGE_UPLOAD_SUCC_MSG, "success");
       } else {
-        Swal.fire("Error!", "Failed to upload image!", "error");
+        Swal.fire("Error!",IMAGE_UPLOAD_FAIL_MSG, "error");
       }
     } catch (error) {
-      console.error("Upload error:", error);
-      Swal.fire("Error!", "Something went wrong!", "error");
+      console.error(FILE_UPLOAD_ERROR_LOG, error);
+      Swal.fire("Error!",UNEXPECTED_ERROR, "error");
     }
   };
 
@@ -447,44 +456,44 @@ const PatientRegistration = () => {
     let error = "";
 
     if (name === "firstName" && !value.trim()) {
-      error = "First Name is required.";
+      error = FIRST_NAME_REQUIRED_ERROR;
     }
 
     if (name === "gender" && !value) {
-      error = "Gender is required.";
+      error = GENDER_REQUIRED_ERROR;
     }
 
     if (name === "relation" && !value) {
-      error = "Relation is required.";
+      error = RELATION_REQUIRED_ERROR;
     }
 
     if (name === "dob" && !value) {
-      error = "Date of Birth is required.";
+      error = DOB_REQUIRED_ERROR;
     }
 
     if (name === "email") {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        error = "Invalid email format.";
+        error = INVALID_EMAIL_FORMAT_MSG;
       }
     }
 
     if (name === "mobileNo") {
       if (!value.trim()) {
-        error = "Mobile number is required.";
+        error = MOBILE_REQUIRED_ERROR;
       } else if (!/^\d{10}$/.test(value)) {
-        error = "Mobile number must be exactly 10 digits.";
+        error = MOBILE_NUMBER_INVALID_MSG;
       }
     }
 
     if (name === "pinCode") {
       if (!/^\d{6}$/.test(value)) {
-        error = "Pin Code must be exactly 6 digits.";
+        error = PIN_CODE_INVALID_MSG;
       }
     }
 
     if (name === "age") {
       if (value !== "" && (isNaN(value) || Number(value) < 0)) {
-        error = "Age can not be negative.";
+        error = AGE_NEGATIVE_ERROR;
       }
     }
 
@@ -649,8 +658,8 @@ const PatientRegistration = () => {
     if (isPastDate(dateString)) {
       Swal.fire({
         icon: "warning",
-        title: "Invalid Date",
-        text: "You cannot select a past date",
+        title: INVALID_DATE_TITLE,
+        text: PAST_DATE_WARNING,
         timer: 4000,
       });
       setDateResetKey((prev) => prev + 1);
@@ -768,11 +777,11 @@ const PatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setGenderData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setGenderData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -813,7 +822,7 @@ const PatientRegistration = () => {
           if (isDuplicate) {
             Swal.fire(
               "Duplicate Found!",
-              "A patient with these details already exists.",
+               DUPLICATE_PATIENT,
               "warning",
             );
             setIsDuplicatePatient(true);
@@ -821,7 +830,7 @@ const PatientRegistration = () => {
             setIsDuplicatePatient(false);
           }
         } catch (err) {
-          console.error("Duplicate check failed:", err);
+          console.error(DUPLICATE_CHECK_FAILED_LOG, err);
         }
       }, 800);
 
@@ -845,11 +854,11 @@ const PatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setRelationData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setRelationData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -863,11 +872,11 @@ const PatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setCountryData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setCountryData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -879,11 +888,11 @@ const PatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setStateData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setStateData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -895,11 +904,11 @@ const PatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setSession(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setSession([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -911,11 +920,11 @@ const PatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setDistrictData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setDistrictData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -927,11 +936,11 @@ const PatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokStateData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setNokStateData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -943,11 +952,11 @@ const PatientRegistration = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokDistrictData(data.response);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setNokDistrictData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -962,11 +971,11 @@ const PatientRegistration = () => {
         );
         setDepartmentData(filteredDepartments);
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setDepartmentData([]);
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -986,8 +995,8 @@ const PatientRegistration = () => {
       if (missingTimeSlots.length > 0) {
         Swal.fire({
           icon: "warning",
-          title: "Missing Time Slots",
-          text: "Please select time slots for all appointments before registration.",
+          title: MISSING_TIME_SLOTS_TITLE,
+          text: SELECT_TIME_SLOTS_BEFORE_REGISTRATION_MSG,
           timer: 3000,
         });
         return;
@@ -995,8 +1004,8 @@ const PatientRegistration = () => {
 
       Swal.fire({
         icon: "warning",
-        title: "Incomplete Form",
-        text: "Please fill all required fields.",
+        title:INCOMPLETE_FORM_TITLE,
+        text: INCOMPLETE_FORM_MSG,
         timer: 3000,
       });
       return;
@@ -1065,17 +1074,17 @@ const PatientRegistration = () => {
     });
 
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Invalid email format.";
+      newErrors.email = INVALID_EMAIL_FORMAT_MSG;
       valid = false;
     }
 
     if (formData.mobileNo && !/^\d{10}$/.test(formData.mobileNo)) {
-      newErrors.mobileNo = "Mobile number must be exactly 10 digits.";
+      newErrors.mobileNo = INVALID_MOBILE_NUMBER_MSG;
       valid = false;
     }
 
     if (formData.pinCode && !/^\d{6}$/.test(formData.pinCode)) {
-      newErrors.pinCode = "Pin Code must be exactly 6 digits.";
+      newErrors.pinCode =  PIN_CODE_INVALID_MSG;
       valid = false;
     }
 
@@ -1087,7 +1096,7 @@ const PatientRegistration = () => {
           // Validate correct format like "25Y 10M 2D"
           const agePattern = /^\d+Y\s\d+M\s\d+D$/;
           if (!agePattern.test(value)) {
-            newErrors[field] = "Age must be in format '25Y 10M 2D'.";
+            newErrors[field] = AGE_FORMAT_ERROR;
             valid = false;
           }
         } else {
@@ -1322,7 +1331,7 @@ const PatientRegistration = () => {
           if (hasBillingStatusY) {
             // Direct redirect to PendingForBilling without showing dialog
             Swal.fire({
-              title: "Patient Registered Successfully!",
+              title: PATIENT_REGISTERED_SUCCESS_TITLE,
               html: `<p>Patient has been registered successfully.</p>
                <p>Redirecting to pending billing...</p>`,
               icon: "success",
@@ -1335,7 +1344,7 @@ const PatientRegistration = () => {
             });
           } else if (resp) {
             Swal.fire({
-              title: "Patient Registered Successfully!",
+              title: PATIENT_REGISTERED_SUCCESS_TITLE,
               html: `
           <p><strong>${resp.patientName}</strong> has been registered successfully.</p>
           <p>Do you want to proceed to billing?</p>
@@ -1379,7 +1388,7 @@ const PatientRegistration = () => {
               `${formData.firstName} ${formData.lastName}`.trim();
 
             Swal.fire({
-              title: "Patient Registered Successfully!",
+              title:PATIENT_REGISTERED_SUCCESS_TITLE,
               html: `<p><strong>${
                 displayName || "Patient"
               }</strong> has been registered successfully.</p>`,
@@ -1394,7 +1403,7 @@ const PatientRegistration = () => {
             Swal.fire({
               icon: "success",
               title: "Patient Registered",
-              text: "Patient registered successfully.",
+              text: PATIENT_REGISTERED_SUCCESS_TITLE,
             }).then(() => window.location.reload());
           }
         } else {
@@ -1402,7 +1411,7 @@ const PatientRegistration = () => {
             icon: "error",
             title: "Registration Failed",
             text:
-              data.message || "Unexpected response received. Please try again.",
+              data.message || UNEXPECTED_RESPONSE_MSG,
           });
         }
       } catch (error) {
@@ -1410,7 +1419,7 @@ const PatientRegistration = () => {
         Swal.fire({
           icon: "error",
           title: "Registration Failed",
-          text: "Something went wrong while registering the patient. Please try again.",
+          text: PATIENT_REGISTRATION_FAILED_MSG,
         });
       } finally {
         setLoading(false);
@@ -1427,14 +1436,14 @@ const PatientRegistration = () => {
           [rowId]: data.response,
         }));
       } else {
-        console.error("Unexpected API response format:", data);
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
         setDoctorDataMap((prev) => ({
           ...prev,
           [rowId]: [],
         }));
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error(FETCH_DATA_ERROR, error);
     } finally {
       setLoading(false);
     }
@@ -1538,11 +1547,11 @@ const PatientRegistration = () => {
 
       Swal.close();
     } catch (error) {
-      console.error("Error selecting token:", error);
+      console.error(SELECT_TOKEN_ERROR_LOG, error);
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "Failed to select token. Please try again.",
+        text: SELECT_TOKEN_ERROR_TEXT,
       });
     }
   };
@@ -1578,8 +1587,8 @@ const PatientRegistration = () => {
     if (tokens.length === 0) {
       Swal.fire({
         icon: "info",
-        title: "No Tokens Available",
-        text: "No tokens are available for the selected session.",
+        title: NO_TOKENS_AVAILABLE,
+        text: NO_TOKENS_SELECTED_SESSION_MSG,
       });
       return;
     }
