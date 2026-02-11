@@ -39,22 +39,34 @@ import {
   RESCHEDULE_SUCCESS,
   SELECT_CANCELLATION_REASON,
   SESSION_NOT_AVAILABLE,
-  SESSION_NOT_AVAILABLE_TEXT,
+  SESSION_NOT_AVAILABLE_TEXT,INVALID_RESPONSE_FORMAT_LOG,
+  FETCH_SESSIONS_ERROR_LOG,
+  FETCH_CANCELLATION_REASONS_ERROR_LOG,
+  FETCH_TOKEN_AVAILABILITY_ERROR_LOG,
+  NO_TOKENS_AVAILABLE_CRITERIA_MSG,
+  FETCH_TOKEN_AVAILABILITY_ERROR,
 } from "../../../config/constants";
 
-// Helper functions
 const formatTimeToHHMM = (timeString) => {
   if (!timeString) return "";
+  
   if (timeString.includes("T")) {
-    const date = new Date(timeString);
-    if (isNaN(date.getTime())) return "";
-    
-    // Use UTC methods instead of local time
-    const hours = date.getUTCHours().toString().padStart(2, '0');
-    const minutes = date.getUTCMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
+    const timeMatch = timeString.match(/T(\d{2}:\d{2}):/);
+    if (timeMatch && timeMatch[1]) {
+      return timeMatch[1];
+    }
   }
   return timeString.substring(0, 5);
+};
+
+const toInstant = (dateStr, timeStr) => {
+  if (!dateStr || !timeStr) return null;
+  const dateOnly = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+  let timeWithSeconds = timeStr;
+  if (timeStr.split(":").length === 2) {
+    timeWithSeconds = `${timeStr}:00`;
+  }
+  return `${dateOnly}T${timeWithSeconds}Z`;
 };
 
 const formatAppointmentTime = (start, end) => {
@@ -136,11 +148,11 @@ const BookingAppointmentHistory = () => {
       if (data.status === 200 && Array.isArray(data.response)) {
         setSessions(data.response);
       } else {
-        console.error("Invalid response format:", data);
+        console.error(INVALID_RESPONSE_FORMAT_LOG, data);
         setSessions([]);
       }
     } catch (error) {
-      console.error("Error fetching sessions:", error);
+      console.error(FETCH_SESSIONS_ERROR_LOG, error);
       setSessions([]);
     }
   };
@@ -172,7 +184,7 @@ const BookingAppointmentHistory = () => {
         setCancellationReasons([]);
       }
     } catch (error) {
-      console.error("Error fetching cancellation reasons:", error);
+      console.error(FETCH_CANCELLATION_REASONS_ERROR_LOG, error);
       setCancellationReasons([]);
     } finally {
       setLoadingReasons(false);
@@ -479,7 +491,7 @@ const BookingAppointmentHistory = () => {
         setShowTimeSlots(false);
       }
     } catch (error) {
-      console.error("Error fetching token availability:", error);
+      console.error(FETCH_TOKEN_AVAILABILITY_ERROR_LOG, error);
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -518,18 +530,18 @@ const BookingAppointmentHistory = () => {
         Swal.fire({
           icon: "info",
           title: "No Tokens Available",
-          text: res.message || "No tokens available for the selected criteria.",
+          text: res.message || NO_TOKENS_AVAILABLE_CRITERIA_MSG,
           timer: 2000,
         });
         setAvailableTokens([]);
         setShowTimeSlots(false);
       }
     } catch (error) {
-      console.error("Error fetching token availability:", error);
+      console.error(FETCH_TOKEN_AVAILABILITY_ERROR_LOG, error);
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "Failed to fetch token availability. Please try again.",
+        text: FETCH_TOKEN_AVAILABILITY_ERROR,
         timer: 2000,
       });
       setAvailableTokens([]);
@@ -591,13 +603,9 @@ const BookingAppointmentHistory = () => {
       Swal.showLoading();
       try {
         // Correctly create ISO strings for the backend
-        const appointmentDateInstant = new Date(newDate).toISOString();
-        const startTimeInstant = new Date(
-          `${newDate}T${slotToUse.start}:00`,
-        ).toISOString();
-        const endTimeInstant = new Date(
-          `${newDate}T${slotToUse.end}:00`,
-        ).toISOString();
+        const appointmentDateInstant = `${newDate}T00:00:00Z`;
+        const startTimeInstant = `${newDate}T${slotToUse.start}:00Z`;
+        const endTimeInstant = `${newDate}T${slotToUse.end}:00Z`;
 
         const reschedulePayload = {
           visitId: selectedPatient.visitId,

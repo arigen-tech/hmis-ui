@@ -1,0 +1,395 @@
+import { useState, useEffect } from "react";
+import Popup from "../../../Components/popup";
+import LoadingScreen from "../../../Components/Loading";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+
+const CTInvestigation = () => {
+  const [ctData, setCtData] = useState([]);
+  const [searchName, setSearchName] = useState("");
+  const [searchContact, setSearchContact] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+
+  const [popupMessage, setPopupMessage] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    id: null,
+    newStatus: "",
+    investigationName: ""
+  });
+
+  /* ---------------- SAMPLE DATA ---------------- */
+  useEffect(() => {
+    setLoading(true);
+    setTimeout(() => {
+      setCtData([
+        {
+          id: 1,
+          accessionNo: "Acc-260112-001",
+          uhid: "UHID2001",
+          patientName: "Suresh Yadav",
+          age: "45",
+          gender: "Male",
+          modality: "CT",
+          investigationName: "CT Brain",
+          orderDate: "15/01/2026",
+          orderTime: "10:30 AM",
+          department: "Radiology",
+          contactNo: "+91-9876543210",
+          status: "y"
+        },
+        {
+          id: 2,
+          accessionNo: "Acc-260112-002",
+          uhid: "UHID2002",
+          patientName: "Anita Singh",
+          age: "32",
+          gender: "Female",
+          modality: "CT",
+          investigationName: "CT Chest",
+          orderDate: "16/01/2026",
+          orderTime: "01:15 PM",
+          department: "Radiology",
+          contactNo: "+91-9876543211",
+          status: "n"
+        },
+        {
+          id: 3,
+          accessionNo: "Acc-260112-003",
+          uhid: "UHID2003",
+          patientName: "Rahul Verma",
+          age: "38",
+          gender: "Male",
+          modality: "CT",
+          investigationName: "CT Abdomen",
+          orderDate: "17/01/2026",
+          orderTime: "03:45 PM",
+          department: "Radiology",
+          contactNo: "+91-9876543212",
+          status: "y"
+        }
+      ]);
+      setLoading(false);
+    }, 600);
+  }, []);
+
+  /* ---------------- SEARCH ---------------- */
+  const filteredData = ctData.filter(item => {
+    const nameMatch = searchName === "" || 
+      item.patientName.toLowerCase().includes(searchName.toLowerCase());
+    
+    const contactMatch = searchContact === "" || 
+      item.contactNo.includes(searchContact);
+    
+    return nameMatch && contactMatch;
+  });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchName, searchContact]);
+
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
+
+  /* ---------------- RESET SEARCH ---------------- */
+  const handleReset = () => {
+    setSearchName("");
+    setSearchContact("");
+    setCurrentPage(1);
+  };
+
+  /* ---------------- HANDLE SEARCH ---------------- */
+  const handleSearch = () => {
+    setCurrentPage(1);
+  };
+
+  /* ---------------- HELPERS ---------------- */
+  const showPopup = (message, type = "success") => {
+    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  };
+
+  const handleSwitchChange = (id, newStatus, investigationName) => {
+    setConfirmDialog({ isOpen: true, id, newStatus, investigationName });
+  };
+
+  const handleConfirm = (confirmed) => {
+    if (confirmed) {
+      setCtData(prev =>
+        prev.map(item =>
+          item.id === confirmDialog.id
+            ? { ...item, status: confirmDialog.newStatus }
+            : item
+        )
+      );
+
+      showPopup(
+        `CT Investigation ${confirmDialog.newStatus === "y" ? "Activated" : "Deactivated"
+        } Successfully`
+      );
+    }
+
+    setConfirmDialog({
+      isOpen: false,
+      id: null,
+      newStatus: "",
+      investigationName: ""
+    });
+  };
+
+  /* ---------------- ACTION HANDLERS ---------------- */
+  const handleCompleted = (row) => {
+    showPopup(`Marked as Completed for ${row.patientName} (${row.accessionNo})`, "success");
+    // Add your completed logic here
+  };
+
+  const handleCancel = (row) => {
+    showPopup(`Cancelling investigation for ${row.patientName} (${row.accessionNo})`, "warning");
+    // Add your cancel logic here
+  };
+
+  /* ---------------- UI ---------------- */
+  return (
+    <div className="content-wrapper">
+      <div className="card form-card">
+        <div className="card-header d-flex justify-content-between align-items-center">
+          <h4 className="card-title">CT Investigation</h4>
+        </div>
+
+        <div className="card-body">
+          {loading ? (
+            <LoadingScreen />
+          ) : (
+            <>
+              {/* Search Fields with same design */}
+              <div className="mb-3">
+                <div className="row align-items-end">
+                  {/* Patient Name Search Field */}
+                  <div className="col-md-4">
+                    <div className="form-group mb-0">
+                      <label className="form-label fw-bold mb-1">
+                        Patient Name
+                      </label>
+                      <div className="input-group">
+                        <input
+                          type="search"
+                          className="form-control"
+                          placeholder="Enter patient name"
+                          value={searchName}
+                          onChange={(e) => setSearchName(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Contact Number Search Field */}
+                  <div className="col-md-4">
+                    <div className="form-group mb-0">
+                      <label className="form-label fw-bold mb-1">
+                        Contact No
+                      </label>
+                      <div className="input-group">
+                        <input
+                          type="search"
+                          className="form-control"
+                          placeholder="Enter contact number"
+                          value={searchContact}
+                          onChange={(e) => setSearchContact(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Search and Reset Buttons */}
+                  <div className="col-md-4">
+                    <div className="form-group mb-0">
+                      <label className="form-label fw-bold mb-1" style={{ visibility: "hidden" }}>
+                        Actions
+                      </label>
+                      <div className="d-flex">
+                        <button
+                          className="btn btn-primary me-2"
+                          onClick={handleSearch}
+                          title="Search records"
+                        >
+                          <i></i> Search
+                        </button>
+                        
+                        <button
+                          className="btn btn-secondary"
+                          onClick={handleReset}
+                          title="Reset all search filters"
+                        >
+                          <i className="fas fa-redo-alt me-1"></i> Reset
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Record count row */}
+                <div className="row mt-3">
+                  <div className="col-md-12 text-end">
+                    <span className="text-muted">
+                      Showing {currentItems.length} of {filteredData.length} records
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="table-responsive">
+                <table className="table table-bordered table-hover align-middle">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Accession No</th>
+                      <th>UHID</th>
+                      <th>Patient Name</th>
+                      <th>Age</th>
+                      <th>Gender</th>
+                      <th>Contact No</th>
+                      <th>Modality</th>
+                      <th>Investigation</th>
+                      <th>Order Date</th>
+                      <th>Order Time</th>
+                      <th>Department</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {currentItems.length > 0 ? (
+                      currentItems.map(item => (
+                        <tr key={item.id}>
+                          <td>{item.accessionNo}</td>
+                          <td>{item.uhid}</td>
+                          <td>{item.patientName}</td>
+                          <td>{item.age}</td>
+                          <td>{item.gender}</td>
+                          <td>{item.contactNo}</td>
+                          <td>{item.modality}</td>
+                          <td>{item.investigationName}</td>
+                          <td>{item.orderDate}</td>
+                          <td>{item.orderTime}</td>
+                          <td>{item.department}</td>
+
+                          {/* STATUS */}
+                          <td>
+                            <div className="form-check form-switch">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                checked={item.status === "y"}
+                                onChange={() =>
+                                  handleSwitchChange(
+                                    item.id,
+                                    item.status === "y" ? "n" : "y",
+                                    item.investigationName
+                                  )
+                                }
+                              />
+                              <span className="ms-2">
+                                {item.status === "y" ? "Active" : "Inactive"}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* ACTIONS - Only Completed and Cancel buttons */}
+                          <td>
+                            <div className="btn-group" role="group">
+                              <button
+                                className="btn btn-sm btn-success me-1"
+                                onClick={() => handleCompleted(item)}
+                                title="Mark as Completed"
+                              >
+                                <i> Complete</i>
+                              </button>
+
+                              <button
+                                className="btn btn-sm btn-danger"
+                                onClick={() => handleCancel(item)}
+                                title="Cancel Investigation"
+                              >
+                                <i>Cancel</i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="13" className="text-center text-muted py-4">
+                          <i className="fas fa-search fa-2x mb-3"></i>
+                          <p>No records found matching your search</p>
+                          {(searchName || searchContact) && (
+                            <button
+                              className="btn btn-sm btn-outline-secondary mt-2"
+                              onClick={handleReset}
+                            >
+                              Reset Search
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <Pagination
+                totalItems={filteredData.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
+            </>
+          )}
+
+          {popupMessage && <Popup {...popupMessage} />}
+
+          {confirmDialog.isOpen && (
+            <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+              <div className="modal-dialog modal-dialog-centered">
+                <div className="modal-content">
+                  <div className="modal-header">
+                    <h5 className="modal-title">Confirm Status Change</h5>
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={() => handleConfirm(false)}
+                    ></button>
+                  </div>
+                  <div className="modal-body">
+                    <p>
+                      Are you sure you want to{" "}
+                      <strong>
+                        {confirmDialog.newStatus === "y" ? "Activate" : "Deactivate"}
+                      </strong>{" "}
+                      <strong>"{confirmDialog.investigationName}"</strong>?
+                    </p>
+                  </div>
+                  <div className="modal-footer">
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => handleConfirm(false)}
+                    >
+                      No
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleConfirm(true)}
+                    >
+                      Yes
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CTInvestigation;

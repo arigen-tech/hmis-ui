@@ -388,8 +388,8 @@ const ItemReceivingMainScreen = () => {
                     <thead>
                       <tr>
                         <th style={{ width: "60px" }}>S.No.</th>
-                        <th style={{ minWidth: "140px" }}>Drug Code</th>
-                        <th style={{ minWidth: "240px" }}>Drug Name</th>
+                        <th style={{ minWidth: "140px" }}>Item Code</th>
+                        <th style={{ minWidth: "240px" }}>Item Name</th>
                         <th style={{ width: "80px" }}>A/U</th>
                         <th style={{ width: "140px" }}>Batch No.</th>
                         <th style={{ width: "120px" }}>DOM</th>

@@ -182,10 +182,17 @@ import BloodDonationHDR from './Views/Masters/BloodDonationHDR';
 import BloodInventoryStatus from './Views/Masters/BloodInventoryStatus';
 import BloodTestMaster from './Views/Masters/BloodTestMaster';
 import CrossMatchType from './Views/Masters/CrossMatchType';
-
+import XRAYInvestigation from './Views/Radiology/XRAYInvestigation';
 import WardManagement from './Views/IPD/WardManagement';
 import PatientRegistrationRadiologyBooking from './Views/Radiology/ PatientRegistrationRadiologyBooking';
 import RadiologyBookingRegisteredPatient from './Views/Radiology/Follow-up Radiology Booking-';
+import DonorInformation from './Views/BloodBank/DonorRegistration';
+import DonorRegistration from './Views/BloodBank/DonorRegistration';
+import DonorRegistrationViewUpdate from './Views/BloodBank/DonorViewUpdate';
+import USGInvestigation from './Views/Radiology/USGInvestigation';
+import MRIInvestigation from './Views/Radiology/MRIInvestigation';
+import CTInvestigation from './Views/Radiology/CTInvestigation';
+import PETInvestigation from './Views/Radiology/PETInvestigation';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -405,7 +412,13 @@ function App() {
                 <Route path="/WardManagement" element={<WardManagement/>} />
                 <Route path="/PatientRegistrationRadiologyBooking" element={<PatientRegistrationRadiologyBooking/>} />
                 <Route path="/RadiologyBookingRegisteredPatient" element={<RadiologyBookingRegisteredPatient/>} />
-
+                <Route path="/DonorRegistration" element={<DonorRegistration/>} />
+                <Route path="/XRAYInvestigation" element={<XRAYInvestigation/>} />
+                <Route path="/DonorViewUpdate" element={<DonorRegistrationViewUpdate/>} />
+                <Route path="/USGInvestigation" element={<USGInvestigation/>} />
+                <Route path="/MRIInvestigation" element={<MRIInvestigation/>} />
+                <Route path="/CTInvestigation" element={<CTInvestigation/>} />
+                <Route path="/PETInvestigation" element={<PETInvestigation/>} />
               </Route>
             </Route>
 

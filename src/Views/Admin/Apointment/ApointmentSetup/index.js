@@ -13,6 +13,7 @@ import {
 } from "../../../../service/apiService";
 import Popup from "../../../../Components/popup";
 import LoadingScreen from "../../../../Components/Loading";
+import {APPOINTMENT_REQUIRED_FIELDS} from "../../../../config/constants"
 
 const AppointmentSetup = () => {
   const [popup, setPopup] = useState("");
@@ -42,6 +43,15 @@ const AppointmentSetup = () => {
     });
   };
 
+  const REQUIRED_FIELDS = [
+    "startToken",
+    "totalInterval",
+    "totalToken",
+    "maxNoOfDays",
+    "minNoOfDays",
+    "opdLocation",
+  ];
+
   const daysOfWeek = [
     "Sunday",
     "Monday",
@@ -54,6 +64,8 @@ const AppointmentSetup = () => {
   const initialDaysState = daysOfWeek.reduce((acc, day) => {
     const isWeekend = day === "Sunday" || day === "Saturday";
     acc[day] = {
+      startTime: "",
+      endTime: "",
       startToken: isWeekend ? "0" : "",
       totalInterval: isWeekend ? "0" : "",
       totalToken: isWeekend ? "0" : "",
@@ -79,6 +91,29 @@ const AppointmentSetup = () => {
       fetchDoctorData();
     }
   }, [department]);
+
+  const isTimeFilled = (day) => {
+    return daysConfig[day].startTime && daysConfig[day].endTime;
+  };
+
+  const isRowInvalid = (day) => {
+    if (!isTimeFilled(day)) return false;
+
+    return REQUIRED_FIELDS.some((field) => {
+      const value = daysConfig[day][field];
+      return value === "" || value === null;
+    });
+  };
+
+  const isFieldInvalid = (day, field) => {
+    if (!isTimeFilled(day)) return false;
+    const value = daysConfig[day][field];
+    return value === "" || value === null;
+  };
+
+  const hasInvalidRow = () => {
+    return daysOfWeek.some((day) => isRowInvalid(day));
+  };
 
   const fetchDepartmentData = async () => {
     setLoading(true);
@@ -151,11 +186,10 @@ const AppointmentSetup = () => {
       const url = `${APPOINTMENT}/find?deptId=${department}&doctorId=${doctor}&sessionId=${session}`;
       const data = await getRequest(url);
       if (data?.status === 200 && data?.response) {
-        const { startTime, endTime, timeTaken, days } =
-          data.response;
+        const { startTime, endTime, timeTaken, days } = data.response;
         setAppointmentData(data.response);
-        setStartTime(startTime);
-        setEndTime(endTime);
+        //setStartTime(startTime);
+        //setEndTime(endTime);
         setTimeTaken(timeTaken);
         setDataFromDB(true);
 
@@ -165,6 +199,12 @@ const AppointmentSetup = () => {
             const dayName = dayConfig.days || dayConfig.day;
             if (dayName && updatedDaysConfig[dayName]) {
               updatedDaysConfig[dayName] = {
+                endTime:
+                  dayConfig.endTime !== null ? String(dayConfig.endTime) : "",
+                startTime:
+                  dayConfig.startTime !== null
+                    ? String(dayConfig.startTime)
+                    : "",
                 startToken:
                   dayConfig.startToken !== null
                     ? String(dayConfig.startToken)
@@ -199,8 +239,8 @@ const AppointmentSetup = () => {
       } else {
         setAppointmentData(null);
         setDaysConfig(initialDaysState);
-        setStartTime("");
-        setEndTime("");
+        // setStartTime("");
+        // setEndTime("");
         setTimeTaken("");
         setOriginalDaysConfig(initialDaysState);
         setDataFromDB(false);
@@ -225,22 +265,22 @@ const AppointmentSetup = () => {
   const handleDayConfigChange = (day, field, value) => {
     if (field === "opdLocation") {
       const updatedDayConfig = { ...daysConfig[day] };
-      
+
       updatedDayConfig[field] = value;
-      
+
       setDaysConfig({
         ...daysConfig,
-        [day]: updatedDayConfig
+        [day]: updatedDayConfig,
       });
-      
+
       if (dataFromDB) {
         const originalValue = originalDaysConfig[day][field] || "";
         const isModified = value !== originalValue;
-        
+
         if (isModified) {
           setModifiedFields({
             ...modifiedFields,
-            [`${day}-${field}`]: true
+            [`${day}-${field}`]: true,
           });
         } else {
           const newModifiedFields = { ...modifiedFields };
@@ -250,7 +290,7 @@ const AppointmentSetup = () => {
       }
       return;
     }
-    
+
     // Existing logic for other fields (number fields)
     const stringValue = value === 0 || value ? String(value) : "";
     const isWeekend = day === "Sunday" || day === "Saturday";
@@ -263,6 +303,9 @@ const AppointmentSetup = () => {
       updatedDayConfig.startToken = "0";
       updatedDayConfig.totalInterval = "0";
       updatedDayConfig.totalOnlineToken = "0";
+      updatedDayConfig.startTime = "";
+      updatedDayConfig.endTime = "";
+      updatedDayConfig.opdLocation="";
     }
 
     if (
@@ -322,8 +365,22 @@ const AppointmentSetup = () => {
     return dataFromDB && modifiedFields[`${day}-${field}`] === true;
   };
 
+  const normalizeTime = (value) => {
+    if (!value || value === "undefined") return null;
+    return value;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (hasInvalidRow()) {
+      showPopup(
+        APPOINTMENT_REQUIRED_FIELDS,
+        "error",
+      );
+      return;
+    }
+
     const requestData = {
       departmentId: department,
       doctorId: doctor,
@@ -338,6 +395,8 @@ const AppointmentSetup = () => {
         return {
           id: appointmentData ? existingDay?.id || null : null,
           day: day,
+          startTime: normalizeTime(daysConfig[day].startTime),
+          endTime: normalizeTime(daysConfig[day].endTime),
           tokenStartNo:
             daysConfig[day].startToken !== ""
               ? parseInt(daysConfig[day].startToken)
@@ -401,8 +460,8 @@ const AppointmentSetup = () => {
     setDepartment("");
     setDoctor("");
     setSession("");
-    setStartTime("");
-    setEndTime("");
+    // setStartTime("");
+    // setEndTime("");
     setTimeTaken("");
     setDaysConfig(initialDaysState);
     setAppointmentData(null);
@@ -438,7 +497,7 @@ const AppointmentSetup = () => {
                 <div className="card-body">
                   <form onSubmit={handleSubmit}>
                     <div className="row g-3">
-                      <div className="col-md-4">
+                      <div className="col-md-3">
                         <label className="form-label">Department *</label>
                         <select
                           className="form-select"
@@ -459,7 +518,7 @@ const AppointmentSetup = () => {
                         </select>
                       </div>
 
-                      <div className="col-md-4">
+                      <div className="col-md-3">
                         <label className="form-label">Doctor List *</label>
                         <select
                           className="form-select"
@@ -477,7 +536,7 @@ const AppointmentSetup = () => {
                         </select>
                       </div>
 
-                      <div className="col-md-4">
+                      <div className="col-md-3">
                         <label className="form-label">Session *</label>
                         <select
                           className="form-select"
@@ -496,7 +555,7 @@ const AppointmentSetup = () => {
                         </select>
                       </div>
 
-                      <div className="col-md-4">
+                      {/* <div className="col-md-4">
                         <label className="form-label">Start Time *</label>
                         <input
                           type="time"
@@ -505,9 +564,9 @@ const AppointmentSetup = () => {
                           onChange={(e) => setStartTime(e.target.value)}
                           required
                         />
-                      </div>
+                      </div> */}
 
-                      <div className="col-md-4">
+                      {/* <div className="col-md-4">
                         <label className="form-label">End Time *</label>
                         <input
                           type="time"
@@ -516,9 +575,9 @@ const AppointmentSetup = () => {
                           onChange={(e) => setEndTime(e.target.value)}
                           required
                         />
-                      </div>
+                      </div> */}
 
-                      <div className="col-md-4">
+                      <div className="col-md-3">
                         <label className="form-label">
                           Time Taken (minutes) *
                         </label>
@@ -540,6 +599,8 @@ const AppointmentSetup = () => {
                           <thead>
                             <tr>
                               <th>Days</th>
+                              <th>Start Time</th>
+                              <th>End Time</th>
                               <th>Token Start No.</th>
                               <th>Token Interval</th>
                               <th>Total Token</th>
@@ -551,19 +612,73 @@ const AppointmentSetup = () => {
                           </thead>
                           <tbody>
                             {daysOfWeek.map((day) => (
-                              <tr key={day}>
+                              <tr
+                                key={day}
+                                style={{
+                                  border: isRowInvalid(day)
+                                    ? "2px solid red"
+                                    : "",
+                                }}
+                              >
                                 <td>{day}</td>
                                 <td>
                                   <input
-                                    type="number"
+                                    type="time"
                                     className="form-control"
                                     style={{
                                       backgroundColor: isFieldModified(
                                         day,
-                                        "startToken",
+                                        "start time",
                                       )
                                         ? "#ffd24d"
                                         : "",
+                                    }}
+                                    value={daysConfig[day].startTime}
+                                    onChange={(e) =>
+                                      handleDayConfigChange(
+                                        day,
+                                        "startTime",
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    type="time"
+                                    className="form-control"
+                                    style={{
+                                      backgroundColor: isFieldModified(
+                                        day,
+                                        "end time",
+                                      )
+                                        ? "#ffd24d"
+                                        : "",
+                                    }}
+                                    value={daysConfig[day].endTime}
+                                    onChange={(e) =>
+                                      handleDayConfigChange(
+                                        day,
+                                        "endTime",
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    className="form-control"
+                                    disabled={!isTimeFilled(day)}
+                                    style={{
+                                      backgroundColor: isFieldInvalid(
+                                        day,
+                                        "startToken",
+                                      )
+                                        ? "#ffcccc"
+                                        : isFieldModified(day, "startToken")
+                                          ? "#ffd24d"
+                                          : "",
                                     }}
                                     value={daysConfig[day].startToken}
                                     onChange={(e) =>
@@ -579,13 +694,16 @@ const AppointmentSetup = () => {
                                   <input
                                     type="number"
                                     className="form-control"
+                                    disabled={!isTimeFilled(day)}
                                     style={{
-                                      backgroundColor: isFieldModified(
+                                      backgroundColor: isFieldInvalid(
                                         day,
                                         "totalInterval",
                                       )
-                                        ? "#ffd24d"
-                                        : "",
+                                        ? "#ffcccc"
+                                        : isFieldModified(day, "totalInterval")
+                                          ? "#ffd24d"
+                                          : "",
                                     }}
                                     value={daysConfig[day].totalInterval}
                                     onChange={(e) =>
@@ -601,13 +719,16 @@ const AppointmentSetup = () => {
                                   <input
                                     type="number"
                                     className="form-control"
+                                    disabled={!isTimeFilled(day)}
                                     style={{
-                                      backgroundColor: isFieldModified(
+                                      backgroundColor: isFieldInvalid(
                                         day,
                                         "totalToken",
                                       )
-                                        ? "#ffd24d"
-                                        : "",
+                                        ? "#ffcccc"
+                                        : isFieldModified(day, "totalToken")
+                                          ? "#ffd24d"
+                                          : "",
                                     }}
                                     value={daysConfig[day].totalToken}
                                     onChange={(e) =>
@@ -623,13 +744,19 @@ const AppointmentSetup = () => {
                                   <input
                                     type="number"
                                     className="form-control"
+                                    disabled={!isTimeFilled(day)}
                                     style={{
-                                      backgroundColor: isFieldModified(
+                                      backgroundColor: isFieldInvalid(
                                         day,
                                         "totalOnlineToken",
                                       )
-                                        ? "#ffd24d"
-                                        : "",
+                                        ? "#ffcccc"
+                                        : isFieldModified(
+                                              day,
+                                              "totalOnlineToken",
+                                            )
+                                          ? "#ffd24d"
+                                          : "",
                                     }}
                                     value={daysConfig[day].totalOnlineToken}
                                     onChange={(e) =>
@@ -645,13 +772,16 @@ const AppointmentSetup = () => {
                                   <input
                                     type="number"
                                     className="form-control"
+                                    disabled={!isTimeFilled(day)}
                                     style={{
-                                      backgroundColor: isFieldModified(
+                                      backgroundColor: isFieldInvalid(
                                         day,
                                         "maxNoOfDays",
                                       )
-                                        ? "#ffd24d"
-                                        : "",
+                                        ? "#ffcccc"
+                                        : isFieldModified(day, "maxNoOfDays")
+                                          ? "#ffd24d"
+                                          : "",
                                     }}
                                     value={daysConfig[day].maxNoOfDays}
                                     onChange={(e) =>
@@ -667,13 +797,16 @@ const AppointmentSetup = () => {
                                   <input
                                     type="number"
                                     className="form-control"
+                                    disabled={!isTimeFilled(day)}
                                     style={{
-                                      backgroundColor: isFieldModified(
+                                      backgroundColor: isFieldInvalid(
                                         day,
                                         "minNoOfDays",
                                       )
-                                        ? "#ffd24d"
-                                        : "",
+                                        ? "#ffcccc"
+                                        : isFieldModified(day, "minNoOfDays")
+                                          ? "#ffd24d"
+                                          : "",
                                     }}
                                     value={daysConfig[day].minNoOfDays}
                                     onChange={(e) =>
@@ -689,13 +822,16 @@ const AppointmentSetup = () => {
                                   <input
                                     type="text"
                                     className="form-control"
+                                    disabled={!isTimeFilled(day)}
                                     style={{
-                                      backgroundColor: isFieldModified(
+                                      backgroundColor: isFieldInvalid(
                                         day,
                                         "opdLocation",
                                       )
-                                        ? "#ffd24d"
-                                        : "",
+                                        ? "#ffcccc"
+                                        : isFieldModified(day, "opdLocation")
+                                          ? "#ffd24d"
+                                          : "",
                                     }}
                                     value={daysConfig[day].opdLocation}
                                     onChange={(e) =>
