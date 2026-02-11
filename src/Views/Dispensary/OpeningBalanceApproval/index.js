@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react"
+import { useNavigate } from 'react-router-dom'; // Add this import
 import Popup from "../../../Components/popup"
-import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS } from "../../../config/apiConfig";
+import ConfirmationPopup from "../../../Components/ConfirmationPopup"; // Add this import
+import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
 import { getRequest, putRequest } from "../../../service/apiService"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import { ALL_REPORTS } from "../../../config/apiConfig";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import { LAB_REPORT_GENERATION_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG, INVALID_ORDER_ID_ERR_MSG, SELECT_DATE_WARN_MSG, FETCH_LAB_HISTORY_REPORT_ERR_MSG, INVALID_DATE_PICK_WARN_MSG } from '../../../config/constants';
 
@@ -18,13 +19,30 @@ const OpeningBalanceApproval = () => {
   const [action, setAction] = useState("");
   const [remark, setRemark] = useState("");
   const [popupMessage, setPopupMessage] = useState(null)
+  const [confirmationPopup, setConfirmationPopup] = useState(null); // Add this state
   const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
-  const [printingIds, setPrintingIds] = useState(new Set());
 
-  const [pdfUrl, setPdfUrl] = useState(null);
-  const [pdfSelectedRecord, setPdfSelectedRecord] = useState(null);
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  // Add navigate hook
+  const navigate = useNavigate();
+
+  // Confirmation Popup Helper Function
+  const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "Yes", cancelText = "No") => {
+    setConfirmationPopup({
+      message,
+      type,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmationPopup(null);
+      },
+      onCancel: onCancel ? () => {
+        onCancel();
+        setConfirmationPopup(null);
+      } : () => setConfirmationPopup(null),
+      confirmText,
+      cancelText
+    });
+  };
 
 
 
@@ -101,9 +119,6 @@ const OpeningBalanceApproval = () => {
   const handleSearch = () => {
     console.log("Searching from", fromDate, "to", toDate)
   }
-  const isPrinting = (recordId) => {
-    return printingIds.has(recordId);
-  };
 
   const handleShowAll = () => {
     setFromDate("");
@@ -122,104 +137,17 @@ const OpeningBalanceApproval = () => {
     })
   }
 
-  const handleViewDownload = (record) => {
-    console.log("View report for:", record);
-    generateOpeningBalancePdf(record);
-  };
-
-
-
-  // Generate PDF for viewing
-  const generateOpeningBalancePdf = async (record) => {
-    const balanceMId = record.balanceMId;
-
-    if (!balanceMId) {
-      showPopup("Invalid Balance ID for generating report", "error");
-      return;
+  // Helper function to handle the actual submit logic
+  const handleSubmitLogic = async () => {
+    if (!action) {
+      showPopup("Please select an action (Approve or Reject)", "warning");
+      return { success: false, message: "Please select an action" };
     }
 
-    // Clear previous PDF and show loading
-    setIsGeneratingPdf(true);
-    setPdfUrl(null);
-    setPdfSelectedRecord(null);
-
-    try {
-      // Build the PDF URL (adjust this according to your API endpoint)
-      const url = `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceMId}&flag=d`;
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/pdf",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to generate PDF");
-      }
-
-      const blob = await response.blob();
-      const fileURL = window.URL.createObjectURL(blob);
-
-      // Set PDF URL and record details to trigger the viewer
-      setPdfUrl(fileURL);
-      setPdfSelectedRecord({
-        balanceNo: record.balanceNo,
-        departmentName: record.departmentName,
-        enteredDt: record.enteredDt,
-      });
-
-    } catch (error) {
-      console.error("Error generating PDF", error);
-      showPopup("Error generating PDF report. Please try again.", "error");
-    } finally {
-      setIsGeneratingPdf(false);
+    if (!remark.trim()) {
+      showPopup("Remarks are mandatory", "warning");
+      return { success: false, message: "Remarks are mandatory" };
     }
-  };
-
-  const handlePrintReport = async (record) => {
-    const balanceMId = record.balanceMId;
-
-
-    if (!balanceMId) {
-      showPopup(`${INVALID_ORDER_ID_ERR_MSG} for printing`, "error");
-      return;
-    }
-
-    // Add this record to printing set
-    setPrintingIds(prev => new Set(prev).add(balanceMId));
-
-    try {
-      const url = `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceMId}&flag=p`;
-
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/pdf",
-        },
-      });
-
-      if (response.status === 200) {
-        // showPopup("Report sent to printer successfully!", "success");
-      } else {
-        showPopup(LAB_REPORT_PRINT_ERR_MSG, "error");
-      }
-    } catch (error) {
-      console.error("Error printing report", error);
-      showPopup(LAB_REPORT_PRINT_ERR_MSG, "error");
-    } finally {
-      // Remove this record from printing set
-      setPrintingIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(balanceMId);
-        return newSet;
-      });
-    }
-  };
-
-  const handleSubmit = async () => {
-    console.log("Submitting id:", selectedRecord.balanceMId);
 
     const payload = {
       remark: remark || "",
@@ -228,24 +156,85 @@ const OpeningBalanceApproval = () => {
 
     try {
       const response = await putRequest(`${OPEN_BALANCE}/Approved/${selectedRecord.balanceMId}`, payload);
-      setCurrentView("list");
-      setSelectedRecord(null);
-      showPopup(
-        `${payload.status === "a" ? "Approved" : "Rejected"} successfully!`,
-        "success"
-      );
-      await fetchOpenBalance();
-      setSelectedRecord(null);
-      setDetailEntries([]);
-      setCurrentView("list");
-
+      return { success: true, response, balanceMId: selectedRecord.balanceMId };
 
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error submitting data:", error);
+      return { success: false, message: "Failed to process the request. Please try again." };
     }
   };
 
-
+  // Handle Submit - UPDATED WITH CONFIRMATION POPUP
+  const handleSubmit = async () => {
+    const actionText = action === "a" ? "approve" : action === "r" ? "reject" : "submit";
+    const actionDisplayText = action === "a" ? "Approve" : action === "r" ? "Reject" : "Submit";
+    
+    // Show confirmation popup
+    showConfirmationPopup(
+      `Are you sure you want to ${actionText} this opening balance?`,
+      "info",
+      async () => {
+        // On confirm, proceed with submit
+        const result = await handleSubmitLogic();
+        
+        if (result?.success) {
+          const balanceMId = result.balanceMId;
+          
+          // Show success confirmation popup with navigation
+          showConfirmationPopup(
+            action === "a" ? "Opening Balance approved successfully! Do you want to print report ?" : "Opening Balance rejected successfully! Do you want to print report ?",
+            "success",
+            () => {
+              // Navigate to report page
+              if (balanceMId) {
+                navigate('/ViewDownLoadIndent', {
+                  state: {
+                    reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceMId}`,
+                    title: action === "a" ? 'Opening Balance Approval Report' : 'Opening Balance Rejection Report',
+                    fileName: action === "a" ? 'Opening Balance Approval Report' : 'Opening Balance Rejection Report',
+                    returnPath: window.location.pathname
+                  }
+                });
+              }
+              
+              // Refresh the list and go back
+              fetchOpenBalance();
+              setCurrentView("list");
+              setSelectedRecord(null);
+              setAction("");
+              setRemark("");
+            },
+            () => {
+              // User clicked "No" - just reset and stay on same page
+              fetchOpenBalance();
+              setCurrentView("list");
+              setSelectedRecord(null);
+              setAction("");
+              setRemark("");
+            },
+            "Yes",
+            "No"
+          );
+        } else {
+          // Show error confirmation popup
+          showConfirmationPopup(
+            result?.message || "Failed to process the request. Please try again.",
+            "error",
+            () => {}, // Empty function for OK button
+            null, // No cancel function
+            "OK",
+            "Close"
+          );
+        }
+      },
+      () => {
+        // On cancel, do nothing
+        console.log(`${actionText} cancelled by user`);
+      },
+      `Yes, ${actionDisplayText}`,
+      "Cancel"
+    );
+  };
 
 
 
@@ -254,22 +243,23 @@ const OpeningBalanceApproval = () => {
     return (
 
       <div className="content-wrapper">
-        {pdfUrl && pdfSelectedRecord && (
-          <PdfViewer
-            pdfUrl={pdfUrl}
-            onClose={() => {
-              setPdfUrl(null);
-              setPdfSelectedRecord(null);
-            }}
-            name={`Opening Balance Report - ${pdfSelectedRecord?.balanceNo || ''} (${pdfSelectedRecord?.departmentName || 'Department'})`}
-          />
-        )}
+        {/* Add ConfirmationPopup component */}
+        <ConfirmationPopup
+          show={confirmationPopup !== null}
+          message={confirmationPopup?.message || ''}
+          type={confirmationPopup?.type || 'info'}
+          onConfirm={confirmationPopup?.onConfirm || (() => {})}
+          onCancel={confirmationPopup?.onCancel}
+          confirmText={confirmationPopup?.confirmText || 'OK'}
+          cancelText={confirmationPopup?.cancelText}
+        />
+        
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
               {/* Header Section */}
               <div className="card-header d-flex justify-content-between align-items-center">
-                <h4 className="card-title p-2 mb-0">Entry Details</h4>
+                <h4 className="card-title p-2 mb-0">Opening Balance Entry Details</h4>
                 <button type="button" className="btn btn-secondary" onClick={handleBackToList}>
                   Back to List
                 </button>
@@ -322,38 +312,6 @@ const OpeningBalanceApproval = () => {
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
-                  </div>
-                  <div className="col-md-2 mt-3">
-                    <button
-                      className="btn btn-success"
-                      onClick={() => handleViewDownload(selectedRecord)}
-                      disabled={isGeneratingPdf}
-                    >
-                      {isGeneratingPdf ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                          Generating...
-                        </>
-                      ) : (
-                        "View/Download"
-                      )}
-                    </button>
-                  </div>
-                  <div className="col-md-2 mt-3">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-secondary"
-                      onClick={() => handlePrintReport(selectedRecord)}
-                    >
-                      {isPrinting(selectedRecord.id) ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                          Printing...
-                        </>
-                      ) : (
-                        "Print"
-                      )}
-                    </button>
                   </div>
                 </div>
 
@@ -596,12 +554,23 @@ const OpeningBalanceApproval = () => {
 
   return (
     <div className="content-wrapper">
+      {/* Add ConfirmationPopup component for list view */}
+      <ConfirmationPopup
+        show={confirmationPopup !== null}
+        message={confirmationPopup?.message || ''}
+        type={confirmationPopup?.type || 'info'}
+        onConfirm={confirmationPopup?.onConfirm || (() => {})}
+        onCancel={confirmationPopup?.onCancel}
+        confirmText={confirmationPopup?.confirmText || 'OK'}
+        cancelText={confirmationPopup?.cancelText}
+      />
+      
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             {/* Header Section */}
             <div className="card-header">
-              <h4 className="card-title p-2 mb-0">Opening Balance Approval Report</h4>
+              <h4 className="card-title p-2 mb-0">Opening Balance Approval List</h4>
             </div>
 
             <div className="card-body">

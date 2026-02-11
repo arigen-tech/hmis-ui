@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react"
+import { useNavigate } from 'react-router-dom';
 import Popup from "../../../Components/popup"
-import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, Store_Internal_Indent, MAS_DRUG_MAS } from "../../../config/apiConfig";
+import ConfirmationPopup from "../../../Components/ConfirmationPopup";
+import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, Store_Internal_Indent, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading";
 import DatePicker from "../../../Components/DatePicker";
@@ -26,12 +28,13 @@ import {
   ROL_LOAD_ERROR,
   NO_ROL_DATA,
   IMPORT_FROM_PREVIOUS
-} from "../../../config/constants"; 
+} from "../../../config/constants";
 
 const IndentCreation = () => {
   const [currentView, setCurrentView] = useState("form") // "form" or "detail"
   const [loading, setLoading] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null)
+  const [confirmationPopup, setConfirmationPopup] = useState(null);
   const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
 
@@ -60,7 +63,7 @@ const IndentCreation = () => {
   const [rolItems, setRolItems] = useState([]);
   const [selectedRolItems, setSelectedRolItems] = useState([]);
 
-
+  const navigate = useNavigate();
 
   // Fetch current department by ID
   const fetchCurrentDepartment = async () => {
@@ -458,12 +461,12 @@ const IndentCreation = () => {
   const handleAddRow = () => {
     // Check if current row has drug name
     const lastRow = indentEntries[indentEntries.length - 1];
-    
+
     if (!lastRow.drugName || lastRow.drugName.trim() === "") {
       showPopup(EMPTY_DRUG_NAME_WARNING, "warning");
       return;
     }
-    
+
     const newId = Math.max(...indentEntries.map(e => e.id), 0) + 1;
     setIndentEntries([
       ...indentEntries,
@@ -552,28 +555,39 @@ const IndentCreation = () => {
     setSelectedRolItems(selectedIds);
   };
 
+  // Function to reset form
+  const resetForm = () => {
+    setIndentDate(new Date().toISOString().split("T")[0]);
+    setDepartment("");
+    setIndentEntries([
+      { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "" },
+    ]);
+    setSelectedDrugs([]);
+    setErrors({});
+  };
+
   const handleSave = async () => {
     // Validate form
     if (!validateForm()) {
-      showPopup(`${MANDATORY_FIELD_WARNING}saving`, "warning");
+      showPopup(`${MANDATORY_FIELD_WARNING}`, "warning");
       return;
     }
 
     // Check for duplicate drugs
     if (hasDuplicateDrugs()) {
-      showPopup(`${DUPLICATE_DRUGS_WARNING}saving`, "warning");
+      showPopup(`${DUPLICATE_DRUGS_WARNING}`, "warning");
       return;
     }
 
-    // Build ISO datetime string (LocalDateTime-compatible)
+    // Build ISO datetime string
     const now = new Date();
     const indentDateTime = now.toISOString().slice(0, 19);
 
-    // Filter out entries without drugId and build payload
+    // Filter out entries without drugId
     const validEntries = indentEntries.filter(entry => entry.drugId);
 
     if (validEntries.length === 0) {
-      showPopup(`${NO_VALID_DRUGS_WARNING}saving`, "warning");
+      showPopup(`${NO_VALID_DRUGS_WARNING}`, "warning");
       return;
     }
 
@@ -582,31 +596,65 @@ const IndentCreation = () => {
       indentDate: indentDateTime,
       toDeptId: department ? Number(department) : null,
       items: validEntries.map(entry => ({
-        itemId: Number(entry.drugId), // This was missing - crucial fix!
+        itemId: Number(entry.drugId),
         requestedQty: entry.requiredQty ? Number(entry.requiredQty) : 0,
         reason: entry.reason || "",
         availableStock: entry.wardStock ? Number(entry.wardStock) : 0,
       })),
     };
 
-    debugPayload(payload); // Debug log
+    debugPayload(payload);
 
     try {
       setLoading(true);
-      const response = await postRequest(`${Store_Internal_Indent}/save`, payload);
-      showPopup(INDENT_SAVE_SUCCESS, "success");
+      console.log("Saving indent payload:", payload);
 
-      // Reset form
-      setIndentDate(new Date().toISOString().split("T")[0]);
-      setDepartment("");
-      setIndentEntries([
-        { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "" },
-      ]);
-      setSelectedDrugs([]);
-      setErrors({});
+      const response = await postRequest(`${Store_Internal_Indent}/save`, payload);
+      console.log("Save response:", response);
+
+      // Show confirmation popup instead of regular popup
+      setConfirmationPopup({
+        message: INDENT_SAVE_SUCCESS,
+        onConfirm: () => {
+          // If you have a view page for indents, navigate to it
+          navigate('/ViewDownLoadIndent', {
+            state: {
+              reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${response.response?.indentMId}`,
+              title: 'Indent Save Report',
+              fileName: 'Indent Save Report',
+              returnPath: window.location.pathname // This will capture the current path
+            }
+          });
+
+          // Reset form after navigation
+          resetForm();
+          setConfirmationPopup(null);
+        },
+        onCancel: () => {
+          // Reset form and stay on same page
+          resetForm();
+          setConfirmationPopup(null);
+        },
+        confirmText: "Yes",
+        cancelText: "No",
+        type: "success"
+      });
+
     } catch (err) {
       console.error("Error saving indent:", err);
-      showPopup(INDENT_SAVE_ERROR, "error");
+      // Show error popup without navigation
+      setConfirmationPopup({
+        message: INDENT_SAVE_ERROR,
+        onConfirm: () => {
+          setConfirmationPopup(null);
+        },
+        onCancel: () => {
+          setConfirmationPopup(null);
+        },
+        confirmText: "OK",
+        cancelText: "Close",
+        type: "error"
+      });
     } finally {
       setLoading(false);
     }
@@ -615,13 +663,13 @@ const IndentCreation = () => {
   const handleSubmit = async () => {
     // Validate form
     if (!validateForm()) {
-      showPopup(`${MANDATORY_FIELD_WARNING}submitting`, "warning");
+      showPopup(`${MANDATORY_FIELD_WARNING}`, "warning");
       return;
     }
 
     // Check for duplicate drugs
     if (hasDuplicateDrugs()) {
-      showPopup(`${DUPLICATE_DRUGS_WARNING}submitting`, "warning");
+      showPopup(`${DUPLICATE_DRUGS_WARNING}`, "warning");
       return;
     }
 
@@ -633,7 +681,7 @@ const IndentCreation = () => {
     const validEntries = indentEntries.filter(entry => entry.drugId);
 
     if (validEntries.length === 0) {
-      showPopup(`${NO_VALID_DRUGS_WARNING}submitting`, "warning");
+      showPopup(`${NO_VALID_DRUGS_WARNING}`, "warning");
       return;
     }
 
@@ -642,14 +690,14 @@ const IndentCreation = () => {
       indentDate: indentDateTime,
       toDeptId: department ? Number(department) : null,
       items: validEntries.map(entry => ({
-        itemId: Number(entry.drugId), // This was missing - crucial fix!
+        itemId: Number(entry.drugId),
         requestedQty: entry.requiredQty ? Number(entry.requiredQty) : 0,
         reason: entry.reason || "",
         availableStock: entry.wardStock ? Number(entry.wardStock) : 0,
       })),
     };
 
-    debugPayload(payload); // Debug log
+    debugPayload(payload);
 
     try {
       setLoading(true);
@@ -658,16 +706,34 @@ const IndentCreation = () => {
       const response = await postRequest(`${Store_Internal_Indent}/submit`, payload);
       console.log("Submit response:", response);
 
-      showPopup(INDENT_SUBMIT_SUCCESS, "success");
+      // Show confirmation popup instead of regular popup
+      setConfirmationPopup({
+        message: INDENT_SUBMIT_SUCCESS,
+        onConfirm: () => {
+          // If you have a view page for indents, navigate to it
+          navigate('/ViewDownLoadIndent', {
+            state: {
+              reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${response.response?.indentMId}`,
+              title: 'Indent Submit Report',
+              fileName: 'Indent Submit Report',
+              returnPath: window.location.pathname // This will capture the current path
+            }
+          });
 
-      // Reset form
-      setIndentDate(new Date().toISOString().split("T")[0]);
-      setDepartment("");
-      setIndentEntries([
-        { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "" },
-      ]);
-      setSelectedDrugs([]);
-      setErrors({});
+          // For now, just reset the form
+          resetForm();
+          setConfirmationPopup(null);
+        },
+        onCancel: () => {
+          // Reset form and stay on same page
+          resetForm();
+          setConfirmationPopup(null);
+        },
+        confirmText: "Yes",
+        cancelText: "No",
+        type: "success"
+      });
+
     } catch (err) {
       console.error("Error submitting indent:", err);
       showPopup(INDENT_SUBMIT_ERROR, "error");
@@ -694,6 +760,18 @@ const IndentCreation = () => {
   return (
     <div className="content-wrapper">
       {loading && <LoadingScreen />}
+      
+      {/* Use the independent ConfirmationPopup component */}
+      <ConfirmationPopup
+        show={confirmationPopup !== null}
+        message={confirmationPopup?.message || ''}
+        type={confirmationPopup?.type || 'info'}
+        onConfirm={confirmationPopup?.onConfirm || (() => {})}
+        onCancel={confirmationPopup?.onCancel}
+        confirmText={confirmationPopup?.confirmText || 'OK'}
+        cancelText={confirmationPopup?.cancelText}
+      />
+
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -705,443 +783,444 @@ const IndentCreation = () => {
             <div className="card-body">
               {/* Form Header Section */}
               <div className="row mb-4">
-                  <div className="col-md-3">
-                    <DatePicker
-                      label="Indent Date"
-                      value={indentDate}
-                      onChange={(date) => {
-                        setIndentDate(date);
-                        if (errors.indentDate) {
-                          const newErrors = { ...errors };
-                          delete newErrors.indentDate;
-                          setErrors(newErrors);
-                        }
-                      }}
-                      error={errors.indentDate}
-                      required={true}
-                    />
-                  </div>
-
-                  <div className="col-md-3">
-                    <label className="form-label fw-bold">Department</label>
-                    <select
-                      className={`form-select ${errors.department ? 'is-invalid' : ''}`}
-                      value={department}
-                      onChange={(e) => {
-                        setDepartment(e.target.value);
-                        if (errors.department) {
-                          const newErrors = { ...errors };
-                          delete newErrors.department;
-                          setErrors(newErrors);
-                        }
-                      }}
-                    >
-                      <option value="">Select</option>
-                      {departments.map((dept) => (
-                        <option key={dept.id} value={dept.id}>
-                          {dept.departmentName}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.department && <div className="invalid-feedback">{errors.department}</div>}
-                  </div>
-
-                  <div className="col-md-3">
-                    <label className="form-label fw-bold">Current Department</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={loggedInDepartment}
-                      readOnly
-                      style={{ backgroundColor: "#f5f5f5" }}
-                      placeholder={!loggedInDepartment ? "Loading..." : ""}
-                    />
-                  </div>
+                <div className="col-md-3">
+                  <DatePicker
+                    label="Indent Date"
+                    value={indentDate}
+                    onChange={(date) => {
+                      setIndentDate(date);
+                      if (errors.indentDate) {
+                        const newErrors = { ...errors };
+                        delete newErrors.indentDate;
+                        setErrors(newErrors);
+                      }
+                    }}
+                    error={errors.indentDate}
+                    required={true}
+                  />
                 </div>
 
-                {/* Table Section */}
-                <div className="table-responsive" style={{ overflowX: "auto" }}>
-                  <table className="table table-bordered align-middle">
-                    <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
-                      <tr>
-                        <th style={{ width: "300px", minWidth: "300px" }}>
-                          Item Name / Item Code
-                        </th>
-                        <th style={{ width: "70px", minWidth: "70px" }}>
-                          A/U
-                        </th>
-                        <th style={{ width: "110px", minWidth: "110px", whiteSpace: "normal", lineHeight: "1.2" }}>
-                          <span>Required</span><br />
-                          <span>Quantity</span>
-                        </th>
-                        <th style={{ width: "150px", minWidth: "150px" }}>
-                          Stores Available Stock
-                        </th>
-                        <th style={{ width: "150px", minWidth: "150px" }}>
-                          Ward Pharmacy Stock
-                        </th>
-                        <th style={{ width: "160px", minWidth: "160px" }}>
-                          Reason for Indent
-                        </th>
-                        <th style={{ width: "80px", minWidth: "80px", textAlign: "center" }}>
-                          Add
-                        </th>
-                        <th style={{ width: "80px", minWidth: "80px", textAlign: "center" }}>
-                          Delete
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {indentEntries.map((entry, index) => (
-                        <tr key={entry.id}>
-                          <td style={{ position: 'relative' }}>
-                            <div className="dropdown-search-container position-relative">
-                              <input
-                                type="text"
-                                className={`form-control ${errors[`drug_${index}`] ? 'is-invalid' : ''}`}
-                                value={getDrugDisplayValue(entry.drugName, entry.drugCode)}
-                                autoComplete="off"
-                                onChange={(e) => {
-                                  const displayValue = e.target.value;
-                                  const drugName = extractDrugName(displayValue);
-                                  handleEntryChange(entry.id, "drugName", drugName);
-                                  if (drugName.trim() !== "") {
-                                    setActiveRowIndex(index);
-                                    setDropdownVisible(true);
-                                  } else {
-                                    setDropdownVisible(false);
-                                  }
-                                }}
-                                onFocus={(e) => handleDrugInputFocus(e, index)}
-                                placeholder="Enter item name or code"
-                                style={{ borderRadius: "4px", minWidth: "280px" }}
-                              />
-                              {errors[`drug_${index}`] && (
-                                <div className="invalid-feedback d-block">{errors[`drug_${index}`]}</div>
-                              )}
+                <div className="col-md-3">
+                  <label className="form-label fw-bold">Department</label>
+                  <select
+                    className={`form-select ${errors.department ? 'is-invalid' : ''}`}
+                    value={department}
+                    onChange={(e) => {
+                      setDepartment(e.target.value);
+                      if (errors.department) {
+                        const newErrors = { ...errors };
+                        delete newErrors.department;
+                        setErrors(newErrors);
+                      }
+                    }}
+                  >
+                    <option value="">Select</option>
+                    {departments.map((dept) => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.departmentName}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.department && <div className="invalid-feedback">{errors.department}</div>}
+                </div>
 
-                              {/* Search Dropdown */}
-                              {dropdownVisible && activeRowIndex === index &&
-                                extractDrugName(getDrugDisplayValue(entry.drugName, entry.drugCode)).trim() !== "" && (
-                                  <ul
-                                    className="list-group position-fixed dropdown-list"
-                                    style={{
-                                      top: `${dropdownPosition.y}px`,
-                                      left: `${dropdownPosition.x}px`,
-                                      width: `${dropdownPosition.width}px`,
-                                      zIndex: 99999,
-                                      backgroundColor: "#fff",
-                                      border: "1px solid #ccc",
-                                      borderRadius: "4px",
-                                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                                      maxHeight: "250px",
-                                      overflowY: "auto",
-                                    }}
-                                  >
-                                    {filterDrugsBySearch(extractDrugName(getDrugDisplayValue(entry.drugName, entry.drugCode))).length > 0 ? (
-                                      filterDrugsBySearch(extractDrugName(getDrugDisplayValue(entry.drugName, entry.drugCode))).map((drug) => {
-                                        const isSelectedInOtherRow = selectedDrugs.some(
-                                          (id) => id === drug.itemId && indentEntries[index]?.drugId !== drug.itemId
-                                        );
-                                        return (
-                                          <li
-                                            key={drug.itemId}
-                                            className="list-group-item list-group-item-action"
-                                            style={{
-                                              backgroundColor: isSelectedInOtherRow ? "#ffc107" : "#f8f9fa",
-                                              cursor: isSelectedInOtherRow ? "not-allowed" : "pointer",
-                                              padding: "8px 12px",
-                                            }}
-                                            onClick={() => {
-                                              if (!isSelectedInOtherRow) handleDrugSelect(index, drug);
-                                            }}
-                                          >
-                                            <div>
-                                              <strong>{drug.nomenclature}</strong>
-                                              <div
-                                                style={{
-                                                  color: "#6c757d",
-                                                  fontSize: "0.8rem",
-                                                  marginTop: "2px",
-                                                  display: "flex",
-                                                  justifyContent: "space-between",
-                                                  alignItems: "center"
-                                                }}
-                                              >
-                                                <div>
-                                                  <span className="badge bg-info me-1" style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>
-                                                    <i className="fas fa-hashtag me-1"></i>CODE:{drug.pvmsNo}
-                                                  </span>
+                <div className="col-md-3">
+                  <label className="form-label fw-bold">Current Department</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={loggedInDepartment}
+                    readOnly
+                    style={{ backgroundColor: "#f5f5f5" }}
+                    placeholder={!loggedInDepartment ? "Loading..." : ""}
+                  />
+                </div>
+              </div>
 
-                                                </div>
-                                                {isSelectedInOtherRow && (
-                                                  <span className="text-success">
-                                                    <i className="fas fa-check-circle me-1"></i> Added
-                                                  </span>
-                                                )}
-                                              </div>
-                                            </div>
-                                          </li>
-                                        );
-                                      })
-                                    ) : (
-                                      <li className="list-group-item text-muted text-center">
-                                        {allDrugs.length === 0 ? "No drugs available" : "No drugs found"}
-                                      </li>
-                                    )}
-                                  </ul>
-                                )}
-                            </div>
-                          </td>
-                          <td>
+              {/* Table Section */}
+              <div className="table-responsive" style={{ overflowX: "auto" }}>
+                <table className="table table-bordered align-middle">
+                  <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
+                    <tr>
+                      <th style={{ width: "300px", minWidth: "300px" }}>
+                        Item Name / Item Code
+                      </th>
+                      <th style={{ width: "70px", minWidth: "70px" }}>
+                        A/U
+                      </th>
+                      <th style={{ width: "110px", minWidth: "110px", whiteSpace: "normal", lineHeight: "1.2" }}>
+                        <span>Required</span><br />
+                        <span>Quantity</span>
+                      </th>
+                      <th style={{ width: "150px", minWidth: "150px" }}>
+                        Stores Available Stock
+                      </th>
+                      <th style={{ width: "150px", minWidth: "150px" }}>
+                        Ward Pharmacy Stock
+                      </th>
+                      <th style={{ width: "160px", minWidth: "160px" }}>
+                        Reason for Indent
+                      </th>
+                      <th style={{ width: "80px", minWidth: "80px", textAlign: "center" }}>
+                        Add
+                      </th>
+                      <th style={{ width: "80px", minWidth: "80px", textAlign: "center" }}>
+                        Delete
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {indentEntries.map((entry, index) => (
+                      <tr key={entry.id}>
+                        <td style={{ position: 'relative' }}>
+                          <div className="dropdown-search-container position-relative">
                             <input
                               type="text"
-                              className="form-control"
-                              placeholder="Unit"
-                              value={entry.unit}
-                              onChange={(e) => handleEntryChange(entry.id, "unit", e.target.value)}
-                              style={{ backgroundColor: "#f5f5f5" }}
-                              readOnly
+                              className={`form-control ${errors[`drug_${index}`] ? 'is-invalid' : ''}`}
+                              value={getDrugDisplayValue(entry.drugName, entry.drugCode)}
+                              autoComplete="off"
+                              onChange={(e) => {
+                                const displayValue = e.target.value;
+                                const drugName = extractDrugName(displayValue);
+                                handleEntryChange(entry.id, "drugName", drugName);
+                                if (drugName.trim() !== "") {
+                                  setActiveRowIndex(index);
+                                  setDropdownVisible(true);
+                                } else {
+                                  setDropdownVisible(false);
+                                }
+                              }}
+                              onFocus={(e) => handleDrugInputFocus(e, index)}
+                              placeholder="Enter item name or code"
+                              style={{ borderRadius: "4px", minWidth: "280px" }}
                             />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className={`form-control ${errors[`qty_${index}`] || errors[`stock_${index}`] ? 'is-invalid' : ''}`}
-                              placeholder="Qty"
-                              value={entry.requiredQty}
-                              onChange={(e) => handleEntryChange(entry.id, "requiredQty", e.target.value)}
-                              min="1"
-                            />
-                            {errors[`qty_${index}`] && (
-                              <div className="invalid-feedback d-block">{errors[`qty_${index}`]}</div>
+                            {errors[`drug_${index}`] && (
+                              <div className="invalid-feedback d-block">{errors[`drug_${index}`]}</div>
                             )}
-                            {errors[`stock_${index}`] && (
-                              <div className="invalid-feedback d-block">{errors[`stock_${index}`]}</div>
-                            )}
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control"
-                              placeholder="Store Stock"
-                              value={entry.storesStock}
-                              onChange={(e) => handleEntryChange(entry.id, "storesStock", e.target.value)}
-                              style={{ backgroundColor: "#f5f5f5" }}
-                              readOnly
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control"
-                              placeholder="Ward Stock"
-                              value={entry.wardStock}
-                              onChange={(e) => handleEntryChange(entry.id, "wardStock", e.target.value)}
-                              style={{ backgroundColor: "#f5f5f5" }}
-                              readOnly
-                            />
-                          </td>
-                          <td>
-                            <textarea
-                              className="form-control"
-                              placeholder="Reason"
-                              value={entry.reason}
-                              onChange={(e) => handleEntryChange(entry.id, "reason", e.target.value)}
-                              style={{ height: "40px", resize: "none" }}
-                            />
-                          </td>
-                          <td style={{ textAlign: "center" }}>
-                            <button
-                              className="btn btn-sm btn-success"
-                              onClick={handleAddRow}
-                            >
-                              <i className="fa fa-plus"></i>
-                            </button>
-                          </td>
-                          <td style={{ textAlign: "center" }}>
-                            <button
-                              className="btn btn-sm btn-danger"
-                              onClick={() => handleDeleteRow(entry.id)}
-                              disabled={indentEntries.length <= 1}
-                            >
-                              <i className="fa fa-minus"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
 
-                {/* Import Buttons */}
-                <div className="d-flex justify-content-end gap-2 mt-3 mb-4">
-                  <button
-                    type="button"
-                    className="btn btn-success"
-                    onClick={handleImportROL}
-                    disabled={loading}
-                  >
-                    {loading ? "Loading..." : "Import from ROL"}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-success"
-                    onClick={handleImportPreviousIndent}
-                  >
-                    Import from Previous Indent
-                  </button>
-                </div>
+                            {/* Search Dropdown */}
+                            {dropdownVisible && activeRowIndex === index &&
+                              extractDrugName(getDrugDisplayValue(entry.drugName, entry.drugCode)).trim() !== "" && (
+                                <ul
+                                  className="list-group position-fixed dropdown-list"
+                                  style={{
+                                    top: `${dropdownPosition.y}px`,
+                                    left: `${dropdownPosition.x}px`,
+                                    width: `${dropdownPosition.width}px`,
+                                    zIndex: 99999,
+                                    backgroundColor: "#fff",
+                                    border: "1px solid #ccc",
+                                    borderRadius: "4px",
+                                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                                    maxHeight: "250px",
+                                    overflowY: "auto",
+                                  }}
+                                >
+                                  {filterDrugsBySearch(extractDrugName(getDrugDisplayValue(entry.drugName, entry.drugCode))).length > 0 ? (
+                                    filterDrugsBySearch(extractDrugName(getDrugDisplayValue(entry.drugName, entry.drugCode))).map((drug) => {
+                                      const isSelectedInOtherRow = selectedDrugs.some(
+                                        (id) => id === drug.itemId && indentEntries[index]?.drugId !== drug.itemId
+                                      );
+                                      return (
+                                        <li
+                                          key={drug.itemId}
+                                          className="list-group-item list-group-item-action"
+                                          style={{
+                                            backgroundColor: isSelectedInOtherRow ? "#ffc107" : "#f8f9fa",
+                                            cursor: isSelectedInOtherRow ? "not-allowed" : "pointer",
+                                            padding: "8px 12px",
+                                          }}
+                                          onClick={() => {
+                                            if (!isSelectedInOtherRow) handleDrugSelect(index, drug);
+                                          }}
+                                        >
+                                          <div>
+                                            <strong>{drug.nomenclature}</strong>
+                                            <div
+                                              style={{
+                                                color: "#6c757d",
+                                                fontSize: "0.8rem",
+                                                marginTop: "2px",
+                                                display: "flex",
+                                                justifyContent: "space-between",
+                                                alignItems: "center"
+                                              }}
+                                            >
+                                              <div>
+                                                <span className="badge bg-info me-1" style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>
+                                                  <i className="fas fa-hashtag me-1"></i>CODE:{drug.pvmsNo}
+                                                </span>
 
-                {/* Action Buttons */}
-                <div className="d-flex justify-content-end gap-2 mt-4">
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={handleSave}
-                    disabled={loading}
-                  >
-                    {loading ? "Saving..." : "Save"}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-warning"
-                    onClick={handleSubmit}
-                    disabled={loading}
-                  >
-                    {loading ? "Submitting..." : "Submit"}
-                  </button>
-                </div>
+                                              </div>
+                                              {isSelectedInOtherRow && (
+                                                <span className="text-success">
+                                                  <i className="fas fa-check-circle me-1"></i> Added
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </li>
+                                      );
+                                    })
+                                  ) : (
+                                    <li className="list-group-item text-muted text-center">
+                                      {allDrugs.length === 0 ? "No drugs available" : "No drugs found"}
+                                    </li>
+                                  )}
+                                </ul>
+                              )}
+                          </div>
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Unit"
+                            value={entry.unit}
+                            onChange={(e) => handleEntryChange(entry.id, "unit", e.target.value)}
+                            style={{ backgroundColor: "#f5f5f5" }}
+                            readOnly
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            className={`form-control ${errors[`qty_${index}`] || errors[`stock_${index}`] ? 'is-invalid' : ''}`}
+                            placeholder="Qty"
+                            value={entry.requiredQty}
+                            onChange={(e) => handleEntryChange(entry.id, "requiredQty", e.target.value)}
+                            min="1"
+                          />
+                          {errors[`qty_${index}`] && (
+                            <div className="invalid-feedback d-block">{errors[`qty_${index}`]}</div>
+                          )}
+                          {errors[`stock_${index}`] && (
+                            <div className="invalid-feedback d-block">{errors[`stock_${index}`]}</div>
+                          )}
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            className="form-control"
+                            placeholder="Store Stock"
+                            value={entry.storesStock}
+                            onChange={(e) => handleEntryChange(entry.id, "storesStock", e.target.value)}
+                            style={{ backgroundColor: "#f5f5f5" }}
+                            readOnly
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            className="form-control"
+                            placeholder="Ward Stock"
+                            value={entry.wardStock}
+                            onChange={(e) => handleEntryChange(entry.id, "wardStock", e.target.value)}
+                            style={{ backgroundColor: "#f5f5f5" }}
+                            readOnly
+                          />
+                        </td>
+                        <td>
+                          <textarea
+                            className="form-control"
+                            placeholder="Reason"
+                            value={entry.reason}
+                            onChange={(e) => handleEntryChange(entry.id, "reason", e.target.value)}
+                            style={{ height: "40px", resize: "none" }}
+                          />
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <button
+                            className="btn btn-sm btn-success"
+                            onClick={handleAddRow}
+                          >
+                            <i className="fa fa-plus"></i>
+                          </button>
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => handleDeleteRow(entry.id)}
+                            disabled={indentEntries.length <= 1}
+                          >
+                            <i className="fa fa-minus"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Import Buttons */}
+              <div className="d-flex justify-content-end gap-2 mt-3 mb-4">
+                <button
+                  type="button"
+                  className="btn btn-success"
+                  onClick={handleImportROL}
+                  disabled={loading}
+                >
+                  {loading ? "Loading..." : "Import from ROL"}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-success"
+                  onClick={handleImportPreviousIndent}
+                >
+                  Import from Previous Indent
+                </button>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="d-flex justify-content-end gap-2 mt-4">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleSave}
+                  disabled={loading}
+                >
+                  {loading ? "Saving..." : "Save"}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-warning"
+                  onClick={handleSubmit}
+                  disabled={loading}
+                >
+                  {loading ? "Submitting..." : "Submit"}
+                </button>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* ROL Import Popup */}
-        {showROLPopup && (
+      {/* ROL Import Popup */}
+      {showROLPopup && (
+        <div
+          className="modal fade show d-block"
+          style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)", zIndex: 10000 }}
+          tabIndex="-1"
+          onClick={() => setShowROLPopup(false)}
+        >
           <div
-            className="modal fade show d-block"
-            style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)", zIndex: 10000 }}
-            tabIndex="-1"
-            onClick={() => setShowROLPopup(false)}
+            className="modal-dialog modal-lg"
+            style={{
+              width: "calc(100vw - 310px)",
+              left: "285px",
+              maxWidth: "none",
+              height: "90vh",
+              margin: "5vh auto",
+              position: "fixed",
+            }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <div
-              className="modal-dialog modal-lg"
-              style={{
-                width: "calc(100vw - 310px)",
-                left: "285px",
-                maxWidth: "none",
-                height: "90vh",
-                margin: "5vh auto",
-                position: "fixed",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Import from ROL (Reorder Level)</h5>
-                  <button
-                    type="button"
-                    className="btn-close"
-                    onClick={() => setShowROLPopup(false)}
-                  ></button>
-                </div>
-                <div
-                  className="modal-body"
-                  style={{ overflowY: "auto", flex: "1 1 auto", maxHeight: "calc(90vh - 120px)" }}
-                >
-                  {rolItems.length === 0 ? (
-                    <div className="text-center p-4">
-                      <p>{NO_ROL_DATA}</p>
-                    </div>
-                  ) : (
-                    <div className="table-responsive">
-                      <table className="table table-bordered">
-                        <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
-                          <tr>
-                            <th style={{ width: "60px" }}>S.no</th>
-                            <th>Item ID</th>
-                            <th>Item Name</th>
-                            <th style={{ width: "120px" }}>Available Qty</th>
-                            <th style={{ width: "120px" }}>ROL Qty</th>
-                            <th style={{ width: "100px", textAlign: "center" }}>
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Import from ROL (Reorder Level)</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowROLPopup(false)}
+                ></button>
+              </div>
+              <div
+                className="modal-body"
+                style={{ overflowY: "auto", flex: "1 1 auto", maxHeight: "calc(90vh - 120px)" }}
+              >
+                {rolItems.length === 0 ? (
+                  <div className="text-center p-4">
+                    <p>{NO_ROL_DATA}</p>
+                  </div>
+                ) : (
+                  <div className="table-responsive">
+                    <table className="table table-bordered">
+                      <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
+                        <tr>
+                          <th style={{ width: "60px" }}>S.no</th>
+                          <th>Item ID</th>
+                          <th>Item Name</th>
+                          <th style={{ width: "120px" }}>Available Qty</th>
+                          <th style={{ width: "120px" }}>ROL Qty</th>
+                          <th style={{ width: "100px", textAlign: "center" }}>
+                            <div className="form-check">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                onChange={handleSelectAllROL}
+                                checked={rolItems.length > 0 && rolItems.every(item => item.selected)}
+                              />
+                              <label className="form-check-label">Select</label>
+                            </div>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rolItems.map((item, index) => (
+                          <tr key={item.id}>
+                            <td>{index + 1}</td>
+                            <td>{item.itemId}</td>
+                            <td>
+                              <div>
+                                <strong>{item.itemName}</strong>
+                                <div className="mt-1">
+                                  <span className="badge bg-info me-2" style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>
+                                    <i className="fas fa-hashtag me-1"></i>{item.pvmsNo}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            <td>{item.availableQty}</td>
+                            <td>{item.rolQty}</td>
+                            <td style={{ textAlign: "center" }}>
                               <div className="form-check">
                                 <input
                                   className="form-check-input"
                                   type="checkbox"
-                                  onChange={handleSelectAllROL}
-                                  checked={rolItems.length > 0 && rolItems.every(item => item.selected)}
+                                  checked={item.selected || false}
+                                  onChange={(e) => handleROLItemSelect(item.id, e.target.checked)}
                                 />
-                                <label className="form-check-label">Select</label>
                               </div>
-                            </th>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {rolItems.map((item, index) => (
-                            <tr key={item.id}>
-                              <td>{index + 1}</td>
-                              <td>{item.itemId}</td>
-                              <td>
-                                <div>
-                                  <strong>{item.itemName}</strong>
-                                  <div className="mt-1">
-                                    <span className="badge bg-info me-2" style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>
-                                      <i className="fas fa-hashtag me-1"></i>{item.pvmsNo}
-                                    </span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>{item.availableQty}</td>
-                              <td>{item.rolQty}</td>
-                              <td style={{ textAlign: "center" }}>
-                                <div className="form-check">
-                                  <input
-                                    className="form-check-input"
-                                    type="checkbox"
-                                    checked={item.selected || false}
-                                    onChange={(e) => handleROLItemSelect(item.id, e.target.checked)}
-                                  />
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => setShowROLPopup(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={handleImportROLItems}
-                    disabled={rolItems.length === 0}
-                  >
-                    Import Selected Items
-                  </button>
-                </div>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowROLPopup(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleImportROLItems}
+                  disabled={rolItems.length === 0}
+                >
+                  Import Selected Items
+                </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {popupMessage && (
-          <Popup
-            message={popupMessage.message}
-            type={popupMessage.type}
-            onClose={popupMessage.onClose}
-          />
-        )}
-      </div>
-      )
+      {/* Regular Popup for other messages */}
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
+    </div>
+  )
 }
 
 export default IndentCreation

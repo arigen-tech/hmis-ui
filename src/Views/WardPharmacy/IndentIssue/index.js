@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from "react"
 import ReactDOM from "react-dom"
+import { useNavigate } from 'react-router-dom'; // Add this import
 import Popup from "../../../Components/popup"
-import { Store_Internal_Indent } from "../../../config/apiConfig"
+import ConfirmationPopup from "../../../Components/ConfirmationPopup"; // Add this import
+import { Store_Internal_Indent, ALL_REPORTS } from "../../../config/apiConfig" // Add ALL_REPORTS
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import DatePicker from "../../../Components/DatePicker"
@@ -17,6 +19,7 @@ const IndentIssue = () => {
   const [dtRecord, setDtRecord] = useState([])
   const [indentEntries, setIndentEntries] = useState([])
   const [popupMessage, setPopupMessage] = useState(null)
+  const [confirmationPopup, setConfirmationPopup] = useState(null) // Add this state
   const dropdownClickedRef = useRef(false)
   const [activeItemDropdown, setActiveItemDropdown] = useState(null)
   const [activeBatchDropdown, setActiveBatchDropdown] = useState(null)
@@ -30,12 +33,32 @@ const IndentIssue = () => {
   const [filteredIndentData, setFilteredIndentData] = useState([])
   const [showPreviousIssues, setShowPreviousIssues] = useState(false)
   const [previousIssuesData, setPreviousIssuesData] = useState([])
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
   const [previousIssuesLoading, setPreviousIssuesLoading] = useState(false)
   const [previousIssuesError, setPreviousIssuesError] = useState(null)
 
+  // Add navigate hook
+  const navigate = useNavigate();
+
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId")
+
+  // Confirmation Popup Helper Function
+  const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "Yes", cancelText = "No") => {
+    setConfirmationPopup({
+      message,
+      type,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmationPopup(null);
+      },
+      onCancel: onCancel ? () => {
+        onCancel();
+        setConfirmationPopup(null);
+      } : () => setConfirmationPopup(null),
+      confirmText,
+      cancelText
+    });
+  };
 
   // Fetch pending indents for issue department
   const fetchPendingIndentsForIssue = async (deptId) => {
@@ -335,7 +358,6 @@ const IndentIssue = () => {
     setCurrentView("list")
     setSelectedRecord(null)
     setIndentEntries([])
-    setShowConfirmDialog(false)
   }
 
   const handleShowAll = () => {
@@ -343,8 +365,6 @@ const IndentIssue = () => {
     setToDate("")
     setFilteredIndentData(indentData)
   }
-
- 
 
   const addNewRow = () => {
     const newEntry = {
@@ -506,14 +526,26 @@ const IndentIssue = () => {
       return;
     }
 
-    // Show confirmation dialog
-    setShowConfirmDialog(true);
+    // Show confirmation popup
+    showConfirmationPopup(
+      `Are you sure you want to issue this indent? This will issue the full approved quantity for all selected items.`,
+      "info",
+      () => {
+        // On confirm, proceed with issue
+        handleConfirmSubmit();
+      },
+      () => {
+        // On cancel, do nothing
+        console.log("Issue cancelled by user");
+      },
+      "Yes, Issue",
+      "Cancel"
+    );
   };
 
   const handleConfirmSubmit = async () => {
     try {
       setProcessing(true);
-      setShowConfirmDialog(false);
       setLoading(true);
 
       const payload = {
@@ -534,34 +566,73 @@ const IndentIssue = () => {
       console.log("API Response:", response);
 
       if (response && response.status === 200) {
-        showPopup("Indent issued successfully!", "success");
-
-        // After successful issue, remove the indent from the list
-        setTimeout(() => {
-          // Filter out the issued indent
-          const updatedIndentData = indentData.filter(
-            item => item.indentMId !== selectedRecord?.indentMId
-          );
-          setIndentData(updatedIndentData);
-          setFilteredIndentData(updatedIndentData);
-
-          handleBackToList();
-        }, 2000);
+        const indentMId = selectedRecord?.indentMId;
+        const issueResponse = await getRequest(`/indent/get-issueMId?indentMId=${indentMId}`);
+        console.log("issue MId response :: ",issueResponse)
+        // Show success confirmation popup with navigation
+        showConfirmationPopup(
+          "Indent issued successfully! Do you want to print report ?",
+          "success",
+          () => {
+            // Navigate to report page
+            navigate('/ViewDownLoadIndent', {
+              state: {
+                reportUrl: `${ALL_REPORTS}/indentIssue?issueMId=${issueResponse.response}`,
+                title: 'Indent Issue Report',
+                fileName: 'Indent Issue Report',
+                returnPath: window.location.pathname
+              }
+            });
+            
+            // After successful issue, remove the indent from the list
+            const updatedIndentData = indentData.filter(
+              item => item.indentMId !== selectedRecord?.indentMId
+            );
+            setIndentData(updatedIndentData);
+            setFilteredIndentData(updatedIndentData);
+            handleBackToList();
+          },
+          () => {
+            // User clicked "No" - just reset and stay on same page
+            const updatedIndentData = indentData.filter(
+              item => item.indentMId !== selectedRecord?.indentMId
+            );
+            setIndentData(updatedIndentData);
+            setFilteredIndentData(updatedIndentData);
+            handleBackToList();
+          },
+          "Yes",
+          "No"
+        );
       } else {
         const errorMessage = response?.message || "Error issuing indent. Please try again.";
-        showPopup(errorMessage, "error");
+        
+        // Show error confirmation popup
+        showConfirmationPopup(
+          errorMessage,
+          "error",
+          () => {}, // Empty function for OK button
+          null, // No cancel function
+          "OK",
+          "Close"
+        );
       }
     } catch (error) {
       console.error("Error submitting indent:", error);
-      showPopup("Error issuing indent. Please try again.", "error");
+      
+      // Show error confirmation popup
+      showConfirmationPopup(
+        "Error issuing indent. Please try again.",
+        "error",
+        () => {}, // Empty function for OK button
+        null, // No cancel function
+        "OK",
+        "Close"
+      );
     } finally {
       setProcessing(false);
       setLoading(false);
     }
-  };
-
-  const handleCancelConfirm = () => {
-    setShowConfirmDialog(false);
   };
 
   const handleViewPreviousIssues = async (entry) => {
@@ -640,64 +711,6 @@ const IndentIssue = () => {
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredIndentData.slice(indexOfFirst, indexOfLast);
-
-  
-
-  // Confirmation Dialog Component
-  const ConfirmationDialog = () => {
-    if (!showConfirmDialog) return null;
-
-    return (
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: "rgba(0, 0, 0, 0.5)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 10001,
-        }}
-      >
-        <div
-          style={{
-            backgroundColor: "white",
-            padding: "30px",
-            borderRadius: "8px",
-            maxWidth: "500px",
-            width: "90%",
-            boxShadow: "0 5px 15px rgba(0,0,0,0.3)",
-          }}
-        >
-          <h5 className="mb-4">Confirm Issue</h5>
-          <p className="mb-4">
-            Are you sure you want to issue this indent? This will issue the full approved quantity for all selected items.
-          </p>
-          <div className="d-flex justify-content-end gap-3">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={handleCancelConfirm}
-              disabled={processing}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleConfirmSubmit}
-              disabled={processing}
-            >
-              {processing ? "Processing..." : "Yes, Issue"}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   const PreviousIssuesModal = () => {
     if (!showPreviousIssues) return null;
@@ -816,9 +829,20 @@ const IndentIssue = () => {
   if (currentView === "detail") {
     return (
       <div className="content-wrapper">
-        <ConfirmationDialog />
-        <PreviousIssuesModal />
         {loading && <LoadingScreen />}
+        
+        {/* Add ConfirmationPopup component */}
+        <ConfirmationPopup
+          show={confirmationPopup !== null}
+          message={confirmationPopup?.message || ''}
+          type={confirmationPopup?.type || 'info'}
+          onConfirm={confirmationPopup?.onConfirm || (() => {})}
+          onCancel={confirmationPopup?.onCancel}
+          confirmText={confirmationPopup?.confirmText || 'OK'}
+          cancelText={confirmationPopup?.cancelText}
+        />
+        
+        <PreviousIssuesModal />
         {popupMessage && (
           <Popup
             message={popupMessage.message}
@@ -1325,7 +1349,17 @@ const IndentIssue = () => {
 
   return (
     <div className="content-wrapper">
-      <ConfirmationDialog />
+      {/* Add ConfirmationPopup component */}
+      <ConfirmationPopup
+        show={confirmationPopup !== null}
+        message={confirmationPopup?.message || ''}
+        type={confirmationPopup?.type || 'info'}
+        onConfirm={confirmationPopup?.onConfirm || (() => {})}
+        onCancel={confirmationPopup?.onCancel}
+        confirmText={confirmationPopup?.confirmText || 'OK'}
+        cancelText={confirmationPopup?.cancelText}
+      />
+      
       <PreviousIssuesModal />
       {popupMessage && (
         <Popup

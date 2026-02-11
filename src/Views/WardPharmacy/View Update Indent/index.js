@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from "react"
-import ReactDOM from "react-dom"
+import { useNavigate } from 'react-router-dom'
 import Popup from "../../../Components/popup"
-import { Store_Internal_Indent, MAS_DRUG_MAS } from "../../../config/apiConfig"
+import ConfirmationPopup from "../../../Components/ConfirmationPopup"
+import { Store_Internal_Indent, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
-import DatePicker from "../../../Components/DatePicker";
-import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
+import DatePicker from "../../../Components/DatePicker"
+import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination"
 
 
 const IndentViewUpdate = () => {
@@ -17,21 +18,20 @@ const IndentViewUpdate = () => {
   const [dtRecord, setDtRecord] = useState([])
   const [indentEntries, setIndentEntries] = useState([])
   const [popupMessage, setPopupMessage] = useState(null)
-  const dropdownClickedRef = useRef(false)
+  const [confirmationPopup, setConfirmationPopup] = useState(null)
   const [activeItemDropdown, setActiveItemDropdown] = useState(null)
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0, width: 0 })
   const itemInputRefs = useRef({})
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
   const [indentData, setIndentData] = useState([])
   const [filteredIndentData, setFilteredIndentData] = useState([])
   const [statusFilter, setStatusFilter] = useState("")
   const [selectedDrugs, setSelectedDrugs] = useState([])
 
-  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId")
-  const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId")
+  // Add navigate hook
+  const navigate = useNavigate();
 
   // Dynamic status mapping
   const getStatusInfo = (status) => {
@@ -70,12 +70,29 @@ const IndentViewUpdate = () => {
     return displayValue;
   };
 
+  // Confirmation Popup Helper Function
+  const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "Yes", cancelText = "No") => {
+    setConfirmationPopup({
+      message,
+      type,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmationPopup(null);
+      },
+      onCancel: onCancel ? () => {
+        onCancel();
+        setConfirmationPopup(null);
+      } : () => setConfirmationPopup(null),
+      confirmText,
+      cancelText
+    });
+  };
+
   // Fetch all indents
   const fetchIndents = async (status = "") => {
     try {
       setLoading(true)
       let url = `${Store_Internal_Indent}/getallindent`
-
 
       console.log("Fetching indents from URL:", url)
 
@@ -135,15 +152,16 @@ const IndentViewUpdate = () => {
         setItemOptions(drugs)
       }
     } catch (err) {
-      setLoading(false)
       console.error("Error fetching drugs:", err)
+    } finally {
+      setLoading(false)
     }
   }
 
   useEffect(() => {
     fetchIndents()
     fetchAllDrugs()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Filter drugs based on search input
   const filterDrugsBySearch = (searchTerm) => {
@@ -328,8 +346,6 @@ const IndentViewUpdate = () => {
     fetchIndents()
   }
 
-  
-
   // Add new row
   const addNewRow = () => {
     const newEntry = {
@@ -377,7 +393,7 @@ const IndentViewUpdate = () => {
     })
   }
 
-  // Handle save/submit
+  // Handle save/submit - UPDATED WITH CONFIRMATION POPUP
   const handleSubmit = async (status) => {
     // Check if we have at least one valid item
     const validItems = indentEntries.filter(entry =>
@@ -390,15 +406,14 @@ const IndentViewUpdate = () => {
     }
 
     // Convert status to uppercase for backend
-    const backendStatus = status.toUpperCase();
-
+    const backendStatus = status.toUpperCase()
 
     const payload = {
       indentMId: selectedRecord?.indentMId || null,
       indentDate: selectedRecord?.indentDate || new Date().toISOString().slice(0, 19),
       toDeptId: selectedRecord?.toDeptId || null,
       status: backendStatus,
-      deletedT: dtRecord.length > 0 ? dtRecord : [], // Always send as array, even if empty
+      deletedT: dtRecord.length > 0 ? dtRecord : [],
       items: validItems.map((entry) => {
         const itemPayload = {
           itemId: Number(entry.itemId),
@@ -423,13 +438,75 @@ const IndentViewUpdate = () => {
 
       const endpoint = backendStatus === "S" ? "save" : "submit"
       const response = await postRequest(`${Store_Internal_Indent}/${endpoint}`, payload)
+      
+      const indentMId = response.response?.indentMId
+      
+      // Show confirmation popup instead of regular popup
+      if (backendStatus === "S") {
+        showConfirmationPopup(
+          `Indent saved successfully! Do you want to print report ?`,
+          "success",
+          () => {
+            // Navigate to report page for save
+            navigate('/ViewDownLoadIndent', {
+              state: {
+                reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${indentMId}`,
+                title: 'Indent Save Report',
+                fileName: 'Indent Save Report',
+                returnPath: window.location.pathname
+              }
+            });
+            handleBackToList();
+            fetchIndents();
+          },
+          () => {
+            // Just reset and stay on same page
+            handleBackToList();
+            fetchIndents();
+          },
+          "Yes",
+          "No"
+        );
+      } else if (backendStatus === "Y") {
+        showConfirmationPopup(
+          `Indent submitted successfully ! Do you want to print report ?`,
+          "success",
+          () => {
+            // Navigate to report page for submit
+            navigate('/ViewDownLoadIndent', {
+              state: {
+                reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${indentMId}`,
+                title: 'Indent Submit Report',
+                fileName: 'Indent Submit Report',
+                returnPath: window.location.pathname
+              }
+            });
+            handleBackToList();
+            fetchIndents();
+          },
+          () => {
+            // Just reset and stay on same page
+            handleBackToList();
+            fetchIndents();
+          },
+          "Yes",
+          "No"
+        );
+      }
 
-      showPopup(`Indent ${backendStatus === 'S' ? 'saved' : 'submitted'} successfully!`, "success")
-      handleBackToList()
-      fetchIndents()
     } catch (error) {
       console.error("Error submitting indent:", error)
-      showPopup(`Error ${backendStatus === 'S' ? 'saving' : 'submitting'} indent. Please try again.`, "error")
+      
+      // Show error popup
+      showConfirmationPopup(
+        `Error ${backendStatus === 'S' ? 'saving' : 'submitting'} indent. Please try again.`,
+        "error",
+        () => {},
+        null,
+        "OK",
+        "Close"
+      );
+      
     } finally {
       setProcessing(false)
     }
@@ -443,13 +520,11 @@ const IndentViewUpdate = () => {
   }
 
   // Pagination
-  const itemsPerPage = 5    
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
+  const indexOfLast = currentPage * itemsPerPage;
+  const indexOfFirst = indexOfLast - itemsPerPage;
   const currentItems = filteredIndentData.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filteredIndentData.length / itemsPerPage)
 
- 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -472,6 +547,18 @@ const IndentViewUpdate = () => {
     return (
       <div className="content-wrapper">
         {loading && <LoadingScreen />}
+        
+        {/* Add ConfirmationPopup component */}
+        <ConfirmationPopup
+          show={confirmationPopup !== null}
+          message={confirmationPopup?.message || ''}
+          type={confirmationPopup?.type || 'info'}
+          onConfirm={confirmationPopup?.onConfirm || (() => {})}
+          onCancel={confirmationPopup?.onCancel}
+          confirmText={confirmationPopup?.confirmText || 'OK'}
+          cancelText={confirmationPopup?.cancelText}
+        />
+        
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
@@ -560,7 +647,7 @@ const IndentViewUpdate = () => {
 
                         <th
                           style={{
-                            width: "20px",            // reduced from 25px → 20px
+                            width: "20px",
                             whiteSpace: "normal",
                             lineHeight: "1.1",
                             textAlign: "center"
@@ -569,7 +656,7 @@ const IndentViewUpdate = () => {
                           Avl <br /> Stk
                         </th>
 
-                        <th style={{ width: "100px" }}>   {/* increased from 70px → 100px */}
+                        <th style={{ width: "100px" }}>
                           Reason for Indent
                         </th>
 
@@ -580,12 +667,6 @@ const IndentViewUpdate = () => {
                           </>
                         )}
                       </tr>
-
-
-
-
-
-
                     </thead>
                     <tbody>
                       {indentEntries.length === 0 ? (
@@ -850,7 +931,6 @@ const IndentViewUpdate = () => {
                     value={fromDate}
                     onChange={setFromDate}  
                     compact={true}
-                   
                   />
                 </div>
                 <div className="col-md-2">
@@ -859,7 +939,6 @@ const IndentViewUpdate = () => {
                     value={toDate}
                     onChange={setToDate}
                     compact={true}
-                    
                   />
                 </div>
                 <div className="col-md-2">
@@ -905,7 +984,7 @@ const IndentViewUpdate = () => {
                     {currentItems.length === 0 ? (
                       <tr>
                         <td colSpan={4} className="text-center">
-                          {loading ? "Loading..." : "No records found."}
+                          {loading ?  <LoadingScreen/> :  "No records found."}
                         </td>
                       </tr>
                     ) : (
@@ -931,12 +1010,12 @@ const IndentViewUpdate = () => {
                 </table>
               </div>
 
-             <Pagination
-                                            totalItems={filteredIndentData.length}
-                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                            currentPage={currentPage}
-                                            onPageChange={setCurrentPage}
-                                        />
+              <Pagination
+                totalItems={filteredIndentData.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
             </div>
           </div>
         </div>

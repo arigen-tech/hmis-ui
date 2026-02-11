@@ -1,16 +1,16 @@
 import { useState, useRef, useEffect } from "react"
+import { useNavigate } from 'react-router-dom';
 import Popup from "../../../Components/popup"
-import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS } from "../../../config/apiConfig";
+import ConfirmationPopup from "../../../Components/ConfirmationPopup";
+import { MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService"
-
-
+import LoadingScreen from "../../../Components/Loading"
 
 const OpeningBalanceEntry = () => {
 
   const [loading, setLoading] = useState(true);
   const deptId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
   const crUser = localStorage.getItem("username") || sessionStorage.getItem("username");
-  const [activeSearchField, setActiveSearchField] = useState(null);
   const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null);
   const [brandOptions, setBrandOptions] = useState([]);
   const [manufacturerOptions, setManufacturerOptions] = useState([]);
@@ -18,10 +18,10 @@ const OpeningBalanceEntry = () => {
   const [currentLogUser, setCurrentLogUser] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [drugCodeOptions, setDrugCodeOptions] = useState([]);
-  const departmentId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
-  const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
+  const [confirmationPopup, setConfirmationPopup] = useState(null);
 
-
+  // Add navigate hook
+  const navigate = useNavigate();
 
   const getCurrentDate = () => {
     const today = new Date();
@@ -33,7 +33,23 @@ const OpeningBalanceEntry = () => {
     department: "",
   });
 
-
+  // Confirmation Popup Helper Function
+  const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "Yes", cancelText = "No") => {
+    setConfirmationPopup({
+      message,
+      type,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmationPopup(null);
+      },
+      onCancel: onCancel ? () => {
+        onCancel();
+        setConfirmationPopup(null);
+      } : () => setConfirmationPopup(null),
+      confirmText,
+      cancelText
+    });
+  };
 
   const fetchDepartment = async () => {
     try {
@@ -53,13 +69,11 @@ const OpeningBalanceEntry = () => {
     }
   };
 
-
   const fetchCurrentUser = async () => {
     try {
       setLoading(true);
 
       const response = await getRequest(`/authController/getUsersForProfile/${crUser}`);
-
 
       if (response && response.response) {
         const { firstName = "", middleName = "", lastName = "" } = response.response;
@@ -69,7 +83,6 @@ const OpeningBalanceEntry = () => {
           enteredBy: fullName,
         }));
         setCurrentLogUser(fullName);
-
       }
     } catch (err) {
       console.error("Error fetching current user:", err);
@@ -77,7 +90,6 @@ const OpeningBalanceEntry = () => {
       setLoading(false);
     }
   };
-
 
   const fetchBrand = async () => {
     try {
@@ -127,15 +139,7 @@ const OpeningBalanceEntry = () => {
     fetchBrand();
     fetchManufacturer();
     fatchDrugCodeOptions();
-  }, []);
-
-  // const drugCodeOptions = [
-  //   { id: 12916, code: "PCM001", name: "Paracetamol", unit: 'mg', gstPercent: 5 },
-  //   { id: 12917, code: "PCM002", name: "Paracetamol 500mg", unit: 'ml', gstPercent: 7 },
-  //   { id: 12918, code: "IBU001", name: "Ibuprofen", unit: 'ml', gstPercent: 28 },
-  //   { id: 4, code: "ASP001", name: "Aspirin", unit: 'mg', gstPercent: 0 },
-  //   { id: 5, code: "DOL001", name: "Dolo", unit: 'mg', gstPercent: 12 },
-  // ];
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [drugEntries, setDrugEntries] = useState([
     {
@@ -158,8 +162,6 @@ const OpeningBalanceEntry = () => {
     },
   ])
 
-
-
   const handleFormInputChange = (e) => {
     const { name, value } = e.target
     setFormData({
@@ -167,7 +169,6 @@ const OpeningBalanceEntry = () => {
       [name]: value,
     })
   }
-
 
   const [popupMessage, setPopupMessage] = useState(null)
 
@@ -185,8 +186,6 @@ const OpeningBalanceEntry = () => {
           return entry;
         }
 
-
-
         // Auto-calculate totalCost
         if (field === "qty" || field === "mrpPerUnit") {
           const qty = parseFloat(field === "qty" ? value : entry.qty) || 0;
@@ -202,10 +201,9 @@ const OpeningBalanceEntry = () => {
     setDrugEntries(updatedEntries);
   };
 
-
   const addNewRow = () => {
     const newEntry = {
-      id: Date.now(), // Use timestamp for unique ID
+      id: Date.now(),
       drugCode: "",
       drugName: "",
       unit: "",
@@ -266,7 +264,6 @@ const OpeningBalanceEntry = () => {
     return date.toISOString();
   };
 
-
   // Add this function to check for duplicates
   const hasDuplicateDrugEntries = (entries) => {
     const seen = new Set();
@@ -280,157 +277,199 @@ const OpeningBalanceEntry = () => {
     return false;
   };
 
+  // Helper function to handle the actual save/submit logic
+  const handleSaveOrSubmit = async (isSave = true) => {
+    const formErrors = validateFormData(formData);
+    const drugErrors = validateDrugEntries(drugEntries);
+
+    const hasFormErrors = Object.keys(formErrors).length > 0;
+    const hasDrugErrors = drugErrors.some(err => Object.keys(err).length > 0);
+
+    // Duplicate check
+    if (hasDuplicateDrugEntries(drugEntries)) {
+      showPopup("Duplicate entry found for Batch No/Serial No, DOM, and DOE.", "warning");
+      return null;
+    }
+
+    if (hasFormErrors || hasDrugErrors) {
+      let firstErrorMsg = "";
+
+      if (hasFormErrors) {
+        const firstField = Object.keys(formErrors)[0];
+        firstErrorMsg = formErrors[firstField];
+      } else {
+        for (let i = 0; i < drugErrors.length; i++) {
+          const error = drugErrors[i];
+          const errorKeys = Object.keys(error);
+          if (errorKeys.length > 0) {
+            firstErrorMsg = `${errorKeys[0]} is required`;
+            break;
+          }
+        }
+      }
+
+      showPopup(firstErrorMsg || "Please correct the errors and try again.", "warning");
+      return null;
+    }
+
+    const payload = {
+      enteredDt: convertToISODate(formData.balanceEntryDate),
+      enteredBy: formData.enteredBy,
+      departmentId: formData.department,
+      storeBalanceDtList: drugEntries
+        .filter(entry => entry.drugCode || entry.drugName)
+        .map(entry => ({
+          id: entry.id,
+          itemId: Number(entry.drugId),
+          unit: entry.unit,
+          batchNo: entry.batchNoSerialNo,
+          manufactureDate: entry.dom,
+          expiryDate: entry.doe,
+          qty: Number(entry.qty),
+          unitsPerPack: Number(entry.unitsPerPack),
+          purchaseRatePerUnit: Number(entry.purchaseRatePerUnit),
+          gstPercent: Number(entry.gstPercent),
+          mrpPerUnit: Number(entry.mrpPerUnit),
+          totalPurchaseCost: Number(entry.totalCost),
+          brandId: Number(entry.brandName),
+          manufacturerId: Number(entry.manufacturer),
+        })),
+    };
+
+    try {
+      setProcessing(true);
+      const endpoint = isSave ? `${OPEN_BALANCE}/create` : `${OPEN_BALANCE}/submit`;
+      const response = await postRequest(endpoint, payload);
+
+      if (response?.status === 200 || response?.success) {
+        const action = isSave ? "save" : "submit";
+        return { success: true, response, action };
+      } else {
+        return { success: false, message: response?.message || `Failed to ${isSave ? 'save' : 'submit'} data. Please try again.` };
+      }
+    } catch (error) {
+      console.error(`${isSave ? 'Save' : 'Submit'} Error:`, error);
+      return { success: false, message: "Something went wrong. Please try again." };
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Handle Save - UPDATED WITH CONFIRMATION POPUP
   const handleSave = async () => {
-    const formErrors = validateFormData(formData);
-    const drugErrors = validateDrugEntries(drugEntries);
-
-    const hasFormErrors = Object.keys(formErrors).length > 0;
-    const hasDrugErrors = drugErrors.some(err => Object.keys(err).length > 0);
-
-    // Duplicate check
-    if (hasDuplicateDrugEntries(drugEntries)) {
-      showPopup("Duplicate entry found for Batch No/Serial No, DOM, and DOE.", "warning");
-      return;
-    }
-
-    if (hasFormErrors || hasDrugErrors) {
-      let firstErrorMsg = "";
-
-      if (hasFormErrors) {
-        const firstField = Object.keys(formErrors)[0];
-        firstErrorMsg = formErrors[firstField];
-      } else {
-        for (let i = 0; i < drugErrors.length; i++) {
-          const error = drugErrors[i];
-          const errorKeys = Object.keys(error);
-          if (errorKeys.length > 0) {
-            firstErrorMsg = `${errorKeys[0]} is required`;
-            break;
-          }
+    // Show confirmation popup
+    showConfirmationPopup(
+      "Are you sure you want to save the opening balance?",
+      "info",
+      async () => {
+        // On confirm, proceed with save
+        const result = await handleSaveOrSubmit(true);
+        
+        if (result?.success) {
+          const balanceId = result.response?.response?.balanceMId || result.response?.balanceMId;
+          
+          // Show success confirmation popup with navigation
+          showConfirmationPopup(
+            "Opening Balance saved successfully! Do you want to print report ? ",
+            "success",
+            () => {
+              // Navigate to report page
+              if (balanceId) {
+                navigate('/ViewDownLoadIndent', {
+                  state: {
+                    reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceId}`,
+                    title: 'Opening Balance Save Report',
+                    fileName: 'Opening Balance Save Report',
+                    returnPath: window.location.pathname
+                  }
+                });
+              }
+              handleReset();
+            },
+            () => {
+              // User clicked "No" - just reset and stay on same page
+              handleReset();
+            },
+            "Yes",
+            "No"
+          );
+        } else {
+          // Show error confirmation popup
+          showConfirmationPopup(
+            result?.message || "Failed to save data. Please try again.",
+            "error",
+            () => {},
+            null,
+            "OK",
+            "Close"
+          );
         }
-      }
-
-      showPopup(firstErrorMsg || "Please correct the errors and try again.", "warning");
-      return;
-    }
-
-    const payload = {
-      enteredDt: convertToISODate(formData.balanceEntryDate),
-      enteredBy: formData.enteredBy,
-      departmentId: formData.department,
-      storeBalanceDtList: drugEntries
-        .filter(entry => entry.drugCode || entry.drugName)
-        .map(entry => ({
-          id: entry.id,
-          itemId: Number(entry.drugId),
-          unit: entry.unit,
-          batchNo: entry.batchNoSerialNo,
-          manufactureDate: entry.dom,
-          expiryDate: entry.doe,
-          qty: Number(entry.qty),
-          unitsPerPack: Number(entry.unitsPerPack),
-          purchaseRatePerUnit: Number(entry.purchaseRatePerUnit),
-          gstPercent: Number(entry.gstPercent),
-          mrpPerUnit: Number(entry.mrpPerUnit),
-          totalPurchaseCost: Number(entry.totalCost),
-          brandId: Number(entry.brandName),
-          manufacturerId: Number(entry.manufacturer),
-        })),
-    };
-
-    try {
-      setProcessing(true);
-      const response = await postRequest(`${OPEN_BALANCE}/create`, payload);
-
-      if (response?.status === 200 || response?.success) {
-        showPopup("Opening Balance Save successfully!", "success");
-      } else {
-        showPopup("Failed to save data. Please try again.", "error");
-      }
-    } catch (error) {
-      console.error("Submit Error:", error);
-      showPopup("Something went wrong. Please try again.", "error");
-    } finally {
-      setProcessing(false);
-    }
+      },
+      () => {
+        // On cancel, do nothing
+        console.log("Save cancelled by user");
+      },
+      "Yes, Save",
+      "Cancel"
+    );
   };
 
+  // Handle Submit - UPDATED WITH CONFIRMATION POPUP
   const handleSubmit = async () => {
-    const formErrors = validateFormData(formData);
-    const drugErrors = validateDrugEntries(drugEntries);
-
-    const hasFormErrors = Object.keys(formErrors).length > 0;
-    const hasDrugErrors = drugErrors.some(err => Object.keys(err).length > 0);
-
-    // Duplicate check
-    if (hasDuplicateDrugEntries(drugEntries)) {
-      showPopup("Duplicate entry found for Batch No/Serial No, DOM, and DOE.", "warning");
-      return;
-    }
-
-    if (hasFormErrors || hasDrugErrors) {
-      let firstErrorMsg = "";
-
-      if (hasFormErrors) {
-        const firstField = Object.keys(formErrors)[0];
-        firstErrorMsg = formErrors[firstField];
-      } else {
-        for (let i = 0; i < drugErrors.length; i++) {
-          const error = drugErrors[i];
-          const errorKeys = Object.keys(error);
-          if (errorKeys.length > 0) {
-            firstErrorMsg = `${errorKeys[0]} is required`;
-            break;
-          }
+    // Show confirmation popup
+    showConfirmationPopup(
+      "Are you sure you want to submit the opening balance?",
+      "info",
+      async () => {
+        // On confirm, proceed with submit
+        const result = await handleSaveOrSubmit(false);
+        
+        if (result?.success) {
+          const balanceId = result.response?.response?.balanceMId || result.response?.balanceMId;
+          
+          // Show success confirmation popup with navigation
+          showConfirmationPopup(
+            "Opening Balance submitted successfully! Do you want to print report ?",
+            "success",
+            () => {
+              // Navigate to report page
+              navigate('/ViewDownLoadIndent', {
+                state: {
+                  reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceId}`,
+                  title: 'Opening Balance Submit Report',
+                  fileName: 'Opening Balance Submit Report',
+                  returnPath: window.location.pathname
+                }
+              });
+              handleReset();
+            },
+            () => {
+              // User clicked "No" - just reset and stay on same page
+              handleReset();
+            },
+            "Yes",
+            "No"
+          );
+        } else {
+          // Show error confirmation popup
+          showConfirmationPopup(
+            result?.message || "Failed to submit data. Please try again.",
+            "error",
+            () => {},
+            null,
+            "OK",
+            "Close"
+          );
         }
-      }
-
-      showPopup(firstErrorMsg || "Please correct the errors and try again.", "warning");
-      return;
-    }
-
-    const payload = {
-      enteredDt: convertToISODate(formData.balanceEntryDate),
-      enteredBy: formData.enteredBy,
-      departmentId: formData.department,
-      storeBalanceDtList: drugEntries
-        .filter(entry => entry.drugCode || entry.drugName)
-        .map(entry => ({
-          id: entry.id,
-          itemId: Number(entry.drugId),
-          unit: entry.unit,
-          batchNo: entry.batchNoSerialNo,
-          manufactureDate: entry.dom,
-          expiryDate: entry.doe,
-          qty: Number(entry.qty),
-          unitsPerPack: Number(entry.unitsPerPack),
-          purchaseRatePerUnit: Number(entry.purchaseRatePerUnit),
-          gstPercent: Number(entry.gstPercent),
-          mrpPerUnit: Number(entry.mrpPerUnit),
-          totalPurchaseCost: Number(entry.totalCost),
-          brandId: Number(entry.brandName),
-          manufacturerId: Number(entry.manufacturer),
-        })),
-    };
-
-    try {
-      setProcessing(true);
-      const response = await postRequest(`${OPEN_BALANCE}/submit`, payload);
-
-      if (response?.status === 200 || response?.success) {
-        showPopup("Opening Balance Submit successfully!", "success");
-        handleReset();
-      } else {
-        showPopup("Failed to Submit data. Please try again.", "error");
-      }
-    } catch (error) {
-      console.error("Submit Error:", error);
-      showPopup("Something went wrong. Please try again.", "error");
-    } finally {
-      setProcessing(false);
-    }
+      },
+      () => {
+        // On cancel, do nothing
+        console.log("Submit cancelled by user");
+      },
+      "Yes, Submit",
+      "Cancel"
+    );
   };
-
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -474,6 +513,18 @@ const OpeningBalanceEntry = () => {
 
   return (
     <div className="content-wrapper">
+       {loading && <LoadingScreen />}
+      {/* Add ConfirmationPopup component */}
+      <ConfirmationPopup
+        show={confirmationPopup !== null}
+        message={confirmationPopup?.message || ''}
+        type={confirmationPopup?.type || 'info'}
+        onConfirm={confirmationPopup?.onConfirm || (() => {})}
+        onCancel={confirmationPopup?.onCancel}
+        confirmText={confirmationPopup?.confirmText || 'OK'}
+        cancelText={confirmationPopup?.cancelText}
+      />
+      
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -536,9 +587,6 @@ const OpeningBalanceEntry = () => {
                   zIndex: 1,
                 }}
               >
-
-
-
                 <table className="table table-bordered table-hover align-middle" style={{ minWidth: "2200px", position: "relative", zIndex: 1 }}>
                   <thead style={{ backgroundColor: "#6c7b7f", color: "white" }}>
                     <tr>
@@ -569,8 +617,6 @@ const OpeningBalanceEntry = () => {
                         <td className="text-center fw-bold">{index + 1}</td>
                         {/* Drug Code Input with its own dropdown */}
                         <td style={{ position: "relative", overflow: "visible", zIndex: activeDrugCodeDropdown === index ? 999 : 'auto' }}>
-
-
                           <input
                             type="text"
                             className="form-control form-control-sm"
@@ -606,8 +652,8 @@ const OpeningBalanceEntry = () => {
                                 maxHeight: 180,
                                 overflowY: "auto",
                                 width: "200px",
-                                top: `${document.querySelector(`input[value="${entry.itemCode}"]`)?.getBoundingClientRect().bottom + window.scrollY}px`,
-                                left: `${document.querySelector(`input[value="${entry.itemCode}"]`)?.getBoundingClientRect().left + window.scrollX}px`,
+                                top: `${document.querySelector(`input[value="${entry.drugCode}"]`)?.getBoundingClientRect().bottom + window.scrollY}px`,
+                                left: `${document.querySelector(`input[value="${entry.drugCode}"]`)?.getBoundingClientRect().left + window.scrollX}px`,
                                 backgroundColor: "white",
                                 border: "1px solid #dee2e6",
                                 borderRadius: "0.375rem",
@@ -663,8 +709,7 @@ const OpeningBalanceEntry = () => {
                         </td>
 
                         {/* Drug Name Input with its own dropdown */}
-                        <td style={{ position: "relative", overflow: "visible", zIndex: activeDrugCodeDropdown === index ? 999 : 'auto' }}>
-
+                        <td style={{ position: "relative", overflow: "visible", zIndex: activeDrugNameDropdown === index ? 999 : 'auto' }}>
                           <input
                             type="text"
                             className="form-control form-control-sm"
@@ -700,15 +745,14 @@ const OpeningBalanceEntry = () => {
                                 maxHeight: 180,
                                 overflowY: "auto",
                                 width: "200px",
-                                top: `${document.querySelector(`input[value="${entry.itemCode}"]`)?.getBoundingClientRect().bottom + window.scrollY}px`,
-                                left: `${document.querySelector(`input[value="${entry.itemCode}"]`)?.getBoundingClientRect().left + window.scrollX}px`,
+                                top: `${document.querySelector(`input[value="${entry.drugName}"]`)?.getBoundingClientRect().bottom + window.scrollY}px`,
+                                left: `${document.querySelector(`input[value="${entry.drugName}"]`)?.getBoundingClientRect().left + window.scrollX}px`,
                                 backgroundColor: "white",
                                 border: "1px solid #dee2e6",
                                 borderRadius: "0.375rem",
                                 boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)"
                               }}
                             >
-
                               {drugCodeOptions
                                 .filter((opt) =>
                                   opt.name.toLowerCase().includes(entry.drugName.toLowerCase())
@@ -756,7 +800,6 @@ const OpeningBalanceEntry = () => {
                             </ul>
                           )}
                         </td>
-
 
                         <td>
                           <input

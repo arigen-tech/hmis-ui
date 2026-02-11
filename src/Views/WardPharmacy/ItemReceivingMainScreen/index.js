@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from 'react-router-dom'; // Add this import
 import LoadingScreen from "../../../Components/Loading"
-import { Store_Internal_Indent } from "../../../config/apiConfig"
+import { Store_Internal_Indent, ALL_REPORTS } from "../../../config/apiConfig" // Add ALL_REPORTS
 import { getRequest, postRequest } from "../../../service/apiService"
 import Popup from "../../../Components/popup"
+import ConfirmationPopup from "../../../Components/ConfirmationPopup"; // Add this import
 import DatePicker from "../../../Components/DatePicker"
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
 
@@ -15,6 +17,7 @@ const ItemReceivingMainScreen = () => {
   const [loading, setLoading] = useState(false)
   const [popupMessage, setPopupMessage] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [confirmationPopup, setConfirmationPopup] = useState(null) // Add this state
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -25,8 +28,29 @@ const ItemReceivingMainScreen = () => {
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
 
+  // Add navigate hook
+  const navigate = useNavigate();
+
   const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId")
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId")
+
+  // Confirmation Popup Helper Function
+  const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "Yes", cancelText = "No") => {
+    setConfirmationPopup({
+      message,
+      type,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmationPopup(null);
+      },
+      onCancel: onCancel ? () => {
+        onCancel();
+        setConfirmationPopup(null);
+      } : () => setConfirmationPopup(null),
+      confirmText,
+      cancelText
+    });
+  };
 
   // Fetch indents for receiving
   const fetchReceivingIndents = async () => {
@@ -133,8 +157,6 @@ const ItemReceivingMainScreen = () => {
     setFilteredIndentData(indentData)
     setCurrentPage(1)
   }
-
-  
 
   const handleRowClick = (record) => {
     console.log("Selecting record for receiving:", record);
@@ -250,7 +272,7 @@ const ItemReceivingMainScreen = () => {
     setReceivingItems(updated)
   }
 
-  // Handle save receiving - FIXED VERSION
+  // Handle save receiving - UPDATED WITH CONFIRMATION POPUP
   const handleSaveReceiving = async () => {
     // Prevent multiple clicks
     if (isSaving) return;
@@ -281,7 +303,25 @@ const ItemReceivingMainScreen = () => {
       return;
     }
 
-    // Only proceed if validation passed
+    // Show confirmation popup
+    showConfirmationPopup(
+      `Are you sure you want to save the receiving for this indent?`,
+      "info",
+      () => {
+        // On confirm, proceed with save
+        handleConfirmSaveReceiving();
+      },
+      () => {
+        // On cancel, do nothing
+        console.log("Save receiving cancelled by user");
+      },
+      "Yes, Save",
+      "Cancel"
+    );
+  };
+
+  // Confirm save receiving function
+  const handleConfirmSaveReceiving = async () => {
     setIsSaving(true);
     setLoading(true);
 
@@ -319,21 +359,59 @@ const ItemReceivingMainScreen = () => {
           message += " " + (responseData.returnMessage || "Return created for rejected items.");
         }
 
-        showPopup(message, "success");
-
-        // Refresh the list
-        setTimeout(() => {
-          handleBack();
-          fetchReceivingIndents();
-        }, 1500);
+        const indentMId = selectedRecord?.indentMId;
+        // Show success confirmation popup with navigation
+        showConfirmationPopup(
+          "Receiving saved successfully! Do ypu want to print report ?",
+          "success",
+          () => {
+            // Navigate to report page
+            navigate('/ViewDownLoadIndent', {
+              state: {
+                reportUrl: `${ALL_REPORTS}/indentReceiving?indentMId=${indentMId}`,
+                title: 'Item Receiving Report',
+                fileName: 'Item Receiving Report',
+                returnPath: window.location.pathname
+              }
+            });
+            
+            // Refresh the list and go back
+            handleBack();
+            fetchReceivingIndents();
+          },
+          () => {
+            // User clicked "No" - just reset and stay on same page
+            handleBack();
+            fetchReceivingIndents();
+          },
+          "Yes",
+          "No"
+        );
       } else {
-        showPopup(response?.message || "Failed to save receiving", "error");
+        // Show error confirmation popup
+        showConfirmationPopup(
+          response?.message || "Failed to save receiving",
+          "error",
+          () => {}, // Empty function for OK button
+          null, // No cancel function
+          "OK",
+          "Close"
+        );
         setIsSaving(false);
       }
 
     } catch (error) {
       console.error("Error saving receiving:", error);
-      showPopup("Error saving receiving. Please try again.", "error");
+      
+      // Show error confirmation popup
+      showConfirmationPopup(
+        "Error saving receiving. Please try again.",
+        "error",
+        () => {}, // Empty function for OK button
+        null, // No cancel function
+        "OK",
+        "Close"
+      );
       setIsSaving(false);
     } finally {
       setLoading(false);
@@ -346,12 +424,23 @@ const ItemReceivingMainScreen = () => {
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredIndentData.slice(indexOfFirst, indexOfLast);
 
- 
   // Detail view
   if (currentView === "detail") {
     return (
       <div className="content-wrapper">
         {loading && <LoadingScreen />}
+        
+        {/* Add ConfirmationPopup component */}
+        <ConfirmationPopup
+          show={confirmationPopup !== null}
+          message={confirmationPopup?.message || ''}
+          type={confirmationPopup?.type || 'info'}
+          onConfirm={confirmationPopup?.onConfirm || (() => {})}
+          onCancel={confirmationPopup?.onCancel}
+          confirmText={confirmationPopup?.confirmText || 'OK'}
+          cancelText={confirmationPopup?.cancelText}
+        />
+        
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
@@ -508,6 +597,18 @@ const ItemReceivingMainScreen = () => {
   return (
     <div className="content-wrapper">
       {loading && <LoadingScreen />}
+      
+      {/* Add ConfirmationPopup component for list view */}
+      <ConfirmationPopup
+        show={confirmationPopup !== null}
+        message={confirmationPopup?.message || ''}
+        type={confirmationPopup?.type || 'info'}
+        onConfirm={confirmationPopup?.onConfirm || (() => {})}
+        onCancel={confirmationPopup?.onCancel}
+        confirmText={confirmationPopup?.confirmText || 'OK'}
+        cancelText={confirmationPopup?.cancelText}
+      />
+      
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">

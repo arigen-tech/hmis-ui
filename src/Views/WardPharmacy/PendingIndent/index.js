@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from "react"
-import ReactDOM from "react-dom"
+import { useState, useEffect } from "react"
+import { useNavigate } from 'react-router-dom'
 import Popup from "../../../Components/popup"
-import { Store_Internal_Indent, MAS_DRUG_MAS } from "../../../config/apiConfig"
+import ConfirmationPopup from "../../../Components/ConfirmationPopup"
+import { Store_Internal_Indent, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import DatePicker from "../../../Components/DatePicker"
@@ -16,20 +17,18 @@ const PendingIndentApproval = () => {
   const [dtRecord, setDtRecord] = useState([])
   const [indentEntries, setIndentEntries] = useState([])
   const [popupMessage, setPopupMessage] = useState(null)
-  const dropdownClickedRef = useRef(false)
-  const [activeItemDropdown, setActiveItemDropdown] = useState(null)
-  const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0, width: 0 })
-  const itemInputRefs = useRef({})
+  const [confirmationPopup, setConfirmationPopup] = useState(null)
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
   const [indentData, setIndentData] = useState([])
   const [filteredIndentData, setFilteredIndentData] = useState([])
   const [action, setAction] = useState("")
   const [remarks, setRemarks] = useState("")
 
-  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId")
+  // Add navigate hook
+  const navigate = useNavigate();
+
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId")
 
   // Status mapping
@@ -44,11 +43,29 @@ const PendingIndentApproval = () => {
     'RR': { label: "Rejected", badge: "bg-danger", textColor: "text-white" },
   }
 
+  // Confirmation Popup Helper Function
+  const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "Yes", cancelText = "No") => {
+    setConfirmationPopup({
+      message,
+      type,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmationPopup(null);
+      },
+      onCancel: onCancel ? () => {
+        onCancel();
+        setConfirmationPopup(null);
+      } : () => setConfirmationPopup(null),
+      confirmText,
+      cancelText
+    });
+  };
+
   // Fetch pending indents (status 'Y')
-  const fetchPendingIndents = async (departmentId) => {
+  const fetchPendingIndents = async (deptId) => {
     try {
       setLoading(true)
-      const url = `${Store_Internal_Indent}/getallindentforpending?deptId=${departmentId}`
+      const url = `${Store_Internal_Indent}/getallindentforpending?deptId=${deptId}`
 
       console.log("Fetching pending indents from URL:", url)
 
@@ -92,7 +109,7 @@ const PendingIndentApproval = () => {
           code: drug.pvmsNo || "",
           name: drug.nomenclature || "",
           unit: drug.unitAuName || drug.dispUnitName || "",
-          availableStock: drug.wardstocks || drug.storestocks || 0, // Use available stock
+          availableStock: drug.wardstocks || drug.storestocks || 0,
           storesStock: drug.storestocks || 0
         }))
         setItemOptions(drugs)
@@ -116,48 +133,10 @@ const PendingIndentApproval = () => {
     }
   }
 
-  // Fetch current stock for specific item
-  const fetchCurrentStock = async (itemId, deptId) => {
-    try {
-      // You might need to create an API endpoint for this
-      const response = await getRequest(`${MAS_DRUG_MAS}/stock/${itemId}/${deptId}`)
-      return response?.currentStock || 0
-    } catch (err) {
-      console.error("Error fetching current stock:", err)
-      return 0
-    }
-  }
-
   useEffect(() => {
     fetchPendingIndents(departmentId)
     fetchAllDrugs()
-  }, [departmentId])
-
-
-  // Filter drugs based on search input
-  const filterDrugsBySearch = (searchTerm) => {
-    if (!searchTerm) return [];
-
-    return itemOptions.filter(drug =>
-      drug.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      drug.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      drug.id?.toString().includes(searchTerm)
-    ).slice(0, 10);
-  }
-
-  // Handle drug input focus for dropdown positioning
-  const handleDrugInputFocus = (event, index) => {
-    const input = event.target;
-    const rect = input.getBoundingClientRect();
-
-    setDropdownPosition({
-      x: rect.left + window.scrollX,
-      y: rect.bottom + window.scrollY,
-      width: rect.width
-    });
-
-    setActiveItemDropdown(index);
-  }
+  }, [departmentId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle search by date range
   const handleSearch = () => {
@@ -208,7 +187,7 @@ const PendingIndentApproval = () => {
             itemName: item.itemName || "",
             apu: item.unitAuName || "",
             requestedQty: item.requestedQty || "",
-            availableStock: currentStock, // Use current stock
+            availableStock: currentStock,
             storesStock: item.storesStock || "",
             reasonForIndent: item.reason || "",
           }
@@ -270,9 +249,6 @@ const PendingIndentApproval = () => {
     setFilteredIndentData(indentData)
   }
 
-  // Handle page navigation
- 
-
   // Show popup
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -284,7 +260,7 @@ const PendingIndentApproval = () => {
     })
   }
 
-  // Handle approval/rejection
+  // Handle approval/rejection - UPDATED WITH CONFIRMATION POPUP
   const handleSubmit = async () => {
     // Validate action selection
     if (!action) {
@@ -332,17 +308,76 @@ const PendingIndentApproval = () => {
       setProcessing(true)
 
       // Call approval API endpoint
-      const response = await postRequest(`${Store_Internal_Indent}/approve`, payload)
-
-      showPopup(`Indent ${action} successfully!`, "success")
-
-      // Refresh the list and go back
-      handleBackToList()
-      fetchPendingIndents(departmentId)
+      await postRequest(`${Store_Internal_Indent}/approve`, payload)
+      
+      const indentMId = selectedRecord?.indentMId
+      
+      // Show confirmation popup based on action
+      if (action === "approved") {
+        showConfirmationPopup(
+          `Indent approved successfully! Do you want to print report ?`,
+          "success",
+          () => {
+            // Navigate to report page for approved indent
+            navigate('/ViewDownLoadIndent', {
+              state: {
+                reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${indentMId}`,
+                title: 'Indent Approval Report',
+                fileName: 'Indent Approval Report',
+                returnPath: window.location.pathname
+              }
+            });
+            handleBackToList();
+            fetchPendingIndents(departmentId);
+          },
+          () => {
+            // Just reset and stay on same page
+            handleBackToList();
+            fetchPendingIndents(departmentId);
+          },
+          "Yes",
+          "No"
+        );
+      } else if (action === "rejected") {
+        showConfirmationPopup(
+          `Indent rejected successfully! Do you want to print report ?`,
+          "success",
+          () => {
+            // Navigate to report page for rejected indent
+            navigate('/ViewDownLoadIndent', {
+              state: {
+                reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${indentMId}`,
+                title: 'Indent Rejection Report',
+                fileName: 'Indent Rejection Report',
+                returnPath: window.location.pathname
+              }
+            });
+            handleBackToList();
+            fetchPendingIndents(departmentId);
+          },
+          () => {
+            // Just reset and stay on same page
+            handleBackToList();
+            fetchPendingIndents(departmentId);
+          },
+          "Yes",
+          "No"
+        );
+      }
 
     } catch (error) {
       console.error("Error processing indent:", error)
-      showPopup(`Error processing indent. Please try again.`, "error")
+      
+      // Show error popup
+      showConfirmationPopup(
+        `Error processing indent. Please try again.`,
+        "error",
+        () => {},
+        null,
+        "OK",
+        "Close"
+      );
+      
     } finally {
       setProcessing(false)
     }
@@ -370,35 +405,27 @@ const PendingIndentApproval = () => {
   }
 
   // Pagination
-  const itemsPerPage = 5
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredIndentData.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filteredIndentData.length / itemsPerPage)
 
- 
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (activeItemDropdown !== null && !event.target.closest('.dropdown-search-container')) {
-        setActiveItemDropdown(null);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [activeItemDropdown]);
-
-  // Detail View - UPDATED to show available stock and with Add/Remove buttons
+  // Detail View
   if (currentView === "detail") {
-    const statusInfo = statusMap[selectedRecord?.status] || { label: "Unknown", badge: "bg-secondary", textColor: "text-white" };
-
     return (
       <div className="content-wrapper">
         {loading && <LoadingScreen />}
+        
+        {/* Add ConfirmationPopup component */}
+        <ConfirmationPopup
+          show={confirmationPopup !== null}
+          message={confirmationPopup?.message || ''}
+          type={confirmationPopup?.type || 'info'}
+          onConfirm={confirmationPopup?.onConfirm || (() => {})}
+          onCancel={confirmationPopup?.onCancel}
+          confirmText={confirmationPopup?.confirmText || 'OK'}
+          cancelText={confirmationPopup?.cancelText}
+        />
+        
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
@@ -667,13 +694,11 @@ const PendingIndentApproval = () => {
             <div className="card-body">
               <div className="row mb-4">
                 <div className="col-md-2">
-
                   <DatePicker
                     label="From Date"
                     value={fromDate}
                     onChange={setFromDate}
                     compact={true}
-
                   />
                 </div>
                 <div className="col-md-2">
@@ -682,7 +707,6 @@ const PendingIndentApproval = () => {
                     value={toDate}
                     onChange={setToDate}
                     compact={true}
-
                   />
                 </div>
                 <div className="col-md-2 d-flex align-items-end">
@@ -692,7 +716,7 @@ const PendingIndentApproval = () => {
                     onClick={handleSearch}
                     disabled={loading}
                   >
-                    {loading ? "Searching..." : "Search"}
+                    {loading ? <LoadingScreen/> : "Search"}
                   </button>
                 </div>
                 <div className="col-md-6 d-flex justify-content-end align-items-end">
@@ -718,7 +742,7 @@ const PendingIndentApproval = () => {
                     {currentItems.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="text-center">
-                          {loading ? "Loading..." : "No pending indents found."}
+                          {loading ? <LoadingScreen/> : "No pending indents found."}
                         </td>
                       </tr>
                     ) : (
@@ -747,13 +771,11 @@ const PendingIndentApproval = () => {
               </div>
 
               <Pagination
-                                            totalItems={filteredIndentData.length}
-                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                            currentPage={currentPage}
-                                            onPageChange={setCurrentPage}
-                                        />
-
-                   
+                totalItems={filteredIndentData.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
             </div>
           </div>
         </div>

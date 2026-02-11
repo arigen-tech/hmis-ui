@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect } from "react"
-import ReactDOM from "react-dom"
+import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import { Store_Internal_Indent, MAS_DRUG_MAS } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
@@ -13,23 +12,16 @@ const IndentApproval = () => {
   const [loading, setLoading] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [itemOptions, setItemOptions] = useState([])
-  const [dtRecord, setDtRecord] = useState([])
   const [indentEntries, setIndentEntries] = useState([])
   const [popupMessage, setPopupMessage] = useState(null)
-  const dropdownClickedRef = useRef(false)
-  const [activeItemDropdown, setActiveItemDropdown] = useState(null)
-  const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0, width: 0 })
-  const itemInputRefs = useRef({})
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
   const [indentData, setIndentData] = useState([])
   const [filteredIndentData, setFilteredIndentData] = useState([])
   const [action, setAction] = useState("")
   const [remarks, setRemarks] = useState("")
 
-  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId")
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId")
 
   // Status mapping
@@ -37,11 +29,9 @@ const IndentApproval = () => {
     'A': { label: "Pending for Issue Department ", badge: "bg-success", textColor: "text-white" },
   }
 
-
-
-  const fetchPendingIndents = async (departmentId) => {
+  const fetchPendingIndents = async (deptId) => {
     try {
-      if (!departmentId) {
+      if (!deptId) {
         console.error("deptId is missing. Cannot fetch pending indents.");
         showPopup("Department not found. Please login again.", "error");
         return;
@@ -49,7 +39,7 @@ const IndentApproval = () => {
 
       setLoading(true);
 
-      const url = `${Store_Internal_Indent}/getallindentforapproved?deptId=${departmentId}`;
+      const url = `${Store_Internal_Indent}/getallindentforapproved?deptId=${deptId}`;
 
       console.log("Fetching pending indents from URL:", url);
 
@@ -79,7 +69,6 @@ const IndentApproval = () => {
       setLoading(false);
     }
   };
-
 
   // Fetch all drugs for dropdown with current stock
   const fetchAllDrugs = async () => {
@@ -118,8 +107,7 @@ const IndentApproval = () => {
   useEffect(() => {
     fetchPendingIndents(departmentId)
     fetchAllDrugs()
-  }, [departmentId])
-
+  }, [departmentId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle search by date range
   const handleSearch = () => {
@@ -205,8 +193,6 @@ const IndentApproval = () => {
     setFilteredIndentData(indentData)
   }
 
-  // Handle page navigation
- 
   // Handle approve quantity change
   const handleIndentEntryChange = (index, field, value) => {
     const updatedEntries = [...indentEntries]
@@ -294,8 +280,7 @@ const IndentApproval = () => {
       indentMId: selectedRecord?.indentMId,
       action: action, // "approved" or "rejected"
       remarks: remarks,
-      // remove this line if your backend DTO doesn't have deletedT
-      deletedT: dtRecord.length > 0 ? dtRecord : [],
+      deletedT: [], // Always send empty array
       items: indentEntries
         .filter((entry) => entry.itemId && entry.itemName)
         .map((entry) => {
@@ -328,7 +313,7 @@ const IndentApproval = () => {
       setProcessing(true)
 
       // Call ISSUE approval API endpoint
-      const response = await postRequest(
+      await postRequest(
         `${Store_Internal_Indent}/submitapprove`,
         payload
       )
@@ -349,15 +334,6 @@ const IndentApproval = () => {
     }
   }
 
-
-
-  // Format date for display
-  const formatDate = (dateStr) => {
-    if (!dateStr) return ""
-    const date = new Date(dateStr)
-    return date.toLocaleDateString("en-GB")
-  }
-
   // Format date time for display
   const formatDateTime = (dateTimeStr) => {
     if (!dateTimeStr) return ""
@@ -372,20 +348,10 @@ const IndentApproval = () => {
     })
   }
 
-  // Format date only (without time) for display
-  const formatDateOnly = (dateStr) => {
-    if (!dateStr) return ""
-    const date = new Date(dateStr)
-    return date.toLocaleDateString("en-GB")
-  }
-
-
   // Pagination
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredIndentData.slice(indexOfFirst, indexOfLast);
-
- 
 
   // Detail View - WITH APPROVAL FUNCTIONALITY
   if (currentView === "detail") {
@@ -651,7 +617,6 @@ const IndentApproval = () => {
                     value={fromDate}
                     onChange={setFromDate}  
                     compact={true}
-                    
                   />
                 </div>
                 <div className="col-md-2">
@@ -660,7 +625,6 @@ const IndentApproval = () => {
                     value={toDate}
                     onChange={setToDate}  
                     compact={true}
-                    
                   />
                 </div>
                 <div className="col-md-2 d-flex align-items-end">
@@ -670,7 +634,7 @@ const IndentApproval = () => {
                     onClick={handleSearch}
                     disabled={loading}
                   >
-                    {loading ? "Searching..." : "Search"}
+                    {loading ? <LoadingScreen/> : "Search"}
                   </button>
                 </div>
                 <div className="col-md-6 d-flex justify-content-end align-items-end">
@@ -696,7 +660,7 @@ const IndentApproval = () => {
                     {currentItems.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="text-center">
-                          {loading ? "Loading..." : "No pending indents found."}
+                          {loading ? <LoadingScreen/> : "No pending indents found."}
                         </td>
                       </tr>
                     ) : (
@@ -725,11 +689,11 @@ const IndentApproval = () => {
               </div>
 
               <Pagination
-                                            totalItems={filteredIndentData.length}
-                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                            currentPage={currentPage}
-                                            onPageChange={setCurrentPage}
-                                        />
+                totalItems={filteredIndentData.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
             </div>
           </div>
         </div>
