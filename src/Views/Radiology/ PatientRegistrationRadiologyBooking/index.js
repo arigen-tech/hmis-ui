@@ -1059,6 +1059,7 @@ const  PatientRegistrationRadiologyBooking = () => {
           showPopup(LAB_REG_SUCC_MSG, "success", false, () => {
             navigate("/payment", {
               state: {
+                billingType:"Radiology Services",
                 amount: totalFinalAmount,
                 patientId,
                 labData: labResult,
