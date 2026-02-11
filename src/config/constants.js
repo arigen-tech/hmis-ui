@@ -432,8 +432,8 @@ export const EXCEED_STOCK_ERROR = "Required quantity cannot exceed available sto
 export const MANDATORY_FIELD_WARNING = "Please fill the Mandatory field before ";
 export const DUPLICATE_DRUGS_WARNING = "Duplicate drugs found. Please remove duplicate entries before ";
 export const NO_VALID_DRUGS_WARNING = "Please select valid drugs before ";
-export const INDENT_SAVE_SUCCESS = "Indent saved successfully!";
-export const INDENT_SUBMIT_SUCCESS = "Indent submitted successfully!";
+export const INDENT_SAVE_SUCCESS = "Indent saved successfully! Do you want to print report ?";
+export const INDENT_SUBMIT_SUCCESS = "Indent submitted successfully ! , Do You want to print report ?";
 export const INDENT_SAVE_ERROR = "Error saving indent";
 export const INDENT_SUBMIT_ERROR = "Error submitting indent";
 export const NO_ROL_ITEMS_WARNING = "Please select at least one item to import";
@@ -672,6 +672,9 @@ export const MISSING_MOBILE_NUMBER = "Please enter Mobile Number";
 export const NO_DATA_FOUND = "No data found";
 export const NO_TIME_SLOTS = "No time slots available for this session and date.";
 
+//appointment Setup 
+export const APPOINTMENT_REQUIRED_FIELDS="Please fill all required fields properly for selected time slots.";
+
 
 
 
@@ -876,3 +879,59 @@ export const UPDATE_EARWEB = "Record updated successfully";
 export const ADD_EARWEB = "Record added successfully";
 export const FAIL_EARWEB = "Save failed";
 export const UPDATE_FAIL_EARWEB = "Status update failed";
+
+
+//updatepatientragistration
+export const UNEXPECTED_API_RESPONSE_ERR ="Unexpected API response format:";
+export const FETCH_DEPARTMENT_ERROR = "Error fetching Department data:";
+export const AT_LEAST_ONE_APPOINTMENT_REQUIRED = "At least one appointment row is required";
+export const INVALID_MOBILE_NUMBER_MSG ="Mobile number must be exactly 10 digits.";
+export const NO_PATIENTS_FOUND_MSG ="No patients found matching your criteria";
+export const SEARCH_PATIENTS_ERROR_LOG = "Error searching patients:";
+export const SEARCH_PATIENTS_FAILED_MSG = "Failed to search patients";
+export const CAMERA_ACCESS_ERROR_LOG = "Error accessing camera:";
+export const FILE_UPLOAD_ERROR_LOG ="Upload error:";
+export const SOMETHING_WENT_WRONG_MSG ="Something went wrong!";
+export const UPLOADED_IMAGE_URL_LOG = "Uploaded Image URL:";
+export const UNABLE_TO_LOAD_PATIENT_DETAILS ="Unable to load patient details";
+export const SELECT_PATIENT_TO_UPDATE_ERROR ="Please select a patient to update";
+export const ADD_AT_LEAST_ONE_APPOINTMENT_ERROR = "Please add at least one valid appointment";
+export const CHECK_REQUIRED_FIELDS_ERROR = "Please check all required fields";
+export const FINAL_REQUEST_READY_LOG = "Final request ready for sending:";
+export const PATIENT_UPDATE_WITH_APPOINTMENT_SUCCESS ="Patient updated and appointments scheduled successfully!";
+export const PATIENT_UPDATE_SUCCESS ="Patient information updated successfully!";
+export const PATIENT_UPDATED_SUCCESS_TITLE ="Patient Updated Successfully!";
+export const BACKEND_ERROR_RESPONSE_LOG = "Backend error response:";
+export const MAX_LENGTH_EXCEEDED_ERROR_TEXT = "Some data exceeds the maximum allowed length. Please check particularly long text fields.";
+export const FAILED_TO_UPDATE_PATIENT_ERROR ="Failed to update patient. Please try again.";
+export const NO_TOKENS_AVAILABLE_INFO ="No tokens are available for the selected session.";
+export const FETCH_TOKEN_AVAILABILITY_ERROR = "Failed to fetch token availability. Please try again.";
+export const SELECT_TOKEN_ERROR_LOG = "Error selecting token:";
+export const SELECT_TOKEN_ERROR_TEXT = "Failed to select token. Please try again.";
+export const SELECT_SPECIALITY_DOCTOR_SESSION_MSG = "Please select Speciality, Doctor, and Session first.";
+export const FETCH_TOKEN_AVAILABILITY_ERROR_LOG = "Error fetching token availability.";
+export const INVALID_EMAIL_FORMAT_MSG ="Invalid email format.";
+export const INVALID_RESPONSE_FORMAT_LOG = "Invalid response format:";
+export const FETCH_SESSIONS_ERROR_LOG = "Error fetching sessions:";
+export const FETCH_CANCELLATION_REASONS_ERROR_LOG = "Error fetching cancellation reasons:";
+export const NO_TOKENS_AVAILABLE_CRITERIA_MSG = "No tokens available for the selected criteria.";
+export const NO_TIME_SLOTS_AVAILABLE_MSG =  "No available time slots for the selected criteria. Please try another date or session.";
+export const DUPLICATE_CHECK_FAILED_LOG = "Duplicate check failed:";
+export const SELECT_TIME_SLOTS_BEFORE_REGISTRATION_MSG = "Please select time slots for all appointments before registration.";
+export const INCOMPLETE_FORM_TITLE = "Incomplete Form";
+export const INCOMPLETE_FORM_MSG = "Please fill all required fields.";
+export const PATIENT_REGISTERED_SUCCESS_TITLE ="Patient Registered Successfully!";
+export const UNEXPECTED_RESPONSE_MSG = "Unexpected response received. Please try again.";
+export const PATIENT_REGISTRATION_FAILED_MSG = "Something went wrong while registering the patient. Please try again.";
+export const NO_TOKENS_SELECTED_SESSION_MSG = "No tokens are available for the selected session.";
+export const PIN_CODE_INVALID_MSG = "Pin Code must be exactly 6 digits.";
+export const MOBILE_NUMBER_INVALID_MSG ="Mobile number must be exactly 10 digits.";
+export const DOB_REQUIRED_ERROR = "Date of Birth is required.";
+export const AGE_FORMAT_ERROR = "Age must be in format '25Y 10M 2D'.";
+export const FIRST_NAME_REQUIRED_ERROR = "First Name is required.";
+export const GENDER_REQUIRED_ERROR = "Gender is required.";
+export const RELATION_REQUIRED_ERROR = "Relation is required.";
+export const MOBILE_REQUIRED_ERROR = "Mobile number is required.";
+export const AGE_NEGATIVE_ERROR = "Age can not be negative.";
+export const MISSING_TIME_SLOTS_TITLE = "Missing Time Slots.";
+export const NOT_AVAILABLE_TITLE = "Not Available.";

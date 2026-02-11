@@ -1,318 +1,332 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import Popup from "../../../Components/popup";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
+import { getRequest } from "../../../service/apiService";
 
-const ItemStockLedgerReport = () => {
+const StoreStockLedgerReport = () => {
+  // State for form inputs
   const [itemName, setItemName] = useState("");
   const [selectedItem, setSelectedItem] = useState(null);
-  const [isItemDropdownVisible, setItemDropdownVisible] = useState(false);
   const [batchNo, setBatchNo] = useState("");
-  const [selectedBatch, setSelectedBatch] = useState(null);
   const [batchOptions, setBatchOptions] = useState([]);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [showReport, setShowReport] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [popupMessage, setPopupMessage] = useState(null);
-  const [reportData, setReportData] = useState([]);
   
+  // State for pagination and search
+  const [currentPage, setCurrentPage] = useState(0);
+  const [reportData, setReportData] = useState([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  
+  // State for PDF operations
   const [pdfUrl, setPdfUrl] = useState(null);
   const [isViewLoading, setIsViewLoading] = useState(false);
   const [isPrintLoading, setIsPrintLoading] = useState(false);
+  
+  // State for item dropdown with debounce
+  const [itemDropdown, setItemDropdown] = useState([]);
+  const [itemSearch, setItemSearch] = useState("");
+  const [itemPage, setItemPage] = useState(0);
+  const [itemLastPage, setItemLastPage] = useState(true);
+  const [isBatchLoading, setIsBatchLoading] = useState(false);
+  const [showItemDropdown, setShowItemDropdown] = useState(false);
+  
+  // State for popup messages
+  const [popupMessage, setPopupMessage] = useState(null);
+  
+  // Refs for debounce and dropdown
+  const debounceItemRef = useRef(null);
+  const dropdownItemRef = useRef(null);
 
-  const itemOptions = [
-    { id: 1, name: "Paracetamol 500mg", code: "MED001" },
-    { id: 2, name: "Amoxicillin 250mg", code: "MED002" },
-    { id: 3, name: "Ibuprofen 400mg", code: "MED003" },
-    { id: 4, name: "Insulin Syringe 1ml", code: "SUP001" },
-    { id: 5, name: "Surgical Gloves Medium", code: "SUP002" },
-    { id: 6, name: "Gauze Bandage 10cm", code: "SUP003" },
-    { id: 7, name: "Saline Solution 500ml", code: "FLU001" },
-    { id: 8, name: "Vitamin C 1000mg", code: "MED004" },
-    { id: 9, name: "Antiseptic Solution", code: "SUP004" },
-    { id: 10, name: "Cotton Roll 100g", code: "SUP005" }
-  ];
+  // Check if both required fields are selected
+  const isSearchEnabled = () => {
+    return selectedItem?.itemId && batchNo?.trim() !== "";
+  };
 
-  const allBatchOptions = [
-    { id: 1, batchNo: "BATCH-2024-001", itemId: 1 },
-    { id: 2, batchNo: "BATCH-2024-002", itemId: 1 },
-    { id: 3, batchNo: "BATCH-2024-003", itemId: 2 },
-    { id: 4, batchNo: "BATCH-2024-004", itemId: 3 },
-    { id: 5, batchNo: "BATCH-2025-001", itemId: 1 },
-    { id: 6, batchNo: "BATCH-2025-002", itemId: 4 },
-    { id: 7, batchNo: "BATCH-2025-003", itemId: 5 },
-    { id: 8, batchNo: "BATCH-2025-004", itemId: 6 }
-  ];
-
-  const sampleReportData = [
-    {
-      id: 1,
-      date: "01-Jan-2025",
-      transactionType: "OPENING",
-      referenceNo: "—",
-      transactionReason: "Opening Balance",
-      qtyBefore: 0,
-      qtyIn: 500,
-      qtyOut: 0,
-      qtyAfter: 500,
-      remarks: "Opening stock"
-    },
-    {
-      id: 2,
-      date: "05-Jan-2025",
-      transactionType: "GRN",
-      referenceNo: "GRN-10235",
-      transactionReason: "Supplier Receipt",
-      qtyBefore: 500,
-      qtyIn: 300,
-      qtyOut: 0,
-      qtyAfter: 800,
-      remarks: "ABC Medical Supplies"
-    },
-    {
-      id: 3,
-      date: "10-Jan-2025",
-      transactionType: "ISSUE",
-      referenceNo: "ISS-4587",
-      transactionReason: "OPD",
-      qtyBefore: 800,
-      qtyIn: 0,
-      qtyOut: 120,
-      qtyAfter: 680,
-      remarks: "OPD consumption"
-    },
-    {
-      id: 4,
-      date: "15-Jan-2025",
-      transactionType: "ISSUE",
-      referenceNo: "ISS-4621",
-      transactionReason: "Emergency",
-      qtyBefore: 680,
-      qtyIn: 0,
-      qtyOut: 80,
-      qtyAfter: 600,
-      remarks: "Emergency usage"
-    },
-    {
-      id: 5,
-      date: "20-Jan-2025",
-      transactionType: "RETURN",
-      referenceNo: "RET-118",
-      transactionReason: "Ward Return",
-      qtyBefore: 600,
-      qtyIn: 20,
-      qtyOut: 0,
-      qtyAfter: 620,
-      remarks: "Unused items"
-    },
-    {
-      id: 6,
-      date: "25-Jan-2025",
-      transactionType: "ADJUSTMENT",
-      referenceNo: "ADJ-77",
-      transactionReason: "Damage",
-      qtyBefore: 620,
-      qtyIn: 0,
-      qtyOut: 10,
-      qtyAfter: 610,
-      remarks: "Broken packets"
-    },
-    {
-      id: 7,
-      date: "30-Jan-2025",
-      transactionType: "GRN",
-      referenceNo: "GRN-10240",
-      transactionReason: "Supplier Receipt",
-      qtyBefore: 610,
-      qtyIn: 200,
-      qtyOut: 0,
-      qtyAfter: 810,
-      remarks: "XYZ Medical Supplies"
-    },
-    {
-      id: 8,
-      date: "02-Feb-2025",
-      transactionType: "ISSUE",
-      referenceNo: "ISS-4689",
-      transactionReason: "IPD",
-      qtyBefore: 810,
-      qtyIn: 0,
-      qtyOut: 150,
-      qtyAfter: 660,
-      remarks: "IPD Ward 5"
+  // Fetch stock ledger report data from API
+  const fetchStockLedgerReport = async (page = 0) => {
+    try {
+      setSearchLoading(true);
+      
+      const params = new URLSearchParams({
+        page: page,
+        size: DEFAULT_ITEMS_PER_PAGE
+      });
+      
+      if (selectedItem?.itemId) params.append('itemId', selectedItem.itemId);
+      if (batchNo) params.append('batchNo', batchNo);
+      
+      const response = await getRequest(`/indent/store-stock-ledger/report?${params.toString()}`);
+      
+      if (response?.response) {
+        const mappedData = mapApiData(response.response.content);
+        setReportData(mappedData);
+        setTotalPages(response.response.totalPages);
+        setTotalElements(response.response.totalElements);
+        setShowReport(true);
+      } else {
+        resetReportData();
+      }
+    } catch (error) {
+      console.error("Error fetching stock ledger report:", error);
+      showPopup("Failed to fetch stock ledger report", "error");
+      resetReportData();
+    } finally {
+      setSearchLoading(false);
     }
-  ];
+  };
 
+  // Reset report data to initial state
+  const resetReportData = () => {
+    setReportData([]);
+    setTotalPages(0);
+    setTotalElements(0);
+    setShowReport(true);
+  };
+
+  // Handle pagination page change
+  const handlePageChange = (page) => {
+    const newPage = page - 1;
+    setCurrentPage(newPage);
+    
+    if (isSearchMode && isSearchEnabled()) {
+      fetchStockLedgerReport(newPage);
+    }
+  };
+
+  // Map API data to match table structure
+  const mapApiData = (apiData) => {
+    return apiData.map(item => ({
+      id: item.ledgerId,
+      date: formatDateForDisplay(item.createdDate),
+      transactionType: item.txnType,
+      referenceNo: item.referenceNum || "-",
+      transactionReason: item.txnSource || "-",
+      qtyBefore: item.qtyBefore || 0,
+      qtyIn: item.qtyIn || 0,
+      qtyOut: item.qtyOut || 0,
+      qtyAfter: item.qtyAfter || 0,
+      remarks: item.remarks
+    }));
+  };
+
+  // Format date from "2026-01-28T15:34:04.336584" to "28/01/2026"
+  const formatDateForDisplay = (dateStr) => {
+    if (!dateStr) return "-";
+    const date = new Date(dateStr);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  // Fetch items from API with debounce
+  const fetchItems = async (page, searchText = "") => {
+    try {
+      const url = `/indent/item/search?keyword=${encodeURIComponent(searchText)}&page=${page}&size=10`;
+      const data = await getRequest(url);
+
+      if (data.status === 200 && data.response?.content) {
+        return {
+          list: data.response.content,
+          last: data.response.last,
+          totalPages: data.response.totalPages,
+          totalElements: data.response.totalElements
+        };
+      }
+      return { list: [], last: true, totalPages: 0, totalElements: 0 };
+    } catch (error) {
+      console.error("Error fetching items:", error);
+      return { list: [], last: true, totalPages: 0, totalElements: 0 };
+    }
+  };
+
+  // Fetch batches for selected item
+  const fetchBatches = async (itemId) => {
+    try {
+      setIsBatchLoading(true);
+      const url = `/indent/item/batches/${itemId}`;
+      const data = await getRequest(url);
+
+      if (data.status === 200 && data.response) {
+        return data.response;
+      }
+      return [];
+    } catch (error) {
+      console.error("Error fetching batches:", error);
+      showPopup("Failed to load batches", "error");
+      return [];
+    } finally {
+      setIsBatchLoading(false);
+    }
+  };
+
+  // Handle item search with debounce
+  const handleItemSearch = (value) => {
+    setItemSearch(value);
+    setItemName(value);
+    
+    // Clear selections when user types
+    if (!value.trim() || (selectedItem && !value.includes(selectedItem.nomenclature))) {
+      setSelectedItem(null);
+      setBatchOptions([]);
+      setBatchNo("");
+    }
+
+    // Debounce API call
+    if (debounceItemRef.current) clearTimeout(debounceItemRef.current);
+    debounceItemRef.current = setTimeout(async () => {
+      if (!value.trim()) {
+        setItemDropdown([]);
+        setShowItemDropdown(false);
+        return;
+      }
+      const result = await fetchItems(0, value);
+      setItemDropdown(result.list);
+      setItemLastPage(result.last);
+      setItemPage(0);
+      setShowItemDropdown(true);
+    }, 700);
+  };
+
+  // Load first page of items for dropdown
+  const loadFirstItemPage = async () => {
+    if (!itemSearch.trim()) return;
+    const result = await fetchItems(0, itemSearch);
+    setItemDropdown(result.list);
+    setItemLastPage(result.last);
+    setItemPage(0);
+    setShowItemDropdown(true);
+  };
+
+  // Load more items for infinite scroll
+  const loadMoreItems = async () => {
+    if (itemLastPage) return;
+    const nextPage = itemPage + 1;
+    const result = await fetchItems(nextPage, itemSearch);
+    setItemDropdown(prev => [...prev, ...result.list]);
+    setItemLastPage(result.last);
+    setItemPage(nextPage);
+  };
+
+  // Handle item selection from dropdown
+  const handleItemSelect = async (item) => {
+    setItemName(item.nomenclature);
+    setSelectedItem(item);
+    setShowItemDropdown(false);
+    setBatchOptions([]);
+    setBatchNo("");
+    
+    // Fetch batches for selected item
+    try {
+      const batches = await fetchBatches(item.itemId);
+      setBatchOptions(batches);
+    } catch (error) {
+      console.error("Error loading batches:", error);
+    }
+  };
+
+  // Handle click outside dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownItemRef.current && !dropdownItemRef.current.contains(e.target)) {
+        setShowItemDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Show popup message
   const showPopup = (message, type = "info") => {
     setPopupMessage({
       message,
       type,
-      onClose: () => {
-        setPopupMessage(null);
-      },
+      onClose: () => setPopupMessage(null),
     });
   };
 
-  const handleItemNameChange = (e) => {
-    setItemName(e.target.value);
-    setItemDropdownVisible(true);
-  };
-
-  const handleItemSelect = (item) => {
-    setItemName(item.name);
-    setSelectedItem(item);
-    setItemDropdownVisible(false);
-    
-    const filteredBatches = allBatchOptions.filter(batch => batch.itemId === item.id);
-    setBatchOptions(filteredBatches);
-    
-    if (filteredBatches.length > 0) {
-      setBatchNo(filteredBatches[0].batchNo);
-      setSelectedBatch(filteredBatches[0]);
-    } else {
-      setBatchNo("");
-      setSelectedBatch(null);
+  // Handle search button click
+  const handleSearch = () => {
+    if (!isSearchEnabled()) {
+      showPopup("Please select both Item and Batch", "warning");
+      return;
     }
+    setCurrentPage(0);
+    setIsSearchMode(true);
+    fetchStockLedgerReport(0);
   };
 
-  const handleBatchChange = (e) => {
-    const selectedBatchValue = e.target.value;
-    const batch = batchOptions.find(b => b.batchNo === selectedBatchValue);
-    setBatchNo(selectedBatchValue);
-    setSelectedBatch(batch);
-  };
-
-  const validateItem = () => {
-    if (!itemName.trim() || !selectedItem) {
-      showPopup("Please select an item", "warning");
-      return false;
-    }
-    return true;
-  };
-
-  const fetchStockMovementReport = async () => {
-    try {
-      setIsGenerating(true);
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mappedData = sampleReportData.map(item => ({
-        id: item.id,
-        date: item.date,
-        transactionType: item.transactionType,
-        referenceNo: item.referenceNo,
-        transactionReason: item.transactionReason,
-        qtyBefore: item.qtyBefore,
-        qtyIn: item.qtyIn,
-        qtyOut: item.qtyOut,
-        qtyAfter: item.qtyAfter,
-        remarks: item.remarks
-      }));
-      
-      setReportData(mappedData);
-      setShowReport(true);
-      
-    } catch (error) {
-      console.error("Error fetching stock movement report:", error);
-      showPopup("Failed to fetch stock movement report", "error");
-      setReportData([]);
-      setShowReport(true);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
+  // Generate PDF report
   const generatePdfReport = async (flag = "D") => {
-    if (!validateItem()) return;
-
-    if (flag === "D") {
-      setIsViewLoading(true);
-    } else if (flag === "P") {
-      setIsPrintLoading(true);
+    if (!isSearchEnabled()) {
+      showPopup("Please select both Item and Batch", "warning");
+      return;
     }
+
+    if (flag === "D") setIsViewLoading(true);
+    if (flag === "P") setIsPrintLoading(true);
     
     setPdfUrl(null);
 
     try {
       const params = new URLSearchParams();
       params.append('flag', flag);
-      
-      if (selectedItem?.id) {
-        params.append('itemId', selectedItem.id);
-      }
-      if (batchNo) {
-        params.append('batchNo', batchNo);
-      }
+      if (selectedItem?.itemId) params.append('itemId', selectedItem.itemId);
+      if (batchNo) params.append('batchNo', batchNo);
 
       const url = `/reports/stockMovementReport?${params.toString()}`;
-
       const response = await fetch(url, {
         method: "GET",
-        headers: {
-          Accept: "application/pdf",
-        },
+        headers: { Accept: "application/pdf" },
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to generate PDF: ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error(`Failed to generate PDF: ${response.statusText}`);
+
+      const blob = await response.blob();
+      const fileURL = window.URL.createObjectURL(blob);
 
       if (flag === "D") {
-        const blob = await response.blob();
-        const fileURL = window.URL.createObjectURL(blob);
         setPdfUrl(fileURL);
       } else if (flag === "P") {
-        const blob = await response.blob();
-        const fileURL = window.URL.createObjectURL(blob);
         const printWindow = window.open(fileURL);
-        printWindow.onload = () => {
-          printWindow.print();
-        };
+        printWindow.onload = () => printWindow.print();
       }
-
     } catch (error) {
       console.error("Error generating PDF", error);
       showPopup("Failed to generate report", "error");
     } finally {
-      if (flag === "D") {
-        setIsViewLoading(false);
-      } else if (flag === "P") {
-        setIsPrintLoading(false);
-      }
+      if (flag === "D") setIsViewLoading(false);
+      if (flag === "P") setIsPrintLoading(false);
     }
   };
 
-  const handleSearch = () => {
-    if (!validateItem()) return;
-    
-    fetchStockMovementReport();
-    setCurrentPage(1);
-  };
+  // Handle view report button
+  const handleViewReport = () => generatePdfReport("D");
 
-  const handleViewReport = () => {
-    generatePdfReport("D");
-  };
+  // Handle print report button
+  const handlePrintReport = () => generatePdfReport("P");
 
-  const handlePrintReport = () => {
-    generatePdfReport("P");
-  };
-
+  // Reset all form and report data
   const handleReset = () => {
     setItemName("");
     setSelectedItem(null);
+    setItemSearch("");
+    setItemDropdown([]);
     setBatchNo("");
-    setSelectedBatch(null);
     setBatchOptions([]);
     setShowReport(false);
     setReportData([]);
-    setCurrentPage(1);
+    setCurrentPage(0);
+    setTotalPages(0);
+    setTotalElements(0);
+    setIsSearchMode(false);
     setPdfUrl(null);
+    setShowItemDropdown(false);
   };
-
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = reportData.slice(indexOfFirst, indexOfLast);
 
   return (
     <div className="content-wrapper">
@@ -327,10 +341,8 @@ const ItemStockLedgerReport = () => {
       {pdfUrl && (
         <PdfViewer
           pdfUrl={pdfUrl}
-          onClose={() => {
-            setPdfUrl(null);
-          }}
-          name={`Stock Movement Report - ${selectedItem?.name || 'Item'}`}
+          onClose={() => setPdfUrl(null)}
+          name={`Stock Ledger Report - ${selectedItem?.nomenclature || 'Item'}`}
         />
       )}
 
@@ -338,80 +350,113 @@ const ItemStockLedgerReport = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header">
-              <h4 className="card-title p-2 mb-0">Item Stock Movement History</h4>
+              <h4 className="card-title p-2 mb-0">Store Stock Ledger Report</h4>
             </div>
             <div className="card-body">
+              {/* Search Form */}
               <div className="row mb-4">
-                <div className="form-group col-md-6 position-relative">
+                <div className="form-group col-md-6 position-relative" ref={dropdownItemRef}>
                   <label className="form-label fw-bold">Item Name <span className="text-danger">*</span></label>
                   <input
                     type="text"
                     className="form-control mt-1"
                     placeholder="Type item name or code..."
                     value={itemName}
-                    onChange={handleItemNameChange}
-                    onFocus={() => setItemDropdownVisible(true)}
-                    onBlur={() => setTimeout(() => setItemDropdownVisible(false), 200)}
+                    onChange={(e) => handleItemSearch(e.target.value)}
+                    onClick={loadFirstItemPage}
                     autoComplete="off"
                   />
-                  {isItemDropdownVisible && itemName && (
-                    <ul className="list-group position-absolute w-100 mt-1" style={{ zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
-                      {itemOptions
-                        .filter((item) => 
-                          item.name.toLowerCase().includes(itemName.toLowerCase()) ||
-                          item.code.toLowerCase().includes(itemName.toLowerCase())
-                        )
-                        .map((item) => (
-                          <li
-                            key={item.id}
-                            className="list-group-item list-group-item-action"
-                            onClick={() => handleItemSelect(item)}
-                          >
-                            <div className="fw-bold">{item.name}</div>
-                            <small className="text-muted">Code: {item.code}</small>
-                          </li>
-                        ))}
-                    </ul>
+                  
+                  {/* Item Dropdown */}
+                  {showItemDropdown && (
+                    <div 
+                      className="border rounded mt-1 bg-white position-absolute w-100"
+                      style={{ maxHeight: "220px", zIndex: 1000, overflowY: "auto" }}
+                      onScroll={(e) => {
+                        if (e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight) {
+                          loadMoreItems();
+                        }
+                      }}
+                    >
+                      {itemDropdown.length > 0 ? (
+                        <>
+                          {itemDropdown.map((item) => (
+                            <div
+                              key={item.itemId}
+                              className="p-2 cursor-pointer hover-bg-light"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleItemSelect(item);
+                              }}
+                              style={{ cursor: 'pointer', borderBottom: '1px solid #f0f0f0' }}
+                            >
+                              <div className="fw-bold">{item.nomenclature}</div>
+                              <small className="text-muted">PVMS: {item.pvmsNo}</small>
+                            </div>
+                          ))}
+                          
+                          {!itemLastPage && (
+                            <div className="text-center p-2 text-primary small">
+                              Scroll to load more...
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="p-2 text-muted text-center">No items found</div>
+                      )}
+                    </div>
                   )}
                 </div>
 
                 <div className="col-md-6 mt-1">
-                  <label className="form-label fw-bold">Batch No</label>
-                  <select 
-                    className="form-select" 
-                    value={batchNo} 
-                    onChange={handleBatchChange}
-                    disabled={!selectedItem || batchOptions.length === 0}
-                  >
-                    <option value="">All Batches</option>
-                    {batchOptions.map((batch) => (
-                      <option key={batch.id} value={batch.batchNo}>
-                        {batch.batchNo}
-                      </option>
-                    ))}
-                  </select>
-                  {selectedItem && batchOptions.length === 0 && (
+                  <label className="form-label fw-bold">Batch No <span className="text-danger">*</span></label>
+                  <div className="position-relative">
+                    <select 
+                      className="form-select" 
+                      value={batchNo} 
+                      onChange={(e) => setBatchNo(e.target.value)}
+                      disabled={!selectedItem || isBatchLoading}
+                    >
+                      <option value="">--Select Batch--</option>
+                      {batchOptions.length > 0 ? (
+                        batchOptions.map((batch, index) => (
+                          <option key={index} value={batch}>{batch}</option>
+                        ))
+                      ) : (
+                        <option value="">No batches available</option>
+                      )}
+                    </select>
+                    
+                    {isBatchLoading && (
+                      <div className="position-absolute end-0 top-50 translate-middle-y me-3">
+                        <div className="spinner-border spinner-border-sm text-primary" role="status">
+                          <span className="visually-hidden">Loading...</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {selectedItem && batchOptions.length === 0 && !isBatchLoading && (
                     <small className="text-muted">No batches available for this item</small>
                   )}
                 </div>
               </div>
 
+              {/* Action Buttons */}
               <div className="row">
                 <div className="col-12 d-flex justify-content-between">
                   <button
                     type="button"
                     className="btn btn-primary"
                     onClick={handleSearch}
-                    disabled={isGenerating}
+                    disabled={searchLoading || !isSearchEnabled()}
                   >
-                    {isGenerating ? (
+                    {searchLoading ? (
                       <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span className="spinner-border spinner-border-sm me-2" />
                         Searching...
                       </>
-                    ) : (
-                      "Search"
-                    )}
+                    ) : "Search"}
                   </button>
                   
                   <div className="d-flex gap-2">
@@ -419,37 +464,33 @@ const ItemStockLedgerReport = () => {
                       type="button"
                       className="btn btn-success"
                       onClick={handleViewReport}
-                      disabled={isGenerating || isViewLoading || !itemName}
+                      disabled={searchLoading || isViewLoading || !isSearchEnabled()}
                     >
                       {isViewLoading ? (
                         <>
-                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          <span className="spinner-border spinner-border-sm me-2" />
                           Generating...
                         </>
-                      ) : (
-                        "View Report"
-                      )}
+                      ) : "View Report"}
                     </button>
                     <button
                       type="button"
                       className="btn btn-warning"
                       onClick={handlePrintReport}
-                      disabled={isGenerating || isPrintLoading || !itemName}
+                      disabled={searchLoading || isPrintLoading || !isSearchEnabled()}
                     >
                       {isPrintLoading ? (
                         <>
-                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          <span className="spinner-border spinner-border-sm me-2" />
                           Printing...
                         </>
-                      ) : (
-                        "Print Report"
-                      )}
+                      ) : "Print Report"}
                     </button>
                     <button
                       type="button"
                       className="btn btn-secondary"
                       onClick={handleReset}
-                      disabled={isGenerating}
+                      disabled={searchLoading}
                     >
                       Reset
                     </button>
@@ -457,56 +498,65 @@ const ItemStockLedgerReport = () => {
                 </div>
               </div>
 
-              {isGenerating && (
+              {/* Loading Indicator */}
+              {searchLoading && (
                 <div className="text-center py-4">
                   <LoadingScreen />
                 </div>
               )}
 
-              {!isGenerating && showReport && (
+              {/* Report Table */}
+              {!searchLoading && showReport && (
                 <div className="row mt-4">
                   <div className="col-12">
                     <div className="card">
-                      <div className="card-header">
+                      <div className="card-header d-flex justify-content-between align-items-center">
                         <h5 className="card-title mb-0">
-                          Stock Ledger Report 
+                          Store Stock Ledger Report 
+                          {selectedItem && (
+                            <small className="text-muted ms-2">
+                              - {selectedItem.nomenclature}
+                              {batchNo && ` (Batch: ${batchNo})`}
+                            </small>
+                          )}
                         </h5>
+                        <span className="fw-bold">Total Records: {totalElements}</span>
                       </div>
                       <div className="card-body">
                         <div className="table-responsive">
                           <table className="table table-bordered table-hover">
-                            <thead >
+                            <thead>
                               <tr>
                                 <th>Date</th>
                                 <th>Transaction Type</th>
-                                <th>Reference No</th>
-                                <th>Transaction Reason / Source</th>
-                                <th>Qty Before</th>
+                                <th style={{ width: "120px" }}>Reference No</th>
+                                <th style={{ width: "80px" }}>Transaction Reason / Source</th>
+                                <th style={{ width: "50px" }}>Qty Before</th>
                                 <th>Qty In</th>
                                 <th>Qty Out</th>
-                                <th>Qty After</th>
+                                <th style={{ width: "50px" }}>Qty After</th>
                                 <th>Remarks</th>
                               </tr>
                             </thead>
                             <tbody>
                               {reportData.length > 0 ? (
-                                currentItems.map((row, index) => (
-                                  <tr key={index}>
+                                reportData.map((row) => (
+                                  <tr key={row.id}>
                                     <td>{row.date}</td>
                                     <td>{row.transactionType}</td>
                                     <td>{row.referenceNo}</td>
                                     <td>{row.transactionReason}</td>
                                     <td className="text-end">{row.qtyBefore}</td>
-                                    <td className="text-end ">{row.qtyIn}</td>
-                                    <td className="text-end ">{row.qtyOut}</td>
-                                    <td className="text-end ">{row.qtyAfter}</td>
+                                    <td className="text-end">{row.qtyIn}</td>
+                                    <td className="text-end">{row.qtyOut}</td>
+                                    <td className="text-end">{row.qtyAfter}</td>
                                     <td>{row.remarks}</td>
                                   </tr>
                                 ))
                               ) : (
                                 <tr>
                                   <td colSpan="9" className="text-center py-4">
-                                    No Stock Movement Records Found
+                                    No Stock Ledger Records Found
                                   </td>
                                 </tr>
                               )}
@@ -514,12 +564,14 @@ const ItemStockLedgerReport = () => {
                           </table>
                         </div>
                         
-                        {reportData.length > 0 && (
+                        {/* Pagination */}
+                        {reportData.length > 0 && totalPages > 0 && (
                           <Pagination
-                            totalItems={reportData.length}
+                            totalItems={totalElements}
                             itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                            currentPage={currentPage}
-                            onPageChange={setCurrentPage}
+                            currentPage={currentPage + 1}
+                            onPageChange={handlePageChange}
+                            totalPages={totalPages}
                           />
                         )}
                       </div>
@@ -535,4 +587,4 @@ const ItemStockLedgerReport = () => {
   );
 };
 
-export default ItemStockLedgerReport;
+export default StoreStockLedgerReport;

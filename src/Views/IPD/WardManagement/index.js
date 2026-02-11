@@ -325,78 +325,75 @@ const WardManagement = () => {
     setSelectedPatient(null)
   }
 
-  // NEW: Get complete box background color based on status
+  // Bright vibrant colors for each status
   const getBoxBackgroundColor = (status) => {
     switch (status) {
       case "VACANT":
-        return "#d4edda" // Light Green
+        return "#a8e6a3" // Bright Green (keeping it green as requested)
       case "NRW":
-        return "#f8d7da" // Light Red
+        return "#ff6b6b" // Bright Red
       case "RW":
-        return "#fff3cd" // Light Orange
+        return "#4d96ff" // Bright Blue
       case "TP":
-        return "#d1ecf1" // Light Sky Blue
+        return "#ffa500" // Bright Orange
       case "OT":
-        return "#cce5ff" // Light Blue
+        return "#36b5ff" // Bright Sky Blue
       case "LR":
-        return "#f8d7e6" // Light Pink
+        return "#ff6bc9" // Bright Pink
       case "RD":
-        return "#fff3cd" // Light Yellow (same as RW)
+        return "#fff176" // Bright Yellow
       default:
-        return "#f8f9fa" // Default Light Gray
+        return "#f8f9fa"
     }
   }
 
-  // NEW: Get text color based on status (for better contrast)
   const getTextColor = (status) => {
-    return "#212529" // Dark color for all for better readability
+    return "#212529"
   }
 
-  // NEW: Get border color based on status
   const getBorderColor = (status) => {
     switch (status) {
       case "VACANT":
-        return "#28a745" // Green
+        return "#2e7d32" // Dark Green
       case "NRW":
-        return "#dc3545" // Red
+        return "#c62828" // Dark Red
       case "RW":
-        return "#fd7e14" // Orange
+        return "#1565c0" // Dark Blue
       case "TP":
-        return "#17a2b8" // Sky Blue
+        return "#ef6c00" // Dark Orange
       case "OT":
-        return "#007bff" // Blue
+        return "#0277bd" // Dark Sky Blue
       case "LR":
-        return "#e83e8c" // Pink
+        return "#ad1457" // Dark Pink
       case "RD":
-        return "#ffc107" // Yellow
+        return "#f9a825" // Dark Yellow
       default:
-        return "#6c757d" // Gray
+        return "#6c757d"
     }
   }
 
-  // NEW: Get status badge color
+  // Updated badge colors to match vibrant backgrounds
   const getStatusBadgeColor = (status) => {
     switch (status) {
       case "VACANT":
-        return "success" // Green
+        return "success"
       case "NRW":
-        return "danger" // Red
+        return "danger"
       case "RW":
-        return "warning" // Orange
+        return "primary"
       case "TP":
-        return "info" // Sky Blue
+        return "warning"
       case "OT":
-        return "primary" // Blue
+        return "info"
       case "LR":
-        return "pink" // Will use custom class
+        return "pink"
       case "RD":
-        return "warning" // Yellow (same as RW)
+        return "warning"
       default:
         return "secondary"
     }
   }
 
-  // NEW: Get status label text
   const getStatusLabel = (status) => {
     switch (status) {
       case "VACANT":
@@ -434,44 +431,43 @@ const WardManagement = () => {
             <div className="card-header">
               <div className="d-flex justify-content-between align-items-center">
                 <h4 className="card-title p-2 mb-0">WARD MANAGEMENT</h4>
-
               </div>
             </div>
             <div className="card-body">
               {/* Summary Stats at Top */}
-              <div className="row mb-4">
+              <div className="row ">
                 <div className="col-12">
-                  <div className="alert alert-info p-3">
+                  <div className=" alert-primary p-1 rounded">
                     <div className="d-flex justify-content-around flex-wrap">
-                      <div className="text-center px-3">
+                      <div className="text-center px-3 py-1">
                         <div className="fw-bold fs-4">{stats.vacantBeds}</div>
                         <div className="small">Vacant Beds</div>
                       </div>
-                      <div className="text-center px-3">
+                      <div className="text-center px-3 py-1">
                         <div className="fw-bold fs-4">{stats.reportedToWard}</div>
                         <div className="small">Reported to Ward</div>
                       </div>
-                      <div className="text-center px-3">
+                      <div className="text-center px-3 py-1">
                         <div className="fw-bold fs-4">{stats.transferPending}</div>
                         <div className="small">Transfer Pending</div>
                       </div>
-                      <div className="text-center px-3">
+                      <div className="text-center px-3 py-1">
                         <div className="fw-bold fs-4">{stats.inOperationTheater}</div>
                         <div className="small">In Operation Theater</div>
                       </div>
-                      <div className="text-center px-3">
+                      <div className="text-center px-3 py-1">
                         <div className="fw-bold fs-4">{stats.inLaborRoom}</div>
                         <div className="small">In Labor Room</div>
                       </div>
-                      <div className="text-center px-3">
+                      <div className="text-center px-3 py-1">
                         <div className="fw-bold fs-4">{stats.readyForDischarge}</div>
                         <div className="small">Ready for Discharge</div>
                       </div>
-                      <div className="text-center px-3">
+                      <div className="text-center px-3 py-1">
                         <div className="fw-bold fs-4">{stats.notReported}</div>
                         <div className="small">Not Reported</div>
                       </div>
-                      <div className="text-center px-3">
+                      <div className="text-center px-3 py-1">
                         <div className="fw-bold fs-4">{stats.totalBeds}</div>
                         <div className="small">Total Beds</div>
                       </div>
@@ -483,7 +479,7 @@ const WardManagement = () => {
               {/* Main Content Area */}
               {!selectedPatient ? (
                 /* Patient Cards Grid - 5 boxes per row (shown when no patient is selected) */
-                <div className="cards-grid-container">
+                <div className="cards-grid-container mt-2">
                   <div className="row g-2">
                     {patientData.map((patient) => (
                       <div key={patient.id} className="col-xxl col-xl col-lg col-md col-sm-6 col-6">
@@ -586,7 +582,7 @@ const WardManagement = () => {
                             <span
                               className={`badge ${patient.status === 'LR' ? 'bg-pink' : `bg-${getStatusBadgeColor(patient.status)}`} text-white`}
                               style={{
-                                backgroundColor: patient.status === 'LR' ? '#e83e8c' : '',
+                                backgroundColor: patient.status === 'LR' ? getBorderColor(patient.status) : '',
                                 fontSize: '0.6rem',
                                 padding: '0.2em 0.5em'
                               }}
@@ -601,22 +597,22 @@ const WardManagement = () => {
                 </div>
               ) : (
                 /* Patient Details with Patient List Sidebar (shown when patient is selected) */
-                <div className="row">
+                <div className="row mt-2">
                   {/* Patient List Sidebar */}
                   {!isPatientListCollapsed ? (
-                    <div className="col-md-3">
-                      <div className="card mb-3">
-                        <div className="card-header bg-light d-flex justify-content-between align-items-center">
-                          <h6 className="mb-0">Patient List</h6>
-                          {/* Arrow button ONLY */}
+                    <div className="col-md-2">
+                      <div className="card mb-3 h-100">
+                        <div className="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                          <h6 className="mb-0" style={{ fontSize: "0.9rem" }}>Patient list </h6>
                           <button
-                            className="arrow icofont-rounded-down ms-auto text-end fs-5 collapse-arrow border-0 bg-transparent"
+                            className="arrow icofont-rounded-down ms-auto text-end fs-6 collapse-arrow border-0 bg-transparent"
                             type="button"
                             aria-expanded={!isPatientListCollapsed}
                             onClick={() => setIsPatientListCollapsed(true)}
                             style={{
                               transform: 'rotate(0deg)',
-                              transition: 'transform 0.3s ease'
+                              transition: 'transform 0.3s ease',
+                              padding: '0.1rem'
                             }}
                           ></button>
                         </div>
@@ -626,27 +622,34 @@ const WardManagement = () => {
                             {patientData.map((patient) => (
                               <button
                                 key={patient.id}
-                                className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${selectedPatient?.id === patient.id ? 'active' : ''}`}
+                                className={`list-group-item list-group-item-action ${selectedPatient?.id === patient.id ? 'active' : ''}`}
                                 onClick={() => handlePatientSelect(patient)}
                                 style={{
                                   borderLeft: `4px solid ${getBorderColor(patient.status)}`,
-                                  cursor: 'pointer'
+                                  cursor: 'pointer',
                                 }}
                               >
-                                <div>
-                                  <div className="fw-bold" style={{ fontSize: "0.85rem" }}>
+                                <div className="d-flex flex-column">
+                                  <div className="fw-bold mb-1" style={{ fontSize: "0.75rem", lineHeight: "1.1" }}>
                                     {patient.patientName}
                                   </div>
-                                  <div className="text-muted" style={{ fontSize: "0.75rem" }}>
-                                    {patient.bedNo}
+                                  <div className="d-flex flex-column">
+                                    <div className="text-muted" style={{ fontSize: "0.65rem" }}>
+                                      {patient.bedNo}
+                                    </div>
+                                    <div className="mt-1">
+                                      <span 
+                                        className={`badge ${patient.status === 'LR' ? 'bg-pink' : `bg-${getStatusBadgeColor(patient.status)}`}`}
+                                        style={{ 
+                                          fontSize: "0.6rem",
+                                          padding: "0.15em 0.4em"
+                                        }}
+                                      >
+                                        {patient.status}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
-                                <span 
-                                  className={`badge ${patient.status === 'LR' ? 'bg-pink' : `bg-${getStatusBadgeColor(patient.status)}`}`}
-                                  style={{ fontSize: "0.65rem" }}
-                                >
-                                  {patient.status}
-                                </span>
                               </button>
                             ))}
                           </div>
@@ -654,45 +657,47 @@ const WardManagement = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="col-auto d-flex align-items-start">
-                      <button
-                        className="collapse-toggle-collapsed arrow icofont-rounded-down ms-0 fs-5 border-0 bg-transparent"
-                        type="button"
-                        aria-expanded={false}
-                        onClick={() => setIsPatientListCollapsed(false)}
-                        style={{
-                          transform: 'rotate(90deg)',
-                          transition: 'transform 0.3s ease',
-                          marginTop: '0.5rem'
-                        }}
-                        title="Show Patient List"
-                      ></button>
+                    <div className="col-auto d-flex align-items-start ">
+                      <div className="d-flex align-items-center bg-light border mb-1">
+                        <span className="me-2 fw-bold" style={{ fontSize: "0.7rem", whiteSpace: "nowrap" }}>Patient List</span>
+                        <button
+                          className="collapse-toggle-collapsed arrow icofont-rounded-down ms-0 fs-6 border-0 bg-transparent"
+                          type="button"
+                          aria-expanded={false}
+                          onClick={() => setIsPatientListCollapsed(false)}
+                          style={{
+                            transform: 'rotate(90deg)',
+                            transition: 'transform 0.3s ease'
+                          }}
+                          title="Show Patient List"
+                        ></button>
+                      </div>
                     </div>
                   )}
                   {/* Patient Details */}
-                  <div className={isPatientListCollapsed ? "col-md-12" : "col-md-9"}>
-                    <div className="card mb-3">
+                  <div className={isPatientListCollapsed ? "col-md-12" : "col-md-10"}>
+                    <div className="card ">
                       <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                         <h5 className="mb-0">Patient Details - {selectedPatient.patientName}</h5>
                         <div className="d-flex gap-2">
-                          <span className={`badge bg-${getStatusBadgeColor(selectedPatient.status)}`}>
+                          <span className={`badge bg-${getStatusBadgeColor(selectedPatient.status)} align-items-center text-white py-2`}>
                             {selectedPatient.status} - {getStatusLabel(selectedPatient.status)}
                           </span>
                           <button className="btn btn-light btn-sm" onClick={handleBackToCards}>
-                            <i className="fa fa-arrow-left me-1"></i> Back to Cards
+                            <i className="fa fa-arrow-left me-1"></i> Nursing Home
                           </button>
                         </div>
                       </div>
 
                       <div className="card-body">
                         {/* Case Sheet Tabs Bar */}
-                        <div className="card mb-3">
+                        <div className="card mb-1">
                           <div className="card-body p-2">
                             <div className="d-flex flex-wrap gap-1">
                               {caseSheetTabs.map((tab) => (
                                 <button
                                   key={tab}
-                                  className={`btn btn-sm ${activeTab === tab ? 'btn-primary' : 'btn-outline-primary'} px-3 py-2`}
+                                  className={`btn btn-sm ${activeTab === tab ? 'btn-primary' : 'btn-outline-primary'} `}
                                   onClick={() => setActiveTab(tab)}
                                   style={{ fontSize: "0.85rem", whiteSpace: "nowrap" }}
                                 >
@@ -705,29 +710,29 @@ const WardManagement = () => {
 
                         <div className="row">
                           <div className="col-md-6">
-                            <div className="row mb-3">
+                            <div className="row mb-1">
                               <div className="col-4 fw-bold">Bed No:</div>
                               <div className="col-8">{selectedPatient.bedNo}</div>
                             </div>
-                            <div className="row mb-3">
+                            <div className="row  mb-1">
                               <div className="col-4 fw-bold">Patient:</div>
                               <div className="col-8">{selectedPatient.patientName} ({selectedPatient.ageGender})</div>
                             </div>
-                            <div className="row mb-3">
+                            <div className="row mb-1">
                               <div className="col-4 fw-bold">Admission:</div>
                               <div className="col-8">{selectedPatient.admissionNo} - {selectedPatient.admissionDate}</div>
                             </div>
                           </div>
                           <div className="col-md-6">
-                            <div className="row mb-3">
+                            <div className="row mb-1">
                               <div className="col-4 fw-bold">Doctor:</div>
                               <div className="col-8">{selectedPatient.doctorName}</div>
                             </div>
-                            <div className="row mb-3">
+                            <div className="row mb-1">
                               <div className="col-4 fw-bold">Ward:</div>
                               <div className="col-8">{selectedPatient.ward}</div>
                             </div>
-                            <div className="row mb-3">
+                            <div className="row mb-1">
                               <div className="col-4 fw-bold">From:</div>
                               <div className="col-8">{selectedPatient.from || "Direct Admission"}</div>
                             </div>
@@ -735,7 +740,7 @@ const WardManagement = () => {
                         </div>
 
                         {/* Tab Content */}
-                        <div className="card mt-3">
+                        <div className="card mt-1">
                           <div className="card-header bg-light">
                             <h6 className="mb-0">{activeTab}</h6>
                           </div>
@@ -795,8 +800,8 @@ const WardManagement = () => {
                                 style={{
                                   width: "20px",
                                   height: "20px",
-                                  backgroundColor: "#d4edda",
-                                  border: "2px solid #28a745",
+                                  backgroundColor: "#a8e6a3",
+                                  border: "2px solid #2e7d32",
                                   borderRadius: "4px"
                                 }}
                               ></div>
@@ -807,8 +812,8 @@ const WardManagement = () => {
                                 style={{
                                   width: "20px",
                                   height: "20px",
-                                  backgroundColor: "#f8d7da",
-                                  border: "2px solid #dc3545",
+                                  backgroundColor: "#ff6b6b",
+                                  border: "2px solid #c62828",
                                   borderRadius: "4px"
                                 }}
                               ></div>
@@ -819,24 +824,24 @@ const WardManagement = () => {
                                 style={{
                                   width: "20px",
                                   height: "20px",
-                                  backgroundColor: "#fff3cd",
-                                  border: "2px solid #fd7e14",
+                                  backgroundColor: "#4d96ff",
+                                  border: "2px solid #1565c0",
                                   borderRadius: "4px"
                                 }}
                               ></div>
-                              <span><strong>RW</strong> - Reported to Ward (Orange)</span>
+                              <span><strong>RW</strong> - Blue</span>
                             </div>
                             <div className="d-flex align-items-center gap-3 mb-2">
                               <div
                                 style={{
                                   width: "20px",
                                   height: "20px",
-                                  backgroundColor: "#d1ecf1",
-                                  border: "2px solid #17a2b8",
+                                  backgroundColor: "#ffa500",
+                                  border: "2px solid #ef6c00",
                                   borderRadius: "4px"
                                 }}
                               ></div>
-                              <span><strong>TP</strong> - Transferred Patient (Sky Blue)</span>
+                              <span><strong>TP</strong> - Orange</span>
                             </div>
                           </div>
                           <div className="col-md-6">
@@ -845,49 +850,38 @@ const WardManagement = () => {
                                 style={{
                                   width: "20px",
                                   height: "20px",
-                                  backgroundColor: "#cce5ff",
-                                  border: "2px solid #007bff",
+                                  backgroundColor: "#36b5ff",
+                                  border: "2px solid #0277bd",
                                   borderRadius: "4px"
                                 }}
                               ></div>
-                              <span><strong>OT</strong> - In Operation Theater (Blue)</span>
+                              <span><strong>OT</strong> - Sky Blue</span>
                             </div>
                             <div className="d-flex align-items-center gap-3 mb-2">
                               <div
                                 style={{
                                   width: "20px",
                                   height: "20px",
-                                  backgroundColor: "#f8d7e6",
-                                  border: "2px solid #e83e8c",
+                                  backgroundColor: "#ff6bc9",
+                                  border: "2px solid #ad1457",
                                   borderRadius: "4px"
                                 }}
                               ></div>
-                              <span><strong>LR</strong> - In Labor Room (Pink)</span>
+                              <span><strong>LR</strong> - Pink</span>
                             </div>
                             <div className="d-flex align-items-center gap-3 mb-2">
                               <div
                                 style={{
                                   width: "20px",
                                   height: "20px",
-                                  backgroundColor: "#fff3cd",
-                                  border: "2px solid #ffc107",
+                                  backgroundColor: "#fff176",
+                                  border: "2px solid #f9a825",
                                   borderRadius: "4px"
                                 }}
                               ></div>
-                              <span><strong>RD</strong> - Ready for Discharge (Yellow)</span>
+                              <span><strong>RD</strong> - Yellow</span>
                             </div>
-                            <div className="d-flex align-items-center gap-3 mb-2">
-                              <div
-                                style={{
-                                  width: "20px",
-                                  height: "20px",
-                                  backgroundColor: "#f8f9fa",
-                                  border: "2px solid #6c757d",
-                                  borderRadius: "4px"
-                                }}
-                              ></div>
-                              <span><strong>SELECTED</strong> - Dark Border</span>
-                            </div>
+                            
                           </div>
                         </div>
                       </div>
@@ -903,7 +897,7 @@ const WardManagement = () => {
       {/* Add custom CSS for pink badge */}
       <style jsx>{`
         .bg-pink {
-          background-color: #e83e8c !important;
+          background-color: #ad1457 !important;
         }
         
         /* Ensure 5 boxes per row on larger screens */
@@ -924,7 +918,7 @@ const WardManagement = () => {
         
         /* Custom scrollbar for patient list */
         .card-body::-webkit-scrollbar {
-          width: 6px;
+          width: 4px;
         }
         
         .card-body::-webkit-scrollbar-track {
@@ -933,7 +927,7 @@ const WardManagement = () => {
         
         .card-body::-webkit-scrollbar-thumb {
           background: #888;
-          border-radius: 3px;
+          border-radius: 2px;
         }
         
         .card-body::-webkit-scrollbar-thumb:hover {
@@ -951,10 +945,17 @@ const WardManagement = () => {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          width: 36px;
-          height: 36px;
+          width: 24px;
+          height: 24px;
           border-radius: 4px;
           cursor: pointer;
+        }
+        
+        /* Arrow icon styles */
+        .icofont-rounded-down::before {
+          content: "▼";
+          font-family: Arial, sans-serif;
+          font-size: 12px;
         }
       `}</style>
     </div>

@@ -1,18 +1,17 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { useNavigate } from 'react-router-dom';
 import Popup from "../../../Components/popup"
-import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
+import ConfirmationPopup from "../../../Components/ConfirmationPopup";
+import { MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
 import { getRequest, putRequest } from "../../../service/apiService"
 import ReactDOM from 'react-dom';
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
 
-
-
 const OpeningBalanceApproval = () => {
-  const [currentView, setCurrentView] = useState("list") // "list" or "detail"
+  const [currentView, setCurrentView] = useState("list")
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [loadingScr, setLoadingScr] = useState(false)
   const [approvalData, setApprovalData] = useState([])
   const [brandOptions, setBrandOptions] = useState([])
   const [dtRecord, setDtRecord] = useState([])
@@ -22,11 +21,14 @@ const OpeningBalanceApproval = () => {
   const [currentLogUser, setCurrentLogUser] = useState(null);
   const deptId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [currentDept, setCurrentDept] = useState(null);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [confirmationPopup, setConfirmationPopup] = useState(null);
   const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
+  
+  const navigate = useNavigate();
+  
   const getCurrentDateTime = () => new Date().toISOString();
 
   const [formData, setFormData] = useState({
@@ -35,24 +37,39 @@ const OpeningBalanceApproval = () => {
     department: "",
   });
 
+  const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "Yes", cancelText = "No") => {
+    setConfirmationPopup({
+      message,
+      type,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmationPopup(null);
+      },
+      onCancel: onCancel ? () => {
+        onCancel();
+        setConfirmationPopup(null);
+      } : () => setConfirmationPopup(null),
+      confirmText,
+      cancelText
+    });
+  };
+
   const fetchOpenBalance = async () => {
     try {
-      setLoadingScr(true);
+      setLoading(true);
       const status = "p,s,a,r";
       const response = await getRequest(`${OPEN_BALANCE}/list/${status}/${hospitalId}/${departmentId}`);
 
       if (response && Array.isArray(response)) {
-
         setApprovalData(response);
         console.log("Transformed approval data:", response);
       }
     } catch (err) {
       console.error("Error fetching drug options:", err);
     } finally {
-      setLoadingScr(false);
+      setLoading(false);
     }
   };
-
 
   const fetchBrand = async () => {
     try {
@@ -99,9 +116,7 @@ const OpeningBalanceApproval = () => {
   const fetchCurrentUser = async () => {
     try {
       setLoading(true);
-
       const response = await getRequest(`/authController/getUsersForProfile/${crUser}`);
-
 
       if (response && response.response) {
         const { firstName = "", middleName = "", lastName = "" } = response.response;
@@ -111,7 +126,6 @@ const OpeningBalanceApproval = () => {
           enteredBy: fullName,
         }));
         setCurrentLogUser(response);
-
       }
     } catch (err) {
       console.error("Error fetching current user:", err);
@@ -129,7 +143,6 @@ const OpeningBalanceApproval = () => {
           ...prev,
           department: deptId,
         }));
-        setCurrentDept(response?.response?.departmentName);
       }
     } catch (err) {
       console.error("Error fetching department:", err);
@@ -145,17 +158,14 @@ const OpeningBalanceApproval = () => {
     fetchManufacturer();
     fetchCurrentUser();
     fetchDepartment();
-  }, []);
-
-
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
   const [detailEntries, setDetailEntries] = useState([])
   const statusOrder = { s: 1, p: 3, r: 2, a: 4 };
-  const itemsPerPage = 5
-  // Helper to format date to yyyy-mm-dd
+  const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
+
   const formatDate = (date) => {
     if (!date) return "";
     const d = new Date(date);
@@ -163,7 +173,6 @@ const OpeningBalanceApproval = () => {
     return d.toISOString().split("T")[0];
   };
 
-  // Filtered data based on date range
   const filteredApprovalData = approvalData.filter((item) => {
     if (!fromDate || !toDate) return true;
     const itemDate = formatDate(item.enteredDt);
@@ -172,7 +181,6 @@ const OpeningBalanceApproval = () => {
     return itemDate >= from && itemDate <= to;
   });
 
-  const totalPages = Math.ceil(filteredApprovalData.length / itemsPerPage)
   const currentItems = [...filteredApprovalData]
     .sort((a, b) => (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99))
     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -180,7 +188,6 @@ const OpeningBalanceApproval = () => {
   const handleEditClick = (record, e) => {
     e.stopPropagation();
     setSelectedRecord(record);
-    // Assign unique id to each entry if not present
     const entriesWithId = (record.openingBalanceDtResponseList || []).map((entry, idx) => ({
       ...entry,
       id: entry.id || entry.balanceTId || `row-${idx + 1}`,
@@ -200,9 +207,8 @@ const OpeningBalanceApproval = () => {
     setCurrentPage(1);
   }
 
-
   const addNewEntry = () => {
-    const newId = Date.now() + Math.random(); // unique id
+    const newId = Date.now() + Math.random();
     const newEntry = {
       id: newId,
       sNo: detailEntries.length + 1,
@@ -230,7 +236,6 @@ const OpeningBalanceApproval = () => {
   };
 
   console.log("deleteEntry :", dtRecord)
-
 
   const updateEntry = (id, field, value) => {
     const updatedEntries = detailEntries.map((entry) => {
@@ -267,7 +272,6 @@ const OpeningBalanceApproval = () => {
     return isNaN(date.getTime()) ? null : date.toISOString().split("T")[0];
   };
 
-
   const hasDuplicateDetailEntries = (entries) => {
     const seen = new Map();
     for (const entry of entries) {
@@ -297,11 +301,12 @@ const OpeningBalanceApproval = () => {
     })
   }
 
+  const parseNumber = (value) => (value ? parseFloat(value) : null);
 
-  const handleUpdate = async (status) => {
+  const handleUpdateLogic = async (status) => {
     if (hasDuplicateDetailEntries(detailEntries)) {
       showPopup("Duplicate entry found for Batch No/Serial No, DOM, and DOE.", "warning");
-      return;
+      return { success: false, message: "Duplicate entry found for Batch No/Serial No, DOM, and DOE." };
     }
 
     const storeBalanceDtList = detailEntries.map(entry => ({
@@ -338,27 +343,75 @@ const OpeningBalanceApproval = () => {
 
       console.log("Payload to submit:", requestPayload);
 
-      showPopup(
-        status === "p" ? "Entries submitted successfully!" : "Entries updated successfully!",
-        "success"
-      );
-
-      await fetchOpenBalance();
-      setSelectedRecord(null);
-      setDetailEntries([]);
-      setDtRecord([]);
-      setCurrentView("list");
+      return { success: true, response, balanceMId: selectedRecord.balanceMId };
 
     } catch (error) {
       console.error("Error submitting data:", error);
-      showPopup("Failed to update entries!", "error");
+      return { success: false, message: "Failed to update entries!" };
     }
   };
 
-  const parseNumber = (value) => (value ? parseFloat(value) : null);
-
-
-
+  const handleUpdate = async (status) => {
+    const actionText = status === "p" ? "submit" : "update";
+    
+    showConfirmationPopup(
+      `Are you sure you want to ${actionText} this opening balance?`,
+      "info",
+      async () => {
+        const result = await handleUpdateLogic(status);
+        
+        if (result?.success) {
+          const balanceMId = result.balanceMId;
+          
+          showConfirmationPopup(
+            status === "p" ? "Opening Balance submitted successfully! Do you want to print report ?" : "Opening Balance updated successfully! Do you want to print report ?",
+            "success",
+            () => {
+              if (balanceMId) {
+                navigate('/ViewDownLoadIndent', {
+                  state: {
+                    reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceMId}`,
+                    title: status === "p" ? 'Opening Balance Submit Report' : 'Opening Balance Update Report',
+                    fileName: status === "p" ? 'Opening Balance Submit Report' : 'Opening Balance Update Report',
+                    returnPath: window.location.pathname
+                  }
+                });
+              }
+              
+              fetchOpenBalance();
+              setSelectedRecord(null);
+              setDetailEntries([]);
+              setDtRecord([]);
+              setCurrentView("list");
+            },
+            () => {
+              fetchOpenBalance();
+              setSelectedRecord(null);
+              setDetailEntries([]);
+              setDtRecord([]);
+              setCurrentView("list");
+            },
+            "Yes",
+            "No"
+          );
+        } else {
+          showConfirmationPopup(
+            result?.message || "Failed to update entries!",
+            "error",
+            () => {},
+            null,
+            "OK",
+            "Close"
+          );
+        }
+      },
+      () => {
+        console.log(`${actionText} cancelled by user`);
+      },
+      `Yes, ${actionText.charAt(0).toUpperCase() + actionText.slice(1)}`,
+      "Cancel"
+    );
+  };
 
   const handleReset = () => {
     setDetailEntries([
@@ -381,17 +434,14 @@ const OpeningBalanceApproval = () => {
   }
 
   const generatereport = async (id) => {
-
     if (!id) {
       alert("Please select List");
       return;
     }
 
-
     setIsGeneratingPDF(true);
 
     try {
-
       const url = `${ALL_REPORTS}/openingBalanceReport?balanceMId=${id}`;
 
       const response = await fetch(url, {
@@ -423,7 +473,6 @@ const OpeningBalanceApproval = () => {
     }
   };
 
-
   const dropdownClickedRef = useRef(false)
   const [activeDrugCodeDropdown, setActiveDrugCodeDropdown] = useState(null)
   const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null)
@@ -431,10 +480,20 @@ const OpeningBalanceApproval = () => {
   if (currentView === "detail") {
     return (
       <div className="content-wrapper">
+        {loading && <LoadingScreen />}
+        <ConfirmationPopup
+          show={confirmationPopup !== null}
+          message={confirmationPopup?.message || ''}
+          type={confirmationPopup?.type || 'info'}
+          onConfirm={confirmationPopup?.onConfirm || (() => {})}
+          onCancel={confirmationPopup?.onCancel}
+          confirmText={confirmationPopup?.confirmText || 'OK'}
+          cancelText={confirmationPopup?.cancelText}
+        />
+        
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
-              {/* Header Section */}
               <div className="card-header d-flex justify-content-between align-items-center">
                 <h4 className="card-title p-2 mb-0">View And Edit Opening Balance Entry</h4>
                 <button type="button" className="btn btn-secondary" onClick={handleBackToList}>
@@ -444,12 +503,8 @@ const OpeningBalanceApproval = () => {
               {popupMessage && (
                 <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
               )}
-
-              {loadingScr && <LoadingScreen />}
-
-
+              
               <div className="card-body">
-                {/* Entry Details Header */}
                 <div className="row mb-4">
                   <div className="col-md-3">
                     <label className="form-label fw-bold">Balance Entry Date</label>
@@ -510,15 +565,10 @@ const OpeningBalanceApproval = () => {
                       ) : (
                         " Download Invoice"
                       )}
-                     
                     </button>
-
-                    
-
                   </div>
                 </div>
 
-                {/* Detail Table */}
                 <div className="table-responsive" style={{ maxHeight: "500px", overflowY: "auto" }}>
                   <table className="table table-bordered align-middle">
                     <thead style={{ backgroundColor: "#6c7b7f", color: "white" }}>
@@ -561,7 +611,6 @@ const OpeningBalanceApproval = () => {
                             />
                           </td>
 
-                          {/* Drug Code Column with Fixed Dropdown */}
                           <td style={{ position: "relative" }}>
                             <input
                               type="text"
@@ -662,7 +711,6 @@ const OpeningBalanceApproval = () => {
                               )}
                           </td>
 
-                          {/* Drug Name Column with Portal-based Dropdown */}
                           <td style={{ position: "relative" }}>
                             <input
                               type="text"
@@ -687,7 +735,6 @@ const OpeningBalanceApproval = () => {
                               }}
                               readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
-                            {/* Using React Portal for better dropdown positioning */}
                             {(activeDrugNameDropdown === index &&
                               (selectedRecord?.status === "s" || selectedRecord?.status === "r")) &&
                               ReactDOM.createPortal(
@@ -763,11 +810,10 @@ const OpeningBalanceApproval = () => {
                                       <li className="list-group-item text-muted">No matches found</li>
                                     )}
                                 </ul>,
-                                document.body // Render dropdown in document body
+                                document.body
                               )}
                           </td>
 
-                          {/* Rest of your table cells remain the same */}
                           <td>
                             <input
                               type="text"
@@ -777,7 +823,6 @@ const OpeningBalanceApproval = () => {
                               style={{ width: "70px" }}
                               readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
-
                           </td>
                           <td>
                             <input
@@ -799,7 +844,6 @@ const OpeningBalanceApproval = () => {
                               style={{ minWidth: "120px" }}
                               readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
-
                           </td>
                           <td>
                             <input
@@ -811,7 +855,6 @@ const OpeningBalanceApproval = () => {
                               style={{ minWidth: "120px" }}
                               readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
-
                           </td>
                           <td>
                             <input
@@ -852,7 +895,6 @@ const OpeningBalanceApproval = () => {
                               style={{ width: "90px" }}
                               readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
-
                           </td>
                           <td>
                             <input
@@ -871,9 +913,7 @@ const OpeningBalanceApproval = () => {
                               value={entry.totalCost || entry.totalMrpValue || ""}
                               readOnly
                               style={{ backgroundColor: "#f8f9fa", minWidth: "90px" }}
-
                             />
-
                           </td>
                           <td>
                             <select
@@ -890,7 +930,6 @@ const OpeningBalanceApproval = () => {
                                 </option>
                               ))}
                             </select>
-
                           </td>
 
                           <td>
@@ -940,12 +979,7 @@ const OpeningBalanceApproval = () => {
                   </table>
                 </div>
 
-
-
-                {/* Action Buttons */}
                 {(selectedRecord?.status === "s" || selectedRecord?.status === "r") && (
-                  
-
                   <div className="d-flex justify-content-end mt-4">
                     <button
                       type="button"
@@ -964,13 +998,10 @@ const OpeningBalanceApproval = () => {
                       Submit
                     </button>
 
-
-
                     <button type="button" className="btn btn-danger" onClick={handleReset}>
                       Reset
                     </button>
                   </div>
-
                 )}
               </div>
             </div>
@@ -982,16 +1013,25 @@ const OpeningBalanceApproval = () => {
 
   return (
     <div className="content-wrapper">
+      {loading && <LoadingScreen/>}
+      <ConfirmationPopup
+        show={confirmationPopup !== null}
+        message={confirmationPopup?.message || ''}
+        type={confirmationPopup?.type || 'info'}
+        onConfirm={confirmationPopup?.onConfirm || (() => {})}
+        onCancel={confirmationPopup?.onCancel}
+        confirmText={confirmationPopup?.confirmText || 'OK'}
+        cancelText={confirmationPopup?.cancelText}
+      />
+      
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            {/* Header Section */}
             <div className="card-header">
               <h4 className="card-title p-2 mb-0">Opening Balance Approval List</h4>
             </div>
 
             <div className="card-body">
-              {/* Date Filter Section */}
               <div className="row mb-4">
                 <div className="col-md-3">
                   <label className="form-label fw-bold">From Date</label>
@@ -1027,7 +1067,6 @@ const OpeningBalanceApproval = () => {
                 </div>
               </div>
 
-              {/* Table Section */}
               <div className="table-responsive">
                 <table className="table table-bordered table-hover align-middle">
                   <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
@@ -1089,7 +1128,6 @@ const OpeningBalanceApproval = () => {
                               }
                             ></i>
                           </button>
-
                         </td>
                       </tr>
                     ))}
@@ -1098,12 +1136,11 @@ const OpeningBalanceApproval = () => {
               </div>
 
               <Pagination
-                                            totalItems={filteredApprovalData.length}
-                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                            currentPage={currentPage}
-                                            onPageChange={setCurrentPage}
-                                        />
-
+                totalItems={filteredApprovalData.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
             </div>
           </div>
         </div>
@@ -1111,7 +1148,5 @@ const OpeningBalanceApproval = () => {
     </div>
   )
 }
-
-
 
 export default OpeningBalanceApproval
