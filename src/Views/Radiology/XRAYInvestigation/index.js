@@ -5,7 +5,8 @@ import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Paginati
 
 const XRAYInvestigation = () => {
   const [xrayData, setXrayData] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchName, setSearchName] = useState("");
+  const [searchContact, setSearchContact] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
@@ -73,20 +74,36 @@ const XRAYInvestigation = () => {
   }, []);
 
   /* ---------------- SEARCH ---------------- */
-  const filteredData = xrayData.filter(item =>
-    item.accessionNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.uhid.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.contactNo.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredData = xrayData.filter(item => {
+    const nameMatch = searchName === "" || 
+      item.patientName.toLowerCase().includes(searchName.toLowerCase());
+    
+    const contactMatch = searchContact === "" || 
+      item.contactNo.includes(searchContact);
+    
+    return nameMatch && contactMatch;
+  });
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchName, searchContact]);
 
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
+
+  /* ---------------- RESET SEARCH ---------------- */
+  const handleReset = () => {
+    setSearchName("");
+    setSearchContact("");
+    setCurrentPage(1);
+  };
+
+  /* ---------------- HANDLE SEARCH ---------------- */
+  const handleSearch = () => {
+    // Reset to page 1 to show search results from first page
+    setCurrentPage(1);
+  };
 
   /* ---------------- POPUP ---------------- */
   const showPopup = (message, type = "success") => {
@@ -140,27 +157,75 @@ const XRAYInvestigation = () => {
             <LoadingScreen />
           ) : (
             <>
-              {/* Search Field inside table header */}
+              {/* Search Fields with design like the reference image */}
               <div className="mb-3">
-                <div className="row align-items-center">
+                <div className="row align-items-end">
+                  {/* Patient Name Search Field */}
                   <div className="col-md-4">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search by Accession No / UHID / Patient Name / Contact No"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
+                    <div className="form-group mb-0">
+                      <label className="form-label fw-bold mb-1">
+                        Patient Name
+                      </label>
+                      <div className="input-group">
+                        <input
+                          type="search"
+                          className="form-control"
+                          placeholder="Enter patient name"
+                          value={searchName}
+                          onChange={(e) => setSearchName(e.target.value)}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="col-md-2">
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => setSearchQuery("")}
-                    >
-                      Clear Search
-                    </button>
+                  
+                  {/* Contact Number Search Field */}
+                  <div className="col-md-4">
+                    <div className="form-group mb-0">
+                      <label className="form-label fw-bold mb-1">
+                        Mobile No
+                      </label>
+                      <div className="input-group">
+                        <input
+                          type="search"
+                          className="form-control"
+                          placeholder="Enter mobile number"
+                          value={searchContact}
+                          onChange={(e) => setSearchContact(e.target.value)}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="col-md-6 text-end">
+                  
+                  {/* Search and Reset Buttons */}
+                  <div className="col-md-4">
+                    <div className="form-group mb-0">
+                      <label className="form-label fw-bold mb-1" style={{ visibility: "hidden" }}>
+                        Actions
+                      </label>
+                      <div className="d-flex">
+                        <button
+                          className="btn btn-primary me-2"
+                          onClick={handleSearch}
+                          title="Search records"
+                        >
+                          <i></i> Search
+                        </button>
+                        
+                        <button
+                          className="btn btn-secondary"
+                          onClick={handleReset}
+                          title="Reset all search filters"
+                        >
+                          <i className="fas fa-redo-alt me-1"></i> Reset
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Record count row */}
+                <div className="row mt-3">
+                  <div className="col-md-12 text-end">
                     <span className="text-muted">
                       Showing {currentItems.length} of {filteredData.length} records
                     </span>
@@ -233,7 +298,7 @@ const XRAYInvestigation = () => {
                                 onClick={() => handleCompleted(item)}
                                 title="Mark as Completed"
                               >
-                                Completed
+                                <i> Complete</i>
                               </button>
 
                               <button
@@ -241,10 +306,9 @@ const XRAYInvestigation = () => {
                                 onClick={() => handleCancel(item)}
                                 title="Cancel Investigation"
                               >
-                                Cancel
+                                <i>Cancel</i>
                               </button>
                             </div>
-
 
                           </td>
                         </tr>
@@ -254,12 +318,12 @@ const XRAYInvestigation = () => {
                         <td colSpan="13" className="text-center text-muted py-4">
                           <i className="fas fa-search fa-2x mb-3"></i>
                           <p>No records found matching your search</p>
-                          {searchQuery && (
+                          {(searchName || searchContact) && (
                             <button
                               className="btn btn-sm btn-outline-secondary mt-2"
-                              onClick={() => setSearchQuery("")}
+                              onClick={handleReset}
                             >
-                              Clear Search
+                              Reset Search
                             </button>
                           )}
                         </td>
