@@ -430,6 +430,8 @@ export const ROL_IMPORT_SUCCESS = "items imported successfully from ROL";
 export const ROL_LOAD_ERROR = "Error fetching ROL items from server";
 export const NO_ROL_DATA = "No items found below reorder level. All items have sufficient stock.";
 export const IMPORT_FROM_PREVIOUS = "Import from Previous Indent feature coming soon";
+export const FETCH_ITEM_ERR_MSG = "Error fetching drugs";
+
 
 //Blood GAROUP Master
 
@@ -924,6 +926,16 @@ export const MOBILE_REQUIRED_ERROR = "Mobile number is required.";
 export const AGE_NEGATIVE_ERROR = "Age can not be negative.";
 export const MISSING_TIME_SLOTS_TITLE = "Missing Time Slots.";
 export const NOT_AVAILABLE_TITLE = "Not Available.";
+
+
+//View DownLoad Report
+
+export const INDENT_SAVE_TITLE = "Indent saved successfully";
+export const INDENT_SAVE_FILE_NAME = "Indent Save Report";
+export const INDENT_SUBMIT_TITLE = "Indent submitted successfully";
+export const INDENT_SUBMIT_FILE_NAME = "Indent submit Report";
+
+
 
 //blood bank
 export const REGISTERED_DONOR="Donor registered successfully!";

@@ -366,7 +366,7 @@ const ItemReceivingMainScreen = () => {
           "success",
           () => {
             // Navigate to report page
-            navigate('/ViewDownLoadIndent', {
+            navigate('/ViewDownloadReport', {
               state: {
                 reportUrl: `${ALL_REPORTS}/indentReceiving?indentMId=${indentMId}`,
                 title: 'Item Receiving Report',

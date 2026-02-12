@@ -368,7 +368,7 @@ const OpeningBalanceApproval = () => {
             "success",
             () => {
               if (balanceMId) {
-                navigate('/ViewDownLoadIndent', {
+                navigate('/ViewDownloadReport', {
                   state: {
                     reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceMId}`,
                     title: status === "p" ? 'Opening Balance Submit Report' : 'Opening Balance Update Report',

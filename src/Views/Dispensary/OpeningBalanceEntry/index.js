@@ -375,7 +375,7 @@ const OpeningBalanceEntry = () => {
             () => {
               // Navigate to report page
               if (balanceId) {
-                navigate('/ViewDownLoadIndent', {
+                navigate('/ViewDownloadReport', {
                   state: {
                     reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceId}`,
                     title: 'Opening Balance Save Report',
@@ -433,7 +433,7 @@ const OpeningBalanceEntry = () => {
             "success",
             () => {
               // Navigate to report page
-              navigate('/ViewDownLoadIndent', {
+              navigate('/ViewDownloadReport', {
                 state: {
                   reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceId}`,
                   title: 'Opening Balance Submit Report',

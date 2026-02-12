@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Popup from "../../../Components/popup";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 
-const ViewDownLoadIndent = () => {
+const ViewDownLoadReport = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -156,4 +156,4 @@ const ViewDownLoadIndent = () => {
   );
 };
 
-export default ViewDownLoadIndent;
+export default ViewDownLoadReport;

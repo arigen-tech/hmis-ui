@@ -116,7 +116,7 @@ import IntakeTypeMaster from './Views/Masters/IntakeTypeMaster';
 import InpatientMaster from './Views/Masters/InpatientMaster';
 import SpecialityMaster from './Views/Masters/SpecialityMaster';
 import ViewDownwload from './Views/Laboratory/ViewDownload';
-import ViewDownloadIndent from './Views/WardPharmacy/ViewDownLoadIndent';
+import ViewDownloadReport from './Views/WardPharmacy/ViewDownLoadReport';
 import ItemIssueRegister from './Views/WardPharmacy/IndentIssueReport';
 import BillingPolicyMaster from './Views/Masters/BillingPolicyMaster';
 import DesignationMaster from './Views/Masters/DesignationMaster';
@@ -227,7 +227,7 @@ function App() {
             <Route path="lab-payment-success" element={<LabPaymentSuccess />} />
             <Route path="opd-payment-success" element={<OpdPaymentSuccess />} />
             <Route path="ViewDownwload" element={<ViewDownwload />} />
-            <Route path="ViewDownloadIndent" element={<ViewDownloadIndent />} />
+            <Route path="ViewDownloadReport" element={<ViewDownloadReport />} />
 
 
 

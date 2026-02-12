@@ -575,7 +575,7 @@ const IndentIssue = () => {
           "success",
           () => {
             // Navigate to report page
-            navigate('/ViewDownLoadIndent', {
+            navigate('/ViewDownloadReport', {
               state: {
                 reportUrl: `${ALL_REPORTS}/indentIssue?issueMId=${issueResponse.response}`,
                 title: 'Indent Issue Report',

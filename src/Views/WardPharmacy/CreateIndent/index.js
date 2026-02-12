@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from 'react-router-dom';
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup";
-import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, Store_Internal_Indent, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
+import { MAS_DEPARTMENT, Store_Internal_Indent, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading";
 import DatePicker from "../../../Components/DatePicker";
@@ -27,15 +27,19 @@ import {
   ROL_IMPORT_SUCCESS,
   ROL_LOAD_ERROR,
   NO_ROL_DATA,
-  IMPORT_FROM_PREVIOUS
+  IMPORT_FROM_PREVIOUS,
+  INDENT_SAVE_TITLE,
+  INDENT_SAVE_FILE_NAME,
+  INDENT_SUBMIT_TITLE,
+  INDENT_SUBMIT_FILE_NAME,
+  FETCH_DEPARTMENT_ERR_MSG,
+  FETCH_ITEM_ERR_MSG
 } from "../../../config/constants";
 
 const IndentCreation = () => {
-  const [currentView, setCurrentView] = useState("form") // "form" or "detail"
   const [loading, setLoading] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null)
   const [confirmationPopup, setConfirmationPopup] = useState(null);
-  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
 
   // Form State
@@ -61,7 +65,6 @@ const IndentCreation = () => {
   // ROL Popup State
   const [showROLPopup, setShowROLPopup] = useState(false);
   const [rolItems, setRolItems] = useState([]);
-  const [selectedRolItems, setSelectedRolItems] = useState([]);
 
   const navigate = useNavigate();
 
@@ -78,10 +81,8 @@ const IndentCreation = () => {
       console.log("Current Department API Response:", response);
 
       if (response && response.data) {
-        // If response has data field with department info
         setLoggedInDepartment(response.data.departmentName || response.data.name || "Unknown Department");
       } else if (response && response.response) {
-        // If response has response field with department info
         setLoggedInDepartment(response.response.departmentName || response.response.name || "Unknown Department");
       } else {
         console.warn("Unexpected department response structure:", response);
@@ -106,11 +107,11 @@ const IndentCreation = () => {
         setDepartments(response);
       } else {
         console.error("Unexpected departments response structure:", response);
-        showPopup("Error: Unexpected departments response format", "error");
+        showPopup(FETCH_DEPARTMENT_ERR_MSG, "error");
       }
     } catch (err) {
       console.error("Error fetching departments:", err);
-      showPopup("Error fetching departments", "error");
+      showPopup(FETCH_DEPARTMENT_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -138,7 +139,7 @@ const IndentCreation = () => {
       }
     } catch (err) {
       console.error("Error fetching drugs:", err);
-      showPopup("Error fetching drugs", "error");
+      showPopup(FETCH_ITEM_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -153,15 +154,14 @@ const IndentCreation = () => {
 
       if (response && response.response && Array.isArray(response.response)) {
         const rolItemsData = response.response.map(item => ({
-          id: item.itemId, // Ensure this uses itemId from response
-          itemId: item.itemId, // Add this explicit mapping
+          id: item.itemId,
+          itemId: item.itemId,
           itemName: item.itemName,
           availableQty: item.availableQty || 0,
           rolQty: item.rolQty || 0,
           selected: false,
           pvmsNo: item.pvmsNo,
           unit: item.unit,
-          // Include stock data from ROL response
           storeStock: item.storeStock || 0,
           wardStock: item.wardStock || 0,
           dispStock: item.dispStock || 0,
@@ -176,7 +176,6 @@ const IndentCreation = () => {
             storeROL: item.storeROL,
             dispROL: item.dispROL,
             wardROL: item.wardROL,
-            // Pass stock data to drugData as well for consistency
             storestocks: item.storeStock || 0,
             wardstocks: item.wardStock || 0,
             dispstocks: item.dispStock || 0
@@ -224,9 +223,9 @@ const IndentCreation = () => {
         storesStock: storesStock,
         wardStock: wardStock,
         reason: "",
-        drugId: item.itemId, // FIXED: Use item.itemId instead of item.id
+        drugId: item.itemId,
         drugData: {
-          itemId: item.itemId, // FIXED: Use item.itemId instead of item.id
+          itemId: item.itemId,
           nomenclature: item.itemName,
           pvmsNo: item.pvmsNo,
           unitAuName: item.unit,
@@ -264,9 +263,8 @@ const IndentCreation = () => {
   useEffect(() => {
     fetchDepartments();
     fetchAllDrugs();
-    fetchCurrentDepartment(); // Fetch current department separately
-    // Don't fetch ROL items on initial load, only when Import from ROL is clicked
-  }, []);
+    fetchCurrentDepartment();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Helper function to get display value with drug code in unique format
   const getDrugDisplayValue = (drugName, drugCode) => {
@@ -346,7 +344,7 @@ const IndentCreation = () => {
 
     // Entries validation - check for drugId instead of drugName
     indentEntries.forEach((entry, index) => {
-      if (!entry.drugId) { // Changed from drugName to drugId
+      if (!entry.drugId) {
         newErrors[`drug_${index}`] = SELECT_DRUG_ERROR;
       }
       if (!entry.requiredQty || entry.requiredQty <= 0) {
@@ -513,11 +511,11 @@ const IndentCreation = () => {
     console.log("Import from ROL triggered");
     try {
       setLoading(true);
-      await fetchROLItems(); // Fetch fresh ROL data when popup is opened
+      await fetchROLItems();
       setShowROLPopup(true);
     } catch (err) {
       console.error("Error preparing ROL popup:", err);
-      showPopup("Error loading ROL items", "error");
+      showPopup(ROL_LOAD_ERROR, "error");
     } finally {
       setLoading(false);
     }
@@ -536,12 +534,6 @@ const IndentCreation = () => {
       selected: isChecked
     }));
     setRolItems(updatedRolItems);
-
-    if (isChecked) {
-      setSelectedRolItems(updatedRolItems.map(item => item.id));
-    } else {
-      setSelectedRolItems([]);
-    }
   };
 
   // Handle individual checkbox selection in ROL popup
@@ -550,9 +542,6 @@ const IndentCreation = () => {
       item.id === id ? { ...item, selected: isSelected } : item
     );
     setRolItems(updatedRolItems);
-
-    const selectedIds = updatedRolItems.filter(item => item.selected).map(item => item.id);
-    setSelectedRolItems(selectedIds);
   };
 
   // Function to reset form
@@ -617,12 +606,12 @@ const IndentCreation = () => {
         message: INDENT_SAVE_SUCCESS,
         onConfirm: () => {
           // If you have a view page for indents, navigate to it
-          navigate('/ViewDownLoadIndent', {
+          navigate('/ViewDownloadReport', {
             state: {
               reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${response.response?.indentMId}`,
-              title: 'Indent Save Report',
-              fileName: 'Indent Save Report',
-              returnPath: window.location.pathname // This will capture the current path
+              title: INDENT_SAVE_TITLE,
+              fileName: INDENT_SAVE_FILE_NAME,
+              returnPath: window.location.pathname
             }
           });
 
@@ -711,12 +700,12 @@ const IndentCreation = () => {
         message: INDENT_SUBMIT_SUCCESS,
         onConfirm: () => {
           // If you have a view page for indents, navigate to it
-          navigate('/ViewDownLoadIndent', {
+          navigate('/ViewDownloadReport', {
             state: {
               reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${response.response?.indentMId}`,
-              title: 'Indent Submit Report',
-              fileName: 'Indent Submit Report',
-              returnPath: window.location.pathname // This will capture the current path
+              title: INDENT_SUBMIT_TITLE,
+              fileName: INDENT_SUBMIT_FILE_NAME,
+              returnPath: window.location.pathname
             }
           });
 
@@ -950,7 +939,6 @@ const IndentCreation = () => {
                                                 <span className="badge bg-info me-1" style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>
                                                   <i className="fas fa-hashtag me-1"></i>CODE:{drug.pvmsNo}
                                                 </span>
-
                                               </div>
                                               {isSelectedInOtherRow && (
                                                 <span className="text-success">

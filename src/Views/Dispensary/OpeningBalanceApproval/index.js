@@ -187,7 +187,7 @@ const OpeningBalanceApproval = () => {
             () => {
               // Navigate to report page
               if (balanceMId) {
-                navigate('/ViewDownLoadIndent', {
+                navigate('/ViewDownloadReport', {
                   state: {
                     reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceMId}`,
                     title: action === "a" ? 'Opening Balance Approval Report' : 'Opening Balance Rejection Report',

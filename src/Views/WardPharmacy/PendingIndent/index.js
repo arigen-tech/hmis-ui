@@ -319,7 +319,7 @@ const PendingIndentApproval = () => {
           "success",
           () => {
             // Navigate to report page for approved indent
-            navigate('/ViewDownLoadIndent', {
+            navigate('/ViewDownloadReport', {
               state: {
                 reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${indentMId}`,
                 title: 'Indent Approval Report',
@@ -344,7 +344,7 @@ const PendingIndentApproval = () => {
           "success",
           () => {
             // Navigate to report page for rejected indent
-            navigate('/ViewDownLoadIndent', {
+            navigate('/ViewDownloadReport', {
               state: {
                 reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${indentMId}`,
                 title: 'Indent Rejection Report',

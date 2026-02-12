@@ -448,7 +448,7 @@ const IndentViewUpdate = () => {
           "success",
           () => {
             // Navigate to report page for save
-            navigate('/ViewDownLoadIndent', {
+            navigate('/ViewDownloadReport', {
               state: {
                 reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${indentMId}`,
                 title: 'Indent Save Report',
@@ -473,7 +473,7 @@ const IndentViewUpdate = () => {
           "success",
           () => {
             // Navigate to report page for submit
-            navigate('/ViewDownLoadIndent', {
+            navigate('/ViewDownloadReport', {
               state: {
                 reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${indentMId}`,
                 title: 'Indent Submit Report',
