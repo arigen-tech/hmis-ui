@@ -7,6 +7,9 @@ import { getRequest, putRequest } from "../../../service/apiService"
 import ReactDOM from 'react-dom';
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
+import {WARNING_DUPLICATE_BATCH_ENTRY, CONFIRM_OPENING_BALANCE_ACTION,ERROR_UPDATE_ENTRIES_FAILED,
+  CONFIRM_OPENING_BALANCE_SUBMIT_UPDATE_PRINT,
+}  from "../../../config/constants";
 
 const OpeningBalanceApproval = () => {
   const [currentView, setCurrentView] = useState("list")
@@ -305,7 +308,7 @@ const OpeningBalanceApproval = () => {
 
   const handleUpdateLogic = async (status) => {
     if (hasDuplicateDetailEntries(detailEntries)) {
-      showPopup("Duplicate entry found for Batch No/Serial No, DOM, and DOE.", "warning");
+      showPopup(WARNING_DUPLICATE_BATCH_ENTRY, "warning");
       return { success: false, message: "Duplicate entry found for Batch No/Serial No, DOM, and DOE." };
     }
 
@@ -355,7 +358,7 @@ const OpeningBalanceApproval = () => {
     const actionText = status === "p" ? "submit" : "update";
     
     showConfirmationPopup(
-      `Are you sure you want to ${actionText} this opening balance?`,
+      CONFIRM_OPENING_BALANCE_ACTION(actionText),
       "info",
       async () => {
         const result = await handleUpdateLogic(status);
@@ -363,8 +366,8 @@ const OpeningBalanceApproval = () => {
         if (result?.success) {
           const balanceMId = result.balanceMId;
           
-          showConfirmationPopup(
-            status === "p" ? "Opening Balance submitted successfully! Do you want to print report ?" : "Opening Balance updated successfully! Do you want to print report ?",
+          showConfirmationPopup(    
+          CONFIRM_OPENING_BALANCE_SUBMIT_UPDATE_PRINT(status),
             "success",
             () => {
               if (balanceMId) {
@@ -396,7 +399,7 @@ const OpeningBalanceApproval = () => {
           );
         } else {
           showConfirmationPopup(
-            result?.message || "Failed to update entries!",
+            result?.message || ERROR_UPDATE_ENTRIES_FAILED,
             "error",
             () => {},
             null,

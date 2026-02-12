@@ -941,3 +941,61 @@ export const INDENT_SUBMIT_FILE_NAME = "Indent submit Report";
 export const REGISTERED_DONOR="Donor registered successfully!";
 export const DEFERAL_REQUIRED_MSG = "Deferral Reason is required when screen fails";
 export const DEFERAL_TYPE_REQUIRED_MSG = "Deferral Type is required when screen fails";
+
+
+//indentissue
+export const ERROR_MESSAGES = {
+  DEPARTMENT_NOT_FOUND: "Department not found. Please login again.",
+};
+export const ERROR_FETCHING_INDENTS = "Error fetching indents. Please try again.";
+export const CONFIRM_ISSUE_INDENT = "Are you sure you want to issue this indent? This will issue the full approved quantity for all selected items.";
+export const CONFIRM_INDENT_ISSUED_PRINT = "Indent issued successfully! Do you want to print report ?";
+export const ERROR_ISSUING_INDENT = "Error issuing indent. Please try again.";
+export const ERROR_ITEM_ID_MISSING = "Item ID is missing. Cannot fetch previous issues.";
+
+//openingbalance
+export const WARNING_SELECT_ACTION = "Please select an action (Approve or Reject)";
+export const WARNING_REMARKS_MANDATORY = "Remarks are mandatory";
+export const CONFIRM_OPENING_BALANCE_ACTION = (actionText) => `Are you sure you want to ${actionText} this opening balance?`;
+export const CONFIRM_OPENING_BALANCE_RESULT = (action) =>
+  action === "a"
+    ? "Opening Balance approved successfully! Do you want to print report ?"
+    : "Opening Balance rejected successfully! Do you want to print report ?";
+export const ERROR_PROCESS_REQUEST_FAILED = "Failed to process the request. Please try again.";
+export const CONFIRM_OPENING_BALANCE_SUBMIT_UPDATE_PRINT = (status) =>
+  status === "p"
+    ? "Opening Balance submitted successfully! Do you want to print report ?"
+    : "Opening Balance updated successfully! Do you want to print report ?";
+export const ERROR_UPDATE_ENTRIES_FAILED ="Failed to update entries!";
+
+//openingbalanceentry
+export const WARNING_DUPLICATE_BATCH_ENTRY = "Duplicate entry found for Batch No/Serial No, DOM, and DOE.";
+export const WARNING_CORRECT_ERRORS ="Please correct the errors and try again.";
+export const CONFIRM_SAVE_OPENING_BALANCE = "Are you sure you want to save the opening balance?";
+export const SUCCESS_OPENING_BALANCE_SAVED_PRINT ="Opening Balance saved successfully! Do you want to print report ?";
+export const ERROR_SAVE_DATA_FAILED = "Failed to save data. Please try again.";
+export const CONFIRM_SUBMIT_OPENING_BALANCE = "Are you sure you want to submit the opening balance?";
+export const SUCCESS_OPENING_BALANCE_SUBMITTED_PRINT = "Opening Balance submitted successfully! Do you want to print report ?";
+export const ERROR_SUBMIT_DATA_FAILED = "Failed to submit data. Please try again.";
+
+//pendingindent
+export const ERROR_FETCH_PENDING_INDENTS = "Error fetching pending indents. Please try again.";
+export const SUCCESS_INDENT_REJECTED_PRINT = "Indent rejected successfully! Do you want to print report ?";
+export const SUCCESS_INDENT_APPROVED_PRINT ="Indent approved successfully! Do you want to print report ?";
+export const ERROR_PROCESS_INDENT = "Error processing indent. Please try again.";
+
+//itemrecieving
+export const ERROR_DEPARTMENT_ID_NOT_FOUND = "Department ID not found. Please login again.";
+export const ERROR_FETCH_INDENTS = "Error fetching indents. Please try again.";
+export const CONFIRM_SAVE_INDENT_RECEIVING ="Are you sure you want to save the receiving for this indent?";
+export const SUCCESS_RECEIVING_SAVED_PRINT = "Receiving saved successfully! Do you want to print report ?";
+export const ERROR_SAVE_RECEIVING_FAILED = "Failed to save receiving";
+export const ERROR_SAVING_RECEIVING = "Error saving receiving. Please try again.";
+
+//viewupdate
+export const WARNING_DRUG_ALREADY_ADDED = "This drug is already added in another row. Please select a different drug.";
+export const ERROR_AT_LEAST_ONE_ITEM_REQUIRED = "Please add at least one item with requested quantity";
+export const SUCCESS_INDENT_SAVED_PRINT ="Indent saved successfully! Do you want to print report ?";
+export const SUCCESS_INDENT_SUBMITTED_PRINT = "Indent submitted successfully! Do you want to print report ?";
+export const ERROR_SAVE_SUBMIT_INDENT = (backendStatus) =>
+  `Error ${backendStatus === "S" ? "saving" : "submitting"} indent. Please try again.`;

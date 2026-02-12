@@ -8,6 +8,8 @@ import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import DatePicker from "../../../Components/DatePicker"
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
+import {ERROR_MESSAGES,ERROR_FETCHING_INDENTS,CONFIRM_ISSUE_INDENT,CONFIRM_INDENT_ISSUED_PRINT,
+  ERROR_ISSUING_INDENT,ERROR_ITEM_ID_MISSING,} from "../../../config/constants";
 
 const IndentIssue = () => {
   const [currentView, setCurrentView] = useState("list")
@@ -65,7 +67,7 @@ const IndentIssue = () => {
     try {
       if (!deptId) {
         console.error("deptId is missing. Cannot fetch pending indents.");
-        showPopup("Department not found. Please login again.", "error");
+        showPopup(ERROR_MESSAGES.DEPARTMENT_NOT_FOUND, "error");
         return;
       }
 
@@ -92,7 +94,7 @@ const IndentIssue = () => {
 
     } catch (err) {
       console.error("Error fetching indents for issue:", err);
-      showPopup("Error fetching indents. Please try again.", "error");
+      showPopup(ERROR_FETCHING_INDENTS, "error");
       setIndentData([]);
       setFilteredIndentData([]);
     } finally {
@@ -528,7 +530,7 @@ const IndentIssue = () => {
 
     // Show confirmation popup
     showConfirmationPopup(
-      `Are you sure you want to issue this indent? This will issue the full approved quantity for all selected items.`,
+      CONFIRM_ISSUE_INDENT,
       "info",
       () => {
         // On confirm, proceed with issue
@@ -571,7 +573,7 @@ const IndentIssue = () => {
         console.log("issue MId response :: ",issueResponse)
         // Show success confirmation popup with navigation
         showConfirmationPopup(
-          "Indent issued successfully! Do you want to print report ?",
+          CONFIRM_INDENT_ISSUED_PRINT,
           "success",
           () => {
             // Navigate to report page
@@ -622,7 +624,7 @@ const IndentIssue = () => {
       
       // Show error confirmation popup
       showConfirmationPopup(
-        "Error issuing indent. Please try again.",
+        ERROR_ISSUING_INDENT,
         "error",
         () => {}, // Empty function for OK button
         null, // No cancel function
@@ -638,7 +640,7 @@ const IndentIssue = () => {
   const handleViewPreviousIssues = async (entry) => {
     try {
       if (!entry.itemId) {
-        showPopup("Item ID is missing. Cannot fetch previous issues.", "error");
+        showPopup(ERROR_ITEM_ID_MISSING, "error");
         return;
       }
 

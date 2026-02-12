@@ -7,6 +7,9 @@ import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import DatePicker from "../../../Components/DatePicker"
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination"
+import {ERROR_FETCH_INDENTS,WARNING_DRUG_ALREADY_ADDED,ERROR_AT_LEAST_ONE_ITEM_REQUIRED,SUCCESS_INDENT_SAVED_PRINT,
+SUCCESS_INDENT_SUBMITTED_PRINT,ERROR_SAVE_SUBMIT_INDENT,
+}  from  "../../../config/constants";
 
 
 const IndentViewUpdate = () => {
@@ -115,7 +118,7 @@ const IndentViewUpdate = () => {
 
     } catch (err) {
       console.error("Error fetching indents:", err)
-      showPopup("Error fetching indents. Please try again.", "error")
+      showPopup(ERROR_FETCH_INDENTS, "error")
       setIndentData([])
       setFilteredIndentData([])
     } finally {
@@ -194,7 +197,7 @@ const IndentViewUpdate = () => {
     const isDuplicate = selectedDrugs.some(id => id === drug.id && indentEntries[index]?.itemId !== drug.id);
 
     if (isDuplicate) {
-      showPopup("This drug is already added in another row. Please select a different drug.", "warning");
+      showPopup(WARNING_DRUG_ALREADY_ADDED, "warning");
       return;
     }
 
@@ -401,7 +404,7 @@ const IndentViewUpdate = () => {
     )
 
     if (validItems.length === 0) {
-      showPopup("Please add at least one item with requested quantity", "error")
+      showPopup(ERROR_AT_LEAST_ONE_ITEM_REQUIRED, "error")
       return
     }
 
@@ -444,7 +447,7 @@ const IndentViewUpdate = () => {
       // Show confirmation popup instead of regular popup
       if (backendStatus === "S") {
         showConfirmationPopup(
-          `Indent saved successfully! Do you want to print report ?`,
+          SUCCESS_INDENT_SAVED_PRINT,
           "success",
           () => {
             // Navigate to report page for save
@@ -469,7 +472,7 @@ const IndentViewUpdate = () => {
         );
       } else if (backendStatus === "Y") {
         showConfirmationPopup(
-          `Indent submitted successfully ! Do you want to print report ?`,
+          SUCCESS_INDENT_SUBMITTED_PRINT,
           "success",
           () => {
             // Navigate to report page for submit
@@ -499,7 +502,7 @@ const IndentViewUpdate = () => {
       
       // Show error popup
       showConfirmationPopup(
-        `Error ${backendStatus === 'S' ? 'saving' : 'submitting'} indent. Please try again.`,
+        ERROR_SAVE_SUBMIT_INDENT(backendStatus),
         "error",
         () => {},
         null,
