@@ -198,7 +198,8 @@ const validRoutes = [
   "/USGInvestigation",
   "/MRIInvestigation",
   "/CTInvestigation",
-  "/PETInvestigation"
+  "/PETInvestigation",
+  "/PendingBloodCollection",
   
 ];
 

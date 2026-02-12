@@ -194,6 +194,7 @@ import USGInvestigation from './Views/Radiology/USGInvestigation';
 import MRIInvestigation from './Views/Radiology/MRIInvestigation';
 import CTInvestigation from './Views/Radiology/CTInvestigation';
 import PETInvestigation from './Views/Radiology/PETInvestigation';
+import PendingBloodCollection from './Views/BloodBank/PendingForBloodCollection';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -422,6 +423,7 @@ function App() {
                 <Route path="/MRIInvestigation" element={<MRIInvestigation/>} />
                 <Route path="/CTInvestigation" element={<CTInvestigation/>} />
                 <Route path="/PETInvestigation" element={<PETInvestigation/>} />
+                <Route path="/PendingBloodCollection" element={<PendingBloodCollection/>} />
               </Route>
             </Route>
 
