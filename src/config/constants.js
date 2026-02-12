@@ -1,4 +1,4 @@
-import { COUNTRYAPI } from "./apiConfig";
+
 
 export const DEPARTMENT_CODE_OPD=5;
 
@@ -50,7 +50,6 @@ export const IMAGE_UPLOAD_FAIL_MSG= "Failed to upload image!";
 
 
 //MainChargecode
-
 export const FETCH_MAIN_CHARGE_CODE_ERR_MSG="Failed to load main charge code data";
 export const DUPLICATE_MAIN_CHARGE_CODE_MSG="Main charge code with the same code already exists!";
 export const UPDATE_MAIN_CHARGE_CODE_SUCC_MSG="Main charge code updated successfully!";
@@ -58,7 +57,6 @@ export const ADD_MAIN_CHARGE_CODE_SUCC_MSG="New main charge code added successfu
 
 
 //PendingForResultEntry
-
 export const FETCH_RESULT_VALIDATE_ERR_MSG="Failed to load pending result entries";
 export const RESULT_ENTRY_WARN_MSG="Please enter at least one result before submitting";
 export const FETCH_AUTO_FILL_ERR_MSG="Missing required data. Please contact administrator.";
@@ -67,8 +65,6 @@ export const RESULT_SUBMIT_ERR_MSG="Error submitting results";
 
 
 //PendingForSampleCollection
-
-
 export const FETCH_PENDING_SAMPLE_ERR_MSG="Failed to load pending samples";
 export const FETCH_CONTAINER_ERR_MSG="Failed to load containers";
 export const SAMPLE_COLLECTION_SUCC_MSG="Sample collection data saved successfully!";
@@ -76,8 +72,6 @@ export const SAMPLE_COLLECTION_ERR_MSG="Failed to save sample collection";
 
 
 //ResultValidation
-
-
 export const FETCH_RESULT_ENTRY_ERR_MSG="Failed to load unvalidated results";
 export const RESULT_VALIDATE_WARN_MSG="Please validate or reject at least one investigation before submitting.";
 export const RESULT_SELECT_WARN_MSG="No investigations selected for validation.";
@@ -86,7 +80,6 @@ export const RESULT_VALIDATE_SUCC_MSG="Validation has been done successfully! Do
 
 
 //ViewDownload
-
 export const FETCH_RESULT_DATA_ERR_MSG="No result data found. Redirecting back...";
 export const INVALID_ORDER_ID_ERR_MSG="Order ID not found";
 export const LAB_REPORT_GENERATION_ERR_MSG="Error generating lab report. Please try again.";
@@ -94,7 +87,6 @@ export const LAB_REPORT_PRINT_ERR_MSG="Error generating lab report. Please try a
 
 
 //Sample Collection Master
-
 export const FETCH_SAMPLE_COLLECTION_ERR_MSG="Failed to load sample collection data";
 export const DUPLICATE_SAMPLE_COLLECTION_ERR_MSG="Sample collection with the same code already exists!";
 export const UPDATE_SAMPLE_COLLECTION_SUCC_MSG="Sample collection updated successfully!";
@@ -102,8 +94,6 @@ export const ADD_SAMPLE_COLLECTION_SUCC_MSG="New sample collection added success
 
 
 //SasmpleValidation
-
-
 export const FETCH_SAMPLE_VALIDATIONS_ERR_MSG="Failed to load pending validation samples";
 export const VALIDATION_WARN_MSG="Please make a decision for ALL investigations. Each row must be either Accepted or Rejected.";
 export const REJECT_REASON_WARN_MSG="Please provide a reason for all rejected investigations.";
@@ -111,7 +101,6 @@ export const VALIDATION_SUCC_MSG="Investigations validated successfully!";
 
 
 //SubchargeCode
-
 export const MIS_MATCH_ERR_MSG="Unable to read server response. Please try again.";
 export const FETCH_SUB_CHARGE_CODES_ERR_MSG="Failed to load sub-charge codes";
 export const DUPLICATE_SUB_CHARGE_CODE_ERR_MSG="A sub charge code with this code already exists!";
@@ -935,3 +924,8 @@ export const MOBILE_REQUIRED_ERROR = "Mobile number is required.";
 export const AGE_NEGATIVE_ERROR = "Age can not be negative.";
 export const MISSING_TIME_SLOTS_TITLE = "Missing Time Slots.";
 export const NOT_AVAILABLE_TITLE = "Not Available.";
+
+//blood bank
+export const REGISTERED_DONOR="Donor registered successfully!";
+export const DEFERAL_REQUIRED_MSG = "Deferral Reason is required when screen fails";
+export const DEFERAL_TYPE_REQUIRED_MSG = "Deferral Type is required when screen fails";

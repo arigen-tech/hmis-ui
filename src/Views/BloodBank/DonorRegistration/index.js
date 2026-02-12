@@ -1,266 +1,319 @@
-import { getRequest, postRequest } from "../../../service/apiService"
-import Popup from "../../../Components/popup" 
-import { useState, useEffect } from "react"
-import LoadingScreen from "../../../Components/Loading"
+import { getRequest, postRequest } from "../../../service/apiService";
+import Popup from "../../../Components/popup";
+import { useState, useEffect } from "react";
+import LoadingScreen from "../../../Components/Loading";
+import {MAS_GENDER,MAS_RELATION,MAS_BLOODGROUP, MAS_COUNTRY, STATE_BY_COUNTRY, DISTRICT_BY_STATE, DONOR_REGISTER} from "../../../config/apiConfig";
+import { DEFERAL_REQUIRED_MSG, DEFERAL_TYPE_REQUIRED_MSG, INVALID_MOBILE_NUMBER, MISSING_MANDOTORY_FIELD_MSG, REGISTERED_DONOR } from "../../../config/constants";
 
 const DonorRegistration = () => {
-  const [errors, setErrors] = useState({})
-  const [loading, setLoading] = useState(false)
-  const [genderData, setGenderData] = useState([])
-  const [relationData, setRelationData] = useState([])
-  const [bloodGroupData, setBloodGroupData] = useState([])
-  const [countryData, setCountryData] = useState([])
-  const [stateData, setStateData] = useState([])
-  const [districtData, setDistrictData] = useState([])
-  const [popupMessage, setPopupMessage] = useState(null)
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [genderData, setGenderData] = useState([]);
+  const [relationData, setRelationData] = useState([]);
+  const [bloodGroupData, setBloodGroupData] = useState([]);
+  const [countryData, setCountryData] = useState([]);
+  const [stateData, setStateData] = useState([]);
+  const [districtData, setDistrictData] = useState([]);
+  const [popupMessage, setPopupMessage] = useState(null);
 
-  const [formData, setFormData] = useState({
-    firstName: "",
-    middleName: "",
-    lastName: "",
-    mobileNo: "",
-    gender: "",
-    relation: "",
-    dob: "",
-    bloodGroup: "",
-    address1: "",
-    address2: "",
-    country: "",
-    state: "",
-    district: "",
-    city: "",
-    pinCode: "",
-    hemoglobin: "",
-    weight: "",
-    height: "",
-    bloodPressure: "",
-    pulse: "",
-    temperature: "",
-    screenResult: "",
-    deferralType: "",
-    deferralReason: ""
-  })
+  const [masterData, setMasterData] = useState({
+    gender: [],
+    relation: [],
+    bloodGroup: [],
+    country: [],
+    state: [],
+    district: [],
+  });
+
+  const initialFormData = {
+    personal: {
+      firstName: "",
+      lastName: "",
+      mobileNo: "",
+      gender: "",
+      relation: "",
+      dob: "",
+      bloodGroup: "",
+      address1: "",
+      address2: "",
+      country: "",
+      state: "",
+      district: "",
+      city: "",
+      pinCode: "",
+    },
+    screening: {
+      hemoglobin: "",
+      weight: "",
+      height: "",
+      bloodPressure: "",
+      pulse: "",
+      temperature: "",
+      screenResult: "",
+      deferralType: "",
+      deferralReason: "",
+    },
+  };
+
+  const [formData, setFormData] = useState(initialFormData)
+
+
 
   const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null)
+        setPopupMessage(null);
         if (onCloseCallback) {
-          onCloseCallback()
+          onCloseCallback();
         }
-      }
-    })
-  }
+      },
+    });
+  };
 
   const handleChange = (e) => {
-    const { name, value } = e.target
-    const updatedForm = { ...formData, [name]: value }
+    const { name, value } = e.target;
+    const updatedForm = { ...formData, [name]: value };
 
-    // If screen result changes to "pass", clear deferral fields
     if (name === "screenResult") {
       if (value === "pass") {
-        updatedForm.deferralType = ""
-        updatedForm.deferralReason = ""
+        updatedForm.deferralType = "";
+        updatedForm.deferralReason = "";
       }
     }
 
-    setFormData(updatedForm)
+    setFormData(updatedForm);
 
-    let error = ""
-    
-    // Required field validation
-    const requiredFields = ['firstName', 'lastName', 'mobileNo', 'gender', 'relation', 'dob', 'bloodGroup', 
-                           'address1', 'country', 'state', 'district', 'city', 'pinCode', 
-                           'hemoglobin', 'weight', 'height', 'bloodPressure', 'pulse', 'temperature',
-                           'screenResult']
-    
+    let error = "";
+
+    const requiredFields = [
+      "firstName",
+      "lastName",
+      "mobileNo",
+      "gender",
+      "relation",
+      "dob",
+      "bloodGroup",
+      "address1",
+      "country",
+      "state",
+      "district",
+      "city",
+      "pinCode",
+      "hemoglobin",
+      "weight",
+      "height",
+      "bloodPressure",
+      "pulse",
+      "temperature",
+      "screenResult",
+    ];
+
     if (requiredFields.includes(name) && !value.trim()) {
-      error = "This field is required"
+      error = "This field is required";
     }
 
-    // If screen result is "fail", deferral fields become required
     if (formData.screenResult === "fail") {
       if (name === "deferralType" && !value.trim()) {
-        error = "Deferral Type is required when screen fails"
+        error = DEFERAL_TYPE_REQUIRED_MSG;
       }
       if (name === "deferralReason" && !value.trim()) {
-        error = "Deferral Reason is required when screen fails"
+        error = DEFERAL_REQUIRED_MSG;
       }
     }
 
-    // Specific validations
     if (name === "mobileNo" && value && !/^\d{10}$/.test(value)) {
-      error = "Mobile number must be 10 digits"
+      error = INVALID_MOBILE_NUMBER;
     }
 
     if (name === "pinCode" && value && !/^\d{6}$/.test(value)) {
-      error = "Pin Code must be 6 digits"
+      error = "Pin Code must be 6 digits";
     }
 
-    if (name === "bloodPressure" && value && !/^\d{2,3}\/\d{2,3}$/.test(value)) {
-      error = "Format: 120/80"
+    if (
+      name === "bloodPressure" &&
+      value &&
+      !/^\d{2,3}\/\d{2,3}$/.test(value)
+    ) {
+      error = "Format: 120/80";
     }
 
-    if ((name === "hemoglobin" || name === "weight" || name === "height" || name === "temperature") && value) {
-      const numValue = parseFloat(value)
+    if (
+      (name === "hemoglobin" ||
+        name === "weight" ||
+        name === "height" ||
+        name === "temperature") &&
+      value
+    ) {
+      const numValue = parseFloat(value);
       if (isNaN(numValue)) {
-        error = "Must be a number"
+        error = "Must be a number";
       }
     }
 
-    setErrors(prev => ({
+    setErrors((prev) => ({
       ...prev,
-      [name]: error
-    }))
-  }
+      [name]: error,
+    }));
+  };
 
   const fetchGenderData = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const data = await getRequest("/api/master/gender/getAll/1")
+      const data = await getRequest(`${MAS_GENDER}/getAll/1`);
       if (data.status === 200) {
-        setGenderData(data.response || [])
+        setGenderData(data.response || []);
       }
     } catch (error) {
-      console.error("Error:", error)
+      console.error("Error:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchRelationData = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const data = await getRequest("/api/master/relation/getAll/1")
+      const data = await getRequest(`${MAS_RELATION}/getAll/1`);
       if (data.status === 200) {
-        setRelationData(data.response || [])
+        setRelationData(data.response || []);
       }
     } catch (error) {
-      console.error("Error:", error)
+      console.error("Error:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchBloodGroupData = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const data = await getRequest("/api/master/blood-group/getAll/1")
+      const data = await getRequest(`${MAS_BLOODGROUP}/getAll/1`);
       if (data.status === 200) {
-        setBloodGroupData(data.response || [])
+        setBloodGroupData(data.response || []);
       }
     } catch (error) {
-      console.error("Error:", error)
+      console.error("Error:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchCountryData = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const data = await getRequest("/api/master/country/getAll/1")
+      const data = await getRequest(`${MAS_COUNTRY}/getAll/1`);
       if (data.status === 200) {
-        setCountryData(data.response || [])
+        setCountryData(data.response || []);
       }
     } catch (error) {
-      console.error("Error:", error)
+      console.error("Error:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchStates = async (countryId) => {
     try {
-      const data = await getRequest(`/api/master/state/getByCountryId/${countryId}`)
+      const data = await getRequest(
+        `${STATE_BY_COUNTRY}${countryId}`,
+      );
       if (data.status === 200) {
-        setStateData(data.response || [])
+        setStateData(data.response || []);
       }
     } catch (error) {
-      console.error("Error:", error)
+      console.error("Error:", error);
     }
-  }
+  };
 
   const fetchDistrict = async (stateId) => {
     try {
-      const data = await getRequest(`/api/master/district/getByState/${stateId}`)
+      const data = await getRequest(`${DISTRICT_BY_STATE}${stateId}`,
+      );
       if (data.status === 200) {
-        setDistrictData(data.response || [])
+        setDistrictData(data.response || []);
       }
     } catch (error) {
-      console.error("Error:", error)
+      console.error("Error:", error);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchGenderData()
-    fetchRelationData()
-    fetchBloodGroupData()
-    fetchCountryData()
-  }, [])
+    fetchGenderData();
+    fetchRelationData();
+    fetchBloodGroupData();
+    fetchCountryData();
+  }, []);
 
   const validateForm = () => {
-    const newErrors = {}
-    
-    if (!formData.firstName.trim()) newErrors.firstName = "First Name is required"
-    if (!formData.lastName.trim()) newErrors.lastName = "Last Name is required"
-    if (!formData.mobileNo.trim()) newErrors.mobileNo = "Mobile number is required"
-    else if (!/^\d{10}$/.test(formData.mobileNo)) newErrors.mobileNo = "Must be 10 digits"
-    
-    if (!formData.gender) newErrors.gender = "Gender is required"
-    if (!formData.relation) newErrors.relation = "Relation is required"
-    if (!formData.dob) newErrors.dob = "Date of Birth is required"
-    if (!formData.bloodGroup) newErrors.bloodGroup = "Blood Group is required"
-    
-    if (!formData.address1.trim()) newErrors.address1 = "Address 1 is required"
-    if (!formData.country) newErrors.country = "Country is required"
-    if (!formData.state) newErrors.state = "State is required"
-    if (!formData.district) newErrors.district = "District is required"
-    if (!formData.city.trim()) newErrors.city = "City is required"
-    if (!formData.pinCode.trim()) newErrors.pinCode = "Pin Code is required"
-    else if (!/^\d{6}$/.test(formData.pinCode)) newErrors.pinCode = "Must be 6 digits"
-    
-    if (!formData.hemoglobin.trim()) newErrors.hemoglobin = "Hemoglobin is required"
-    if (!formData.weight.trim()) newErrors.weight = "Weight is required"
-    if (!formData.height.trim()) newErrors.height = "Height is required"
-    if (!formData.bloodPressure.trim()) newErrors.bloodPressure = "Blood Pressure is required"
-    else if (!/^\d{2,3}\/\d{2,3}$/.test(formData.bloodPressure)) newErrors.bloodPressure = "Format: 120/80"
-    if (!formData.pulse.trim()) newErrors.pulse = "Pulse is required"
-    if (!formData.temperature.trim()) newErrors.temperature = "Temperature is required"
+    const newErrors = {};
+
+    if (!formData.firstName.trim())
+      newErrors.firstName = "First Name is required";
+    if (!formData.lastName.trim()) newErrors.lastName = "Last Name is required";
+    if (!formData.mobileNo.trim())
+      newErrors.mobileNo = "Mobile number is required";
+    else if (!/^\d{10}$/.test(formData.mobileNo))
+      newErrors.mobileNo = "Must be 10 digits";
+
+    if (!formData.gender) newErrors.gender = "Gender is required";
+    if (!formData.relation) newErrors.relation = "Relation is required";
+    if (!formData.dob) newErrors.dob = "Date of Birth is required";
+    if (!formData.bloodGroup) newErrors.bloodGroup = "Blood Group is required";
+
+    if (!formData.address1.trim()) newErrors.address1 = "Address 1 is required";
+    if (!formData.country) newErrors.country = "Country is required";
+    if (!formData.state) newErrors.state = "State is required";
+    if (!formData.district) newErrors.district = "District is required";
+    if (!formData.city.trim()) newErrors.city = "City is required";
+    if (!formData.pinCode.trim()) newErrors.pinCode = "Pin Code is required";
+    else if (!/^\d{6}$/.test(formData.pinCode))
+      newErrors.pinCode = "Must be 6 digits";
+
+    if (!formData.hemoglobin.trim())
+      newErrors.hemoglobin = "Hemoglobin is required";
+    if (!formData.weight.trim()) newErrors.weight = "Weight is required";
+    if (!formData.height.trim()) newErrors.height = "Height is required";
+    if (!formData.bloodPressure.trim())
+      newErrors.bloodPressure = "Blood Pressure is required";
+    else if (!/^\d{2,3}\/\d{2,3}$/.test(formData.bloodPressure))
+      newErrors.bloodPressure = "Format: 120/80";
+    if (!formData.pulse.trim()) newErrors.pulse = "Pulse is required";
+    if (!formData.temperature.trim())
+      newErrors.temperature = "Temperature is required";
 
     // Screen Result validation
     if (!formData.screenResult) {
-      newErrors.screenResult = "Screen Result is required"
+      newErrors.screenResult = "Screen Result is required";
     }
 
     // Deferral fields validation when screen fails
     if (formData.screenResult === "fail") {
       if (!formData.deferralType.trim()) {
-        newErrors.deferralType = "Deferral Type is required when screen fails"
+        newErrors.deferralType = DEFERAL_TYPE_REQUIRED_MSG;
       }
       if (!formData.deferralReason.trim()) {
-        newErrors.deferralReason = "Deferral Reason is required when screen fails"
+        newErrors.deferralReason =
+          DEFERAL_REQUIRED_MSG;
       }
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async () => {
     if (!validateForm()) {
-      showPopup("Please fill all mandatory fields", "warning")
-      return
+      showPopup(MISSING_MANDOTORY_FIELD_MSG, "warning");
+      return;
     }
 
     try {
-      setLoading(true)
-      
+      setLoading(true);
+
       const donorData = {
         donorFn: formData.firstName,
-        donorMn: formData.middleName,
         donorLn: formData.lastName,
         donorMobileNumber: formData.mobileNo,
         donorGenderId: formData.gender,
@@ -283,28 +336,27 @@ const DonorRegistration = () => {
         screenResult: formData.screenResult,
         deferralType: formData.deferralType || "",
         deferralReason: formData.deferralReason || "",
-        regDate: new Date().toISOString().split("T")[0]
-      }
+        regDate: new Date().toISOString().split("T")[0],
+      };
 
-      const result = await postRequest("/donor/register", { donor: donorData })
-      
+      const result = await postRequest(DONOR_REGISTER, { donor: donorData });
+
       if (result.status === 200) {
-        showPopup("Donor registered successfully!", "success", handleReset)
+        showPopup(REGISTERED_DONOR, "success", handleReset);
       } else {
-        showPopup(result.message || "Registration failed", "error")
+        showPopup(result.message || "Registration failed", "error");
       }
     } catch (error) {
-      console.error("Error:", error)
-      showPopup("An error occurred", "error")
+      console.error("Error:", error);
+      showPopup("An error occurred", "error");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleReset = () => {
     setFormData({
       firstName: "",
-      middleName: "",
       lastName: "",
       mobileNo: "",
       gender: "",
@@ -326,15 +378,15 @@ const DonorRegistration = () => {
       temperature: "",
       screenResult: "",
       deferralType: "",
-      deferralReason: ""
-    })
-    setErrors({})
-    setStateData([])
-    setDistrictData([])
-  }
+      deferralReason: "",
+    });
+    setErrors({});
+    setStateData([]);
+    setDistrictData([]);
+  };
 
   if (loading) {
-    return <LoadingScreen />
+    return <LoadingScreen />;
   }
 
   return (
@@ -366,7 +418,9 @@ const DonorRegistration = () => {
               <div className="card-body">
                 <div className="row g-3">
                   <div className="col-md-4">
-                    <label className="form-label">First Name <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      First Name <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="text"
                       className={`form-control ${errors.firstName ? "is-invalid" : ""}`}
@@ -375,21 +429,14 @@ const DonorRegistration = () => {
                       onChange={handleChange}
                       placeholder="Enter First Name"
                     />
-                    {errors.firstName && <div className="invalid-feedback">{errors.firstName}</div>}
+                    {errors.firstName && (
+                      <div className="invalid-feedback">{errors.firstName}</div>
+                    )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">Middle Name</label>
-                    <input
-                      type="text"
-                      name="middleName"
-                      value={formData.middleName}
-                      onChange={handleChange}
-                      className="form-control"
-                      placeholder="Enter Middle Name"
-                    />
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Last Name <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      Last Name <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="text"
                       name="lastName"
@@ -398,10 +445,14 @@ const DonorRegistration = () => {
                       className={`form-control ${errors.lastName ? "is-invalid" : ""}`}
                       placeholder="Enter Last Name"
                     />
-                    {errors.lastName && <div className="invalid-feedback">{errors.lastName}</div>}
+                    {errors.lastName && (
+                      <div className="invalid-feedback">{errors.lastName}</div>
+                    )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">Mobile No. <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      Mobile No. <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="text"
                       className={`form-control ${errors.mobileNo ? "is-invalid" : ""}`}
@@ -411,10 +462,14 @@ const DonorRegistration = () => {
                       onChange={handleChange}
                       placeholder="Enter Mobile Number"
                     />
-                    {errors.mobileNo && <div className="invalid-feedback">{errors.mobileNo}</div>}
+                    {errors.mobileNo && (
+                      <div className="invalid-feedback">{errors.mobileNo}</div>
+                    )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">Gender <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      Gender <span className="text-danger">*</span>
+                    </label>
                     <select
                       className={`form-select ${errors.gender ? "is-invalid" : ""}`}
                       name="gender"
@@ -422,14 +477,20 @@ const DonorRegistration = () => {
                       onChange={handleChange}
                     >
                       <option value="">Select Gender</option>
-                      {genderData.map(gender => (
-                        <option key={gender.id} value={gender.id}>{gender.genderName}</option>
+                      {genderData.map((gender) => (
+                        <option key={gender.id} value={gender.id}>
+                          {gender.genderName}
+                        </option>
                       ))}
                     </select>
-                    {errors.gender && <div className="invalid-feedback">{errors.gender}</div>}
+                    {errors.gender && (
+                      <div className="invalid-feedback">{errors.gender}</div>
+                    )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">Relation <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      Relation <span className="text-danger">*</span>
+                    </label>
                     <select
                       className={`form-select ${errors.relation ? "is-invalid" : ""}`}
                       name="relation"
@@ -437,14 +498,20 @@ const DonorRegistration = () => {
                       onChange={handleChange}
                     >
                       <option value="">Select Relation</option>
-                      {relationData.map(relation => (
-                        <option key={relation.id} value={relation.id}>{relation.relationName}</option>
+                      {relationData.map((relation) => (
+                        <option key={relation.id} value={relation.id}>
+                          {relation.relationName}
+                        </option>
                       ))}
                     </select>
-                    {errors.relation && <div className="invalid-feedback">{errors.relation}</div>}
+                    {errors.relation && (
+                      <div className="invalid-feedback">{errors.relation}</div>
+                    )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">Date of Birth <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      Date of Birth <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="date"
                       name="dob"
@@ -453,10 +520,14 @@ const DonorRegistration = () => {
                       max={new Date().toISOString().split("T")[0]}
                       onChange={handleChange}
                     />
-                    {errors.dob && <div className="invalid-feedback">{errors.dob}</div>}
+                    {errors.dob && (
+                      <div className="invalid-feedback">{errors.dob}</div>
+                    )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">Blood Group <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      Blood Group <span className="text-danger">*</span>
+                    </label>
                     <select
                       className={`form-select ${errors.bloodGroup ? "is-invalid" : ""}`}
                       name="bloodGroup"
@@ -464,11 +535,17 @@ const DonorRegistration = () => {
                       onChange={handleChange}
                     >
                       <option value="">Select Blood Group</option>
-                      {bloodGroupData.map(bloodGroup => (
-                        <option key={bloodGroup.id} value={bloodGroup.id}>{bloodGroup.bloodGroupName}</option>
+                      {bloodGroupData.map((bloodGroup) => (
+                        <option key={bloodGroup.id} value={bloodGroup.id}>
+                          {bloodGroup.bloodGroupName}
+                        </option>
                       ))}
                     </select>
-                    {errors.bloodGroup && <div className="invalid-feedback">{errors.bloodGroup}</div>}
+                    {errors.bloodGroup && (
+                      <div className="invalid-feedback">
+                        {errors.bloodGroup}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -486,7 +563,9 @@ const DonorRegistration = () => {
               <div className="card-body">
                 <div className="row g-3">
                   <div className="col-md-6">
-                    <label className="form-label">Address 1 <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      Address 1 <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="text"
                       className={`form-control ${errors.address1 ? "is-invalid" : ""}`}
@@ -495,7 +574,9 @@ const DonorRegistration = () => {
                       onChange={handleChange}
                       placeholder="Enter Address 1"
                     />
-                    {errors.address1 && <div className="invalid-feedback">{errors.address1}</div>}
+                    {errors.address1 && (
+                      <div className="invalid-feedback">{errors.address1}</div>
+                    )}
                   </div>
                   <div className="col-md-6">
                     <label className="form-label">Address 2</label>
@@ -509,44 +590,58 @@ const DonorRegistration = () => {
                     />
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">Country <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      Country <span className="text-danger">*</span>
+                    </label>
                     <select
                       className={`form-select ${errors.country ? "is-invalid" : ""}`}
                       name="country"
                       value={formData.country}
                       onChange={(e) => {
-                        handleChange(e)
-                        fetchStates(e.target.value)
+                        handleChange(e);
+                        fetchStates(e.target.value);
                       }}
                     >
                       <option value="">Select Country</option>
-                      {countryData.map(country => (
-                        <option key={country.id} value={country.id}>{country.countryName}</option>
+                      {countryData.map((country) => (
+                        <option key={country.id} value={country.id}>
+                          {country.countryName}
+                        </option>
                       ))}
                     </select>
-                    {errors.country && <div className="invalid-feedback">{errors.country}</div>}
+                    {errors.country && (
+                      <div className="invalid-feedback">{errors.country}</div>
+                    )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">State <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      State <span className="text-danger">*</span>
+                    </label>
                     <select
                       className={`form-select ${errors.state ? "is-invalid" : ""}`}
                       name="state"
                       value={formData.state}
                       onChange={(e) => {
-                        handleChange(e)
-                        fetchDistrict(e.target.value)
+                        handleChange(e);
+                        fetchDistrict(e.target.value);
                       }}
                       disabled={!formData.country}
                     >
                       <option value="">Select State</option>
-                      {stateData.map(state => (
-                        <option key={state.id} value={state.id}>{state.stateName}</option>
+                      {stateData.map((state) => (
+                        <option key={state.id} value={state.id}>
+                          {state.stateName}
+                        </option>
                       ))}
                     </select>
-                    {errors.state && <div className="invalid-feedback">{errors.state}</div>}
+                    {errors.state && (
+                      <div className="invalid-feedback">{errors.state}</div>
+                    )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">District <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      District <span className="text-danger">*</span>
+                    </label>
                     <select
                       className={`form-select ${errors.district ? "is-invalid" : ""}`}
                       name="district"
@@ -555,14 +650,20 @@ const DonorRegistration = () => {
                       disabled={!formData.state}
                     >
                       <option value="">Select District</option>
-                      {districtData.map(district => (
-                        <option key={district.id} value={district.id}>{district.districtName}</option>
+                      {districtData.map((district) => (
+                        <option key={district.id} value={district.id}>
+                          {district.districtName}
+                        </option>
                       ))}
                     </select>
-                    {errors.district && <div className="invalid-feedback">{errors.district}</div>}
+                    {errors.district && (
+                      <div className="invalid-feedback">{errors.district}</div>
+                    )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">City <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      City <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="text"
                       className={`form-control ${errors.city ? "is-invalid" : ""}`}
@@ -571,10 +672,14 @@ const DonorRegistration = () => {
                       onChange={handleChange}
                       placeholder="Enter City"
                     />
-                    {errors.city && <div className="invalid-feedback">{errors.city}</div>}
+                    {errors.city && (
+                      <div className="invalid-feedback">{errors.city}</div>
+                    )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">Pin Code <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      Pin Code <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="text"
                       className={`form-control ${errors.pinCode ? "is-invalid" : ""}`}
@@ -584,7 +689,9 @@ const DonorRegistration = () => {
                       onChange={handleChange}
                       placeholder="Enter Pin Code"
                     />
-                    {errors.pinCode && <div className="invalid-feedback">{errors.pinCode}</div>}
+                    {errors.pinCode && (
+                      <div className="invalid-feedback">{errors.pinCode}</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -602,7 +709,9 @@ const DonorRegistration = () => {
               <div className="card-body">
                 <div className="row g-3">
                   <div className="col-md-4">
-                    <label className="form-label">Hemoglobin (g/dL) <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      Hemoglobin (g/dL) <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="number"
                       className={`form-control ${errors.hemoglobin ? "is-invalid" : ""}`}
@@ -612,10 +721,16 @@ const DonorRegistration = () => {
                       placeholder="Enter Hemoglobin"
                       step="0.1"
                     />
-                    {errors.hemoglobin && <div className="invalid-feedback">{errors.hemoglobin}</div>}
+                    {errors.hemoglobin && (
+                      <div className="invalid-feedback">
+                        {errors.hemoglobin}
+                      </div>
+                    )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">Weight (kg) <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      Weight (kg) <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="number"
                       className={`form-control ${errors.weight ? "is-invalid" : ""}`}
@@ -625,10 +740,14 @@ const DonorRegistration = () => {
                       placeholder="Enter Weight"
                       step="0.1"
                     />
-                    {errors.weight && <div className="invalid-feedback">{errors.weight}</div>}
+                    {errors.weight && (
+                      <div className="invalid-feedback">{errors.weight}</div>
+                    )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">Height (cm) <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      Height (cm) <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="number"
                       className={`form-control ${errors.height ? "is-invalid" : ""}`}
@@ -638,10 +757,14 @@ const DonorRegistration = () => {
                       placeholder="Enter Height"
                       step="0.1"
                     />
-                    {errors.height && <div className="invalid-feedback">{errors.height}</div>}
+                    {errors.height && (
+                      <div className="invalid-feedback">{errors.height}</div>
+                    )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">Blood Pressure <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      Blood Pressure <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="text"
                       className={`form-control ${errors.bloodPressure ? "is-invalid" : ""}`}
@@ -650,10 +773,16 @@ const DonorRegistration = () => {
                       onChange={handleChange}
                       placeholder="120/80"
                     />
-                    {errors.bloodPressure && <div className="invalid-feedback">{errors.bloodPressure}</div>}
+                    {errors.bloodPressure && (
+                      <div className="invalid-feedback">
+                        {errors.bloodPressure}
+                      </div>
+                    )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">Pulse Rate (bpm) <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      Pulse Rate (bpm) <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="number"
                       className={`form-control ${errors.pulse ? "is-invalid" : ""}`}
@@ -662,10 +791,14 @@ const DonorRegistration = () => {
                       onChange={handleChange}
                       placeholder="Enter Pulse Rate"
                     />
-                    {errors.pulse && <div className="invalid-feedback">{errors.pulse}</div>}
+                    {errors.pulse && (
+                      <div className="invalid-feedback">{errors.pulse}</div>
+                    )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">Temperature (°C) <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      Temperature (°C) <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="number"
                       className={`form-control ${errors.temperature ? "is-invalid" : ""}`}
@@ -675,7 +808,11 @@ const DonorRegistration = () => {
                       placeholder="Enter Temperature"
                       step="0.1"
                     />
-                    {errors.temperature && <div className="invalid-feedback">{errors.temperature}</div>}
+                    {errors.temperature && (
+                      <div className="invalid-feedback">
+                        {errors.temperature}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -693,7 +830,9 @@ const DonorRegistration = () => {
               <div className="card-body">
                 <div className="row g-3">
                   <div className="col-md-4">
-                    <label className="form-label">Screen Result <span className="text-danger">*</span></label>
+                    <label className="form-label">
+                      Screen Result <span className="text-danger">*</span>
+                    </label>
                     <div>
                       <div className="form-check form-check-inline">
                         <input
@@ -705,7 +844,10 @@ const DonorRegistration = () => {
                           checked={formData.screenResult === "pass"}
                           onChange={handleChange}
                         />
-                        <label className="form-check-label" htmlFor="screenPass">
+                        <label
+                          className="form-check-label"
+                          htmlFor="screenPass"
+                        >
                           Pass
                         </label>
                       </div>
@@ -719,12 +861,19 @@ const DonorRegistration = () => {
                           checked={formData.screenResult === "fail"}
                           onChange={handleChange}
                         />
-                        <label className="form-check-label" htmlFor="screenFail">
+                        <label
+                          className="form-check-label"
+                          htmlFor="screenFail"
+                        >
                           Fail
                         </label>
                       </div>
                     </div>
-                    {errors.screenResult && <div className="text-danger small mt-1">{errors.screenResult}</div>}
+                    {errors.screenResult && (
+                      <div className="text-danger small mt-1">
+                        {errors.screenResult}
+                      </div>
+                    )}
                   </div>
 
                   <div className="col-md-4">
@@ -741,7 +890,10 @@ const DonorRegistration = () => {
                           onChange={handleChange}
                           disabled={formData.screenResult === "pass"}
                         />
-                        <label className="form-check-label" htmlFor="deferralTemporary">
+                        <label
+                          className="form-check-label"
+                          htmlFor="deferralTemporary"
+                        >
                           Temporary
                         </label>
                       </div>
@@ -756,12 +908,19 @@ const DonorRegistration = () => {
                           onChange={handleChange}
                           disabled={formData.screenResult === "pass"}
                         />
-                        <label className="form-check-label" htmlFor="deferralPermanent">
+                        <label
+                          className="form-check-label"
+                          htmlFor="deferralPermanent"
+                        >
                           Permanent
                         </label>
                       </div>
                     </div>
-                    {errors.deferralType && <div className="text-danger small mt-1">{errors.deferralType}</div>}
+                    {errors.deferralType && (
+                      <div className="text-danger small mt-1">
+                        {errors.deferralType}
+                      </div>
+                    )}
                   </div>
 
                   <div className="col-md-4">
@@ -771,11 +930,14 @@ const DonorRegistration = () => {
                       name="deferralReason"
                       value={formData.deferralReason}
                       onChange={handleChange}
-                      placeholder="Enter deferral reason"
                       rows="2"
                       disabled={formData.screenResult === "pass"}
                     />
-                    {errors.deferralReason && <div className="invalid-feedback">{errors.deferralReason}</div>}
+                    {errors.deferralReason && (
+                      <div className="invalid-feedback">
+                        {errors.deferralReason}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -823,7 +985,7 @@ const DonorRegistration = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default DonorRegistration
+export default DonorRegistration;

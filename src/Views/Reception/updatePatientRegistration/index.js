@@ -256,7 +256,6 @@ const UpdatePatientRegistration = () => {
       ),
     );
 
-    // Fetch doctors according to department
     try {
       const data = await getRequest(`${DOCTOR_BY_SPECIALITY}${value}`);
       if (data.status === 200) {
