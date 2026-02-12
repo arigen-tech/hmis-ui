@@ -1,4 +1,4 @@
- export const API_HOST = 'http://103.133.215.182:8081/hims';
+//  export const API_HOST = 'http://103.133.215.182:8081/hims';
 
 //  export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://localhost:8080';
@@ -273,6 +273,11 @@ export const MAS_ENT_WEBER = `${MASTERS}/entMasWeber`;
 // Constants for date validation for Lab report
   export const MAX_MONTHS_BACK = 4; // 4 months maximum back date
   export const MAX_DAYS_BACK = MAX_MONTHS_BACK * 30;
+
+
+
+  //Blood bank
+  export const DONOR_REGISTER = `/bloodBank/registerDonor`
 
 
 
