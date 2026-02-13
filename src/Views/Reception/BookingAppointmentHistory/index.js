@@ -219,8 +219,9 @@ const BookingAppointmentHistory = () => {
     setShowReport(false);
 
     try {
+      const hospitalId = sessionStorage.getItem('hospitalId');
       const res = await getRequest(
-        `${GET_APPOINTMENT_HISTORY}?flag=0&mobileNo=${mobileNumber}`,
+        `${GET_APPOINTMENT_HISTORY}?hospitalId=${hospitalId}&mobileNo=${mobileNumber}`,
       );
 
       if (res.status === 200) {

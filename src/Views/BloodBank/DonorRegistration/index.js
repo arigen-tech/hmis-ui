@@ -2,8 +2,22 @@ import { getRequest, postRequest } from "../../../service/apiService";
 import Popup from "../../../Components/popup";
 import { useState, useEffect } from "react";
 import LoadingScreen from "../../../Components/Loading";
-import {MAS_GENDER,MAS_RELATION,MAS_BLOODGROUP, MAS_COUNTRY, STATE_BY_COUNTRY, DISTRICT_BY_STATE, DONOR_REGISTER} from "../../../config/apiConfig";
-import { DEFERAL_REQUIRED_MSG, DEFERAL_TYPE_REQUIRED_MSG, INVALID_MOBILE_NUMBER, MISSING_MANDOTORY_FIELD_MSG, REGISTERED_DONOR } from "../../../config/constants";
+import {
+  MAS_GENDER,
+  MAS_RELATION,
+  MAS_BLOODGROUP,
+  MAS_COUNTRY,
+  STATE_BY_COUNTRY,
+  DISTRICT_BY_STATE,
+  DONOR_REGISTER,
+} from "../../../config/apiConfig";
+import {
+  DEFERAL_REQUIRED_MSG,
+  DEFERAL_TYPE_REQUIRED_MSG,
+  INVALID_MOBILE_NUMBER,
+  MISSING_MANDOTORY_FIELD_MSG,
+  REGISTERED_DONOR,
+} from "../../../config/constants";
 
 const DonorRegistration = () => {
   const [errors, setErrors] = useState({});
@@ -16,16 +30,7 @@ const DonorRegistration = () => {
   const [districtData, setDistrictData] = useState([]);
   const [popupMessage, setPopupMessage] = useState(null);
 
-  const [masterData, setMasterData] = useState({
-    gender: [],
-    relation: [],
-    bloodGroup: [],
-    country: [],
-    state: [],
-    district: [],
-  });
-
-  const initialFormData = {
+  const [formData, setFormData] = useState({
     personal: {
       firstName: "",
       lastName: "",
@@ -53,11 +58,7 @@ const DonorRegistration = () => {
       deferralType: "",
       deferralReason: "",
     },
-  };
-
-  const [formData, setFormData] = useState(initialFormData)
-
-
+  });
 
   const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
@@ -74,88 +75,24 @@ const DonorRegistration = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const updatedForm = { ...formData, [name]: value };
 
-    if (name === "screenResult") {
-      if (value === "pass") {
-        updatedForm.deferralType = "";
-        updatedForm.deferralReason = "";
-      }
+    if (formData.personal.hasOwnProperty(name)) {
+      setFormData((prev) => ({
+        ...prev,
+        personal: {
+          ...prev.personal,
+          [name]: value,
+        },
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        screening: {
+          ...prev.screening,
+          [name]: value,
+        },
+      }));
     }
-
-    setFormData(updatedForm);
-
-    let error = "";
-
-    const requiredFields = [
-      "firstName",
-      "lastName",
-      "mobileNo",
-      "gender",
-      "relation",
-      "dob",
-      "bloodGroup",
-      "address1",
-      "country",
-      "state",
-      "district",
-      "city",
-      "pinCode",
-      "hemoglobin",
-      "weight",
-      "height",
-      "bloodPressure",
-      "pulse",
-      "temperature",
-      "screenResult",
-    ];
-
-    if (requiredFields.includes(name) && !value.trim()) {
-      error = "This field is required";
-    }
-
-    if (formData.screenResult === "fail") {
-      if (name === "deferralType" && !value.trim()) {
-        error = DEFERAL_TYPE_REQUIRED_MSG;
-      }
-      if (name === "deferralReason" && !value.trim()) {
-        error = DEFERAL_REQUIRED_MSG;
-      }
-    }
-
-    if (name === "mobileNo" && value && !/^\d{10}$/.test(value)) {
-      error = INVALID_MOBILE_NUMBER;
-    }
-
-    if (name === "pinCode" && value && !/^\d{6}$/.test(value)) {
-      error = "Pin Code must be 6 digits";
-    }
-
-    if (
-      name === "bloodPressure" &&
-      value &&
-      !/^\d{2,3}\/\d{2,3}$/.test(value)
-    ) {
-      error = "Format: 120/80";
-    }
-
-    if (
-      (name === "hemoglobin" ||
-        name === "weight" ||
-        name === "height" ||
-        name === "temperature") &&
-      value
-    ) {
-      const numValue = parseFloat(value);
-      if (isNaN(numValue)) {
-        error = "Must be a number";
-      }
-    }
-
-    setErrors((prev) => ({
-      ...prev,
-      [name]: error,
-    }));
   };
 
   const fetchGenderData = async () => {
@@ -216,9 +153,7 @@ const DonorRegistration = () => {
 
   const fetchStates = async (countryId) => {
     try {
-      const data = await getRequest(
-        `${STATE_BY_COUNTRY}${countryId}`,
-      );
+      const data = await getRequest(`${STATE_BY_COUNTRY}${countryId}`);
       if (data.status === 200) {
         setStateData(data.response || []);
       }
@@ -229,8 +164,7 @@ const DonorRegistration = () => {
 
   const fetchDistrict = async (stateId) => {
     try {
-      const data = await getRequest(`${DISTRICT_BY_STATE}${stateId}`,
-      );
+      const data = await getRequest(`${DISTRICT_BY_STATE}${stateId}`);
       if (data.status === 200) {
         setDistrictData(data.response || []);
       }
@@ -248,55 +182,24 @@ const DonorRegistration = () => {
 
   const validateForm = () => {
     const newErrors = {};
+    const { personal, screening } = formData;
 
-    if (!formData.firstName.trim())
+    if (!personal.firstName.trim())
       newErrors.firstName = "First Name is required";
-    if (!formData.lastName.trim()) newErrors.lastName = "Last Name is required";
-    if (!formData.mobileNo.trim())
-      newErrors.mobileNo = "Mobile number is required";
-    else if (!/^\d{10}$/.test(formData.mobileNo))
-      newErrors.mobileNo = "Must be 10 digits";
 
-    if (!formData.gender) newErrors.gender = "Gender is required";
-    if (!formData.relation) newErrors.relation = "Relation is required";
-    if (!formData.dob) newErrors.dob = "Date of Birth is required";
-    if (!formData.bloodGroup) newErrors.bloodGroup = "Blood Group is required";
+    if (!personal.mobileNo.trim()) newErrors.mobileNo = "Mobile is required";
 
-    if (!formData.address1.trim()) newErrors.address1 = "Address 1 is required";
-    if (!formData.country) newErrors.country = "Country is required";
-    if (!formData.state) newErrors.state = "State is required";
-    if (!formData.district) newErrors.district = "District is required";
-    if (!formData.city.trim()) newErrors.city = "City is required";
-    if (!formData.pinCode.trim()) newErrors.pinCode = "Pin Code is required";
-    else if (!/^\d{6}$/.test(formData.pinCode))
-      newErrors.pinCode = "Must be 6 digits";
+    if (!screening.hemoglobin) newErrors.hemoglobin = "Hemoglobin is required";
 
-    if (!formData.hemoglobin.trim())
-      newErrors.hemoglobin = "Hemoglobin is required";
-    if (!formData.weight.trim()) newErrors.weight = "Weight is required";
-    if (!formData.height.trim()) newErrors.height = "Height is required";
-    if (!formData.bloodPressure.trim())
-      newErrors.bloodPressure = "Blood Pressure is required";
-    else if (!/^\d{2,3}\/\d{2,3}$/.test(formData.bloodPressure))
-      newErrors.bloodPressure = "Format: 120/80";
-    if (!formData.pulse.trim()) newErrors.pulse = "Pulse is required";
-    if (!formData.temperature.trim())
-      newErrors.temperature = "Temperature is required";
+    if (!screening.screenResult)
+      newErrors.screenResult = "Screen Result required";
 
-    // Screen Result validation
-    if (!formData.screenResult) {
-      newErrors.screenResult = "Screen Result is required";
-    }
-
-    // Deferral fields validation when screen fails
-    if (formData.screenResult === "fail") {
-      if (!formData.deferralType.trim()) {
+    if (screening.screenResult === "fail") {
+      if (!screening.deferralType)
         newErrors.deferralType = DEFERAL_TYPE_REQUIRED_MSG;
-      }
-      if (!formData.deferralReason.trim()) {
-        newErrors.deferralReason =
-          DEFERAL_REQUIRED_MSG;
-      }
+
+      if (!screening.deferralReason.trim())
+        newErrors.deferralReason = DEFERAL_REQUIRED_MSG;
     }
 
     setErrors(newErrors);
@@ -312,34 +215,46 @@ const DonorRegistration = () => {
     try {
       setLoading(true);
 
-      const donorData = {
-        donorFn: formData.firstName,
-        donorLn: formData.lastName,
-        donorMobileNumber: formData.mobileNo,
-        donorGenderId: formData.gender,
-        donorRelationId: formData.relation,
-        donorDob: formData.dob,
-        donorBloodGroupId: formData.bloodGroup,
-        donorAddress1: formData.address1,
-        donorAddress2: formData.address2,
-        donorCountryId: formData.country,
-        donorStateId: formData.state,
-        donorDistrictId: formData.district,
-        donorCity: formData.city,
-        donorPincode: formData.pinCode,
-        hemoglobin: parseFloat(formData.hemoglobin),
-        weight: parseFloat(formData.weight),
-        height: parseFloat(formData.height),
-        bloodPressure: formData.bloodPressure,
-        pulse: parseInt(formData.pulse),
-        temperature: parseFloat(formData.temperature),
-        screenResult: formData.screenResult,
-        deferralType: formData.deferralType || "",
-        deferralReason: formData.deferralReason || "",
-        regDate: new Date().toISOString().split("T")[0],
+      const { personal, screening } = formData;
+      const requestBody = {
+        bloodDonorPersonalDetailsRequest: {
+          firstName: personal.firstName,
+          lastName: personal.lastName,
+          genderId: personal.gender,
+          dateOfBirth: personal.dob,
+          mobileNo: personal.mobileNo,
+          bloodGroupId: personal.bloodGroup,
+          donationTypeId: null,
+          relation: personal.relation,
+          donorStatus: "ACTIVE",
+          currentDeferralReason: screening.deferralReason || "",
+          deferralUptoDate: null,
+          addressLine1: personal.address1,
+          addressLine2: personal.address2,
+          countryId: personal.country,
+          stateId: personal.state,
+          districtId: personal.district,
+          city: personal.city,
+          pincode: personal.pinCode,
+          remarks: "",
+        },
+        bloodDonorScreeningRequest: {
+          screeningDate: new Date().toISOString().split("T")[0],
+          hemoglobin: parseFloat(screening.hemoglobin),
+          weightKg: parseFloat(screening.weight),
+          heightCm: parseFloat(screening.height),
+          bloodPressure: screening.bloodPressure,
+          pulseRate: parseInt(screening.pulse),
+          temperature: parseFloat(screening.temperature),
+          screeningResult: screening.screenResult,
+          deferralType: screening.deferralType || "",
+          deferralReason: screening.deferralReason || "",
+          deferralUptoDate: null,
+          remarks: "",
+        },
       };
 
-      const result = await postRequest(DONOR_REGISTER, { donor: donorData });
+      const result = await postRequest(DONOR_REGISTER, requestBody);
 
       if (result.status === 200) {
         showPopup(REGISTERED_DONOR, "success", handleReset);
@@ -356,33 +271,36 @@ const DonorRegistration = () => {
 
   const handleReset = () => {
     setFormData({
-      firstName: "",
-      lastName: "",
-      mobileNo: "",
-      gender: "",
-      relation: "",
-      dob: "",
-      bloodGroup: "",
-      address1: "",
-      address2: "",
-      country: "",
-      state: "",
-      district: "",
-      city: "",
-      pinCode: "",
-      hemoglobin: "",
-      weight: "",
-      height: "",
-      bloodPressure: "",
-      pulse: "",
-      temperature: "",
-      screenResult: "",
-      deferralType: "",
-      deferralReason: "",
+      personal: {
+        firstName: "",
+        lastName: "",
+        mobileNo: "",
+        gender: "",
+        relation: "",
+        dob: "",
+        bloodGroup: "",
+        address1: "",
+        address2: "",
+        country: "",
+        state: "",
+        district: "",
+        city: "",
+        pinCode: "",
+      },
+      screening: {
+        hemoglobin: "",
+        weight: "",
+        height: "",
+        bloodPressure: "",
+        pulse: "",
+        temperature: "",
+        screenResult: "",
+        deferralType: "",
+        deferralReason: "",
+      },
     });
+
     setErrors({});
-    setStateData([]);
-    setDistrictData([]);
   };
 
   if (loading) {
@@ -425,7 +343,7 @@ const DonorRegistration = () => {
                       type="text"
                       className={`form-control ${errors.firstName ? "is-invalid" : ""}`}
                       name="firstName"
-                      value={formData.firstName}
+                      value={formData.personal.firstName}
                       onChange={handleChange}
                       placeholder="Enter First Name"
                     />
@@ -440,7 +358,7 @@ const DonorRegistration = () => {
                     <input
                       type="text"
                       name="lastName"
-                      value={formData.lastName}
+                      value={formData.personal.lastName}
                       onChange={handleChange}
                       className={`form-control ${errors.lastName ? "is-invalid" : ""}`}
                       placeholder="Enter Last Name"
@@ -457,7 +375,7 @@ const DonorRegistration = () => {
                       type="text"
                       className={`form-control ${errors.mobileNo ? "is-invalid" : ""}`}
                       name="mobileNo"
-                      value={formData.mobileNo}
+                      value={formData.personal.mobileNo}
                       maxLength={10}
                       onChange={handleChange}
                       placeholder="Enter Mobile Number"
@@ -473,7 +391,7 @@ const DonorRegistration = () => {
                     <select
                       className={`form-select ${errors.gender ? "is-invalid" : ""}`}
                       name="gender"
-                      value={formData.gender}
+                      value={formData.personal.gender}
                       onChange={handleChange}
                     >
                       <option value="">Select Gender</option>
@@ -494,7 +412,7 @@ const DonorRegistration = () => {
                     <select
                       className={`form-select ${errors.relation ? "is-invalid" : ""}`}
                       name="relation"
-                      value={formData.relation}
+                      value={formData.personal.relation}
                       onChange={handleChange}
                     >
                       <option value="">Select Relation</option>
@@ -516,7 +434,7 @@ const DonorRegistration = () => {
                       type="date"
                       name="dob"
                       className={`form-control ${errors.dob ? "is-invalid" : ""}`}
-                      value={formData.dob}
+                      value={formData.personal.dob}
                       max={new Date().toISOString().split("T")[0]}
                       onChange={handleChange}
                     />
@@ -531,7 +449,7 @@ const DonorRegistration = () => {
                     <select
                       className={`form-select ${errors.bloodGroup ? "is-invalid" : ""}`}
                       name="bloodGroup"
-                      value={formData.bloodGroup}
+                      value={formData.personal.bloodGroup}
                       onChange={handleChange}
                     >
                       <option value="">Select Blood Group</option>
@@ -570,7 +488,7 @@ const DonorRegistration = () => {
                       type="text"
                       className={`form-control ${errors.address1 ? "is-invalid" : ""}`}
                       name="address1"
-                      value={formData.address1}
+                      value={formData.personal.address1}
                       onChange={handleChange}
                       placeholder="Enter Address 1"
                     />
@@ -584,7 +502,7 @@ const DonorRegistration = () => {
                       type="text"
                       className="form-control"
                       name="address2"
-                      value={formData.address2}
+                      value={formData.personal.address2}
                       onChange={handleChange}
                       placeholder="Enter Address 2"
                     />
@@ -596,7 +514,7 @@ const DonorRegistration = () => {
                     <select
                       className={`form-select ${errors.country ? "is-invalid" : ""}`}
                       name="country"
-                      value={formData.country}
+                      value={formData.personal.country}
                       onChange={(e) => {
                         handleChange(e);
                         fetchStates(e.target.value);
@@ -620,12 +538,12 @@ const DonorRegistration = () => {
                     <select
                       className={`form-select ${errors.state ? "is-invalid" : ""}`}
                       name="state"
-                      value={formData.state}
+                      value={formData.personal.state}
                       onChange={(e) => {
                         handleChange(e);
                         fetchDistrict(e.target.value);
                       }}
-                      disabled={!formData.country}
+                      disabled={!formData.personal.country}
                     >
                       <option value="">Select State</option>
                       {stateData.map((state) => (
@@ -645,9 +563,9 @@ const DonorRegistration = () => {
                     <select
                       className={`form-select ${errors.district ? "is-invalid" : ""}`}
                       name="district"
-                      value={formData.district}
+                      value={formData.personal.district}
                       onChange={handleChange}
-                      disabled={!formData.state}
+                      disabled={!formData.personal.state}
                     >
                       <option value="">Select District</option>
                       {districtData.map((district) => (
@@ -668,7 +586,7 @@ const DonorRegistration = () => {
                       type="text"
                       className={`form-control ${errors.city ? "is-invalid" : ""}`}
                       name="city"
-                      value={formData.city}
+                      value={formData.personal.city}
                       onChange={handleChange}
                       placeholder="Enter City"
                     />
@@ -684,7 +602,7 @@ const DonorRegistration = () => {
                       type="text"
                       className={`form-control ${errors.pinCode ? "is-invalid" : ""}`}
                       name="pinCode"
-                      value={formData.pinCode}
+                      value={formData.personal.pinCode}
                       maxLength={6}
                       onChange={handleChange}
                       placeholder="Enter Pin Code"
@@ -716,7 +634,7 @@ const DonorRegistration = () => {
                       type="number"
                       className={`form-control ${errors.hemoglobin ? "is-invalid" : ""}`}
                       name="hemoglobin"
-                      value={formData.hemoglobin}
+                      value={formData.screening.hemoglobin}
                       onChange={handleChange}
                       placeholder="Enter Hemoglobin"
                       step="0.1"
@@ -735,7 +653,7 @@ const DonorRegistration = () => {
                       type="number"
                       className={`form-control ${errors.weight ? "is-invalid" : ""}`}
                       name="weight"
-                      value={formData.weight}
+                      value={formData.screening.weight}
                       onChange={handleChange}
                       placeholder="Enter Weight"
                       step="0.1"
@@ -752,7 +670,7 @@ const DonorRegistration = () => {
                       type="number"
                       className={`form-control ${errors.height ? "is-invalid" : ""}`}
                       name="height"
-                      value={formData.height}
+                      value={formData.screening.height}
                       onChange={handleChange}
                       placeholder="Enter Height"
                       step="0.1"
@@ -769,7 +687,7 @@ const DonorRegistration = () => {
                       type="text"
                       className={`form-control ${errors.bloodPressure ? "is-invalid" : ""}`}
                       name="bloodPressure"
-                      value={formData.bloodPressure}
+                      value={formData.screening.bloodPressure}
                       onChange={handleChange}
                       placeholder="120/80"
                     />
@@ -787,7 +705,7 @@ const DonorRegistration = () => {
                       type="number"
                       className={`form-control ${errors.pulse ? "is-invalid" : ""}`}
                       name="pulse"
-                      value={formData.pulse}
+                      value={formData.screening.pulse}
                       onChange={handleChange}
                       placeholder="Enter Pulse Rate"
                     />
@@ -803,7 +721,7 @@ const DonorRegistration = () => {
                       type="number"
                       className={`form-control ${errors.temperature ? "is-invalid" : ""}`}
                       name="temperature"
-                      value={formData.temperature}
+                      value={formData.screening.temperature}
                       onChange={handleChange}
                       placeholder="Enter Temperature"
                       step="0.1"
@@ -841,7 +759,7 @@ const DonorRegistration = () => {
                           name="screenResult"
                           id="screenPass"
                           value="pass"
-                          checked={formData.screenResult === "pass"}
+                          checked={formData.screening.screenResult === "pass"}
                           onChange={handleChange}
                         />
                         <label
@@ -858,7 +776,7 @@ const DonorRegistration = () => {
                           name="screenResult"
                           id="screenFail"
                           value="fail"
-                          checked={formData.screenResult === "fail"}
+                          checked={formData.screening.screenResult === "fail"}
                           onChange={handleChange}
                         />
                         <label
@@ -886,9 +804,9 @@ const DonorRegistration = () => {
                           name="deferralType"
                           id="deferralTemporary"
                           value="temporary"
-                          checked={formData.deferralType === "temporary"}
+                          checked={formData.screening.deferralType === "temporary"}
                           onChange={handleChange}
-                          disabled={formData.screenResult === "pass"}
+                          disabled={formData.screening.screenResult === "pass"}
                         />
                         <label
                           className="form-check-label"
@@ -904,9 +822,9 @@ const DonorRegistration = () => {
                           name="deferralType"
                           id="deferralPermanent"
                           value="permanent"
-                          checked={formData.deferralType === "permanent"}
+                          checked={formData.screening.deferralType === "permanent"}
                           onChange={handleChange}
-                          disabled={formData.screenResult === "pass"}
+                          disabled={formData.screening.screenResult === "pass"}
                         />
                         <label
                           className="form-check-label"
@@ -928,10 +846,10 @@ const DonorRegistration = () => {
                     <textarea
                       className={`form-control ${errors.deferralReason ? "is-invalid" : ""}`}
                       name="deferralReason"
-                      value={formData.deferralReason}
+                      value={formData.screening.deferralReason}
                       onChange={handleChange}
                       rows="2"
-                      disabled={formData.screenResult === "pass"}
+                      disabled={formData.screening.screenResult === "pass"}
                     />
                     {errors.deferralReason && (
                       <div className="invalid-feedback">
